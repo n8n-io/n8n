@@ -752,7 +752,7 @@
 	"dataMapping.schemaView.noMatches": "No results for '{search}'",
 	"dataMapping.schemaView.preview": "Usually outputs the following fields. {execute} to see the actual ones. {link}",
 	"dataMapping.schemaView.previewLastExecution": "The fields below come from the last successful execution. {execute} to refresh them.",
-	"dataMapping.schemaView.previewLastExecution.executePreviousNodes": "Execute previous nodes",
+	"dataMapping.schemaView.previewLastExecution.executePreviousNodes": "Execute node",
 	"dataMapping.schemaView.preview.executeNode": "Execute the node",
 	"dataMapping.schemaView.previewExtraFields": "There may be more fields. Execute the node to be sure.",
 	"dataMapping.schemaView.previewNode": "Preview",

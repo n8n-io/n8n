@@ -169,11 +169,10 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		.flat();
 	const hasBinary = nodeData.some((data) => !isEmpty(data.binary));
 	const data = pinData ?? executionDataToJson(nodeData);
-	const isDataEmpty = data.length === 0;
+	const isDataEmpty = data.length === 0 || (data.length === 1 && Object.keys(data[0]).length === 0);
 
 	let schema = getSchemaForExecutionData(data);
-	const nodeExecutionData = getNodeTaskData(fullNode.name, 0, props.previewExecution.data);
-	const lastSuccessfulPreview = Boolean(previewExecutionData) && Boolean(nodeExecutionData);
+	const lastSuccessfulPreview = !isDataEmpty && Boolean(previewExecutionData);
 	let preview = lastSuccessfulPreview;
 
 	if (data.length === 0 && !preview) {
