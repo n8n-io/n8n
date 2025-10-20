@@ -5,7 +5,6 @@ import { Service } from '@n8n/di';
 import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
-// import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
@@ -124,6 +123,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	private filterNodeTypes(nodeTypes: INodeTypeDescription[]): INodeTypeDescription[] {
+		// These types are ignored because they tend to cause issues when generating workflows
 		const ignoredTypes = new Set([
 			'@n8n/n8n-nodes-langchain.toolVectorStore',
 			'@n8n/n8n-nodes-langchain.documentGithubLoader',
@@ -132,6 +132,8 @@ export class AiWorkflowBuilderService {
 
 		const visibleNodeTypes = nodeTypes.filter(
 			(nodeType) =>
+				// We filter out hidden nodes, except for the Data Table node which has custom hiding logic
+				// See more details in DataTable.node.ts#L29
 				!ignoredTypes.has(nodeType.name) &&
 				(nodeType.hidden !== true || nodeType.name === 'n8n-nodes-base.dataTable'),
 		);
