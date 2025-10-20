@@ -1,4 +1,4 @@
-import type { ChatHubProvider, ChatHubMessageType, ChatHubMessageState } from '@n8n/api-types';
+import type { ChatHubProvider, ChatHubMessageType, ChatHubMessageStatus } from '@n8n/api-types';
 import { ExecutionEntity, WithTimestamps, WorkflowEntity } from '@n8n/db';
 import {
 	Column,
@@ -156,8 +156,8 @@ export class ChatHubMessage extends WithTimestamps {
 	revisions?: Array<Relation<ChatHubMessage>>;
 
 	/**
-	 * State of the message, e.g. 'success', 'error'.
+	 * Status of the message, e.g. 'pending', 'success', 'error'.
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'success' })
-	state: ChatHubMessageState;
+	status: ChatHubMessageStatus;
 }

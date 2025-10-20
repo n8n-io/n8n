@@ -9,7 +9,7 @@ import {
 	type ChatMessageId,
 	type ChatSessionId,
 	ChatHubConversationModel,
-	ChatHubMessageState,
+	ChatHubMessageStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -568,7 +568,7 @@ export class ChatHubService {
 				message,
 				selectedModel,
 				retryOfMessageId,
-				state: 'error',
+				status: 'error',
 			});
 
 			throw new OperationalError(`Chat workflow execution failed: ${message}`);
@@ -583,7 +583,7 @@ export class ChatHubService {
 			message,
 			selectedModel,
 			retryOfMessageId,
-			state: 'success',
+			status: 'success',
 		});
 	}
 
@@ -756,7 +756,7 @@ export class ChatHubService {
 			sessionId: payload.sessionId,
 			type: 'human',
 			name: user.firstName || 'User',
-			state: 'success',
+			status: 'success',
 			content: payload.message,
 			previousMessageId,
 			revisionOfMessageId,
@@ -772,7 +772,7 @@ export class ChatHubService {
 		message,
 		selectedModel,
 		retryOfMessageId,
-		state,
+		status,
 	}: {
 		id: ChatMessageId;
 		sessionId: ChatSessionId;
@@ -782,7 +782,7 @@ export class ChatHubService {
 		selectedModel: ModelWithCredentials;
 		retryOfMessageId?: ChatMessageId;
 		editOfMessageId?: ChatMessageId;
-		state?: ChatHubMessageState;
+		status?: ChatHubMessageStatus;
 	}) {
 		await this.messageRepository.createChatMessage({
 			id,
@@ -791,7 +791,7 @@ export class ChatHubService {
 			executionId: parseInt(executionId, 10),
 			type: 'ai',
 			name: 'AI',
-			state,
+			status,
 			content: message,
 			retryOfMessageId,
 			...selectedModel,
@@ -937,7 +937,7 @@ export class ChatHubService {
 			model: message.model,
 			workflowId: message.workflowId,
 			executionId: message.executionId,
-			state: message.state,
+			status: message.status,
 			createdAt: message.createdAt.toISOString(),
 			updatedAt: message.updatedAt.toISOString(),
 
