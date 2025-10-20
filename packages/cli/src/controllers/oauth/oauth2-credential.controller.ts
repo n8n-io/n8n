@@ -183,18 +183,6 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			const [credential, decryptedDataOriginal, oauthCredentials] =
 				await this.resolveCredential<OAuth2CredentialData>(req);
 
-			// FIXME: hack
-			if (decryptedDataOriginal.useDynamicClientRegistration) {
-				Object.assign(oauthCredentials, {
-					clientId: decryptedDataOriginal.clientId,
-					clientSecret: decryptedDataOriginal.clientSecret,
-					authUrl: decryptedDataOriginal.authUrl,
-					accessTokenUrl: decryptedDataOriginal.accessTokenUrl,
-					grantType: decryptedDataOriginal.grantType,
-					authentication: decryptedDataOriginal.authentication,
-				});
-			}
-
 			let options: Partial<ClientOAuth2Options> = {};
 
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
@@ -288,9 +276,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
 		if (grantTypes.includes('authorization_code') && grantTypes.includes('refresh_token')) {
 			if (codeChallengeMethods.includes('S256') && tokenEndpointAuthMethods.includes('none')) {
-				if (tokenEndpointAuthMethods.includes('none')) {
-					return { grantType: 'pkce' };
-				}
+				return { grantType: 'pkce' };
 			}
 
 			if (tokenEndpointAuthMethods.includes('client_secret_basic')) {

@@ -195,5 +195,75 @@ export class OAuth2Api implements ICredentialType {
 			default: false,
 			doNotInherit: true,
 		},
+		// Hidden properties for dynamic client registration
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [true],
+				},
+			},
+			default: 'authorizationCode',
+		},
+		{
+			displayName: 'Authorization URL',
+			name: 'authUrl',
+			type: 'hidden',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [true],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Access Token URL',
+			name: 'accessTokenUrl',
+			type: 'hidden',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [true],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'hidden',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [true],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'hidden',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [true],
+				},
+			},
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [true],
+				},
+			},
+			default: 'header',
+		},
 	];
 }

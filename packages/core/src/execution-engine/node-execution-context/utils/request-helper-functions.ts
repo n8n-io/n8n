@@ -882,7 +882,7 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope as string).split(' '),
+		scopes: (credentials.scope ?? '').split(' '),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {

@@ -284,7 +284,6 @@ export async function getAuthHeaders(
 			return { headers: { Authorization: `Bearer ${result.token}` } };
 		}
 		case 'oAuth2Api': {
-			// TODO: Implement refresh mechanism
 			const result = await ctx
 				.getCredentials<{ oauthTokenData: { access_token: string } }>('oAuth2Api')
 				.catch(() => null);
