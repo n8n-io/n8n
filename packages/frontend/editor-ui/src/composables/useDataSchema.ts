@@ -436,7 +436,7 @@ export const useFlattenSchema = () => {
 					expression,
 					level,
 					depth,
-					value: shorten(schema.value, truncateLimit, 0),
+					value: !lastSuccessfulPreview ? shorten(schema.value, truncateLimit, 0) : '',
 					id,
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,
