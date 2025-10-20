@@ -26,6 +26,7 @@ import type { Response } from 'express';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
 	OperationalError,
 	type IConnections,
 	type INode,
@@ -48,6 +49,7 @@ import type {
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
+import { getMaxContextWindowTokens } from './context-limits';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -275,20 +277,6 @@ export class ChatHubService {
 		);
 
 		const { manager } = this.projectRepository;
-		const existing = await this.workflowRepository.findOneBy({ id: sessionId });
-		if (existing) {
-			return {
-				workflowData: {
-					...existing,
-					nodes,
-					connections,
-					versionId: uuidv4(),
-				},
-				startNodes,
-				triggerToStartFrom,
-			};
-		}
-
 		return await manager.transaction(async (trx) => {
 			const project = await this.projectRepository.getPersonalProjectForUser(user.id, trx);
 			if (!project) {
@@ -297,7 +285,6 @@ export class ChatHubService {
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
-			newWorkflow.id = sessionId;
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
@@ -324,6 +311,10 @@ export class ChatHubService {
 				triggerToStartFrom,
 			};
 		});
+	}
+
+	private async deleteChatWorkflow(workflowId: string): Promise<void> {
+		await this.workflowRepository.delete(workflowId);
 	}
 
 	private getAIOutput(execution: IExecutionResponse): string | undefined {
@@ -386,16 +377,20 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
-		);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				turnId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
@@ -449,16 +444,20 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
-		);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				turnId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
@@ -491,14 +490,6 @@ export class ChatHubService {
 		}
 
 		// Rerun the workflow, replaying the last human message
-		const workflow = await this.createChatWorkflow(
-			user,
-			session.id,
-			history,
-			lastHumanMessage ? lastHumanMessage.content : '',
-			payload.credentials,
-			payload.model,
-		);
 
 		// If the message being retried is itself a retry, we want to point to the original message
 		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
@@ -514,18 +505,31 @@ export class ChatHubService {
 			}
 		}
 
-		await this.executeChatWorkflow(
-			res,
+		const workflow = await this.createChatWorkflow(
 			user,
-			workflow,
-			replyId,
-			sessionId,
-			lastHumanMessage.id,
-			messageToRetry.turnId,
-			selectedModel,
-			retryOfMessageId,
-			runIndex,
+			session.id,
+			history,
+			lastHumanMessage ? lastHumanMessage.content : '',
+			payload.credentials,
+			payload.model,
 		);
+
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				lastHumanMessage.id,
+				messageToRetry.turnId,
+				selectedModel,
+				retryOfMessageId,
+				runIndex,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	private async executeChatWorkflow(
@@ -617,6 +621,7 @@ export class ChatHubService {
 					text: "={{ $('When chat message received').item.json.chatInput }}",
 					options: {
 						enableStreaming: true,
+						maxTokensFromMemory: getMaxContextWindowTokens(model.provider, model.model),
 					},
 				},
 				type: AGENT_LANGCHAIN_NODE_TYPE,
@@ -680,21 +685,25 @@ export class ChatHubService {
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: 'main', index: 0 }]],
+				main: [
+					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
-				main: [[{ node: NODE_NAMES.AI_AGENT, type: 'main', index: 0 }]],
+				main: [[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [[{ node: NODE_NAMES.AI_AGENT, type: 'ai_languageModel', index: 0 }]],
+				ai_languageModel: [
+					[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
 			},
 			[NODE_NAMES.MEMORY]: {
 				ai_memory: [
 					[
-						{ node: NODE_NAMES.AI_AGENT, type: 'ai_memory', index: 0 },
-						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: 'ai_memory', index: 0 },
-						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: 'ai_memory', index: 0 },
+						{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
 					],
 				],
 			},
@@ -703,7 +712,7 @@ export class ChatHubService {
 					[
 						{
 							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],

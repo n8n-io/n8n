@@ -58,7 +58,7 @@ describe('OpenAI Response Operation', () => {
 					],
 					options: {},
 					builtInTools: {},
-					simplify: true,
+					simplify: false,
 					hideTools: 'show',
 					'options.maxToolsIterations': 15,
 				};
@@ -107,7 +107,7 @@ describe('OpenAI Response Operation', () => {
 
 			expect(result).toEqual([
 				{
-					json: mockResponse.output,
+					json: mockResponse,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -116,9 +116,9 @@ describe('OpenAI Response Operation', () => {
 			});
 		});
 
-		it('should execute with simplified output disabled', async () => {
+		it('should execute with simplified output enabled', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
-				if (param === 'simplify') return false;
+				if (param === 'simplify') return true;
 				return 'default';
 			});
 
@@ -127,9 +127,24 @@ describe('OpenAI Response Operation', () => {
 				status: 'completed',
 				output: [
 					{
+						type: 'reasoning',
+						role: 'assistant',
+						content: [{ type: 'some_reasoning_output', text: 'Response text' }],
+					},
+					{
+						type: 'tool_call',
+						role: 'assistant',
+						content: [{ type: 'some_tool_call_output', text: 'Response text' }],
+					},
+					{
 						type: 'message',
 						role: 'assistant',
 						content: [{ type: 'output_text', text: 'Response text' }],
+					},
+					{
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: 'Response text 2' }],
 					},
 				],
 			};
@@ -145,42 +160,23 @@ describe('OpenAI Response Operation', () => {
 
 			expect(result).toEqual([
 				{
-					json: mockResponse,
+					json: {
+						output: [
+							{
+								type: 'message',
+								role: 'assistant',
+								content: [{ type: 'output_text', text: 'Response text' }],
+							},
+							{
+								type: 'message',
+								role: 'assistant',
+								content: [{ type: 'output_text', text: 'Response text 2' }],
+							},
+						],
+					},
 					pairedItem: { item: 0 },
 				},
 			]);
-		});
-
-		it('should handle multiple output items with simplified output', async () => {
-			const mockResponse = {
-				id: 'resp_123',
-				status: 'completed',
-				output: [
-					{
-						type: 'message',
-						role: 'assistant',
-						content: [{ type: 'output_text', text: 'First response' }],
-					},
-					{
-						type: 'message',
-						role: 'assistant',
-						content: [{ type: 'output_text', text: 'Second response' }],
-					},
-				],
-			};
-
-			mockCreateRequest.mockResolvedValue({
-				model: 'gpt-4o',
-				input: [],
-			});
-			mockApiRequest.mockResolvedValue(mockResponse);
-			mockGetConnectedTools.mockResolvedValue([]);
-
-			const result = await execute.call(mockExecuteFunctions, 0);
-
-			// With simplify=true, should return the entire output array as a single item
-			expect(result).toHaveLength(1);
-			expect(result[0].json).toEqual(mockResponse.output);
 		});
 	});
 
@@ -207,6 +203,7 @@ describe('OpenAI Response Operation', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'options.backgroundMode.values.enabled') return true;
 				if (param === 'options.backgroundMode.values.timeout') return 300;
+				if (param === 'simplify') return false;
 				return 'default';
 			});
 
@@ -230,7 +227,7 @@ describe('OpenAI Response Operation', () => {
 			);
 			expect(result).toEqual([
 				{
-					json: completedResponse.output,
+					json: completedResponse,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -239,6 +236,7 @@ describe('OpenAI Response Operation', () => {
 		it('should throw error when background mode fails', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'options.backgroundMode.values.enabled') return true;
+				if (param === 'simplify') return false;
 				return 'default';
 			});
 
@@ -317,7 +315,7 @@ describe('OpenAI Response Operation', () => {
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
 			expect(result).toEqual([
 				{
-					json: finalResponse.output,
+					json: finalResponse,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -526,7 +524,7 @@ describe('OpenAI Response Operation', () => {
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
 			expect(result).toEqual([
 				{
-					json: finalResponse.output,
+					json: finalResponse,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -561,7 +559,7 @@ describe('OpenAI Response Operation', () => {
 			expect(mockApiRequest).toHaveBeenCalledTimes(1);
 			expect(result).toEqual([
 				{
-					json: responseWithOnlyReasoning.output,
+					json: responseWithOnlyReasoning,
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -597,7 +595,12 @@ describe('OpenAI Response Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect((result[0].json as any)[0].content[0].text).toBe('invalid json');
+			expect(result).toEqual([
+				{
+					json: mockResponse,
+					pairedItem: { item: 0 },
+				},
+			]);
 		});
 	});
 
@@ -605,6 +608,7 @@ describe('OpenAI Response Operation', () => {
 		it('should handle empty messages array', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'responses.values') return [];
+				if (param === 'simplify') return false;
 				return 'default';
 			});
 
@@ -625,7 +629,11 @@ describe('OpenAI Response Operation', () => {
 
 			expect(result).toEqual([
 				{
-					json: [],
+					json: {
+						id: 'resp_123',
+						status: 'completed',
+						output: [],
+					},
 					pairedItem: { item: 0 },
 				},
 			]);
@@ -634,6 +642,7 @@ describe('OpenAI Response Operation', () => {
 		it('should handle tools hidden for unsupported models', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'hideTools') return 'hide';
+				if (param === 'simplify') return false;
 				return 'default';
 			});
 
@@ -661,7 +670,7 @@ describe('OpenAI Response Operation', () => {
 			expect(mockGetConnectedTools).not.toHaveBeenCalled();
 			expect(result).toEqual([
 				{
-					json: mockResponse.output,
+					json: mockResponse,
 					pairedItem: { item: 0 },
 				},
 			]);
