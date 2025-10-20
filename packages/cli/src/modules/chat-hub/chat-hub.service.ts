@@ -49,6 +49,7 @@ import type {
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
+import { getMaxContextWindowTokens } from './context-limits';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -618,7 +619,7 @@ export class ChatHubService {
 					text: "={{ $('When chat message received').item.json.chatInput }}",
 					options: {
 						enableStreaming: true,
-						maxTokensFromMemory: 10000,
+						maxTokensFromMemory: getMaxContextWindowTokens(model.provider, model.model),
 					},
 				},
 				type: AGENT_LANGCHAIN_NODE_TYPE,
