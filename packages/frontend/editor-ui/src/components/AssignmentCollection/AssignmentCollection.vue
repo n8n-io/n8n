@@ -2,6 +2,7 @@
 import { useDebounce } from '@/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
 import type {
 	AssignmentCollectionValue,
 	AssignmentValue,
@@ -20,7 +21,7 @@ import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/compon
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
 
-import { N8nInputLabel } from '@n8n/design-system';
+import { N8nIconButton, N8nInputLabel, N8nSectionHeader } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
@@ -58,6 +59,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const issues = computed(() => {
 	if (!ndvStore.activeNode) return {};
@@ -133,10 +135,42 @@ function optionSelected(action: string) {
 
 <template>
 	<div
-		:class="{ [$style.assignmentCollection]: true, [$style.empty]: empty }"
+		:class="{
+			[$style.assignmentCollection]: true,
+			[$style.empty]: empty,
+			[$style.overhaul]: isCollectionOverhaulEnabled,
+		}"
 		:data-test-id="`assignment-collection-${parameter.name}`"
 	>
+		<!-- New UI: Section header when overhaul is enabled -->
+		<N8nSectionHeader v-if="isCollectionOverhaulEnabled" :title="parameter.displayName">
+			<template #actions>
+				<ParameterOptions
+					:parameter="parameter"
+					:value="value"
+					:custom-actions="actions"
+					:is-read-only="isReadOnly"
+					:show-expression-selector="false"
+					@update:model-value="optionSelected"
+				/>
+				<N8nIconButton
+					v-if="!isReadOnly"
+					type="secondary"
+					text
+					size="small"
+					icon="plus"
+					icon-size="large"
+					:title="i18n.baseText('assignment.add')"
+					:aria-label="i18n.baseText('assignment.add')"
+					data-test-id="assignment-collection-add-header"
+					@click="addAssignment"
+				/>
+			</template>
+		</N8nSectionHeader>
+
+		<!-- Old UI: Input label -->
 		<N8nInputLabel
+			v-else
 			:label="parameter.displayName"
 			:show-expression-selector="false"
 			size="small"
@@ -240,19 +274,28 @@ function optionSelected(action: string) {
 }
 
 .assignment {
+	// Add left padding for old UI only
 	padding-left: var(--spacing--lg);
+}
+
+// Remove padding when overhaul is enabled (collapsible panels handle their own padding)
+.overhaul .assignment {
+	padding-left: 0;
 }
 
 .dropAreaWrapper {
 	cursor: pointer;
-
-	&:not(.empty .dropAreaWrapper) {
-		padding-left: var(--spacing--lg);
-	}
+	// Add left padding for old UI only
+	padding-left: var(--spacing--lg);
 
 	&:hover .add {
 		color: var(--color--primary--shade-1);
 	}
+}
+
+// Remove padding when overhaul is enabled
+.overhaul .dropAreaWrapper {
+	padding-left: 0;
 }
 
 .dropArea {

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -8,8 +8,9 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
+	NodeParameterValueType,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
@@ -17,9 +18,30 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
+import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
+import { useCollectionCollapsedState } from '@/composables/useCollectionCollapsedState';
 
-import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCollapsiblePanel,
+	N8nIconButton,
+	N8nOption,
+	N8nRekaSelect,
+	N8nSelect,
+	N8nSectionHeader,
+	N8nText,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
+} from '@n8n/design-system';
+import type { RekaSelectOption } from '@n8n/design-system';
+import { isPresent } from '@/utils/typesUtils';
+import Draggable from 'vuedraggable';
+import type { ComponentExposed } from 'vue-component-type-helpers';
+
 const selectedOption = ref<string | undefined>(undefined);
+const addSelectRef = ref<InstanceType<typeof N8nSelect>>();
+const addDropdownRef = ref<ComponentExposed<typeof N8nRekaSelect>>();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 export interface Props {
 	hideDelete?: boolean;
 	nodeValues: INodeParameters;
@@ -27,6 +49,7 @@ export interface Props {
 	path: string;
 	values: INodeParameters;
 	isReadOnly?: boolean;
+	isNested?: boolean;
 }
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -72,190 +95,477 @@ function displayNodeParameter(parameter: INodeProperties) {
 	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, ndvStore.activeNode);
 }
 
-function getOptionProperties(optionName: string) {
-	const properties = [];
-	for (const option of props.parameter.options ?? []) {
-		if (option.name === optionName) {
-			properties.push(option);
-		}
+function getOptionProperties(
+	optionName: string,
+): INodePropertyCollection | INodeProperties | INodePropertyOptions | undefined {
+	const options = props.parameter.options ?? [];
+	const matchingOptions = options.filter((option) => option.name === optionName);
+
+	// If there are multiple options with the same name, filter by displayOptions
+	if (matchingOptions.length > 1) {
+		// Filter by displayOptions - find the one that should be displayed
+		const visibleOption = matchingOptions.find((option) => {
+			if (isINodeProperties(option)) {
+				return displayNodeParameter(option);
+			}
+			return true; // Collections are always considered visible here
+		});
+		return visibleOption ?? matchingOptions[0];
 	}
 
-	return properties;
+	return matchingOptions[0];
 }
-const propertyNames = computed<string[]>(() => {
-	if (props.values) {
-		return Object.keys(props.values);
-	}
-	return [];
-});
+
+const propertyNames = computed<string[]>(() => Object.keys(props.values ?? {}));
+
 const getProperties = computed(() => {
-	const returnProperties = [];
-	let tempProperties;
-	for (const name of propertyNames.value) {
-		tempProperties = getOptionProperties(name) as INodeProperties[];
-		if (tempProperties !== undefined) {
-			returnProperties.push(...tempProperties);
+	return propertyNames.value.map((name) => getOptionProperties(name)).filter(isPresent);
+});
+
+const getCollections = computed(() => {
+	return getProperties.value.filter(isINodePropertyCollection);
+});
+
+const sortable = computed(() => props.parameter.typeOptions?.sortable !== false);
+
+const mutableCollections = ref<INodePropertyCollection[]>([]);
+
+const { collapsedItems } = useCollectionCollapsedState({
+	items: getCollections,
+	keyGenerator: (collection) => collection.name,
+	defaultCollapsed: 'all',
+});
+
+const getFlattenedProperties = computed((): INodeProperties[] => {
+	// For old UI: if it's a collection, use its values; otherwise treat as property
+	return getProperties.value.flatMap((option) => {
+		if (isINodePropertyCollection(option)) {
+			return option.values;
 		}
-	}
-	return returnProperties;
+		if (isINodeProperties(option)) {
+			return [option];
+		}
+		return [];
+	});
 });
-const filteredOptions = computed<Array<INodePropertyOptions | INodeProperties>>(() => {
-	return (props.parameter.options as Array<INodePropertyOptions | INodeProperties>).filter(
-		(option) => {
-			return displayNodeParameter(option as INodeProperties);
-		},
-	);
-});
-const parameterOptions = computed(() => {
-	return filteredOptions.value.filter((option) => {
-		return !propertyNames.value.includes(option.name);
+const filteredOptions = computed(() => {
+	if (!Array.isArray(props.parameter.options)) return [];
+	return props.parameter.options.filter((option) => {
+		// Accept both INodeProperties and INodePropertyCollection
+		if (isINodeProperties(option)) {
+			return displayNodeParameter(option);
+		}
+		if (isINodePropertyCollection(option)) {
+			return true; // Collections are always displayed
+		}
+		return false;
 	});
 });
 
-function optionSelected(optionName: string) {
-	const options = getOptionProperties(optionName);
-	if (options.length === 0) {
-		return;
+const parameterOptions = computed(() => {
+	return filteredOptions.value.filter((option) => !propertyNames.value.includes(option.name));
+});
+
+const dropdownOptions = computed((): Array<RekaSelectOption<string>> => {
+	return parameterOptions.value.map((option) => ({
+		label: getParameterOptionLabel(option),
+		value: option.name,
+	}));
+});
+
+const isAddDisabled = computed(() => parameterOptions.value.length === 0);
+
+const showHeaderDivider = computed(() => {
+	if (getProperties.value.length === 0) return true;
+	const firstProperty = getProperties.value[0];
+	return (
+		isINodeProperties(firstProperty) &&
+		!['collection', 'fixedCollection'].includes(firstProperty.type)
+	);
+});
+
+const addTooltipText = computed(() => {
+	if (!isAddDisabled.value) return '';
+	return i18n.baseText('collectionParameter.allOptionsAdded');
+});
+
+// Helper functions for new UI
+const getPropertyDisplayName = (property: INodePropertyCollection): string => {
+	return property.displayName;
+};
+
+const deleteProperty = (propertyName: string) => {
+	emit('valueChanged', {
+		name: `${props.path}.${propertyName}`,
+		value: undefined,
+	});
+};
+
+const getPropertyActions = (propertyName: string) => {
+	if (props.isReadOnly || props.hideDelete) return [];
+
+	const actions = [];
+
+	// Add delete button first
+	actions.push({
+		icon: 'trash-2' as const,
+		label: i18n.baseText('collectionParameter.deleteItem'),
+		onClick: () => deleteProperty(propertyName),
+		danger: true,
+	});
+
+	// Add drag handle after delete button (if sortable and more than one item)
+	if (sortable.value && getCollections.value.length > 1) {
+		actions.push({
+			icon: 'grip-vertical' as const,
+			label: i18n.baseText('collectionParameter.dragItem'),
+			onClick: () => {},
+		});
 	}
 
-	const option = options[0];
+	return actions;
+};
+
+function optionSelected(optionName: string) {
+	const option = getOptionProperties(optionName);
+	if (!option) return;
+
 	const name = `${props.path}.${option.name}`;
 
-	let parameterData;
+	let value;
 
-	if (
-		'typeOptions' in option &&
-		option.typeOptions !== undefined &&
-		option.typeOptions.multipleValues === true
-	) {
-		// Multiple values are allowed
-		let newValue;
-		if (option.type === 'fixedCollection') {
-			// The "fixedCollection" entries are different as they save values
-			// in an object and then underneath there is an array. So initialize
-			// them differently.
-			const retrievedObjectValue = get(props.nodeValues, [props.path, optionName], {});
-			newValue = retrievedObjectValue;
-		} else {
-			// Everything else saves them directly as an array.
-			const retrievedArrayValue = get(props.nodeValues, [props.path, optionName], []) as Array<
-				typeof option.default
-			>;
-			if (Array.isArray(retrievedArrayValue)) {
-				newValue = retrievedArrayValue;
-				newValue.push(deepCopy(option.default));
-			}
+	// Handle INodePropertyCollection (has 'values' property)
+	if (isINodePropertyCollection(option)) {
+		// Collection: create object with default values from collection.values
+		const collectionValue: INodeParameters = {};
+		for (const property of option.values) {
+			collectionValue[property.name] = deepCopy(property.default);
 		}
+		value = collectionValue;
+	} else if (isINodeProperties(option)) {
+		// Handle INodeProperties
+		const hasMultipleValues = option.typeOptions?.multipleValues === true;
 
-		parameterData = {
-			name,
-			value: newValue,
-		};
+		if (hasMultipleValues) {
+			// Multiple values are allowed
+			if (option.type === 'fixedCollection') {
+				// fixedCollection stores values as objects with nested arrays
+				value = get(props.nodeValues, [props.path, optionName], {});
+			} else {
+				// Other types store values as arrays
+				const defaultValue = option.default;
+				const existingArray = get(
+					props.nodeValues,
+					[props.path, optionName],
+					[] as Array<typeof defaultValue>,
+				);
+				if (Array.isArray(existingArray)) {
+					value = existingArray;
+					value.push(deepCopy(defaultValue));
+				}
+			}
+		} else {
+			// Single value
+			value = deepCopy(option.default);
+		}
 	} else {
-		// Add a new option
-		parameterData = {
-			name,
-			value: 'default' in option ? deepCopy(option.default) : null,
-		};
+		// Fallback for INodePropertyOptions or unknown types
+		value = 'default' in option ? deepCopy(option.default as NodeParameterValueType) : null;
 	}
 
-	emit('valueChanged', parameterData);
-	selectedOption.value = undefined;
+	emit('valueChanged', { name, value });
+
+	// Clear selection after emitting to allow adding another item
+	void nextTick(() => {
+		selectedOption.value = undefined;
+	});
 }
 function valueChanged(parameterData: IUpdateInformation) {
 	emit('valueChanged', parameterData);
 }
+
+async function onHeaderAddClick() {
+	if (isCollectionOverhaulEnabled && addDropdownRef.value) {
+		// For new UI with feature flag enabled, open the dropdown and scroll into view
+		addDropdownRef.value.open();
+		// Wait for DOM update and scroll the dropdown into view
+		await nextTick();
+		addDropdownRef.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	} else if (parameterOptions.value.length === 1) {
+		// Old UI: If only one option, add it directly
+		optionSelected(parameterOptions.value[0].name);
+	} else if (addSelectRef.value) {
+		// Old UI: For multiple options, focus the select dropdown
+		addSelectRef.value.focus();
+	}
+}
+
+watch(
+	getCollections,
+	(newCollections) => {
+		mutableCollections.value = [...newCollections];
+	},
+	{ immediate: true },
+);
+
+const onDragChange = () => {
+	// Build new values object based on reordered collections
+	const newValues: INodeParameters = {};
+	for (const collection of mutableCollections.value) {
+		const existingValue = props.values[collection.name];
+		if (existingValue !== undefined) {
+			newValues[collection.name] = existingValue;
+		}
+	}
+
+	emit('valueChanged', {
+		name: props.path,
+		value: newValues,
+	});
+};
 </script>
 
 <template>
-	<div class="collection-parameter" @keydown.stop>
-		<div class="collection-parameter-wrapper">
-			<div v-if="getProperties.length === 0" class="no-items-exist">
+	<div
+		:class="[
+			$style.collectionParameter,
+			{
+				[$style.overhaul]: isCollectionOverhaulEnabled,
+				[$style.showHeaderDivider]: showHeaderDivider,
+			},
+		]"
+		@keydown.stop
+	>
+		<div :class="$style.collectionParameterWrapper">
+			<N8nSectionHeader
+				v-if="isCollectionOverhaulEnabled && !isNested"
+				:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+				:bordered="showHeaderDivider"
+				:class="$style.collectionSectionHeader"
+			>
+				<template v-if="!isReadOnly" #actions>
+					<N8nTooltip :disabled="!isAddDisabled">
+						<template #content>{{ addTooltipText }}</template>
+						<N8nIconButton
+							type="secondary"
+							text
+							size="small"
+							icon="plus"
+							icon-size="large"
+							:title="isAddDisabled ? addTooltipText : i18n.baseText('collectionParameter.addItem')"
+							:aria-label="i18n.baseText('collectionParameter.addItem')"
+							:disabled="isAddDisabled"
+							data-test-id="collection-parameter-add-header"
+							@click="onHeaderAddClick"
+						/>
+					</N8nTooltip>
+				</template>
+			</N8nSectionHeader>
+
+			<div
+				v-if="getProperties.length === 0 && !isCollectionOverhaulEnabled && !isNested"
+				:class="$style.noItemsExist"
+			>
 				<N8nText size="small">{{ i18n.baseText('collectionParameter.noProperties') }}</N8nText>
 			</div>
 
-			<Suspense>
-				<ParameterInputList
-					:parameters="getProperties"
-					:node-values="nodeValues"
-					:path="path"
-					:hide-delete="hideDelete"
-					:indent="true"
-					:is-read-only="isReadOnly"
-					@value-changed="valueChanged"
-				/>
-			</Suspense>
+			<template v-else>
+				<div v-if="isCollectionOverhaulEnabled">
+					<Draggable
+						v-if="mutableCollections.length > 0"
+						v-model="mutableCollections"
+						:item-key="(item: INodePropertyCollection) => item.name"
+						handle=".drag-handle"
+						drag-class="dragging"
+						ghost-class="ghost"
+						chosen-class="chosen"
+						@change="onDragChange"
+					>
+						<template #item="{ element: collection }">
+							<N8nCollapsiblePanel
+								:key="collection.name"
+								v-model="collapsedItems[collection.name]"
+								:title="getPropertyDisplayName(collection)"
+								:actions="getPropertyActions(collection.name)"
+							>
+								<Suspense>
+									<ParameterInputList
+										:parameters="collection.values"
+										:node-values="nodeValues"
+										:path="`${path}.${collection.name}`"
+										:is-read-only="isReadOnly"
+										:is-nested="true"
+										@value-changed="valueChanged"
+									/>
+								</Suspense>
+							</N8nCollapsiblePanel>
+						</template>
+					</Draggable>
 
-			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
-				<N8nButton
-					v-if="(parameter.options ?? []).length === 1"
-					type="tertiary"
-					block
-					:label="getPlaceholderText"
-					@click="optionSelected((parameter.options ?? [])[0].name)"
-				/>
-				<div v-else class="add-option">
-					<N8nSelect
+					<Suspense v-if="getFlattenedProperties.length > 0">
+						<ParameterInputList
+							:parameters="getFlattenedProperties"
+							:node-values="nodeValues"
+							:path="path"
+							:is-read-only="isReadOnly"
+							:is-nested="true"
+							@value-changed="valueChanged"
+						/>
+					</Suspense>
+				</div>
+
+				<Suspense v-else>
+					<ParameterInputList
+						:parameters="getFlattenedProperties"
+						:node-values="nodeValues"
+						:path="path"
+						:hide-delete="hideDelete"
+						:indent="true"
+						:is-read-only="isReadOnly"
+						@value-changed="valueChanged"
+					/>
+				</Suspense>
+			</template>
+
+			<div v-if="!isReadOnly" :class="$style.paramOptions">
+				<N8nTooltip
+					v-if="isCollectionOverhaulEnabled"
+					:disabled="!isAddDisabled"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<template #content>{{ addTooltipText }}</template>
+					<N8nRekaSelect
+						ref="addDropdownRef"
 						v-model="selectedOption"
-						:placeholder="getPlaceholderText"
-						size="small"
-						filterable
+						:options="dropdownOptions"
+						:disabled="isAddDisabled"
+						:class="$style.addDropdown"
+						data-test-id="collection-parameter-add-dropdown"
 						@update:model-value="optionSelected"
 					>
-						<N8nOption
-							v-for="item in parameterOptions"
-							:key="item.name"
-							:label="getParameterOptionLabel(item)"
-							:value="item.name"
-							data-test-id="collection-parameter-option"
+						<template #trigger>
+							<N8nButton
+								type="secondary"
+								icon="plus"
+								:label="getPlaceholderText"
+								:disabled="isAddDisabled"
+							/>
+						</template>
+					</N8nRekaSelect>
+				</N8nTooltip>
+				<N8nTooltip
+					v-else-if="
+						!isCollectionOverhaulEnabled &&
+						(parameterOptions.length === 1 ||
+							(parameterOptions.length === 0 && props.parameter.options?.length === 1))
+					"
+					:disabled="!isAddDisabled"
+				>
+					<template #content>{{ addTooltipText }}</template>
+					<N8nButton
+						type="tertiary"
+						block
+						data-test-id="collection-parameter-add"
+						:label="getPlaceholderText"
+						:disabled="isAddDisabled"
+						@click="optionSelected(parameterOptions[0]?.name)"
+					/>
+				</N8nTooltip>
+				<N8nTooltip v-else :disabled="!isAddDisabled">
+					<template #content>{{ addTooltipText }}</template>
+					<div :class="$style.addOption">
+						<N8nSelect
+							ref="addSelectRef"
+							v-model="selectedOption"
+							:placeholder="getPlaceholderText"
+							size="small"
+							filterable
+							:disabled="isAddDisabled"
+							@update:model-value="optionSelected"
 						>
-						</N8nOption>
-					</N8nSelect>
-				</div>
+							<N8nOption
+								v-for="item in parameterOptions"
+								:key="item.name"
+								:label="getParameterOptionLabel(item)"
+								:value="item.name"
+								data-test-id="collection-parameter-option"
+							>
+							</N8nOption>
+						</N8nSelect>
+					</div>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>
 </template>
 
-<style lang="scss">
-.collection-parameter {
+<style lang="scss" module>
+.collectionParameter {
 	padding-left: var(--spacing--sm);
 
-	.param-options {
-		margin-top: var(--spacing--xs);
+	&.overhaul {
+		padding-left: 0;
+	}
+}
 
-		.button {
-			color: var(--color--text--shade-1);
-			font-weight: var(--font-weight-normal);
-			--button--border-color: var(--color--foreground);
-			--button--color--background: var(--color--background);
+.showHeaderDivider .collectionSectionHeader {
+	margin-bottom: var(--spacing--xs);
+}
 
-			--button--color--text--hover: var(--button--color--text--secondary);
-			--button--border-color--hover: var(--color--foreground);
-			--button--color--background--hover: var(--color--background);
+// New UI: Custom styling for secondary button
+.collectionParameter.overhaul .paramOptions {
+	margin-top: var(--spacing--xs);
 
-			--button--color--text--active: var(--button--color--text--secondary);
-			--button--border-color--active: var(--color--foreground);
-			--button--color--background--active: var(--color--background);
+	:global(.button) {
+		--button--color--background: var(--color--background);
+		--button--color--background--hover: var(--color--background);
+		--button--color--background--active: var(--color--background);
+		--button--color--background--focus: var(--color--background);
+		--button--border-color: transparent;
+		--button--border-color--hover: transparent;
+		--button--border-color--active: transparent;
+		--button--border-color--focus: transparent;
+		--button--color--text--hover: var(--color--primary);
+		--button--color--text--active: var(--color--primary);
+		--button--color--text--focus: var(--color--primary);
+	}
+}
 
-			--button--color--text--focus: var(--button--color--text--secondary);
-			--button--border-color--focus: var(--color--foreground);
-			--button--color--background--focus: var(--color--background);
+// Old UI: Add margin-top and custom styling for tertiary button to look like input
+.collectionParameter:not(.overhaul) .paramOptions {
+	margin-top: var(--spacing--xs);
 
-			&:active,
-			&.active,
-			&:focus {
-				outline: none;
-			}
+	:global(.button) {
+		color: var(--color--text--shade-1);
+		font-weight: var(--font-weight-normal);
+		--button--border-color: var(--color--foreground);
+		--button--color--background: var(--color--background);
+
+		--button--color--text--hover: var(--button--color--text--secondary);
+		--button--border-color--hover: var(--color--foreground);
+		--button--color--background--hover: var(--color--background);
+
+		--button--color--text--active: var(--button--color--text--secondary);
+		--button--border-color--active: var(--color--foreground);
+		--button--color--background--active: var(--color--background);
+
+		--button--color--text--focus: var(--button--color--text--secondary);
+		--button--border-color--focus: var(--color--foreground);
+		--button--color--background--focus: var(--color--background);
+
+		&:active,
+		&.active,
+		&:focus {
+			outline: none;
 		}
 	}
+}
 
-	.no-items-exist {
-		margin: var(--spacing--xs) 0;
-	}
-	.option {
-		position: relative;
-		padding: 0.25em 0 0.25em 1em;
-	}
+.noItemsExist {
+	margin: var(--spacing--xs) 0;
+}
+
+.addDropdown {
+	display: inline-flex;
 }
 </style>

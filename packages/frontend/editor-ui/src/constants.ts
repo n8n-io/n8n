@@ -853,6 +853,8 @@ export const ExpressionLocalResolveContextSymbol: InjectionKey<
 > = Symbol('ExpressionLocalResolveContext');
 export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
 export const WorkflowStateKey: InjectionKey<WorkflowState> = Symbol('WorkflowState');
+export const NewlyAddedParameterSymbol: InjectionKey<Ref<string | null>> =
+	Symbol('NewlyAddedParameter');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';

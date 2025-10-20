@@ -12,8 +12,9 @@ import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
 import { useI18n } from '@n8n/i18n';
 import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
+import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
 
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nCollapsiblePanel, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	path: string;
 	modelValue: AssignmentValue;
@@ -37,6 +38,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const environmentsStore = useEnvironmentsStore();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const assignmentTypeToNodeProperty = (
 	type: string,
@@ -127,10 +129,127 @@ const onBlur = (): void => {
 const onValueInputHoverChange = (hovered: boolean): void => {
 	valueInputHovered.value = hovered;
 };
+
+const isExpanded = ref(true);
+
+const panelTitle = computed(() => {
+	const fieldNumber = (props.index ?? 0) + 1;
+	return i18n.baseText('assignment.field', { interpolate: { number: fieldNumber.toString() } });
+});
+
+const panelActions = computed(() => {
+	if (props.isReadOnly) return [];
+
+	const actions = [];
+
+	// Delete button first
+	actions.push({
+		icon: 'trash-2' as const,
+		label: i18n.baseText('assignment.remove'),
+		onClick: onRemove,
+		danger: true,
+	});
+
+	// Drag handle after delete button
+	actions.push({
+		icon: 'grip-vertical' as const,
+		label: i18n.baseText('assignment.dragToReorder'),
+		onClick: () => {},
+	});
+
+	return actions;
+});
 </script>
 
 <template>
+	<!-- New UI: Collapsible panel -->
+	<N8nCollapsiblePanel
+		v-if="isCollectionOverhaulEnabled"
+		v-model="isExpanded"
+		:title="panelTitle"
+		:actions="panelActions"
+		:class="{
+			[$style.panel]: true,
+			[$style.hasIssues]: issues.length > 0,
+		}"
+		data-test-id="assignment"
+		data-collapsible-panel
+	>
+		<div :class="$style.inputs">
+			<InputTriple middle-width="100px">
+				<template #left>
+					<ParameterInputFull
+						:key="nameParameter.type"
+						display-options
+						hide-label
+						hide-hint
+						:is-read-only="isReadOnly"
+						:parameter="nameParameter"
+						:value="assignment.name"
+						:path="`${path}.name`"
+						data-test-id="assignment-name"
+						@update="onAssignmentNameChange"
+						@blur="onBlur"
+					/>
+				</template>
+				<template v-if="!hideType" #middle>
+					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
+						<template #content>
+							{{ BINARY_DATA_ACCESS_TOOLTIP }}
+						</template>
+						<TypeSelect
+							:class="$style.select"
+							:model-value="assignment.type ?? 'string'"
+							:is-read-only="disableType || isReadOnly"
+							@update:model-value="onAssignmentTypeChange"
+						>
+						</TypeSelect>
+					</N8nTooltip>
+				</template>
+				<template #right="{ breakpoint }">
+					<div :class="$style.value">
+						<ParameterInputFull
+							:key="valueParameter.type"
+							display-options
+							hide-label
+							hide-issues
+							hide-hint
+							is-assignment
+							:is-read-only="isReadOnly"
+							:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
+							:parameter="valueParameter"
+							:value="assignment.value"
+							:path="`${path}.value`"
+							data-test-id="assignment-value"
+							@update="onAssignmentValueChange"
+							@blur="onBlur"
+							@hover="onValueInputHoverChange"
+						/>
+						<ParameterInputHint
+							v-if="resolvedExpressionString"
+							data-test-id="parameter-expression-preview-value"
+							:class="{
+								[$style.hint]: true,
+								[$style.optionsPadding]:
+									breakpoint !== 'default' && !isReadOnly && valueInputHovered,
+							}"
+							:highlight="highlightHint"
+							:hint="hint"
+							single-line
+						/>
+					</div>
+				</template>
+			</InputTriple>
+		</div>
+
+		<div :class="$style.status">
+			<ParameterIssues v-if="issues.length > 0" :issues="issues" />
+		</div>
+	</N8nCollapsiblePanel>
+
+	<!-- Old UI: Original layout -->
 	<div
+		v-else
 		:class="{
 			[$style.wrapper]: true,
 			[$style.hasIssues]: issues.length > 0,
@@ -231,6 +350,12 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 </template>
 
 <style lang="scss" module>
+.panel {
+	&.hasIssues {
+		--input--border-color: var(--color--danger);
+	}
+}
+
 .wrapper {
 	position: relative;
 	display: flex;

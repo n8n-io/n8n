@@ -1416,6 +1416,10 @@ export interface INodePropertyTypeOptions {
 	multipleValues?: boolean; // Supported by: <All>
 	multipleValueButtonText?: string; // Supported when "multipleValues" set to true
 	numberPrecision?: number; // Supported by: number
+	fixedCollection?: {
+		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}
+		defaultCollapsed?: 'all' | 'first-expanded' | 'none'; // Default: 'all'
+	};
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color

@@ -206,8 +206,11 @@ export const mainProperties: INodeProperties[] = [
 		},
 		typeOptions: {
 			multipleValues: true,
+			fixedCollection: {
+				itemTitle: '={{ $collection.item.value.name }}',
+			},
 		},
-		placeholder: 'Add Parameter',
+		placeholder: 'Add Query Parameter',
 		default: {
 			parameters: [
 				{
@@ -219,7 +222,7 @@ export const mainProperties: INodeProperties[] = [
 		options: [
 			{
 				name: 'parameters',
-				displayName: 'Parameter',
+				displayName: 'Query Parameter',
 				values: [
 					{
 						displayName: 'Name',
@@ -279,7 +282,7 @@ export const mainProperties: INodeProperties[] = [
 		default: 'keypair',
 	},
 	{
-		displayName: 'Header Parameters',
+		displayName: 'Headers',
 		name: 'headerParameters',
 		type: 'fixedCollection',
 		displayOptions: {
@@ -290,8 +293,11 @@ export const mainProperties: INodeProperties[] = [
 		},
 		typeOptions: {
 			multipleValues: true,
+			fixedCollection: {
+				itemTitle: '={{ $collection.item.value.name }}',
+			},
 		},
-		placeholder: 'Add Parameter',
+		placeholder: 'Add Header',
 		default: {
 			parameters: [
 				{
@@ -303,7 +309,7 @@ export const mainProperties: INodeProperties[] = [
 		options: [
 			{
 				name: 'parameters',
-				displayName: 'Parameter',
+				displayName: 'Header',
 				values: [
 					{
 						displayName: 'Name',
@@ -414,8 +420,11 @@ export const mainProperties: INodeProperties[] = [
 		},
 		typeOptions: {
 			multipleValues: true,
+			fixedCollection: {
+				itemTitle: '={{ $collection.item.value.name }}',
+			},
 		},
-		placeholder: 'Add Parameter',
+		placeholder: 'Add Body Field',
 		default: {
 			parameters: [
 				{
@@ -427,7 +436,7 @@ export const mainProperties: INodeProperties[] = [
 		options: [
 			{
 				name: 'parameters',
-				displayName: 'Parameter',
+				displayName: 'Body Field',
 				values: [
 					{
 						displayName: 'Name',
@@ -462,7 +471,7 @@ export const mainProperties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Body Parameters',
+		displayName: 'Body',
 		name: 'bodyParameters',
 		type: 'fixedCollection',
 		displayOptions: {
@@ -473,8 +482,11 @@ export const mainProperties: INodeProperties[] = [
 		},
 		typeOptions: {
 			multipleValues: true,
+			fixedCollection: {
+				itemTitle: '={{ $collection.item.value.name }}',
+			},
 		},
-		placeholder: 'Add Parameter',
+		placeholder: 'Add Body Field',
 		default: {
 			parameters: [
 				{
@@ -486,10 +498,10 @@ export const mainProperties: INodeProperties[] = [
 		options: [
 			{
 				name: 'parameters',
-				displayName: 'Parameter',
+				displayName: 'Body Field',
 				values: [
 					{
-						displayName: 'Parameter Type',
+						displayName: 'Type',
 						name: 'parameterType',
 						type: 'options',
 						options: [
@@ -565,7 +577,7 @@ export const mainProperties: INodeProperties[] = [
 		default: 'keypair',
 	},
 	{
-		displayName: 'Body Parameters',
+		displayName: 'Body Fields',
 		name: 'bodyParameters',
 		type: 'fixedCollection',
 		displayOptions: {
@@ -577,8 +589,11 @@ export const mainProperties: INodeProperties[] = [
 		},
 		typeOptions: {
 			multipleValues: true,
+			fixedCollection: {
+				itemTitle: '={{ $collection.item.value.name }}',
+			},
 		},
-		placeholder: 'Add Parameter',
+		placeholder: 'Add Field',
 		default: {
 			parameters: [
 				{
@@ -590,7 +605,7 @@ export const mainProperties: INodeProperties[] = [
 		options: [
 			{
 				name: 'parameters',
-				displayName: 'Parameter',
+				displayName: 'Field',
 				values: [
 					{
 						displayName: 'Name',
@@ -1001,6 +1016,10 @@ export const mainProperties: INodeProperties[] = [
 								typeOptions: {
 									multipleValues: true,
 									noExpression: true,
+									fixedCollection: {
+										itemTitle:
+											'={{ $collection.item.properties.find(p => p.name === "type").options.find(o => o.value === $collection.item.value.type).name }}: {{ $collection.item.value.name }}',
+									},
 								},
 								placeholder: 'Add Parameter',
 								default: {
