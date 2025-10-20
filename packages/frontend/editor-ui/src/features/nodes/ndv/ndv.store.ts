@@ -1,14 +1,12 @@
 import { useLocalStorage } from '@vueuse/core';
+import type { Draggable, IRunDataDisplayMode, TargetItem } from '@/Interface';
 import type {
-	Draggable,
+	NodePanelType,
 	InputPanel,
-	IRunDataDisplayMode,
+	OutputPanel,
 	MainPanelDimensions,
 	MainPanelType,
-	NodePanelType,
-	OutputPanel,
-	TargetItem,
-} from '@/Interface';
+} from './ndv.types';
 import { useStorage } from '@/composables/useStorage';
 import {
 	LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED,
@@ -16,13 +14,13 @@ import {
 	LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
-} from '@/constants';
+} from './ndv.constants';
 import { STORES } from '@n8n/stores';
 import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import { useWorkflowsStore } from './workflows.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/types/telemetry';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
