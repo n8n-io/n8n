@@ -1,11 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor, fireEvent } from '@testing-library/vue';
 
-import NodeDetailsView from '@/components/NodeDetailsView.vue';
+import NodeDetailsView from '@/features/nodes/ndv/views/NodeDetailsView.vue';
 import { VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 

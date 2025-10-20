@@ -3,9 +3,9 @@ import { setActivePinia } from 'pinia';
 import { waitFor, fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
-import NodeDetailsViewV2 from '@/components/NodeDetailsViewV2.vue';
+import NodeDetailsViewV2 from '@/features/nodes/ndv/views/NodeDetailsViewV2.vue';
 import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE, VIEWS } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 

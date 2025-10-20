@@ -1,5 +1,5 @@
 import { nextTick } from 'vue';
-import type { useNDVStore } from '@/stores/ndv.store';
+import type { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { useSettingsStore } from '@/stores/settings.store';
@@ -46,7 +46,7 @@ beforeEach(() => {
 	};
 });
 
-vi.mock('@/stores/ndv.store', () => {
+vi.mock('@/features/nodes/ndv/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
 	};

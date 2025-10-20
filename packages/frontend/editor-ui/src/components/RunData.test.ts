@@ -9,7 +9,8 @@ import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/_
 import RunData from '@/components/RunData.vue';
 import { STORES } from '@n8n/stores';
 import { SET_NODE_TYPE } from '@/constants';
-import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
+import type { NodePanelType } from '@/features/nodes/ndv/ndv.types';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';

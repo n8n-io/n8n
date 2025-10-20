@@ -15,7 +15,7 @@ import CopyInput from '@/components/CopyInput.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';

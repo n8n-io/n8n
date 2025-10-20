@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isPresent } from '@/utils/typesUtils';
 import type { IConnectedNode, Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
-import NodeIcon from './NodeIcon.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import { truncate } from '@n8n/utils/string/truncate';
 
 import { N8nOption, N8nSelect } from '@n8n/design-system';
