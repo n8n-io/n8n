@@ -22,9 +22,9 @@ import {
 } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
-import NodeExecuteButton from './NodeExecuteButton.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
-import RunData from './RunData.vue';
+import RunData from '@/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';

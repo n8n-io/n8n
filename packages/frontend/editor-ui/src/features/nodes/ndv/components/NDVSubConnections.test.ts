@@ -1,5 +1,5 @@
 import { render, waitFor } from '@testing-library/vue';
-import NDVSubConnections from '@/components/NDVSubConnections.vue';
+import NDVSubConnections from './NDVSubConnections.vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import type { INodeUi } from '@/Interface';
