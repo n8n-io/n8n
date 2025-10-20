@@ -1,10 +1,9 @@
+import type { IStartRunData, IWorkflowDb } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsStopData,
-	IStartRunData,
-	IWorkflowDb,
-} from '@/Interface';
+} from '@/features/execution/executions/executions.types';
 
 import type {
 	IRunData,
@@ -31,14 +30,14 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { displayForm } from '@/utils/executionUtils';
+import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
 import get from 'lodash/get';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -50,7 +49,9 @@ import { computed } from 'vue';
 import { injectWorkflowState } from './useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 
-export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
+export function useRunWorkflow(useRunWorkflowOpts: {
+	router: ReturnType<typeof useRouter>;
+}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
 	const workflowSaving = useWorkflowSaving({ router: useRunWorkflowOpts.router });

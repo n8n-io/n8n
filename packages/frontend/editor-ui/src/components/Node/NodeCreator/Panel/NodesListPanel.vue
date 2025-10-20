@@ -22,11 +22,11 @@ import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import NodeIcon from '@/components/NodeIcon.vue';
 
-import CommunityNodeDetails from './CommunityNodeDetails.vue';
-import CommunityNodeInfo from './CommunityNodeInfo.vue';
-import CommunityNodeDocsLink from './CommunityNodeDocsLink.vue';
-import CommunityNodeFooter from './CommunityNodeFooter.vue';
-import { useUsersStore } from '@/stores/users.store';
+import CommunityNodeDetails from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue';
+import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
+import CommunityNodeDocsLink from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
+import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
@@ -284,8 +284,8 @@ function onBackButton() {
 	padding: 0;
 }
 .nodeIcon {
-	--node-icon-size: 20px;
-	--node-icon-color: var(--color--text);
+	--node--icon--size: 20px;
+	--node--icon--color: var(--color--text);
 	margin-right: var(--spacing--sm);
 }
 .renderedItems {
@@ -306,7 +306,7 @@ function onBackButton() {
 	background: var(--color--background--light-3);
 	height: 100%;
 	background-color: $node-creator-background-color;
-	--color-background-node-icon-badge: var(--color--background--light-3);
+	--node--icon--badge--color--background: var(--color--background--light-3);
 	width: var(--node-creator-width);
 	display: flex;
 	flex-direction: column;

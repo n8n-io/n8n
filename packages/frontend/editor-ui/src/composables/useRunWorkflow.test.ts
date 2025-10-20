@@ -19,7 +19,8 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/composables/useWorkflowState';
-import type { IExecutionResponse, IStartRunData } from '@/Interface';
+import type { IStartRunData } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -373,7 +374,7 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('should prevent execution and show error message when workflow is active with multiple tirggers and a single webhook trigger is chosen', async () => {
+		it('should prevent execution and show error message when workflow is active with multiple triggers and a single webhook trigger is chosen', async () => {
 			// ARRANGE
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);

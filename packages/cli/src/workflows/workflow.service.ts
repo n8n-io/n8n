@@ -354,6 +354,28 @@ export class WorkflowService {
 			publicApi: false,
 		});
 
+		// Check if workflow activation status changed
+		const wasActive = workflow.active;
+		const isNowActive = updatedWorkflow.active;
+
+		if (isNowActive && !wasActive) {
+			// Workflow is being activated
+			this.eventService.emit('workflow-activated', {
+				user,
+				workflowId,
+				workflow: updatedWorkflow,
+				publicApi: false,
+			});
+		} else if (!isNowActive && wasActive) {
+			// Workflow is being deactivated
+			this.eventService.emit('workflow-deactivated', {
+				user,
+				workflowId,
+				workflow: updatedWorkflow,
+				publicApi: false,
+			});
+		}
+
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
@@ -369,6 +391,14 @@ export class WorkflowService {
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
+
+				// Emit deactivation event since activation failed
+				this.eventService.emit('workflow-deactivated', {
+					user,
+					workflowId,
+					workflow: updatedWorkflow,
+					publicApi: false,
+				});
 
 				let message;
 				if (error instanceof NodeApiError) message = error.description;

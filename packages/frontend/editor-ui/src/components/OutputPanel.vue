@@ -12,14 +12,14 @@ import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { waitingNodeTooltip } from '@/utils/executionUtils';
+import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { CanvasNodeDirtiness } from '@/features/canvas/canvas.types';
+import { CanvasNodeDirtiness } from '@/features/workflows/canvas/canvas.types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
-import { useExecutionData } from '@/composables/useExecutionData';
+import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
@@ -515,11 +515,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	display: none;
 }
 .runData {
-	background-color: var(--color-run-data-background);
+	background-color: var(--run-data--color--background);
 }
 
 .runDataV2 {
-	background-color: var(--color-ndvv2-run-data-background);
+	background-color: var(--ndvv2--run-data--color--background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing--4xs);

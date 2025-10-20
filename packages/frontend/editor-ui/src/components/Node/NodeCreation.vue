@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent, nextTick } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -19,9 +19,10 @@ import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useAssistantStore } from '@/features/assistant/assistant.store';
-import { useBuilderStore } from '@/features/assistant/builder.store';
-import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
@@ -53,6 +54,7 @@ const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
+const { isEnabled: isCommandBarEnabled } = useCommandBar();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -115,6 +117,21 @@ async function onAskAssistantButtonClick() {
 		});
 	}
 }
+
+function openCommandBar(event: MouseEvent) {
+	event.stopPropagation();
+
+	void nextTick(() => {
+		const keyboardEvent = new KeyboardEvent('keydown', {
+			key: 'k',
+			code: 'KeyK',
+			metaKey: true,
+			bubbles: true,
+			cancelable: true,
+		});
+		document.dispatchEvent(keyboardEvent);
+	});
+}
 </script>
 
 <template>
@@ -130,6 +147,20 @@ async function onAskAssistantButtonClick() {
 				type="tertiary"
 				data-test-id="node-creator-plus-button"
 				@click="openNodeCreator"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			v-if="isCommandBarEnabled"
+			:label="i18n.baseText('nodeView.openCommandBar')"
+			:shortcut="{ keys: ['k'], metaKey: true }"
+			placement="left"
+		>
+			<N8nIconButton
+				size="large"
+				icon="search"
+				type="tertiary"
+				data-test-id="command-bar-button"
+				@click="openCommandBar"
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
@@ -160,7 +191,7 @@ async function onAskAssistantButtonClick() {
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<N8nTooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
+		<N8nTooltip v-if="chatPanelStore.canShowAiButtonOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
 				type="tertiary"
@@ -210,6 +241,6 @@ async function onAskAssistantButtonClick() {
 }
 
 .activeButton {
-	background-color: var(--button-hover-background-color) !important;
+	background-color: var(--button--color--background--hover) !important;
 }
 </style>

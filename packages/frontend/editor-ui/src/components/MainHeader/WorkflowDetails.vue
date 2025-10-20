@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import FolderBreadcrumbs from '@/features/folders/components/FolderBreadcrumbs.vue';
-import CollaborationPane from '@/features/collaboration/components/CollaborationPane.vue';
-import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
+import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
+import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
@@ -17,20 +17,20 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	PROJECT_MOVE_RESOURCE_MODAL,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { ResourceType } from '@/features/projects/projects.utils';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -43,10 +43,10 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/event-bus';
 import type { ActionDropdownItem, IWorkflowDb, IWorkflowToShare } from '@/Interface';
-import type { FolderShortInfo } from '@/features/folders/folders.types';
-import { useFoldersStore } from '@/features/folders/folders.store';
+import type { FolderShortInfo } from '@/features/core/folders/folders.types';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { ProjectTypes } from '@/features/projects/projects.types';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { sanitizeFilename } from '@/utils/fileUtils';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -55,7 +55,15 @@ import { getResourcePermissions } from '@n8n/permissions';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { saveAs } from 'file-saver';
-import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -84,6 +92,10 @@ const props = defineProps<{
 	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
+}>();
+
+const emit = defineEmits<{
+	'workflow:deactivated': [];
 }>();
 
 const $style = useCssModule();
@@ -438,6 +450,97 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
+async function handleArchiveWorkflow() {
+	if (props.active) {
+		const archiveConfirmed = await message.confirm(
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+				interpolate: { workflowName: props.name },
+			}),
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+				),
+				cancelButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+				),
+			},
+		);
+
+		if (archiveConfirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
+	try {
+		await workflowsStore.archiveWorkflow(props.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
+		return;
+	}
+
+	uiStore.stateIsDirty = false;
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+
+	await router.push({ name: VIEWS.WORKFLOWS });
+}
+
+async function handleUnarchiveWorkflow() {
+	await workflowsStore.unarchiveWorkflow(props.id);
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+}
+
+async function handleDeleteWorkflow() {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
+			interpolate: { workflowName: props.name },
+		}),
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+			),
+			cancelButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await workflowsStore.deleteWorkflow(props.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
+		return;
+	}
+	uiStore.stateIsDirty = false;
+	// Reset tab title since workflow is deleted.
+	documentTitle.reset();
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+
+	await router.push({ name: VIEWS.WORKFLOWS });
+}
+
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -488,7 +591,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
-			importFileRef.value?.click();
+			handleImportWorkflowFromFile();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
@@ -524,95 +627,15 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
-			if (props.active) {
-				const archiveConfirmed = await message.confirm(
-					locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
-						interpolate: { workflowName: props.name },
-					}),
-					locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
-					{
-						type: 'warning',
-						confirmButtonText: locale.baseText(
-							'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
-						),
-						cancelButtonText: locale.baseText(
-							'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
-						),
-					},
-				);
-
-				if (archiveConfirmed !== MODAL_CONFIRM) {
-					return;
-				}
-			}
-
-			try {
-				await workflowsStore.archiveWorkflow(props.id);
-			} catch (error) {
-				toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
-				return;
-			}
-
-			uiStore.stateIsDirty = false;
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
-
-			await router.push({ name: VIEWS.WORKFLOWS });
-
+			await handleArchiveWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.UNARCHIVE: {
-			await workflowsStore.unarchiveWorkflow(props.id);
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
+			await handleUnarchiveWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
-			const deleteConfirmed = await message.confirm(
-				locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-					interpolate: { workflowName: props.name },
-				}),
-				locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
-					),
-					cancelButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
-					),
-				},
-			);
-
-			if (deleteConfirmed !== MODAL_CONFIRM) {
-				return;
-			}
-
-			try {
-				await workflowsStore.deleteWorkflow(props.id);
-			} catch (error) {
-				toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
-				return;
-			}
-			uiStore.stateIsDirty = false;
-			// Reset tab title since workflow is deleted.
-			documentTitle.reset();
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
-
-			await router.push({ name: VIEWS.WORKFLOWS });
+			await handleDeleteWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
@@ -711,6 +734,34 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		void router.push(item.href).catch((error) => {
 			toast.showError(error, i18n.baseText('folders.open.error.title'));
 		});
+	}
+};
+
+const handleImportWorkflowFromFile = () => {
+	importFileRef.value?.click();
+};
+
+onMounted(() => {
+	nodeViewEventBus.on('importWorkflowFromFile', handleImportWorkflowFromFile);
+	nodeViewEventBus.on('archiveWorkflow', handleArchiveWorkflow);
+	nodeViewEventBus.on('unarchiveWorkflow', handleUnarchiveWorkflow);
+	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
+	nodeViewEventBus.on('renameWorkflow', onNameToggle);
+	nodeViewEventBus.on('addTag', onTagsEditEnable);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('importWorkflowFromFile', handleImportWorkflowFromFile);
+	nodeViewEventBus.off('archiveWorkflow', handleArchiveWorkflow);
+	nodeViewEventBus.off('unarchiveWorkflow', handleUnarchiveWorkflow);
+	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
+	nodeViewEventBus.off('renameWorkflow', onNameToggle);
+	nodeViewEventBus.off('addTag', onTagsEditEnable);
+});
+
+const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
+	if (!value.active) {
+		emit('workflow:deactivated');
 	}
 };
 </script>
@@ -813,6 +864,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					:workflow-active="active"
 					:workflow-id="id"
 					:workflow-permissions="workflowPermissions"
+					@update:workflow-active="onWorkflowActiveToggle"
 				/>
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">

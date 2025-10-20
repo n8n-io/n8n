@@ -13,13 +13,13 @@ import type { Segment } from '@/types/expressions';
 import type { INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
-import ExpressionOutput from '@/features/editors/components/InlineExpressionEditor/ExpressionOutput.vue';
+import ExpressionOutput from '@/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.vue';
 import VirtualSchema from '@/components/VirtualSchema.vue';
-import OutputItemSelect from '@/features/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
+import OutputItemSelect from '@/features/shared/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import DraggableTarget from './DraggableTarget.vue';
-import { dropInExpressionEditor } from '@/features/editors/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
 import { useThrottleFn } from '@vueuse/core';
@@ -236,7 +236,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 <style module lang="scss">
 .modal {
-	--dialog-close-top: var(--spacing--md);
+	--dialog--close--spacing--top: var(--spacing--md);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
@@ -331,7 +331,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	position: absolute;
 	right: var(--spacing--sm);
 	top: var(--spacing--sm);
-	color: var(--color-button-secondary-font);
+	color: var(--button--color--text--secondary);
 
 	&:hover,
 	&:active {

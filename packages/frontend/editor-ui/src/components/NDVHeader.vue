@@ -57,7 +57,13 @@ function onRename(newNodeName: string) {
 				<template #content>
 					{{ i18n.baseText('ndv.close.tooltip') }}
 				</template>
-				<N8nIconButton icon="x" type="tertiary" text @click="emit('close')" />
+				<N8nIconButton
+					icon="x"
+					type="tertiary"
+					text
+					data-test-id="ndv-close-button"
+					@click="emit('close')"
+				/>
 			</N8nTooltip>
 		</div>
 	</header>

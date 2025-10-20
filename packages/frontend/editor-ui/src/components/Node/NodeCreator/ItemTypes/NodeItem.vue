@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { SimplifiedNodeType } from '@/Interface';
 import {
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CREDENTIAL_ONLY_NODE_PREFIX,
 	DEFAULT_SUBCATEGORY,
 	DRAG_EVENT_DATA_KEY,
 	HITL_SUBCATEGORY,
 } from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
 import { computed, ref } from 'vue';
 
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -255,7 +255,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 }
 
 .subNodeBackground {
-	background-color: var(--node-type-supplemental-background);
+	background-color: var(--node-type--supplemental--color--background);
 	border-radius: 50%;
 	height: 40px;
 	position: absolute;
