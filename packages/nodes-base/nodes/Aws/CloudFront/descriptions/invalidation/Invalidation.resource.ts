@@ -1,13 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleError } from '../../helpers/errorHandler';
 
-export const description: INodeProperties[] = [
+export const invalidationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'create',
 		displayOptions: {
 			show: {
 				resource: ['invalidation'],
@@ -17,58 +15,54 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an invalidation',
+				description: 'Create a cache invalidation',
 				action: 'Create an invalidation',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '=/2020-05-31/distribution/{{ $parameter["distributionId"] }}/invalidation',
-						headers: {
-							'Content-Type': 'application/xml',
+						body: {
+							InvalidationBatch: {
+								CallerReference: '={{ $parameter["callerReference"] }}',
+								Paths: {
+									Quantity: '={{ $parameter["paths"].split(",").length }}',
+									Items: '={{ $parameter["paths"].split(",") }}',
+								},
+							},
 						},
-						body: '={{ "<InvalidationBatch><Paths><Quantity>" + $parameter["paths"].length + "</Quantity><Items>" + $parameter["paths"].map(p => "<Path>" + p + "</Path>").join("") + "</Items></Paths><CallerReference>" + $parameter["callerReference"] + "</CallerReference></InvalidationBatch>" }}',
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get invalidation details',
+				description: 'Get details about an invalidation',
 				action: 'Get an invalidation',
 				routing: {
 					request: {
 						method: 'GET',
 						url: '=/2020-05-31/distribution/{{ $parameter["distributionId"] }}/invalidation/{{ $parameter["invalidationId"] }}',
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List invalidations',
+				description: 'List invalidations for a distribution',
 				action: 'List invalidations',
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/2020-05-31/distribution/{{ $parameter["distributionId"] }}/invalidation?MaxItems={{ $parameter["maxItems"] }}&Marker={{ $parameter["marker"] }}',
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/2020-05-31/distribution/{{ $parameter["distributionId"] }}/invalidation',
 					},
 				},
 			},
 		],
+		default: 'list',
 	},
-	// Common field
+];
+
+export const invalidationFields: INodeProperties[] = [
 	{
 		displayName: 'Distribution ID',
 		name: 'distributionId',
@@ -80,38 +74,8 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'CloudFront distribution ID',
+		description: 'The distribution identifier',
 	},
-	// Create operation fields
-	{
-		displayName: 'Paths',
-		name: 'paths',
-		type: 'json',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['invalidation'],
-				operation: ['create'],
-			},
-		},
-		default: '["/index.html", "/images/*"]',
-		description: 'Array of paths to invalidate (e.g., ["/index.html", "/images/*", "/*"])',
-	},
-	{
-		displayName: 'Caller Reference',
-		name: 'callerReference',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['invalidation'],
-				operation: ['create'],
-			},
-		},
-		default: '={{ $now.toISOString() }}',
-		description: 'Unique identifier for this invalidation request',
-	},
-	// Get operation field
 	{
 		displayName: 'Invalidation ID',
 		name: 'invalidationId',
@@ -124,33 +88,64 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Invalidation ID',
-	},
-	// List operation fields
-	{
-		displayName: 'Max Items',
-		name: 'maxItems',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['invalidation'],
-				operation: ['list'],
-			},
-		},
-		default: 100,
-		description: 'Maximum number of invalidations to return',
+		description: 'The invalidation identifier',
 	},
 	{
-		displayName: 'Marker',
-		name: 'marker',
+		displayName: 'Paths',
+		name: 'paths',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['invalidation'],
-				operation: ['list'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'Pagination marker from previous response',
+		description: 'Comma-separated list of paths to invalidate (e.g., /images/*,/css/*)',
+		placeholder: '/images/*,/css/style.css',
+	},
+	{
+		displayName: 'Caller Reference',
+		name: 'callerReference',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['invalidation'],
+				operation: ['create'],
+			},
+		},
+		default: '={{ $now.toISO() }}',
+		description: 'Unique identifier for this invalidation request',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['invalidation'],
+				operation: ['list'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Max Items',
+				name: 'MaxItems',
+				type: 'number',
+				default: 100,
+				description: 'Maximum number of items to return',
+			},
+			{
+				displayName: 'Marker',
+				name: 'Marker',
+				type: 'string',
+				default: '',
+				description: 'Marker for pagination',
+			},
+		],
 	},
 ];
