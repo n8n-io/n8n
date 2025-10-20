@@ -1,6 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="#8C4FFF">
-  <path d="M 20,40 L 30,30 L 40,40 L 30,50 Z" fill="#8C4FFF"/>
-  <path d="M 40,40 L 50,30 L 60,40 L 50,50 Z" fill="#8C4FFF"/>
-  <line x1="30" y1="40" x2="40" y2="40" stroke="#8C4FFF" stroke-width="3"/>
-  <line x1="50" y1="40" x2="60" y2="40" stroke="#8C4FFF" stroke-width="3"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><defs><linearGradient id="a" x1="0%" x2="100%" y1="100%" y2="0%"><stop offset="0%" stop-color="#BD0816"/><stop offset="100%" stop-color="#FF5252"/></linearGradient></defs><g fill="none" fill-rule="evenodd"><path fill="url(#a)" d="M0 0h80v80H0z"/><path fill="#FFF" d="M20 25h8v30h-8zM36 25h8v30h-8zM52 25h8v30h-8z"/><path fill="#FFF" d="M15 20h50v3H15zM15 57h50v3H15z"/><path fill="#FFF" d="M22 20l-4 5 4 5v-10zM38 20l-4 5 4 5v-10zM54 20l-4 5 4 5v-10zM22 50l-4 5 4 5v-10zM38 50l-4 5 4 5v-10zM54 50l-4 5 4 5v-10z"/></g></svg>
