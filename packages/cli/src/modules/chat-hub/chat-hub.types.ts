@@ -1,9 +1,4 @@
-import type {
-	ChatHubConversationModel,
-	ChatHubMessageState,
-	ChatMessageId,
-	ChatSessionId,
-} from '@n8n/api-types';
+import type { ChatHubConversationModel, ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import type { INodeCredentials } from 'n8n-workflow';
 
 export interface ModelWithCredentials extends ChatHubConversationModel {
@@ -39,16 +34,4 @@ export interface MessageRecord {
 	type: MessageRole;
 	message: string;
 	hideFromUI: boolean;
-}
-
-export interface ChatHubMessageCreateDto {
-	id: ChatMessageId;
-	sessionId: ChatSessionId;
-	executionId: string;
-	previousMessageId: ChatMessageId;
-	message: string;
-	selectedModel: ModelWithCredentials;
-	retryOfMessageId?: ChatMessageId;
-	editOfMessageId?: ChatMessageId;
-	state?: ChatHubMessageState;
 }

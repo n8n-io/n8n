@@ -9,6 +9,7 @@ import {
 	type ChatMessageId,
 	type ChatSessionId,
 	ChatHubConversationModel,
+	ChatHubMessageState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -46,7 +47,6 @@ import type {
 	EditMessagePayload,
 	MessageRecord,
 	ModelWithCredentials,
-	ChatHubMessageCreateDto,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
@@ -773,7 +773,17 @@ export class ChatHubService {
 		selectedModel,
 		retryOfMessageId,
 		state,
-	}: ChatHubMessageCreateDto) {
+	}: {
+		id: ChatMessageId;
+		sessionId: ChatSessionId;
+		executionId: string;
+		previousMessageId: ChatMessageId;
+		message: string;
+		selectedModel: ModelWithCredentials;
+		retryOfMessageId?: ChatMessageId;
+		editOfMessageId?: ChatMessageId;
+		state?: ChatHubMessageState;
+	}) {
 		await this.messageRepository.createChatMessage({
 			id,
 			sessionId,
