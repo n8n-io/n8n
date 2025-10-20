@@ -7,7 +7,7 @@ import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 import { ToolExecutionError, ValidationError } from '../errors';
 import { programmaticEvaluation } from '../programmatic/programmatic';
-import type { ProgrammaticEvaluationResult } from '../programmatic/types';
+import type { ProgrammaticEvaluationResult, ProgrammaticViolation } from '../programmatic/types';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';
@@ -64,6 +64,29 @@ export function createValidateWorkflowTool(
 					},
 					parsedNodeTypes,
 				);
+
+				const blockingViolations: ProgrammaticViolation[] = [
+					...evaluation.connections.violations,
+					...evaluation.trigger.violations,
+					...evaluation.agentPrompt.violations,
+					...evaluation.tools.violations,
+					...evaluation.fromAi.violations,
+				].filter((violation) => violation.type === 'critical' || violation.type === 'major');
+
+				if (blockingViolations.length > 0) {
+					const summary = formatWorkflowValidation(evaluation);
+					const validationError = new ValidationError(
+						`Workflow validation failed due to critical or major violations.\n${summary}`,
+						{ extra: { violations: blockingViolations } },
+					);
+
+					reporter.error(validationError);
+					logger?.warn('validate_workflow tool detected blocking violations', {
+						violations: blockingViolations,
+					});
+
+					return createErrorResponse(config, validationError);
+				}
 
 				const message = buildValidationMessage(evaluation, validatedInput.includeDetails ?? true);
 

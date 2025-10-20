@@ -125,4 +125,52 @@ describe('validateWorkflow tool', () => {
 			error: expect.any(Error),
 		});
 	});
+
+	it('should return error when critical or major violations exist', async () => {
+		const workflow = createWorkflow([createNode()]);
+		setupWorkflowState(mockGetCurrentTaskInput, workflow);
+
+		const blockingEvaluation: ProgrammaticEvaluationResult = {
+			...sampleEvaluation,
+			connections: {
+				score: 0.2,
+				violations: [
+					{
+						type: 'critical',
+						description: 'Node HTTP Request is missing required main input.',
+						pointsDeducted: 50,
+					},
+				],
+			},
+		};
+
+		mockProgrammaticEvaluation.mockResolvedValue(blockingEvaluation);
+
+		const config = createToolConfigWithWriter('validate_workflow', 'call-blocking');
+
+		const result = await validateWorkflowTool.invoke({}, config);
+		const content = parseToolResult<ParsedToolContent>(result);
+
+		expectToolError(
+			content,
+			/Error: Workflow validation failed due to critical or major violations./,
+		);
+		expect(content.update.workflowValidation).toBeUndefined();
+
+		const progressMessages = extractProgressMessages(config.writer);
+		expect(findProgressMessage(progressMessages, 'running', 'input')).toBeDefined();
+		expect(findProgressMessage(progressMessages, 'running', 'progress')).toBeDefined();
+		const errorMessage = findProgressMessage(progressMessages, 'error');
+		expect(errorMessage).toBeDefined();
+		expect(errorMessage?.updates[0]?.data).toMatchObject({
+			message: expect.stringContaining('Workflow validation failed'),
+		});
+
+		expect(mockLogger.warn).toHaveBeenCalledWith(
+			'validate_workflow tool detected blocking violations',
+			expect.objectContaining({
+				violations: expect.arrayContaining([expect.objectContaining({ type: 'critical' })]),
+			}),
+		);
+	});
 });
