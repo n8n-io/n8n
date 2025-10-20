@@ -15,8 +15,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
-import { formatBuiltInTools } from './common';
-import { prepareAdditionalResponsesParams } from './helpers/responses';
+import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 
 export class LmChatOpenAi implements INodeType {
