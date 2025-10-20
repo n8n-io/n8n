@@ -18,6 +18,7 @@ import {
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusPanel from '@/components/FocusPanel.vue';
+import AIAssistantPanel from '@/components/AIAssistantPanel.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
@@ -2144,6 +2145,7 @@ onBeforeUnmount(() => {
 				@save-keyboard-shortcut="onSaveWorkflow"
 				@context-menu-action="onContextMenuAction"
 			/>
+			<AIAssistantPanel v-if="!isLoading" />
 		</div>
 	</div>
 </template>
