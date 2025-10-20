@@ -275,20 +275,6 @@ export class ChatHubService {
 		);
 
 		const { manager } = this.projectRepository;
-		const existing = await this.workflowRepository.findOneBy({ id: sessionId });
-		if (existing) {
-			return {
-				workflowData: {
-					...existing,
-					nodes,
-					connections,
-					versionId: uuidv4(),
-				},
-				startNodes,
-				triggerToStartFrom,
-			};
-		}
-
 		return await manager.transaction(async (trx) => {
 			const project = await this.projectRepository.getPersonalProjectForUser(user.id, trx);
 			if (!project) {
@@ -297,7 +283,6 @@ export class ChatHubService {
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
-			newWorkflow.id = sessionId;
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
