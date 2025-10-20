@@ -50,7 +50,6 @@ describe('router', () => {
 		['/workflow/R9JFXwkUCL1jZBuw/executions/29021', VIEWS.EXECUTION_PREVIEW],
 		['/workflows/templates/R9JFXwkUCL1jZBuw', VIEWS.TEMPLATE_IMPORT],
 		['/workflows/demo', VIEWS.DEMO],
-		['/settings/provisioning', VIEWS.PROVISIONING_SETTINGS],
 	])(
 		'should resolve %s to %s',
 		async (path, name) => {
@@ -117,6 +116,8 @@ describe('router', () => {
 		],
 		['/settings/ldap', VIEWS.WORKFLOWS, []],
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
+		['/settings/provisioning', VIEWS.WORKFLOWS, []],
+		['/settings/provisioning', VIEWS.PROVISIONING_SETTINGS, ['provisioning:manage']],
 	])(
 		'should resolve %s to %s with %s user permissions',
 		async (path, name, scopes) => {
