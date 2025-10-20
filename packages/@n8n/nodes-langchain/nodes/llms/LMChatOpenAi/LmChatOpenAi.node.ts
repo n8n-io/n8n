@@ -1,7 +1,8 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
+import pick from 'lodash/pick';
 import {
-	type IDataObject,
 	NodeConnectionTypes,
+	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -11,11 +12,12 @@ import {
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { searchModels } from './methods/loadModels';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { formatBuiltInTools } from './common';
+import { prepareAdditionalResponsesParams } from './helpers/responses';
+import { searchModels } from './methods/loadModels';
 
 export class LmChatOpenAi implements INodeType {
 	methods = {
@@ -443,6 +445,11 @@ export class LmChatOpenAi implements INodeType {
 									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
 							},
 						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lt: 1.3 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Presence Penalty',
@@ -517,6 +524,223 @@ export class LmChatOpenAi implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Conversation ID',
+						name: 'conversationId',
+						default: '',
+						description:
+							'The conversation that this response belongs to. Input items and output items from this response are automatically added to this conversation after this response completes.',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Prompt Cache Key',
+						name: 'promptCacheKey',
+						type: 'string',
+						default: '',
+						description:
+							'Used by OpenAI to cache responses for similar requests to optimize your cache hit rates',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Safety Identifier',
+						name: 'safetyIdentifier',
+						type: 'string',
+						default: '',
+						description:
+							"A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies. The IDs should be a string that uniquely identifies each user.",
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Service Tier',
+						name: 'serviceTier',
+						type: 'options',
+						default: 'auto',
+						description: 'The service tier to use for the request',
+						options: [
+							{ name: 'Auto', value: 'auto' },
+							{ name: 'Flex', value: 'flex' },
+							{ name: 'Default', value: 'default' },
+							{ name: 'Priority', value: 'priority' },
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Metadata',
+						name: 'metadata',
+						type: 'json',
+						description:
+							'Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional information about the object in a structured format, and querying for objects via API or the dashboard. Keys are strings with a maximum length of 64 characters. Values are strings with a maximum length of 512 characters.',
+						default: '{}',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Top Logprobs',
+						name: 'topLogprobs',
+						type: 'number',
+						default: 0,
+						description:
+							'An integer between 0 and 20 specifying the number of most likely tokens to return at each token position, each with an associated log probability',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 20,
+						},
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Output Format',
+						name: 'textFormat',
+						type: 'fixedCollection',
+						default: { textOptions: [{ type: 'text' }] },
+						options: [
+							{
+								displayName: 'Text',
+								name: 'textOptions',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										default: 'text',
+										options: [
+											{ name: 'Text', value: 'text' },
+											{ name: 'JSON Schema(recommended)', value: 'json_schema' },
+											{ name: 'JSON Object', value: 'json_object' },
+										],
+									},
+									{
+										displayName: 'Verbosity',
+										name: 'verbosity',
+										type: 'options',
+										default: 'medium',
+										options: [
+											{ name: 'Low', value: 'low' },
+											{ name: 'Medium', value: 'medium' },
+											{ name: 'High', value: 'high' },
+										],
+									},
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description:
+											'The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.',
+										displayOptions: {
+											show: {
+												type: ['json_schema'],
+											},
+										},
+									},
+									{
+										displayName: 'Schema',
+										name: 'schema',
+										type: 'json',
+										default: '',
+										description: 'The schema of the response format',
+										displayOptions: {
+											show: {
+												type: ['json_schema'],
+											},
+										},
+									},
+									{
+										displayName: 'Description',
+										name: 'description',
+										type: 'string',
+										default: '',
+										description: 'The description of the response format',
+										displayOptions: {
+											show: {
+												type: ['json_schema'],
+											},
+										},
+									},
+									{
+										displayName: 'Strict',
+										name: 'strict',
+										type: 'boolean',
+										default: false,
+										description: 'Whether to enforce the response format strictly',
+										displayOptions: {
+											show: {
+												type: ['json_schema'],
+											},
+										},
+									},
+								],
+							},
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Prompt',
+						name: 'promptConfig',
+						type: 'fixedCollection',
+						default: { promptOptions: [{ promptId: '' }] },
+						options: [
+							{
+								displayName: 'Prompt',
+								name: 'promptOptions',
+								values: [
+									{
+										displayName: 'Prompt ID',
+										name: 'promptId',
+										type: 'string',
+										default: '',
+										description: 'The unique identifier of the prompt template to use',
+									},
+									{
+										displayName: 'Version',
+										name: 'version',
+										type: 'string',
+										default: '',
+										description: 'Optional version of the prompt template',
+									},
+									{
+										displayName: 'Variables',
+										name: 'variables',
+										type: 'json',
+										default: '{}',
+										description: 'Variables to be substituted into the prompt template',
+									},
+								],
+							},
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -571,18 +795,27 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
-		const modelKwargs: {
-			response_format?: object;
-			reasoning_effort?: 'low' | 'medium' | 'high';
-		} = {};
-		if (options.responseFormat) modelKwargs.response_format = { type: options.responseFormat };
-		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
-			modelKwargs.reasoning_effort = options.reasoningEffort;
+		const modelKwargs: Record<string, unknown> = {};
+		if (responsesApiEnabled) {
+			const kwargs = prepareAdditionalResponsesParams(options);
+			Object.assign(modelKwargs, kwargs);
+		} else {
+			if (options.responseFormat) modelKwargs.response_format = { type: options.responseFormat };
+		}
+
+		const includedOptions = pick(options, [
+			'frequencyPenalty',
+			'maxTokens',
+			'presencePenalty',
+			'temperature',
+			'topP',
+			'baseURL',
+		]);
 
 		const fields: ChatOpenAIFields = {
 			apiKey: credentials.apiKey as string,
 			model: modelName,
-			...options,
+			...includedOptions,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
@@ -591,7 +824,13 @@ export class LmChatOpenAi implements INodeType {
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		};
 
-		// by default ChatOpenAI can switch to responses API automatically, so force it only on 1.3 and above to keep backward compatibility
+		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
+			fields.reasoning = {
+				effort: options.reasoningEffort,
+			};
+		}
+
+		// by default ChatOpenAI can switch to responses API automatically, so force it only on 1.3 and above to keep backwards compatibility
 		if (responsesApiEnabled) {
 			fields.useResponsesApi = true;
 		}
@@ -602,6 +841,7 @@ export class LmChatOpenAi implements INodeType {
 			const tools = formatBuiltInTools(
 				this.getNodeParameter('builtInTools', itemIndex, {}) as IDataObject,
 			);
+			// pass tools to the model metadata, ToolAgent will use it to create agent configuration
 			if (tools.length) {
 				model.metadata = {
 					...model.metadata,
@@ -612,9 +852,6 @@ export class LmChatOpenAi implements INodeType {
 
 		return {
 			response: model,
-			metadata: {
-				test: 'aaaa',
-			},
 		};
 	}
 }
