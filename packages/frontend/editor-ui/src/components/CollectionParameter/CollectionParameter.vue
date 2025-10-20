@@ -10,9 +10,6 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-
-import get from 'lodash/get';
 
 import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
