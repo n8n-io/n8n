@@ -23,7 +23,8 @@
     "eval": "tsx evaluations",
     "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
     "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
-    "eval:cache": "tsx evaluations/test-cache-quality.ts"
+    "eval:cache": "tsx evaluations/test-cache-quality.ts",
+    "eval:categorize": "tsx evaluations/categorize-prompt-evaluation.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
