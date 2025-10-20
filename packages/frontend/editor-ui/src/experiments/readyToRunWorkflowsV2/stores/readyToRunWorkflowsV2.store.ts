@@ -35,12 +35,26 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const cloudPlanStore = useCloudPlanStore();
 		const workflowsStore = useWorkflowsStore();
 
+		const hasChosenHubSpot = computed(() => {
+			const selectedApps = cloudPlanStore.selectedApps;
+
+			if (!selectedApps?.length) {
+				return false;
+			}
+
+			return (
+				selectedApps.includes('n8n-nodes-base.hubspot') ||
+				selectedApps.includes('n8n-nodes-base.hubspotTrigger')
+			);
+		});
+
 		const isFeatureEnabled = computed(() => {
 			const variant = posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
 			return (
 				(variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3 ||
 					variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant4) &&
-				cloudPlanStore.userIsTrialing
+				cloudPlanStore.userIsTrialing &&
+				!hasChosenHubSpot.value
 			);
 		});
 
@@ -96,12 +110,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 				}
 			}
 
-			const selectedApps = cloudPlanStore.selectedApps;
-
-			if (
-				selectedApps?.includes('n8n-nodes-base.hubspot') ||
-				selectedApps?.includes('n8n-nodes-base.hubspotTrigger')
-			) {
+			// Skip tracking if user has selected HubSpot nodes
+			if (hasChosenHubSpot.value) {
 				return;
 			}
 
