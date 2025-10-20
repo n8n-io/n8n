@@ -8,7 +8,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const mockRouterResolve = vi.fn(() => ({

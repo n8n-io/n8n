@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 
 import {

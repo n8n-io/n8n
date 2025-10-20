@@ -5,10 +5,11 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
-import { ndvEventBus } from '@/event-bus';
-import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
-import type { Direction, MainPanelType, XYPosition } from '@/Interface';
+import { useNDVStore } from '../ndv.store';
+import { ndvEventBus } from '../ndv.eventBus';
+import NDVFloatingNodes from './NDVFloatingNodes.vue';
+import type { Direction, XYPosition } from '@/Interface';
+import type { MainPanelType } from '../ndv.types';
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useThrottleFn } from '@vueuse/core';
