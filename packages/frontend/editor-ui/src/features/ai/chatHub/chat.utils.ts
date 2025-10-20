@@ -104,7 +104,7 @@ export function mergeErrorIntoChain(
 	}
 
 	return messagesFromChain.flatMap<ChatMessage>((message) => {
-		if (message.id === error.replyId) {
+		if (message.previousMessageId === error.promptId) {
 			// This could happen when streaming raises error in the middle
 			// TODO: maybe preserve message and append error?
 			return [];
@@ -119,8 +119,8 @@ export function mergeErrorIntoChain(
 					type: 'ai',
 					name: 'AI',
 					content: `**ERROR:** ${error.error.message}`,
-					provider: null,
-					model: null,
+					provider: error.model?.provider ?? null,
+					model: error.model?.model ?? null,
 					workflowId: null,
 					executionId: null,
 					state: 'active',

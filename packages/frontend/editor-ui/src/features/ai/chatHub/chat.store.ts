@@ -242,12 +242,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	function onBeginMessage(
 		sessionId: string,
+		model: ChatHubConversationModel,
 		messageId: string,
 		replyToMessageId: string,
 		retryOfMessageId: string | null,
 		_nodeId: string,
 		_runIndex?: number,
 	) {
+		lastError.value = null;
 		streamingMessageId.value = messageId;
 
 		addMessage(sessionId, {
@@ -256,8 +258,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			type: 'ai',
 			name: 'AI',
 			content: '',
-			provider: null,
-			model: null,
+			provider: model.provider,
+			model: model.model,
 			workflowId: null,
 			executionId: null,
 			state: 'active',
@@ -283,13 +285,30 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		appendMessage(sessionId, messageId, chunk);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
+	function onEndMessage(
+		sessionId: ChatSessionId,
+		model: ChatHubConversationModel,
+		promptId: ChatMessageId,
+		replyId: ChatMessageId,
+		_nodeId: string,
+		_runIndex?: number,
+		error?: Error,
+	) {
+		if (error) {
+			lastError.value = {
+				sessionId,
+				model,
+				promptId,
+				replyId,
+				error,
+			};
+		}
 		streamingMessageId.value = undefined;
 	}
 
 	function onStreamMessage(
 		sessionId: string,
+		model: ChatHubConversationModel,
 		message: StructuredChunk,
 		messageId: string,
 		replyToMessageId: string,
@@ -301,24 +320,33 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		switch (message.type) {
 			case 'begin':
-				onBeginMessage(sessionId, messageId, replyToMessageId, retryOfMessageId, nodeId, runIndex);
+				onBeginMessage(
+					sessionId,
+					model,
+					messageId,
+					replyToMessageId,
+					retryOfMessageId,
+					nodeId,
+					runIndex,
+				);
 				onBegin();
 				break;
 			case 'item':
 				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
 				break;
 			case 'end':
-				onEndMessage(messageId, nodeId, runIndex);
+				onEndMessage(sessionId, model, replyToMessageId, messageId, nodeId, runIndex);
 				break;
 			case 'error':
-				onChunk(
+				onEndMessage(
 					sessionId,
+					model,
+					replyToMessageId,
 					messageId,
-					`Error: ${message.content ?? 'Unknown error'}`,
 					nodeId,
 					runIndex,
+					Error(message.content ?? 'Unknown error'),
 				);
-				onEndMessage(messageId, nodeId, runIndex);
 				break;
 		}
 	}
@@ -330,12 +358,58 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	function onStreamError(
 		sessionId: ChatSessionId,
+		model: ChatHubConversationModel,
 		replyId: ChatMessageId,
 		promptId: ChatMessageId,
 		error: Error,
 	) {
 		streamingMessageId.value = undefined;
-		lastError.value = { sessionId, replyId, promptId, error };
+		lastError.value = { sessionId, model, replyId, promptId, error };
+	}
+
+	async function resendMessage(
+		prompt: ChatMessage,
+		replyId: string,
+		model: ChatHubConversationModel | null,
+		credentialsMap: CredentialsMap,
+	) {
+		const promptId = prompt.id;
+		const previousMessageId = prompt.previousMessageId;
+		const credentialsId = model?.provider ? credentialsMap[model.provider] : null;
+
+		if (!model || !credentialsId) {
+			lastError.value = {
+				sessionId: prompt.sessionId,
+				model,
+				promptId,
+				replyId,
+				error: createModelOrCredentialsMissingError(model),
+			};
+
+			return;
+		}
+
+		let resolve: () => void;
+		const promise = new Promise<void>((r) => (resolve = r));
+
+		sendMessageApi(
+			rootStore.restApiContext,
+			{
+				model,
+				messageId: promptId,
+				sessionId: prompt.sessionId,
+				replyId,
+				message: prompt.content,
+				credentials: createCredentials(model, credentialsId),
+				previousMessageId,
+			},
+			(chunk: StructuredChunk) =>
+				onStreamMessage(prompt.sessionId, model, chunk, replyId, promptId, null, resolve),
+			onStreamDone,
+			(error) => onStreamError(prompt.sessionId, model, replyId, promptId, error),
+		);
+
+		return await promise;
 	}
 
 	async function sendMessage(
@@ -377,6 +451,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (!model || !credentialsId) {
 			lastError.value = {
 				sessionId,
+				model,
 				promptId,
 				replyId,
 				error: createModelOrCredentialsMissingError(model),
@@ -400,9 +475,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				previousMessageId,
 			},
 			(chunk: StructuredChunk) =>
-				onStreamMessage(sessionId, chunk, replyId, promptId, null, resolve),
+				onStreamMessage(sessionId, model, chunk, replyId, promptId, null, resolve),
 			onStreamDone,
-			(error) => onStreamError(sessionId, replyId, promptId, error),
+			(error) => onStreamError(sessionId, model, replyId, promptId, error),
 		);
 
 		return await promise;
@@ -447,6 +522,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (!model || !credentialsId) {
 			lastError.value = {
 				sessionId,
+				model,
 				promptId,
 				replyId,
 				error: createModelOrCredentialsMissingError(model),
@@ -470,9 +546,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials: createCredentials(model, credentialsId),
 			},
 			(chunk: StructuredChunk) =>
-				onStreamMessage(sessionId, chunk, replyId, promptId, null, resolve),
+				onStreamMessage(sessionId, model, chunk, replyId, promptId, null, resolve),
 			onStreamDone,
-			(error) => onStreamError(sessionId, replyId, promptId, error),
+			(error) => onStreamError(sessionId, model, replyId, promptId, error),
 		);
 
 		return await promise;
@@ -489,6 +565,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
 		const credentialsId = model?.provider ? credentialsMap[model.provider] : null;
 
+		if (lastError.value?.replyId === retryId && !conversation.messages[retryId]) {
+			// Retrying a message that isn't sent out yet
+			const prompt = conversation.messages[lastError.value.promptId];
+
+			return await resendMessage(prompt, lastError.value.replyId, model, credentialsMap);
+		}
+
 		if (!previousMessageId) {
 			throw new Error('No previous message to base regeneration on');
 		}
@@ -496,6 +579,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (!model || !credentialsId) {
 			lastError.value = {
 				sessionId,
+				model,
 				promptId: previousMessageId,
 				replyId,
 				error: createModelOrCredentialsMissingError(model),
@@ -517,9 +601,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials: createCredentials(model, credentialsId),
 			},
 			(chunk: StructuredChunk) =>
-				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId, resolve),
+				onStreamMessage(sessionId, model, chunk, replyId, previousMessageId, retryId, resolve),
 			onStreamDone,
-			(error) => onStreamError(sessionId, replyId, previousMessageId, error),
+			(error) => onStreamError(sessionId, model, replyId, previousMessageId, error),
 		);
 
 		return await promise;

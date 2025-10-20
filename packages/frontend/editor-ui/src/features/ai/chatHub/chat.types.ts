@@ -5,6 +5,7 @@ import {
 	type ChatHubSessionDto,
 	type ChatHubConversationDto,
 	type ChatSessionId,
+	type ChatHubConversationModel,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -88,5 +89,6 @@ export interface ChatMessageGenerationError {
 	sessionId: ChatSessionId;
 	promptId: ChatMessageId;
 	replyId: ChatMessageId;
+	model: ChatHubConversationModel | null;
 	error: Error;
 }
