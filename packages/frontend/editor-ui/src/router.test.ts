@@ -50,6 +50,7 @@ describe('router', () => {
 		['/workflow/R9JFXwkUCL1jZBuw/executions/29021', VIEWS.EXECUTION_PREVIEW],
 		['/workflows/templates/R9JFXwkUCL1jZBuw', VIEWS.TEMPLATE_IMPORT],
 		['/workflows/demo', VIEWS.DEMO],
+		['/settings/provisioning', VIEWS.PROVISIONING_SETTINGS],
 	])(
 		'should resolve %s to %s',
 		async (path, name) => {
