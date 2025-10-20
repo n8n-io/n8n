@@ -10,7 +10,11 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv.store';
+import { deepCopy } from 'n8n-workflow';
+
+import get from 'lodash/get';
+
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
@@ -63,6 +67,9 @@ function getParameterOptionLabel(
 }
 
 function displayNodeParameter(parameter: INodeProperties) {
+	if (parameter.type === 'hidden') {
+		return false;
+	}
 	if (parameter.displayOptions === undefined) {
 		// If it is not defined no need to do a proper check
 		return true;

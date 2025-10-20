@@ -1,4 +1,4 @@
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -19,12 +19,12 @@ import {
 	SampleTemplates,
 	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
-} from '@/features/templates/utils/workflowSamples';
+} from '@/features/workflows/templates/utils/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
-} from '@/utils/executionUtils';
+} from '@/features/execution/executions/executions.utils';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
@@ -421,7 +421,7 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers({ workflowState });
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 

@@ -4,11 +4,11 @@ import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const mockRouterResolve = vi.fn(() => ({
@@ -29,7 +29,7 @@ Object.defineProperty(window, 'open', {
 	writable: true,
 });
 
-let mockAiAssistantStore: ReturnType<typeof mockedStore<typeof useAssistantStore>>;
+let mockChatPanelStore: ReturnType<typeof mockedStore<typeof useChatPanelStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -41,7 +41,7 @@ describe('NodeErrorView.vue', () => {
 
 	beforeEach(() => {
 		createTestingPinia();
-		mockAiAssistantStore = mockedStore(useAssistantStore);
+		mockChatPanelStore = mockedStore(useChatPanelStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
 		mockNDVStore = mockedStore(useNDVStore);
 		mockWorkflowsStore = mockedStore(useWorkflowsStore);
@@ -118,7 +118,7 @@ describe('NodeErrorView.vue', () => {
 			hidden: true,
 		}));
 
-		mockAiAssistantStore.canShowAssistantButtonsOnCanvas = true;
+		mockChatPanelStore.canShowAiButtonOnCanvas = true;
 
 		const { queryByTestId } = renderComponent({
 			props: {
@@ -177,7 +177,7 @@ describe('NodeErrorView.vue', () => {
 	});
 
 	it('does not renders open node button when the error is in sub node', () => {
-		mockAiAssistantStore.canShowAssistantButtonsOnCanvas = true;
+		mockChatPanelStore.canShowAiButtonOnCanvas = true;
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				error,

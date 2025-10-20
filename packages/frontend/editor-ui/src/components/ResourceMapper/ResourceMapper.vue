@@ -25,11 +25,11 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@n8n/i18n';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 import isEqual from 'lodash/isEqual';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
 import { N8nButton, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';

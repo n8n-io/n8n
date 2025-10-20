@@ -7,11 +7,11 @@ import {
 } from 'n8n-workflow';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
-import { useIsInExperimentalNdv } from '@/features/canvas/experimental/composables/useIsInExperimentalNdv';
-import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
+import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nActionToggle, N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 interface Props {
