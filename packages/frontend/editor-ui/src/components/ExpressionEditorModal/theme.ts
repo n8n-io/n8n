@@ -1,5 +1,5 @@
 import { EditorView } from '@codemirror/view';
-import { highlighter } from '@/features/editors/plugins/codemirror/resolvableHighlighter';
+import { highlighter } from '@/features/shared/editors/plugins/codemirror/resolvableHighlighter';
 
 const commonThemeProps = (isReadOnly = false) => ({
 	'&': {

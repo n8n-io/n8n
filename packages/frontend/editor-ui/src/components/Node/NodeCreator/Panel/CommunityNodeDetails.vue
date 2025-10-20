@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useInstallNode } from '@/features/communityNodes/composables/useInstallNode';
+import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';

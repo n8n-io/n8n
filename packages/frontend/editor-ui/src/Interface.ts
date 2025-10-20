@@ -7,7 +7,7 @@ import type {
 	IVersionNotificationSettings,
 	Role,
 } from '@n8n/api-types';
-import type { ILogInStatus } from '@/features/users/users.types';
+import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -20,22 +20,17 @@ import type {
 	INodeParameters,
 	INodeTypeDescription,
 	IPinData,
-	IRunExecutionData,
 	IRunData,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	WorkflowExecuteMode,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
-	ExecutionSummary,
 	FeatureFlags,
-	ExecutionStatus,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	INodeExecutionData,
 	NodeConnectionType,
 	StartNodeData,
-	AnnotationVote,
 	ITaskData,
 	ISourceData,
 	PublicInstalledPackage,
@@ -61,13 +56,13 @@ import type {
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type {
 	BaseFolderItem,
 	FolderListItem,
 	ResourceParentFolder,
-} from '@/features/folders/folders.types';
+} from '@/features/core/folders/folders.types';
 
 export * from '@n8n/design-system/types';
 
@@ -375,72 +370,6 @@ export interface IActivationError {
 
 export interface IShareWorkflowsPayload {
 	shareWithIds: string[];
-}
-
-export interface IExecutionBase {
-	id?: string;
-	finished: boolean;
-	mode: WorkflowExecuteMode;
-	status: ExecutionStatus;
-	retryOf?: string;
-	retrySuccessId?: string;
-	startedAt: Date | string;
-	createdAt: Date | string;
-	stoppedAt?: Date | string;
-	workflowId?: string; // To be able to filter executions easily //
-}
-
-export interface IExecutionFlatted extends IExecutionBase {
-	data: string;
-	workflowData: IWorkflowDb;
-}
-
-export interface IExecutionFlattedResponse extends IExecutionFlatted {
-	id: string;
-}
-
-export interface IExecutionPushResponse {
-	executionId?: string;
-	waitingForWebhook?: boolean;
-}
-
-export interface IExecutionResponse extends IExecutionBase {
-	id: string;
-	data?: IRunExecutionData;
-	workflowData: IWorkflowDb;
-	executedNode?: string;
-	triggerNode?: string;
-}
-
-export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
-
-export interface IExecutionsListResponse {
-	count: number;
-	results: ExecutionSummaryWithScopes[];
-	estimated: boolean;
-	concurrentExecutionsCount: number;
-}
-
-export interface IExecutionsCurrentSummaryExtended {
-	id: string;
-	status: ExecutionStatus;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	workflowId: string;
-}
-
-export interface IExecutionsStopData {
-	finished?: boolean;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	stoppedAt: Date;
-	status: ExecutionStatus;
-}
-
-export interface IExecutionDeleteFilter {
-	deleteBefore?: Date;
-	filters?: ExecutionsQueryFilter;
-	ids?: string[];
 }
 
 export const enum UserManagementAuthenticationMethod {
@@ -892,38 +821,6 @@ export type NodeAuthenticationOption = {
 	name: string;
 	value: string;
 	displayOptions?: IDisplayOptions;
-};
-
-export type ExecutionFilterMetadata = {
-	key: string;
-	value: string;
-	exactMatch?: boolean;
-};
-
-export type ExecutionFilterVote = AnnotationVote | 'all';
-
-export type ExecutionFilterType = {
-	status: string;
-	workflowId: string;
-	startDate: string | Date;
-	endDate: string | Date;
-	tags: string[];
-	annotationTags: string[];
-	vote: ExecutionFilterVote;
-	metadata: ExecutionFilterMetadata[];
-};
-
-export type ExecutionsQueryFilter = {
-	status?: ExecutionStatus[];
-	projectId?: string;
-	workflowId?: string;
-	finished?: boolean;
-	waitTill?: boolean;
-	metadata?: Array<{ key: string; value: string }>;
-	startedAfter?: string;
-	startedBefore?: string;
-	annotationTags?: string[];
-	vote?: ExecutionFilterVote;
 };
 
 export interface CloudPlanState {

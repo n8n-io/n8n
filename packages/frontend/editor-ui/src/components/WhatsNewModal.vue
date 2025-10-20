@@ -8,7 +8,7 @@ import { computed, nextTick, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import Modal from '@/components/Modal.vue';
 
 import {

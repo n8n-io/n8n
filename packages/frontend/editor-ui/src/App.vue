@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import '@/polyfills';
 
-import AssistantsHub from '@/features/assistant/components/AssistantsHub.vue';
-import AskAssistantFloatingButton from '@/features/assistant/components/Chat/AskAssistantFloatingButton.vue';
+import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
+import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -15,12 +15,12 @@ import {
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
-import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
-import { useAssistantStore } from '@/features/assistant/assistant.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import LoadingView from '@/views/LoadingView.vue';
 import { locale, N8nCommandBar } from '@n8n/design-system';
 import { setLanguage } from '@n8n/i18n';
@@ -32,7 +32,7 @@ import { useRoute } from 'vue-router';
 import { useStyles } from './composables/useStyles';
 import { useExposeCssVar } from '@/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
-import { useCommandBar } from '@/features/ui/commandBar/composables/useCommandBar';
+import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from './utils/rbac/permissions';
 
 const route = useRoute();

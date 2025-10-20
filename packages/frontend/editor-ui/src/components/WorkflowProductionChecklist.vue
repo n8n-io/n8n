@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { useEvaluationStore } from '@/features/evaluation.ee/evaluation.store';
+import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ActionType, WorkflowSettings } from '@/composables/useWorkflowsCache';
 import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
@@ -19,9 +19,9 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
-import { useMcp } from '@/features/mcpAccess/composables/useMcp';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/stores/settings.store';

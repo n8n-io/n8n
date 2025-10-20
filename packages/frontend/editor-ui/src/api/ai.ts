@@ -1,4 +1,4 @@
-import { useAIAssistantHelpers } from '@/features/assistant/composables/useAIAssistantHelpers';
+import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/constants';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -6,7 +6,7 @@ import type {
 	AskAiRequest,
 	ChatRequest,
 	ReplaceCodeRequest,
-} from '@/features/assistant/assistant.types';
+} from '@/features/ai/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
 import type { IDataObject } from 'n8n-workflow';
