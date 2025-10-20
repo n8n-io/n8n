@@ -77,6 +77,8 @@ const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>
 	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
+const SettingsProvisioningView = async () =>
+	await import('@/features/settings/provisioning/views/SettingsProvisioningView.vue');
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
@@ -739,6 +741,32 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						rbac: {
 							scope: 'ldap:manage',
+						},
+					},
+				},
+			},
+			{
+				path: 'provisioning',
+				name: VIEWS.PROVISIONING_SETTINGS,
+				components: {
+					settingsView: SettingsProvisioningView,
+				},
+				meta: {
+					middleware: ['authenticated', 'enterprise', 'rbac'],
+					middlewareOptions: {
+						enterprise: {
+							feature: 'provisioning',
+						},
+						rbac: {
+							scope: 'provisioning:manage',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'provisioning',
+							};
 						},
 					},
 				},
