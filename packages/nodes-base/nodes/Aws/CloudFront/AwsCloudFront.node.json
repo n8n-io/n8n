@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.awsCloudFront",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Development", "Core Nodes"],
+	"categories": ["Networking"],
 	"resources": {
 		"credentialDocumentation": [
 			{
