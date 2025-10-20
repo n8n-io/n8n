@@ -156,7 +156,7 @@ export class ChatHubMessage extends WithTimestamps {
 	revisions?: Array<Relation<ChatHubMessage>>;
 
 	/**
-	 * Status of the message, e.g. 'pending', 'success', 'error'.
+	 * Status of the message, e.g. 'running', 'success', 'error', 'cancelled'.
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'success' })
 	status: ChatHubMessageStatus;

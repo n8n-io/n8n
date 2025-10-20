@@ -94,7 +94,7 @@ export class ChatHubChangeConversationTitleRequest extends Z.class({
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageStatus = 'success' | 'error' | 'pending';
+export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID

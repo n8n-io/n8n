@@ -11,7 +11,9 @@ export class DropUnusedChatHubColumns1760965142113 implements ReversibleMigratio
 			column('status')
 				.varchar(16)
 				.default("'success'")
-				.notNull.comment('ChatHubMessageStatus enum: "pending", "success", "error"'),
+				.notNull.comment(
+					'ChatHubMessageStatus enum, eg. "success", "error", "running", "cancelled"',
+				),
 		]);
 	}
 
