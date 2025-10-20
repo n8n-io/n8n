@@ -7,6 +7,7 @@ import type {
 	ITaskData,
 	ITaskStartedData,
 	IWorkflowBase,
+	IWorkflowExecuteAdditionalData,
 	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
@@ -35,6 +36,7 @@ export type ExecutionLifecycleHookHandlers = {
 			this: ExecutionLifecycleHooks,
 			workflow: Workflow,
 			data?: IRunExecutionData,
+			additionalData?: IWorkflowExecuteAdditionalData,
 		) => Promise<void> | void
 	>;
 

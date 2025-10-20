@@ -1488,7 +1488,11 @@ export class WorkflowExecute {
 			const returnPromise = (async () => {
 				try {
 					if (!this.additionalData.restartExecutionId) {
-						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
+						await hooks.runHook('workflowExecuteBefore', [
+							workflow,
+							this.runExecutionData,
+							this.additionalData,
+						]);
 					}
 				} catch (error) {
 					const e = error as unknown as ExecutionBaseError;

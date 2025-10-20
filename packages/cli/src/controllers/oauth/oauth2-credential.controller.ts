@@ -24,7 +24,9 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	override oauthVersion = 2;
 
 	/** Get Authorization url */
-	@Get('/auth')
+	@Get('/auth', {
+		optionalAuth: true,
+	})
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.getCredential(req);
 		const additionalData = await this.getAdditionalData();
@@ -48,10 +50,14 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			additionalData,
 		);
 
+		// TODO extract bearer token from authorization header
+		const authorizationHeader = req.headers['authorization'];
+
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const [csrfSecret, state] = this.createCsrfState(
 			credential.id,
 			skipAuthOnOAuthCallback ? undefined : req.user.id,
+			authorizationHeader,
 		);
 
 		const oAuthOptions = {
@@ -76,13 +82,13 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			toUpdate.codeVerifier = code_verifier;
 		}
 
-		await this.encryptAndSaveData(credential, toUpdate);
+		await this.encryptAndSaveData(credential, toUpdate, [], authorizationHeader);
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 		const returnUri = oAuthObj.code.getUri();
 
 		this.logger.debug('OAuth2 authorization url created for credential', {
-			userId: req.user.id,
+			userId: req.user?.id,
 			credentialId: credential.id,
 		});
 
@@ -90,7 +96,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
-	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
+	@Get('/callback', { usesTemplates: true, optionalAuth: true, skipAuth: skipAuthOnOAuthCallback })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
 		try {
 			const { code, state: encodedState } = req.query;
@@ -102,7 +108,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				);
 			}
 
-			const [credential, decryptedDataOriginal, oauthCredentials] =
+			const [credential, decryptedDataOriginal, oauthCredentials, accessToken] =
 				await this.resolveCredential<OAuth2CredentialData>(req);
 
 			let options: Partial<ClientOAuth2Options> = {};
@@ -147,7 +153,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				...oauthToken.data,
 			};
 
-			await this.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
+			await this.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret'], accessToken);
 
 			this.logger.debug('OAuth2 callback successful for credential', {
 				credentialId: credential.id,

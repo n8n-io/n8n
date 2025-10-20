@@ -7,7 +7,11 @@ import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
 import { Credentials } from 'n8n-core';
-import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialsExpressionResolveValues,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -20,6 +24,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { CredentialsResolverProxyService } from '@/credentials/credentials-resolver-proxy.service';
 
 type CsrfStateParam = {
 	/** Id of the oAuth credential in the DB */
@@ -30,6 +35,8 @@ type CsrfStateParam = {
 	createdAt: number;
 	/** User who initiated OAuth flow, included to prevent cross-user credential hijacking. Optional only if `skipAuthOnOAuthCallback` is enabled. */
 	userId?: string;
+	/** Access token obtained during the OAuth flow, used to authenticate the user against a storage engine for resolvable credentials */
+	accessToken?: string;
 };
 
 const MAX_CSRF_AGE = 5 * Time.minutes.toMilliseconds;
@@ -54,6 +61,7 @@ export abstract class AbstractOAuthController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly credentialResolverService: CredentialsResolverProxyService,
 	) {}
 
 	get baseUrl() {
@@ -68,6 +76,33 @@ export abstract class AbstractOAuthController {
 
 		if (!credentialId) {
 			throw new BadRequestError('Required credential ID is missing');
+		}
+
+		if (!req.user) {
+			const credential = await this.credentialsRepository.findOneBy({ id: credentialId });
+
+			if (!credential) {
+				this.logger.error(
+					`OAuth${this.oauthVersion} credential authorization failed, because the credential does not exist.`,
+				);
+				throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
+			}
+
+			const credentials = await this.credentialsHelper.getCredentials(credential, credential.type);
+
+			const decryptedDataOriginal = credentials.getData();
+
+			// We need to remove this again!!!! Just for debugging purposes
+			this.logger.debug(`Decrypted data: ${JSON.stringify(decryptedDataOriginal)}`);
+
+			if (!this.credentialResolverService.isResolveable(decryptedDataOriginal)) {
+				this.logger.error(
+					`OAuth${this.oauthVersion} credential authorization failed, because the credential is not resolveable.`,
+				);
+				throw new BadRequestError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
+			}
+
+			return credential;
 		}
 
 		const credential = await this.credentialsFinderService.findCredentialForUser(
@@ -107,15 +142,25 @@ export abstract class AbstractOAuthController {
 	protected async getDecryptedDataForCallback(
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+		accessToken?: string,
 	) {
-		return await this.getDecryptedData(credential, additionalData, true);
+		return await this.getDecryptedData(credential, additionalData, true, accessToken);
 	}
 
 	private async getDecryptedData(
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		raw: boolean,
+		accessToken?: string,
 	) {
+		// SUPER HACKY!!! this only works when raw == true otherwise expression resolution is broken
+		const expressionResolveValues = accessToken
+			? ({
+					runExecutionData: {
+						executionContext: accessToken,
+					},
+				} as any as ICredentialsExpressionResolveValues)
+			: undefined;
 		return await this.credentialsHelper.getDecrypted(
 			additionalData,
 			credential,
@@ -123,6 +168,7 @@ export abstract class AbstractOAuthController {
 			'internal',
 			undefined,
 			raw,
+			expressionResolveValues,
 		);
 	}
 
@@ -146,13 +192,26 @@ export abstract class AbstractOAuthController {
 		credential: ICredentialsDb,
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[] = [],
+		accessToken?: string,
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
+		const decryptedDataOriginal = credentials.getData();
 		credentials.updateData(toUpdate, toDelete);
-		await this.credentialsRepository.update(credential.id, {
-			...credentials.getDataToSave(),
-			updatedAt: new Date(),
-		});
+
+		if (this.credentialResolverService.isResolveable(decryptedDataOriginal)) {
+			if (!accessToken) throw new Error('Access token is required for resolving credentials');
+			await this.credentialResolverService.storeCredentialData(
+				credentials.id!,
+				decryptedDataOriginal,
+				credentials.getData(),
+				accessToken,
+			);
+		} else {
+			await this.credentialsRepository.update(credential.id, {
+				...credentials.getDataToSave(),
+				updatedAt: new Date(),
+			});
+		}
 	}
 
 	/** Get a credential without user check */
@@ -160,7 +219,7 @@ export abstract class AbstractOAuthController {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(credentialsId: string, userId?: string): [string, string] {
+	createCsrfState(credentialsId: string, userId?: string, accessToken?: string): [string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfStateParam = {
@@ -168,7 +227,9 @@ export abstract class AbstractOAuthController {
 			cid: credentialsId,
 			createdAt: Date.now(),
 			userId,
+			accessToken,
 		};
+		// TODO: we need to encrypt the state because it contains an accessToken!!
 		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
 	}
 
@@ -204,7 +265,7 @@ export abstract class AbstractOAuthController {
 
 	protected async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
-	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T]> {
+	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T, string | undefined]> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
@@ -216,6 +277,7 @@ export abstract class AbstractOAuthController {
 		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
 			credential,
 			additionalData,
+			state.accessToken,
 		);
 
 		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
@@ -228,7 +290,7 @@ export abstract class AbstractOAuthController {
 			throw new UnexpectedError('The OAuth callback state is invalid!');
 		}
 
-		return [credential, decryptedDataOriginal, oauthCredentials];
+		return [credential, decryptedDataOriginal, oauthCredentials, state.accessToken];
 	}
 
 	protected renderCallbackError(res: Response, message: string, reason?: string) {

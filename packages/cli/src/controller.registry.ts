@@ -91,6 +91,7 @@ export class ControllerRegistry {
 							this.authService.createAuthMiddleware({
 								allowSkipMFA: route.allowSkipMFA,
 								allowSkipPreviewAuth: route.allowSkipPreviewAuth,
+								optionalAuth: route.optionalAuth,
 							}),
 							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 						] as RequestHandler[])),

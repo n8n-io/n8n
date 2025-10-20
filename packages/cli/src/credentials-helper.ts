@@ -9,7 +9,7 @@ import {
 	GLOBAL_OWNER_ROLE,
 	SharedCredentialsRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError, In } from '@n8n/typeorm';
@@ -48,6 +48,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
+import { CredentialsResolverProxyService } from './credentials/credentials-resolver-proxy.service';
 
 const mockNode = {
 	name: '',
@@ -339,19 +340,36 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 		const decryptedDataOriginal = credentials.getData();
 
-		if (raw === true) {
-			return decryptedDataOriginal;
+		let decryptedData = decryptedDataOriginal;
+
+		if (expressionResolveValues?.runExecutionData) {
+			const resolvedData = await Container.get(CredentialsResolverProxyService).findCredentialData(
+				credentials,
+				decryptedDataOriginal,
+				expressionResolveValues?.runExecutionData,
+			);
+
+			if (resolvedData) {
+				decryptedData = resolvedData;
+			}
 		}
 
-		return await this.applyDefaultsAndOverwrites(
-			additionalData,
-			decryptedDataOriginal,
-			nodeCredentials,
-			type,
-			mode,
-			executeData,
-			expressionResolveValues,
-		);
+		if (raw !== true) {
+			decryptedData = await this.applyDefaultsAndOverwrites(
+				additionalData,
+				decryptedData,
+				nodeCredentials,
+				type,
+				mode,
+				executeData,
+				expressionResolveValues,
+			);
+		}
+
+		console.log('Execution data:', expressionResolveValues?.runExecutionData?.executionContext);
+		console.log('Decrypted data:', decryptedData);
+
+		return decryptedData;
 	}
 
 	/**
@@ -457,8 +475,31 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<void> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
+		const decryptedDataOriginal = credentials.getData();
+
+		const isResolveable = Container.get(CredentialsResolverProxyService).isResolveable(
+			decryptedDataOriginal,
+		);
+
+		if (isResolveable) {
+			const accessToken = expressionResolveValues?.runExecutionData?.executionContext;
+			if (!accessToken) {
+				console.log('No access token found');
+				return;
+			}
+			await Container.get(CredentialsResolverProxyService).storeCredentialData(
+				credentials.id!,
+				decryptedDataOriginal,
+				{
+					data,
+				},
+				accessToken,
+			);
+			return;
+		}
 
 		credentials.setData(data);
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
@@ -482,8 +523,32 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<void> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
+		const decryptedDataOriginal = credentials.getData();
+
+		const isResolveable = Container.get(CredentialsResolverProxyService).isResolveable(
+			decryptedDataOriginal,
+		);
+
+		if (isResolveable) {
+			const accessToken = expressionResolveValues?.runExecutionData?.executionContext;
+			if (!accessToken) {
+				console.log('No access token found');
+				return;
+			}
+			await Container.get(CredentialsResolverProxyService).storeCredentialData(
+				credentials.id!,
+				decryptedDataOriginal,
+				{
+					...decryptedDataOriginal,
+					oauthTokenData: data.oauthTokenData,
+				},
+				accessToken,
+			);
+			return;
+		}
 
 		credentials.updateData({ oauthTokenData: data.oauthTokenData });
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;

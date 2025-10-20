@@ -79,16 +79,20 @@ class ModulesHooksRegistry {
 					break;
 
 				case 'workflowExecuteBefore':
-					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
-						const context = {
-							type: 'workflowExecuteBefore',
-							workflow: this.workflowData,
-							workflowInstance,
-							executionData,
-						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-						return await instance[methodName].call(instance, context);
-					});
+					hooks.addHandler(
+						eventName,
+						async function (workflowInstance, executionData, additionalData) {
+							const context = {
+								type: 'workflowExecuteBefore',
+								workflow: this.workflowData,
+								workflowInstance,
+								executionData,
+								additionalData,
+							};
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+							return await instance[methodName].call(instance, context);
+						},
+					);
 					break;
 			}
 		}

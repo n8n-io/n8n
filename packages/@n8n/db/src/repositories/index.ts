@@ -31,3 +31,4 @@ export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WebhookRepository } from './webhook.repository';
 export { UserRepository } from './user.repository';
+export { ResolverCredentialsRepository } from './resolver-credentials.repository';

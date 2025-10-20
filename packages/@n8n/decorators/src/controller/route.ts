@@ -16,6 +16,8 @@ interface RouteOptions {
 	rateLimit?: boolean | RateLimit;
 	/** When this flag is set to true, the endpoint is protected by API key */
 	apiKeyAuth?: boolean;
+	/** When this flag is set to true, auth cookie is validated optional, and req.user will only be set if the cookie is valid */
+	optionalAuth?: boolean;
 }
 
 const RouteFactory =
@@ -34,6 +36,7 @@ const RouteFactory =
 		routeMetadata.allowSkipPreviewAuth = options.allowSkipPreviewAuth ?? false;
 		routeMetadata.allowSkipMFA = options.allowSkipMFA ?? false;
 		routeMetadata.apiKeyAuth = options.apiKeyAuth ?? false;
+		routeMetadata.optionalAuth = options.optionalAuth ?? false;
 		routeMetadata.rateLimit = options.rateLimit;
 	};
 

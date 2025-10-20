@@ -47,6 +47,10 @@ interface CreateAuthMiddlewareOptions {
 	 * If true, authentication becomes optional in preview mode
 	 */
 	allowSkipPreviewAuth?: boolean;
+	/**
+	 * If true, authentication becomes optional
+	 */
+	optionalAuth?: boolean;
 }
 
 @Service()
@@ -83,7 +87,11 @@ export class AuthService {
 		];
 	}
 
-	createAuthMiddleware({ allowSkipMFA, allowSkipPreviewAuth }: CreateAuthMiddlewareOptions) {
+	createAuthMiddleware({
+		allowSkipMFA,
+		allowSkipPreviewAuth,
+		optionalAuth,
+	}: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			const token = req.cookies[AUTH_COOKIE_NAME];
 			if (token) {
@@ -118,7 +126,7 @@ export class AuthService {
 			}
 
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
-			const shouldSkipAuth = allowSkipPreviewAuth && isPreviewMode;
+			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || optionalAuth;
 
 			if (req.user) next();
 			else if (shouldSkipAuth) next();

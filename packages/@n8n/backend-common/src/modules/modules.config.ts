@@ -9,6 +9,7 @@ export const MODULE_NAMES = [
 	'data-table',
 	'mcp',
 	'chat-hub',
+	'resolver-credentials',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

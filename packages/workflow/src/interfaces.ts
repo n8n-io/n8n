@@ -225,12 +225,14 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<void>;
 
 	abstract updateCredentialsOauthTokenData(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<void>;
 
 	abstract getCredentialsProperties(type: string): INodeProperties[];
@@ -2395,6 +2397,7 @@ export interface IRunExecutionData {
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
 	};
+	executionContext?: string;
 	executionData?: {
 		contextData: IExecuteContextData;
 		nodeExecutionStack: IExecuteData[];

@@ -2,6 +2,7 @@ import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
 import { IsObject, IsString, Length } from 'class-validator';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
+import type { ResolverCredentialsEntity } from './resolver-credential-data';
 import type { SharedCredentials } from './shared-credentials';
 import type { ICredentialsDb } from './types-db';
 
@@ -27,6 +28,9 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 
 	@OneToMany('SharedCredentials', 'credentials')
 	shared: SharedCredentials[];
+
+	@OneToMany('ResolverCredentialsEntity', 'credential')
+	resolvedCredentials: ResolverCredentialsEntity[];
 
 	/**
 	 * Whether the credential is managed by n8n. We currently use this flag

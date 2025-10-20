@@ -15,6 +15,7 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { ResolverCredentialsEntity } from './resolver-credential-data';
 import { Role } from './role';
 import { Scope } from './scope';
 import { Settings } from './settings';
@@ -64,6 +65,7 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ResolverCredentialsEntity,
 };
 
 export const entities = {
@@ -99,4 +101,5 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ResolverCredentialsEntity,
 };
