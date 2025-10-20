@@ -1,0 +1,153 @@
+{
+  "name": "AWS Services Phase 6 Validation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "notebookInstance",
+        "operation": "list"
+      },
+      "id": "sagemaker",
+      "name": "AWS SageMaker - List Notebook Instances",
+      "type": "n8n-nodes-base.awsSageMaker",
+      "typeVersion": 1,
+      "position": [460, 180],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "webAcl",
+        "operation": "list",
+        "scope": "REGIONAL"
+      },
+      "id": "waf",
+      "name": "AWS WAF - List Web ACLs",
+      "type": "n8n-nodes-base.awsWAF",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "detector",
+        "operation": "list"
+      },
+      "id": "guardduty",
+      "name": "AWS GuardDuty - List Detectors",
+      "type": "n8n-nodes-base.awsGuardDuty",
+      "typeVersion": 1,
+      "position": [460, 420],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate Phase 6 service responses\nconst results = [];\n\nfor (const item of $input.all()) {\n  const nodeName = item.json._node || 'Unknown';\n  const success = item.json.error ? false : true;\n  \n  results.push({\n    service: nodeName,\n    success: success,\n    timestamp: new Date().toISOString(),\n    data: success ? 'Operation completed successfully' : item.json.error\n  });\n}\n\nreturn results.map(r => ({ json: r }));"
+      },
+      "id": "validate",
+      "name": "Validate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "AWS SageMaker - List Notebook Instances",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AWS WAF - List Web ACLs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AWS GuardDuty - List Detectors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS SageMaker - List Notebook Instances": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS WAF - List Web ACLs": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "AWS GuardDuty - List Detectors": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Validate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
