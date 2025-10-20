@@ -120,7 +120,7 @@ const slots = useSlots();
 
 <style lang="css" module>
 .DateFieldWrapper {
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: 1px solid var(--color--foreground);
 	padding: 12px;
 }
 
@@ -172,7 +172,7 @@ const slots = useSlots();
 .CalendarHeadCell {
 	font-size: 0.75rem;
 	line-height: 1rem;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	font-weight: 400;
 }
 
@@ -198,11 +198,11 @@ const slots = useSlots();
 	white-space: nowrap;
 	background-color: transparent;
 	cursor: pointer;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 	font-style: normal;
 	font-weight: 400;
 	line-height: normal;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	border-radius: 4px;
 }
 
@@ -213,16 +213,12 @@ const slots = useSlots();
 .CalendarCellTrigger:hover:not([data-disabled]):not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	) {
-	background-color: var(--color-foreground-light);
+	background-color: var(--color--foreground--tint-1);
 }
 
 .CalendarCellTrigger[data-disabled] {
 	cursor: not-allowed;
 	color: var(--color-text-light);
-}
-
-.CalendarCellTrigger[data-focused] {
-	/* outline: 1px solid red; */
 }
 
 .CalendarCellTrigger:focus {
@@ -237,7 +233,7 @@ const slots = useSlots();
 
 .CalendarCellTrigger[data-highlighted],
 .CalendarCellTrigger[data-selected] {
-	background: var(--color-foreground-light);
+	background: var(--color--foreground--tint-1);
 	border-radius: 0;
 }
 
@@ -255,7 +251,7 @@ const slots = useSlots();
 
 .CalendarCellTrigger[data-selection-start='true'],
 .CalendarCellTrigger[data-selection-end='true'] {
-	background: var(--color-primary);
+	background: var(--color--primary);
 	color: #fff;
 }
 
@@ -267,14 +263,13 @@ const slots = useSlots();
 	width: 0.25rem;
 	height: 0.25rem;
 	border-radius: 9999px;
-	background-color: var(--color-primary);
+	background-color: var(--color--primary);
 }
 
 .PopoverContent {
 	border-radius: 4px;
-	/* width: 260px; */
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-foreground-xlight);
+	border: var(--border);
+	background: var(--color--foreground--tint-2);
 	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
 	animation-duration: 400ms;
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
@@ -305,7 +300,7 @@ const slots = useSlots();
 	flex-direction: column;
 	gap: 4px;
 	padding: 12px;
-	border-right: 1px solid var(--color-foreground-light);
+	border-right: var(--border);
 }
 
 @keyframes slideUpAndFade {

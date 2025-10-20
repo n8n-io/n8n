@@ -116,8 +116,8 @@ function hasTime(segments: Segments) {
 	border-width: 1px;
 	text-align: center;
 	user-select: none;
-	border: 1px solid var(--color-foreground-light);
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-xloose);
+	border: var(--border);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 }
 </style>

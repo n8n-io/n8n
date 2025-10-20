@@ -19,6 +19,10 @@ export class SidebarPage {
 		await this.page.getByTestId('universal-add').click();
 	}
 
+	async clickHomeMenuItem() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
 	async addProjectFromUniversalAdd() {
 		await this.universalAdd();
 		await this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
@@ -41,6 +45,7 @@ export class SidebarPage {
 	}
 
 	async clickProjectMenuItem(projectName: string) {
+		await this.expand();
 		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
 	}
 
@@ -63,6 +68,10 @@ export class SidebarPage {
 	async clickAboutMenuItem(): Promise<void> {
 		await this.page.getByTestId('help').click();
 		await this.page.getByTestId('about').click();
+	}
+
+	async openAboutModalViaShortcut(): Promise<void> {
+		await this.page.keyboard.press('Alt+Meta+o');
 	}
 
 	async closeAboutModal(): Promise<void> {

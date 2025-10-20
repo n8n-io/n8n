@@ -23,6 +23,7 @@ describe('permissions', () => {
 			orchestration: {},
 			project: {},
 			saml: {},
+			provisioning: {},
 			securityAudit: {},
 			sourceControl: {},
 			tag: {},
@@ -34,10 +35,11 @@ describe('permissions', () => {
 			workflowTags: {},
 			folder: {},
 			insights: {},
-			dataStore: {},
+			dataTable: {},
 			mcp: {},
 			mcpApiKey: {},
 			role: {},
+			chatHub: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -105,6 +107,7 @@ describe('permissions', () => {
 			},
 			saml: {},
 			oidc: {},
+			provisioning: {},
 			mcp: {},
 			mcpApiKey: {},
 			securityAudit: {},
@@ -143,10 +146,11 @@ describe('permissions', () => {
 			insights: {
 				list: true,
 			},
-			dataStore: {},
+			dataTable: {},
 			execution: {},
 			workflowTags: {},
 			role: {},
+			chatHub: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

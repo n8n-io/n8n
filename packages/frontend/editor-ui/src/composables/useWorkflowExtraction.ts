@@ -218,14 +218,14 @@ export function useWorkflowExtraction() {
 				]
 			: [];
 		const triggerParameters =
-			selectionVariables.size > 0
+			selectionVariables.size === 0
 				? {
+						inputSource: 'passthrough',
+					}
+				: {
 						workflowInputs: {
 							values: [...selectionVariables.keys().map((k) => ({ name: k, type: 'any' }))],
 						},
-					}
-				: {
-						inputSource: 'passthrough',
 					};
 
 		const triggerNode: INode = {
@@ -505,6 +505,20 @@ export function useWorkflowExtraction() {
 		return true;
 	}
 
+	function trackStartExtractWorkflow(nodeCount: number, success: boolean) {
+		telemetry.track('User started nodes to sub-workflow extraction', {
+			node_count: nodeCount,
+			success,
+		});
+	}
+
+	function trackExtractWorkflow(nodeCount: number, success: boolean) {
+		telemetry.track('User extracted nodes to sub-workflow', {
+			node_count: nodeCount,
+			success,
+		});
+	}
+
 	/**
 	 * This mutates the current workflow and creates a new one.
 	 * Intended to be called from @WorkflowExtractionNameModal spawned
@@ -526,23 +540,9 @@ export function useWorkflowExtraction() {
 	 *
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
-	async function extractWorkflow(nodeIds: string[]) {
+	function extractWorkflow(nodeIds: string[]) {
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);
-	}
-
-	function trackStartExtractWorkflow(nodeCount: number, success: boolean) {
-		telemetry.track('User started nodes to sub-workflow extraction', {
-			node_count: nodeCount,
-			success,
-		});
-	}
-
-	function trackExtractWorkflow(nodeCount: number, success: boolean) {
-		telemetry.track('User extracted nodes to sub-workflow', {
-			node_count: nodeCount,
-			success,
-		});
 	}
 
 	return {

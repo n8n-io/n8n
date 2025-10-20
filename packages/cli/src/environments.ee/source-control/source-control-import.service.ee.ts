@@ -169,10 +169,7 @@ export class SourceControlImportService {
 			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 		const remoteWorkflowsRead = await Promise.all(
-			remoteWorkflowFiles.map(async (file) => {
-				this.logger.debug(`Parsing workflow file ${file}`);
-				return jsonParse<IWorkflowToImport>(await fsReadFile(file, { encoding: 'utf8' }));
-			}),
+			remoteWorkflowFiles.map(async (file) => await this.parseWorkflowFromFile(file)),
 		);
 
 		const remoteWorkflowFilesParsed = remoteWorkflowsRead
@@ -251,6 +248,7 @@ export class SourceControlImportService {
 					project: {
 						projectRelations: {
 							user: true,
+							role: true,
 						},
 					},
 				},
@@ -269,6 +267,8 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
+							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
+							userId: true,
 							role: {
 								slug: true,
 							},
@@ -296,6 +296,7 @@ export class SourceControlImportService {
 				});
 				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
 			}
+
 			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
 
 			return {
@@ -374,6 +375,7 @@ export class SourceControlImportService {
 					project: {
 						projectRelations: {
 							user: true,
+							role: true,
 						},
 					},
 				},
@@ -388,6 +390,8 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
+							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
+							userId: true,
 							role: {
 								slug: true,
 							},
@@ -633,9 +637,7 @@ export class SourceControlImportService {
 		for (const candidate of candidates) {
 			this.logger.debug(`Parsing workflow file ${candidate.file}`);
 
-			const importedWorkflow = jsonParse<IWorkflowToImport>(
-				await fsReadFile(candidate.file, { encoding: 'utf8' }),
-			);
+			const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
 			if (!importedWorkflow?.id) {
 				continue;
@@ -700,6 +702,19 @@ export class SourceControlImportService {
 			id: string;
 			name: string;
 		}>;
+	}
+
+	private async parseWorkflowFromFile(file: string): Promise<IWorkflowToImport> {
+		this.logger.debug(`Parsing workflow file ${file}`);
+		try {
+			const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+			return jsonParse<IWorkflowToImport>(fileContent);
+		} catch (error) {
+			this.logger.error(`Failed to parse workflow file ${file}`, { error });
+			throw new UnexpectedError(
+				`Failed to parse workflow file ${file}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 
 	private async activateImportedWorkflow({
@@ -785,7 +800,6 @@ export class SourceControlImportService {
 					newSharedCredential.projectId = remoteOwnerProject?.id ?? personalProject.id;
 					newSharedCredential.role = 'credential:owner';
 
-					// @ts-ignore CAT-957
 					await this.sharedCredentialsRepository.upsert({ ...newSharedCredential }, [
 						'credentialsId',
 						'projectId',
@@ -841,7 +855,6 @@ export class SourceControlImportService {
 				}
 
 				const tagCopy = this.tagRepository.create(tag);
-				// @ts-ignore CAT-957
 				await this.tagRepository.upsert(tagCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
@@ -897,7 +910,6 @@ export class SourceControlImportService {
 					},
 				});
 
-				// @ts-ignore CAT-957
 				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },

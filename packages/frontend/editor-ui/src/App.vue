@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import '@/polyfills';
 
-import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
-import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
+import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
+import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -15,12 +15,12 @@ import {
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
-import { useAssistantStore } from '@/stores/assistant.store';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import LoadingView from '@/views/LoadingView.vue';
 import { locale, N8nCommandBar } from '@n8n/design-system';
 import { setLanguage } from '@n8n/i18n';
@@ -32,29 +32,29 @@ import { useRoute } from 'vue-router';
 import { useStyles } from './composables/useStyles';
 import { useExposeCssVar } from '@/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
-import { useCommandBar } from './composables/useCommandBar';
+import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from './utils/rbac/permissions';
 
 const route = useRoute();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
-const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const { APP_Z_INDEXES } = useStyles();
 
 const {
 	initialize: initializeCommandBar,
 	isEnabled: isCommandBarEnabled,
 	items,
+	placeholder,
+	context,
 	onCommandBarChange,
 	onCommandBarNavigateTo,
+	isLoading: isCommandBarLoading,
 } = useCommandBar();
-
-const showCommandBar = computed(
-	() => isCommandBarEnabled.value && hasPermission(['authenticated']),
-);
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -71,8 +71,11 @@ const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
-const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
-const builderSidebarWidth = computed(() => builderStore.chatWidth);
+const showCommandBar = computed(
+	() => isCommandBarEnabled.value && hasPermission(['authenticated']) && !isDemoMode.value,
+);
+
+const chatPanelWidth = computed(() => chatPanelStore.width);
 
 useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
@@ -107,8 +110,8 @@ const updateGridWidth = async () => {
 		uiStore.appGridDimensions = { width, height };
 	}
 };
-// As assistant sidebar width changes, recalculate the total width regularly
-watch([assistantSidebarWidth, builderSidebarWidth], async () => {
+// As chat panel width changes, recalculate the total width regularly
+watch(chatPanelWidth, async () => {
 	await updateGridWidth();
 });
 
@@ -173,6 +176,10 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 			<N8nCommandBar
 				v-if="showCommandBar"
 				:items="items"
+				:placeholder="placeholder"
+				:context="context"
+				:is-loading="isCommandBarLoading"
+				:z-index="APP_Z_INDEXES.COMMAND_BAR"
 				@input-change="onCommandBarChange"
 				@navigate-to="onCommandBarNavigateTo"
 			/>
@@ -211,6 +218,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 	grid-area: banners;
 	z-index: var(--z-index-top-banners);
 }
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -230,6 +238,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 		display: block;
 	}
 }
+
 .contentWrapper {
 	display: flex;
 	grid-area: content;

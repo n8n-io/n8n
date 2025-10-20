@@ -81,6 +81,7 @@ export interface FrontendSettings {
 		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
+		proxy: string;
 	};
 	dataTables: {
 		maxSize: number;
@@ -135,6 +136,7 @@ export interface FrontendSettings {
 	};
 	aiBuilder: {
 		enabled: boolean;
+		setup: boolean;
 	};
 	deployment: {
 		type: string;
