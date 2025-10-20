@@ -19,7 +19,8 @@ import type {
 import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
-import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, ITab } from '@/Interface';
+import type { NodePanelType } from '@/features/nodes/ndv/ndv.types';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -49,8 +50,9 @@ import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
-import { useNDVStore } from '@/stores/ndv.store';
+import { dataPinningEventBus } from '@/event-bus';
+import { ndvEventBus } from '@/features/nodes/ndv/ndv.eventBus';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -74,7 +76,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/features/execution/executions/executions.utils';
-import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import NDVEmptyState from '@/features/nodes/ndv/components/NDVEmptyState.vue';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
 import {

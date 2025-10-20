@@ -65,7 +65,6 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			available: canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS),
 			route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
 		},
-
 		{
 			id: 'settings-source-control',
 			icon: 'git-branch',
@@ -89,6 +88,16 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
 			route: { to: { name: VIEWS.LDAP_SETTINGS } },
+		},
+		{
+			id: 'settings-provisioning',
+			icon: 'toolbox',
+			label: i18n.baseText('settings.provisioning.title'),
+			position: 'top',
+			available:
+				canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS) &&
+				settingsStore.isEnterpriseFeatureEnabled.provisioning,
+			route: { to: { name: VIEWS.PROVISIONING_SETTINGS } },
 		},
 		{
 			id: 'settings-workersview',

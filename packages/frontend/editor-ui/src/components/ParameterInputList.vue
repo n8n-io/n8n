@@ -33,7 +33,7 @@ import {
 	MODAL_CONFIRM,
 	WAIT_NODE_TYPE,
 } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { captureException } from '@sentry/vue';

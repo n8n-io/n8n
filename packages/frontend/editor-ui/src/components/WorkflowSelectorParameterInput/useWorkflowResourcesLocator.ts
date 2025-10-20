@@ -5,7 +5,7 @@ import { VIEWS } from '@/constants';
 
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import type { NodeParameterValue } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 export function useWorkflowResourcesLocator(router: Router) {

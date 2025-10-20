@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import InputPanel from '@/components/InputPanel.vue';
+import InputPanel from '@/features/nodes/ndv/components/InputPanel.vue';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import type { Workflow } from 'n8n-workflow';
 import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
 import { useStyles } from '@/composables/useStyles';

@@ -243,13 +243,6 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Local Shell',
-				name: 'localShell',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to allow the model to execute shell commands in a local environment',
-			},
-			{
 				displayName: 'Code Interpreter',
 				name: 'codeInterpreter',
 				type: 'boolean',
@@ -787,8 +780,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const returnData: INodeExecutionData[] = [];
 
 	if (simplify) {
+		const messages = response.output.filter((item) => item.type === 'message');
 		returnData.push({
-			json: response.output as unknown as IDataObject,
+			json: {
+				output: messages as unknown as IDataObject,
+			},
 			pairedItem: { item: i },
 		});
 	} else {

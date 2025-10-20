@@ -1,7 +1,7 @@
 import { renderComponent } from '@/__tests__/render';
 import InlineExpressionTip from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionTip.vue';
 import { FIELDS_SECTION } from '@/features/shared/editors/plugins/codemirror/completions/constants';
-import type { useNDVStore } from '@/stores/ndv.store';
+import type { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { createTestingPinia } from '@pinia/testing';
@@ -10,7 +10,7 @@ import { waitFor } from '@testing-library/vue';
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockCompletionResult: Partial<CompletionResult>;
 
-vi.mock('@/stores/ndv.store', () => {
+vi.mock('@/features/nodes/ndv/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
 	};

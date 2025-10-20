@@ -3,7 +3,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { forceParse } from '@/utils/forceParse';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';

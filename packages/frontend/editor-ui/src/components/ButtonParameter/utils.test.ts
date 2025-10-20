@@ -23,7 +23,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/stores/ndv.store', () => ({
+vi.mock('@/features/nodes/ndv/ndv.store', () => ({
 	useNDVStore: () => ({
 		pushRef: 'mockNdvPushRef',
 	}),

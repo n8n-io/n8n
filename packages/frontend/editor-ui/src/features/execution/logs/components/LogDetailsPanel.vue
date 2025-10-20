@@ -19,7 +19,7 @@ import {
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';

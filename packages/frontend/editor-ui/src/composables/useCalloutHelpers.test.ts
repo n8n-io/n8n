@@ -5,7 +5,7 @@ import {
 	PrebuiltAgentTemplates,
 	SampleTemplates,
 } from '@/features/workflows/templates/utils/workflowSamples';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
 import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';

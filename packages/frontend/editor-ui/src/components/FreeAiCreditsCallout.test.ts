@@ -4,7 +4,7 @@ import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
@@ -32,7 +32,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
-vi.mock('@/stores/ndv.store', () => ({
+vi.mock('@/features/nodes/ndv/ndv.store', () => ({
 	useNDVStore: vi.fn(),
 }));
 

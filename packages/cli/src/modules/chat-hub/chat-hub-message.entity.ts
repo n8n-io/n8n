@@ -112,28 +112,6 @@ export class ChatHubMessage extends WithTimestamps {
 	responses?: Array<Relation<ChatHubMessage>>;
 
 	/**
-	 * Root message of a conversation turn (Human message + AI responses)
-	 */
-	@Column({ type: String })
-	turnId: string;
-
-	/**
-	 * Message that began the turn, probably from the human/user.
-	 */
-	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.turnMessages, {
-		onDelete: 'CASCADE',
-		nullable: true,
-	})
-	@JoinColumn({ name: 'turnId' })
-	turn?: Relation<ChatHubMessage> | null;
-
-	/**
-	 * All messages that are part of this turn (including the root message).
-	 */
-	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.turn)
-	turnMessages?: Array<Relation<ChatHubMessage>>;
-
-	/**
 	 * ID of the message that this message is a retry of (if applicable).
 	 */
 	@Column({ type: String, nullable: true })
@@ -154,12 +132,6 @@ export class ChatHubMessage extends WithTimestamps {
 	 */
 	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.retryOfMessage)
 	retries?: Array<Relation<ChatHubMessage>>;
-
-	/**
-	 * The nth time this message has been generated/retried within the turn (0 = first attempt).
-	 */
-	@Column({ type: 'int', default: 0 })
-	runIndex: number;
 
 	/**
 	 * ID of the message that this message is a revision/edit of (if applicable).
@@ -184,8 +156,8 @@ export class ChatHubMessage extends WithTimestamps {
 	revisions?: Array<Relation<ChatHubMessage>>;
 
 	/**
-	 * State of the message, e.g. 'active', 'superseded'.
+	 * State of the message, e.g. 'success', 'error'.
 	 */
-	@Column({ type: 'varchar', length: 16, default: 'active' })
+	@Column({ type: 'varchar', length: 16, default: 'success' })
 	state: ChatHubMessageState;
 }

@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ParameterInput from '@/components/ParameterInput.vue';
-import type { useNDVStore } from '@/stores/ndv.store';
+import type { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
@@ -63,7 +63,7 @@ beforeEach(() => {
 	mockCompletionResult = {};
 });
 
-vi.mock('@/stores/ndv.store', () => {
+vi.mock('@/features/nodes/ndv/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
 	};

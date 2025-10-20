@@ -14,11 +14,11 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Create a Model Response',
+				name: 'Generate a Model Response',
 				value: 'response',
-				action: 'Create a model response',
+				action: 'Generate a model response',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period, n8n-nodes-base/node-param-description-missing-final-period
-				description: 'Create a model response with GPT 3, 4, 5, etc. using Responses API',
+				description: 'Generate a model response with GPT 3, 4, 5, etc. using Responses API',
 			},
 			{
 				name: 'Generate a Chat Completion',

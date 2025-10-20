@@ -9,6 +9,7 @@ import {
 	type ChatMessageId,
 	type ChatSessionId,
 	ChatHubConversationModel,
+	ChatHubMessageState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -26,6 +27,7 @@ import type { Response } from 'express';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
 	OperationalError,
 	type IConnections,
 	type INode,
@@ -48,6 +50,7 @@ import type {
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
+import { getMaxContextWindowTokens } from './context-limits';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -275,20 +278,6 @@ export class ChatHubService {
 		);
 
 		const { manager } = this.projectRepository;
-		const existing = await this.workflowRepository.findOneBy({ id: sessionId });
-		if (existing) {
-			return {
-				workflowData: {
-					...existing,
-					nodes,
-					connections,
-					versionId: uuidv4(),
-				},
-				startNodes,
-				triggerToStartFrom,
-			};
-		}
-
 		return await manager.transaction(async (trx) => {
 			const project = await this.projectRepository.getPersonalProjectForUser(user.id, trx);
 			if (!project) {
@@ -297,7 +286,6 @@ export class ChatHubService {
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
-			newWorkflow.id = sessionId;
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
@@ -324,6 +312,18 @@ export class ChatHubService {
 				triggerToStartFrom,
 			};
 		});
+	}
+
+	private async deleteChatWorkflow(workflowId: string): Promise<void> {
+		await this.workflowRepository.delete(workflowId);
+	}
+
+	private getErrorMessage(execution: IExecutionResponse): string | undefined {
+		if (execution.data.resultData.error) {
+			return execution.data.resultData.error.description ?? execution.data.resultData.error.message;
+		}
+
+		return undefined;
 	}
 
 	private getAIOutput(execution: IExecutionResponse): string | undefined {
@@ -374,8 +374,7 @@ export class ChatHubService {
 		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 		const history = this.buildMessageHistory(messages, payload.previousMessageId);
 
-		const turnId = messageId;
-		await this.saveHumanMessage(payload, user, turnId, payload.previousMessageId, selectedModel);
+		await this.saveHumanMessage(payload, user, payload.previousMessageId, selectedModel);
 
 		const workflow = await this.createChatWorkflow(
 			user,
@@ -386,16 +385,19 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
-		);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
@@ -417,27 +419,13 @@ export class ChatHubService {
 
 		// If the message to edit isn't the original message, we want to point to the original message
 		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
-		const otherRuns = (session.messages ?? []).filter(
-			(m) => m.revisionOfMessageId === revisionOfMessageId,
-		);
-		const runIndex = otherRuns.length + 1;
 
-		await this.messageRepository.updateChatMessage(revisionOfMessageId, { state: 'replaced' });
-		for (const run of otherRuns) {
-			if (run.state === 'active') {
-				await this.messageRepository.updateChatMessage(run.id, { state: 'replaced' });
-			}
-		}
-
-		const turnId = payload.messageId;
 		await this.saveHumanMessage(
 			payload,
 			user,
-			turnId,
 			messageToEdit.previousMessageId,
 			selectedModel,
 			revisionOfMessageId,
-			runIndex,
 		);
 
 		const workflow = await this.createChatWorkflow(
@@ -449,16 +437,19 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
-		);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
@@ -491,6 +482,10 @@ export class ChatHubService {
 		}
 
 		// Rerun the workflow, replaying the last human message
+
+		// If the message being retried is itself a retry, we want to point to the original message
+		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
+
 		const workflow = await this.createChatWorkflow(
 			user,
 			session.id,
@@ -500,32 +495,20 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		// If the message being retried is itself a retry, we want to point to the original message
-		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
-		const otherRuns = (session.messages ?? []).filter(
-			(m) => m.retryOfMessageId === retryOfMessageId,
-		);
-		const runIndex = otherRuns.length + 1;
-
-		await this.messageRepository.updateChatMessage(retryOfMessageId, { state: 'replaced' });
-		for (const run of otherRuns) {
-			if (run.state === 'active') {
-				await this.messageRepository.updateChatMessage(run.id, { state: 'replaced' });
-			}
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				lastHumanMessage.id,
+				selectedModel,
+				retryOfMessageId,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
 		}
-
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			lastHumanMessage.id,
-			messageToRetry.turnId,
-			selectedModel,
-			retryOfMessageId,
-			runIndex,
-		);
 	}
 
 	private async executeChatWorkflow(
@@ -539,10 +522,8 @@ export class ChatHubService {
 		replyId: ChatMessageId,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		turnId: ChatMessageId,
 		selectedModel: ModelWithCredentials,
 		retryOfMessageId?: ChatMessageId,
-		runIndex?: number,
 	) {
 		const { workflowData, startNodes, triggerToStartFrom } = workflow;
 
@@ -576,18 +557,34 @@ export class ChatHubService {
 		if (!execution) {
 			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
 		}
+
+		if (!execution.status || execution.status !== 'success') {
+			const message = this.getErrorMessage(execution) ?? 'Error: Failed to generate a response';
+			await this.saveAIMessage({
+				id: replyId,
+				sessionId,
+				executionId: execution.id,
+				previousMessageId,
+				message,
+				selectedModel,
+				retryOfMessageId,
+				state: 'error',
+			});
+
+			throw new OperationalError(`Chat workflow execution failed: ${message}`);
+		}
+
 		const message = this.getAIOutput(execution) ?? 'Error: No response generated';
-		await this.saveAIMessage(
-			replyId,
+		await this.saveAIMessage({
+			id: replyId,
 			sessionId,
-			turnId,
-			execution.id,
+			executionId: execution.id,
 			previousMessageId,
 			message,
 			selectedModel,
 			retryOfMessageId,
-			runIndex,
-		);
+			state: 'success',
+		});
 	}
 
 	private prepareChatWorkflow(
@@ -617,6 +614,7 @@ export class ChatHubService {
 					text: "={{ $('When chat message received').item.json.chatInput }}",
 					options: {
 						enableStreaming: true,
+						maxTokensFromMemory: getMaxContextWindowTokens(model.provider, model.model),
 					},
 				},
 				type: AGENT_LANGCHAIN_NODE_TYPE,
@@ -680,21 +678,25 @@ export class ChatHubService {
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: 'main', index: 0 }]],
+				main: [
+					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
-				main: [[{ node: NODE_NAMES.AI_AGENT, type: 'main', index: 0 }]],
+				main: [[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [[{ node: NODE_NAMES.AI_AGENT, type: 'ai_languageModel', index: 0 }]],
+				ai_languageModel: [
+					[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
 			},
 			[NODE_NAMES.MEMORY]: {
 				ai_memory: [
 					[
-						{ node: NODE_NAMES.AI_AGENT, type: 'ai_memory', index: 0 },
-						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: 'ai_memory', index: 0 },
-						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: 'ai_memory', index: 0 },
+						{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
 					],
 				],
 			},
@@ -703,7 +705,7 @@ export class ChatHubService {
 					[
 						{
 							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -745,50 +747,53 @@ export class ChatHubService {
 	private async saveHumanMessage(
 		payload: HumanMessagePayload | EditMessagePayload,
 		user: User,
-		turnId: string,
 		previousMessageId: ChatMessageId | null,
 		selectedModel: ModelWithCredentials,
 		revisionOfMessageId?: ChatMessageId,
-		runIndex?: number,
 	) {
 		await this.messageRepository.createChatMessage({
 			id: payload.messageId,
 			sessionId: payload.sessionId,
 			type: 'human',
 			name: user.firstName || 'User',
-			state: 'active',
+			state: 'success',
 			content: payload.message,
-			turnId,
 			previousMessageId,
 			revisionOfMessageId,
-			runIndex,
 			...selectedModel,
 		});
 	}
 
-	private async saveAIMessage(
-		id: ChatMessageId,
-		sessionId: ChatSessionId,
-		turnId: ChatMessageId,
-		executionId: string,
-		previousMessageId: ChatMessageId,
-		message: string,
-		selectedModel: ModelWithCredentials,
-		retryOfMessageId?: ChatMessageId,
-		runIndex?: number,
-	) {
+	private async saveAIMessage({
+		id,
+		sessionId,
+		executionId,
+		previousMessageId,
+		message,
+		selectedModel,
+		retryOfMessageId,
+		state,
+	}: {
+		id: ChatMessageId;
+		sessionId: ChatSessionId;
+		executionId: string;
+		previousMessageId: ChatMessageId;
+		message: string;
+		selectedModel: ModelWithCredentials;
+		retryOfMessageId?: ChatMessageId;
+		editOfMessageId?: ChatMessageId;
+		state?: ChatHubMessageState;
+	}) {
 		await this.messageRepository.createChatMessage({
 			id,
 			sessionId,
-			turnId,
 			previousMessageId,
 			executionId: parseInt(executionId, 10),
 			type: 'ai',
 			name: 'AI',
-			state: 'active',
+			state,
 			content: message,
 			retryOfMessageId,
-			runIndex,
 			...selectedModel,
 		});
 	}
@@ -937,10 +942,8 @@ export class ChatHubService {
 			updatedAt: message.updatedAt.toISOString(),
 
 			previousMessageId: message.previousMessageId,
-			turnId: message.turnId,
 			retryOfMessageId: message.retryOfMessageId,
 			revisionOfMessageId: message.revisionOfMessageId,
-			runIndex: message.runIndex,
 		};
 	}
 

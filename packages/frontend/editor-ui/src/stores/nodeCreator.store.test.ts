@@ -16,7 +16,7 @@ import { createTestingPinia } from '@pinia/testing';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { useNDVStore } from './ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeCreatorStore } from './nodeCreator.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useWorkflowsStore } from './workflows.store';
