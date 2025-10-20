@@ -41,6 +41,7 @@ import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEditor.vue';
 
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
@@ -63,7 +64,7 @@ import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
 import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
@@ -246,6 +247,9 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const router = useRouter();
+
+const { runWorkflow } = useRunWorkflow({ router });
 
 const node = toRef(props, 'node');
 
@@ -1399,6 +1403,13 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
+function executeNode(nodeName: string) {
+	void runWorkflow({
+		destinationNode: nodeName,
+		source: 'schema-preview',
+	});
+}
+
 defineExpose({ enterEditMode });
 </script>
 
@@ -1744,7 +1755,13 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="!hasNodeRun && !(displaysMultipleNodes && (node?.disabled || hasPreviewSchema))"
+				v-else-if="
+					!hasNodeRun &&
+					!(
+						displaysMultipleNodes &&
+						(node?.disabled || hasPreviewSchema || workflowsStore.lastSuccessfulExecution)
+					)
+				"
 				:class="$style.center"
 			>
 				<slot name="node-not-run"></slot>
@@ -1939,7 +1956,14 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
+			<Suspense
+				v-else-if="
+					isSchemaView &&
+					((!hasNodeRun && workflowsStore.lastSuccessfulExecution) ||
+						hasNodeRun ||
+						hasPreviewSchema)
+				"
+			>
 				<LazyRunDataSchema
 					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"
@@ -1952,7 +1976,9 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
+					:preview-execution="workflowsStore.lastSuccessfulExecution"
 					@clear:search="onSearchClear"
+					@execute="executeNode"
 				/>
 			</Suspense>
 

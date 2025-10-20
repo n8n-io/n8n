@@ -15,12 +15,14 @@ const props = defineProps<{
 	info?: string;
 	nodeType?: INodeTypeDescription;
 	preview?: boolean;
+	lastSuccessfulPreview?: boolean;
 }>();
 
 const i18n = useI18n();
 const isTrigger = computed(() => Boolean(props.nodeType?.group.includes('trigger')));
 const emit = defineEmits<{
 	'click:toggle': [];
+	execute: [nodeName: string];
 }>();
 </script>
 
@@ -56,7 +58,23 @@ const emit = defineEmits<{
 			data-test-id="schema-preview-warning"
 			@click.stop
 		>
-			<I18nT keypath="dataMapping.schemaView.preview" scope="global">
+			<I18nT
+				v-if="lastSuccessfulPreview"
+				keypath="dataMapping.schemaView.previewLastExecution"
+				scope="global"
+			>
+				<template #execute>
+					<N8nLink @click="() => emit('execute', title)" size="small" bold>
+						{{ i18n.baseText('dataMapping.schemaView.previewLastExecution.executePreviousNodes') }}
+					</N8nLink>
+				</template>
+			</I18nT>
+			<I18nT v-else keypath="dataMapping.schemaView.preview" scope="global">
+				<template #execute>
+					<N8nLink @click="() => emit('execute', title)" size="small" bold>
+						{{ i18n.baseText('dataMapping.schemaView.preview.executeNode') }}
+					</N8nLink>
+				</template>
 				<template #link>
 					<N8nLink :to="SCHEMA_PREVIEW_DOCS_URL" size="small" bold>
 						{{ i18n.baseText('generic.learnMore') }}

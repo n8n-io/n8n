@@ -239,6 +239,7 @@ export type SchemaNode = {
 	hasBinary: boolean;
 	runIndex: number;
 	isDataEmpty: boolean;
+	lastSuccessfulPreview: boolean;
 };
 
 export type RenderItem = {
@@ -268,6 +269,7 @@ export type RenderHeader = {
 	info?: string;
 	nodeType?: INodeTypeDescription;
 	preview?: boolean;
+	lastSuccessfulPreview?: boolean;
 };
 
 export type RenderIcon = {
@@ -358,6 +360,7 @@ export const useFlattenSchema = () => {
 		prefix = '',
 		level = 0,
 		preview,
+		lastSuccessfulPreview,
 		truncateLimit,
 	}: {
 		isDataEmpty: boolean;
@@ -369,6 +372,7 @@ export const useFlattenSchema = () => {
 		prefix?: string;
 		level?: number;
 		preview?: boolean;
+		lastSuccessfulPreview?: boolean;
 		truncateLimit: number;
 	}): Renders[] => {
 		// only show empty item for the first level
@@ -418,6 +422,7 @@ export const useFlattenSchema = () => {
 							prefix: itemPrefix,
 							level: level + 1,
 							preview,
+							lastSuccessfulPreview,
 							truncateLimit,
 						});
 					})
@@ -461,6 +466,7 @@ export const useFlattenSchema = () => {
 				info: additionalInfo(item.node),
 				type: 'header',
 				preview: item.preview,
+				lastSuccessfulPreview: item.lastSuccessfulPreview,
 			});
 
 			if (closedNodes.value.has(item.node.name)) {
@@ -489,6 +495,7 @@ export const useFlattenSchema = () => {
 					nodeType: item.node.type,
 					nodeName: item.node.name,
 					preview: item.preview,
+					lastSuccessfulPreview: item.lastSuccessfulPreview,
 					truncateLimit,
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
