@@ -165,6 +165,7 @@ export interface FrontendSettings {
 		advancedPermissions: boolean;
 		apiKeyScopes: boolean;
 		workflowDiffs: boolean;
+		provisioning: boolean;
 		projects: {
 			team: {
 				limit: number;
