@@ -1,60 +1,54 @@
 <script setup lang="ts">
-import type {
-	IRunDataDisplayMode,
-	IUpdateInformation,
-	MainPanelType,
-	NodePanelType,
-	TargetItem,
-} from '@/Interface';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
-import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import type { IRunData, Workflow, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
+import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
+import type { NodePanelType } from '@/features/nodes/ndv/ndv.types';
 
-import NDVHeader from '@/components/NDVHeader.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
+import NDVDraggablePanels from '../components/NDVDraggablePanels.vue';
 
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useKeybindings } from '@/composables/useKeybindings';
-import { useMessage } from '@/composables/useMessage';
-import { useNdvLayout } from '@/composables/useNdvLayout';
-import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { usePinnedData } from '@/composables/usePinnedData';
-import { useStyles } from '@/composables/useStyles';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import OutputPanel from '../components/OutputPanel.vue';
+import InputPanel from '../components/InputPanel.vue';
+import TriggerPanel from '../components/TriggerPanel.vue';
 import {
 	APP_MODALS_ELEMENT_ID,
+	BASE_NODE_SURVEY_URL,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import type { DataPinningDiscoveryEvent } from '@/event-bus';
 import { dataPinningEventBus } from '@/event-bus';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
+import { ndvEventBus } from '@/features/nodes/ndv/ndv.eventBus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { getNodeIconSource } from '@/utils/nodeIcon';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useMessage } from '@/composables/useMessage';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
-import InputPanel from './InputPanel.vue';
-import OutputPanel from './OutputPanel.vue';
-import PanelDragButtonV2 from './PanelDragButtonV2.vue';
-import TriggerPanel from './TriggerPanel.vue';
+import { useStyles } from '@/composables/useStyles';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
-import { N8nResizeWrapper } from '@n8n/design-system';
-import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
+import { ElDialog } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
-	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
-	renameNode: [nodeName: string];
+	openConnectionNodeCreator: [
+		nodeTypeName: string,
+		connectionType: NodeConnectionType,
+		connectionIndex?: number,
+	];
 	stopExecution: [];
 }>();
 
@@ -62,6 +56,7 @@ const props = withDefaults(
 	defineProps<{
 		workflowObject: Workflow;
 		readOnly?: boolean;
+		renaming?: boolean;
 		isProductionExecutionPreview?: boolean;
 	}>(),
 	{
@@ -77,7 +72,6 @@ const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
-const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
@@ -88,9 +82,9 @@ const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const runInputIndex = ref(-1);
-const runOutputIndex = ref(-1);
-const isLinkingEnabled = ref(true);
+const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const selectedInput = ref<string | undefined>();
+const isLinkingEnabled = ref(true);
 const triggerWaitingWarningEnabled = ref(false);
 const isDragging = ref(false);
 const mainPanelPosition = ref(0);
@@ -100,11 +94,9 @@ const avgOutputRowHeight = ref(0);
 const isInputPaneActive = ref(false);
 const isOutputPaneActive = ref(false);
 const isPairedItemHoveringEnabled = ref(true);
-const dialogRef = ref<HTMLDialogElement>();
-const containerRef = useTemplateRef('containerRef');
-const mainPanelRef = useTemplateRef('mainPanelRef');
 
 // computed
+
 const pushRef = computed(() => ndvStore.pushRef);
 
 const activeNodeType = computed(() => {
@@ -114,9 +106,14 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const { docsUrl } = useNodeDocsUrl({ nodeType: activeNodeType });
-
-const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+const showTriggerWaitingWarning = computed(
+	() =>
+		triggerWaitingWarningEnabled.value &&
+		!!activeNodeType.value &&
+		!activeNodeType.value.group.includes('trigger') &&
+		workflowsStore.isWorkflowRunning &&
+		workflowsStore.executionWaitingForWebhook,
+);
 
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === null) {
@@ -134,24 +131,19 @@ const workflowRunData = computed(() => {
 
 const parentNodes = computed(() => {
 	if (activeNode.value) {
-		return (
-			props.workflowObject
-				.getParentNodesByDepth(activeNode.value.name, 1)
-				.map(({ name }) => name) || []
-		);
-	} else {
-		return [];
+		return props.workflowObject.getParentNodesByDepth(activeNode.value.name, 1);
 	}
+	return [];
 });
 
-const parentNode = computed(() => {
-	for (const parentNodeName of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parentNodeName]) {
-			return parentNodeName;
+const parentNode = computed<IConnectedNode | undefined>(() => {
+	for (const parent of parentNodes.value) {
+		if (workflowsStore?.pinnedWorkflowData?.[parent.name]) {
+			return parent;
 		}
 
-		if (workflowRunData.value?.[parentNodeName]) {
-			return parentNodeName;
+		if (workflowRunData.value?.[parent.name]) {
+			return parent;
 		}
 	}
 	return parentNodes.value[0];
@@ -181,7 +173,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		)?.[0];
 		return connectedOutputNode;
 	}
-	return selectedInput.value || parentNode.value;
+	return selectedInput.value ?? parentNode.value?.name;
 });
 
 const inputNode = computed(() => {
@@ -286,12 +278,23 @@ const maxInputRun = computed(() => {
 	return 0;
 });
 
+const connectedCurrentNodeOutputs = computed(() => {
+	return parentNodes.value.find(({ name }) => name === inputNodeName.value)?.indicies;
+});
+
 const inputRun = computed(() => {
 	if (isLinkingEnabled.value && maxOutputRun.value === maxInputRun.value) {
 		return outputRun.value;
 	}
-	if (runInputIndex.value === -1) {
-		return maxInputRun.value;
+	const currentInputNodeName = inputNodeName.value;
+	if (runInputIndex.value === -1 && currentInputNodeName) {
+		return (
+			connectedCurrentNodeOutputs.value
+				?.map((outputIndex) =>
+					nodeHelpers.getLastRunIndexWithData(currentInputNodeName, outputIndex),
+				)
+				.find((runIndex) => runIndex !== -1) ?? maxInputRun.value
+		);
 	}
 
 	return Math.min(runInputIndex.value, maxInputRun.value);
@@ -303,13 +306,20 @@ const canLinkRuns = computed(
 
 const linked = computed(() => isLinkingEnabled.value && canLinkRuns.value);
 
-const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
+const featureRequestUrl = computed(() => {
+	if (!activeNodeType.value) {
+		return '';
+	}
+	return `${BASE_NODE_SURVEY_URL}${activeNodeType.value.name}`;
+});
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
-const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
+const blockUi = computed(
+	() => workflowsStore.isWorkflowRunning || isExecutionWaitingForWebhook.value,
+);
 
 const foreignCredentials = computed(() =>
 	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
@@ -321,34 +331,8 @@ const inputPanelDisplayMode = computed(() => ndvStore.inputPanelDisplayMode);
 
 const outputPanelDisplayMode = computed(() => ndvStore.outputPanelDisplayMode);
 
-const hasInputPanel = computed(() => !isTriggerNode.value || showTriggerPanel.value);
-
-const supportedResizeDirections = computed<Array<'left' | 'right'>>(() =>
-	hasInputPanel.value ? ['left', 'right'] : ['right'],
-);
-
-const nodeSettingsProps = computed(() => ({
-	eventBus: settingsEventBus,
-	dragging: isDragging.value,
-	pushRef: pushRef.value,
-	nodeType: activeNodeType.value,
-	foreignCredentials: foreignCredentials.value,
-	readOnly: props.readOnly,
-	blockUI: blockUi.value && showTriggerPanel.value,
-	executable: !props.readOnly,
-	inputSize: inputSize.value,
-	isNdvV2: true,
-}));
-
-const currentNodePaneType = computed((): MainPanelType => {
-	if (!hasInputPanel.value) return 'inputless';
-	return activeNodeType.value?.parameterPane ?? 'regular';
-});
-
-const { containerWidth, onDrag, onResize, onResizeEnd, panelWidthPercentage, panelWidthPixels } =
-	useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
-
 //methods
+
 const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
 };
@@ -409,23 +393,40 @@ const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null)
 	ndvStore.setHoveringItem(item);
 };
 
-const onDragEnd = () => {
-	onResizeEnd();
+const onFeatureRequestClick = () => {
+	window.open(featureRequestUrl.value, '_blank');
+	if (activeNode.value) {
+		telemetry.track('User clicked ndv link', {
+			node_type: activeNode.value.type,
+			workflow_id: workflowsStore.workflowId,
+			push_ref: pushRef.value,
+			pane: NodeConnectionTypes.Main,
+			type: 'i-wish-this-node-would',
+		});
+	}
+};
+
+const onDragEnd = (e: { windowWidth: number; position: number }) => {
 	isDragging.value = false;
 	telemetry.track('User moved parameters pane', {
 		// example method for tracking
-		window_width: containerWidth.value,
+		window_width: e.windowWidth,
 		start_position: mainPanelPosition.value,
-		// TODO:
-		// end_position: mainPanelDimensions.value.relativeLeft,
+		end_position: e.position,
 		node_type: activeNodeType.value ? activeNodeType.value.name : '',
 		push_ref: pushRef.value,
 		workflow_id: workflowsStore.workflowId,
 	});
+	mainPanelPosition.value = e.position;
 };
 
-const onDragStart = () => {
+const onDragStart = (e: { position: number }) => {
 	isDragging.value = true;
+	mainPanelPosition.value = e.position;
+};
+
+const onPanelsInit = (e: { position: number }) => {
+	mainPanelPosition.value = e.position;
 };
 
 const onLinkRunToOutput = () => {
@@ -441,7 +442,7 @@ const onUnlinkRun = (pane: string) => {
 
 const onNodeExecute = () => {
 	setTimeout(() => {
-		if (!activeNode.value || !workflowRunning.value) {
+		if (!activeNode.value || !workflowsStore.isWorkflowRunning) {
 			return;
 		}
 		triggerWaitingWarningEnabled.value = true;
@@ -462,17 +463,25 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	runOutputIndex.value = runInputIndex.value;
+	ndvStore.setOutputRunIndex(runInputIndex.value);
 	isLinkingEnabled.value = true;
 	trackLinking('input');
+};
+
+const valueChanged = (parameterData: IUpdateInformation) => {
+	emit('valueChanged', parameterData);
 };
 
 const onSwitchSelectedNode = (nodeTypeName: string) => {
 	emit('switchSelectedNode', nodeTypeName);
 };
 
-const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: NodeConnectionType) => {
-	emit('openConnectionNodeCreator', nodeTypeName, connectionType);
+const onOpenConnectionNodeCreator = (
+	nodeTypeName: string,
+	connectionType: NodeConnectionType,
+	connectionIndex: number = 0,
+) => {
+	emit('openConnectionNodeCreator', nodeTypeName, connectionType, connectionIndex);
 };
 
 const close = async () => {
@@ -513,8 +522,6 @@ const close = async () => {
 	ndvStore.resetNDVPushRef();
 };
 
-useKeybindings({ Escape: close });
-
 const trackRunChange = (run: number, pane: string) => {
 	telemetry.track('User changed ndv run dropdown', {
 		push_ref: pushRef.value,
@@ -525,14 +532,14 @@ const trackRunChange = (run: number, pane: string) => {
 };
 
 const onRunOutputIndexChange = (run: number) => {
-	runOutputIndex.value = run;
+	ndvStore.setOutputRunIndex(run);
 	trackRunChange(run, 'output');
 };
 
 const onRunInputIndexChange = (run: number) => {
 	runInputIndex.value = run;
 	if (linked.value) {
-		runOutputIndex.value = run;
+		ndvStore.setOutputRunIndex(run);
 	}
 	trackRunChange(run, 'input');
 };
@@ -581,8 +588,8 @@ const unregisterKeyboardListener = () => {
 	document.removeEventListener('keydown', onKeyDown, true);
 };
 
-const onRename = (name: string) => {
-	emit('renameNode', name);
+const setSelectedInput = (value: string | undefined) => {
+	selectedInput.value = value;
 };
 
 const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode) => {
@@ -590,19 +597,19 @@ const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode)
 };
 
 //watchers
+
 watch(
 	activeNode,
 	(node, oldNode) => {
 		if (node && !oldNode) {
 			registerKeyboardListener();
-			dialogRef.value?.show();
 		} else if (!node) {
 			unregisterKeyboardListener();
 		}
 
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
-			runOutputIndex.value = -1;
+			ndvStore.setOutputRunIndex(-1);
 			isLinkingEnabled.value = true;
 			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
@@ -634,8 +641,8 @@ watch(
 						parameters_pane_position: mainPanelPosition.value,
 						input_first_connector_runs: maxInputRun.value,
 						output_first_connector_runs: maxOutputRun.value,
-						selected_view_inputs: isTriggerNode.value ? 'trigger' : ndvStore.inputPanelDisplayMode,
-						selected_view_outputs: ndvStore.outputPanelDisplayMode,
+						selected_view_inputs: isTriggerNode.value ? 'trigger' : inputPanelDisplayMode.value,
+						selected_view_outputs: outputPanelDisplayMode.value,
 						input_connectors: parentNodes.value.length,
 						output_connectors: outgoingConnections?.main?.length,
 						input_displayed_run_index: inputRun.value,
@@ -656,7 +663,7 @@ watch(
 );
 
 watch(maxOutputRun, () => {
-	runOutputIndex.value = -1;
+	ndvStore.setOutputRunIndex(-1);
 });
 
 watch(maxInputRun, () => {
@@ -669,284 +676,250 @@ watch(inputNodeName, (nodeName) => {
 	}, 0);
 });
 
-watch(inputRun, (run) => {
+watch(inputRun, (inputRun) => {
 	setTimeout(() => {
-		ndvStore.setInputRunIndex(run);
+		ndvStore.setInputRunIndex(inputRun);
 	}, 0);
 });
 
-watch(mainPanelRef, (mainPanel) => {
-	if (!mainPanel) return;
-
-	// Based on https://github.com/unovue/reka-ui/blob/v2/packages/core/src/FocusScope/utils.ts
-	// Should use FocusScope here from Reka UI when we have it
-	function getTabbableCandidates(element: HTMLElement) {
-		const nodes: HTMLElement[] = [];
-		const walker = document.createTreeWalker(element, NodeFilter.SHOW_ELEMENT, {
-			acceptNode: (node: HTMLInputElement) => {
-				const isHiddenInput = node.tagName === 'INPUT' && node.type === 'hidden';
-				if (node.disabled || node.hidden || isHiddenInput) return NodeFilter.FILTER_SKIP;
-				// `.tabIndex` is not the same as the `tabindex` attribute. It works on the
-				// runtime's understanding of tabbability, so this automatically accounts
-				// for any kind of element that could be tabbed to.
-				return node.tabIndex >= 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
-			},
-		});
-		while (walker.nextNode()) nodes.push(walker.currentNode as HTMLElement);
-		// we do not take into account the order of nodes with positive `tabIndex` as it
-		// hinders accessibility to have tab order different from visual order.
-		return nodes;
-	}
-
-	const firstFocusableElement = getTabbableCandidates(mainPanel)[0];
-	if (firstFocusableElement) {
-		firstFocusableElement.focus();
-	}
-});
-
 onMounted(() => {
-	dialogRef.value?.show();
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.on('updateInputNodeName', setSelectedInput);
 });
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.off('updateInputNodeName', setSelectedInput);
 	unregisterKeyboardListener();
 });
 </script>
 
 <template>
-	<Teleport v-if="activeNode && !isActiveStickyNode" :to="`#${APP_MODALS_ELEMENT_ID}`">
-		<div
-			data-test-id="ndv-backdrop"
-			:class="$style.backdrop"
-			:style="{ zIndex: APP_Z_INDEXES.NDV }"
-			@click="close"
-		></div>
-
-		<dialog
-			ref="dialogRef"
-			open
-			aria-modal="true"
-			data-test-id="ndv"
-			:class="$style.dialog"
-			:style="{ zIndex: APP_Z_INDEXES.NDV }"
+	<ElDialog
+		id="ndv"
+		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
+		:before-close="close"
+		:show-close="false"
+		class="data-display-wrapper ndv-wrapper"
+		overlay-class="data-display-overlay"
+		width="auto"
+		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+		data-test-id="ndv"
+		:z-index="APP_Z_INDEXES.NDV"
+	>
+		<N8nTooltip
+			placement="bottom-start"
+			:visible="showTriggerWaitingWarning"
+			:disabled="!showTriggerWaitingWarning"
 		>
-			<NDVFloatingNodes :root-node="activeNode" @switch-selected-node="onSwitchSelectedNode" />
-			<div ref="containerRef" :class="$style.container">
-				<NDVHeader
-					:class="$style.header"
-					:node-name="activeNode.name"
-					:node-type-name="
-						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name
-					"
-					:icon="getNodeIconSource(activeNodeType ?? activeNode.type)"
-					:docs-url="docsUrl"
-					@close="close"
-					@rename="onRename"
-				/>
-				<main :class="$style.main">
-					<div
-						v-if="hasInputPanel"
-						:class="[$style.column, $style.dataColumn]"
-						:style="{ width: `${panelWidthPercentage.left}%` }"
-					>
-						<TriggerPanel
-							v-if="showTriggerPanel"
-							:node-name="activeNode.name"
-							:push-ref="pushRef"
-							:class="$style.input"
-							@execute="onNodeExecute"
-							@activate="onWorkflowActivate"
-						/>
-						<InputPanel
-							v-else-if="!isTriggerNode"
-							:workflow-object="workflowObject"
-							:can-link-runs="canLinkRuns"
-							:run-index="inputRun"
-							:linked-runs="linked"
-							:active-node-name="activeNode.name"
-							:current-node-name="inputNodeName"
-							:push-ref="pushRef"
-							:read-only="readOnly || hasForeignCredential"
-							:is-production-execution-preview="isProductionExecutionPreview"
-							:search-shortcut="isInputPaneActive ? '/' : undefined"
-							:display-mode="inputPanelDisplayMode"
-							:class="$style.input"
-							:is-mapping-onboarded="ndvStore.isMappingOnboarded"
-							:focused-mappable-input="ndvStore.focusedMappableInput"
-							@activate-pane="activateInputPane"
-							@link-run="onLinkRunToInput"
-							@unlink-run="() => onUnlinkRun('input')"
-							@run-change="onRunInputIndexChange"
-							@open-settings="openSettings"
-							@change-input-node="onInputNodeChange"
-							@execute="onNodeExecute"
-							@table-mounted="onInputTableMounted"
-							@item-hover="onInputItemHover"
-							@search="onSearch"
-							@display-mode-change="handleChangeDisplayMode('input', $event)"
-						/>
-					</div>
-
-					<N8nResizeWrapper
-						:width="panelWidthPixels.main"
-						:min-width="260"
-						:supported-directions="supportedResizeDirections"
-						:grid-size="8"
-						:class="$style.column"
-						:style="{ width: `${panelWidthPercentage.main}%` }"
-						outset
-						@resize="onResize"
-						@resizestart="onDragStart"
-						@resizeend="onDragEnd"
-					>
-						<div ref="mainPanelRef" :class="$style.main">
-							<PanelDragButtonV2
-								v-if="hasInputPanel"
-								:class="$style.draggable"
-								:can-move-left="true"
-								:can-move-right="true"
-								@drag="onDrag"
-								@dragstart="onDragStart"
-								@dragend="onDragEnd"
-							/>
-							<NodeSettings
-								v-bind="nodeSettingsProps"
-								:class="$style.settings"
-								@execute="onNodeExecute"
-								@stop-execution="onStopExecution"
-								@activate="onWorkflowActivate"
-								@switch-selected-node="onSwitchSelectedNode"
-								@open-connection-node-creator="onOpenConnectionNodeCreator"
-							/>
-						</div>
-					</N8nResizeWrapper>
-
-					<div
-						:class="[$style.column, $style.dataColumn]"
-						:style="{ width: `${panelWidthPercentage.right}%` }"
-					>
-						<OutputPanel
-							data-test-id="output-panel"
-							:workflow-object="workflowObject"
-							:can-link-runs="canLinkRuns"
-							:run-index="outputRun"
-							:linked-runs="linked"
-							:push-ref="pushRef"
-							:is-read-only="readOnly || hasForeignCredential"
-							:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
-							:is-production-execution-preview="isProductionExecutionPreview"
-							:is-pane-active="isOutputPaneActive"
-							:display-mode="outputPanelDisplayMode"
-							:class="$style.output"
-							@activate-pane="activateOutputPane"
-							@link-run="onLinkRunToOutput"
-							@unlink-run="() => onUnlinkRun('output')"
-							@run-change="onRunOutputIndexChange"
-							@open-settings="openSettings"
-							@table-mounted="onOutputTableMounted"
-							@item-hover="onOutputItemHover"
-							@search="onSearch"
-							@execute="onNodeExecute"
-							@display-mode-change="handleChangeDisplayMode('output', $event)"
-						/>
-					</div>
-				</main>
+			<template #content>
+				<div :class="$style.triggerWarning">
+					{{ i18n.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
+				</div>
+			</template>
+			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
+				<N8nIcon icon="arrow-left" color="text-xlight" size="medium" />
+				<N8nText color="text-xlight" size="medium" :bold="true">
+					{{ i18n.baseText('ndv.backToCanvas') }}
+				</N8nText>
 			</div>
-		</dialog>
-	</Teleport>
+		</N8nTooltip>
+
+		<div
+			v-if="activeNode"
+			ref="container"
+			class="data-display"
+			data-test-id="ndv-modal"
+			tabindex="0"
+		>
+			<div :class="$style.modalBackground" @click="close"></div>
+			<NDVDraggablePanels
+				:key="activeNode.name"
+				:is-trigger-node="isTriggerNode"
+				:hide-input-and-output="activeNodeType === null"
+				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
+				:is-draggable="!isTriggerNode"
+				:has-double-width="activeNodeType?.parameterPane === 'wide'"
+				:node-type="activeNodeType"
+				@switch-selected-node="onSwitchSelectedNode"
+				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@close="close"
+				@init="onPanelsInit"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
+				<template v-if="showTriggerPanel || !isTriggerNode" #input>
+					<TriggerPanel
+						v-if="showTriggerPanel"
+						:node-name="activeNode.name"
+						:push-ref="pushRef"
+						@execute="onNodeExecute"
+						@activate="onWorkflowActivate"
+					/>
+					<InputPanel
+						v-else-if="!isTriggerNode"
+						:workflow-object="workflowObject"
+						:can-link-runs="canLinkRuns"
+						:run-index="inputRun"
+						:linked-runs="linked"
+						:active-node-name="activeNode.name"
+						:current-node-name="inputNodeName"
+						:push-ref="pushRef"
+						:read-only="readOnly || hasForeignCredential"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:search-shortcut="isInputPaneActive ? '/' : undefined"
+						:display-mode="inputPanelDisplayMode"
+						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+						:focused-mappable-input="ndvStore.focusedMappableInput"
+						@activate-pane="activateInputPane"
+						@link-run="onLinkRunToInput"
+						@unlink-run="() => onUnlinkRun('input')"
+						@run-change="onRunInputIndexChange"
+						@open-settings="openSettings"
+						@change-input-node="onInputNodeChange"
+						@execute="onNodeExecute"
+						@table-mounted="onInputTableMounted"
+						@item-hover="onInputItemHover"
+						@search="onSearch"
+						@display-mode-change="handleChangeDisplayMode('input', $event)"
+					/>
+				</template>
+				<template #output>
+					<OutputPanel
+						data-test-id="output-panel"
+						:workflow-object="workflowObject"
+						:can-link-runs="canLinkRuns"
+						:run-index="outputRun"
+						:linked-runs="linked"
+						:push-ref="pushRef"
+						:is-read-only="readOnly || hasForeignCredential"
+						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:is-pane-active="isOutputPaneActive"
+						:display-mode="outputPanelDisplayMode"
+						@activate-pane="activateOutputPane"
+						@link-run="onLinkRunToOutput"
+						@unlink-run="() => onUnlinkRun('output')"
+						@run-change="onRunOutputIndexChange"
+						@open-settings="openSettings"
+						@table-mounted="onOutputTableMounted"
+						@item-hover="onOutputItemHover"
+						@search="onSearch"
+						@display-mode-change="handleChangeDisplayMode('output', $event)"
+					/>
+				</template>
+				<template #main>
+					<NodeSettings
+						:event-bus="settingsEventBus"
+						:dragging="isDragging"
+						:push-ref="pushRef"
+						:foreign-credentials="foreignCredentials"
+						:read-only="readOnly"
+						:block-u-i="blockUi && showTriggerPanel"
+						:executable="!readOnly"
+						:input-size="inputSize"
+						@value-changed="valueChanged"
+						@execute="onNodeExecute"
+						@stop-execution="onStopExecution"
+						@activate="onWorkflowActivate"
+						@switch-selected-node="onSwitchSelectedNode"
+						@open-connection-node-creator="onOpenConnectionNodeCreator"
+					/>
+					<a
+						v-if="featureRequestUrl"
+						:class="$style.featureRequest"
+						target="_blank"
+						@click="onFeatureRequestClick"
+					>
+						<N8nIcon icon="lightbulb" />
+						{{ i18n.baseText('ndv.featureRequest') }}
+					</a>
+				</template>
+			</NDVDraggablePanels>
+		</div>
+	</ElDialog>
 </template>
 
-<style lang="scss" module>
-.backdrop {
-	position: absolute;
-	z-index: var(--z-index-ndv);
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background-color: var(--dialog--overlay--color--background--dark);
+<style lang="scss">
+.ndv-wrapper {
+	overflow: visible;
+	margin-top: 0;
 }
 
-.dialog {
-	position: absolute;
-	z-index: var(--z-index-ndv);
-	width: calc(100% - var(--spacing--2xl));
-	height: calc(100% - var(--spacing--2xl));
-	top: var(--spacing--lg);
-	left: var(--spacing--lg);
-	border: none;
-	background: none;
-	padding: 0;
-	margin: 0;
-	display: flex;
-	outline: none;
-}
-
-.container {
-	display: flex;
-	flex-direction: column;
-	flex-grow: 1;
-	background: var(--border-color);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	color: var(--color--text);
-	min-width: 0;
-}
-
-.main {
-	width: 100%;
-	flex-grow: 1;
-	display: flex;
-	align-items: stretch;
+.data-display-wrapper {
 	height: 100%;
-	min-height: 0;
-	position: relative;
-}
+	margin-top: var(--spacing--xl) !important;
+	margin-bottom: var(--spacing--xl) !important;
+	width: 100%;
+	background: none;
+	border: none;
 
-.column {
-	min-width: 0;
-
-	+ .column {
-		border-left: var(--border);
+	.el-dialog__header {
+		padding: 0 !important;
 	}
 
-	&:first-child > div {
-		border-bottom-left-radius: var(--radius--lg);
+	.el-dialog__body {
+		padding: 0 !important;
+		height: 100%;
+		min-height: 400px;
+		overflow: visible;
+		border-radius: 8px;
+	}
+}
+
+.data-display {
+	height: 100%;
+	width: 100%;
+	display: flex;
+}
+</style>
+
+<style lang="scss" module>
+$main-panel-width: 360px;
+
+.modalBackground {
+	height: 100%;
+	width: 100%;
+}
+
+.triggerWarning {
+	max-width: 180px;
+}
+
+.backToCanvas {
+	position: fixed;
+	top: var(--spacing--xs);
+	left: var(--spacing--lg);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+
+	span {
+		color: var(--ndv--back--color--text);
 	}
 
-	&:last-child {
-		border-bottom-right-radius: var(--radius--lg);
+	&:hover {
+		cursor: pointer;
 	}
 }
 
-.input,
-.output {
-	min-width: 280px;
+@media (min-width: $breakpoint-lg) {
+	.backToCanvas {
+		top: var(--spacing--xs);
+		left: var(--spacing--md);
+	}
 }
 
-.dataColumn {
-	overflow-x: auto;
-}
-
-.header {
-	border-bottom: var(--border);
-	border-top-left-radius: var(--radius--lg);
-	border-top-right-radius: var(--radius--lg);
-}
-
-.settings {
-	overflow: hidden;
-	flex-grow: 1;
-}
-
-.draggable {
-	--draggable-height: 18px;
+.featureRequest {
 	position: absolute;
-	top: calc(-1 * var(--draggable-height));
-	left: 50%;
-	transform: translateX(-50%);
-	height: var(--draggable-height);
+	bottom: var(--spacing--4xs);
+	left: calc(100% + var(--spacing--sm));
+	color: var(--feature-request--color--text);
+	font-size: var(--font-size--2xs);
+	white-space: nowrap;
+
+	* {
+		margin-right: var(--spacing--3xs);
+	}
 }
 </style>

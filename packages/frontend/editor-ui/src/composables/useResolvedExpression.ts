@@ -1,4 +1,4 @@
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
 

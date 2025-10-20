@@ -6,7 +6,7 @@ import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';

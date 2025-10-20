@@ -7,7 +7,7 @@ import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { isString } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { nonExistingJsonPath } from '@/constants';

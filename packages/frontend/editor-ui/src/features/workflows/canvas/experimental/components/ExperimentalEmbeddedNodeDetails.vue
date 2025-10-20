@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useVueFlow } from '@vue-flow/core';
