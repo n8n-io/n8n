@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
-import { INodeTypes } from 'n8n-workflow';
+// import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
@@ -17,18 +17,15 @@ type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: n
 
 @Service()
 export class AiWorkflowBuilderService {
-	private parsedNodeTypes: INodeTypeDescription[] = [];
-
 	private sessionManager: SessionManagerService;
 
 	constructor(
-		private readonly nodeTypes: INodeTypes,
+		private readonly parsedNodeTypes: INodeTypeDescription[],
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
 		private readonly instanceUrl?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 	) {
-		this.parsedNodeTypes = this.getNodeTypes();
 		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
 	}
 
@@ -124,52 +121,52 @@ export class AiWorkflowBuilderService {
 		}
 	}
 
-	private getNodeTypes(): INodeTypeDescription[] {
-		// These types are ignored because they tend to cause issues when generating workflows
-		const ignoredTypes = [
-			'@n8n/n8n-nodes-langchain.toolVectorStore',
-			'@n8n/n8n-nodes-langchain.documentGithubLoader',
-			'@n8n/n8n-nodes-langchain.code',
-		];
-		const nodeTypesKeys = Object.keys(this.nodeTypes.getKnownTypes());
-
-		const nodeTypes = nodeTypesKeys
-			.filter((nodeType) => !ignoredTypes.includes(nodeType))
-			.map((nodeName) => {
-				try {
-					return { ...this.nodeTypes.getByNameAndVersion(nodeName).description, name: nodeName };
-				} catch (error) {
-					this.logger?.error('Error getting node type', {
-						nodeName,
-						error: error instanceof Error ? error.message : 'Unknown error',
-					});
-					return undefined;
-				}
-			})
-			.filter(
-				(nodeType): nodeType is INodeTypeDescription =>
-					// We filter out hidden nodes, except for the Data Table node which has custom hiding logic
-					// See more details in DataTable.node.ts#L29
-					nodeType !== undefined &&
-					(nodeType.hidden !== true || nodeType.name === 'n8n-nodes-base.dataTable'),
-			)
-			.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
-				// If the node type is a tool, we need to find the corresponding non-tool node type
-				// and merge the two node types to get the full node type description.
-				const isTool = nodeType.name.endsWith('Tool');
-				if (!isTool) return nodeType;
-
-				const nonToolNode = nodeTypes.find((nt) => nt.name === nodeType.name.replace('Tool', ''));
-				if (!nonToolNode) return nodeType;
-
-				return {
-					...nonToolNode,
-					...nodeType,
-				};
-			});
-
-		return nodeTypes;
-	}
+	// private getNodeTypes(): INodeTypeDescription[] {
+	// 	// These types are ignored because they tend to cause issues when generating workflows
+	// 	const ignoredTypes = [
+	// 		'@n8n/n8n-nodes-langchain.toolVectorStore',
+	// 		'@n8n/n8n-nodes-langchain.documentGithubLoader',
+	// 		'@n8n/n8n-nodes-langchain.code',
+	// 	];
+	// 	const nodeTypesKeys = Object.keys(this.nodeTypes.getKnownTypes());
+	//
+	// 	const nodeTypes = nodeTypesKeys
+	// 		.filter((nodeType) => !ignoredTypes.includes(nodeType))
+	// 		.map((nodeName) => {
+	// 			try {
+	// 				return { ...this.nodeTypes.getByNameAndVersion(nodeName).description, name: nodeName };
+	// 			} catch (error) {
+	// 				this.logger?.error('Error getting node type', {
+	// 					nodeName,
+	// 					error: error instanceof Error ? error.message : 'Unknown error',
+	// 				});
+	// 				return undefined;
+	// 			}
+	// 		})
+	// 		.filter(
+	// 			(nodeType): nodeType is INodeTypeDescription =>
+	// 				// We filter out hidden nodes, except for the Data Table node which has custom hiding logic
+	// 				// See more details in DataTable.node.ts#L29
+	// 				nodeType !== undefined &&
+	// 				(nodeType.hidden !== true || nodeType.name === 'n8n-nodes-base.dataTable'),
+	// 		)
+	// 		.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
+	// 			// If the node type is a tool, we need to find the corresponding non-tool node type
+	// 			// and merge the two node types to get the full node type description.
+	// 			const isTool = nodeType.name.endsWith('Tool');
+	// 			if (!isTool) return nodeType;
+	//
+	// 			const nonToolNode = nodeTypes.find((nt) => nt.name === nodeType.name.replace('Tool', ''));
+	// 			if (!nonToolNode) return nodeType;
+	//
+	// 			return {
+	// 				...nonToolNode,
+	// 				...nodeType,
+	// 			};
+	// 		});
+	//
+	// 	return nodeTypes;
+	// }
 
 	private async getAgent(user: IUser, useDeprecatedCredentials = false) {
 		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(

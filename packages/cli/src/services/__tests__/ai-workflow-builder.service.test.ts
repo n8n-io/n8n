@@ -52,7 +52,6 @@ describe('WorkflowBuilderService', () => {
 		MockedAiAssistantClient.mockClear();
 
 		service = new WorkflowBuilderService(
-			mockNodeTypes,
 			mockLicense,
 			mockConfig,
 			mockLogger,
