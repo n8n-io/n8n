@@ -436,6 +436,7 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
+	PROVISIONING_SETTINGS = 'ProvisioningSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	MFA_VIEW = 'MfaView',
@@ -538,6 +539,7 @@ export const EnterpriseEditionFeature: Record<
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
 	ApiKeyScopes: 'apiKeyScopes',
+	Provisioning: 'provisioning',
 };
 
 export const MAIN_NODE_PANEL_WIDTH = 390;
