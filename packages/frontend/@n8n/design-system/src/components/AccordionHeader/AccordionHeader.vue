@@ -39,15 +39,15 @@ const toggle = () => {
 
 <style lang="scss" module>
 .container {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 }
 
 .header {
 	cursor: pointer;
 	display: flex;
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	justify-content: flex-start;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 .headerText {
@@ -56,10 +56,10 @@ const toggle = () => {
 
 .description {
 	display: flex;
-	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
 
 	b {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 </style>

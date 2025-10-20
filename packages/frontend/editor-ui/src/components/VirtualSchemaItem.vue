@@ -121,7 +121,7 @@ const emit = defineEmits<{
 	}
 
 	&.pill--past-execution {
-		border: 2px dashed var(--color-foreground-dark);
+		border: 2px dashed var(--color--foreground--shade-1);
 	}
 
 	&.pill--preview {

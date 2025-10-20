@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import type { IExecutionResponse, INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import Draggable from '@/components/Draggable.vue';
 import VirtualSchemaHeader from '@/components/VirtualSchemaHeader.vue';
 import VirtualSchemaItem from '@/components/VirtualSchemaItem.vue';

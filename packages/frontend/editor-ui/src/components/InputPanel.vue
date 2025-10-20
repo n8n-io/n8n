@@ -709,17 +709,17 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	max-width: 250px;
 
 	> * {
-		margin-bottom: var(--spacing-xs);
+		margin-bottom: var(--spacing--xs);
 	}
 }
 
 .noOutputDataSticky {
 	position: absolute;
 	bottom: 0;
-	border-top: var(--border-base);
+	border-top: var(--border);
 	max-width: 100% !important;
 	width: 100%;
-	padding-top: var(--spacing-s);
+	padding-top: var(--spacing--sm);
 	background-color: var(--color-ndvv2-run-data-background);
 }
 
@@ -729,7 +729,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	text-align: center;
 
 	> *:first-child {
-		margin-bottom: var(--spacing-m);
+		margin-bottom: var(--spacing--md);
 	}
 }
 

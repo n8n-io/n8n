@@ -19,13 +19,8 @@ import type {
 import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
-import type {
-	IExecutionResponse,
-	INodeUi,
-	IRunDataDisplayMode,
-	ITab,
-	NodePanelType,
-} from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import {
 	CORE_NODES_CATEGORY,

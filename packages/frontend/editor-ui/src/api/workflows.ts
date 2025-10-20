@@ -4,6 +4,12 @@ import type {
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type {
+	ChangeLocationSearchResponseItem,
+	FolderCreateResponse,
+	FolderTreeResponseItem,
+} from '@/features/core/folders/folders.types';
 import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
