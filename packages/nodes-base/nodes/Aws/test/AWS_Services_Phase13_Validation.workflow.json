@@ -1,0 +1,139 @@
+{
+	"name": "AWS Services Phase 13 Validation",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "start",
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"resource": "restApi",
+				"operation": "list"
+			},
+			"id": "apigateway-test",
+			"name": "Test AWS API Gateway",
+			"type": "n8n-nodes-base.awsApiGateway",
+			"typeVersion": 1,
+			"position": [460, 200],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stateMachine",
+				"operation": "list"
+			},
+			"id": "stepfunctions-test",
+			"name": "Test AWS Step Functions",
+			"type": "n8n-nodes-base.awsStepFunctions",
+			"typeVersion": 1,
+			"position": [460, 300],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stack",
+				"operation": "list"
+			},
+			"id": "cloudformation-test",
+			"name": "Test AWS CloudFormation",
+			"type": "n8n-nodes-base.awsCloudFormation",
+			"typeVersion": 1,
+			"position": [460, 400],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition"
+			},
+			"id": "merge-results",
+			"name": "Merge Results",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [680, 300]
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Test AWS API Gateway",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Test AWS Step Functions",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Test AWS CloudFormation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test AWS API Gateway": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test AWS Step Functions": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Test AWS CloudFormation": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"tags": [],
+	"triggerCount": 0,
+	"updatedAt": "2025-01-01T00:00:00.000Z",
+	"versionId": "1"
+}
