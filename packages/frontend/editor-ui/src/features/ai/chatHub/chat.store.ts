@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { CHAT_STORE, providerDisplayNames } from './constants';
+import { CHAT_STORE } from './constants';
 import { computed, ref, shallowRef } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -13,16 +13,16 @@ import {
 	deleteConversationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type {
-	ChatHubConversationModel,
-	ChatHubSendMessageRequest,
-	ChatModelsResponse,
-	ChatHubSessionDto,
-	ChatMessageId,
-	ChatSessionId,
-	ChatHubMessageDto,
+import {
+	type ChatHubConversationModel,
+	type ChatModelsResponse,
+	type ChatHubSessionDto,
+	type ChatMessageId,
+	type ChatSessionId,
+	type ChatHubMessageDto,
 } from '@n8n/api-types';
 import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import { createCredentials, createModelOrCredentialsMissingError } from './chat.utils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -184,7 +184,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			const b = messagesGraph[second];
 
 			// TODO: Disabled for now, messages retried don't get this at the FE before reload
-			// TOOD: Do we even need runIndex at all?
+			// TODO: Do we even need runIndex at all?
 			// if (a.runIndex !== b.runIndex) {
 			// 	return a.runIndex - b.runIndex;
 			// }
@@ -265,7 +265,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		const messages = linkMessages(Object.values(conversation.messages));
 
-		// TOOD: Do we need 'state' column at all?
+		// TODO: Do we need 'state' column at all?
 		const latestMessage = Object.values(messages)
 			.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
 			.pop();
@@ -376,17 +376,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel | null,
-		credentials: ChatHubSendMessageRequest['credentials'] | null,
+		credentialsMap: CredentialsMap,
 	) {
-		const messageId = uuidv4();
+		const promptId = uuidv4();
 		const replyId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.activeMessageChain.length
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
+		const credentialsId = model?.provider ? credentialsMap[model.provider] : null;
 
 		addMessage(sessionId, {
-			id: messageId,
+			id: promptId,
 			sessionId,
 			type: 'human',
 			name: 'User',
@@ -407,16 +408,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
-		if (!model || !credentials) {
+		if (!model || !credentialsId) {
 			lastError.value = {
 				sessionId,
-				promptId: messageId,
+				promptId,
 				replyId,
-				error: Error(
-					model
-						? `Set your credentials for ${providerDisplayNames[model.provider]} to start a conversation.`
-						: 'Select a model to start a conversation.',
-				),
+				error: createModelOrCredentialsMissingError(model),
 			};
 
 			return;
@@ -426,16 +423,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			rootStore.restApiContext,
 			{
 				model,
-				messageId,
+				messageId: promptId,
 				sessionId,
 				replyId,
 				message,
-				credentials,
+				credentials: createCredentials(model, credentialsId),
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, promptId, null),
 			onStreamDone,
-			(error) => onStreamError(sessionId, replyId, messageId, error),
+			(error) => onStreamError(sessionId, replyId, promptId, error),
 		);
 	}
 
@@ -443,17 +440,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessionId: ChatSessionId,
 		editId: ChatMessageId,
 		message: string,
-		model: ChatHubConversationModel,
-		credentials: ChatHubSendMessageRequest['credentials'],
+		model: ChatHubConversationModel | null,
+		credentialsMap: CredentialsMap,
 	) {
-		const messageId = uuidv4();
+		const promptId = uuidv4();
 		const replyId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.messages[editId]?.previousMessageId ?? null;
+		const credentialsId = model?.provider ? credentialsMap[model.provider] : null;
 
 		addMessage(sessionId, {
-			id: messageId,
+			id: promptId,
 			sessionId,
 			type: 'human',
 			name: 'User',
@@ -474,35 +472,58 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
+		if (!model || !credentialsId) {
+			lastError.value = {
+				sessionId,
+				promptId,
+				replyId,
+				error: createModelOrCredentialsMissingError(model),
+			};
+
+			return;
+		}
+
 		editMessageApi(
 			rootStore.restApiContext,
 			{
 				model,
-				messageId,
+				messageId: promptId,
 				sessionId,
 				replyId,
 				editId,
 				message,
-				credentials,
+				credentials: createCredentials(model, credentialsId),
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
+			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, promptId, null),
 			onStreamDone,
-			(error) => onStreamError(sessionId, replyId, messageId, error),
+			(error) => onStreamError(sessionId, replyId, promptId, error),
 		);
 	}
 
 	function regenerateMessage(
 		sessionId: ChatSessionId,
 		retryId: ChatMessageId,
-		model: ChatHubConversationModel,
-		credentials: ChatHubSendMessageRequest['credentials'],
+		model: ChatHubConversationModel | null,
+		credentialsMap: CredentialsMap,
 	) {
 		const replyId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
+		const credentialsId = model?.provider ? credentialsMap[model.provider] : null;
 
 		if (!previousMessageId) {
 			throw new Error('No previous message to base regeneration on');
+		}
+
+		if (!model || !credentialsId) {
+			lastError.value = {
+				sessionId,
+				promptId: previousMessageId,
+				replyId,
+				error: createModelOrCredentialsMissingError(model),
+			};
+
+			return;
 		}
 
 		regenerateMessageApi(
@@ -512,7 +533,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				sessionId,
 				retryId,
 				replyId,
-				credentials,
+				credentials: createCredentials(model, credentialsId),
 			},
 			(chunk: StructuredChunk) =>
 				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId),

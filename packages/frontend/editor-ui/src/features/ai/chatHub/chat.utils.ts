@@ -3,8 +3,10 @@ import {
 	type ChatHubConversationModel,
 	type ChatModelsResponse,
 	type ChatHubSessionDto,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import type { GroupedConversations } from './chat.types';
+import { providerDisplayNames } from './constants';
 
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
@@ -73,4 +75,21 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 				]
 			: [];
 	});
+}
+
+export function createModelOrCredentialsMissingError(model: ChatHubConversationModel | null) {
+	return Error(
+		model
+			? `Set your credentials for ${providerDisplayNames[model.provider]} to start a conversation.`
+			: 'Select a model to start a conversation.',
+	);
+}
+
+export function createCredentials(model: ChatHubConversationModel, credentialsId: string) {
+	return {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[model.provider]]: {
+			id: credentialsId,
+			name: '',
+		},
+	};
 }

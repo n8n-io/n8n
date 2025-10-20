@@ -222,25 +222,9 @@ async function onSubmit(message: string) {
 		return;
 	}
 
-	const credentialsId = selectedModel.value
-		? mergedCredentials.value[selectedModel.value.provider]
-		: undefined;
-
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.sendMessage(
-		sessionId.value,
-		message,
-		selectedModel.value,
-		selectedModel.value && credentialsId
-			? {
-					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-						id: credentialsId,
-						name: '',
-					},
-				}
-			: null,
-	);
+	chatStore.sendMessage(sessionId.value, message, selectedModel.value, mergedCredentials.value);
 
 	await nextTick();
 
@@ -268,46 +252,35 @@ function handleCancelEditMessage() {
 }
 
 function handleEditMessage(message: ChatHubMessageDto) {
-	if (chatStore.isResponding || message.type !== 'human' || !selectedModel.value) {
+	if (chatStore.isResponding || message.type !== 'human') {
 		return;
 	}
 
-	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
+	const messageToEdit = message.revisionOfMessageId ?? message.id;
 
-	if (!credentialsId) {
-		return;
-	}
-
-	const mesasgeToEdit = message.revisionOfMessageId ?? message.id;
-
-	chatStore.editMessage(sessionId.value, mesasgeToEdit, message.content, selectedModel.value, {
-		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId,
-			name: '',
-		},
-	});
+	chatStore.editMessage(
+		sessionId.value,
+		messageToEdit,
+		message.content,
+		selectedModel.value,
+		mergedCredentials.value,
+	);
 	editingMessageId.value = undefined;
 }
 
 function handleRegenerateMessage(message: ChatHubMessageDto) {
-	if (chatStore.isResponding || message.type !== 'ai' || !selectedModel.value) {
-		return;
-	}
-
-	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
-
-	if (!credentialsId) {
+	if (chatStore.isResponding || message.type !== 'ai') {
 		return;
 	}
 
 	const messageToRetry = message.retryOfMessageId ?? message.id;
 
-	chatStore.regenerateMessage(sessionId.value, messageToRetry, selectedModel.value, {
-		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId,
-			name: '',
-		},
-	});
+	chatStore.regenerateMessage(
+		sessionId.value,
+		messageToRetry,
+		selectedModel.value,
+		mergedCredentials.value,
+	);
 }
 
 function handleSelectModel(selection: ChatHubConversationModel) {
