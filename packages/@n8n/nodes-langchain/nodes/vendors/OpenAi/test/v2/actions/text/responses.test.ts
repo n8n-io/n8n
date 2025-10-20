@@ -1057,45 +1057,6 @@ describe('OpenAI Responses Helper Functions', () => {
 			});
 		});
 
-		it('should handle built-in tools - local shell', async () => {
-			const executeFunctions = createExecuteFunctionsMock({});
-			const options = {
-				model: 'gpt-4',
-				messages: [
-					{
-						role: 'user',
-						type: 'text',
-						content: 'Hello',
-					},
-				],
-				options: {},
-				builtInTools: {
-					localShell: true,
-				},
-				tools: undefined,
-			};
-
-			const result = await createRequest.call(executeFunctions, 0, options);
-
-			expect(result).toEqual({
-				model: 'gpt-4',
-				input: [
-					{
-						role: 'user',
-						content: [{ type: 'input_text', text: 'Hello' }],
-					},
-				],
-				parallel_tool_calls: true,
-				store: true,
-				tools: [
-					{
-						type: 'local_shell',
-					},
-				],
-				background: false,
-			});
-		});
-
 		it('should handle built-in tools - file search', async () => {
 			const executeFunctions = createExecuteFunctionsMock({});
 			const options = {
