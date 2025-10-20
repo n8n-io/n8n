@@ -1,13 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleError } from '../../helpers/errorHandler';
 
-export const description: INodeProperties[] = [
+export const deploymentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'create',
 		displayOptions: {
 			show: {
 				resource: ['deployment'],
@@ -22,20 +20,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/deployments',
-						body: {
-							stageName: '={{ $parameter["stageName"] }}',
-							stageDescription: '={{ $parameter["stageDescription"] }}',
-							description: '={{ $parameter["description"] }}',
-							cacheClusterEnabled: '={{ $parameter["cacheClusterEnabled"] }}',
-							cacheClusterSize: '={{ $parameter["cacheClusterSize"] }}',
-							variables: '={{ $parameter["variables"] }}',
-							tracingEnabled: '={{ $parameter["tracingEnabled"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/deployments',
 					},
 				},
 			},
@@ -47,53 +32,40 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/deployments/{{ $parameter["deploymentId"] }}',
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/deployments/{{$parameter["deploymentId"]}}',
 					},
 				},
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a deployment',
+				description: 'Get details about a deployment',
 				action: 'Get a deployment',
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/deployments/{{ $parameter["deploymentId"] }}',
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/deployments/{{$parameter["deploymentId"]}}',
 					},
 				},
 			},
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List all deployments',
+				description: 'List deployments for an API',
 				action: 'List deployments',
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/deployments',
-						qs: {
-							limit: '={{ $parameter["limit"] }}',
-							position: '={{ $parameter["position"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/deployments',
 					},
 				},
 			},
 		],
+		default: 'list',
 	},
-	// Common fields
+];
+
+export const deploymentFields: INodeProperties[] = [
 	{
 		displayName: 'REST API ID',
 		name: 'restApiId',
@@ -105,112 +77,8 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The identifier of the REST API',
+		description: 'The ID of the REST API',
 	},
-	// Create operation fields
-	{
-		displayName: 'Stage Name',
-		name: 'stageName',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['deployment'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-		description: 'The name of the stage for the deployment',
-	},
-	{
-		displayName: 'Description',
-		name: 'description',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['deployment'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-		description: 'Description of the deployment',
-	},
-	{
-		displayName: 'Stage Description',
-		name: 'stageDescription',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['deployment'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-		description: 'Description of the stage',
-	},
-	{
-		displayName: 'Cache Cluster Enabled',
-		name: 'cacheClusterEnabled',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['deployment'],
-				operation: ['create'],
-			},
-		},
-		default: false,
-		description: 'Whether to enable caching for the deployment',
-	},
-	{
-		displayName: 'Cache Cluster Size',
-		name: 'cacheClusterSize',
-		type: 'options',
-		options: [
-			{ name: '0.5 GB', value: '0.5' },
-			{ name: '1.6 GB', value: '1.6' },
-			{ name: '6.1 GB', value: '6.1' },
-			{ name: '13.5 GB', value: '13.5' },
-			{ name: '28.4 GB', value: '28.4' },
-			{ name: '58.2 GB', value: '58.2' },
-			{ name: '118 GB', value: '118' },
-			{ name: '237 GB', value: '237' },
-		],
-		displayOptions: {
-			show: {
-				resource: ['deployment'],
-				operation: ['create'],
-				cacheClusterEnabled: [true],
-			},
-		},
-		default: '0.5',
-		description: 'Size of the cache cluster',
-	},
-	{
-		displayName: 'Variables',
-		name: 'variables',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['deployment'],
-				operation: ['create'],
-			},
-		},
-		default: '{}',
-		description: 'Stage variables',
-	},
-	{
-		displayName: 'Tracing Enabled',
-		name: 'tracingEnabled',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['deployment'],
-				operation: ['create'],
-			},
-		},
-		default: false,
-		description: 'Whether to enable X-Ray tracing',
-	},
-	// Get/Delete operation fields
 	{
 		displayName: 'Deployment ID',
 		name: 'deploymentId',
@@ -223,33 +91,162 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The identifier of the deployment',
+		description: 'The ID of the deployment',
 	},
-	// List operation fields
 	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['deployment'],
+				operation: ['create'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Stage Name',
+				name: 'stageName',
+				type: 'string',
+				default: '',
+				description: 'Stage name for the deployment',
+				routing: {
+					request: {
+						body: {
+							stageName: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Stage Description',
+				name: 'stageDescription',
+				type: 'string',
+				default: '',
+				description: 'Description of the stage',
+				routing: {
+					request: {
+						body: {
+							stageDescription: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'Description of the deployment',
+				routing: {
+					request: {
+						body: {
+							description: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Cache Cluster Enabled',
+				name: 'cacheClusterEnabled',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable the cache cluster',
+				routing: {
+					request: {
+						body: {
+							cacheClusterEnabled: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Cache Cluster Size',
+				name: 'cacheClusterSize',
+				type: 'options',
+				options: [
+					{ name: '0.5 GB', value: '0.5' },
+					{ name: '1.6 GB', value: '1.6' },
+					{ name: '6.1 GB', value: '6.1' },
+					{ name: '13.5 GB', value: '13.5' },
+					{ name: '28.4 GB', value: '28.4' },
+					{ name: '58.2 GB', value: '58.2' },
+					{ name: '118 GB', value: '118' },
+					{ name: '237 GB', value: '237' },
+				],
+				default: '0.5',
+				description: 'Cache cluster size',
+				routing: {
+					request: {
+						body: {
+							cacheClusterSize: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Tracing Enabled',
+				name: 'tracingEnabled',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable X-Ray tracing',
+				routing: {
+					request: {
+						body: {
+							tracingEnabled: '={{ $value }}',
+						},
+					},
+				},
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['deployment'],
 				operation: ['list'],
 			},
 		},
-		default: 25,
-		description: 'Maximum number of results to return (1-500)',
-	},
-	{
-		displayName: 'Position',
-		name: 'position',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['deployment'],
-				operation: ['list'],
+		options: [
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 25,
+				description: 'Maximum number of deployments to return',
+				routing: {
+					request: {
+						qs: {
+							limit: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '',
-		description: 'Pagination token from previous response',
+			{
+				displayName: 'Position',
+				name: 'position',
+				type: 'string',
+				default: '',
+				description: 'Pagination token from previous response',
+				routing: {
+					request: {
+						qs: {
+							position: '={{ $value }}',
+						},
+					},
+				},
+			},
+		],
 	},
 ];
