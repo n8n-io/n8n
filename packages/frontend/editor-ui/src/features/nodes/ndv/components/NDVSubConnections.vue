@@ -16,7 +16,7 @@ import type {
 import { useDebounce } from '@/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '../ndv.store';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {

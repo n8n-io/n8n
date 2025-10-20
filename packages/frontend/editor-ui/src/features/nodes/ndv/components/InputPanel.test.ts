@@ -1,6 +1,6 @@
 import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
-import InputPanel, { type Props } from '@/components/InputPanel.vue';
+import InputPanel, { type Props } from './InputPanel.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
@@ -11,7 +11,7 @@ import {
 	type IRunData,
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { mockedStore } from '../__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 
 vi.mock('vue-router', () => {

@@ -12,7 +12,7 @@ import {
 	TELEGRAM_NODE_TYPE,
 } from '@/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { usePostHog } from '@/stores/posthog.store';
