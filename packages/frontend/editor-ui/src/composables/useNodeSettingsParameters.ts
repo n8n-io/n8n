@@ -23,7 +23,7 @@ import {
 } from '@/utils/nodeSettingsUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import {

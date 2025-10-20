@@ -15,7 +15,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
@@ -46,7 +46,7 @@ import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
-import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import NDVEmptyState from '@/features/nodes/ndv/components/NDVEmptyState.vue';
 
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 type Props = {

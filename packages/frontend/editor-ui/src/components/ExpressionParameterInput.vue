@@ -6,7 +6,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 

@@ -641,7 +641,6 @@ export interface NewCredentialsModal extends ModalState {
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
-export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
 	nodeName: string;
@@ -936,30 +935,10 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkerView'
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'
-	| 'EnforceMFA';
+	| 'EnforceMFA'
+	| 'Provisioning';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
-
-export type InputPanel = {
-	nodeName?: string;
-	run?: number;
-	branch?: number;
-	data: {
-		isEmpty: boolean;
-	};
-};
-
-export type OutputPanel = {
-	run?: number;
-	branch?: number;
-	data: {
-		isEmpty: boolean;
-	};
-	editMode: {
-		enabled: boolean;
-		value: string;
-	};
-};
 
 export type Draggable = {
 	isDragging: boolean;
@@ -968,17 +947,6 @@ export type Draggable = {
 	dimensions: DOMRect | null;
 	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 };
-
-export type MainPanelType = 'regular' | 'dragless' | 'inputless' | 'unknown' | 'wide';
-
-export type MainPanelDimensions = Record<
-	MainPanelType,
-	{
-		relativeLeft: number;
-		relativeRight: number;
-		relativeWidth: number;
-	}
->;
 
 export interface LlmTokenUsageData {
 	completionTokens: number;
