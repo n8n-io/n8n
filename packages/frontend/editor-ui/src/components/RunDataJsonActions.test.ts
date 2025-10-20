@@ -6,7 +6,7 @@ import { waitFor, cleanup, fireEvent, within, screen } from '@testing-library/vu
 import RunDataJsonActions from './RunDataJsonActions.vue';
 import { nonExistingJsonPath, VIEWS } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 

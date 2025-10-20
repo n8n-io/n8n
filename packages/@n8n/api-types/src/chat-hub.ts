@@ -94,7 +94,7 @@ export class ChatHubChangeConversationTitleRequest extends Z.class({
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageState = 'active' | 'replaced';
+export type ChatHubMessageState = 'success' | 'error' | 'pending';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID
@@ -127,10 +127,8 @@ export interface ChatHubMessageDto {
 	updatedAt: string;
 
 	previousMessageId: ChatMessageId | null;
-	turnId: ChatMessageId | null;
 	retryOfMessageId: ChatMessageId | null;
 	revisionOfMessageId: ChatMessageId | null;
-	runIndex: number;
 }
 
 export type ChatHubConversationsResponse = ChatHubSessionDto[];

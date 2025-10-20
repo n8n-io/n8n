@@ -1,4 +1,4 @@
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { createTestingPinia } from '@pinia/testing';

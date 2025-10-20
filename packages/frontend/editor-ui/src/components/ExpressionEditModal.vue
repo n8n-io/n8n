@@ -4,7 +4,7 @@ import { computed, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 

@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import { useNdvLayout } from './useNdvLayout';
-import { LOCAL_STORAGE_NDV_PANEL_WIDTH } from '../constants';
+import { LOCAL_STORAGE_NDV_PANEL_WIDTH } from '../ndv.constants';
 import { mock } from 'vitest-mock-extended';
 
 vi.mock('@vueuse/core', () => {
