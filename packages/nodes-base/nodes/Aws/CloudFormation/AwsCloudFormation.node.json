@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.awsCloudFormation",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.aws.amazon.com/cloudformation/"
+			}
+		]
+	}
+}
