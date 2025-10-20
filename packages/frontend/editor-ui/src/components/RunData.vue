@@ -1401,12 +1401,6 @@ function onSearchClear() {
 }
 
 defineExpose({ enterEditMode });
-
-const isLastSuccessfulExecutionExpanded = ref(false);
-
-const onLastSuccessfulExecutionToggle = (expanded: boolean) => {
-	isLastSuccessfulExecutionExpanded.value = expanded;
-};
 </script>
 
 <template>
@@ -1681,16 +1675,6 @@ const onLastSuccessfulExecutionToggle = (expanded: boolean) => {
 			data-test-id="ndv-data-container"
 			@wheel.capture="emit('captureWheelDataContainer', $event)"
 		>
-			<LastSuccessfulExecutionSchema
-				v-if="isPaneTypeInput && !hasNodeRun && !readOnlyEnv"
-				:nodes="nodes"
-				:node="node"
-				:pane-type="paneType"
-				:connection-type="connectionType"
-				:output-index="currentOutputIndex"
-				:compact="compact"
-				@toggle="onLastSuccessfulExecutionToggle"
-			/>
 			<BinaryDataDisplay
 				v-if="binaryDataDisplayData"
 				:window-visible="binaryDataDisplayVisible"
@@ -1764,7 +1748,7 @@ const onLastSuccessfulExecutionToggle = (expanded: boolean) => {
 				v-else-if="!hasNodeRun && !(displaysMultipleNodes && (node?.disabled || hasPreviewSchema))"
 				:class="$style.center"
 			>
-				<slot name="node-not-run" :is-collapsed="isLastSuccessfulExecutionExpanded"></slot>
+				<slot name="node-not-run"></slot>
 			</div>
 
 			<div
@@ -1980,7 +1964,7 @@ const onLastSuccessfulExecutionToggle = (expanded: boolean) => {
 			/>
 
 			<div v-else-if="!hasNodeRun" :class="$style.center">
-				<slot name="node-not-run" :is-collapsed="isLastSuccessfulExecutionExpanded"></slot>
+				<slot name="node-not-run"></slot>
 			</div>
 		</div>
 		<RunDataPaginationBar

@@ -710,16 +710,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	}
 }
 
-.noOutputDataSticky {
-	position: absolute;
-	bottom: 0;
-	border-top: var(--border);
-	max-width: 100% !important;
-	width: 100%;
-	padding-top: var(--spacing--sm);
-	background-color: var(--color-ndvv2-run-data-background);
-}
-
 .notConnected {
 	max-width: 300px;
 
