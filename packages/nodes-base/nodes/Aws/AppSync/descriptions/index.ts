@@ -1,2 +1,2 @@
-export * as graphqlApi from './graphqlApi/GraphqlApi.resource';
-export * as dataSource from './dataSource/DataSource.resource';
+export { apiOperations, apiFields } from './api/Api.resource';
+export { dataSourceOperations, dataSourceFields } from './datasource/DataSource.resource';
