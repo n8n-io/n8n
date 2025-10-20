@@ -12,7 +12,7 @@ import {
 	type FilterOptionsValue,
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import {
 	DEFAULT_FILTER_OPTIONS,
 	DEFAULT_MAX_CONDITIONS,

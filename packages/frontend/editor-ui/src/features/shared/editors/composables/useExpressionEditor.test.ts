@@ -15,7 +15,7 @@ vi.mock('@/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
 }));
 
-vi.mock('@/stores/ndv.store', () => ({
+vi.mock('@/features/nodes/ndv/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
 		activeNode: { type: 'n8n-nodes-base.test' },
 	})),
