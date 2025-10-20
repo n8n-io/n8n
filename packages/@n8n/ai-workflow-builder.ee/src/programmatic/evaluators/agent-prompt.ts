@@ -19,9 +19,9 @@ export function evaluateAgentPrompt(workflow: SimpleWorkflow): SingleEvaluatorRe
 			if (promptType !== 'auto') {
 				if (!textParam || !containsExpression(textParam)) {
 					violations.push({
-						type: 'minor',
+						type: 'major',
 						description: `Agent node "${node.name}" has no expression in its prompt field. This likely means it failed to use chatInput`,
-						pointsDeducted: 15,
+						pointsDeducted: 20,
 					});
 				}
 			}
