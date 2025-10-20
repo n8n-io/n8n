@@ -92,7 +92,8 @@ const settingsStore = useSettingsStore();
 const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
 	useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleNode } = useFlattenSchema();
-const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted } = useNodeHelpers();
+const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted, getNodeTaskData } =
+	useNodeHelpers();
 
 const emit = defineEmits<{
 	'clear:search': [];
@@ -171,7 +172,8 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	const isDataEmpty = data.length === 0;
 
 	let schema = getSchemaForExecutionData(data);
-	const lastSuccessfulPreview = Boolean(previewExecutionData);
+	const nodeExecutionData = getNodeTaskData(fullNode.name, 0, props.previewExecution.data);
+	const lastSuccessfulPreview = Boolean(previewExecutionData) && Boolean(nodeExecutionData);
 	let preview = lastSuccessfulPreview;
 
 	if (data.length === 0 && !preview) {
