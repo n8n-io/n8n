@@ -289,6 +289,14 @@ export class Server extends AbstractServer {
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
 
+		// ----------------------------------------
+		// Workflow Indexing Setup
+		// ----------------------------------------
+		const { WorkflowIndexingManager } = await import(
+			'@/workflows/workflow-indexing-manager.service'
+		);
+		Container.get(WorkflowIndexingManager).init();
+
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			const overwriteEndpointMiddleware =

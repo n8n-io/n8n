@@ -27,6 +27,7 @@ import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
+import type { DependencyType } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowStatistics } from './workflow-statistics';
@@ -67,6 +68,8 @@ export {
 	TestCaseExecution,
 	ExecutionEntity,
 };
+
+export type { DependencyType };
 
 export const entities = {
 	EventDestinations,

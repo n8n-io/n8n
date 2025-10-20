@@ -46,6 +46,7 @@ import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixEx
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
+import { AddWorkflowVersionColumn1760534361774 } from './1760534361774-AddWorkflowVersionColumn';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -211,4 +212,5 @@ export const postgresMigrations: Migration[] = [
 	CreateChatHubTables1760019379982,
 	UniqueRoleNames1760020838000,
 	CreateWorkflowDependencyTable1760314000000,
+	AddWorkflowVersionColumn1760534361774,
 ];

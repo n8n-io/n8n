@@ -23,6 +23,7 @@ export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
 export { TestRunRepository } from './test-run.repository.ee';
 export { VariablesRepository } from './variables.repository';
+export { WorkflowDependencyRepository } from './workflow-dependency.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
