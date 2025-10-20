@@ -486,10 +486,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				/>
 			</div>
 		</template>
-		<template #node-not-run="{ isCollapsed }">
+		<template #node-not-run>
 			<div
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
-				:class="{ [$style.noOutputData]: true, [$style.noOutputDataSticky]: isCollapsed }"
+				:class="$style.noOutputData"
 			>
 				<NDVEmptyState v-if="nodeNotRunMessageVariant === 'simple'">
 					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
@@ -511,9 +511,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
 						icon="arrow-right-to-line"
 					>
-						<template #icon>
-							<N8nIcon v-if="!isCollapsed" icon="arrow-right-to-line" size="xlarge" />
-						</template>
 						<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
 							<template #link>
 								<NodeExecuteButton

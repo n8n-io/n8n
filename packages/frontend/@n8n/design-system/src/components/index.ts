@@ -27,7 +27,6 @@ export { default as N8nIcon } from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';
 export { default as N8nInfoAccordion } from './N8nInfoAccordion';
-export { default as N8nAccordionHeader } from './AccordionHeader';
 export { default as N8nInfoTip } from './N8nInfoTip';
 export { default as N8nInput } from './N8nInput';
 export { default as N8nInputLabel } from './N8nInputLabel';

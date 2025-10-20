@@ -1918,7 +1918,6 @@
 	"resourceMapper.staleDataWarning.notice": "Refresh to see the updated fields",
 	"resourceMapper.attemptToConvertTypes.displayName": "Attempt To Convert Types",
 	"resourceMapper.attemptToConvertTypes.description": "Attempt to convert types when mapping fields",
-	"lastSuccessfulExecutionSchema.viewSchemaAction": "View schema from latest execution <i>({time} on {date})</i>",
 	"runData.pinData.insertedExecutionData": "💡 Inserted data from last execution. You can edit as needed.",
 	"runData.openSubExecutionSingle": "View sub-execution",
 	"runData.openSubExecutionWithId": "View sub-execution {id}",

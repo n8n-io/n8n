@@ -62,7 +62,6 @@ type Props = {
 	compact?: boolean;
 	outputIndex?: number;
 	execution?: IExecutionResponse;
-	isPastExecution?: boolean;
 	truncateLimit?: number;
 };
 
@@ -76,7 +75,6 @@ const props = withDefaults(defineProps<Props>(), {
 	mappingEnabled: false,
 	compact: false,
 	outputIndex: undefined,
-	isPastExecution: false,
 	truncateLimit: 600,
 });
 
@@ -387,10 +385,6 @@ const items = computed(() => {
 		return flattenNodeSchema.value;
 	}
 
-	if (props.isPastExecution) {
-		return flattenedNodes.value;
-	}
-
 	return flattenedNodes.value.concat(contextItems.value);
 });
 
@@ -512,7 +506,6 @@ const onDragEnd = (el: HTMLElement) => {
 							v-if="item.type === 'header'"
 							v-bind="item"
 							:collapsed="closedNodes.has(item.id)"
-							:past-execution="isPastExecution"
 							@click:toggle="toggleNode(item.id)"
 							@click="toggleNodeExclusiveAndScrollTop(item.id)"
 						/>
@@ -523,7 +516,6 @@ const onDragEnd = (el: HTMLElement) => {
 							:draggable="mappingEnabled"
 							:collapsed="closedNodes.has(item.id)"
 							:highlight="ndvStore.highlightDraggables"
-							:past-execution="isPastExecution"
 							@click="toggleNode(item.id)"
 						>
 						</VirtualSchemaItem>
