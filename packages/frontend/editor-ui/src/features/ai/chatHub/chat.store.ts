@@ -422,12 +422,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		editMessageApi(
 			rootStore.restApiContext,
+			sessionId,
+			editId,
 			{
 				model,
 				messageId,
-				sessionId,
 				replyId,
-				editId,
 				message,
 				credentials,
 			},
@@ -453,10 +453,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		regenerateMessageApi(
 			rootStore.restApiContext,
+			sessionId,
+			retryId,
 			{
 				model,
-				sessionId,
-				retryId,
 				replyId,
 				credentials,
 			},
