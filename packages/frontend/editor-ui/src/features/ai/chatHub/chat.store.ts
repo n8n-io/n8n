@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
-import { CHAT_STORE } from './constants';
-import { computed, ref } from 'vue';
+import { CHAT_STORE, providerDisplayNames } from './constants';
+import { computed, ref, shallowRef } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
@@ -30,6 +30,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const streamingMessageId = ref<string>();
 	const sessions = ref<ChatHubSessionDto[]>([]);
+	const lastError = shallowRef<{
+		promptId: ChatMessageId;
+		replyId: ChatMessageId;
+		error: Error;
+	} | null>(null);
 
 	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
@@ -42,7 +47,52 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const conversation = getConversation(sessionId);
 		if (!conversation) return [];
 
-		return conversation.activeMessageChain.map((id) => conversation.messages[id]).filter(Boolean);
+		const persistedMessages = conversation.activeMessageChain
+			.map((id) => conversation.messages[id])
+			.filter(Boolean);
+
+		const error = lastError.value;
+
+		if (!error) {
+			return persistedMessages;
+		}
+
+		return persistedMessages.flatMap<ChatMessage>((message) => {
+			if (message.id === error.replyId) {
+				// This could happen when streaming raises error in the middle
+				// TODO: maybe preserve message and append error?
+				return [];
+			}
+
+			if (error.promptId === message.id) {
+				return [
+					message,
+					{
+						id: error.replyId,
+						sessionId,
+						type: 'ai',
+						name: 'AI',
+						content: `**ERROR:** ${error.error.message}`,
+						provider: null,
+						model: null,
+						workflowId: null,
+						executionId: null,
+						state: 'active',
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+						previousMessageId: message.id,
+						turnId: null,
+						retryOfMessageId: null,
+						revisionOfMessageId: null,
+						runIndex: 0,
+						responses: [],
+						alternatives: [],
+					},
+				];
+			}
+
+			return [message];
+		});
 	};
 
 	function ensureConversation(sessionId: ChatSessionId): ChatConversation {
@@ -352,27 +402,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		});
 
 		if (!model || !credentials) {
-			addMessage(sessionId, {
-				id: replyId,
-				sessionId,
-				type: 'ai',
-				name: 'AI',
-				content: '**ERROR:** Select a model to start a conversation.',
-				provider: null,
-				model: null,
-				workflowId: null,
-				executionId: null,
-				state: 'active',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				previousMessageId: messageId,
-				turnId: null,
-				retryOfMessageId: null,
-				revisionOfMessageId: null,
-				runIndex: 0,
-				responses: [],
-				alternatives: [],
-			});
+			lastError.value = {
+				promptId: messageId,
+				replyId,
+				error: Error(
+					model
+						? `Set your credentials for ${providerDisplayNames[model.provider]} to start a conversation.`
+						: 'Select a model to start a conversation.',
+				),
+			};
+
 			return;
 		}
 
@@ -508,6 +547,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		loadingModels,
 		isResponding,
 		streamingMessageId,
+		lastError,
 		fetchChatModels,
 		sendMessage,
 		editMessage,

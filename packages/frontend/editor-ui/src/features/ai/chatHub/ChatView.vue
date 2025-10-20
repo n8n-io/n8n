@@ -28,7 +28,7 @@ import {
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
@@ -47,7 +47,6 @@ const inputRef = useTemplateRef('inputRef');
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
-const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
 const currentConversation = computed(() =>
@@ -117,6 +116,7 @@ const mergedCredentials = computed(() => ({
 
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const isNewChat = computed(() => route.name === CHAT_VIEW);
+const hasMessages = computed(() => chatMessages.value.length > 0);
 const inputPlaceholder = computed(() => {
 	if (!selectedModel.value) {
 		return 'Select a model';
@@ -151,18 +151,18 @@ watch(
 			return;
 		}
 
-		if (lastMessageId !== chatStore.streamingMessageId) {
+		if (lastMessageId !== chatStore.streamingMessageId && !chatStore.lastError?.promptId) {
 			scrollToBottom(chatStore.streamingMessageId !== undefined);
 			return;
 		}
 
-		const message = chatStore
-			.getActiveMessages(sessionId.value)
-			.find((message) => message.id === lastMessageId);
+		// Scroll to user's prompt when the message is being generated or there's an error
+		const scrollTo =
+			chatStore.lastError?.promptId ??
+			chatMessages.value.find((message) => message.id === lastMessageId)?.previousMessageId;
 
-		if (message?.previousMessageId) {
-			// Scroll to user's prompt when the message is being generated
-			scrollToMessage(message.previousMessageId);
+		if (scrollTo) {
+			scrollToMessage(scrollTo);
 		}
 	},
 	{ immediate: true, flush: 'post' },
@@ -184,7 +184,7 @@ watch(
 );
 
 watch(
-	[sessionId, isNewSession],
+	[sessionId, isNewChat],
 	async ([id, isNew]) => {
 		didSubmitInCurrentSession.value = false;
 
@@ -217,7 +217,7 @@ onMounted(async () => {
 	]);
 });
 
-function onSubmit(message: string) {
+async function onSubmit(message: string) {
 	if (!message.trim() || chatStore.isResponding) {
 		return;
 	}
@@ -242,10 +242,15 @@ function onSubmit(message: string) {
 			: null,
 	);
 
+	await nextTick();
+
+	if (chatStore.lastError) {
+		return;
+	}
+
 	inputRef.value?.setText('');
 
-	if (isNewSession.value) {
-		// TODO: this should not happen when submit fails
+	if (isNewChat.value) {
 		void router.push({ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId.value } });
 	}
 }
@@ -323,7 +328,7 @@ function handleSwitchAlternative(messageId: string) {
 		:class="[
 			$style.component,
 			{
-				[$style.isNewChat]: isNewChat,
+				[$style.hasMessages]: hasMessages,
 				[$style.isMobileDevice]: isMobileDevice,
 			},
 		]"
@@ -344,7 +349,7 @@ function handleSwitchAlternative(messageId: string) {
 		>
 			<div :class="$style.scrollable" ref="scrollable">
 				<ChatStarter
-					v-if="isNewChat"
+					v-if="!hasMessages"
 					:class="$style.starter"
 					:is-mobile-device="isMobileDevice"
 					@select="onSuggestionClick"
@@ -429,7 +434,7 @@ function handleSwitchAlternative(messageId: string) {
 	justify-content: start;
 	gap: var(--spacing--2xl);
 
-	.isNewChat & {
+	.component:not(.hasMessages) & {
 		justify-content: center;
 	}
 }
@@ -469,7 +474,7 @@ function handleSwitchAlternative(messageId: string) {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.component:not(.isNewChat) & {
+	.hasMessages & {
 		position: absolute;
 		bottom: 0;
 		left: 0;
