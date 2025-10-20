@@ -11,7 +11,7 @@ import { getNodeViewTab } from '@/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useTelemetry } from './useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
-import { shouldIgnoreCanvasShortcut } from '@/features/canvas/canvas.utils';
+import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 const ELEMENT_UI_OVERLAY_SELECTOR = '.el-overlay';

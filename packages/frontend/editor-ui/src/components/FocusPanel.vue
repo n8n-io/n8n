@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import CodeNodeEditor from '@/features/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
-import CssEditor from '@/features/editors/components/CssEditor/CssEditor.vue';
+import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
+import CssEditor from '@/features/shared/editors/components/CssEditor/CssEditor.vue';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import HtmlEditor from '@/features/editors/components/HtmlEditor/HtmlEditor.vue';
-import JsEditor from '@/features/editors/components/JsEditor/JsEditor.vue';
-import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
+import HtmlEditor from '@/features/shared/editors/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/features/shared/editors/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEditor.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
-import SqlEditor from '@/features/editors/components/SqlEditor/SqlEditor.vue';
+import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
@@ -32,22 +32,22 @@ import {
 	type INodeProperties,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import { useEnvironmentsStore } from '@/features/environments.ee/environments.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useActiveElement, useThrottleFn } from '@vueuse/core';
-import { useExecutionData } from '@/features/executions/composables/useExecutionData';
+import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import ExperimentalNodeDetailsDrawer from '@/features/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
-import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
+import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
+import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
-import ExperimentalFocusPanelHeader from '@/features/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
+import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
-import { type ContextMenuAction } from '@/features/ui/contextMenu/composables/useContextMenuItems';
-import { type CanvasNode, CanvasNodeRenderType } from '@/features/canvas/canvas.types';
+import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
+import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 import {

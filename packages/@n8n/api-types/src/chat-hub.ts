@@ -137,8 +137,6 @@ export type ChatHubConversationsResponse = ChatHubSessionDto[];
 
 export interface ChatHubConversationDto {
 	messages: Record<ChatMessageId, ChatHubMessageDto>;
-	rootIds: ChatMessageId[];
-	activeMessageChain: ChatMessageId[];
 }
 
 export interface ChatHubConversationResponse {

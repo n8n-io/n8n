@@ -9,10 +9,10 @@ import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
-} from '@/features/canvas/canvas.types';
+} from '@/features/workflows/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
-import { DATA_TABLE_MODULE_NAME } from './features/dataTable/constants';
+import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
 import type { TelemetryContext } from './types/telemetry';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type { WorkflowState } from './composables/useWorkflowState';
@@ -77,7 +77,6 @@ export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
-export const VARIABLE_MODAL_KEY = 'variableModal';
 export const CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY = 'chatHubSideMenuDrawer';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
@@ -374,6 +373,8 @@ export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_SELECTED_MODEL`;
 export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_CREDENTIALS`;
+export const LOCAL_STORAGE_CHAT_HUB_STATIC_SIDEBAR = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_STATIC_SIDEBAR`;
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';
