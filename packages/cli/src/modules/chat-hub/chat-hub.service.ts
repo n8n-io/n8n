@@ -277,20 +277,6 @@ export class ChatHubService {
 		);
 
 		const { manager } = this.projectRepository;
-		const existing = await this.workflowRepository.findOneBy({ id: sessionId });
-		if (existing) {
-			return {
-				workflowData: {
-					...existing,
-					nodes,
-					connections,
-					versionId: uuidv4(),
-				},
-				startNodes,
-				triggerToStartFrom,
-			};
-		}
-
 		return await manager.transaction(async (trx) => {
 			const project = await this.projectRepository.getPersonalProjectForUser(user.id, trx);
 			if (!project) {
@@ -299,7 +285,6 @@ export class ChatHubService {
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
-			newWorkflow.id = sessionId;
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
@@ -326,6 +311,10 @@ export class ChatHubService {
 				triggerToStartFrom,
 			};
 		});
+	}
+
+	private async deleteChatWorkflow(workflowId: string): Promise<void> {
+		await this.workflowRepository.delete(workflowId);
 	}
 
 	private getAIOutput(execution: IExecutionResponse): string | undefined {
@@ -388,16 +377,20 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
-		);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				turnId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
@@ -451,16 +444,20 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
-		);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				turnId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
@@ -493,14 +490,6 @@ export class ChatHubService {
 		}
 
 		// Rerun the workflow, replaying the last human message
-		const workflow = await this.createChatWorkflow(
-			user,
-			session.id,
-			history,
-			lastHumanMessage ? lastHumanMessage.content : '',
-			payload.credentials,
-			payload.model,
-		);
 
 		// If the message being retried is itself a retry, we want to point to the original message
 		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
@@ -516,18 +505,31 @@ export class ChatHubService {
 			}
 		}
 
-		await this.executeChatWorkflow(
-			res,
+		const workflow = await this.createChatWorkflow(
 			user,
-			workflow,
-			replyId,
-			sessionId,
-			lastHumanMessage.id,
-			messageToRetry.turnId,
-			selectedModel,
-			retryOfMessageId,
-			runIndex,
+			session.id,
+			history,
+			lastHumanMessage ? lastHumanMessage.content : '',
+			payload.credentials,
+			payload.model,
 		);
+
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				lastHumanMessage.id,
+				messageToRetry.turnId,
+				selectedModel,
+				retryOfMessageId,
+				runIndex,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	private async executeChatWorkflow(
