@@ -119,7 +119,7 @@ export const lemonadeOptions: INodeProperties = {
 			name: 'stop',
 			type: 'string',
 			default: '',
-			description: 'Comma-separated list of sequences where the model will stop generating text.',
+			description: 'Comma-separated list of sequences where the model will stop generating text',
 		},
 	],
 };
