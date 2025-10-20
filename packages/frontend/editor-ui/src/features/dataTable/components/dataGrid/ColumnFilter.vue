@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import type { IFilterParams } from 'ag-grid-community';
-import { N8nSelect, N8nOption, N8nInput, N8nButton } from '@n8n/design-system';
+import { N8nSelect, N8nOption, N8nInput, N8nButton, N8nInputLabel } from '@n8n/design-system';
 import ElDatePickerFilter from '@/features/dataTable/components/dataGrid/ElDatePickerFilter.vue';
 import type {
 	FilterModel,
@@ -206,13 +206,15 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 
 <template>
 	<div class="ag-custom-filter ag-custom-component-popup">
-		<N8nInput
-			v-if="filterType === 'json'"
-			v-model="inputPath"
-			data-test-id="json-path-input"
-			size="small"
-			placeholder="a.b[0].c"
-		/>
+		<N8nInputLabel label="Path" :tooltip-text="i18n.baseText('dataTable.filters.pathInstructions')">
+			<N8nInput
+				v-if="filterType === 'json'"
+				v-model="inputPath"
+				data-test-id="json-path-input"
+				size="small"
+				placeholder="a.b[0].c"
+			/>
+		</N8nInputLabel>
 		<N8nSelect
 			v-model="selectedOperation"
 			size="small"

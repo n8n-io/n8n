@@ -3024,6 +3024,7 @@
 	"dataTable.filters.notEqual": "Does not equal",
 	"dataTable.filters.contains": "Contains",
 	"dataTable.filters.path": "Path",
+	"dataTable.filters.pathInstructions": "Enter the path to the value using dot notation (e.g., user.address.city or items[0].name)",
 	"dataTable.addColumn.alreadyExistsDescription": "Column name already exists, choose a different name",
 	"dataTable.addColumn.systemColumnDescription": "This is a system column, choose a different name",
 	"dataTable.addColumn.testingColumnDescription": "This column is used for testing, choose a different name",
