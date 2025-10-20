@@ -372,14 +372,6 @@ export class LmChatOpenAi implements INodeType {
 						],
 					},
 					{
-						displayName: 'Local Shell',
-						name: 'localShell',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether to allow the model to execute shell commands in a local environment',
-					},
-					{
 						displayName: 'Code Interpreter',
 						name: 'codeInterpreter',
 						type: 'boolean',

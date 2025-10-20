@@ -80,12 +80,6 @@ export const formatBuiltInTools = (builtInTools: IDataObject) => {
 			});
 		}
 
-		if (builtInTools.localShell) {
-			tools.push({
-				type: 'local_shell',
-			});
-		}
-
 		if (builtInTools.fileSearch) {
 			const vectorStoreIds = get(builtInTools.fileSearch, 'vectorStoreIds', '[]') as string;
 			const filters = get(builtInTools.fileSearch, 'filters', '{}') as string;
