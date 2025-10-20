@@ -326,6 +326,10 @@ export class ChatHubService {
 		});
 	}
 
+	private async deleteChatWorkflow(workflowId: string): Promise<void> {
+		await this.workflowRepository.delete(workflowId);
+	}
+
 	private getAIOutput(execution: IExecutionResponse): string | undefined {
 		const agent = execution.data.resultData.runData[NODE_NAMES.AI_AGENT];
 		if (!agent || !Array.isArray(agent) || agent.length === 0) return undefined;
@@ -386,16 +390,20 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
-		);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				turnId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
@@ -449,16 +457,20 @@ export class ChatHubService {
 			payload.model,
 		);
 
-		await this.executeChatWorkflow(
-			res,
-			user,
-			workflow,
-			replyId,
-			sessionId,
-			messageId,
-			turnId,
-			selectedModel,
-		);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				turnId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
@@ -491,14 +503,6 @@ export class ChatHubService {
 		}
 
 		// Rerun the workflow, replaying the last human message
-		const workflow = await this.createChatWorkflow(
-			user,
-			session.id,
-			history,
-			lastHumanMessage ? lastHumanMessage.content : '',
-			payload.credentials,
-			payload.model,
-		);
 
 		// If the message being retried is itself a retry, we want to point to the original message
 		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
@@ -514,18 +518,31 @@ export class ChatHubService {
 			}
 		}
 
-		await this.executeChatWorkflow(
-			res,
+		const workflow = await this.createChatWorkflow(
 			user,
-			workflow,
-			replyId,
-			sessionId,
-			lastHumanMessage.id,
-			messageToRetry.turnId,
-			selectedModel,
-			retryOfMessageId,
-			runIndex,
+			session.id,
+			history,
+			lastHumanMessage ? lastHumanMessage.content : '',
+			payload.credentials,
+			payload.model,
 		);
+
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				lastHumanMessage.id,
+				messageToRetry.turnId,
+				selectedModel,
+				retryOfMessageId,
+				runIndex,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
 	}
 
 	private async executeChatWorkflow(
