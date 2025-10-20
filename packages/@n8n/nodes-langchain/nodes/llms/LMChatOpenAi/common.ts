@@ -9,6 +9,15 @@ export type ChatResponseRequest = OpenAIClient.Responses.ResponseCreateParamsNon
 	top_logprobs?: number;
 };
 
+const removeEmptyProperties = <T>(rest: { [key: string]: any }): T => {
+	return Object.keys(rest)
+		.filter(
+			(k) =>
+				rest[k] !== '' && rest[k] !== undefined && !(isObject(rest[k]) && isObjectEmpty(rest[k])),
+		)
+		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {}) as unknown as T;
+};
+
 const toArray = (str: string) =>
 	str
 		.split(',')
@@ -60,20 +69,21 @@ export const formatBuiltInTools = (builtInTools: IDataObject) => {
 
 				const headersRaw = get(mcpServer, 'headers', '') as string;
 
-				tools.push({
-					type: 'mcp',
-					server_label: mcpServer.serverLabel as string,
-					server_url: mcpServer.serverUrl as string,
-					// @ts-expect-error connector_id is not defined in the type yet
-					connector_id: mcpServer.connectorId as string,
-					authorization: mcpServer.authorization as string,
-					allowed_tools: allowedTools,
-					headers: headersRaw
-						? jsonParse(headersRaw, { errorMessage: 'Failed to parse headers' })
-						: undefined,
-					require_approval: 'never',
-					server_description: mcpServer.serverDescription as string,
-				});
+				tools.push(
+					removeEmptyProperties({
+						type: 'mcp',
+						server_label: mcpServer.serverLabel as string,
+						server_url: mcpServer.serverUrl as string,
+						connector_id: mcpServer.connectorId as string,
+						authorization: mcpServer.authorization as string,
+						allowed_tools: allowedTools,
+						headers: headersRaw
+							? jsonParse(headersRaw, { errorMessage: 'Failed to parse headers' })
+							: undefined,
+						require_approval: 'never',
+						server_description: mcpServer.serverDescription as string,
+					}),
+				);
 			}
 		}
 
@@ -102,15 +112,6 @@ export const formatBuiltInTools = (builtInTools: IDataObject) => {
 		}
 	}
 	return tools;
-};
-
-const removeEmptyProperties = <T>(rest: { [key: string]: any }): T => {
-	return Object.keys(rest)
-		.filter(
-			(k) =>
-				rest[k] !== '' && rest[k] !== undefined && !(isObject(rest[k]) && isObjectEmpty(rest[k])),
-		)
-		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {}) as unknown as T;
 };
 
 export const prepareAdditionalResponsesParams = (options: IDataObject) => {
