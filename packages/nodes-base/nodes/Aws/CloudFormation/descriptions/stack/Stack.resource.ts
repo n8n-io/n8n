@@ -1,14 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { API_VERSION } from '../../helpers/constants';
-import { handleError } from '../../helpers/errorHandler';
 
-export const description: INodeProperties[] = [
+export const stackOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'create',
 		displayOptions: {
 			show: {
 				resource: ['stack'],
@@ -26,21 +23,9 @@ export const description: INodeProperties[] = [
 						url: '/',
 						qs: {
 							Action: 'CreateStack',
-							Version: API_VERSION,
+							Version: '2010-05-15',
 							StackName: '={{ $parameter["stackName"] }}',
-							TemplateBody: '={{ $parameter["templateBody"] }}',
-							TemplateURL: '={{ $parameter["templateURL"] }}',
-							Parameters: '={{ $parameter["parameters"] }}',
-							Capabilities: '={{ $parameter["capabilities"] }}',
-							RoleARN: '={{ $parameter["roleARN"] }}',
-							TimeoutInMinutes: '={{ $parameter["timeoutInMinutes"] }}',
-							Tags: '={{ $parameter["tags"] }}',
-							EnableTerminationProtection: '={{ $parameter["enableTerminationProtection"] }}',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
@@ -55,22 +40,16 @@ export const description: INodeProperties[] = [
 						url: '/',
 						qs: {
 							Action: 'DeleteStack',
-							Version: API_VERSION,
+							Version: '2010-05-15',
 							StackName: '={{ $parameter["stackName"] }}',
-							RoleARN: '={{ $parameter["roleARN"] }}',
-							RetainResources: '={{ $parameter["retainResources"] }}',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
 				name: 'Describe',
 				value: 'describe',
-				description: 'Describe stacks',
+				description: 'Get details about stacks',
 				action: 'Describe stacks',
 				routing: {
 					request: {
@@ -78,14 +57,8 @@ export const description: INodeProperties[] = [
 						url: '/',
 						qs: {
 							Action: 'DescribeStacks',
-							Version: API_VERSION,
-							StackName: '={{ $parameter["stackName"] }}',
-							NextToken: '={{ $parameter["nextToken"] }}',
+							Version: '2010-05-15',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
@@ -100,14 +73,8 @@ export const description: INodeProperties[] = [
 						url: '/',
 						qs: {
 							Action: 'ListStacks',
-							Version: API_VERSION,
-							StackStatusFilter: '={{ $parameter["stackStatusFilter"] }}',
-							NextToken: '={{ $parameter["nextToken"] }}',
+							Version: '2010-05-15',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
@@ -122,70 +89,18 @@ export const description: INodeProperties[] = [
 						url: '/',
 						qs: {
 							Action: 'UpdateStack',
-							Version: API_VERSION,
+							Version: '2010-05-15',
 							StackName: '={{ $parameter["stackName"] }}',
-							TemplateBody: '={{ $parameter["templateBody"] }}',
-							TemplateURL: '={{ $parameter["templateURL"] }}',
-							UsePreviousTemplate: '={{ $parameter["usePreviousTemplate"] }}',
-							Parameters: '={{ $parameter["parameters"] }}',
-							Capabilities: '={{ $parameter["capabilities"] }}',
-							RoleARN: '={{ $parameter["roleARN"] }}',
-							Tags: '={{ $parameter["tags"] }}',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
-					},
-				},
-			},
-			{
-				name: 'Get Template',
-				value: 'getTemplate',
-				description: 'Get a stack template',
-				action: 'Get stack template',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/',
-						qs: {
-							Action: 'GetTemplate',
-							Version: API_VERSION,
-							StackName: '={{ $parameter["stackName"] }}',
-							TemplateStage: '={{ $parameter["templateStage"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
-					},
-				},
-			},
-			{
-				name: 'Validate Template',
-				value: 'validateTemplate',
-				description: 'Validate a template',
-				action: 'Validate template',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/',
-						qs: {
-							Action: 'ValidateTemplate',
-							Version: API_VERSION,
-							TemplateBody: '={{ $parameter["templateBody"] }}',
-							TemplateURL: '={{ $parameter["templateURL"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 		],
+		default: 'list',
 	},
-	// Common fields
+];
+
+export const stackFields: INodeProperties[] = [
 	{
 		displayName: 'Stack Name',
 		name: 'stackName',
@@ -194,195 +109,212 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['stack'],
-				operation: ['create', 'delete', 'describe', 'update', 'getTemplate'],
+				operation: ['create', 'delete', 'update'],
 			},
 		},
 		default: '',
-		description: 'The name of the stack (1-128 characters)',
+		description: 'Name of the stack (1-128 characters)',
 	},
-	// Create/Update template fields
 	{
 		displayName: 'Template Body',
 		name: 'templateBody',
 		type: 'json',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['stack'],
-				operation: ['create', 'update', 'validateTemplate'],
+				operation: ['create'],
 			},
 		},
-		default: '',
+		default: '{"AWSTemplateFormatVersion":"2010-09-09","Description":"Simple template","Resources":{}}',
 		description: 'CloudFormation template JSON or YAML (max 51200 bytes)',
+		routing: {
+			request: {
+				qs: {
+					TemplateBody: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
-		displayName: 'Template URL',
-		name: 'templateURL',
-		type: 'string',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['stack'],
-				operation: ['create', 'update', 'validateTemplate'],
+				operation: ['create'],
 			},
 		},
-		default: '',
-		description: 'S3 URL to template file (max 1024 characters)',
+		options: [
+			{
+				displayName: 'Disable Rollback',
+				name: 'disableRollback',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to disable rollback on creation failure',
+				routing: {
+					request: {
+						qs: {
+							DisableRollback: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Timeout In Minutes',
+				name: 'timeoutInMinutes',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 43200,
+				},
+				default: 30,
+				description: 'Stack creation timeout (1-43200 minutes)',
+				routing: {
+					request: {
+						qs: {
+							TimeoutInMinutes: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'On Failure',
+				name: 'onFailure',
+				type: 'options',
+				options: [
+					{ name: 'Do Nothing', value: 'DO_NOTHING' },
+					{ name: 'Rollback', value: 'ROLLBACK' },
+					{ name: 'Delete', value: 'DELETE' },
+				],
+				default: 'ROLLBACK',
+				description: 'Action to take on creation failure',
+				routing: {
+					request: {
+						qs: {
+							OnFailure: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Enable Termination Protection',
+				name: 'enableTerminationProtection',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable deletion protection',
+				routing: {
+					request: {
+						qs: {
+							EnableTerminationProtection: '={{ $value }}',
+						},
+					},
+				},
+			},
+		],
 	},
 	{
-		displayName: 'Use Previous Template',
-		name: 'usePreviousTemplate',
-		type: 'boolean',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['stack'],
 				operation: ['update'],
 			},
 		},
-		default: false,
-		description: 'Whether to reuse the existing template',
-	},
-	// Create/Update common fields
-	{
-		displayName: 'Parameters',
-		name: 'parameters',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['stack'],
-				operation: ['create', 'update'],
-			},
-		},
-		default: '[]',
-		description: 'Array of parameter objects',
-	},
-	{
-		displayName: 'Capabilities',
-		name: 'capabilities',
-		type: 'multiOptions',
 		options: [
-			{ name: 'CAPABILITY_IAM', value: 'CAPABILITY_IAM' },
-			{ name: 'CAPABILITY_NAMED_IAM', value: 'CAPABILITY_NAMED_IAM' },
-			{ name: 'CAPABILITY_AUTO_EXPAND', value: 'CAPABILITY_AUTO_EXPAND' },
+			{
+				displayName: 'Template Body',
+				name: 'templateBody',
+				type: 'json',
+				default: '',
+				description: 'New CloudFormation template',
+				routing: {
+					request: {
+						qs: {
+							TemplateBody: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Use Previous Template',
+				name: 'usePreviousTemplate',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use the existing template',
+				routing: {
+					request: {
+						qs: {
+							UsePreviousTemplate: '={{ $value }}',
+						},
+					},
+				},
+			},
 		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['stack'],
-				operation: ['create', 'update'],
+				operation: ['describe'],
 			},
 		},
-		default: [],
-		description: 'Capabilities required for the stack',
-	},
-	{
-		displayName: 'Role ARN',
-		name: 'roleARN',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['stack'],
-				operation: ['create', 'update', 'delete'],
-			},
-		},
-		default: '',
-		description: 'IAM service role for CloudFormation',
-	},
-	{
-		displayName: 'Tags',
-		name: 'tags',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['stack'],
-				operation: ['create', 'update'],
-			},
-		},
-		default: '[]',
-		description: 'Array of tag objects (max 50 tags)',
-	},
-	// Create-specific fields
-	{
-		displayName: 'Timeout In Minutes',
-		name: 'timeoutInMinutes',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['stack'],
-				operation: ['create'],
-			},
-		},
-		default: 0,
-		description: 'Stack creation timeout (1-43200 minutes)',
-	},
-	{
-		displayName: 'Enable Termination Protection',
-		name: 'enableTerminationProtection',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['stack'],
-				operation: ['create'],
-			},
-		},
-		default: false,
-		description: 'Whether to protect the stack from deletion',
-	},
-	// Delete-specific fields
-	{
-		displayName: 'Retain Resources',
-		name: 'retainResources',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['stack'],
-				operation: ['delete'],
-			},
-		},
-		default: '[]',
-		description: 'Array of logical resource IDs to retain',
-	},
-	// GetTemplate fields
-	{
-		displayName: 'Template Stage',
-		name: 'templateStage',
-		type: 'options',
 		options: [
-			{ name: 'Original', value: 'Original' },
-			{ name: 'Processed', value: 'Processed' },
-		],
-		displayOptions: {
-			show: {
-				resource: ['stack'],
-				operation: ['getTemplate'],
+			{
+				displayName: 'Stack Name',
+				name: 'stackName',
+				type: 'string',
+				default: '',
+				description: 'Specific stack name to describe',
+				routing: {
+					request: {
+						qs: {
+							StackName: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: 'Original',
-		description: 'Whether to get original or processed template',
+		],
 	},
-	// List fields
 	{
-		displayName: 'Stack Status Filter',
-		name: 'stackStatusFilter',
-		type: 'json',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['stack'],
 				operation: ['list'],
 			},
 		},
-		default: '[]',
-		description: 'Array of status values to filter by',
-	},
-	// Pagination fields
-	{
-		displayName: 'Next Token',
-		name: 'nextToken',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['stack'],
-				operation: ['describe', 'list'],
+		options: [
+			{
+				displayName: 'Next Token',
+				name: 'nextToken',
+				type: 'string',
+				default: '',
+				description: 'Pagination token from previous response',
+				routing: {
+					request: {
+						qs: {
+							NextToken: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '',
-		description: 'Pagination token from previous response',
+		],
 	},
 ];
