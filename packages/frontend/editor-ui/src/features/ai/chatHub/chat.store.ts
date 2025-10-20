@@ -294,6 +294,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		messageId: string,
 		replyToMessageId: string,
 		retryOfMessageId: string | null,
+		onBegin: () => void,
 	) {
 		const nodeId = message.metadata?.nodeId || 'unknown';
 		const runIndex = message.metadata?.runIndex;
@@ -301,6 +302,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		switch (message.type) {
 			case 'begin':
 				onBeginMessage(sessionId, messageId, replyToMessageId, retryOfMessageId, nodeId, runIndex);
+				onBegin();
 				break;
 			case 'item':
 				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
@@ -336,7 +338,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		lastError.value = { sessionId, replyId, promptId, error };
 	}
 
-	function sendMessage(
+	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel | null,
@@ -383,6 +385,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return;
 		}
 
+		let resolve: () => void;
+		const promise = new Promise<void>((r) => (resolve = r));
+
 		sendMessageApi(
 			rootStore.restApiContext,
 			{
@@ -394,13 +399,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials: createCredentials(model, credentialsId),
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, promptId, null),
+			(chunk: StructuredChunk) =>
+				onStreamMessage(sessionId, chunk, replyId, promptId, null, resolve),
 			onStreamDone,
 			(error) => onStreamError(sessionId, replyId, promptId, error),
 		);
+
+		return await promise;
 	}
 
-	function editMessage(
+	async function editMessage(
 		sessionId: ChatSessionId,
 		editId: ChatMessageId,
 		message: string,
@@ -447,6 +455,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return;
 		}
 
+		let resolve: () => void;
+		const promise = new Promise<void>((r) => (resolve = r));
+
 		editMessageApi(
 			rootStore.restApiContext,
 			{
@@ -458,13 +469,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials: createCredentials(model, credentialsId),
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, promptId, null),
+			(chunk: StructuredChunk) =>
+				onStreamMessage(sessionId, chunk, replyId, promptId, null, resolve),
 			onStreamDone,
 			(error) => onStreamError(sessionId, replyId, promptId, error),
 		);
+
+		return await promise;
 	}
 
-	function regenerateMessage(
+	async function regenerateMessage(
 		sessionId: ChatSessionId,
 		retryId: ChatMessageId,
 		model: ChatHubConversationModel | null,
@@ -490,6 +504,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return;
 		}
 
+		let resolve: () => void;
+		const promise = new Promise<void>((r) => (resolve = r));
+
 		regenerateMessageApi(
 			rootStore.restApiContext,
 			{
@@ -500,10 +517,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials: createCredentials(model, credentialsId),
 			},
 			(chunk: StructuredChunk) =>
-				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId),
+				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId, resolve),
 			onStreamDone,
 			(error) => onStreamError(sessionId, replyId, previousMessageId, error),
 		);
+
+		return await promise;
 	}
 
 	async function renameSession(sessionId: ChatSessionId, title: string) {

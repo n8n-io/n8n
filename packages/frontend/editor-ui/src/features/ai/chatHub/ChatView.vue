@@ -28,7 +28,7 @@ import {
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
@@ -224,9 +224,12 @@ async function onSubmit(message: string) {
 
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.sendMessage(sessionId.value, message, selectedModel.value, mergedCredentials.value);
-
-	await nextTick();
+	await chatStore.sendMessage(
+		sessionId.value,
+		message,
+		selectedModel.value,
+		mergedCredentials.value,
+	);
 
 	if (chatStore.lastError) {
 		return;
@@ -251,14 +254,14 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-function handleEditMessage(message: ChatHubMessageDto) {
+async function handleEditMessage(message: ChatHubMessageDto) {
 	if (chatStore.isResponding || message.type !== 'human') {
 		return;
 	}
 
 	const messageToEdit = message.revisionOfMessageId ?? message.id;
 
-	chatStore.editMessage(
+	await chatStore.editMessage(
 		sessionId.value,
 		messageToEdit,
 		message.content,
@@ -268,14 +271,14 @@ function handleEditMessage(message: ChatHubMessageDto) {
 	editingMessageId.value = undefined;
 }
 
-function handleRegenerateMessage(message: ChatHubMessageDto) {
+async function handleRegenerateMessage(message: ChatHubMessageDto) {
 	if (chatStore.isResponding || message.type !== 'ai') {
 		return;
 	}
 
 	const messageToRetry = message.retryOfMessageId ?? message.id;
 
-	chatStore.regenerateMessage(
+	await chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
 		selectedModel.value,
