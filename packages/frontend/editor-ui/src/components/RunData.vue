@@ -18,6 +18,7 @@ import type {
 } from 'n8n-workflow';
 import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
+import LastSuccessfulExecutionSchema from '@/components/LastSuccessfulExecutionSchema.vue';
 
 import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
