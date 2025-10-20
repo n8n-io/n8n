@@ -87,12 +87,11 @@ export class ChatHubController {
 					code: 500,
 					message: executionError.message,
 				});
-			} else {
+			} else if (!res.writableEnded) {
 				res.write(
 					JSON.stringify({
 						type: 'error',
 						content: executionError.message,
-						id: payload.replyId,
 					}) + '\n',
 				);
 				res.flush();
@@ -129,7 +128,7 @@ export class ChatHubController {
 					code: 500,
 					message: executionError.message,
 				});
-			} else {
+			} else if (!res.writableEnded) {
 				res.write(
 					JSON.stringify({
 						type: 'error',
@@ -171,7 +170,7 @@ export class ChatHubController {
 					code: 500,
 					message: executionError.message,
 				});
-			} else {
+			} else if (!res.writableEnded) {
 				res.write(
 					JSON.stringify({
 						type: 'error',

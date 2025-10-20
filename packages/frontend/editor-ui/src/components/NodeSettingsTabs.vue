@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ITab } from '@/Interface';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
