@@ -545,6 +545,7 @@ export const EnterpriseEditionFeature: Record<
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
 	ApiKeyScopes: 'apiKeyScopes',
+	Provisioning: 'provisioning',
 };
 
 export const MAIN_NODE_PANEL_WIDTH = 390;

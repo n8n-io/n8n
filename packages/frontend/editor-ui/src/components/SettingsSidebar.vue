@@ -94,7 +94,9 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			icon: 'toolbox',
 			label: i18n.baseText('settings.provisioning.title'),
 			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS),
+			available:
+				canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS) &&
+				settingsStore.isEnterpriseFeatureEnabled.provisioning,
 			route: { to: { name: VIEWS.PROVISIONING_SETTINGS } },
 		},
 		{

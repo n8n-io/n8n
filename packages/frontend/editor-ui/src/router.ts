@@ -752,8 +752,11 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsProvisioningView,
 				},
 				meta: {
-					middleware: ['authenticated', 'rbac'],
+					middleware: ['authenticated', 'enterprise', 'rbac'],
 					middlewareOptions: {
+						enterprise: {
+							feature: 'provisioning',
+						},
 						rbac: {
 							scope: 'provisioning:manage',
 						},

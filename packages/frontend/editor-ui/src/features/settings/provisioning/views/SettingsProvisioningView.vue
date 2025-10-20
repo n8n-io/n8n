@@ -4,6 +4,9 @@ import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import { useProvisioningStore } from '../provisioning.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
 import {
 	N8nHeading,
 	N8nText,
@@ -18,6 +21,28 @@ const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 const provisioningStore = useProvisioningStore();
+const settingsStore = useSettingsStore();
+const router = useRouter();
+
+// Check if provisioning feature is enabled
+onMounted(async () => {
+	if (!settingsStore.isEnterpriseFeatureEnabled.provisioning) {
+		router.push({ name: VIEWS.SETTINGS });
+		return;
+	}
+
+	documentTitle.set(i18n.baseText('settings.provisioning.title'));
+
+	loading.value = true;
+	try {
+		await provisioningStore.getProvisioningConfig();
+		loadFormData();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.provisioning.loadError' as any));
+	} finally {
+		loading.value = false;
+	}
+});
 
 const loading = ref(false);
 const saving = ref(false);
@@ -100,20 +125,6 @@ const onSave = async () => {
 		saving.value = false;
 	}
 };
-
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.provisioning.title'));
-
-	loading.value = true;
-	try {
-		await provisioningStore.getProvisioningConfig();
-		loadFormData();
-	} catch (error) {
-		showError(error, i18n.baseText('settings.provisioning.loadError' as any));
-	} finally {
-		loading.value = false;
-	}
-});
 </script>
 
 <template>
