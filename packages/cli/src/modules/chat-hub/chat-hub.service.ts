@@ -374,8 +374,7 @@ export class ChatHubService {
 		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 		const history = this.buildMessageHistory(messages, payload.previousMessageId);
 
-		const turnId = messageId;
-		await this.saveHumanMessage(payload, user, turnId, payload.previousMessageId, selectedModel);
+		await this.saveHumanMessage(payload, user, payload.previousMessageId, selectedModel);
 
 		const workflow = await this.createChatWorkflow(
 			user,
@@ -420,20 +419,13 @@ export class ChatHubService {
 
 		// If the message to edit isn't the original message, we want to point to the original message
 		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
-		const otherRuns = (session.messages ?? []).filter(
-			(m) => m.revisionOfMessageId === revisionOfMessageId,
-		);
-		const runIndex = otherRuns.length + 1;
 
-		const turnId = payload.messageId;
 		await this.saveHumanMessage(
 			payload,
 			user,
-			turnId,
 			messageToEdit.previousMessageId,
 			selectedModel,
 			revisionOfMessageId,
-			runIndex,
 		);
 
 		const workflow = await this.createChatWorkflow(
@@ -755,11 +747,9 @@ export class ChatHubService {
 	private async saveHumanMessage(
 		payload: HumanMessagePayload | EditMessagePayload,
 		user: User,
-		turnId: string,
 		previousMessageId: ChatMessageId | null,
 		selectedModel: ModelWithCredentials,
 		revisionOfMessageId?: ChatMessageId,
-		runIndex?: number,
 	) {
 		await this.messageRepository.createChatMessage({
 			id: payload.messageId,
@@ -768,10 +758,8 @@ export class ChatHubService {
 			name: user.firstName || 'User',
 			state: 'success',
 			content: payload.message,
-			turnId,
 			previousMessageId,
 			revisionOfMessageId,
-			runIndex,
 			...selectedModel,
 		});
 	}
@@ -944,10 +932,8 @@ export class ChatHubService {
 			updatedAt: message.updatedAt.toISOString(),
 
 			previousMessageId: message.previousMessageId,
-			turnId: message.turnId,
 			retryOfMessageId: message.retryOfMessageId,
 			revisionOfMessageId: message.revisionOfMessageId,
-			runIndex: message.runIndex,
 		};
 	}
 

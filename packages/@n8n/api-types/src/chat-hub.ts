@@ -127,10 +127,8 @@ export interface ChatHubMessageDto {
 	updatedAt: string;
 
 	previousMessageId: ChatMessageId | null;
-	turnId: ChatMessageId | null;
 	retryOfMessageId: ChatMessageId | null;
 	revisionOfMessageId: ChatMessageId | null;
-	runIndex: number;
 }
 
 export type ChatHubConversationsResponse = ChatHubSessionDto[];
