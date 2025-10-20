@@ -39,7 +39,7 @@ const toggle = () => {
 
 <style lang="scss" module>
 .container {
-	background-color: var(--color--background);
+	background-color: var(--color--foreground);
 }
 
 .header {
