@@ -12,8 +12,8 @@ import {
 } from 'n8n-workflow';
 
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/features/environments.ee/environments.store';
-import { useExternalSecretsStore } from '@/features/externalSecrets/externalSecrets.ee.store';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';

@@ -4,12 +4,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import { ref } from 'vue';
-import type { ExtendedPublicInstalledPackage } from '@/features/communityNodes/communityNodes.utils';
-import { useInstalledCommunityPackage } from '@/features/communityNodes/composables/useInstalledCommunityPackage';
+import type { ExtendedPublicInstalledPackage } from '@/features/settings/communityNodes/communityNodes.utils';
+import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 
 const renderComponent = createComponentRenderer(NodeSettingsTabs);
 
-vi.mock('@/features/communityNodes/composables/useInstalledCommunityPackage', () => ({
+vi.mock('@/features/settings/communityNodes/composables/useInstalledCommunityPackage', () => ({
 	useInstalledCommunityPackage: vi.fn(() => ({
 		installedPackage: ref<ExtendedPublicInstalledPackage | undefined>(undefined),
 		isCommunityNode: ref(false),

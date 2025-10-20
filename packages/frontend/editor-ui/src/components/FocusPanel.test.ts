@@ -1,4 +1,4 @@
-import { createCanvasGraphNode } from '@/features/canvas/__tests__/utils';
+import { createCanvasGraphNode } from '@/features/workflows/canvas/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -11,7 +11,7 @@ import { useVueFlow } from '@vue-flow/core';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { reactive } from 'vue';
-import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
+import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import FocusPanel from './FocusPanel.vue';
 
 vi.mock('vue-router', () => ({

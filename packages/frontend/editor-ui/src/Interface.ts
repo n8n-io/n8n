@@ -7,7 +7,7 @@ import type {
 	IVersionNotificationSettings,
 	Role,
 } from '@n8n/api-types';
-import type { ILogInStatus } from '@/features/users/users.types';
+import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -56,13 +56,13 @@ import type {
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type {
 	BaseFolderItem,
 	FolderListItem,
 	ResourceParentFolder,
-} from '@/features/folders/folders.types';
+} from '@/features/core/folders/folders.types';
 
 export * from '@n8n/design-system/types';
 

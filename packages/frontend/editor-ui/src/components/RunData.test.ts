@@ -38,7 +38,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/features/executions/composables/useExecutionHelpers', () => ({
+vi.mock('@/features/execution/executions/composables/useExecutionHelpers', () => ({
 	useExecutionHelpers: () => ({
 		trackOpeningRelatedExecution,
 		resolveRelatedExecutionUrl,
