@@ -2,8 +2,9 @@ import { useElementSize } from '@vueuse/core';
 import { jsonParse } from 'n8n-workflow';
 import type { MaybeRefOrGetter } from 'vue';
 import { computed, ref, toRef, toValue, watch } from 'vue';
-import type { MainPanelType, ResizeData, XYPosition } from '../Interface';
-import { LOCAL_STORAGE_NDV_PANEL_WIDTH } from '../constants';
+import type { ResizeData, XYPosition } from '@/Interface';
+import type { MainPanelType } from '../ndv.types';
+import { LOCAL_STORAGE_NDV_PANEL_WIDTH } from '../ndv.constants';
 
 interface UseNdvLayoutOptions {
 	container: MaybeRefOrGetter<HTMLElement | null>;

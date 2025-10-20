@@ -18,7 +18,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
 
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT, ExpressionLocalResolveContextSymbol } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 
 import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
 import { type ResolveParameterOptions, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';

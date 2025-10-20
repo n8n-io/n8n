@@ -1,6 +1,6 @@
 import { userEvent } from '@testing-library/user-event';
-import NDVHeader from '@/components/NDVHeader.vue';
-import { renderComponent } from '../__tests__/render';
+import NDVHeader from './NDVHeader.vue';
+import { renderComponent } from '@/__tests__/render';
 import type { ComponentProps } from 'vue-component-type-helpers';
 
 describe('NDVHeader', () => {
