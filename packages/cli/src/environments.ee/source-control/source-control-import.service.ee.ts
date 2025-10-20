@@ -24,7 +24,7 @@ import {
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, type EntityManager } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
@@ -679,7 +679,7 @@ export class SourceControlImportService {
 			await this.syncResourceOwnership({
 				resourceId: importedWorkflow.id,
 				remoteOwner: importedWorkflow.owner,
-				localOwner: localOwner,
+				localOwner,
 				fallbackProject: personalProject,
 				repository: this.sharedWorkflowRepository,
 			});
@@ -790,7 +790,7 @@ export class SourceControlImportService {
 				await this.syncResourceOwnership({
 					resourceId: credential.id,
 					remoteOwner: credential.ownedBy,
-					localOwner: localOwner,
+					localOwner,
 					fallbackProject: personalProject,
 					repository: this.sharedCredentialsRepository,
 				});
@@ -1130,7 +1130,7 @@ export class SourceControlImportService {
 
 			return await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 		} else if (owner.type === 'team') {
-			return this.projectRepository.findOne({
+			return await this.projectRepository.findOne({
 				where: { id: owner.teamId },
 			});
 		}
