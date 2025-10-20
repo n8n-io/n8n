@@ -2,6 +2,8 @@ import { tool } from '@langchain/core/tools';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderToolBase } from '@/utils/stream-processor';
+
 import { ValidationError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
@@ -122,13 +124,22 @@ function extractNodeDetails(nodeType: INodeTypeDescription): NodeDetails {
 	};
 }
 
+export const NODE_DETAILS_TOOL: BuilderToolBase = {
+	toolName: 'get_node_details',
+	displayTitle: 'Getting node details',
+};
+
 /**
  * Factory function to create the node details tool
  */
 export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
-	return tool(
+	const dynamicTool = tool(
 		(input: unknown, config) => {
-			const reporter = createProgressReporter(config, 'get_node_details');
+			const reporter = createProgressReporter(
+				config,
+				NODE_DETAILS_TOOL.toolName,
+				NODE_DETAILS_TOOL.displayTitle,
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -179,7 +190,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				const toolError = new ToolExecutionError(
 					error instanceof Error ? error.message : 'Unknown error occurred',
 					{
-						toolName: 'get_node_details',
+						toolName: NODE_DETAILS_TOOL.toolName,
 						cause: error instanceof Error ? error : undefined,
 					},
 				);
@@ -188,10 +199,15 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 			}
 		},
 		{
-			name: 'get_node_details',
+			name: NODE_DETAILS_TOOL.toolName,
 			description:
 				'Get detailed information about a specific n8n node type including properties and available connections. Use this before adding nodes to understand their input/output structure.',
 			schema: nodeDetailsSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		...NODE_DETAILS_TOOL,
+	};
 }

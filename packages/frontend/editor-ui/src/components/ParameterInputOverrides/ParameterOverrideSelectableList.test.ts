@@ -3,8 +3,9 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ParameterOverrideSelectableList from './ParameterOverrideSelectableList.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
-import { createAppModals } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
+import { waitFor } from '@testing-library/vue';
+import type { FromAIOverride } from '@/utils/fromAIOverrideUtils';
 
 vi.mock('vue-router', () => {
 	return {
@@ -15,10 +16,6 @@ vi.mock('vue-router', () => {
 		useRoute: () => ({}),
 		RouterLink: vi.fn(),
 	};
-});
-
-beforeEach(() => {
-	createAppModals();
 });
 
 const renderComponent = createComponentRenderer(ParameterOverrideSelectableList, {
@@ -37,7 +34,7 @@ const renderComponent = createComponentRenderer(ParameterOverrideSelectableList,
 
 describe('ParameterOverrideSelectableList', () => {
 	it('should render the component', () => {
-		const model = ref({
+		const model = ref<FromAIOverride>({
 			type: 'fromAI',
 			extraProps: {
 				description: {
@@ -61,7 +58,6 @@ describe('ParameterOverrideSelectableList', () => {
 					default: '',
 					required: false,
 					description: '',
-					readOnly: false,
 				},
 				path: 'parameters.workflowInputs.value["test"]',
 				modelValue: model.value,
@@ -74,7 +70,7 @@ describe('ParameterOverrideSelectableList', () => {
 	});
 
 	it('should update extra prop value when input changes', async () => {
-		const model = ref({
+		const model = ref<FromAIOverride>({
 			type: 'fromAI',
 			extraProps: {
 				description: {
@@ -98,7 +94,6 @@ describe('ParameterOverrideSelectableList', () => {
 					default: '',
 					required: false,
 					description: '',
-					readOnly: false,
 				},
 				path: 'parameters.workflowInputs.value["test"]',
 				modelValue: model.value,
@@ -107,19 +102,20 @@ describe('ParameterOverrideSelectableList', () => {
 		});
 
 		await userEvent.type(getByTestId('parameter-input-field'), '2');
-		expect(model.value.extraPropValues.description).toBe('Test description2');
-		expect(emitted('update')).toHaveLength(1);
-		expect(emitted('update')[0]).toEqual([
-			{
-				name: 'parameters.workflowInputs.value["test"]',
-				value:
-					"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('test', `Test description2`, 'string') }}",
-			},
-		]);
+		await waitFor(() => {
+			expect(model.value.extraPropValues.description).toBe('Test description2');
+			expect(emitted('update')).toContainEqual([
+				{
+					name: 'parameters.workflowInputs.value["test"]',
+					value:
+						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('test', `Test description2`, 'string') }}",
+				},
+			]);
+		});
 	});
 
 	it('should reset extra prop back to default when removed', async () => {
-		const model = ref({
+		const model = ref<FromAIOverride>({
 			type: 'fromAI',
 			extraProps: {
 				description: {
@@ -143,7 +139,6 @@ describe('ParameterOverrideSelectableList', () => {
 					default: '',
 					required: false,
 					description: '',
-					readOnly: false,
 				},
 				path: 'parameters.workflowInputs.value["test"]',
 				modelValue: model.value,

@@ -39,10 +39,10 @@ const preBuiltAgentsCallout: INodeProperties = {
 	type: 'callout',
 	typeOptions: {
 		calloutAction: {
-			label: 'Voice assistant agent',
+			label: 'Calendar agent',
 			icon: 'bot',
 			type: 'openSampleWorkflowTemplate',
-			templateId: 'voice_assistant_agent_with_telegram_and_gcal',
+			templateId: 'calendar_agent_with_gcal',
 		},
 	},
 	default: '',

@@ -32,16 +32,9 @@ import {
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
 
-import type {
-	ICredentialsResponse,
-	IExecutionResponse,
-	INodeTypesMaxCount,
-	INodeUi,
-	IWorkflowDb,
-	TargetItem,
-	WorkflowTitleStatus,
-	XYPosition,
-} from '@/Interface';
+import type { INodeTypesMaxCount, INodeUi, IWorkflowDb, TargetItem, XYPosition } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 
@@ -49,7 +42,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import get from 'lodash/get';
 
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -57,13 +50,13 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -88,7 +81,6 @@ export function resolveParameter<T = IDataObject>(
 			opts.envVars,
 			opts.workflow.getNode(opts.nodeName),
 			opts.execution,
-			true,
 			opts.workflow.pinData,
 			{
 				inputNodeName: opts.inputNode?.name,
@@ -108,7 +100,6 @@ export function resolveParameter<T = IDataObject>(
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
-		workflowsStore.shouldReplaceInputDataWithPinData,
 		workflowsStore.pinnedWorkflowData,
 		opts,
 	);
@@ -122,7 +113,6 @@ function resolveParameterImpl<T = IDataObject>(
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
 	executionData: IExecutionResponse | null,
-	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
 	opts: ResolveParameterOptions = {},
 ): T | null {
@@ -209,7 +199,6 @@ function resolveParameterImpl<T = IDataObject>(
 		contextNode!.name,
 		inputName,
 		runIndexParent,
-		shouldReplaceInputDataWithPinData,
 		pinData,
 		executionData?.data?.resultData.runData ?? null,
 		nodeConnection,
@@ -224,7 +213,6 @@ function resolveParameterImpl<T = IDataObject>(
 			contextNode.name,
 			inputName,
 			0,
-			shouldReplaceInputDataWithPinData,
 			pinData,
 			executionData?.data?.resultData.runData ?? null,
 		);
@@ -274,7 +262,6 @@ function resolveParameterImpl<T = IDataObject>(
 		contextNode!.name,
 		inputName,
 		runIndexCurrent,
-		shouldReplaceInputDataWithPinData,
 		pinData,
 		executionData?.data?.resultData.runData ?? null,
 		runIndexParent,
@@ -288,7 +275,6 @@ function resolveParameterImpl<T = IDataObject>(
 			contextNode!.name,
 			inputName,
 			runIndexParent,
-			shouldReplaceInputDataWithPinData,
 			pinData,
 			executionData?.data?.resultData.runData ?? null,
 		);
@@ -383,7 +369,6 @@ function connectionInputData(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
-	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
 	workflowRunData: IRunData | null,
 	nodeConnection: INodeConnection = { sourceIndex: 0, destinationIndex: 0 },
@@ -395,7 +380,6 @@ function connectionInputData(
 		currentNode,
 		inputName,
 		runIndex,
-		shouldReplaceInputDataWithPinData,
 		pinData,
 		workflowRunData,
 	);
@@ -442,7 +426,6 @@ export function executeData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflowsStore.shouldReplaceInputDataWithPinData,
 		workflowsStore.pinnedWorkflowData,
 		workflowsStore.getWorkflowRunData,
 		parentRunIndex,
@@ -456,7 +439,6 @@ function executeDataImpl(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
-	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
 	workflowRunData: IRunData | null,
 	parentRunIndex?: number,
@@ -473,17 +455,15 @@ function executeDataImpl(
 
 	// Find the parent node which has data
 	for (const parentNodeName of parentNodes) {
-		if (shouldReplaceInputDataWithPinData) {
-			const parentPinData = pinData?.[parentNodeName];
+		const parentPinData = pinData?.[parentNodeName];
 
-			// populate `executeData` from `pinData`
+		// populate `executeData` from `pinData`
 
-			if (parentPinData) {
-				executeData.data = { main: [parentPinData] };
-				executeData.source = { main: [{ previousNode: parentNodeName }] };
+		if (parentPinData) {
+			executeData.data = { main: [parentPinData] };
+			executeData.source = { main: [{ previousNode: parentNodeName }] };
 
-				return executeData;
-			}
+			return executeData;
 		}
 
 		// populate `executeData` from `runData`
@@ -546,6 +526,7 @@ export function useWorkflowHelpers() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
@@ -553,17 +534,6 @@ export function useWorkflowHelpers() {
 	const tagsStore = useTagsStore();
 
 	const i18n = useI18n();
-	const documentTitle = useDocumentTitle();
-
-	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
-		let icon = '⚠️';
-		if (status === 'EXECUTING') {
-			icon = '🔄';
-		} else if (status === 'IDLE') {
-			icon = '▶️';
-		}
-		documentTitle.set(`${icon} ${workflowName}`);
-	};
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowsStore.allNodes;
@@ -889,7 +859,7 @@ export function useWorkflowHelpers() {
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 		if (isCurrentWorkflow) {
-			workflowsStore.setActive(!!workflow.active);
+			workflowState.setActive(!!workflow.active);
 			uiStore.stateIsDirty = false;
 		}
 
@@ -979,14 +949,14 @@ export function useWorkflowHelpers() {
 
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
-		workflowsStore.setActive(workflowData.active || false);
+		workflowState.setActive(workflowData.active || false);
 		workflowsStore.setIsArchived(workflowData.isArchived);
-		workflowsStore.setWorkflowId(workflowData.id);
-		workflowsStore.setWorkflowName({
+		workflowState.setWorkflowId(workflowData.id);
+		workflowState.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});
-		workflowsStore.setWorkflowSettings(workflowData.settings ?? {});
+		workflowState.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
@@ -1005,7 +975,7 @@ export function useWorkflowHelpers() {
 
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);
-		workflowsStore.setWorkflowTagIds(tagIds || []);
+		workflowState.setWorkflowTagIds(tagIds || []);
 		tagsStore.upsertTags(tags);
 	}
 
@@ -1017,11 +987,14 @@ export function useWorkflowHelpers() {
 		return workflow.nodes.some((node) => node.type.startsWith(packageName));
 	};
 
-	function getMethod(trigger: INode) {
+	function getMethods(trigger: INode) {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
-			return (trigger.parameters.method as string) ?? 'GET';
+			if (trigger.parameters.multipleMethods === true) {
+				return (trigger.parameters.httpMethod as string[]) ?? ['GET', 'POST'];
+			}
+			return [(trigger.parameters.httpMethod as string) ?? 'GET'];
 		}
-		return 'POST';
+		return ['POST'];
 	}
 
 	function getWebhookPath(trigger: INode) {
@@ -1053,17 +1026,17 @@ export function useWorkflowHelpers() {
 		);
 
 		for (const trigger of triggers) {
-			const method = getMethod(trigger);
-
+			const methods = getMethods(trigger);
 			const path = getWebhookPath(trigger);
+			for (const method of methods) {
+				const conflict = await findWebhook(rootStore.restApiContext, {
+					path,
+					method,
+				});
 
-			const conflict = await findWebhook(rootStore.restApiContext, {
-				path,
-				method,
-			});
-
-			if (conflict && conflict.workflowId !== workflowId) {
-				return { trigger, conflict };
+				if (conflict && conflict.workflowId !== workflowId) {
+					return { trigger, conflict };
+				}
 			}
 		}
 
@@ -1071,7 +1044,6 @@ export function useWorkflowHelpers() {
 	}
 
 	return {
-		setDocumentTitle,
 		resolveParameter,
 		resolveRequiredParameters,
 		getConnectedNodes,

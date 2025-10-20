@@ -132,7 +132,10 @@ export class MFAController {
 			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
 		}
 
-		const updatedUser = await this.userRepository.findOneByOrFail({ id: userId });
+		const updatedUser = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
 
 		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 	}

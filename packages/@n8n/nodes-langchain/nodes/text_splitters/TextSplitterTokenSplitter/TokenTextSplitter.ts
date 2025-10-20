@@ -51,7 +51,7 @@ export class TokenTextSplitter extends TextSplitter implements TokenTextSplitter
 
 			// Use tiktoken for normal text
 			try {
-				this.tokenizer ??= getEncoding(this.encodingName);
+				this.tokenizer ??= await getEncoding(this.encodingName);
 
 				const splits: string[] = [];
 				const input_ids = this.tokenizer.encode(text, this.allowedSpecial, this.disallowedSpecial);

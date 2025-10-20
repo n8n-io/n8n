@@ -17,6 +17,7 @@ on:
           - patch
           - minor
           - major
+          - experimental
 
 jobs:
   create-release-pr:

@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { ProjectRole, User, UserRepository } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
+import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
 
@@ -157,8 +158,8 @@ describe('UserManagementMailer', () => {
 		it('should send project share notifications', async () => {
 			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
 			const newSharees = [
-				{ userId: 'recipient1', role: 'project:editor' as ProjectRole },
-				{ userId: 'recipient2', role: 'project:viewer' as ProjectRole },
+				{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG },
+				{ userId: 'recipient2', role: PROJECT_VIEWER_ROLE_SLUG },
 			];
 			const project = { id: 'project1', name: 'Test Project' };
 			userRepository.getEmailsByIds.mockResolvedValue([
@@ -188,7 +189,7 @@ describe('UserManagementMailer', () => {
 
 				const callBody = nodeMailer.sendMail.mock.calls[index][0].body;
 				expect(callBody).toContain(
-					`You have been added to the ${project.name} project as ${sharee.role.replace('project:', '')}`,
+					`You have been added to the <b>${project.name}</b> project as ${sharee.role.replace('project:', '')}`,
 				);
 			});
 		});

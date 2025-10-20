@@ -24,6 +24,15 @@ import { isTriggerPanelObject } from '@/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import {
+	N8nButton,
+	N8nHeading,
+	N8nInfoAccordion,
+	N8nLink,
+	N8nPulse,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		nodeName: string;
@@ -154,15 +163,21 @@ const isPollingNode = computed(() => {
 });
 
 const isListeningForEvents = computed(() => {
-	const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
+	if (!node.value || node.value.disabled || !isWebhookBasedNode.value) {
+		return false;
+	}
+
+	if (!workflowsStore.executionWaitingForWebhook) {
+		return false;
+	}
+
 	const executedNode = workflowsStore.executedNode;
-	return (
-		!!node.value &&
-		!node.value.disabled &&
-		isWebhookBasedNode.value &&
-		waitingOnWebhook &&
-		(!executedNode || executedNode === props.nodeName)
-	);
+	const isCurrentNodeExecuted = executedNode === props.nodeName;
+	const isChildNodeExecuted = executedNode
+		? workflowsStore.workflowObject.getParentNodes(executedNode).includes(props.nodeName)
+		: false;
+
+	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });
 
 const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
@@ -344,7 +359,7 @@ const onLinkClick = (e: MouseEvent) => {
 				pane: 'input',
 				type: 'open-executions-log',
 			});
-			ndvStore.activeNodeName = null;
+			ndvStore.unsetActiveNodeName();
 			void router.push({
 				name: VIEWS.EXECUTIONS,
 			});
@@ -368,24 +383,24 @@ const onNodeExecute = () => {
 
 <template>
 	<div :class="$style.container">
-		<transition name="fade" mode="out-in">
+		<Transition name="fade" mode="out-in">
 			<div v-if="hasIssues || hideContent" key="empty"></div>
-			<div v-else-if="isListeningForEvents" key="listening">
-				<n8n-pulse>
+			<div v-else-if="isListeningForEvents" key="listening" data-test-id="trigger-listening">
+				<N8nPulse>
 					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
-				</n8n-pulse>
+				</N8nPulse>
 				<div v-if="isWebhookNode">
-					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+					<N8nText tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						i18n.baseText('ndv.trigger.webhookNode.listening')
-					}}</n8n-text>
+					}}</N8nText>
 					<div :class="[$style.shake, 'mb-xs']">
-						<n8n-text>
+						<N8nText>
 							{{
 								i18n.baseText('ndv.trigger.webhookNode.requestHint', {
 									interpolate: { type: webhookHttpMethod ?? '' },
 								})
 							}}
-						</n8n-text>
+						</N8nText>
 					</div>
 					<CopyInput
 						:value="webhookTestUrl"
@@ -405,18 +420,18 @@ const onNodeExecute = () => {
 					/>
 				</div>
 				<div v-else>
-					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+					<N8nText tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						listeningTitle
-					}}</n8n-text>
+					}}</N8nText>
 					<div :class="[$style.shake, 'mb-xs']">
-						<n8n-text tag="div">
+						<N8nText tag="div">
 							{{ listeningHint }}
-						</n8n-text>
+						</N8nText>
 					</div>
 					<div v-if="displayChatButton">
-						<n8n-button class="mb-xl" @click="openWebhookUrl()">
+						<N8nButton class="mb-xl" @click="openWebhookUrl()">
 							{{ i18n.baseText('ndv.trigger.chatTrigger.openChat') }}
-						</n8n-button>
+						</N8nButton>
 					</div>
 
 					<NodeExecuteButton
@@ -430,17 +445,17 @@ const onNodeExecute = () => {
 			</div>
 			<div v-else key="default">
 				<div v-if="isActivelyPolling" class="mb-xl">
-					<n8n-spinner type="ring" />
+					<N8nSpinner type="ring" />
 				</div>
 
 				<div :class="$style.action">
-					<div :class="$style.header">
-						<n8n-heading v-if="header" tag="h1" bold>
+					<div data-test-id="trigger-header" :class="$style.header">
+						<N8nHeading v-if="header" tag="h1" bold>
 							{{ header }}
-						</n8n-heading>
-						<n8n-text v-if="subheader">
+						</N8nHeading>
+						<N8nText v-if="subheader">
 							<span v-text="subheader" />
-						</n8n-text>
+						</N8nText>
 					</div>
 
 					<NodeExecuteButton
@@ -452,16 +467,16 @@ const onNodeExecute = () => {
 					/>
 				</div>
 
-				<n8n-text v-if="activationHint" size="small" @click="onLinkClick">
+				<N8nText v-if="activationHint" size="small" @click="onLinkClick">
 					<span v-n8n-html="activationHint"></span>&nbsp;
-				</n8n-text>
-				<n8n-link
+				</N8nText>
+				<N8nLink
 					v-if="activationHint && executionsHelp"
 					size="small"
 					@click="expandExecutionHelp"
-					>{{ i18n.baseText('ndv.trigger.moreInfo') }}</n8n-link
+					>{{ i18n.baseText('ndv.trigger.moreInfo') }}</N8nLink
 				>
-				<n8n-info-accordion
+				<N8nInfoAccordion
 					v-if="executionsHelp"
 					ref="help"
 					:class="$style.accordion"
@@ -469,9 +484,9 @@ const onNodeExecute = () => {
 					:description="executionsHelp"
 					:event-bus="executionsHelpEventBus"
 					@click:body="onLinkClick"
-				></n8n-info-accordion>
+				></N8nInfoAccordion>
 			</div>
-		</transition>
+		</Transition>
 	</div>
 </template>
 
@@ -480,13 +495,13 @@ const onNodeExecute = () => {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-run-data-background);
+	background-color: var(--run-data--color--background);
 	display: flex;
 	flex-direction: column;
 
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
+	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--xl) var(--spacing--sm);
 	text-align: center;
 	overflow: hidden;
 
@@ -496,15 +511,15 @@ const onNodeExecute = () => {
 }
 
 .header {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
 .action {
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing--2xl);
 }
 
 .shake {

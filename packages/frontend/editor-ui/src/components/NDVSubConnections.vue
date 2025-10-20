@@ -18,6 +18,7 @@ import { OnClickOutside } from '@vueuse/components';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	rootNode: INodeUi;
 }
@@ -301,7 +302,7 @@ defineExpose({
 								}"
 								@click="onPlusClick(getConnectionContext(connection, index))"
 							>
-								<n8n-tooltip
+								<N8nTooltip
 									placement="top"
 									:teleported="true"
 									:offset="10"
@@ -320,13 +321,13 @@ defineExpose({
 											/>
 										</template>
 									</template>
-									<n8n-icon-button
+									<N8nIconButton
 										size="medium"
 										icon="plus"
 										type="tertiary"
 										:data-test-id="`add-subnode-${getConnectionKey(connection, index)}`"
 									/>
-								</n8n-tooltip>
+								</N8nTooltip>
 							</div>
 							<div
 								v-if="connectedNodes[getConnectionKey(connection, index)].length > 0"
@@ -344,7 +345,7 @@ defineExpose({
 									:data-node-name="node.node.name"
 									:style="`--node-index: ${nodeIndex}`"
 								>
-									<n8n-tooltip
+									<N8nTooltip
 										:key="node.node.name"
 										placement="top"
 										:teleported="true"
@@ -374,7 +375,7 @@ defineExpose({
 												circle
 											/>
 										</div>
-									</n8n-tooltip>
+									</N8nTooltip>
 								</div>
 							</div>
 						</div>
@@ -408,12 +409,12 @@ defineExpose({
 	--plus-button-size: 30px;
 	--animation-duration: 150ms;
 	--collapsed-offset: 10px;
-	padding-top: calc(var(--node-size) + var(--spacing-3xs));
+	padding-top: calc(var(--node-size) + var(--spacing--3xs));
 }
 .connections {
 	// Make sure container has matching height if there's no connections
 	// since the plus button is absolutely positioned
-	min-height: calc(var(--node-size) + var(--spacing-m));
+	min-height: calc(var(--node-size) + var(--spacing--md));
 	position: absolute;
 	bottom: calc((var(--node-size) / 2) * -1);
 	left: 0;
@@ -430,13 +431,13 @@ defineExpose({
 	transition: all calc((var(--animation-duration) - 50ms)) ease;
 }
 .connectionLabel {
-	margin-bottom: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
+	margin-bottom: var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
 	user-select: none;
 	text-wrap: nowrap;
 
 	&.hasIssues {
-		color: var(--color-danger);
+		color: var(--color--danger);
 	}
 }
 .connectedNodesWrapper {
@@ -449,13 +450,13 @@ defineExpose({
 .plusButton {
 	transition: all var(--animation-duration) ease;
 	position: absolute;
-	top: var(--spacing-2xs);
+	top: var(--spacing--2xs);
 
 	&.hasIssues {
 		animation: horizontal-shake 500ms;
 		button {
-			--button-font-color: var(--color-danger);
-			--button-border-color: var(--color-danger);
+			--button--color--text: var(--color--danger);
+			--button--border-color: var(--color--danger);
 		}
 	}
 
@@ -467,7 +468,7 @@ defineExpose({
 
 		.connectedNodesWrapperExpanded & {
 			// left: 100%;
-			margin-right: var(--spacing-2xs);
+			margin-right: var(--spacing--2xs);
 			opacity: 1;
 			pointer-events: all;
 		}
@@ -488,10 +489,10 @@ defineExpose({
 	visibility: hidden;
 }
 .connectedNode {
-	border: var(--border-base);
-	background-color: var(--color-node-background);
+	border: var(--border);
+	background-color: var(--node--color--background);
 	border-radius: 100%;
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	cursor: pointer;
 	pointer-events: all;
 	transition: all var(--animation-duration) ease;
@@ -510,7 +511,7 @@ defineExpose({
 		margin-right: 0;
 		// Negative margin to offset the absolutely positioned plus button
 		// when the nodes are expanded to center the nodes
-		margin-right: calc((var(--spacing-2xs) + var(--plus-button-size)) * -1);
+		margin-right: calc((var(--spacing--2xs) + var(--plus-button-size)) * -1);
 	}
 }
 .nodeWrapper {
@@ -518,12 +519,12 @@ defineExpose({
 	transform-origin: center;
 	z-index: 1;
 	.connectedNodesWrapperExpanded &:not(:first-child) {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 	&.hasIssues {
 		.connectedNode {
-			border-width: calc(var(--border-width-base) * 2);
-			border-color: var(--color-danger);
+			border-width: calc(var(--border-width) * 2);
+			border-color: var(--color--danger);
 		}
 	}
 

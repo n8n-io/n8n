@@ -35,8 +35,9 @@ Troubleshooting:
 
 ## 🏗️ Architecture Overview
 
-Our test architecture follows a strict four-layer approach:
+Our test architecture supports both UI-driven and API-driven testing:
 
+### UI Testing (Four-Layer Approach)
 ```
 Tests (*.spec.ts)
     ↓ uses
@@ -47,11 +48,19 @@ Page Objects (*Page.ts) - UI interactions
 BasePage - Common utilities
 ```
 
+### API Testing (Two-Layer Approach)
+```
+Tests (*.spec.ts)
+    ↓ uses
+API Services (ApiHelpers + specialized helpers)
+```
+
 ### Core Principle: Separation of Concerns
 - **BasePage**: Generic interaction methods
 - **Page Objects**: Element locators and simple actions
 - **Composables**: Complex business workflows
-- **Tests**: Readable scenarios using composables
+- **API Services**: REST API interactions, workflow management
+- **Tests**: Readable scenarios using composables or API services
 
 ---
 
@@ -293,6 +302,7 @@ export class ProjectComposer {
 
 ### When Writing Tests
 
+#### UI Tests
 ```typescript
 // ✅ GOOD: From 1-workflows.spec.ts
 test('should create a new workflow using add workflow button', async ({ n8n }) => {
@@ -323,6 +333,29 @@ test('should enter debug mode for failed executions', async ({ n8n }) => {
   await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.PROBLEM_IN_NODE);
   await importExecutionForDebugging(n8n);
   expect(n8n.page.url()).toContain('/debug');
+});
+```
+
+#### API Tests
+```typescript
+// ✅ GOOD: API-driven workflow testing
+test('should create workflow via API, activate it, trigger webhook externally @auth:owner', async ({ api }) => {
+  const workflowDefinition = JSON.parse(
+    readFileSync(resolveFromRoot('workflows', 'simple-webhook-test.json'), 'utf8'),
+  );
+
+  const createdWorkflow = await api.workflowApi.createWorkflow(workflowDefinition);
+  await api.workflowApi.setActive(createdWorkflow.id, true);
+
+  const testPayload = { message: 'Hello from Playwright test' };
+  const webhookResponse = await api.workflowApi.triggerWebhook('test-webhook', { data: testPayload });
+  expect(webhookResponse.ok()).toBe(true);
+
+  const execution = await api.workflowApi.waitForExecution(createdWorkflow.id, 10000);
+  expect(execution.status).toBe('success');
+
+  const executionDetails = await api.workflowApi.getExecution(execution.id);
+  expect(executionDetails.data).toContain('Hello from Playwright test');
 });
 ```
 
@@ -492,7 +525,8 @@ Here's a complete example from our codebase showing all layers:
 export class ProjectSettingsPage extends BasePage {
   // Simple action methods only
   async fillProjectName(name: string) {
-    await this.page.getByTestId('project-settings-name-input').locator('input').fill(name);
+    // Prefer stable ID selectors on the wrapper element and then target the inner control
+    await this.page.locator('#projectName input').fill(name);
   }
 
   async clickSaveButton() {

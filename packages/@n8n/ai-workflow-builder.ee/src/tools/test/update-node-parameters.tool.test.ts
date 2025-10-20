@@ -36,7 +36,7 @@ jest.mock('../../../src/chains/parameter-updater', () => ({
 
 describe('UpdateNodeParametersTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
-	let updateNodeParametersTool: ReturnType<typeof createUpdateNodeParametersTool>;
+	let updateNodeParametersTool: ReturnType<typeof createUpdateNodeParametersTool>['tool'];
 	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
 		typeof getCurrentTaskInput
 	>;
@@ -59,7 +59,7 @@ describe('UpdateNodeParametersTool', () => {
 		parameterUpdaterModule.createParameterUpdaterChain.mockReturnValue(mockChain);
 
 		nodeTypesList = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook, nodeTypes.setNode];
-		updateNodeParametersTool = createUpdateNodeParametersTool(nodeTypesList, mockLLM);
+		updateNodeParametersTool = createUpdateNodeParametersTool(nodeTypesList, mockLLM).tool;
 	});
 
 	afterEach(() => {
@@ -192,7 +192,7 @@ describe('UpdateNodeParametersTool', () => {
 			});
 		});
 
-		it('should merge parameters instead of replacing them', async () => {
+		it('should be able to remove parameters', async () => {
 			const existingWorkflow = createWorkflow([
 				createNode({
 					id: 'node1',
@@ -208,9 +208,10 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock chain response - only updating URL
+			// Mock chain response - removing authentication
 			mockChain.invoke.mockResolvedValue({
 				parameters: {
+					method: 'GET',
 					url: 'https://api.example.com/v2',
 				},
 			});
@@ -218,19 +219,17 @@ describe('UpdateNodeParametersTool', () => {
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-3');
 
 			const result = await updateNodeParametersTool.invoke(
-				buildUpdateNodeInput('node1', ['Update URL to v2 endpoint']),
+				buildUpdateNodeInput('node1', ['Update URL to v2 endpoint', 'Remove authentication']),
 				mockConfig,
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
 
-			// Should keep existing parameters and only update URL
+			// Should remove authentication and keep other parameters
 			expectNodeUpdated(content, 'node1', {
 				parameters: expect.objectContaining({
 					method: 'GET', // preserved
 					url: 'https://api.example.com/v2', // updated
-					authentication: 'genericCredentialType', // preserved
-					genericAuthType: 'httpBasicAuth', // preserved
 				}),
 			});
 		});
@@ -469,7 +468,7 @@ describe('UpdateNodeParametersTool', () => {
 			};
 
 			// Create tool with custom node type
-			const customTool = createUpdateNodeParametersTool([customNodeType], mockLLM);
+			const customTool = createUpdateNodeParametersTool([customNodeType], mockLLM).tool;
 
 			const existingWorkflow = createWorkflow([
 				createNode({

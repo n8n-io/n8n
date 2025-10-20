@@ -12,6 +12,11 @@ type RequestParameters = {
 	option?: IDataObject;
 };
 
+type GooglePalmApiCredentials = {
+	host: string;
+	apiKey: string;
+};
+
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -20,12 +25,12 @@ export async function apiRequest(
 ) {
 	const { body, qs, option, headers } = parameters ?? {};
 
-	const credentials = await this.getCredentials('googlePalmApi');
+	const credentials = await this.getCredentials<GooglePalmApiCredentials>('googlePalmApi');
 
 	let url = `https://generativelanguage.googleapis.com${endpoint}`;
 
-	if (credentials.url) {
-		url = `${credentials?.url as string}${endpoint}`;
+	if (credentials.host) {
+		url = `${credentials.host}${endpoint}`;
 	}
 
 	const options = {

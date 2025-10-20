@@ -331,6 +331,20 @@ export class NodeTestHarness {
 			});
 
 			const msg = `Equality failed for "${testData.description}" at node "${nodeName}"`;
+			// When continue on fail is on the json wrapper is removed for some reason
+			const runs = output.nodeData[nodeName];
+			if (Array.isArray(runs)) {
+				for (let runIndex = 0; runIndex < runs.length; runIndex++) {
+					const run = runs[runIndex];
+					if (!Array.isArray(run)) continue;
+					for (let itemIndex = 0; itemIndex < run.length; itemIndex++) {
+						const original = run[itemIndex];
+						if (original && !original.json) {
+							run[itemIndex] = { json: { ...original } };
+						}
+					}
+				}
+			}
 			expect(resultData, msg).toEqual(output.nodeData[nodeName]);
 		});
 

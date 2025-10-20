@@ -9,9 +9,13 @@ import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
-} from '@/types';
+} from '@/features/workflows/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
+import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
+import type { TelemetryContext } from './types/telemetry';
+import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { WorkflowState } from './composables/useWorkflowState';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -46,11 +50,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
-export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
-export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
-export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
-export const DELETE_USER_MODAL_KEY = 'deleteUser';
-export const INVITE_USER_MODAL_KEY = 'inviteUser';
+export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
@@ -58,41 +58,28 @@ export const ANNOTATION_TAGS_MANAGER_MODAL_KEY = 'annotationTagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
-export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const NODE_PINNING_MODAL_KEY = 'nodePinning';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
-export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
-export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
-export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
-export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
-export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
-export const COMMUNITY_PLUS_ENROLLMENT_MODAL = 'communityPlusEnrollment';
-export const DELETE_FOLDER_MODAL_KEY = 'deleteFolder';
-export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
+export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
+export const CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY = 'chatHubSideMenuDrawer';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
-
-export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
-	UNINSTALL: 'uninstall',
-	UPDATE: 'update',
-	VIEW_DOCS: 'view-documentation',
-};
+export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -108,12 +95,7 @@ export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`
 export const SCHEMA_PREVIEW_DOCS_URL = `https://${DOCS_DOMAIN}/data/schema-preview/`;
 export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-auth/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
-export const NPM_KEYWORD_SEARCH_URL =
-	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
-export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
-export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluations/overview/`;
@@ -223,12 +205,16 @@ export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
+export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
+export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
 // template categories
 export const TEMPLATE_CATEGORY_AI = 'categories/ai';
+
+export const DATA_TABLE_NODES = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
 
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
@@ -249,6 +235,9 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	CODE_NODE_TYPE,
 	AI_CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
+];
+export const MODULE_ENABLED_NODES = [
+	...DATA_TABLE_NODES.map((nodeType) => ({ nodeType, module: DATA_TABLE_MODULE_NAME })),
 ];
 
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
@@ -284,6 +273,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	ADD_NODE_BUTTON: 'add_node_button',
 	TAB: 'tab',
 	NODE_CONNECTION_ACTION: 'node_connection_action',
+	REPLACE_NODE_ACTION: 'replace_node_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
@@ -334,152 +324,24 @@ export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
 	NodeConnectionTypes.Main,
 ];
 
-/** PERSONALIZATION SURVEY */
-export const EMAIL_KEY = 'email';
-export const WORK_AREA_KEY = 'workArea';
-export const FINANCE_WORK_AREA = 'finance';
-export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
-export const PRODUCT_WORK_AREA = 'product';
-export const SALES_BUSINESSDEV_WORK_AREA = 'sales-businessDevelopment';
-export const SECURITY_WORK_AREA = 'security';
-
-export const COMPANY_TYPE_KEY = 'companyType';
-export const SAAS_COMPANY_TYPE = 'saas';
-export const ECOMMERCE_COMPANY_TYPE = 'ecommerce';
-export const EDUCATION_TYPE = 'education';
-export const MSP_COMPANY_TYPE = 'msp';
-export const DIGITAL_AGENCY_COMPANY_TYPE = 'digital-agency';
-export const SYSTEMS_INTEGRATOR_COMPANY_TYPE = 'systems-integrator';
-export const OTHER_COMPANY_TYPE = 'other';
-export const PERSONAL_COMPANY_TYPE = 'personal';
-
-export const COMPANY_INDUSTRY_EXTENDED_KEY = 'companyIndustryExtended';
-export const OTHER_COMPANY_INDUSTRY_EXTENDED_KEY = 'otherCompanyIndustryExtended';
-export const PHYSICAL_RETAIL_OR_SERVICES = 'physical-retail-or-services';
-export const REAL_ESTATE_OR_CONSTRUCTION = 'real-estate-or-construction';
-export const GOVERNMENT_INDUSTRY = 'government';
-export const LEGAL_INDUSTRY = 'legal-industry';
-export const MARKETING_INDUSTRY = 'marketing-industry';
-export const MEDIA_INDUSTRY = 'media-industry';
-export const MANUFACTURING_INDUSTRY = 'manufacturing-industry';
-export const MSP_INDUSTRY = 'msp';
-export const HEALTHCARE_INDUSTRY = 'healthcare';
-export const FINANCE_INSURANCE_INDUSTRY = 'finance-insurance-industry';
-export const IT_INDUSTRY = 'it-industry';
-export const SECURITY_INDUSTRY = 'security-industry';
-export const TELECOMS_INDUSTRY = 'telecoms';
-export const OTHER_INDUSTRY_OPTION = 'other';
-
-export const COMPANY_SIZE_KEY = 'companySize';
-export const COMPANY_SIZE_20_OR_LESS = '<20';
-export const COMPANY_SIZE_20_99 = '20-99';
-export const COMPANY_SIZE_100_499 = '100-499';
-export const COMPANY_SIZE_500_999 = '500-999';
-export const COMPANY_SIZE_1000_OR_MORE = '1000+';
-export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
-
-export const MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSm';
-export const MARKETING_AUTOMATION_LEAD_GENERATION_GOAL = 'lead-generation';
-export const MARKETING_AUTOMATION_CUSTOMER_COMMUNICATION = 'customer-communication';
-export const MARKETING_AUTOMATION_ACTIONS = 'actions';
-export const MARKETING_AUTOMATION_AD_CAMPAIGN = 'ad-campaign';
-export const MARKETING_AUTOMATION_REPORTING = 'reporting';
-export const MARKETING_AUTOMATION_DATA_SYNCHING = 'data-syncing';
-export const MARKETING_AUTOMATION_OTHER = 'other';
-
-export const OTHER_MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSmOther';
-
-export const CODING_SKILL_KEY = 'codingSkill';
-
-export const AUTOMATION_BENEFICIARY_KEY = 'automationBeneficiary';
-export const AUTOMATION_BENEFICIARY_SELF = 'myself';
-export const AUTOMATION_BENEFICIARY_MY_TEAM = 'my-team';
-export const AUTOMATION_BENEFICIARY_OTHER_TEAMS = 'other-teams';
-
-export const USAGE_MODE_KEY = 'usageModes';
-export const USAGE_MODE_CONNECT_TO_DB = 'connect-internal-db';
-export const USAGE_MODE_BUILD_BE_SERVICES = 'build-be-services';
-export const USAGE_MODE_MANIPULATE_FILES = 'manipulate-files';
-
-export const REPORTED_SOURCE_KEY = 'reportedSource';
-export const REPORTED_SOURCE_OTHER_KEY = 'reportedSourceOther';
-export const REPORTED_SOURCE_GOOGLE = 'google';
-export const REPORTED_SOURCE_TWITTER = 'twitter';
-export const REPORTED_SOURCE_LINKEDIN = 'linkedin';
-export const REPORTED_SOURCE_YOUTUBE = 'youtube';
-export const REPORTED_SOURCE_FRIEND = 'friend';
-export const REPORTED_SOURCE_PODCAST = 'podcast';
-export const REPORTED_SOURCE_EVENT = 'event';
-export const REPORTED_SOURCE_OTHER = 'other';
-
-export const AUTOMATION_GOAL_KEY = 'automationGoal';
-export const DEVOPS_AUTOMATION_GOAL_KEY = 'automationGoalDevops';
-export const DEVOPS_AUTOMATION_GOAL_OTHER_KEY = 'automationGoalDevopsOther';
-export const DEVOPS_AUTOMATION_OTHER = 'other';
-export const DEVOPS_AUTOMATION_CI_CD_GOAL = 'ci-cd';
-export const DEVOPS_AUTOMATION_CLOUD_INFRASTRUCTURE_ORCHESTRATION_GOAL =
-	'cloud-infrastructure-orchestration';
-export const DEVOPS_AUTOMATION_DATA_SYNCING_GOAL = 'data-syncing';
-export const DEVOPS_INCIDENT_RESPONSE_GOAL = 'incident-response';
-export const DEVOPS_MONITORING_AND_ALERTING_GOAL = 'monitoring-alerting';
-export const DEVOPS_REPORTING_GOAL = 'reporting';
-export const DEVOPS_TICKETING_SYSTEMS_INTEGRATIONS_GOAL = 'ticketing-systems-integrations';
-
-export const CUSTOMER_INTEGRATIONS_GOAL = 'customer-integrations';
-export const CUSTOMER_SUPPORT_GOAL = 'customer-support';
-export const ENGINEERING_GOAL = 'engineering';
-export const FINANCE_ACCOUNTING_GOAL = 'finance-accounting';
-export const HR_GOAL = 'hr';
-export const OPERATIONS_GOAL = 'operations';
-export const PRODUCT_GOAL = 'product';
-export const SALES_MARKETING_GOAL = 'sales-marketing';
-export const SECURITY_GOAL = 'security';
-export const OTHER_AUTOMATION_GOAL = 'other';
-export const NOT_SURE_YET_GOAL = 'not-sure-yet';
-
-export const ROLE_KEY = 'role';
-export const ROLE_OTHER_KEY = 'roleOther';
-export const ROLE_BUSINESS_OWNER = 'business-owner';
-export const ROLE_CUSTOMER_SUPPORT = 'customer-support';
-export const ROLE_DATA_SCIENCE = 'data-science';
-export const ROLE_DEVOPS = 'devops';
-export const ROLE_IT = 'it';
-export const ROLE_ENGINEERING = 'engineering';
-export const ROLE_SALES_AND_MARKETING = 'sales-and-marketing';
-export const ROLE_SECURITY = 'security';
-export const ROLE_OTHER = 'other';
-
-/** END OF PERSONALIZATION SURVEY */
+// Data Types
+export const DATA_TYPE_ICON_MAP = {
+	['string']: 'type',
+	['number']: 'hash',
+	['boolean']: 'square-check',
+	date: 'calendar',
+	array: 'list',
+	object: 'box',
+	file: 'file',
+} satisfies Record<string, IconName>;
 
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
 export const MODAL_CLOSE = 'close';
 
-export const ILLEGAL_FOLDER_CHARACTERS = [
-	'[',
-	']',
-	'^',
-	'\\',
-	'/',
-	':',
-	'*',
-	'?',
-	'"',
-	'<',
-	'>',
-	'|',
-];
-export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
-	`[${ILLEGAL_FOLDER_CHARACTERS.map((char) => {
-		return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	}).join('')}]`,
-);
-
-export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
-export const FOLDER_NAME_MAX_LENGTH = 100;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
+export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^https?:\/\/.+/i;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
@@ -500,18 +362,21 @@ export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION_ENABLE
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE = 'N8N_LOGS_DETAILS_PANEL_SUB_NODE';
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
-export const LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS =
-	'N8N_EXPERIMENTAL_DOCKED_NODE_SETTINGS';
 export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLES';
 export const LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT = 'N8N_DISMISSED_WHATS_NEW_CALLOUT';
 export const LOCAL_STORAGE_NDV_PANEL_WIDTH = 'N8N_NDV_PANEL_WIDTH';
 export const LOCAL_STORAGE_FOCUS_PANEL = 'N8N_FOCUS_PANEL';
 export const LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS =
 	'N8N_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS';
+export const LOCAL_STORAGE_RUN_DATA_WORKER = 'N8N_RUN_DATA_WORKER';
+export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_SELECTED_MODEL`;
+export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_CREDENTIALS`;
+export const LOCAL_STORAGE_CHAT_HUB_STATIC_SIDEBAR = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_STATIC_SIDEBAR`;
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
-export const COMMUNITY_PLUS_DOCS_URL =
-	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';
 
 export const HIRING_BANNER = `
@@ -588,6 +453,8 @@ export const enum VIEWS {
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
+	PROJECTS_VARIABLES = 'ProjectsVariables',
+	HOME_VARIABLES = 'HomeVariables',
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
 	INSIGHTS = 'Insights',
@@ -596,10 +463,10 @@ export const enum VIEWS {
 	SHARED_CREDENTIALS = 'SharedCredentials',
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
+	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
-export const VISIBLE_LOGS_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 
 export const DUMMY_PIN_DATA = [
 	{
@@ -750,13 +617,31 @@ export const CANVAS_ZOOMED_VIEW_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const NDV_IN_FOCUS_PANEL_EXPERIMENT = {
+	name: 'ndv_in_focus_panel',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const COMMAND_BAR_EXPERIMENT = {
+	name: 'command_bar',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	name: '029_ndv_ui_overhaul',
 	control: 'control',
 	variant: 'variant',
 };
 
-export const WORKFLOW_BUILDER_EXPERIMENT = {
+export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = {
+	name: '043_workflow_builder_release',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT = {
 	name: '036_workflow_builder_agent',
 	control: 'control',
 	variant: 'variant',
@@ -779,7 +664,8 @@ export const BATCH_11AUG_EXPERIMENT = {
 	name: '37_onboarding_experiments_batch_aug11',
 	control: 'control',
 	variantReadyToRun: 'variant-ready-to-run-workflows',
-	variantStarterPack: 'variant-starter-pack-v2',
+	variantReadyToRun2: 'variant-ready-to-run-workflows_v2',
+	variantReadyToRun3: 'variant-ready-to-run-workflows_v3',
 };
 
 export const PRE_BUILT_AGENTS_EXPERIMENT = {
@@ -794,13 +680,45 @@ export const TEMPLATE_RECO_V2 = {
 	variant: 'variant',
 };
 
+export const READY_TO_RUN_V2_EXPERIMENT = {
+	name: '042_ready-to-run-worfklow_v2',
+	control: 'control',
+	variant1: 'variant-1-singlebox',
+	variant2: 'variant-2-twoboxes',
+};
+
+export const READY_TO_RUN_V2_PART2_EXPERIMENT = {
+	name: '045_ready-to-run-worfklow_v2-2',
+	control: 'control',
+	variant3: 'variant-3',
+	variant4: 'variant-4',
+};
+
+export const PERSONALIZED_TEMPLATES_V3 = {
+	name: '044_template_reco_v3',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const PROJECT_VARIABLES_EXPERIMENT = {
+	name: '046_project_variables',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
-	WORKFLOW_BUILDER_EXPERIMENT.name,
+	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
+	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
+	TEMPLATE_RECO_V2.name,
+	READY_TO_RUN_V2_EXPERIMENT.name,
+	PERSONALIZED_TEMPLATES_V3.name,
+	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+	PROJECT_VARIABLES_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
@@ -870,6 +788,7 @@ export const ASK_AI_MAX_PROMPT_LENGTH = 600;
 export const ASK_AI_MIN_PROMPT_LENGTH = 15;
 export const ASK_AI_LOADING_DURATION_MS = 12000;
 export const ASK_AI_SLIDE_OUT_DURATION_MS = 200;
+export const PLAN_APPROVAL_MESSAGE = 'Proceed with the plan';
 
 export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
 
@@ -968,6 +887,8 @@ export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('Po
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
+export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
+export const WorkflowStateKey: InjectionKey<WorkflowState> = Symbol('WorkflowState');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';
@@ -977,3 +898,13 @@ export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes
 
 export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;
+
+/**
+ * Performance Optimizations
+ */
+
+export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
+export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;
+
+export const BINARY_DATA_ACCESS_TOOLTIP =
+	"Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.binary.data }}";

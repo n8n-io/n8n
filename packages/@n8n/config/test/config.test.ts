@@ -52,6 +52,10 @@ describe('GlobalConfig', () => {
 		ssl_key: '',
 		ssl_cert: '',
 		editorBaseUrl: '',
+		dataTable: {
+			maxSize: 50 * 1024 * 1024,
+			sizeCheckCacheDuration: 60000,
+		},
 		database: {
 			logging: {
 				enabled: false,
@@ -64,6 +68,7 @@ describe('GlobalConfig', () => {
 				password: '',
 				port: 3306,
 				user: 'root',
+				poolSize: 10,
 			},
 			postgresdb: {
 				database: 'n8n',
@@ -99,9 +104,12 @@ describe('GlobalConfig', () => {
 			overwrite: {
 				data: '{}',
 				endpoint: '',
+				endpointAuthToken: '',
+				persistence: false,
 			},
 		},
 		userManagement: {
+			inviteLinksEmailOnly: false,
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
@@ -234,8 +242,8 @@ describe('GlobalConfig', () => {
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
 				settings: {
-					lockDuration: 30_000,
-					lockRenewTime: 15_000,
+					lockDuration: 60_000,
+					lockRenewTime: 10_000,
 					stalledInterval: 30_000,
 					maxStalledCount: 1,
 				},
@@ -254,6 +262,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			heartbeatInterval: 30,
 			insecureMode: false,
+			isNativePythonRunnerEnabled: false,
 		},
 		sentry: {
 			backendDsn: '',
@@ -299,9 +308,12 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
-			disableIframeSandboxing: false,
+			disableWebhookHtmlSandboxing: false,
+			disableBareRepos: false,
 		},
 		executions: {
+			timeout: -1,
+			maxTimeout: 3600,
 			pruneData: true,
 			pruneDataMaxAge: 336,
 			pruneDataMaxCount: 10_000,
@@ -310,6 +322,18 @@ describe('GlobalConfig', () => {
 				hardDelete: 15,
 				softDelete: 60,
 			},
+			concurrency: {
+				productionLimit: -1,
+				evaluationLimit: -1,
+			},
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
+			},
+			saveDataOnError: 'all',
+			saveDataOnSuccess: 'all',
+			saveExecutionProgress: false,
+			saveDataManualExecutions: true,
 		},
 		diagnostics: {
 			enabled: true,
@@ -317,17 +341,17 @@ describe('GlobalConfig', () => {
 			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 			posthogConfig: {
 				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-				apiHost: 'https://ph.n8n.io',
+				apiHost: 'https://us.i.posthog.com',
 			},
 		},
 		aiAssistant: {
 			baseUrl: '',
 		},
+		aiBuilder: {
+			apiKey: '',
+		},
 		tags: {
 			disabled: false,
-		},
-		partialExecutions: {
-			version: 2,
 		},
 		workflowHistory: {
 			enabled: true,
@@ -346,6 +370,14 @@ describe('GlobalConfig', () => {
 			ldap: {
 				loginEnabled: false,
 				loginLabel: '',
+			},
+			provisioning: {
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesProvisioningFrequency: 'never',
+				scopesName: 'n8n',
+				scopesInstanceRoleClaimName: 'n8n_instance_role',
+				scopesProjectsRolesClaimName: 'n8n_projects',
 			},
 		},
 		redis: {

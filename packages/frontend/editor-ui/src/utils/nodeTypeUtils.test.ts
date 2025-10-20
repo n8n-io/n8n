@@ -1,5 +1,9 @@
 import type { ResourceMapperField } from 'n8n-workflow';
-import { isCommunityPackageName, isResourceMapperFieldListStale } from './nodeTypesUtils';
+import {
+	getThemedValue,
+	isResourceMapperFieldListStale,
+	parseResourceMapperFieldName,
+} from './nodeTypesUtils';
 
 describe('isResourceMapperFieldListStale', () => {
 	const baseField: ResourceMapperField = {
@@ -74,56 +78,44 @@ describe('isResourceMapperFieldListStale', () => {
 	});
 });
 
-describe('isCommunityPackageName', () => {
-	// Standard community package names
-	it('should identify standard community node package names', () => {
-		expect(isCommunityPackageName('n8n-nodes-example')).toBe(true);
-		expect(isCommunityPackageName('n8n-nodes-custom')).toBe(true);
-		expect(isCommunityPackageName('n8n-nodes-test')).toBe(true);
+describe('parseResourceMapperFieldName', () => {
+	test.each([
+		{ input: 'value["fieldName"]', expected: 'fieldName', desc: 'basic field name' },
+		{
+			input: 'value["field with spaces"]',
+			expected: 'field with spaces',
+			desc: 'field with spaces',
+		},
+		{
+			input: 'value["field\nwith\nactual\nnewlines"]',
+			expected: 'field\nwith\nactual\nnewlines',
+			desc: 'field with newlines',
+		},
+		{
+			input: 'value["field\\"with\\"quotes"]',
+			expected: 'field\\"with\\"quotes',
+			desc: 'field with escaped quotes',
+		},
+		{ input: 'fieldName', expected: 'fieldName', desc: 'no value wrapper' },
+	])('should parse $desc', ({ input, expected }) => {
+		expect(parseResourceMapperFieldName(input)).toBe(expected);
 	});
+});
 
-	// Scoped package names
-	it('should identify scoped community node package names', () => {
-		expect(isCommunityPackageName('@username/n8n-nodes-example')).toBe(true);
-		expect(isCommunityPackageName('@org/n8n-nodes-custom')).toBe(true);
-		expect(isCommunityPackageName('@test-scope/n8n-nodes-test-name')).toBe(true);
+describe('getThemedValue', () => {
+	it('should return the value if it is a string', () => {
+		expect(getThemedValue('test', 'light')).toBe('test');
 	});
-
-	it('should identify scoped packages with other characters', () => {
-		expect(isCommunityPackageName('n8n-nodes-my_package')).toBe(true);
-		expect(isCommunityPackageName('@user/n8n-nodes-with_underscore')).toBe(true);
-		expect(isCommunityPackageName('@user_name/n8n-nodes-example')).toBe(true);
-		expect(isCommunityPackageName('@n8n-io/n8n-nodes-test')).toBe(true);
-		expect(isCommunityPackageName('@n8n.io/n8n-nodes-test')).toBe(true);
+	it('should return the value if it is undefined', () => {
+		expect(getThemedValue(undefined, 'light')).toBe(null);
 	});
-
-	it('should handle mixed cases', () => {
-		expect(isCommunityPackageName('@user-name_org/n8n-nodes-mixed-case_example')).toBe(true);
-		expect(isCommunityPackageName('@mixed_style-org/n8n-nodes-complex_name-format')).toBe(true);
-		expect(isCommunityPackageName('@my.mixed_style-org/n8n-nodes-complex_name-format')).toBe(true);
+	it('should return the light value if it is an object', () => {
+		expect(getThemedValue({ light: 'test', dark: 'test2' }, 'light')).toBe('test');
 	});
-
-	// Official n8n packages that should not be identified as community packages
-	it('should not identify official n8n packages as community nodes', () => {
-		expect(isCommunityPackageName('@n8n/n8n-nodes-example')).toBe(false);
-		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
+	it('should return the dark value if it is an object', () => {
+		expect(getThemedValue({ light: 'test', dark: 'test2' }, 'dark')).toBe('test2');
 	});
-
-	// Additional edge cases
-	it('should handle edge cases correctly', () => {
-		// Non-matching patterns
-		expect(isCommunityPackageName('not-n8n-nodes')).toBe(false);
-		expect(isCommunityPackageName('n8n-core')).toBe(false);
-
-		// With node name after package
-		expect(isCommunityPackageName('n8n-nodes-example.NodeName')).toBe(true);
-		expect(isCommunityPackageName('@user/n8n-nodes-example.NodeName')).toBe(true);
-	});
-
-	// Multiple executions to test regex state
-	it('should work correctly with multiple consecutive calls', () => {
-		expect(isCommunityPackageName('@user/n8n-nodes-example')).toBe(true);
-		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
-		expect(isCommunityPackageName('@test-scope/n8n-nodes-test')).toBe(true);
+	it('should return the value if it is an object', () => {
+		expect(getThemedValue({ light: 'test', dark: 'test2' }, 'light')).toBe('test');
 	});
 });

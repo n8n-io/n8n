@@ -35,6 +35,7 @@ on:
             - '!.vscode/**'
             - '!docker/**'
             - '!packages/@n8n/benchmark/**'
+            - '!packages/@n8n/task-runner-python/**'
             - '!**/*.md'
       excluded_source_branch_patterns:
         description: 'Newline-separated list of glob patterns for source branches to EXCLUDE.'
@@ -56,7 +57,7 @@ jobs:
       run_decision: ${{ steps.evaluate.outputs.should_run }}
     steps:
       - name: Check out current commit
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 

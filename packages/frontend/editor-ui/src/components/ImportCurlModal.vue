@@ -8,6 +8,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 
+import { N8nButton, N8nInput, N8nInputLabel, N8nNotice } from '@n8n/design-system';
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
@@ -140,7 +141,7 @@ async function onImport() {
 }
 
 .container > * {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 	&:last-child {
 		margin-bottom: 0;
 	}

@@ -5,7 +5,9 @@ type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: string;
+	role: {
+		slug: string;
+	};
 };
 
 export class RedactableError extends UnexpectedError {
@@ -22,7 +24,7 @@ function toRedactable(userLike: UserLike) {
 		_email: userLike.email,
 		_firstName: userLike.firstName,
 		_lastName: userLike.lastName,
-		globalRole: userLike.role,
+		globalRole: userLike.role.slug,
 	};
 }
 

@@ -4,6 +4,7 @@ export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
+export { AiSessionMetadataResponseDto } from './ai/ai-session-metadata-response.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
@@ -27,7 +28,7 @@ export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
 
 export { CreateProjectDto } from './project/create-project.dto';
-export { UpdateProjectDto } from './project/update-project.dto';
+export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
@@ -48,12 +49,13 @@ export { PushWorkFolderRequestDto } from './source-control/push-work-folder-requ
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
+export { CreateVariableRequestDto } from './variables/create-variable-request.dto';
+export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
-export { ManualRunQueryDto } from './workflows/manual-run-query.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
@@ -78,15 +80,23 @@ export {
 	USERS_LIST_SORT_OPTIONS,
 } from './user/users-list-filter.dto';
 
+export { UpdateRoleDto } from './roles/update-role.dto';
+export { CreateRoleDto } from './roles/create-role.dto';
+export { RoleListQueryDto } from './roles/role-list-query.dto';
+export { RoleGetQueryDto } from './roles/role-get-query.dto';
+
 export { OidcConfigDto } from './oidc/config.dto';
 
-export { CreateDataStoreDto } from './data-store/create-data-store.dto';
-export { UpdateDataStoreDto } from './data-store/update-data-store.dto';
-export { UpsertDataStoreRowsDto } from './data-store/upsert-data-store-rows.dto';
-export { ListDataStoreQueryDto } from './data-store/list-data-store-query.dto';
-export { ListDataStoreContentQueryDto } from './data-store/list-data-store-content-query.dto';
-export type { ListDataStoreContentFilter } from './data-store/list-data-store-content-query.dto';
-export { CreateDataStoreColumnDto } from './data-store/create-data-store-column.dto';
-export { AddDataStoreRowsDto } from './data-store/add-data-store-rows.dto';
-export { AddDataStoreColumnDto } from './data-store/add-data-store-column.dto';
-export { MoveDataStoreColumnDto } from './data-store/move-data-store-column.dto';
+export { CreateDataTableDto } from './data-table/create-data-table.dto';
+export { UpdateDataTableDto } from './data-table/update-data-table.dto';
+export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
+export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
+export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
+export { ListDataTableQueryDto } from './data-table/list-data-table-query.dto';
+export { ListDataTableContentQueryDto } from './data-table/list-data-table-content-query.dto';
+export { CreateDataTableColumnDto } from './data-table/create-data-table-column.dto';
+export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
+export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
+export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
+
+export { ProvisioningConfigDto } from './provisioning/config.dto';

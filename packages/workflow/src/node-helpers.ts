@@ -2,7 +2,6 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable prefer-spread */
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
@@ -352,7 +351,7 @@ const checkConditions = (
  */
 export function displayParameter(
 	nodeValues: INodeParameters,
-	parameter: INodeProperties | INodeCredentialDescription,
+	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot?: INodeParameters,
@@ -418,7 +417,7 @@ export function displayParameter(
  */
 export function displayParameterPath(
 	nodeValues: INodeParameters,
-	parameter: INodeProperties | INodeCredentialDescription,
+	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,
@@ -1048,12 +1047,15 @@ export function getNodeOutputs(
 	} else {
 		// Calculate the outputs dynamically
 		try {
-			outputs = (workflow.expression.getSimpleParameterValue(
+			const result = workflow.expression.getSimpleParameterValue(
 				node,
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as NodeConnectionType[];
+			);
+			outputs = Array.isArray(result)
+				? (result as Array<NodeConnectionType | INodeOutputConfiguration>)
+				: [];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
@@ -1587,6 +1589,15 @@ function resolveResourceAndOperation(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ) {
+	if (nodeTypeDescription.name === 'n8n-nodes-base.code') {
+		const language = nodeParameters.language as string;
+		const langProp = nodeTypeDescription.properties.find((p) => p.name === 'language');
+		if (langProp?.options && isINodePropertyOptionsList(langProp.options)) {
+			const found = langProp.options.find((o) => o.value === language);
+			if (found?.action) return { action: found.action };
+		}
+	}
+
 	const resource = nodeParameters.resource as string;
 	const operation = nodeParameters.operation as string;
 	const nodeTypeOperation = nodeTypeDescription.properties.find(
@@ -1649,11 +1660,14 @@ export function isTool(
 	}
 
 	// Check for other tool nodes
-	for (const output of nodeTypeDescription.outputs) {
-		if (typeof output === 'string') {
-			return output === NodeConnectionTypes.AiTool;
-		} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
-			return true;
+	if (Array.isArray(nodeTypeDescription.outputs)) {
+		// Handle static outputs (array case)
+		for (const output of nodeTypeDescription.outputs) {
+			if (typeof output === 'string') {
+				return output === NodeConnectionTypes.AiTool;
+			} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
+				return true;
+			}
 		}
 	}
 

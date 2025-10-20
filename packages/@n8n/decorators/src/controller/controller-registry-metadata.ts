@@ -11,6 +11,7 @@ export class ControllerRegistryMetadata {
 		if (!metadata) {
 			metadata = {
 				basePath: '/',
+				registerOnRootPath: false,
 				middlewares: [],
 				routes: new Map(),
 			};

@@ -1,6 +1,6 @@
 import type { DeepMockProxy } from 'jest-mock-extended';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { constructExecutionMetaData, sandboxHtmlResponse } from 'n8n-core';
+import { constructExecutionMetaData } from 'n8n-core';
 import {
 	BINARY_ENCODING,
 	WAIT_NODE_TYPE,
@@ -236,7 +236,7 @@ describe('RespondToWebhook Node', () => {
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-				body: sandboxHtmlResponse('responseBody'),
+				body: 'responseBody',
 				headers: {},
 				statusCode: 200,
 			});
@@ -334,74 +334,6 @@ describe('RespondToWebhook Node', () => {
 				],
 			]);
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
-		});
-
-		describe('HTML content sandboxing', () => {
-			it('should sandbox HTML content for json response with HTML content-type', async () => {
-				const inputItems = [
-					{ json: { index: 0, input: true } },
-					{ json: { index: 1, input: true } },
-				];
-				mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
-				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
-				mockExecuteFunctions.getParentNodes.mockReturnValue([
-					mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
-				]);
-				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
-					if (paramName === 'respondWith') return 'allIncomingItems';
-					if (paramName === 'options')
-						return {
-							responseHeaders: {
-								entries: [{ name: 'content-type', value: 'application/xhtml+xml' }],
-							},
-						};
-				});
-				mockExecuteFunctions.sendResponse.mockReturnValue();
-
-				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
-				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: sandboxHtmlResponse(JSON.stringify(inputItems.map((item) => item.json))),
-					headers: { 'content-type': 'application/xhtml+xml' },
-					statusCode: 200,
-				});
-				expect(result).toHaveLength(1);
-				expect(result[0]).toHaveLength(2);
-				expect(result[0]).toEqual(inputItems);
-			});
-
-			it('should NOT sandbox HTML content for non-HTML content-type', async () => {
-				const inputItems = [
-					{ json: { index: 0, input: true } },
-					{ json: { index: 1, input: true } },
-				];
-				mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
-				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
-				mockExecuteFunctions.getParentNodes.mockReturnValue([
-					mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
-				]);
-				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
-					if (paramName === 'respondWith') return 'allIncomingItems';
-					if (paramName === 'options') return {};
-				});
-				mockExecuteFunctions.sendResponse.mockReturnValue();
-
-				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
-				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: inputItems.map((item) => item.json),
-					headers: {},
-					statusCode: 200,
-				});
-				expect(result).toHaveLength(1);
-				expect(result[0]).toHaveLength(2);
-				expect(result[0]).toEqual(inputItems);
-
-				await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
-				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: inputItems.map((item) => item.json),
-					headers: {},
-					statusCode: 200,
-				});
-			});
 		});
 
 		it('should have two outputs in version 1.3', async () => {

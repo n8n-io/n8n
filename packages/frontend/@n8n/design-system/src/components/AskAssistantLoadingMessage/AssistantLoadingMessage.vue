@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
 
 withDefaults(
 	defineProps<{
@@ -14,61 +15,31 @@ withDefaults(
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.avatar">
-			<AssistantAvatar size="mini" />
+		<div :class="$style.loadingSpinner">
+			<N8nIcon icon="spinner" spin color="secondary" size="large" />
 		</div>
-		<div :class="$style['message-container']">
-			<transition :name="animationType" mode="out-in">
-				<span v-if="message" :key="message" :class="$style.message">{{ message }}</span>
-			</transition>
-		</div>
+		<Transition :name="animationType" mode="out-in">
+			<N8nText v-if="message" :key="message" size="small" bold>{{ message }}</N8nText>
+		</Transition>
 	</div>
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/animations';
+
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--2xs);
 	user-select: none;
 }
 
-.avatar {
-	height: var(--spacing-m);
-	animation: pulse 1.5s infinite;
-	position: relative;
-}
-
-.message-container {
-	display: inline-flex;
-	position: relative;
-	overflow: hidden;
-	line-height: 1.4rem;
-	height: var(--spacing-xl);
+.loadingSpinner {
+	display: flex;
 	align-items: center;
-}
-.message {
-	margin: 0;
-	padding: 0;
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	text-align: left;
-}
-
-@keyframes pulse {
-	0% {
-		transform: scale(1);
-		opacity: 0.7;
-	}
-	50% {
-		transform: scale(1.2);
-		opacity: 1;
-	}
-	100% {
-		transform: scale(1);
-		opacity: 0.7;
-	}
+	justify-content: center;
+	width: var(--spacing--md);
+	flex-shrink: 0;
 }
 </style>
 

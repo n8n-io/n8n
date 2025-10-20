@@ -1,4 +1,6 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import type { ToolCall } from '@langchain/core/messages/tool';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
 
 import type {
 	AgentMessageChunk,
@@ -6,6 +8,16 @@ import type {
 	WorkflowUpdateChunk,
 	StreamOutput,
 } from '../types/streaming';
+
+export interface BuilderToolBase {
+	toolName: string;
+	displayTitle: string;
+	getCustomDisplayTitle?: (values: Record<string, unknown>) => string;
+}
+
+export interface BuilderTool extends BuilderToolBase {
+	tool: DynamicStructuredTool;
+}
 
 /**
  * Tools which should trigger canvas updates
@@ -51,6 +63,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 		if ((agentChunk?.compact_messages?.messages ?? []).length > 0) {
 			const lastMessage =
 				agentChunk.compact_messages!.messages![agentChunk.compact_messages!.messages!.length - 1];
+
 			const messageChunk: AgentMessageChunk = {
 				role: 'assistant',
 				type: 'message',
@@ -75,13 +88,17 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 					content = lastMessage.content;
 				}
 
-				const messageChunk: AgentMessageChunk = {
-					role: 'assistant',
-					type: 'message',
-					text: content,
-				};
+				if (content) {
+					const messageChunk: AgentMessageChunk = {
+						role: 'assistant',
+						type: 'message',
+						text: content,
+					};
 
-				return { messages: [messageChunk] };
+					return { messages: [messageChunk] };
+				}
+
+				return null;
 			}
 		}
 
@@ -129,78 +146,135 @@ export async function* createStreamProcessor(
 	}
 }
 
+/**
+ * Format a HumanMessage into the expected output format
+ */
+function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
+	return {
+		role: 'user',
+		type: 'message',
+		text: msg.content,
+	};
+}
+
+/**
+ * Process array content from AIMessage and return formatted text messages
+ */
+function processArrayContent(content: unknown[]): Array<Record<string, unknown>> {
+	const textMessages = content.filter(
+		(c): c is { type: string; text: string } =>
+			typeof c === 'object' && c !== null && 'type' in c && c.type === 'text' && 'text' in c,
+	);
+
+	return textMessages.map((textMessage) => ({
+		role: 'assistant',
+		type: 'message',
+		text: textMessage.text,
+	}));
+}
+
+/**
+ * Process AIMessage content and return formatted messages
+ */
+function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>> {
+	if (!msg.content) {
+		return [];
+	}
+
+	if (Array.isArray(msg.content)) {
+		return processArrayContent(msg.content);
+	}
+
+	return [
+		{
+			role: 'assistant',
+			type: 'message',
+			text: msg.content,
+		},
+	];
+}
+
+/**
+ * Create a formatted tool call message
+ */
+function createToolCallMessage(
+	toolCall: ToolCall,
+	builderTool?: BuilderToolBase,
+): Record<string, unknown> {
+	return {
+		id: toolCall.id,
+		toolCallId: toolCall.id,
+		role: 'assistant',
+		type: 'tool',
+		toolName: toolCall.name,
+		displayTitle: builderTool?.displayTitle,
+		customDisplayTitle: toolCall.args && builderTool?.getCustomDisplayTitle?.(toolCall.args),
+		status: 'completed',
+		updates: [
+			{
+				type: 'input',
+				data: toolCall.args || {},
+			},
+		],
+	};
+}
+
+/**
+ * Process tool calls from AIMessage and return formatted tool messages
+ */
+function processToolCalls(
+	toolCalls: ToolCall[],
+	builderTools?: BuilderToolBase[],
+): Array<Record<string, unknown>> {
+	return toolCalls.map((toolCall) => {
+		const builderTool = builderTools?.find((bt) => bt.toolName === toolCall.name);
+		return createToolCallMessage(toolCall, builderTool);
+	});
+}
+
+/**
+ * Process a ToolMessage and add its output to the corresponding tool call
+ */
+function processToolMessage(
+	msg: ToolMessage,
+	formattedMessages: Array<Record<string, unknown>>,
+): void {
+	const toolCallId = msg.tool_call_id;
+
+	// Find the tool message by ID (search backwards for efficiency)
+	for (let i = formattedMessages.length - 1; i >= 0; i--) {
+		const m = formattedMessages[i];
+		if (m.type === 'tool' && m.id === toolCallId) {
+			// Add output to updates array
+			m.updates ??= [];
+			(m.updates as Array<Record<string, unknown>>).push({
+				type: 'output',
+				data: typeof msg.content === 'string' ? { result: msg.content } : msg.content,
+			});
+			break;
+		}
+	}
+}
+
 export function formatMessages(
 	messages: Array<AIMessage | HumanMessage | ToolMessage>,
+	builderTools?: BuilderToolBase[],
 ): Array<Record<string, unknown>> {
 	const formattedMessages: Array<Record<string, unknown>> = [];
 
 	for (const msg of messages) {
 		if (msg instanceof HumanMessage) {
-			formattedMessages.push({
-				role: 'user',
-				type: 'message',
-				text: msg.content,
-			});
+			formattedMessages.push(formatHumanMessage(msg));
 		} else if (msg instanceof AIMessage) {
-			// Add the AI message content if it exists
-			if (msg.content) {
-				if (Array.isArray(msg.content)) {
-					// Handle array content (multi-part messages)
-					const textMessages = msg.content.filter((c) => c.type === 'text');
+			// Add AI message content
+			formattedMessages.push(...processAIMessageContent(msg));
 
-					textMessages.forEach((textMessage) => {
-						if (textMessage.type !== 'text') {
-							return;
-						}
-						formattedMessages.push({
-							role: 'assistant',
-							type: 'message',
-							text: textMessage.text,
-						});
-					});
-				} else {
-					formattedMessages.push({
-						role: 'assistant',
-						type: 'message',
-						text: msg.content,
-					});
-				}
-			}
-			// Handle tool calls in AI messages
-			if (msg.tool_calls && msg.tool_calls.length > 0) {
-				// Add tool messages for each tool call
-				for (const toolCall of msg.tool_calls) {
-					formattedMessages.push({
-						id: toolCall.id,
-						toolCallId: toolCall.id,
-						role: 'assistant',
-						type: 'tool',
-						toolName: toolCall.name,
-						status: 'completed',
-						updates: [
-							{
-								type: 'input',
-								data: toolCall.args || {},
-							},
-						],
-					});
-				}
+			// Add tool calls if present
+			if (msg.tool_calls?.length) {
+				formattedMessages.push(...processToolCalls(msg.tool_calls, builderTools));
 			}
 		} else if (msg instanceof ToolMessage) {
-			// Find the tool message by ID and add the output
-			const toolCallId = msg.tool_call_id;
-			for (let i = formattedMessages.length - 1; i >= 0; i--) {
-				const m = formattedMessages[i];
-				if (m.type === 'tool' && m.id === toolCallId) {
-					// Add output to updates array
-					m.updates ??= [];
-					(m.updates as Array<Record<string, unknown>>).push({
-						type: 'output',
-						data: typeof msg.content === 'string' ? { result: msg.content } : msg.content,
-					});
-					break;
-				}
-			}
+			processToolMessage(msg, formattedMessages);
 		}
 	}
 

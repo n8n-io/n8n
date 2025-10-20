@@ -2,6 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import type { FilterTypeCombinator } from 'n8n-workflow';
 
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 interface Props {
 	options: FilterTypeCombinator[];
 	selected: FilterTypeCombinator;
@@ -26,28 +27,23 @@ const onCombinatorChange = (combinator: FilterTypeCombinator): void => {
 		<div v-if="readOnly || options.length === 1">
 			{{ i18n.baseText(`filter.combinator.${selected}`) }}
 		</div>
-		<n8n-select
-			v-else
-			size="small"
-			:model-value="selected"
-			@update:model-value="onCombinatorChange"
-		>
-			<n8n-option
+		<N8nSelect v-else size="small" :model-value="selected" @update:model-value="onCombinatorChange">
+			<N8nOption
 				v-for="option in options"
 				:key="option"
 				:value="option"
 				:label="i18n.baseText(`filter.combinator.${option}`)"
 			>
-			</n8n-option>
-		</n8n-select>
+			</N8nOption>
+		</N8nSelect>
 	</div>
 </template>
 
 <style lang="scss" module>
 .combinatorSelect {
 	max-width: 80px;
-	line-height: var(--font-line-height-xloose);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
+	line-height: var(--line-height--xl);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 </style>

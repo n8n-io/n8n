@@ -50,12 +50,11 @@ test.describe('n8n.io iframe', () => {
 		test('should load the iframe when visiting /home/workflows @auth:owner', async ({
 			n8n,
 			setupRequirements,
-			api,
 		}) => {
 			await setupRequirements(telemetryEnabledRequirements);
 
 			// Get current user ID from the API
-			const currentUser = await api.get('/rest/login');
+			const currentUser = await n8n.api.get('/rest/login');
 			const testInstanceId = 'test-instance-id';
 			const testUserId = currentUser.id;
 			const iframeUrl = `https://n8n.io/self-install?instanceId=${testInstanceId}&userId=${testUserId}`;

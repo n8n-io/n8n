@@ -129,7 +129,7 @@ describe('ApiKeysController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				role: 'global:member',
+				role: { slug: 'global:member' },
 				mfaEnabled: false,
 			});
 

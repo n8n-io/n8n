@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
 import { AiAssistantConfig } from './configs/ai-assistant.config';
+import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
+import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
@@ -19,7 +21,6 @@ import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
-import { PartialExecutionsConfig } from './configs/partial-executions.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
@@ -37,8 +38,9 @@ import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
-export { DatabaseConfig } from './configs/database.config';
+export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
@@ -152,10 +154,10 @@ export class GlobalConfig {
 	aiAssistant: AiAssistantConfig;
 
 	@Nested
-	tags: TagsConfig;
+	aiBuilder: AiBuilderConfig;
 
 	@Nested
-	partialExecutions: PartialExecutionsConfig;
+	tags: TagsConfig;
 
 	@Nested
 	workflowHistory: WorkflowHistoryConfig;
@@ -208,4 +210,7 @@ export class GlobalConfig {
 
 	@Nested
 	ai: AiConfig;
+
+	@Nested
+	dataTable: DataTableConfig;
 }

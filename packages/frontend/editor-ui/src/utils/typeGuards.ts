@@ -4,20 +4,23 @@ import type {
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
+import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import type {
-	IExecutionResponse,
-	ICredentialsResponse,
 	NewCredentialsModal,
 	CredentialsResource,
 	FolderResource,
 	Resource,
 	VariableResource,
 	WorkflowResource,
+	WorkflowListItem,
+	WorkflowListResource,
 } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
-import type { CanvasConnectionMode } from '@/types';
-import { canvasConnectionModes } from '@/types';
+import type { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
+import { canvasConnectionModes } from '@/features/workflows/canvas/canvas.types';
 import type { ComponentPublicInstance } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 
@@ -144,3 +147,18 @@ export function isBaseTextKey(key: string): key is BaseTextKey {
 		return false;
 	}
 }
+
+// Type guard to check if a string is a valid ProjectRole
+export function isProjectRole(role: string): role is ProjectRole {
+	return ['project:admin', 'project:editor', 'project:viewer', 'project:personalOwner'].includes(
+		role,
+	);
+}
+
+// Type guard to check if a role is a valid TeamProjectRole (ProjectRole excluding personalOwner)
+export function isTeamProjectRole(role: string): role is TeamProjectRole {
+	return isProjectRole(role) && role !== 'project:personalOwner';
+}
+
+export const isWorkflowListItem = (resource: WorkflowListResource): resource is WorkflowListItem =>
+	'resource' in resource ? resource.resource !== 'folder' : true;

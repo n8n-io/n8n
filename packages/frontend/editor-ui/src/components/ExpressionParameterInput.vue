@@ -2,22 +2,26 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 
+import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
-import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
-import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
+import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
+import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import { useTelemetry } from '@/composables/useTelemetry';
-import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { CanvasKey, ExpressionLocalResolveContextSymbol } from '@/constants';
+import { CanvasKey } from '@/constants';
+import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
+import { N8nButton } from '@n8n/design-system';
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
@@ -56,8 +60,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
 const canvas = inject(CanvasKey, undefined);
-const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
-const isInExperimentalNdv = computed(() => expressionLocalResolveCtx?.value !== undefined);
+const isInExperimentalNdv = useIsInExperimentalNdv();
 
 const isDragging = computed(() => ndvStore.isDraggableDragging);
 const isOutputPopoverVisible = computed(
@@ -89,7 +92,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		return; // prevent blur on resizing
 	}
 
-	if (event?.target instanceof Element && outputPopover.value?.contentRef?.contains(event.target)) {
+	if (isEventTargetContainedBy(event?.target, outputPopover.value?.contentRef)) {
 		return;
 	}
 
@@ -214,7 +217,7 @@ defineExpose({ focus, select });
 					/>
 				</template>
 			</DraggableTarget>
-			<n8n-button
+			<N8nButton
 				v-if="!isDragging"
 				square
 				outline
@@ -236,7 +239,6 @@ defineExpose({ focus, select });
 			:segments="segments"
 			:is-read-only="isReadOnly"
 			:virtual-ref="container"
-			:append-to="isInExperimentalNdv ? '#canvas' : undefined"
 		/>
 	</div>
 </template>
@@ -247,7 +249,7 @@ defineExpose({ focus, select });
 	flex-grow: 1;
 
 	:global(.cm-editor) {
-		background-color: var(--color-code-background);
+		background-color: var(--code--color--background);
 	}
 
 	.all-sections {
@@ -275,20 +277,19 @@ defineExpose({ focus, select });
 	position: absolute;
 	right: 0;
 	bottom: 0;
-	background-color: var(--color-code-background);
+	background-color: var(--code--color--background);
 	padding: 3px;
 	line-height: 9px;
-	border: var(--input-border-color, var(--border-color-base))
-		var(--input-border-style, var(--border-style-base))
-		var(--input-border-width, var(--border-width-base));
+	border: var(--input--border-color, var(--border-color))
+		var(--input--border-style, var(--border-style)) var(--input--border-width, var(--border-width));
 	cursor: pointer;
 	border-radius: 0;
-	border-top-left-radius: var(--border-radius-base);
+	border-top-left-radius: var(--radius);
 
 	&:hover {
-		border: var(--input-border-color, var(--border-color-base))
-			var(--input-border-style, var(--border-style-base))
-			var(--input-border-width, var(--border-width-base));
+		border: var(--input--border-color, var(--border-color))
+			var(--input--border-style, var(--border-style))
+			var(--input--border-width, var(--border-width));
 	}
 
 	svg {
@@ -299,24 +300,24 @@ defineExpose({ focus, select });
 }
 
 .focused > .prepend-section {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 	border-bottom-left-radius: 0;
 }
 
 .focused :global(.cm-editor) {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 }
 
 .focused > .expression-editor-modal-opener {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 	border-bottom-right-radius: 0;
-	background-color: var(--color-code-background);
+	background-color: var(--code--color--background);
 }
 
 .droppable {
-	--input-border-color: var(--color-ndv-droppable-parameter);
-	--input-border-right-color: var(--color-ndv-droppable-parameter);
-	--input-border-style: dashed;
+	--input--border-color: var(--ndv--droppable-parameter--color);
+	--input--border-right-color: var(--ndv--droppable-parameter--color);
+	--input--border-style: dashed;
 
 	:global(.cm-editor) {
 		border-width: 1.5px;
@@ -324,10 +325,10 @@ defineExpose({ focus, select });
 }
 
 .activeDrop {
-	--input-border-color: var(--color-success);
-	--input-border-right-color: var(--color-success);
-	--input-background-color: var(--color-foreground-xlight);
-	--input-border-style: solid;
+	--input--border-color: var(--color--success);
+	--input--border-right-color: var(--color--success);
+	--input--color--background: var(--color--foreground--tint-2);
+	--input--border-style: solid;
 
 	:global(.cm-editor) {
 		cursor: grabbing !important;

@@ -48,12 +48,14 @@ export class TextSplitterTokenSplitter implements INodeType {
 				name: 'chunkSize',
 				type: 'number',
 				default: 1000,
+				description: 'Maximum number of tokens per chunk',
 			},
 			{
 				displayName: 'Chunk Overlap',
 				name: 'chunkOverlap',
 				type: 'number',
 				default: 0,
+				description: 'Number of tokens shared between consecutive chunks to preserve context',
 			},
 		],
 	};

@@ -23,7 +23,6 @@ import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -278,7 +277,7 @@ export class WorkflowService {
 			}
 		}
 
-		if (workflowSettings.executionTimeout === config.get('executions.timeout')) {
+		if (workflowSettings.executionTimeout === this.globalConfig.executions.timeout) {
 			// Do not save when default got set
 			delete workflowSettings.executionTimeout;
 		}
@@ -355,6 +354,28 @@ export class WorkflowService {
 			publicApi: false,
 		});
 
+		// Check if workflow activation status changed
+		const wasActive = workflow.active;
+		const isNowActive = updatedWorkflow.active;
+
+		if (isNowActive && !wasActive) {
+			// Workflow is being activated
+			this.eventService.emit('workflow-activated', {
+				user,
+				workflowId,
+				workflow: updatedWorkflow,
+				publicApi: false,
+			});
+		} else if (!isNowActive && wasActive) {
+			// Workflow is being deactivated
+			this.eventService.emit('workflow-deactivated', {
+				user,
+				workflowId,
+				workflow: updatedWorkflow,
+				publicApi: false,
+			});
+		}
+
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
@@ -370,6 +391,14 @@ export class WorkflowService {
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
+
+				// Emit deactivation event since activation failed
+				this.eventService.emit('workflow-deactivated', {
+					user,
+					workflowId,
+					workflow: updatedWorkflow,
+					publicApi: false,
+				});
 
 				let message;
 				if (error instanceof NodeApiError) message = error.description;

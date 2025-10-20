@@ -126,17 +126,17 @@ const onInputScroll = (event: WheelEvent) => {
 <style lang="scss" module>
 .sticky {
 	position: absolute;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 
-	background-color: var(--color-sticky-background);
-	border: 1px solid var(--color-sticky-border);
+	background-color: var(--sticky--color--background);
+	border: 1px solid var(--sticky--border-color);
 
 	.wrapper::after {
 		opacity: 0.15;
 		background: linear-gradient(
 			180deg,
-			var(--color-sticky-background) 0.01%,
-			var(--color-sticky-border)
+			var(--sticky--color--background) 0.01%,
+			var(--sticky--border-color)
 		);
 	}
 }
@@ -149,7 +149,7 @@ const onInputScroll = (event: WheelEvent) => {
 	width: 100%;
 	height: 100%;
 	position: absolute;
-	padding: var(--spacing-2xs) var(--spacing-xs) 0;
+	padding: var(--spacing--2xs) var(--spacing--xs) 0;
 	overflow: hidden;
 
 	&::after {
@@ -159,51 +159,51 @@ const onInputScroll = (event: WheelEvent) => {
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius);
 	}
 }
 
 .footer {
-	padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+	padding: var(--spacing--5xs) var(--spacing--2xs) 0 var(--spacing--2xs);
 	display: flex;
 	justify-content: flex-end;
 }
 
 .color-2 {
-	--color-sticky-background: var(--color-sticky-background-2);
-	--color-sticky-border: var(--color-sticky-border-2);
+	--sticky--color--background: var(--sticky--color--background--variant-2);
+	--sticky--border-color: var(--sticky--border-color--variant-2);
 }
 
 .color-3 {
-	--color-sticky-background: var(--color-sticky-background-3);
-	--color-sticky-border: var(--color-sticky-border-3);
+	--sticky--color--background: var(--sticky--color--background--variant-3);
+	--sticky--border-color: var(--sticky--border-color--variant-3);
 }
 
 .color-4 {
-	--color-sticky-background: var(--color-sticky-background-4);
-	--color-sticky-border: var(--color-sticky-border-4);
+	--sticky--color--background: var(--sticky--color--background--variant-4);
+	--sticky--border-color: var(--sticky--border-color--variant-4);
 }
 
 .color-5 {
-	--color-sticky-background: var(--color-sticky-background-5);
-	--color-sticky-border: var(--color-sticky-border-5);
+	--sticky--color--background: var(--sticky--color--background--variant-5);
+	--sticky--border-color: var(--sticky--border-color--variant-5);
 }
 
 .color-6 {
-	--color-sticky-background: var(--color-sticky-background-6);
-	--color-sticky-border: var(--color-sticky-border-6);
+	--sticky--color--background: var(--sticky--color--background--variant-6);
+	--sticky--border-color: var(--sticky--border-color--variant-6);
 }
 
 .color-7 {
-	--color-sticky-background: var(--color-sticky-background-7);
-	--color-sticky-border: var(--color-sticky-border-7);
+	--sticky--color--background: var(--sticky--color--background--variant-7);
+	--sticky--border-color: var(--sticky--border-color--variant-7);
 }
 </style>
 
 <style lang="scss">
 .sticky-textarea {
-	height: calc(100% - var(--spacing-l));
-	padding: var(--spacing-2xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+	height: calc(100% - var(--spacing--lg));
+	padding: var(--spacing--2xs) var(--spacing--2xs) 0 var(--spacing--2xs);
 	cursor: default;
 
 	.el-textarea {
@@ -217,6 +217,6 @@ const onInputScroll = (event: WheelEvent) => {
 }
 
 .full-height {
-	height: calc(100% - var(--spacing-2xs));
+	height: calc(100% - var(--spacing--2xs));
 }
 </style>

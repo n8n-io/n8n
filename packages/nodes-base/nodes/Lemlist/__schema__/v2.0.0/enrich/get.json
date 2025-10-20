@@ -12,6 +12,68 @@
                         },
                         "notFound": {
                             "type": "boolean"
+                        },
+                        "status": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "linkedin": {
+                    "type": "object",
+                    "properties": {
+                        "companyDescription": {
+                            "type": "string"
+                        },
+                        "companyDomain": {
+                            "type": "string"
+                        },
+                        "companyHeadQuarter": {
+                            "type": "string"
+                        },
+                        "companyIndustry": {
+                            "type": "string"
+                        },
+                        "companyLinkedinUrl": {
+                            "type": "string"
+                        },
+                        "companyLogo": {
+                            "type": "string"
+                        },
+                        "companyName": {
+                            "type": "string"
+                        },
+                        "companyType": {
+                            "type": "string"
+                        },
+                        "firstName": {
+                            "type": "string"
+                        },
+                        "industry": {
+                            "type": "string"
+                        },
+                        "lastName": {
+                            "type": "string"
+                        },
+                        "linkedinClassicId": {
+                            "type": "string"
+                        },
+                        "linkedinMemberId": {
+                            "type": "integer"
+                        },
+                        "linkedinUrl": {
+                            "type": "string"
+                        },
+                        "locationName": {
+                            "type": "string"
+                        },
+                        "occupation": {
+                            "type": "string"
+                        },
+                        "skills": {
+                            "type": "string"
+                        },
+                        "tagline": {
+                            "type": "string"
                         }
                     }
                 }
@@ -26,16 +88,7 @@
         "input": {
             "type": "object",
             "properties": {
-                "companyDomain": {
-                    "type": "string"
-                },
-                "companyName": {
-                    "type": "string"
-                },
-                "firstName": {
-                    "type": "string"
-                },
-                "lastName": {
+                "email": {
                     "type": "string"
                 },
                 "linkedinUrl": {
@@ -44,5 +97,5 @@
             }
         }
     },
-    "version": 1
+    "version": 3
 }

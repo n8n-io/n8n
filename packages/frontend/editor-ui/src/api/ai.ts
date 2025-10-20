@@ -1,8 +1,12 @@
-import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/constants';
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { AskAiRequest, ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
+import type {
+	AskAiRequest,
+	ChatRequest,
+	ReplaceCodeRequest,
+} from '@/features/ai/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
 import type { IDataObject } from 'n8n-workflow';
@@ -14,11 +18,18 @@ export function chatWithBuilder(
 	onDone: () => void,
 	onError: (e: Error) => void,
 	abortSignal?: AbortSignal,
+	useDeprecatedCredentials = false,
 ): void {
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,
 		'/ai/build',
-		payload,
+		{
+			...payload,
+			payload: {
+				...payload.payload,
+				useDeprecatedCredentials,
+			},
+		},
 		onMessageUpdated,
 		onDone,
 		onError,
@@ -69,20 +80,22 @@ export async function generateCodeForPrompt(
 	ctx: IRestApiContext,
 	{ question, context, forNode }: AskAiRequest.RequestPayload,
 ): Promise<{ code: string }> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai/ask-ai', {
+	const body: IDataObject = {
 		question,
 		context,
 		forNode,
-	} as IDataObject);
+	};
+	return await makeRestApiRequest(ctx, 'POST', '/ai/ask-ai', body);
 }
 
 export async function claimFreeAiCredits(
 	ctx: IRestApiContext,
 	{ projectId }: { projectId?: string },
 ): Promise<ICredentialsResponse> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai/free-credits', {
+	const body: IDataObject = {
 		projectId,
-	} as IDataObject);
+	};
+	return await makeRestApiRequest(ctx, 'POST', '/ai/free-credits', body);
 }
 
 export async function getAiSessions(
@@ -95,7 +108,27 @@ export async function getAiSessions(
 		lastUpdated: string;
 	}>;
 }> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', {
+	const body: IDataObject = {
 		workflowId,
-	} as IDataObject);
+	};
+	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', body);
+}
+
+export async function getSessionsMetadata(
+	ctx: IRestApiContext,
+	workflowId?: string,
+): Promise<{
+	hasMessages: boolean;
+}> {
+	const body: IDataObject = {
+		workflowId,
+	};
+	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions/metadata', body);
+}
+
+export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
+	creditsQuota: number;
+	creditsClaimed: number;
+}> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
 }

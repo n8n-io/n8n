@@ -9,14 +9,18 @@ import type {
 	INode,
 	INodeProperties,
 } from 'n8n-workflow';
-import { computed, reactive, watch } from 'vue';
+import { computed, inject, reactive, useTemplateRef, watch } from 'vue';
 import DropArea from '../DropArea/DropArea.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
+import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
+import { N8nInputLabel } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
@@ -38,6 +42,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const dropAreaContainer = useTemplateRef('dropArea');
 
 const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: {
@@ -50,6 +56,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 });
 
 const ndvStore = useNDVStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
 const issues = computed(() => {
@@ -129,7 +136,7 @@ function optionSelected(action: string) {
 		:class="{ [$style.assignmentCollection]: true, [$style.empty]: empty }"
 		:data-test-id="`assignment-collection-${parameter.name}`"
 	>
-		<n8n-input-label
+		<N8nInputLabel
 			:label="parameter.displayName"
 			:show-expression-selector="false"
 			size="small"
@@ -146,7 +153,22 @@ function optionSelected(action: string) {
 					@update:model-value="optionSelected"
 				/>
 			</template>
-		</n8n-input-label>
+		</N8nInputLabel>
+
+		<ExperimentalEmbeddedNdvMapper
+			v-if="
+				experimentalNdvStore.isNdvInFocusPanelEnabled &&
+				dropAreaContainer?.$el &&
+				node &&
+				expressionLocalResolveCtx?.inputNode
+			"
+			:workflow="expressionLocalResolveCtx.workflow"
+			:node="node"
+			:input-node-name="expressionLocalResolveCtx.inputNode.name"
+			:reference="dropAreaContainer?.$el"
+			visible-on-hover
+		/>
+
 		<div :class="$style.content">
 			<div :class="$style.assignments">
 				<Draggable
@@ -178,7 +200,7 @@ function optionSelected(action: string) {
 				data-test-id="assignment-collection-drop-area"
 				@click="addAssignment"
 			>
-				<DropArea :sticky-offset="empty ? [-4, 32] : [92, 0]" @drop="dropAssignment">
+				<DropArea ref="dropArea" :sticky-offset="empty ? [-4, 32] : [92, 0]" @drop="dropAssignment">
 					<template #default="{ active, droppable }">
 						<div :class="{ [$style.active]: active, [$style.droppable]: droppable }">
 							<div v-if="droppable" :class="$style.dropArea">
@@ -202,34 +224,34 @@ function optionSelected(action: string) {
 .assignmentCollection {
 	display: flex;
 	flex-direction: column;
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 }
 
 .content {
 	display: flex;
-	gap: var(--spacing-l);
+	gap: var(--spacing--lg);
 	flex-direction: column;
 }
 
 .assignments {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 
 .assignment {
-	padding-left: var(--spacing-l);
+	padding-left: var(--spacing--lg);
 }
 
 .dropAreaWrapper {
 	cursor: pointer;
 
 	&:not(.empty .dropAreaWrapper) {
-		padding-left: var(--spacing-l);
+		padding-left: var(--spacing--lg);
 	}
 
 	&:hover .add {
-		color: var(--color-primary-shade-1);
+		color: var(--color--primary--shade-1);
 	}
 }
 
@@ -238,8 +260,8 @@ function optionSelected(action: string) {
 	align-items: center;
 	flex-wrap: wrap;
 	justify-content: center;
-	font-size: var(--font-size-xs);
-	color: var(--color-text-dark);
+	font-size: var(--font-size--xs);
+	color: var(--color--text--shade-1);
 	gap: 1ch;
 	min-height: 24px;
 
@@ -253,23 +275,23 @@ function optionSelected(action: string) {
 }
 
 .or {
-	color: var(--color-text-light);
-	font-size: var(--font-size-2xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
 }
 
 .add {
-	color: var(--color-primary);
-	font-weight: var(--font-weight-bold);
+	color: var(--color--primary);
+	font-weight: var(--font-weight--bold);
 }
 
 .activeField {
-	font-weight: var(--font-weight-bold);
-	color: var(--color-ndv-droppable-parameter);
+	font-weight: var(--font-weight--bold);
+	color: var(--ndv--droppable-parameter--color);
 }
 
 .active {
 	.activeField {
-		color: var(--color-success);
+		color: var(--color--success);
 	}
 }
 
@@ -277,7 +299,7 @@ function optionSelected(action: string) {
 	.dropArea {
 		flex-direction: column;
 		align-items: center;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 		min-height: 20vh;
 	}
 
@@ -287,25 +309,25 @@ function optionSelected(action: string) {
 	}
 
 	.content {
-		gap: var(--spacing-s);
+		gap: var(--spacing--sm);
 	}
 }
 
 .icon {
-	font-size: var(--font-size-2xl);
+	font-size: var(--font-size--2xl);
 }
 .ghost,
 .dragging {
-	border-radius: var(--border-radius-base);
-	padding-right: var(--spacing-xs);
-	padding-bottom: var(--spacing-xs);
+	border-radius: var(--radius);
+	padding-right: var(--spacing--xs);
+	padding-bottom: var(--spacing--xs);
 }
 .ghost {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	opacity: 0.5;
 }
 .dragging {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	opacity: 0.7;
 }
 </style>

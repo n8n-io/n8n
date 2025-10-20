@@ -1,2 +1,2 @@
 export { ApplicationError } from './application.error';
-export * from './types';
+export type * from './types';

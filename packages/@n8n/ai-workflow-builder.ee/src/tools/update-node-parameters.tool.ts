@@ -3,8 +3,12 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
+
 import { createParameterUpdaterChain } from '../chains/parameter-updater';
 import { ValidationError, ParameterUpdateError, ToolExecutionError } from '../errors';
+import type { UpdateNodeParametersOutput } from '../types/tools';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, updateNodeInWorkflow } from './helpers/state';
@@ -18,10 +22,8 @@ import {
 	extractNodeParameters,
 	formatChangesForPrompt,
 	updateNodeWithParameters,
-	mergeParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
-import type { UpdateNodeParametersOutput } from '../types/tools';
 
 /**
  * Schema for update node parameters input
@@ -45,28 +47,119 @@ function buildSuccessMessage(node: INode, changes: string[]): string {
 }
 
 /**
+ * Process parameter updates using the LLM chain
+ */
+async function processParameterUpdates(
+	node: INode,
+	nodeType: INodeTypeDescription,
+	nodeId: string,
+	changes: string[],
+	state: ReturnType<typeof getWorkflowState>,
+	llm: BaseChatModel,
+	logger?: Logger,
+	instanceUrl?: string,
+): Promise<INodeParameters> {
+	const workflow = getCurrentWorkflow(state);
+
+	// Get current parameters
+	const currentParameters = extractNodeParameters(node);
+
+	// Format inputs for the chain
+	const formattedChanges = formatChangesForPrompt(changes);
+
+	// Get the node's properties definition as JSON
+	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
+
+	// Call the parameter updater chain with dynamic prompt building
+	const parametersChain = createParameterUpdaterChain(
+		llm,
+		{
+			nodeType: node.type,
+			nodeDefinition: nodeType,
+			requestedChanges: changes,
+		},
+		logger,
+	);
+
+	const newParameters = (await parametersChain.invoke({
+		workflow_json: trimWorkflowJSON(workflow),
+		execution_schema: state.workflowContext?.executionSchema ?? 'NO SCHEMA',
+		execution_data: state.workflowContext?.executionData ?? 'NO EXECUTION DATA YET',
+		node_id: nodeId,
+		node_name: node.name,
+		node_type: node.type,
+		current_parameters: JSON.stringify(currentParameters, null, 2),
+		node_definition: nodePropertiesJson,
+		changes: formattedChanges,
+		instanceUrl: instanceUrl ?? '',
+	})) as INodeParameters;
+
+	// Ensure newParameters is a valid object
+	if (!newParameters || typeof newParameters !== 'object') {
+		throw new ParameterUpdateError('Invalid parameters returned from LLM', {
+			nodeId,
+			nodeType: node.type,
+		});
+	}
+
+	// Ensure parameters property exists and is valid
+	if (!newParameters.parameters || typeof newParameters.parameters !== 'object') {
+		throw new ParameterUpdateError('Invalid parameters structure returned from LLM', {
+			nodeId,
+			nodeType: node.type,
+		});
+	}
+
+	// Fix expression prefixes in the new parameters
+	return fixExpressionPrefixes(newParameters.parameters) as INodeParameters;
+}
+
+export const UPDATING_NODE_PARAMETER_TOOL: BuilderToolBase = {
+	toolName: 'update_node_parameters',
+	displayTitle: 'Updating node parameters',
+};
+
+function getCustomNodeTitle(input: Record<string, unknown>, nodes?: INode[]): string {
+	if ('nodeId' in input && typeof input['nodeId'] === 'string') {
+		const targetNode = nodes?.find((node) => node.id === input.nodeId);
+		if (targetNode) {
+			return `Updating "${targetNode.name}" node parameters`;
+		}
+	}
+
+	return UPDATING_NODE_PARAMETER_TOOL.displayTitle;
+}
+
+/**
  * Factory function to create the update node parameters tool
  */
 export function createUpdateNodeParametersTool(
 	nodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	logger?: Logger,
-) {
-	return tool(
+	instanceUrl?: string,
+): BuilderTool {
+	const dynamicTool = tool(
 		async (input, config) => {
-			const reporter = createProgressReporter(config, 'update_node_parameters');
+			const reporter = createProgressReporter(
+				config,
+				UPDATING_NODE_PARAMETER_TOOL.toolName,
+				UPDATING_NODE_PARAMETER_TOOL.displayTitle,
+			);
 
 			try {
 				// Validate input using Zod schema
 				const validatedInput = updateNodeParametersSchema.parse(input);
 				const { nodeId, changes } = validatedInput;
 
-				// Report tool start
-				reporter.start(validatedInput);
-
 				// Get current state
 				const state = getWorkflowState();
 				const workflow = getCurrentWorkflow(state);
+
+				// Report tool start
+				reporter.start(validatedInput, {
+					customDisplayTitle: getCustomNodeTitle(input, workflow.nodes),
+				});
 
 				// Find the node
 				const node = validateNodeExists(nodeId, workflow.nodes);
@@ -91,61 +184,15 @@ export function createUpdateNodeParametersTool(
 				});
 
 				try {
-					// Get current parameters
-					const currentParameters = extractNodeParameters(node);
-
-					// Format inputs for the chain
-					const formattedChanges = formatChangesForPrompt(changes);
-
-					// Get the node's properties definition as JSON
-					const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
-
-					// Call the parameter updater chain with dynamic prompt building
-					const parametersChain = createParameterUpdaterChain(
+					const updatedParameters = await processParameterUpdates(
+						node,
+						nodeType,
+						nodeId,
+						changes,
+						state,
 						llm,
-						{
-							nodeType: node.type,
-							nodeDefinition: nodeType,
-							requestedChanges: changes,
-						},
 						logger,
-					);
-
-					const newParameters = (await parametersChain.invoke({
-						workflow_json: workflow,
-						execution_schema: state.workflowContext?.executionSchema ?? 'NO SCHEMA',
-						execution_data: state.workflowContext?.executionData ?? 'NO EXECUTION DATA YET',
-						node_id: nodeId,
-						node_name: node.name,
-						node_type: node.type,
-						current_parameters: JSON.stringify(currentParameters, null, 2),
-						node_definition: nodePropertiesJson,
-						changes: formattedChanges,
-					})) as INodeParameters;
-
-					// Ensure newParameters is a valid object
-					if (!newParameters || typeof newParameters !== 'object') {
-						throw new ParameterUpdateError('Invalid parameters returned from LLM', {
-							nodeId,
-							nodeType: node.type,
-						});
-					}
-
-					// Ensure parameters property exists and is valid
-					if (!newParameters.parameters || typeof newParameters.parameters !== 'object') {
-						throw new ParameterUpdateError('Invalid parameters structure returned from LLM', {
-							nodeId,
-							nodeType: node.type,
-						});
-					}
-
-					// Fix expression prefixes in the new parameters
-					const fixedParameters = fixExpressionPrefixes(newParameters.parameters);
-
-					// Merge the new parameters with existing ones
-					const updatedParameters = mergeParameters(
-						currentParameters,
-						fixedParameters as INodeParameters,
+						instanceUrl,
 					);
 
 					// Create updated node
@@ -176,7 +223,7 @@ export function createUpdateNodeParametersTool(
 					const toolError = new ToolExecutionError(
 						`Failed to update node parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
 						{
-							toolName: 'update_node_parameters',
+							toolName: UPDATING_NODE_PARAMETER_TOOL.toolName,
 							cause: error instanceof Error ? error : undefined,
 						},
 					);
@@ -196,7 +243,7 @@ export function createUpdateNodeParametersTool(
 				const toolError = new ToolExecutionError(
 					error instanceof Error ? error.message : 'Unknown error occurred',
 					{
-						toolName: 'update_node_parameters',
+						toolName: UPDATING_NODE_PARAMETER_TOOL.toolName,
 						cause: error instanceof Error ? error : undefined,
 					},
 				);
@@ -205,10 +252,15 @@ export function createUpdateNodeParametersTool(
 			}
 		},
 		{
-			name: 'update_node_parameters',
+			name: UPDATING_NODE_PARAMETER_TOOL.toolName,
 			description:
 				'Update the parameters of an existing node in the workflow based on natural language changes. This tool intelligently modifies only the specified parameters while preserving others. Examples: "Set the URL to https://api.example.com", "Add authentication header", "Change method to POST", "Set the condition to check if status equals success".',
 			schema: updateNodeParametersSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		...UPDATING_NODE_PARAMETER_TOOL,
+	};
 }

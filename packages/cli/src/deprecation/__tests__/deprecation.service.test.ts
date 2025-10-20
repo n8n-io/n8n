@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceType } from '@n8n/constants';
-import { captor, mock } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
@@ -18,30 +18,12 @@ describe('DeprecationService', () => {
 	beforeEach(() => {
 		// Ignore environment variables coming in from the environment when running
 		// this test suite.
-		process.env = {};
+		process.env = {
+			N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
+			N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
+		};
 
 		jest.resetAllMocks();
-	});
-
-	describe('N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', () => {
-		test('supports multiple warnings for the same environment variable', () => {
-			// ARRANGE
-			process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
-			const dataCaptor = captor();
-
-			// ACT
-			deprecationService.warn();
-
-			// ASSERT
-			expect(logger.warn).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith(dataCaptor);
-			expect(dataCaptor.value.split('\n')).toEqual(
-				expect.arrayContaining([
-					' - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
-					' - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> This environment variable is internal and should not be set.',
-				]),
-			);
-		});
 	});
 
 	const toTest = (envVar: string, value: string | undefined, mustWarn: boolean) => {
@@ -80,9 +62,6 @@ describe('DeprecationService', () => {
 		['EXECUTIONS_DATA_PRUNE_TIMEOUT', '1', true],
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
-		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '1', true],
-		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '2', true],
-		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
@@ -135,7 +114,11 @@ describe('DeprecationService', () => {
 		const envVar = 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS';
 
 		beforeEach(() => {
-			process.env = { N8N_RUNNERS_ENABLED: 'true' };
+			process.env = {
+				N8N_RUNNERS_ENABLED: 'true',
+				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
+				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
+			};
 
 			jest.spyOn(config, 'getEnv').mockImplementation((key) => {
 				if (key === 'executions.mode') return 'queue';
@@ -227,6 +210,80 @@ describe('DeprecationService', () => {
 					expect(warningMessage).toContain(envVar);
 				});
 			});
+		});
+	});
+
+	describe('N8N_BLOCK_ENV_ACCESS_IN_NODE', () => {
+		beforeEach(() => {
+			process.env = {
+				N8N_RUNNERS_ENABLED: 'true',
+				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
+			};
+
+			jest.resetAllMocks();
+		});
+
+		test('should warn when N8N_BLOCK_ENV_ACCESS_IN_NODE is not set', () => {
+			delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+			deprecationService.warn();
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		test.each(['false', 'true'])(
+			'should not warn when N8N_BLOCK_ENV_ACCESS_IN_NODE is %s',
+			(value) => {
+				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = value;
+				deprecationService.warn();
+				expect(logger.warn).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	describe('N8N_GIT_NODE_DISABLE_BARE_REPOS', () => {
+		beforeEach(() => {
+			process.env = {
+				N8N_RUNNERS_ENABLED: 'true',
+				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
+			};
+			jest.resetAllMocks();
+		});
+
+		test('should warn when N8N_GIT_NODE_DISABLE_BARE_REPOS is not set', () => {
+			delete process.env.N8N_GIT_NODE_DISABLE_BARE_REPOS;
+			deprecationService.warn();
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		test.each(['false', 'true'])(
+			'should not warn when N8N_GIT_NODE_DISABLE_BARE_REPOS is %s',
+			(value) => {
+				process.env.N8N_GIT_NODE_DISABLE_BARE_REPOS = value;
+				deprecationService.warn();
+				expect(logger.warn).not.toHaveBeenCalled();
+			},
+		);
+
+		test('should not warn when Git node is excluded', () => {
+			const globalConfig = mockInstance(GlobalConfig, {
+				nodes: { exclude: ['n8n-nodes-base.git'] },
+			});
+			const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
+
+			deprecationService.warn();
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		test('should not warn when deployment type is cloud', () => {
+			const globalConfig = mockInstance(GlobalConfig, {
+				nodes: { exclude: [] },
+				deployment: { type: 'cloud' },
+			});
+			const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
+
+			deprecationService.warn();
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 });

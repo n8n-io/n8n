@@ -71,11 +71,25 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
+						},
+					},
+				},
+				{
 					displayName: 'Element Type',
 					name: 'fieldType',
 					type: 'options',
 					default: 'text',
 					description: 'The type of field to add to the form',
+					// Update ALLOWED_FIELD_TYPES in packages/workflow/src/type-validation.ts when adding new field types
 					options: [
 						{
 							name: 'Checkboxes',
@@ -150,19 +164,6 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
-						},
-					},
-				},
-				{
-					displayName: 'Field Name',
-					name: 'fieldName',
-					description:
-						'The name of the field, used in input attributes and referenced by the workflow',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						show: {
-							fieldType: ['hiddenField'],
 						},
 					},
 				},

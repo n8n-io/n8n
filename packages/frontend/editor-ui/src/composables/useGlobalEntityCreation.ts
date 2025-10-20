@@ -4,10 +4,10 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useToast } from '@/composables/useToast';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
@@ -184,13 +184,14 @@ export const useGlobalEntityCreation = () => {
 		] satisfies Item[];
 	});
 
-	const createProject = async () => {
+	const createProject = async (uiContext?: string) => {
 		isCreatingProject.value = true;
 
 		try {
 			const newProject = await projectsStore.createProject({
 				name: i18n.baseText('projects.settings.newProjectName'),
 				icon: { type: 'icon', value: DEFAULT_ICON },
+				uiContext,
 			});
 			await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 			toast.showMessage({
@@ -210,7 +211,7 @@ export const useGlobalEntityCreation = () => {
 		if (id !== CREATE_PROJECT_ID) return;
 
 		if (projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects) {
-			void createProject();
+			void createProject('universal_button');
 			return;
 		}
 

@@ -26,6 +26,8 @@ export interface ToolProgressMessage<TToolName extends string = string> {
 	toolCallId?: string;
 	status: 'running' | 'completed' | 'error';
 	updates: ProgressUpdate[];
+	displayTitle?: string; // Name of tool action in UI, for example "Adding nodes"
+	customDisplayTitle?: string; // Custom name for tool action in UI, for example "Adding Gmail node"
 }
 
 /**
@@ -41,7 +43,7 @@ export interface ToolError {
  * Progress reporter interface for tools
  */
 export interface ProgressReporter {
-	start: <T>(input: T) => void;
+	start: <T>(input: T, options?: { customDisplayTitle: string }) => void;
 	progress: (message: string, data?: Record<string, unknown>) => void;
 	complete: <T>(output: T) => void;
 	error: (error: ToolError) => void;
@@ -121,5 +123,24 @@ export interface NodeSearchOutput {
 		results: NodeSearchResult[];
 	}>;
 	totalResults: number;
+	message: string;
+}
+
+/**
+ * Output type for get node parameter tool
+ */
+export interface GetNodeParameterOutput {
+	message: string; // This is only to report success or error, without actual value (we don't need to send it to the frontend)
+}
+
+/**
+ * Output type for remove connection tool
+ */
+export interface RemoveConnectionOutput {
+	sourceNode: string;
+	targetNode: string;
+	connectionType: string;
+	sourceOutputIndex: number;
+	targetInputIndex: number;
 	message: string;
 }

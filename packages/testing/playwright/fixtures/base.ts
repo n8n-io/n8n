@@ -1,12 +1,14 @@
-import { test as base, expect } from '@playwright/test';
+import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
+import { fixtures as currentsFixtures } from '@currents/playwright';
+import { test as base, expect, request } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
-import { setTimeout as wait } from 'node:timers/promises';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
+import { ProxyServer } from '../services/proxy-server';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
 
@@ -15,6 +17,7 @@ type TestFixtures = {
 	api: ApiHelpers;
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
+	proxyServer: ProxyServer;
 };
 
 type WorkerFixtures = {
@@ -32,6 +35,8 @@ interface ContainerConfig {
 		workers: number;
 	};
 	env?: Record<string, string>;
+	proxyServerEnabled?: boolean;
+	taskRunner?: boolean;
 }
 
 /**
@@ -39,7 +44,13 @@ interface ContainerConfig {
  * Supports both external n8n instances (via N8N_BASE_URL) and containerized testing.
  * Provides tag-driven authentication and database management.
  */
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<
+	TestFixtures & CurrentsFixtures,
+	WorkerFixtures & CurrentsWorkerFixtures
+>({
+	...currentsFixtures.baseFixtures,
+	...currentsFixtures.coverageFixtures,
+	...currentsFixtures.actionFixtures,
 	// Container configuration from the project use options
 	containerConfig: [
 		async ({}, use, workerInfo) => {
@@ -62,16 +73,12 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			const envBaseURL = process.env.N8N_BASE_URL;
 
 			if (envBaseURL) {
-				console.log(`Using external N8N_BASE_URL: ${envBaseURL}`);
 				await use(null as unknown as N8NStack);
 				return;
 			}
 
 			console.log('Creating container with config:', containerConfig);
 			const container = await createN8NStack(containerConfig);
-
-			// TODO: Remove this once we have a better way to wait for the container to be ready (e.g. healthcheck)
-			await wait(3000);
 
 			console.log(`Container URL: ${container.baseUrl}`);
 
@@ -92,13 +99,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 	// Reset the database for the new container
 	dbSetup: [
-		async ({ n8nUrl, n8nContainer, browser }, use) => {
+		async ({ n8nUrl, n8nContainer }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
-				const context = await browser.newContext({ baseURL: n8nUrl });
-				const api = new ApiHelpers(context.request);
+				const apiContext = await request.newContext({ baseURL: n8nUrl });
+				const api = new ApiHelpers(apiContext);
 				await api.resetDatabase();
-				await context.close();
+				await apiContext.dispose();
 			}
 			await use(undefined);
 		},
@@ -119,48 +126,60 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		{ scope: 'worker' },
 	],
 
-	baseURL: async ({ n8nUrl }, use) => {
+	baseURL: async ({ n8nUrl, dbSetup }, use) => {
+		void dbSetup; // Ensure dbSetup runs first
 		await use(n8nUrl);
 	},
 
-	// Browser, baseURL, and dbSetup are required here to ensure they run first.
-	// This is how Playwright does dependency graphs
-	context: async ({ context, browser, baseURL, dbSetup }, use) => {
-		// Dependencies: browser, baseURL, dbSetup (ensure they run first)
-		void browser;
-		void baseURL;
-		void dbSetup;
-
+	n8n: async ({ context }, use, testInfo) => {
 		await setupDefaultInterceptors(context);
-		await use(context);
-	},
-
-	page: async ({ context }, use, testInfo) => {
 		const page = await context.newPage();
-		const api = new ApiHelpers(context.request);
-
-		await api.setupFromTags(testInfo.tags);
-
-		await use(page);
-		await page.close();
-	},
-
-	n8n: async ({ page }, use) => {
 		const n8nInstance = new n8nPage(page);
+		await n8nInstance.api.setupFromTags(testInfo.tags);
+		// Enable project features for the tests, this is used in several tests, but is never disabled in tests, so we can have it on by default
+		await n8nInstance.start.withProjectFeatures();
 		await use(n8nInstance);
 	},
 
-	api: async ({ context }, use) => {
-		const api = new ApiHelpers(context.request);
+	// This is a completely isolated API context for tests that don't need the browser
+	api: async ({ baseURL }, use, testInfo) => {
+		const context = await request.newContext({ baseURL });
+		const api = new ApiHelpers(context);
+		await api.setupFromTags(testInfo.tags);
 		await use(api);
+		await context.dispose();
 	},
 
-	setupRequirements: async ({ page, context }, use) => {
+	setupRequirements: async ({ n8n, context }, use) => {
 		const setupFunction = async (requirements: TestRequirements): Promise<void> => {
-			await setupTestRequirements(page, context, requirements);
+			await setupTestRequirements(n8n, context, requirements);
 		};
 
 		await use(setupFunction);
+	},
+
+	proxyServer: async ({ n8nContainer }, use) => {
+		// n8nContainer is "null" if running tests in "local" mode
+		if (!n8nContainer) {
+			throw new TestError(
+				'Testing with Proxy server is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
+			);
+		}
+
+		const proxyServerContainer = n8nContainer.containers.find((container) =>
+			container.getName().endsWith('proxyserver'),
+		);
+
+		// proxy server is not initialized in local mode (it be only supported in container modes)
+		// tests that require proxy server should have "@capability:proxy" so that they are skipped in local mode
+		if (!proxyServerContainer) {
+			throw new TestError('Proxy server container not initialized. Cannot initialize client.');
+		}
+
+		const serverUrl = `http://${proxyServerContainer?.getHost()}:${proxyServerContainer?.getFirstMappedPort()}`;
+		const proxyServer = new ProxyServer(serverUrl);
+
+		await use(proxyServer);
 	},
 });
 
@@ -169,5 +188,9 @@ export { expect };
 /*
 Dependency Graph:
 Worker Scope: containerConfig → n8nContainer → [n8nUrl, chaos] → dbSetup
-Test Scope: n8nUrl → baseURL → context → page → [n8n, api]
+Test Scope:
+  - UI Stream: dbSetup → baseURL → context → page → n8n
+  - API Stream: dbSetup → baseURL → api
+Note: baseURL depends on dbSetup to ensure database is ready before tests run
+Both streams are independent after baseURL, allowing for pure API tests or combined UI+API tests
 */

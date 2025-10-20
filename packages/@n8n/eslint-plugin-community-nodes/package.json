@@ -1,0 +1,57 @@
+{
+  "name": "@n8n/eslint-plugin-community-nodes",
+  "type": "module",
+  "version": "0.6.0",
+  "main": "./dist/plugin.js",
+  "types": "./dist/plugin.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/plugin.d.ts",
+      "default": "./dist/plugin.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "build:docs": "eslint-doc-generator",
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "lint:docs": "eslint-doc-generator --check",
+    "test": "vitest run",
+    "test:dev": "vitest",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc --watch --project tsconfig.build.json"
+  },
+  "dependencies": {
+    "@typescript-eslint/utils": "^8.35.0",
+    "fastest-levenshtein": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@typescript-eslint/rule-tester": "^8.35.0",
+    "eslint-doc-generator": "^2.2.2",
+    "eslint-plugin-eslint-plugin": "^7.0.0",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "eslint": ">= 9"
+  },
+  "eslint-doc-generator": {
+    "configEmoji": [
+      [
+        "recommended",
+        "✅"
+      ],
+      [
+        "recommendedWithoutN8nCloudSupport",
+        "☑️"
+      ]
+    ]
+  }
+}

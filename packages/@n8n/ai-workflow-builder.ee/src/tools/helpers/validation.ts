@@ -4,6 +4,7 @@ import {
 	ConnectionError,
 	NodeNotFoundError,
 	NodeTypeNotFoundError,
+	ParameterTooLargeError,
 	ValidationError,
 } from '../../errors';
 import type { ToolError } from '../../types/tools';
@@ -103,6 +104,27 @@ export function createNodeTypeNotFoundError(nodeTypeName: string): ToolError {
 		message: error.message,
 		code: 'NODE_TYPE_NOT_FOUND',
 		details: { nodeTypeName },
+	};
+}
+
+/**
+ * Create a node parameter is too large error
+ */
+export function createNodeParameterTooLargeError(
+	nodeId: string,
+	parameter: string,
+	maxSize: number,
+): ToolError {
+	const error = new ParameterTooLargeError('Parameter value is too large to retrieve', {
+		parameter,
+		nodeId,
+		maxSize,
+	});
+
+	return {
+		message: error.message,
+		code: 'NODE_PARAMETER_TOO_LARGE',
+		details: { nodeId, parameter, maxSize: maxSize.toString() },
 	};
 }
 

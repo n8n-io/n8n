@@ -13,12 +13,10 @@ import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
-import { BaseCommand } from './base-command';
-
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { EDITOR_UI_DIST_DIR } from '@/constants';
+import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -33,6 +31,10 @@ import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
+
+import { BaseCommand } from './base-command';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -117,6 +119,31 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.exitSuccessFully();
 	}
 
+	/**
+	 * Generates meta tags with base64-encoded configuration values
+	 * for REST endpoint path and Sentry config.
+	 */
+	private generateConfigTags() {
+		const frontendSentryConfig = JSON.stringify({
+			dsn: this.globalConfig.sentry.frontendDsn,
+			environment: process.env.ENVIRONMENT || 'development',
+			serverName: process.env.DEPLOYMENT_NAME,
+			release: `n8n@${N8N_VERSION}`,
+		});
+		const b64Encode = (value: string) => Buffer.from(value).toString('base64');
+
+		// Base64 encode the configuration values
+		const restEndpointEncoded = b64Encode(this.globalConfig.endpoints.rest);
+		const sentryConfigEncoded = b64Encode(frontendSentryConfig);
+
+		const configMetaTags = [
+			`<meta name="n8n:config:rest-endpoint" content="${restEndpointEncoded}">`,
+			`<meta name="n8n:config:sentry" content="${sentryConfigEncoded}">`,
+		].join('');
+
+		return configMetaTags;
+	}
+
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = this.globalConfig.path;
@@ -138,6 +165,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				await mkdir(path.dirname(destFile), { recursive: true });
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
+					replaceStream('%CONFIG_TAGS%', this.generateConfigTags(), { ignoreCase: false }),
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
@@ -172,6 +200,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await super.init();
+
+		Container.get(DeprecationService).warn();
+
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		const isMultiMainEnabled =
@@ -200,6 +231,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
+		await Container.get(CredentialsOverwrites).init();
+		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();

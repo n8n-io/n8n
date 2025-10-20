@@ -6,7 +6,7 @@ import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { type AskAiRequest } from '@/types/assistant.types';
+import { type AskAiRequest } from '@/features/ai/assistant/assistant.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
@@ -206,7 +206,7 @@ export async function generateCodeForAiTransform(prompt: string, path: string, r
 				code = generatedCode;
 				break;
 			} catch (e) {
-				if (e.message.includes('maximum context length')) {
+				if (typeof e.message === 'string' && e.message.includes('maximum context length')) {
 					reducePayloadSizeOrThrow(payload, e);
 					continue;
 				}
