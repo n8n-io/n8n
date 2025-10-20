@@ -1,0 +1,138 @@
+{
+	"name": "AWS Services Phase 3 Validation",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 300],
+			"id": "manual-trigger"
+		},
+		{
+			"parameters": {
+				"resource": "cluster",
+				"operation": "list"
+			},
+			"name": "AWS EKS - List Clusters",
+			"type": "n8n-nodes-base.awsEKS",
+			"typeVersion": 1,
+			"position": [460, 100],
+			"id": "eks-list-clusters",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "list"
+			},
+			"name": "AWS Glue - List Jobs",
+			"type": "n8n-nodes-base.awsGlue",
+			"typeVersion": 1,
+			"position": [460, 200],
+			"id": "glue-list-jobs",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "pipeline",
+				"operation": "list"
+			},
+			"name": "AWS CodePipeline - List Pipelines",
+			"type": "n8n-nodes-base.awsCodePipeline",
+			"typeVersion": 1,
+			"position": [460, 300],
+			"id": "codepipeline-list",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "parameter",
+				"operation": "list"
+			},
+			"name": "AWS Systems Manager - List Parameters",
+			"type": "n8n-nodes-base.awsSystemsManager",
+			"typeVersion": 1,
+			"position": [460, 400],
+			"id": "ssm-list-parameters",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "distribution",
+				"operation": "list"
+			},
+			"name": "AWS CloudFront - List Distributions",
+			"type": "n8n-nodes-base.awsCloudFront",
+			"typeVersion": 1,
+			"position": [460, 500],
+			"id": "cloudfront-list",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition"
+			},
+			"name": "Merge Results",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [680, 300],
+			"id": "merge-results"
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{"node": "AWS EKS - List Clusters", "type": "main", "index": 0},
+					{"node": "AWS Glue - List Jobs", "type": "main", "index": 0},
+					{"node": "AWS CodePipeline - List Pipelines", "type": "main", "index": 0},
+					{"node": "AWS Systems Manager - List Parameters", "type": "main", "index": 0},
+					{"node": "AWS CloudFront - List Distributions", "type": "main", "index": 0}
+				]
+			]
+		},
+		"AWS EKS - List Clusters": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"AWS Glue - List Jobs": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"AWS CodePipeline - List Pipelines": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"AWS Systems Manager - List Parameters": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"AWS CloudFront - List Distributions": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		}
+	},
+	"pinData": {}
+}

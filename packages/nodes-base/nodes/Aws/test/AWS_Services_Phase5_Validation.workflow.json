@@ -1,0 +1,168 @@
+{
+  "name": "AWS Services Phase 5 Validation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "statement",
+        "operation": "executeStatement",
+        "resourceArn": "arn:aws:rds:us-east-1:123456789012:cluster:my-aurora-cluster",
+        "secretArn": "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-db-secret",
+        "database": "mydb",
+        "sql": "SELECT * FROM users LIMIT 10"
+      },
+      "id": "rds-data-api",
+      "name": "AWS RDS Data API - Execute Statement",
+      "type": "n8n-nodes-base.awsRDSData",
+      "typeVersion": 1,
+      "position": [460, 180],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "schedule",
+        "operation": "create",
+        "scheduleName": "test-schedule",
+        "scheduleExpression": "rate(1 hour)",
+        "target": {
+          "arn": "arn:aws:lambda:us-east-1:123456789012:function:my-function",
+          "roleArn": "arn:aws:iam::123456789012:role/scheduler-role"
+        },
+        "flexibleTimeWindow": {
+          "mode": "OFF"
+        }
+      },
+      "id": "scheduler",
+      "name": "AWS EventBridge Scheduler - Create Schedule",
+      "type": "n8n-nodes-base.awsScheduler",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "trace",
+        "operation": "getTraceSummaries",
+        "startTime": "={{ Math.floor(Date.now() / 1000) - 3600 }}",
+        "endTime": "={{ Math.floor(Date.now() / 1000) }}",
+        "filterExpression": "service(\"my-service\")"
+      },
+      "id": "xray",
+      "name": "AWS X-Ray - Get Trace Summaries",
+      "type": "n8n-nodes-base.awsXRay",
+      "typeVersion": 1,
+      "position": [460, 420],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate Phase 5 service responses\nconst results = [];\n\nfor (const item of $input.all()) {\n  const nodeName = item.json._node || 'Unknown';\n  const success = item.json.error ? false : true;\n  \n  results.push({\n    service: nodeName,\n    success: success,\n    timestamp: new Date().toISOString(),\n    data: success ? 'Operation completed successfully' : item.json.error\n  });\n}\n\nreturn results.map(r => ({ json: r }));"
+      },
+      "id": "validate",
+      "name": "Validate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "AWS RDS Data API - Execute Statement",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AWS EventBridge Scheduler - Create Schedule",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AWS X-Ray - Get Trace Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS RDS Data API - Execute Statement": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS EventBridge Scheduler - Create Schedule": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "AWS X-Ray - Get Trace Summaries": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Validate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}

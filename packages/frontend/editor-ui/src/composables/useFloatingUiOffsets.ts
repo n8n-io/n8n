@@ -1,7 +1,7 @@
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useLogsStore } from '@/stores/logs.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { computed } from 'vue';
 

@@ -13,10 +13,10 @@ import {
 	SET_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
