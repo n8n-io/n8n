@@ -206,9 +206,12 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 
 <template>
 	<div class="ag-custom-filter ag-custom-component-popup">
-		<N8nInputLabel label="Path" :tooltip-text="i18n.baseText('dataTable.filters.pathInstructions')">
+		<N8nInputLabel
+			v-if="filterType === 'json'"
+			label="Path"
+			:tooltip-text="i18n.baseText('dataTable.filters.pathInstructions')"
+		>
 			<N8nInput
-				v-if="filterType === 'json'"
 				v-model="inputPath"
 				data-test-id="json-path-input"
 				size="small"
