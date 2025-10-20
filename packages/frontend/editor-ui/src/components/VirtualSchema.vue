@@ -175,7 +175,7 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	const lastSuccessfulPreview = !isDataEmpty && Boolean(previewExecutionData);
 	let preview = lastSuccessfulPreview;
 
-	if (data.length === 0 && !preview) {
+	if (isDataEmpty && !preview) {
 		const previewSchema = await getSchemaPreview(fullNode);
 		if (previewSchema.ok) {
 			schema = getSchemaForJsonSchema(previewSchema.result);
