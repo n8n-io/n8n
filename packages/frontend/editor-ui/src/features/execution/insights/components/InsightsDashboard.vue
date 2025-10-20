@@ -171,8 +171,10 @@ watch(
 	() => {
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
-		const startDate = range.value.start?.toDate(getLocalTimeZone()).toISOString();
-		const endDate = range.value.end?.toDate(getLocalTimeZone()).toISOString();
+		const startDate = range.value.start
+			?.toDate(getLocalTimeZone())
+			.toISOString() as unknown as Date;
+		const endDate = range.value.end?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
 
 		if (insightsStore.isSummaryEnabled) {
 			void insightsStore.summary.execute(0, {
