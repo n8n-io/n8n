@@ -5,7 +5,10 @@ const table = {
 } as const;
 
 export class DropUnusedChatHubColumns1760965142113 implements ReversibleMigration {
-	async up({ schemaBuilder: { dropColumns, addColumns, column } }: MigrationContext) {
+	async up({
+		schemaBuilder: { dropColumns, dropForeignKey, addColumns, column },
+	}: MigrationContext) {
+		await dropForeignKey(table.messages, 'turnId', [table.messages, 'id']);
 		await dropColumns(table.messages, ['turnId', 'runIndex', 'state']);
 		await addColumns(table.messages, [
 			column('status')
