@@ -117,6 +117,7 @@ const mergedCredentials = computed(() => ({
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const isNewChat = computed(() => route.name === CHAT_VIEW);
 const hasMessages = computed(() => chatMessages.value.length > 0);
+const showStarter = computed(() => !hasMessages.value && isNewChat.value);
 const inputPlaceholder = computed(() => {
 	if (!selectedModel.value) {
 		return 'Select a model';
@@ -304,7 +305,7 @@ function handleSwitchAlternative(messageId: string) {
 		:class="[
 			$style.component,
 			{
-				[$style.hasMessages]: hasMessages,
+				[$style.showStarter]: showStarter,
 				[$style.isMobileDevice]: isMobileDevice,
 			},
 		]"
@@ -325,7 +326,7 @@ function handleSwitchAlternative(messageId: string) {
 		>
 			<div :class="$style.scrollable" ref="scrollable">
 				<ChatStarter
-					v-if="!hasMessages"
+					v-if="showStarter"
 					:class="$style.starter"
 					:is-mobile-device="isMobileDevice"
 					@select="onSuggestionClick"
@@ -410,7 +411,7 @@ function handleSwitchAlternative(messageId: string) {
 	justify-content: start;
 	gap: var(--spacing--2xl);
 
-	.component:not(.hasMessages) & {
+	.showStarter & {
 		justify-content: center;
 	}
 }
@@ -450,7 +451,7 @@ function handleSwitchAlternative(messageId: string) {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.hasMessages & {
+	.component:not(.showStarter) & {
 		position: absolute;
 		bottom: 0;
 		left: 0;
