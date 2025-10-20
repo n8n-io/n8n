@@ -1,0 +1,139 @@
+{
+	"name": "AWS Services Phase 9 Validation",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "start",
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"resource": "cluster",
+				"operation": "list"
+			},
+			"id": "neptune-test",
+			"name": "Test AWS Neptune",
+			"type": "n8n-nodes-base.awsNeptune",
+			"typeVersion": 1,
+			"position": [460, 200],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "database",
+				"operation": "list"
+			},
+			"id": "timestream-test",
+			"name": "Test AWS Timestream",
+			"type": "n8n-nodes-base.awsTimestream",
+			"typeVersion": 1,
+			"position": [460, 300],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "api",
+				"operation": "list"
+			},
+			"id": "appsync-test",
+			"name": "Test AWS AppSync",
+			"type": "n8n-nodes-base.awsAppSync",
+			"typeVersion": 1,
+			"position": [460, 400],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition"
+			},
+			"id": "merge-results",
+			"name": "Merge Results",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [680, 300]
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Test AWS Neptune",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Test AWS Timestream",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Test AWS AppSync",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test AWS Neptune": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test AWS Timestream": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Test AWS AppSync": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"tags": [],
+	"triggerCount": 0,
+	"updatedAt": "2025-01-01T00:00:00.000Z",
+	"versionId": "1"
+}
