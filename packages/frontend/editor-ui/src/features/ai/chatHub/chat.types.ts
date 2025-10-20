@@ -4,6 +4,7 @@ import {
 	type ChatMessageId,
 	type ChatHubSessionDto,
 	type ChatHubConversationDto,
+	type ChatSessionId,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -81,4 +82,11 @@ export type CredentialsMap = z.infer<typeof credentialsMapSchema>;
 export interface GroupedConversations {
 	group: string;
 	sessions: ChatHubSessionDto[];
+}
+
+export interface ChatMessageGenerationError {
+	sessionId: ChatSessionId;
+	promptId: ChatMessageId;
+	replyId: ChatMessageId;
+	error: Error;
 }

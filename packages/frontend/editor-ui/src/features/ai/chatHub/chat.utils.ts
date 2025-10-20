@@ -5,7 +5,7 @@ import {
 	type ChatHubSessionDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
-import type { GroupedConversations } from './chat.types';
+import type { ChatMessage, ChatMessageGenerationError, GroupedConversations } from './chat.types';
 import { providerDisplayNames } from './constants';
 
 export function findOneFromModelsResponse(
@@ -92,4 +92,51 @@ export function createCredentials(model: ChatHubConversationModel, credentialsId
 			name: '',
 		},
 	};
+}
+
+export function mergeErrorIntoChain(
+	sessionId: string,
+	messagesFromChain: ChatMessage[],
+	error: ChatMessageGenerationError | null,
+) {
+	if (error?.sessionId !== sessionId) {
+		return messagesFromChain;
+	}
+
+	return messagesFromChain.flatMap<ChatMessage>((message) => {
+		if (message.id === error.replyId) {
+			// This could happen when streaming raises error in the middle
+			// TODO: maybe preserve message and append error?
+			return [];
+		}
+
+		if (error.promptId === message.id) {
+			return [
+				message,
+				{
+					id: error.replyId,
+					sessionId,
+					type: 'ai',
+					name: 'AI',
+					content: `**ERROR:** ${error.error.message}`,
+					provider: null,
+					model: null,
+					workflowId: null,
+					executionId: null,
+					state: 'active',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					previousMessageId: message.id,
+					turnId: null,
+					retryOfMessageId: null,
+					revisionOfMessageId: null,
+					runIndex: 0,
+					responses: [],
+					alternatives: [],
+				},
+			];
+		}
+
+		return [message];
+	});
 }

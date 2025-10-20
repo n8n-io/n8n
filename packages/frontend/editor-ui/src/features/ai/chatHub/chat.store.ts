@@ -21,8 +21,18 @@ import {
 	type ChatSessionId,
 	type ChatHubMessageDto,
 } from '@n8n/api-types';
-import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
-import { createCredentials, createModelOrCredentialsMissingError } from './chat.utils';
+import type {
+	StructuredChunk,
+	CredentialsMap,
+	ChatMessage,
+	ChatConversation,
+	ChatMessageGenerationError,
+} from './chat.types';
+import {
+	createCredentials,
+	createModelOrCredentialsMissingError,
+	mergeErrorIntoChain,
+} from './chat.utils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -30,12 +40,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const streamingMessageId = ref<string>();
 	const sessions = ref<ChatHubSessionDto[]>([]);
-	const lastError = shallowRef<{
-		sessionId: ChatSessionId;
-		promptId: ChatMessageId;
-		replyId: ChatMessageId;
-		error: Error;
-	} | null>(null);
+	const lastError = shallowRef<ChatMessageGenerationError | null>(null);
 
 	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
@@ -48,52 +53,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const conversation = getConversation(sessionId);
 		if (!conversation) return [];
 
-		const persistedMessages = conversation.activeMessageChain
+		const messagesFromChain = conversation.activeMessageChain
 			.map((id) => conversation.messages[id])
 			.filter(Boolean);
 
-		const error = lastError.value?.sessionId === sessionId ? lastError.value : undefined;
-
-		if (!error) {
-			return persistedMessages;
-		}
-
-		return persistedMessages.flatMap<ChatMessage>((message) => {
-			if (message.id === error.replyId) {
-				// This could happen when streaming raises error in the middle
-				// TODO: maybe preserve message and append error?
-				return [];
-			}
-
-			if (error.promptId === message.id) {
-				return [
-					message,
-					{
-						id: error.replyId,
-						sessionId,
-						type: 'ai',
-						name: 'AI',
-						content: `**ERROR:** ${error.error.message}`,
-						provider: null,
-						model: null,
-						workflowId: null,
-						executionId: null,
-						state: 'active',
-						createdAt: new Date().toISOString(),
-						updatedAt: new Date().toISOString(),
-						previousMessageId: message.id,
-						turnId: null,
-						retryOfMessageId: null,
-						revisionOfMessageId: null,
-						runIndex: 0,
-						responses: [],
-						alternatives: [],
-					},
-				];
-			}
-
-			return [message];
-		});
+		return mergeErrorIntoChain(sessionId, messagesFromChain, lastError.value);
 	};
 
 	function ensureConversation(sessionId: ChatSessionId): ChatConversation {
