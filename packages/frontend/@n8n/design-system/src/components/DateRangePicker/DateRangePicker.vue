@@ -129,9 +129,9 @@ const slots = useSlots();
 }
 
 .DateFieldError {
-	color: var(--color-danger);
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-xloose);
+	color: var(--color--danger);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	margin-top: 5px;
 	display: none;
 }
@@ -218,7 +218,7 @@ const slots = useSlots();
 
 .CalendarCellTrigger[data-disabled] {
 	cursor: not-allowed;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .CalendarCellTrigger:focus {
@@ -277,10 +277,7 @@ const slots = useSlots();
 	/* display: flex; */
 }
 .PopoverContent:focus {
-	box-shadow:
-		hsl(206 22% 7% / 35%) 0 10px 38px -10px,
-		hsl(206 22% 7% / 20%) 0 10px 20px -15px,
-		0 0 0 2px var(--grass-7);
+	box-shadow: var(--shadow);
 }
 .PopoverContent[data-state='open'][data-side='top'] {
 	animation-name: slideDownAndFade;
