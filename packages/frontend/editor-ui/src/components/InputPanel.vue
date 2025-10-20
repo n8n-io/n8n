@@ -709,7 +709,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	max-width: 250px;
 
 	> * {
-		margin-bottom: var(--spacing--xs);
+		margin-bottom: var(--spacing--2xs);
 	}
 }
 
@@ -721,16 +721,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	width: 100%;
 	padding-top: var(--spacing--sm);
 	background-color: var(--color-ndvv2-run-data-background);
-}
-
-.recoveredOutputData {
-	margin: auto;
-	max-width: 250px;
-	text-align: center;
-
-	> *:first-child {
-		margin-bottom: var(--spacing--md);
-	}
 }
 
 .notConnected {
