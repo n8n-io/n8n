@@ -26,7 +26,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 
 	async updateChatMessage(
 		id: ChatMessageId,
-		fields: { status: ChatHubMessageStatus },
+		fields: { status: ChatHubMessageStatus; content?: string },
 		trx?: EntityManager,
 	) {
 		return await withTransaction(this.manager, trx, async (em) => {

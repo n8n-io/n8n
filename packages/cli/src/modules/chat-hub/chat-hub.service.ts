@@ -546,45 +546,51 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		const result = await this.activeExecutions.getPostExecutePromise(executionId);
-		if (!result) {
-			throw new OperationalError('There was a problem executing the chat workflow.');
-		}
-
-		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-			workflowData.id,
-		]);
-		if (!execution) {
-			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
-		}
-
-		if (!execution.status || execution.status !== 'success') {
-			const message = this.getErrorMessage(execution) ?? 'Error: Failed to generate a response';
-			await this.saveAIMessage({
-				id: replyId,
-				sessionId,
-				executionId: execution.id,
-				previousMessageId,
-				message,
-				selectedModel,
-				retryOfMessageId,
-				status: 'error',
-			});
-
-			throw new OperationalError(`Chat workflow execution failed: ${message}`);
-		}
-
-		const message = this.getAIOutput(execution) ?? 'Error: No response generated';
 		await this.saveAIMessage({
 			id: replyId,
 			sessionId,
-			executionId: execution.id,
+			executionId,
 			previousMessageId,
-			message,
+			message: '',
 			selectedModel,
 			retryOfMessageId,
-			status: 'success',
+			status: 'pending',
 		});
+
+		try {
+			const result = await this.activeExecutions.getPostExecutePromise(executionId);
+			if (!result) {
+				throw new OperationalError('There was a problem executing the chat workflow.');
+			}
+
+			const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+				workflowData.id,
+			]);
+			if (!execution) {
+				throw new OperationalError(`Could not find execution with ID ${executionId}`);
+			}
+
+			if (!execution.status || execution.status !== 'success') {
+				const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+				throw new OperationalError(message);
+			}
+
+			const message = this.getAIOutput(execution);
+			if (!message) {
+				throw new OperationalError('No response generated');
+			}
+
+			await this.messageRepository.updateChatMessage(replyId, {
+				content: message,
+				status: 'success',
+			});
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			await this.messageRepository.updateChatMessage(replyId, {
+				content: `Error: ${message}`,
+				status: 'error',
+			});
+		}
 	}
 
 	private prepareChatWorkflow(
