@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.awsCertificateManager",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Development"],
+	"categories": ["Security & Identity"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -11,18 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awscertificatemanager/"
-			}
-		],
-		"generic": [
-			{
-				"label": "Why business process automation with n8n can change your daily life",
-				"icon": "🧬",
-				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
-			},
-			{
-				"label": "7 no-code workflow automations for Amazon Web Services",
-				"url": "https://n8n.io/blog/aws-workflow-automation/"
+				"url": "https://docs.aws.amazon.com/acm/"
 			}
 		]
 	}
