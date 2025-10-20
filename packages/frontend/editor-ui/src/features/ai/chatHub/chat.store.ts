@@ -31,6 +31,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const streamingMessageId = ref<string>();
 	const sessions = ref<ChatHubSessionDto[]>([]);
 	const lastError = shallowRef<{
+		sessionId: ChatSessionId;
 		promptId: ChatMessageId;
 		replyId: ChatMessageId;
 		error: Error;
@@ -51,7 +52,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			.map((id) => conversation.messages[id])
 			.filter(Boolean);
 
-		const error = lastError.value;
+		const error = lastError.value?.sessionId === sessionId ? lastError.value : undefined;
 
 		if (!error) {
 			return persistedMessages;
@@ -361,9 +362,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchSessions(); // update the conversation list
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onStreamError(_e: Error) {
+	function onStreamError(
+		sessionId: ChatSessionId,
+		promptId: ChatMessageId,
+		replyId: ChatMessageId,
+		error: Error,
+	) {
 		streamingMessageId.value = undefined;
+		lastError.value = { sessionId, promptId, replyId, error };
 	}
 
 	function sendMessage(
@@ -403,6 +409,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		if (!model || !credentials) {
 			lastError.value = {
+				sessionId,
 				promptId: messageId,
 				replyId,
 				error: Error(
@@ -428,7 +435,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
 			onStreamDone,
-			onStreamError,
+			(error) => onStreamError(sessionId, messageId, replyId, error),
 		);
 	}
 
@@ -480,7 +487,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
 			onStreamDone,
-			onStreamError,
+			(error) => onStreamError(sessionId, messageId, replyId, error),
 		);
 	}
 
@@ -510,7 +517,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			(chunk: StructuredChunk) =>
 				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId),
 			onStreamDone,
-			onStreamError,
+			(error) => onStreamError(sessionId, previousMessageId, replyId, error),
 		);
 	}
 
