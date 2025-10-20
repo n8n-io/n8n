@@ -20,5 +20,5 @@ export const saveProvisioningConfig = async (
 	context: IRestApiContext,
 	config: Partial<ProvisioningConfig>,
 ): Promise<ProvisioningConfig> => {
-	return await makeRestApiRequest(context, 'POST', '/sso/provisioning/config', config);
+	return await makeRestApiRequest(context, 'PATCH', '/sso/provisioning/config', config);
 };

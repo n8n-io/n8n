@@ -2268,6 +2268,8 @@
 	"settings.provisioning.description": "Configure user provisioning settings and manage automated user lifecycle management.",
 	"settings.provisioning.loadError": "Failed to load provisioning configuration",
 	"settings.provisioning.saveError": "Failed to save provisioning configuration",
+	"settings.provisioning.saveSuccess": "Configuration Saved",
+	"settings.provisioning.saveSuccessMessage": "Provisioning configuration has been successfully updated.",
 	"settings.provisioning.save": "Save Configuration",
 	"settings.provisioning.scopesName": "Scopes Name",
 	"settings.provisioning.scopesName.placeholder": "Enter scopes name",

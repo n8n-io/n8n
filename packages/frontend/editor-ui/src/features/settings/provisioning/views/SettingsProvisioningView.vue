@@ -16,7 +16,7 @@ import {
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 const provisioningStore = useProvisioningStore();
 
 const loading = ref(false);
@@ -86,6 +86,14 @@ const onSave = async () => {
 		await provisioningStore.saveProvisioningConfig(config);
 		await provisioningStore.getProvisioningConfig();
 		loadFormData();
+
+		// Show success message
+		showMessage({
+			title: i18n.baseText('settings.provisioning.saveSuccess' as any),
+			message: i18n.baseText('settings.provisioning.saveSuccessMessage' as any),
+			type: 'success',
+			duration: 3000,
+		});
 	} catch (error) {
 		showError(error, i18n.baseText('settings.provisioning.saveError' as any));
 	} finally {
