@@ -33,8 +33,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsHelper } from '@/credentials-helper';
-import { EventService } from '@/events/event.service';
+// import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
@@ -371,8 +370,8 @@ export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) 
  */
 export async function getBase({
 	userId,
-	workflowId,
-	projectId,
+	// workflowId,
+	// projectId,
 	currentNodeParameters,
 	executionTimeoutTimestamp,
 }: {
@@ -386,13 +385,13 @@ export async function getBase({
 
 	const globalConfig = Container.get(GlobalConfig);
 
-	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
+	const variables = {}; // await WorkflowHelpers.getVariables(workflowId, projectId);
 
-	const eventService = Container.get(EventService);
+	// const eventService = Container.get(EventService);
 
 	const additionalData: IWorkflowExecuteAdditionalData = {
 		currentNodeExecutionIndex: 0,
-		credentialsHelper: Container.get(CredentialsHelper),
+		credentialsHelper: {} as any, // Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
 		instanceBaseUrl: urlBaseWebhook,
@@ -452,8 +451,7 @@ export async function getBase({
 				executeData,
 			);
 		},
-		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
-			eventService.emit(eventName, payload),
+		logAiEvent: (_eventName: keyof AiEventMap, _payload: AiEventPayload) => {}, // eventService.emit(eventName, payload),
 	};
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {

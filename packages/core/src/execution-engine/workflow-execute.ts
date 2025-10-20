@@ -1525,6 +1525,7 @@ export class WorkflowExecute {
 					throw error;
 				}
 
+				debugger;
 				executionLoop: while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
@@ -1704,6 +1705,8 @@ export class WorkflowExecute {
 									node: executionNode.name,
 									workflowId: workflow.id,
 								});
+
+								console.log(`running node ${executionData.node.name}`);
 
 								let runNodeData = await this.runNode(
 									workflow,

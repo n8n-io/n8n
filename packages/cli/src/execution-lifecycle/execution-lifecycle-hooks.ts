@@ -583,6 +583,15 @@ export function getLifecycleHooksForScalingMain(
 	return hooks;
 }
 
+// export function getLifecycleHooksForWorkerThread(
+// 	data: IWorkflowExecutionDataProcess,
+// 	executionId: string,
+// ): ExecutionLifecycleHooks {
+// 	const { executionMode, workflowData } = data;
+// 	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
+// 	return hooks;
+// }
+
 /**
  * Returns ExecutionLifecycleHooks instance for the main process in regular mode
  */

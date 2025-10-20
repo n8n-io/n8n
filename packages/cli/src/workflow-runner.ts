@@ -3,7 +3,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
@@ -16,6 +16,9 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	IWorkflowExecuteAdditionalData,
+	IRunExecutionData,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	ExecutionCancelledError,
@@ -24,8 +27,11 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
+import { Worker } from 'worker_threads';
+import { resolve } from 'path';
 
 import { ActiveExecutions } from '@/active-executions';
+import type { WorkerMessage, MainMessage } from '@/commands/worker-types';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 // eslint-disable-next-line import-x/no-cycle
@@ -62,6 +68,7 @@ export class WorkflowRunner {
 		private readonly executionDataService: ExecutionDataService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/** The process did error */
@@ -283,7 +290,17 @@ export class WorkflowRunner {
 				pushRef: data.pushRef,
 			});
 
-			if (data.executionData !== undefined) {
+			const useWorker = true;
+
+			if (useWorker) {
+				workflowExecution = this.dispatch({
+					executionId,
+					workflowData: data.workflowData,
+					additionalData,
+					executionMode: data.executionMode,
+					executionData: data.executionData,
+				});
+			} else if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
 				});
@@ -331,24 +348,26 @@ export class WorkflowRunner {
 
 			workflowExecution
 				.then((fullRunData) => {
+					console.log('after execution', fullRunData);
 					clearTimeout(executionTimeout);
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
+					console.log('fullRunData.status', fullRunData.status);
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
-				.catch(
-					async (error) =>
-						await this.processError(
-							error,
-							new Date(),
-							data.executionMode,
-							executionId,
-							additionalData.hooks,
-						),
-				);
+				.catch(async (error) => {
+					console.log(error);
+					return await this.processError(
+						error,
+						new Date(),
+						data.executionMode,
+						executionId,
+						additionalData.hooks,
+					);
+				});
 		} catch (error) {
 			await this.processError(
 				error,
@@ -358,6 +377,122 @@ export class WorkflowRunner {
 				additionalData.hooks,
 			);
 
+			throw error;
+		}
+	}
+
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	private dispatch(options: {
+		data?: IWorkflowExecutionDataProcess;
+		executionId: string;
+		workflowData: IWorkflowBase;
+		additionalData: IWorkflowExecuteAdditionalData;
+		executionMode: WorkflowExecuteMode;
+		executionData?: IRunExecutionData;
+	}): PCancelable<IRun> {
+		try {
+			console.log('m: dispatch');
+			// const execution = await this.executionRepository.findSingleExecution(executionId, {
+			// 	includeData: true,
+			// 	unflattenData: true,
+			// });
+
+			// if (!execution) {
+			// 	throw new UnexpectedError(`Worker failed to find data for execution ${executionId}`);
+			// }
+
+			// const workflowId = execution.workflowData.id;
+
+			const executionId = options.executionId;
+
+			this.logger.info(`Worker started execution ${executionId}`, { executionId });
+
+			// const startedAt = await this.executionRepository.setRunning(executionId);
+
+			// TODO: handle static data
+
+			// const workflowSettings = execution.workflowData.settings ?? {};
+
+			// let workflowTimeout = workflowSettings.executionTimeout ?? this.globalConfig.executions.timeout;
+
+			// let executionTimeoutTimestamp: number | undefined;
+
+			// if (workflowTimeout > 0) {
+			// 	workflowTimeout = Math.min(workflowTimeout, this.globalConfig.executions.maxTimeout);
+			// 	executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
+			// }
+
+			// const workflow = new Workflow({
+			// 	id: workflowId,
+			// 	name: execution.workflowData.name,
+			// 	nodes: execution.workflowData.nodes,
+			// 	connections: execution.workflowData.connections,
+			// 	active: execution.workflowData.active,
+			// 	nodeTypes: this.nodeTypes,
+			// 	staticData: undefined,
+			// 	settings: execution.workflowData.settings,
+			// });
+
+			// Create worker thread for execution
+			const workerPath = resolve(__dirname, 'commands/worker-thread.js');
+			const worker = new Worker(workerPath);
+
+			// Handle worker messages
+
+			// Handle worker errors
+
+			return new PCancelable((resolve, reject, onCancel) => {
+				worker.on('message', (msg: MainMessage) => {
+					this.logger.debug(`Worker message for execution ${executionId}`, { msg, executionId });
+
+					if (msg.type === 'done') {
+						this.logger.info(`Worker completed execution ${executionId}`, { executionId });
+						// void worker.terminate();
+						console.log(msg.run);
+						this.activeExecutions.setStatus(executionId, msg.run.status);
+						resolve(msg.run);
+					}
+				});
+
+				worker.on('error', (error) => {
+					this.logger.error(`Worker error for execution ${executionId}`, { error, executionId });
+					console.log(error);
+					this.errorReporter.error(error, { executionId });
+					void worker.terminate();
+					reject(error);
+				});
+
+				// Handle worker exit
+				worker.on('exit', (code) => {
+					if (code !== 0) {
+						this.logger.error(
+							`Worker stopped with exit code ${code} for execution ${executionId}`,
+							{
+								exitCode: code,
+								executionId,
+							},
+						);
+					} else {
+						this.logger.debug(`Worker exited successfully for execution ${executionId}`, {
+							executionId,
+						});
+					}
+				});
+
+				const clone = JSON.parse(JSON.stringify(options.workflowData));
+
+				const message: WorkerMessage = {
+					type: 'execute',
+					workflow: clone,
+					executionId,
+					executionMode: options.executionMode,
+					executionData: options.executionData!,
+				};
+
+				worker.postMessage(message);
+			});
+		} catch (error) {
+			console.error(error);
 			throw error;
 		}
 	}

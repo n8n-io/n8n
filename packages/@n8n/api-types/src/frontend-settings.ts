@@ -121,7 +121,7 @@ export interface FrontendSettings {
 		host: string;
 	};
 	missingPackages?: boolean;
-	executionMode: 'regular' | 'queue';
+	executionMode: 'regular' | 'queue' | 'worker';
 	/** Whether multi-main mode is enabled and licensed for this main instance. */
 	isMultiMain: boolean;
 	pushBackend: 'sse' | 'websocket';

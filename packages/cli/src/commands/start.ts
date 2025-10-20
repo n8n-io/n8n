@@ -264,10 +264,39 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 	}
 
+	// initWorker() {
+	// 	this.instanceSettings.markAsLeader();
+	//
+	// 	const worker = new Worker(join(__dirname, 'worker-thread'));
+	// 	worker.postMessage({ type: 'ping' });
+	// 	worker.on('message', async (msg) => {
+	// 		console.log('main', 'got message', msg);
+	// 	});
+	// 	worker.on('error', (error) => {
+	// 		console.error('main', `got error: [${error.name}] ${error.message}`);
+	// 	});
+	// 	worker.on('exit', (code) => {
+	// 		console.log('Worker stopped');
+	// 		if (code !== 0) {
+	// 			console.error(`Worker stopped with exit code ${code}`);
+	// 		}
+	// 		console.log('Restart worker');
+	// 		this.initWorker();
+	// 	});
+	// 	console.log('get WorkflowRunner');
+	// 	Container.get(WorkflowRunner).worker = worker;
+	// 	console.log('got it');
+	// }
+
 	async initOrchestration() {
 		Container.get(Publisher);
 
 		Container.get(PubSubRegistry).init();
+
+		// if (config.getEnv('executions.mode') === 'worker') {
+		// 	this.initWorker();
+		// 	return;
+		// }
 
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe('n8n.commands');

@@ -173,6 +173,7 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 }
 
 export async function getVariables(workflowId?: string, projectId?: string): Promise<IDataObject> {
+	// TODO: have to fix this again
 	const [variables, project] = await Promise.all([
 		Container.get(VariablesService).getAllCached(),
 		// If projectId is not provided, try to get it from workflow
