@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import {
 	PrebuiltAgentTemplates,
 	SampleTemplates,
-} from '@/features/templates/utils/workflowSamples';
+} from '@/features/workflows/templates/utils/workflowSamples';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
 import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/constants';
@@ -40,7 +40,7 @@ vi.mock('@/stores/posthog.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/users/users.store', () => ({
+vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: () => ({
 		isCalloutDismissed: mocks.isCalloutDismissed,
 		setCalloutDismissed: mocks.setCalloutDismissed,
@@ -67,7 +67,7 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
 }));
 
-vi.mock('@/features/projects/projects.store', () => ({
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		currentProjectId: 'test-project-id',
 	}),
