@@ -364,12 +364,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	function onStreamError(
 		sessionId: ChatSessionId,
-		promptId: ChatMessageId,
 		replyId: ChatMessageId,
+		promptId: ChatMessageId,
 		error: Error,
 	) {
 		streamingMessageId.value = undefined;
-		lastError.value = { sessionId, promptId, replyId, error };
+		lastError.value = { sessionId, replyId, promptId, error };
 	}
 
 	function sendMessage(
@@ -435,7 +435,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
 			onStreamDone,
-			(error) => onStreamError(sessionId, messageId, replyId, error),
+			(error) => onStreamError(sessionId, replyId, messageId, error),
 		);
 	}
 
@@ -487,7 +487,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
 			onStreamDone,
-			(error) => onStreamError(sessionId, messageId, replyId, error),
+			(error) => onStreamError(sessionId, replyId, messageId, error),
 		);
 	}
 
@@ -517,7 +517,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			(chunk: StructuredChunk) =>
 				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId),
 			onStreamDone,
-			(error) => onStreamError(sessionId, previousMessageId, replyId, error),
+			(error) => onStreamError(sessionId, replyId, previousMessageId, error),
 		);
 	}
 
