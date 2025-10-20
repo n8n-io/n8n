@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { NodeConnectionTypes, type IRunData, type Workflow } from 'n8n-workflow';
-import RunData from './RunData.vue';
-import RunInfo from './RunInfo.vue';
+import RunData from '@/components/RunData.vue';
+import RunInfo from '@/components/RunInfo.vue';
 import { storeToRefs } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import RunDataAi from './RunDataAi/RunDataAi.vue';
+import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -20,7 +20,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
-import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import NDVEmptyState from '@/features/nodes/ndv/components/NDVEmptyState.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
