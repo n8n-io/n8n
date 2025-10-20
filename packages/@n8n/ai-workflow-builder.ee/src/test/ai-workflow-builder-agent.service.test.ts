@@ -61,9 +61,16 @@ describe('AiWorkflowBuilderService', () => {
 			defaults: {},
 			inputs: [],
 			outputs: [],
-			properties: [],
+			properties: [
+				{
+					displayName: 'Test Property',
+					name: 'testProperty',
+					type: 'string',
+					default: '',
+				},
+			],
 			group: ['transform'],
-		} as INodeTypeDescription,
+		},
 		{
 			name: 'HiddenNode',
 			displayName: 'Hidden Node',
@@ -75,7 +82,19 @@ describe('AiWorkflowBuilderService', () => {
 			properties: [],
 			group: ['transform'],
 			hidden: true,
-		} as INodeTypeDescription,
+		},
+		{
+			name: 'n8n-nodes-base.dataTable',
+			displayName: 'Data Table',
+			description: 'Data table node',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			group: ['transform'],
+			hidden: true,
+		},
 		{
 			name: '@n8n/n8n-nodes-langchain.toolVectorStore',
 			displayName: 'Tool Vector Store',
@@ -86,7 +105,25 @@ describe('AiWorkflowBuilderService', () => {
 			outputs: [],
 			properties: [],
 			group: ['transform'],
-		} as INodeTypeDescription,
+		},
+		{
+			name: 'TestNodeTool',
+			displayName: 'Test Tool Node',
+			description: 'Test tool node description',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [
+				{
+					displayName: 'Test Tool Property',
+					name: 'testToolProperty',
+					type: 'string',
+					default: '',
+				},
+			],
+			group: ['transform'],
+		},
 	];
 
 	beforeEach(() => {
@@ -180,18 +217,56 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledWith(expect.any(Array), undefined);
 		});
 
-		// it('should filter out ignored and hidden node types', () => {
-		// 	// The service filters ignored types at the filter stage, not at getByNameAndVersion stage
-		// 	// Hidden nodes are filtered out after being retrieved in the filter() call
-		// 	expect(mockNodeTypes.getKnownTypes).toHaveBeenCalled();
-		// 	expect(mockNodeTypes.getByNameAndVersion).toHaveBeenCalledWith('TestNode');
-		// 	// Hidden nodes are still retrieved but filtered out later, so this call happens
-		// 	expect(mockNodeTypes.getByNameAndVersion).toHaveBeenCalledWith('HiddenNode');
-		// 	// Ignored types are filtered out before getByNameAndVersion call
-		// 	expect(mockNodeTypes.getByNameAndVersion).not.toHaveBeenCalledWith(
-		// 		'@n8n/n8n-nodes-langchain.toolVectorStore',
-		// 	);
-		// });
+		it('should filter out ignored types and hidden nodes except the data table', () => {
+			MockedSessionManagerService.mockClear();
+
+			new AiWorkflowBuilderService(
+				mockNodeTypeDescriptions,
+				mockClient,
+				mockLogger,
+				'https://test.com',
+				mockOnCreditsUpdated,
+			);
+
+			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
+			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
+
+			expect(filteredNodeTypes.find((node) => node.name === 'HiddenNode')).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === '@n8n/n8n-nodes-langchain.toolVectorStore'),
+			).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.dataTable'),
+			).toMatchObject({ name: 'n8n-nodes-base.dataTable' });
+		});
+
+		it('should merge tool node descriptions with their base node types', () => {
+			MockedSessionManagerService.mockClear();
+
+			new AiWorkflowBuilderService(
+				mockNodeTypeDescriptions,
+				mockClient,
+				mockLogger,
+				'https://test.com',
+				mockOnCreditsUpdated,
+			);
+
+			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
+			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
+
+			const testToolNode = filteredNodeTypes.find((node) => node.name === 'TestNodeTool');
+			expect(testToolNode).toBeDefined();
+			expect(testToolNode?.description).toBe('Test tool node description');
+			expect(testToolNode?.displayName).toBe('Test Tool Node');
+			expect(testToolNode?.properties).toEqual([
+				{
+					displayName: 'Test Tool Property',
+					name: 'testToolProperty',
+					type: 'string',
+					default: '',
+				},
+			]);
+		});
 	});
 
 	describe('chat', () => {
