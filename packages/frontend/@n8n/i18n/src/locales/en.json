@@ -2272,7 +2272,7 @@
 	"settings.provisioning.saveSuccessMessage": "Provisioning configuration has been successfully updated.",
 	"settings.provisioning.save": "Save Configuration",
 	"settings.provisioning.scopesName": "Scopes Name",
-	"settings.provisioning.scopesName.placeholder": "Enter scopes name",
+	"settings.provisioning.scopesName.placeholder": "Enter scope name",
 	"settings.provisioning.scopesName.help": "The name of the scope for provisioning, this is the scope that will be requested during Oauth flows",
 	"settings.provisioning.scopesInstanceRoleClaimName": "Instance Role Claim Name",
 	"settings.provisioning.scopesInstanceRoleClaimName.placeholder": "Enter instance role claim name",
