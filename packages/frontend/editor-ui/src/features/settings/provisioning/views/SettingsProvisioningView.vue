@@ -16,7 +16,7 @@ import {
 	N8nSelect,
 	N8nOption,
 } from '@n8n/design-system';
-import { ProvisioningConfig } from '@n8n/rest-api-client';
+import { type ProvisioningConfig } from '@n8n/rest-api-client';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
