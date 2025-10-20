@@ -1,13 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleError } from '../../helpers/errorHandler';
 
-export const description: INodeProperties[] = [
+export const jobOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'list',
 		displayOptions: {
 			show: {
 				resource: ['job'],
@@ -23,39 +21,18 @@ export const description: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/v1/canceljob',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: {
-							jobId: '={{ $parameter["jobId"] }}',
-							reason: '={{ $parameter["reason"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
 				name: 'Describe',
 				value: 'describe',
-				description: 'Describe jobs',
+				description: 'Get details about jobs',
 				action: 'Describe jobs',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '/v1/describejobs',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: {
-							jobs: '={{ $parameter["jobIds"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
@@ -68,48 +45,18 @@ export const description: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/v1/listjobs',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: {
-							jobQueue: '={{ $parameter["jobQueue"] }}',
-							jobStatus: '={{ $parameter["jobStatus"] }}',
-							maxResults: '={{ $parameter["maxResults"] }}',
-							nextToken: '={{ $parameter["nextToken"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
 				name: 'Submit',
 				value: 'submit',
-				description: 'Submit a job',
+				description: 'Submit a new job',
 				action: 'Submit a job',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '/v1/submitjob',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: {
-							jobName: '={{ $parameter["jobName"] }}',
-							jobQueue: '={{ $parameter["jobQueue"] }}',
-							jobDefinition: '={{ $parameter["jobDefinition"] }}',
-							parameters: '={{ $parameter["parameters"] }}',
-							containerOverrides: '={{ $parameter["containerOverrides"] }}',
-							dependsOn: '={{ $parameter["dependsOn"] }}',
-							timeout: '={{ $parameter["timeout"] }}',
-							tags: '={{ $parameter["tags"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
@@ -122,23 +69,15 @@ export const description: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/v1/terminatejob',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: {
-							jobId: '={{ $parameter["jobId"] }}',
-							reason: '={{ $parameter["reason"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 		],
+		default: 'list',
 	},
-	// Cancel/Terminate operations
+];
+
+export const jobFields: INodeProperties[] = [
 	{
 		displayName: 'Job ID',
 		name: 'jobId',
@@ -151,7 +90,14 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the job',
+		description: 'The ID of the job',
+		routing: {
+			request: {
+				body: {
+					jobId: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Reason',
@@ -165,87 +111,15 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Reason for canceling/terminating the job',
-	},
-	// Describe operation
-	{
-		displayName: 'Job IDs',
-		name: 'jobIds',
-		type: 'json',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['describe'],
+		description: 'Reason for canceling or terminating the job',
+		routing: {
+			request: {
+				body: {
+					reason: '={{ $value }}',
+				},
 			},
 		},
-		default: '[]',
-		description: 'Array of job IDs to describe (max 100)',
 	},
-	// List operation
-	{
-		displayName: 'Job Queue',
-		name: 'jobQueue',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['list'],
-			},
-		},
-		default: '',
-		description: 'Job queue name or ARN to filter by',
-	},
-	{
-		displayName: 'Job Status',
-		name: 'jobStatus',
-		type: 'options',
-		options: [
-			{ name: 'All', value: '' },
-			{ name: 'Submitted', value: 'SUBMITTED' },
-			{ name: 'Pending', value: 'PENDING' },
-			{ name: 'Runnable', value: 'RUNNABLE' },
-			{ name: 'Starting', value: 'STARTING' },
-			{ name: 'Running', value: 'RUNNING' },
-			{ name: 'Succeeded', value: 'SUCCEEDED' },
-			{ name: 'Failed', value: 'FAILED' },
-		],
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['list'],
-			},
-		},
-		default: '',
-		description: 'Filter by job status',
-	},
-	{
-		displayName: 'Max Results',
-		name: 'maxResults',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['list'],
-			},
-		},
-		default: 100,
-		description: 'Maximum number of jobs to return',
-	},
-	{
-		displayName: 'Next Token',
-		name: 'nextToken',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['list'],
-			},
-		},
-		default: '',
-		description: 'Pagination token',
-	},
-	// Submit operation
 	{
 		displayName: 'Job Name',
 		name: 'jobName',
@@ -259,6 +133,13 @@ export const description: INodeProperties[] = [
 		},
 		default: '',
 		description: 'Name of the job',
+		routing: {
+			request: {
+				body: {
+					jobName: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Job Queue',
@@ -268,11 +149,18 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['job'],
-				operation: ['submit'],
+				operation: ['submit', 'list'],
 			},
 		},
 		default: '',
 		description: 'Job queue name or ARN',
+		routing: {
+			request: {
+				body: {
+					jobQueue: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Job Definition',
@@ -287,70 +175,162 @@ export const description: INodeProperties[] = [
 		},
 		default: '',
 		description: 'Job definition name or ARN',
+		routing: {
+			request: {
+				body: {
+					jobDefinition: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
-		displayName: 'Parameters',
-		name: 'parameters',
-		type: 'json',
+		displayName: 'Job IDs',
+		name: 'jobs',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['job'],
+				operation: ['describe'],
+			},
+		},
+		default: '',
+		description: 'Comma-separated list of job IDs',
+		routing: {
+			request: {
+				body: {
+					jobs: '={{ $value.split(",").map(v => v.trim()) }}',
+				},
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['job'],
 				operation: ['submit'],
 			},
 		},
-		default: '{}',
-		description: 'Job parameters as key-value pairs',
+		options: [
+			{
+				displayName: 'Container Overrides',
+				name: 'containerOverrides',
+				type: 'json',
+				default: '{}',
+				description: 'Container property overrides (JSON)',
+				routing: {
+					request: {
+						body: {
+							containerOverrides: '={{ JSON.parse($value) }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Parameters',
+				name: 'parameters',
+				type: 'json',
+				default: '{}',
+				description: 'Job parameters (JSON)',
+				routing: {
+					request: {
+						body: {
+							parameters: '={{ JSON.parse($value) }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Timeout',
+				name: 'timeout',
+				type: 'number',
+				default: 3600,
+				description: 'Job timeout in seconds',
+				routing: {
+					request: {
+						body: {
+							timeout: {
+								attemptDurationSeconds: '={{ $value }}',
+							},
+						},
+					},
+				},
+			},
+		],
 	},
 	{
-		displayName: 'Container Overrides',
-		name: 'containerOverrides',
-		type: 'json',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['job'],
-				operation: ['submit'],
+				operation: ['list'],
 			},
 		},
-		default: '{}',
-		description: 'Container property overrides (vcpus, memory, command, environment)',
-	},
-	{
-		displayName: 'Depends On',
-		name: 'dependsOn',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['submit'],
+		options: [
+			{
+				displayName: 'Job Status',
+				name: 'jobStatus',
+				type: 'options',
+				options: [
+					{ name: 'Submitted', value: 'SUBMITTED' },
+					{ name: 'Pending', value: 'PENDING' },
+					{ name: 'Runnable', value: 'RUNNABLE' },
+					{ name: 'Starting', value: 'STARTING' },
+					{ name: 'Running', value: 'RUNNING' },
+					{ name: 'Succeeded', value: 'SUCCEEDED' },
+					{ name: 'Failed', value: 'FAILED' },
+				],
+				default: 'RUNNING',
+				description: 'Filter by job status',
+				routing: {
+					request: {
+						body: {
+							jobStatus: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '[]',
-		description: 'Array of job dependencies (jobId and optionally type)',
-	},
-	{
-		displayName: 'Timeout',
-		name: 'timeout',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['submit'],
+			{
+				displayName: 'Max Results',
+				name: 'maxResults',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'Maximum number of results',
+				routing: {
+					request: {
+						body: {
+							maxResults: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '{"attemptDurationSeconds": 3600}',
-		description: 'Job timeout configuration',
-	},
-	{
-		displayName: 'Tags',
-		name: 'tags',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['submit'],
+			{
+				displayName: 'Next Token',
+				name: 'nextToken',
+				type: 'string',
+				default: '',
+				description: 'Pagination token',
+				routing: {
+					request: {
+						body: {
+							nextToken: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '{}',
-		description: 'Tags as key-value pairs',
+		],
 	},
 ];
