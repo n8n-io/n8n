@@ -47,12 +47,6 @@ export interface StreamOutput {
 	messages: StreamChunk[];
 }
 
-export type Suggestion = {
-	title: string;
-	subtitle: string;
-	icon?: string;
-};
-
 // From @n8n/chat
 export type ChunkType = 'begin' | 'item' | 'end' | 'error';
 export interface StructuredChunk {

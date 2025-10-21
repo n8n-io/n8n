@@ -16,7 +16,7 @@ import {
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';

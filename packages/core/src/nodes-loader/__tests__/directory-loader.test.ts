@@ -798,7 +798,7 @@ describe('DirectoryLoader', () => {
 
 			expect(loader.loadedNodes).toEqual([{ name: 'test', version: 2 }]);
 
-			const nodes = loader.types.nodes as INodeTypeDescription[];
+			const nodes = loader.types.nodes;
 			expect(nodes).toHaveLength(2);
 			expect(nodes[0]?.version).toBe(2);
 			expect(nodes[1]?.version).toBe(1);

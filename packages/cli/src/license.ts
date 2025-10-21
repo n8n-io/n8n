@@ -16,7 +16,6 @@ import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
@@ -148,7 +147,7 @@ export class License implements LicenseProvider {
 	}
 
 	private async broadcastReloadLicenseCommand() {
-		if (config.getEnv('executions.mode') === 'queue' && this.instanceSettings.isLeader) {
+		if (this.globalConfig.executions.mode === 'queue' && this.instanceSettings.isLeader) {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}

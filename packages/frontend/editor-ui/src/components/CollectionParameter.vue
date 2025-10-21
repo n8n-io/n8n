@@ -13,7 +13,7 @@ import { deepCopy } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';

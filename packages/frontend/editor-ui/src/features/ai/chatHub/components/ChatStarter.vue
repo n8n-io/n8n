@@ -1,24 +1,17 @@
 <script setup lang="ts">
-import type { Suggestion } from '@/features/ai/chatHub/chat.types';
-import { SUGGESTIONS } from '@/features/ai/chatHub/constants';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { N8nHeading, N8nText } from '@n8n/design-system';
+import { useSettingsStore } from '@/stores/settings.store';
+import { N8nHeading } from '@n8n/design-system';
 import Logo from '@n8n/design-system/components/N8nLogo/Logo.vue';
 import { computed } from 'vue';
 
 defineProps<{ isMobileDevice: boolean }>();
 
-const emit = defineEmits<{
-	select: [Suggestion];
-}>();
-
 const userStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
 const greetings = computed(
-	() =>
-		`Good morning, ${userStore.currentUser?.firstName ?? userStore.currentUser?.fullName ?? 'User'}!`,
+	() => `Hello, ${userStore.currentUser?.firstName ?? userStore.currentUser?.fullName ?? 'User'}!`,
 );
 </script>
 
@@ -31,24 +24,6 @@ const greetings = computed(
 				{{ greetings }}
 			</N8nHeading>
 		</div>
-
-		<div :class="$style.suggestions">
-			<button
-				v-for="suggestion in SUGGESTIONS"
-				:key="suggestion.title"
-				type="button"
-				:class="$style.card"
-				@click="emit('select', suggestion)"
-			>
-				<div :class="$style.cardIcon" aria-hidden="true">
-					<N8nText size="xlarge">{{ suggestion.icon }}</N8nText>
-				</div>
-				<div :class="$style.cardText">
-					<N8nText bold color="text-dark">{{ suggestion.title }}</N8nText>
-					<N8nText color="text-base">{{ suggestion.subtitle }}</N8nText>
-				</div>
-			</button>
-		</div>
 	</div>
 </template>
 
@@ -59,17 +34,6 @@ const greetings = computed(
 	align-items: center;
 	justify-content: center;
 	gap: var(--spacing--2xl);
-}
-
-.suggestions {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(220px, 1fr));
-	gap: var(--spacing--md);
-	width: min(960px, 90%);
-
-	.isMobileDevice & {
-		grid-template-columns: 1fr;
-	}
 }
 
 .card {

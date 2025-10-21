@@ -5,7 +5,7 @@ import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { nextTick } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import userEvent from '@testing-library/user-event';
 
 const mockTelemetryTrack = vi.fn();

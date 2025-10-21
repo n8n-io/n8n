@@ -10,7 +10,7 @@ import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOver
 import ParameterOverrideSelectableList from '@/components/ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';

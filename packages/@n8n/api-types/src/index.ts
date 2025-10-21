@@ -12,7 +12,7 @@ export {
 	chatHubProviderSchema,
 	type ChatHubProvider,
 	type ChatHubMessageType,
-	type ChatHubMessageState,
+	type ChatHubMessageStatus,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	chatModelsRequestSchema,
 	type ChatModelsRequest,

@@ -11,7 +11,6 @@ import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import config from '@/config';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -150,7 +149,7 @@ export class MessageEventBus extends EventEmitter {
 
 			// if we are in queue mode, running jobs may still be running on a worker despite the main process
 			// crashing, so we can't just mark them as crashed
-			if (config.get('executions.mode') !== 'queue') {
+			if (this.globalConfig.executions.mode !== 'queue') {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {

@@ -25,6 +25,7 @@ import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { ExecutionsConfig } from '@n8n/config';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -165,6 +166,7 @@ export class E2EController {
 		private readonly eventBus: MessageEventBus,
 		private readonly userRepository: UserRepository,
 		private readonly frontendService: FrontendService,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -213,9 +215,8 @@ export class E2EController {
 
 	@Patch('/queue-mode', { skipAuth: true })
 	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
-		const { enabled } = req.body;
-		config.set('executions.mode', enabled ? 'queue' : 'regular');
-		return { success: true, message: `Queue mode set to ${config.getEnv('executions.mode')}` };
+		this.executionsConfig.mode = req.body.enabled ? 'queue' : 'regular';
+		return { success: true, message: `Queue mode set to ${this.executionsConfig.mode}` };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })

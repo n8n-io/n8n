@@ -1,5 +1,5 @@
 import { MAIN_HEADER_TABS } from '@/constants';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import type { Undoable } from '@/models/history';
 import { BulkCommand, Command } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';

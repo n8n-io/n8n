@@ -4,7 +4,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { CUSTOM_NODES_DOCS_URL } from '@/constants';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/features/settings/communityNodes/communityNodes.constants';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';

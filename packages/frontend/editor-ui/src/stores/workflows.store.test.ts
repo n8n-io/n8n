@@ -26,7 +26,7 @@ import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { mock } from 'vitest-mock-extended';
 import * as apiUtils from '@n8n/rest-api-client';
 import {
@@ -39,7 +39,7 @@ import {
 import { waitFor } from '@testing-library/vue';
 import { useWorkflowState } from '@/composables/useWorkflowState';
 
-vi.mock('@/features/nodes/ndv/ndv.store', () => ({
+vi.mock('@/features/ndv/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
 		activeNode: null,
 	})),

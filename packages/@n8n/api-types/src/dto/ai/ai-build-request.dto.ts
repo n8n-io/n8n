@@ -47,8 +47,9 @@ export class AiBuilderChatRequestDto extends Z.class({
 
 			expressionValues: z
 				.custom<Record<string, ExpressionValue[]>>((val: Record<string, ExpressionValue[]>) => {
+					const keys = Object.keys(val);
 					// Check if the array is empty or if all items have nodeName and schema properties
-					if (Object.keys(val).every((key) => val[key].every((v) => !v.expression))) {
+					if (keys.length > 0 && keys.every((key) => val[key].every((v) => !v.expression))) {
 						return false;
 					}
 

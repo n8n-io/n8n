@@ -74,7 +74,7 @@ import {
 	findTriggerNodeToAutoSelect,
 	openFormPopupWindow,
 } from '@/features/execution/executions/executions.utils';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@n8n/i18n';

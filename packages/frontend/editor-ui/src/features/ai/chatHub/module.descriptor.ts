@@ -13,7 +13,7 @@ export const ChatModule: FrontendModuleDescription = {
 	routes: [
 		{
 			name: CHAT_VIEW,
-			path: '/ask',
+			path: '/home/chat',
 			components: {
 				default: ChatView,
 				sidebar: ChatSidebar,
@@ -24,7 +24,7 @@ export const ChatModule: FrontendModuleDescription = {
 		},
 		{
 			name: CHAT_CONVERSATION_VIEW,
-			path: '/ask/:id',
+			path: '/home/chat/:id',
 			components: {
 				default: ChatView,
 				sidebar: ChatSidebar,

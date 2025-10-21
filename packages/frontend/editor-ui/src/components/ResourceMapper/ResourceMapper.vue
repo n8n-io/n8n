@@ -25,7 +25,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@n8n/i18n';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 import isEqual from 'lodash/isEqual';

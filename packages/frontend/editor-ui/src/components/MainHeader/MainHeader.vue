@@ -12,7 +12,7 @@ import {
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';

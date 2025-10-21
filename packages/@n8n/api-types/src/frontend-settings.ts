@@ -171,6 +171,7 @@ export interface FrontendSettings {
 				limit: number;
 			};
 		};
+		customRoles: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

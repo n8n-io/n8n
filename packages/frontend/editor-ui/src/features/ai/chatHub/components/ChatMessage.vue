@@ -72,7 +72,7 @@ function handleCancelEdit() {
 }
 
 function handleConfirmEdit() {
-	if (message.type === 'ai' || !editedText.value.trim()) {
+	if (!editedText.value.trim()) {
 		return;
 	}
 

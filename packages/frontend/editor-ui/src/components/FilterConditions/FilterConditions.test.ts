@@ -2,7 +2,7 @@ import { createComponentRenderer, type RenderOptions } from '@/__tests__/render'
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import { STORES } from '@n8n/stores';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within, waitFor } from '@testing-library/vue';

@@ -19,7 +19,7 @@ import {
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
 import { useLogsStore } from '@/stores/logs.store';

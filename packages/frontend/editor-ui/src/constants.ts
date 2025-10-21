@@ -448,6 +448,9 @@ export const enum VIEWS {
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
+	PROJECT_ROLES_SETTINGS = 'ProjectRolesSettingsView',
+	PROJECT_ROLE_SETTINGS = 'ProjectRoleSettingsView',
+	PROJECT_NEW_ROLE = 'ProjectNewRoleView',
 	PROJECTS_VARIABLES = 'ProjectsVariables',
 	HOME_VARIABLES = 'HomeVariables',
 	FOLDERS = 'Folders',
@@ -711,9 +714,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
-	READY_TO_RUN_V2_EXPERIMENT.name,
-	PERSONALIZED_TEMPLATES_V3.name,
-	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
 	PROJECT_VARIABLES_EXPERIMENT.name,
 ];
 

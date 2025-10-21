@@ -2,7 +2,7 @@ import { type MaybeRefOrGetter, computed, toValue, watchEffect } from 'vue';
 import { ExpressionExtensions } from 'n8n-workflow';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '../composables/useTelemetry';
 import type { Compartment } from '@codemirror/state';

@@ -1,5 +1,5 @@
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import * as ndvStore from '@/features/nodes/ndv/ndv.store';
+import * as ndvStore from '@/features/ndv/ndv.store';
 import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';

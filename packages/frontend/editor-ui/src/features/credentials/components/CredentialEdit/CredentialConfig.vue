@@ -22,7 +22,7 @@ import {
 } from '@/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

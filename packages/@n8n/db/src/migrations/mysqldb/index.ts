@@ -1,3 +1,4 @@
+import { DropUnusedChatHubColumns1760965142113 } from './1760965142113-DropUnusedChatHubColumns';
 import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
@@ -213,4 +214,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateChatHubTables1760019379982,
 	UniqueRoleNames1760020838000,
 	CreateWorkflowDependencyTable1760314000000,
+	DropUnusedChatHubColumns1760965142113,
 ];
