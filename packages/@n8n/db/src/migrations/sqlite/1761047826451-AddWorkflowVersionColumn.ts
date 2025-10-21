@@ -17,7 +17,7 @@ export class AddWorkflowVersionColumn1761047826451 implements ReversibleMigratio
 		// Manually setting the value is prevented by raising an error.
 		await queryRunner.query(`
 			CREATE TRIGGER ${triggerName}
-			BEFORE UPDATE ON ${tableName}
+			AFTER UPDATE ON ${tableName}
 			FOR EACH ROW
 			WHEN OLD."versionCounter" = NEW."versionCounter"
 			BEGIN
