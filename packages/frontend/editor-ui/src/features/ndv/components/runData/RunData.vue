@@ -42,12 +42,8 @@ import BinaryDataDisplay from './BinaryDataDisplay.vue';
 import NodeErrorView from './error/NodeErrorView.vue';
 import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEditor.vue';
 
-<<<<<<< HEAD:packages/frontend/editor-ui/src/components/RunData.vue
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import RunDataPinButton from '@/components/RunDataPinButton.vue';
-=======
 import RunDataPinButton from './RunDataPinButton.vue';
->>>>>>> ef688de6dcddcb58aca8ab639f7b89ce5ec2f420:packages/frontend/editor-ui/src/features/ndv/components/runData/RunData.vue
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';

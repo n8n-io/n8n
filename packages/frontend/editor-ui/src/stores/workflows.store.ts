@@ -91,6 +91,8 @@ import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -123,6 +125,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const workflowObject = ref<Workflow>(
@@ -568,8 +571,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 	}
 
-	async function fetchLastSuccessfulExecution(workflowId: string) {
+	async function fetchLastSuccessfulExecution() {
+		const workflowId = workflow.value.id;
+		const workflowPermissions = getResourcePermissions(workflow.value.scopes).workflow;
+
 		try {
+			if (
+				workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+				sourceControlStore.preferences.branchReadOnly ||
+				uiStore.isReadOnlyView ||
+				!workflowPermissions.update ||
+				workflow.value.isArchived
+			) {
+				return;
+			}
+
 			lastSuccessfulExecution.value = await workflowsApi.getLastSuccessfulExecution(
 				rootStore.restApiContext,
 				workflowId,
