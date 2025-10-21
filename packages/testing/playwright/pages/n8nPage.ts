@@ -19,6 +19,7 @@ import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
@@ -48,7 +49,6 @@ import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NavigationHelper } from '../helpers/NavigationHelper';
 import { ApiHelpers } from '../services/api-helper';
-import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
