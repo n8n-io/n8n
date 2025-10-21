@@ -402,7 +402,7 @@ describe('v2/components/Select', () => {
 					defaultOpen: true,
 				},
 				slots: {
-					'item-trailing': '<span data-test-id="custom-trailing">any</span>',
+					'item-label': '<span data-test-id="custom-label">any</span>',
 				},
 			});
 
@@ -410,7 +410,7 @@ describe('v2/components/Select', () => {
 			const { popover } = await getPopoverContainer(trigger);
 
 			await waitFor(() => {
-				expect(within(popover).getAllByTestId('custom-trailing')).toHaveLength(2);
+				expect(within(popover).getAllByTestId('custom-label')).toHaveLength(2);
 			});
 		});
 
