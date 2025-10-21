@@ -1,6 +1,8 @@
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
+import type { ProgrammaticViolation } from '@/validation/types';
+
 import { aggregateCacheStats, formatCacheStats } from './cache-analyzer.js';
 import {
 	formatColoredScore,
@@ -12,7 +14,6 @@ import {
 } from './evaluation-helpers.js';
 import type { Violation } from '../types/evaluation.js';
 import type { TestResult, CacheStatistics } from '../types/test-result.js';
-import type { ProgrammaticViolation } from '@/validation/types';
 
 /**
  * Generates a markdown report from evaluation results

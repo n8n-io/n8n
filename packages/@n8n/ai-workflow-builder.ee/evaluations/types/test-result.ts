@@ -1,6 +1,7 @@
+import type { ProgrammaticEvaluationResult } from '@/validation/types';
+
 import type { TestCase, EvaluationResult } from './evaluation';
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
-import type { ProgrammaticEvaluationResult } from '@/validation/types';
 
 export type {
 	ProgrammaticEvaluationResult,

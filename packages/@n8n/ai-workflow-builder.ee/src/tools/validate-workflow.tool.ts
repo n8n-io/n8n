@@ -4,10 +4,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
-
-import { ToolExecutionError, ValidationError } from '../errors';
 import { programmaticValidation } from '@/validation/programmatic';
 import type { ProgrammaticViolation } from '@/validation/types';
+
+import { ToolExecutionError, ValidationError } from '../errors';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';

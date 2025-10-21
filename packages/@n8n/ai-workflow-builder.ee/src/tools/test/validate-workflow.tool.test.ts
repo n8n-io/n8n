@@ -1,9 +1,9 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { ProgrammaticEvaluationResult } from '@/validation/types';
+import type { ProgrammaticChecksResult } from '@/validation/types';
 
 import {
 	createWorkflow,
@@ -29,11 +29,12 @@ jest.mock('@langchain/langgraph', () => ({
 }));
 
 jest.mock('@/validation/programmatic', () => ({
-	programmaticEvaluation: jest.fn(),
+	programmaticValidation: jest.fn(),
 }));
 
-const mockProgrammaticEvaluation = jest.requireMock('@/validation/programmatic')
-	.programmaticEvaluation as jest.Mock;
+const mockProgrammaticValidation =
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	jest.requireMock('@/validation/programmatic').programmaticValidation as jest.Mock;
 
 describe('validateWorkflow tool', () => {
 	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
@@ -43,22 +44,18 @@ describe('validateWorkflow tool', () => {
 	let validateWorkflowTool: ReturnType<typeof createValidateWorkflowTool>['tool'];
 	let mockLogger: Logger;
 
-	const sampleEvaluation: ProgrammaticEvaluationResult = {
-		overallScore: 0.82,
-		connections: { score: 0.9, violations: [] },
-		trigger: { score: 1, violations: [] },
-		agentPrompt: {
-			score: 0.6,
-			violations: [
-				{
-					type: 'minor',
-					description: 'Agent prompt is missing required expression.',
-					pointsDeducted: 15,
-				},
-			],
-		},
-		tools: { score: 0.75, violations: [] },
-		fromAi: { score: 1, violations: [] },
+	const sampleValidationResult: ProgrammaticChecksResult = {
+		connections: [],
+		trigger: [],
+		agentPrompt: [
+			{
+				type: 'minor',
+				description: 'Agent prompt is missing required expression.',
+				pointsDeducted: 5,
+			},
+		],
+		tools: [],
+		fromAi: [],
 	};
 
 	beforeEach(() => {
@@ -73,15 +70,15 @@ describe('validateWorkflow tool', () => {
 		const workflow = createWorkflow([createNode()]);
 		setupWorkflowState(mockGetCurrentTaskInput, workflow);
 
-		mockProgrammaticEvaluation.mockResolvedValue(sampleEvaluation);
+		mockProgrammaticValidation.mockReturnValue(sampleValidationResult);
 
 		const config = createToolConfigWithWriter('validate_workflow', 'call-1');
 
 		const result = await validateWorkflowTool.invoke({}, config);
 		const content = parseToolResult<ParsedToolContent>(result);
 
-		expectToolSuccess(content, 'Workflow validation completed.');
-		expect(content.update.workflowValidation).toEqual(sampleEvaluation);
+		expectToolSuccess(content, 'Workflow Validation Summary:');
+		expect(content.update.workflowValidation).toEqual(sampleValidationResult);
 
 		const progressMessages = extractProgressMessages(config.writer);
 		expect(progressMessages).toHaveLength(3);
@@ -89,31 +86,18 @@ describe('validateWorkflow tool', () => {
 		expect(findProgressMessage(progressMessages, 'running', 'progress')).toBeDefined();
 		expect(findProgressMessage(progressMessages, 'completed')).toBeDefined();
 
-		expect(mockProgrammaticEvaluation).toHaveBeenCalledWith(
+		expect(mockProgrammaticValidation).toHaveBeenCalledWith(
 			{ generatedWorkflow: workflow },
 			parsedNodeTypes,
 		);
 	});
 
-	it('should support compact summary output when includeDetails is false', async () => {
-		setupWorkflowState(mockGetCurrentTaskInput, createWorkflow());
-		mockProgrammaticEvaluation.mockResolvedValue(sampleEvaluation);
-
-		const config = createToolConfig('validate_workflow', 'call-2');
-
-		const result = await validateWorkflowTool.invoke({ includeDetails: false }, config);
-		const content = parseToolResult<ParsedToolContent>(result);
-		const message = content.update.messages[0]?.kwargs.content as string;
-
-		expect(message).toContain('Workflow validation completed.');
-		expect(message).toContain('Overall score: 82%');
-		expect(message).not.toContain('Workflow Validation Summary:');
-	});
-
 	it('should handle evaluation errors gracefully', async () => {
 		setupWorkflowState(mockGetCurrentTaskInput, createWorkflow());
 		const error = new Error('Evaluation failed');
-		mockProgrammaticEvaluation.mockRejectedValue(error);
+		mockProgrammaticValidation.mockImplementation(() => {
+			throw error;
+		});
 
 		const config = createToolConfig('validate_workflow', 'call-3');
 
@@ -130,21 +114,18 @@ describe('validateWorkflow tool', () => {
 		const workflow = createWorkflow([createNode()]);
 		setupWorkflowState(mockGetCurrentTaskInput, workflow);
 
-		const blockingEvaluation: ProgrammaticEvaluationResult = {
-			...sampleEvaluation,
-			connections: {
-				score: 0.2,
-				violations: [
-					{
-						type: 'critical',
-						description: 'Node HTTP Request is missing required main input.',
-						pointsDeducted: 50,
-					},
-				],
-			},
+		const blockingEvaluation: ProgrammaticChecksResult = {
+			...sampleValidationResult,
+			connections: [
+				{
+					type: 'critical',
+					description: 'Node HTTP Request is missing required main input.',
+					pointsDeducted: 50,
+				},
+			],
 		};
 
-		mockProgrammaticEvaluation.mockResolvedValue(blockingEvaluation);
+		mockProgrammaticValidation.mockReturnValue(blockingEvaluation);
 
 		const config = createToolConfigWithWriter('validate_workflow', 'call-blocking');
 

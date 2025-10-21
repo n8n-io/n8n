@@ -65,10 +65,10 @@ describe('evaluateAgentPrompt', () => {
 
 		expect(result.violations).toHaveLength(1);
 		expect(result.violations[0]).toEqual({
-			type: 'minor',
+			type: 'major',
 			description:
 				'Agent node "AI Agent" has no expression in its prompt field. This likely means it failed to use chatInput',
-			pointsDeducted: 15,
+			pointsDeducted: 20,
 		});
 	});
 
@@ -180,7 +180,7 @@ describe('evaluateAgentPrompt', () => {
 		const result = evaluateAgentPrompt(workflow);
 
 		expect(result.violations).toHaveLength(1);
-		expect(result.violations[0].pointsDeducted).toBe(15);
+		expect(result.violations[0].pointsDeducted).toBe(20);
 	});
 
 	it('should handle missing parameters gracefully', () => {
@@ -201,7 +201,7 @@ describe('evaluateAgentPrompt', () => {
 		const result = evaluateAgentPrompt(workflow);
 
 		expect(result.violations).toHaveLength(1);
-		expect(result.violations[0].type).toBe('minor');
+		expect(result.violations[0].type).toBe('major');
 	});
 
 	it('should detect multiple agents with issues', () => {

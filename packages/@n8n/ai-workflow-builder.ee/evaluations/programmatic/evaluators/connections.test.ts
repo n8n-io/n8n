@@ -8,9 +8,9 @@ import type {
 } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import { resolveConnections } from '@/validation/utils/resolve-connections';
 
 import { evaluateConnections } from './connections';
-import { resolveConnections } from '@/validation/utils/resolve-connections';
 
 const DEFAULT_VERSION = 1;
 
