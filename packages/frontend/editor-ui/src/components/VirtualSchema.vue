@@ -186,7 +186,7 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	return {
 		schema,
 		connectedOutputIndexes,
-		itemsCount: data.length,
+		itemsCount: !isDataEmpty ? data.length : 0,
 		runIndex: connectedOutputsWithData[0]?.runIndex ?? 0,
 		preview,
 		lastSuccessfulPreview,
