@@ -34,6 +34,54 @@ describe('formatBuiltInTools', () => {
 		]);
 	});
 
+	it.each([
+		[{}, false],
+		[
+			{
+				country: 'US',
+			},
+			true,
+		],
+		[
+			{
+				city: 'NYC',
+			},
+			true,
+		],
+		[
+			{
+				region: 'NY',
+			},
+			true,
+		],
+	])(
+		'formats web_search_preview with allowed domains and %s user location',
+		(userLocation, hasUserLocation) => {
+			const tools = formatBuiltInTools({
+				webSearch: {
+					searchContextSize: 'high',
+					allowedDomains: 'example.com, sub.domain.org , , another.net',
+					...userLocation,
+				},
+			} as unknown as IDataObject);
+
+			const commonData = {
+				type: 'web_search_preview',
+				search_context_size: 'high',
+				filters: { allowed_domains: ['example.com', 'sub.domain.org', 'another.net'] },
+			};
+			if (hasUserLocation) {
+				expect(tools).toEqual([
+					expect.objectContaining({ ...commonData, user_location: expect.anything() }),
+				]);
+			} else {
+				expect(tools).toEqual([
+					expect.objectContaining({ ...commonData, user_location: undefined }),
+				]);
+			}
+		},
+	);
+
 	it('formats mcp servers array with allowed tools and headers JSON', () => {
 		const tools = formatBuiltInTools({
 			mcpServers: {
