@@ -276,7 +276,7 @@ describe('ProvisioningService', () => {
 			);
 		});
 
-		it('should do nothing if projectIdToRole is not a valid JSON string', async () => {
+		it('should throw an error if projectIdToRole is not a valid JSON string', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = 'invalid-json-string';
 
