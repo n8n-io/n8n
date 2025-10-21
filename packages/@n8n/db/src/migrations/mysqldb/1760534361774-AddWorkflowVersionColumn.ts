@@ -20,11 +20,9 @@ export class AddWorkflowVersionColumn1760534361774 implements ReversibleMigratio
 			BEFORE UPDATE ON \`${tableName}\`
 			FOR EACH ROW
 			BEGIN
-				IF OLD.versionCounter <> NEW.versionCounter THEN
-					SIGNAL SQLSTATE '45000'
-					SET MESSAGE_TEXT = 'versionCounter cannot be manually updated';
+				IF OLD.versionCounter = NEW.versionCounter THEN
+					SET NEW.versionCounter = OLD.versionCounter + 1;
 				END IF;
-				SET NEW.versionCounter = OLD.versionCounter + 1;
 			END;
 		`);
 	}

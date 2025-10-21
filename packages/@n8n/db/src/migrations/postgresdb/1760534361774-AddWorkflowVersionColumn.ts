@@ -20,10 +20,9 @@ export class AddWorkflowVersionColumn1760534361774 implements ReversibleMigratio
 			CREATE OR REPLACE FUNCTION ${functionName}()
 			RETURNS TRIGGER AS $$
 			BEGIN
-				IF NEW.versionCounter IS DISTINCT FROM OLD.versionCounter THEN
-					RAISE EXCEPTION 'versionCounter cannot be manually updated';
+				IF NEW.versionCounter IS NOT DISTINCT FROM OLD.versionCounter THEN
+					NEW."versionCounter" = OLD."versionCounter" + 1;
 				END IF;
-				NEW."versionCounter" = OLD."versionCounter" + 1;
 				RETURN NEW;
 			END;
 			$$ LANGUAGE plpgsql;

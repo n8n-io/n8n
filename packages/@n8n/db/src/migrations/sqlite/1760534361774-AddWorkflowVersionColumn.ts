@@ -19,11 +19,11 @@ export class AddWorkflowVersionColumn1760534361774 implements ReversibleMigratio
 			CREATE TRIGGER ${triggerName}
 			BEFORE UPDATE ON ${tableName}
 			FOR EACH ROW
+			WHEN OLD.versionCounter = NEW.versionCounter
 			BEGIN
-				IF OLD.versionCounter <> NEW.versionCounter THEN
-					RAISE(ABORT, 'versionCounter cannot be manually updated');
-				END IF;
-				SELECT NEW.versionCounter = OLD.versionCounter + 1;
+				UPDATE ${tableName}
+				SET versionCounter = versionCounter + 1
+				WHERE id = NEW.id;
 			END;
 		`);
 	}
