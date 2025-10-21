@@ -505,7 +505,7 @@ export const useFlattenSchema = () => {
 				}),
 			);
 
-			if (item.preview) {
+			if (item.preview && !item.lastSuccessfulPreview) {
 				acc.push(moreFieldsItem());
 			}
 
