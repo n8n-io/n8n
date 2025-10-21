@@ -1,1 +1,1 @@
-export * from './firewall/Firewall.resource';
+export * from './resource/Resource.resource';

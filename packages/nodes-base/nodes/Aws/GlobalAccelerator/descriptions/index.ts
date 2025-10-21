@@ -1,1 +1,1 @@
-export * from './accelerator/Accelerator.resource';
+export * from './resource/Resource.resource';
