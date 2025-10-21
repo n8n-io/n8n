@@ -1,2 +1,1 @@
-export * from './campaign/Campaign.resource';
-export * from './template/Template.resource';
+export * from './app/App.resource';
