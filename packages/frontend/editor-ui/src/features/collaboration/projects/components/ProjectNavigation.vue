@@ -90,10 +90,6 @@ const activeTabId = computed(() => {
 async function onSourceControlPull() {
 	// Update myProjects for the sidebar display
 	await projectsStore.getMyProjects();
-
-	if (projectsStore.currentProjectId) {
-		await projectsStore.getProject(projectsStore.currentProjectId);
-	}
 }
 
 onBeforeMount(async () => {
