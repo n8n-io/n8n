@@ -1,4 +1,5 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -14,6 +15,38 @@ import { searchModels } from './methods/loadModels';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+
+/**
+ * Custom ChatOpenAI class that ensures AIMessages with tool_calls have non-empty content
+ * This is required for some OpenAI-compatible APIs (like NVIDIA) that reject empty content
+ */
+class ChatOpenAIWithContentFix extends ChatOpenAI {
+	override async _generate(
+		messages: BaseMessage[],
+		options: this['ParsedCallOptions'],
+		runManager?: any,
+	): Promise<any> {
+		// Fix empty content in messages with tool_calls
+		const fixedMessages = messages.map((msg) => {
+			// Check if this is an AIMessage with tool_calls and empty content
+			if (
+				'tool_calls' in msg &&
+				Array.isArray((msg as any).tool_calls) &&
+				(msg as any).tool_calls.length > 0 &&
+				typeof msg.content === 'string' &&
+				msg.content.trim() === ''
+			) {
+				// Clone the message and set content to a space to satisfy API requirements
+				const fixed = msg.constructor ? new (msg.constructor as any)(msg) : { ...msg };
+				fixed.content = ' ';
+				return fixed;
+			}
+			return msg;
+		});
+
+		return super._generate(fixedMessages, options, runManager);
+	}
+}
 
 export class LmChatOpenAi implements INodeType {
 	methods = {
@@ -378,7 +411,7 @@ export class LmChatOpenAi implements INodeType {
 		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
 			modelKwargs.reasoning_effort = options.reasoningEffort;
 
-		const model = new ChatOpenAI({
+		const model = new ChatOpenAIWithContentFix({
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...options,

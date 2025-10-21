@@ -104,6 +104,49 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 		});
 	}
 
+	async handleChatModelStart(
+		llm: Serialized,
+		messages: BaseMessage[][],
+		runId: string,
+		_parentRunId?: string,
+		_extraParams?: Record<string, unknown>,
+		_tags?: string[],
+		_metadata?: Record<string, unknown>,
+		_name?: string,
+	) {
+		// Flatten the messages array (it's an array of arrays for batch processing)
+		const flatMessages = messages.reduce((acc, val) => acc.concat(val), []);
+		const estimatedTokens = 0;
+		const sourceNodeRunIndex =
+			this.#parentRunIndex !== undefined
+				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
+				: undefined;
+
+		const options = llm.type === 'constructor' ? llm.kwargs : llm;
+		const { index } = this.executionFunctions.addInputData(
+			this.connectionType,
+			[
+				[
+					{
+						json: {
+							messages: flatMessages,
+							estimatedTokens,
+							options,
+						},
+					},
+				],
+			],
+			sourceNodeRunIndex,
+		);
+
+		// Save the run details for later use when processing `handleLLMEnd` event
+		this.runsMap[runId] = {
+			index,
+			options,
+			messages: flatMessages,
+		};
+	}
+
 	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
 		const estimatedTokens = 0;
 		const sourceNodeRunIndex =

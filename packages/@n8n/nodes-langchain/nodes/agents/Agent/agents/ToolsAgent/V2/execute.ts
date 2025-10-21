@@ -24,6 +24,7 @@ import {
 
 import {
 	fixEmptyContentMessage,
+	fixChatHistoryMessages,
 	getAgentStepsParser,
 	getChatModel,
 	getOptionalMemory,
@@ -271,6 +272,10 @@ export async function toolsAgentExecute(
 					// Load memory variables to respect context window length
 					const memoryVariables = await memory.loadMemoryVariables({});
 					chatHistory = memoryVariables['chat_history'];
+					// Fix empty content in AIMessages with tool_calls (required for some APIs like NVIDIA)
+					if (chatHistory) {
+						chatHistory = fixChatHistoryMessages(chatHistory);
+					}
 				}
 				const eventStream = executor.streamEvents(
 					{
