@@ -1064,7 +1064,7 @@ export class SourceControlImportService {
 				// Delete variables that existed before but are no longer present in the imported project
 				const deletedVariables = existingProjectVariables.filter(
 					(v) =>
-						v.project!.id === project.id && !project.variableStubs?.some((vs) => vs.key === v.key),
+						v.project!.id === project.id && !project.variableStubs?.some((vs) => vs.id === v.id),
 				);
 				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
 

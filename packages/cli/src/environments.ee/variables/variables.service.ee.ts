@@ -159,7 +159,7 @@ export class VariablesService {
 	}
 
 	async deleteByIds(ids: string[]): Promise<void> {
-		await this.variablesRepository.delete(ids);
+		await this.variablesRepository.deleteByIds(ids);
 		await this.updateCache();
 	}
 
