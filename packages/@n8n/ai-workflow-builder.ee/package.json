@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "0.25.1",
+  "version": "0.25.2",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
