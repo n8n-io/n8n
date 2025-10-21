@@ -40,7 +40,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@4d4dc2f3e3e6ded78c4f5a3dd29c2e65e0898357 # v4.5.0
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.5.0
         with:
           name: build-artifacts
           path: |
@@ -69,7 +69,7 @@ jobs:
         uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
 
       - name: Download build artifacts
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v4.1.8
         with:
           name: build-artifacts
 
@@ -108,7 +108,7 @@ jobs:
         uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
 
       - name: Download build artifacts
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v4.1.8
         with:
           name: build-artifacts
 
