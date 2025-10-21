@@ -82,7 +82,7 @@ export function regenerateMessageApi(
 	);
 }
 
-export const stopMessageApi = async (
+export const stopGenerationApi = async (
 	context: IRestApiContext,
 	sessionId: ChatSessionId,
 	messageId: ChatMessageId,

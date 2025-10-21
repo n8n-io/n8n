@@ -11,7 +11,7 @@ import {
 	fetchSingleConversationApi as fetchMessagesApi,
 	updateConversationTitleApi,
 	deleteConversationApi,
-	stopMessageApi,
+	stopGenerationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -267,8 +267,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		appendMessage(sessionId, messageId, chunk);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
+	function onEndMessage() {
 		streamingMessageId.value = undefined;
 	}
 
@@ -290,17 +289,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
 				break;
 			case 'end':
-				onEndMessage(messageId, nodeId, runIndex);
+				onEndMessage();
 				break;
 			case 'error':
-				onChunk(
-					sessionId,
-					messageId,
-					`Error: ${message.content ?? 'Unknown error'}`,
-					nodeId,
-					runIndex,
-				);
-				onEndMessage(messageId, nodeId, runIndex);
+				if (streamingMessageId.value === messageId) {
+					onChunk(
+						sessionId,
+						messageId,
+						`Error: ${message.content ?? 'Unknown error'}`,
+						nodeId,
+						runIndex,
+					);
+					onEndMessage();
+				}
 				break;
 		}
 	}
@@ -470,7 +471,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	async function stopStreamingMessage(sessionId: ChatSessionId) {
 		if (streamingMessageId.value) {
-			await stopMessageApi(rootStore.restApiContext, sessionId, streamingMessageId.value);
+			const messageId = streamingMessageId.value;
+			onEndMessage();
+			await stopGenerationApi(rootStore.restApiContext, sessionId, messageId);
 		}
 	}
 

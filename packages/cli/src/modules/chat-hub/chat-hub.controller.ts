@@ -198,7 +198,7 @@ export class ChatHubController {
 
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/stop')
-	async stopMessage(
+	async stopGeneration(
 		req: AuthenticatedRequest,
 		res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
@@ -206,7 +206,8 @@ export class ChatHubController {
 	) {
 		this.logger.debug(`Chat stop request received: ${JSON.stringify({ sessionId, messageId })}`);
 
-		await this.chatService.stopAIMessage(req.user, sessionId, messageId);
+		await this.chatService.stopGeneration(req.user, sessionId, messageId);
+		res.status(204).send();
 	}
 
 	@Post('/conversations/:sessionId/rename')
@@ -226,9 +227,11 @@ export class ChatHubController {
 	@GlobalScope('chatHub:message')
 	async deleteConversation(
 		req: AuthenticatedRequest,
-		_res: Response,
+		res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 	): Promise<void> {
 		await this.chatService.deleteSession(req.user.id, sessionId);
+
+		res.status(204).send();
 	}
 }

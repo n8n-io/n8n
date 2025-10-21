@@ -29,6 +29,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
+	ManualExecutionCancelledError,
 	type IConnections,
 	type INode,
 	type INodeCredentials,
@@ -37,8 +38,18 @@ import {
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
 	type StartNodeData,
+	type IRun,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
+
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import type {
@@ -51,15 +62,6 @@ import type {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
-
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { ExecutionService } from '@/executions/execution.service';
 
 const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -513,7 +515,7 @@ export class ChatHubService {
 		}
 	}
 
-	async stopAIMessage(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
+	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
 		const session = await this.getChatSession(user, sessionId);
 		const message = await this.getChatMessage(session.id, messageId, [
 			'execution',
@@ -583,9 +585,32 @@ export class ChatHubService {
 		});
 
 		try {
-			const result = await this.activeExecutions.getPostExecutePromise(executionId);
-			if (!result) {
-				throw new OperationalError('There was a problem executing the chat workflow.');
+			let result: IRun | undefined;
+			try {
+				result = await this.activeExecutions.getPostExecutePromise(executionId);
+				if (!result) {
+					throw new OperationalError('There was a problem executing the chat workflow.');
+				}
+			} catch (error: unknown) {
+				if (error instanceof ManualExecutionCancelledError) {
+					const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+						workflowData.id,
+					]);
+					if (!execution) {
+						throw new OperationalError(`Could not find execution with ID ${executionId}`);
+					}
+
+					if (execution.status === 'canceled') {
+						const message = 'Generation cancelled.';
+						await this.messageRepository.updateChatMessage(replyId, {
+							content: message,
+							status: 'cancelled',
+						});
+						return;
+					}
+				}
+
+				throw error;
 			}
 
 			const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
