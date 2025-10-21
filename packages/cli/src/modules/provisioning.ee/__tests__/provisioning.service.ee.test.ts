@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { type SettingsRepository } from '@n8n/db';
+import type { User, UserRepository, SettingsRepository, RoleRepository, Role } from '@n8n/db';
 import { type GlobalConfig } from '@n8n/config';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
@@ -10,12 +10,16 @@ import { type Publisher } from '@/scaling/pubsub/publisher.service';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
+const userRepository = mock<UserRepository>();
 const logger = mock<Logger>();
 const publisher = mock<Publisher>();
+const roleRepository = mock<RoleRepository>();
 
 const provisioningService = new ProvisioningService(
 	globalConfig,
 	settingsRepository,
+	roleRepository,
+	userRepository,
 	logger,
 	publisher,
 );
@@ -137,6 +141,110 @@ describe('ProvisioningService', () => {
 
 			const config = await provisioningService.loadConfig();
 			expect(config).toEqual(provisioningConfigDto);
+		});
+	});
+
+	describe('provisionInstanceRoleForUser', () => {
+		it('should do nothing if the role slug is not a string', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const roleSlug = 123;
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'skipping instance role provisioning. Invalid role type: expected string, received number',
+				{ userId: user.id, roleSlug: 123 },
+			);
+		});
+
+		it('should do nothing if the role matching the slug is not found', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const roleSlug = 'global:invalid';
+			const thrownError = new Error('Role not found');
+
+			roleRepository.findOneOrFail.mockRejectedValue(thrownError);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Skipping instance role provisioning, a role matching the slug ${roleSlug} was not found`,
+				{ userId: user.id, roleSlug, error: thrownError },
+			);
+		});
+
+		it('should do nothing if the user is the last owner', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const roleSlug = 'global:member';
+
+			userRepository.count.mockResolvedValue(0);
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:member', roleType: 'global' }),
+			);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Skipping instance role provisioning. Cannot remove last owner role: global:owner from user: ${user.id}`,
+				{ userId: user.id, roleSlug: 'global:member' },
+			);
+		});
+
+		it('should allow a user to change from an owner role to a non-owner role, if there are other owners', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const roleSlug = 'global:member';
+			userRepository.count.mockResolvedValue(1);
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:member', roleType: 'global' }),
+			);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: roleSlug } });
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should provision the instance role for the user', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const roleSlug = 'global:owner';
+
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+			);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: roleSlug } });
+		});
+
+		it('should do nothing if the role has not changed', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const roleSlug = 'global:owner';
+
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+			);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should do nothing if the role is not a global role', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const roleSlug = 'global:owner';
+
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'project' }),
+			);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Skipping instance role provisioning. Role ${roleSlug} is not a global role`,
+				{ userId: user.id, roleSlug: 'global:owner' },
+			);
 		});
 	});
 

@@ -313,6 +313,16 @@ describe('SourceControlPushModal', () => {
 				file: '/Users/raul/.n8n/git/folders.json',
 				updatedAt: '2024-12-04T11:29:22.095Z',
 			},
+			{
+				id: 'project-1',
+				name: 'Team Project 1',
+				type: 'project',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/projects/project-1.json',
+				updatedAt: '2025-01-09T13:12:24.586Z',
+			},
 		];
 
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
@@ -342,10 +352,11 @@ describe('SourceControlPushModal', () => {
 
 		expect(getByRole('alert').textContent).toContain(
 			[
-				'Changes to variables, tags and folders',
+				'Changes to variables, tags, folders and projects',
 				'Variables : at least one new or modified.',
 				'Tags : at least one new or modified.',
-				'Folders : at least one new or modified. ',
+				'Folders : at least one new or modified.',
+				'Projects : at least one new or modified.',
 			].join(' '),
 		);
 
