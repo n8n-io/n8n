@@ -1,6 +1,5 @@
 import ast
 import hashlib
-from typing import Set, Tuple
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
@@ -14,7 +13,7 @@ from src.constants import (
     BLOCKED_ATTRIBUTES,
 )
 
-CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
+CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
@@ -23,7 +22,7 @@ class SecurityValidator(ast.NodeVisitor):
     """AST visitor that enforces import allowlists and blocks dangerous attribute access."""
 
     def __init__(self, security_config: SecurityConfig):
-        self.checked_modules: Set[str] = set()
+        self.checked_modules: set[str] = set()
         self.violations: list[str] = []
         self.security_config = security_config
 
@@ -87,22 +86,32 @@ class SecurityValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Subscript(self, node: ast.Subscript) -> None:
-        """Detect dict access to blocked attributes, e.g. __builtins__['__spec__']"""  
-        
+        """Detect dict access to blocked attributes, e.g. __builtins__['__spec__']"""
+
         is_builtins_access = (
             # __builtins__['__spec__']
-            (isinstance(node.value, ast.Name) and node.value.id in {"__builtins__", "builtins"})
+            (
+                isinstance(node.value, ast.Name)
+                and node.value.id in {"__builtins__", "builtins"}
+            )
             # obj.__builtins__['__spec__']
-            or (isinstance(node.value, ast.Attribute) and node.value.attr in {"__builtins__", "builtins"})
+            or (
+                isinstance(node.value, ast.Attribute)
+                and node.value.attr in {"__builtins__", "builtins"}
+            )
         )
-        
-        if is_builtins_access and isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+
+        if (
+            is_builtins_access
+            and isinstance(node.slice, ast.Constant)
+            and isinstance(node.slice.value, str)
+        ):
             key = node.slice.value
             if key in BLOCKED_ATTRIBUTES:
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=key)
                 )
-        
+
         self.generic_visit(node)
 
     # ========== Validation ==========

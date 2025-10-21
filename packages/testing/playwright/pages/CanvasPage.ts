@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModal';
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
@@ -21,6 +22,9 @@ export class CanvasPage extends BasePage {
 	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
 	readonly tagsManagerModal = new TagsManagerModal(
 		this.page.getByRole('dialog').filter({ hasText: 'Manage tags' }),
+	);
+	readonly convertToSubworkflowModal = new ConvertToSubworkflowModal(
+		this.page.getByRole('dialog').filter({ hasText: 'Convert' }),
 	);
 
 	saveWorkflowButton(): Locator {
@@ -585,6 +589,10 @@ export class CanvasPage extends BasePage {
 
 	async deselectAll(): Promise<void> {
 		await this.canvasPane().click({ position: { x: 10, y: 10 } });
+	}
+
+	async openCanvasContextMenu(): Promise<void> {
+		await this.canvasPane().click({ button: 'right', position: { x: 10, y: 10 } });
 	}
 
 	getNodeLeftPosition(nodeLocator: Locator): Promise<number> {

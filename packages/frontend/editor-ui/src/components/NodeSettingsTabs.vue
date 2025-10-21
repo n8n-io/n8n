@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { ITab } from '@/Interface';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/communityNodes/communityNodes.constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useInstalledCommunityPackage } from '@/features/communityNodes/composables/useInstalledCommunityPackage';
+import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { NodeSettingsTab } from '@/types/nodeSettings';

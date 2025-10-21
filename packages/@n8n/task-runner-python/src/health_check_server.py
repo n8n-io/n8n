@@ -1,7 +1,6 @@
 import asyncio
 import errno
 import logging
-from typing import Optional
 
 from src.config.health_check_config import HealthCheckConfig
 
@@ -12,7 +11,7 @@ HEALTH_CHECK_RESPONSE = (
 
 class HealthCheckServer:
     def __init__(self):
-        self.server: Optional[asyncio.Server] = None
+        self.server: asyncio.Server | None = None
         self.logger = logging.getLogger(__name__)
 
     async def start(self, config: HealthCheckConfig) -> None:
@@ -20,7 +19,8 @@ class HealthCheckServer:
             self.server = await asyncio.start_server(
                 self._handle_request, config.host, config.port
             )
-            actual_port = self.server.sockets[0].getsockname()[1] # for OS-assigned port in tests 
+            # for OS-assigned port in tests
+            actual_port = self.server.sockets[0].getsockname()[1]
             self.logger.info(
                 f"Health check server listening on {config.host}, port {actual_port}"
             )

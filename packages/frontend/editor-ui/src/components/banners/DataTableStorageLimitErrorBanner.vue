@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import BaseBanner from '@/components/banners/BaseBanner.vue';
-import { useDataTableStore } from '@/features/dataTable/dataTable.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 const dataTableStore = useDataTableStore();
 const i18n = useI18n();

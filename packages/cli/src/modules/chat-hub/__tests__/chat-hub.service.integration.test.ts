@@ -1,7 +1,6 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-
 import { createAdmin, createMember } from '@test-integration/db/users';
 
 import { ChatHubService } from '../chat-hub.service';
@@ -137,7 +136,6 @@ describe('chatHub', () => {
 				name: 'Nathan',
 				type: 'human',
 				content: 'message 1',
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:00:00Z'),
 			});
 			const msg2 = await messagesRepository.createChatMessage({
@@ -147,7 +145,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 2',
 				previousMessageId: msg1.id,
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:05:00Z'),
 			});
 			const msg3 = await messagesRepository.createChatMessage({
@@ -157,7 +154,6 @@ describe('chatHub', () => {
 				type: 'human',
 				content: 'message 3',
 				previousMessageId: msg2.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:10:00Z'),
 			});
 			const msg4 = await messagesRepository.createChatMessage({
@@ -167,7 +163,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 4',
 				previousMessageId: msg3.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:15:00Z'),
 			});
 
@@ -176,28 +171,18 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(activeMessageChain).toHaveLength(4);
-			expect(activeMessageChain[0]).toBe(msg1.id);
-			expect(activeMessageChain[1]).toBe(msg2.id);
-			expect(activeMessageChain[2]).toBe(msg3.id);
-			expect(activeMessageChain[3]).toBe(msg4.id);
 			expect(messages[msg1.id].content).toBe('message 1');
 			expect(messages[msg1.id].type).toBe('human');
-			expect(messages[msg1.id].turnId).toBe(msg1.id);
 			expect(messages[msg2.id].content).toBe('message 2');
 			expect(messages[msg2.id].type).toBe('ai');
-			expect(messages[msg2.id].turnId).toBe(msg1.id);
 			expect(messages[msg3.id].content).toBe('message 3');
 			expect(messages[msg3.id].type).toBe('human');
-			expect(messages[msg3.id].turnId).toBe(msg3.id);
 			expect(messages[msg4.id].content).toBe('message 4');
 			expect(messages[msg4.id].type).toBe('ai');
-			expect(messages[msg4.id].turnId).toBe(msg3.id);
 		});
 
 		it('should get conversation with a edit branch', async () => {
@@ -222,7 +207,6 @@ describe('chatHub', () => {
 				name: 'Nathan',
 				type: 'human',
 				content: 'message 1',
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:00:00Z'),
 			});
 			const msg2 = await messagesRepository.createChatMessage({
@@ -232,7 +216,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 2',
 				previousMessageId: msg1.id,
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:05:00Z'),
 			});
 			const msg3 = await messagesRepository.createChatMessage({
@@ -242,7 +225,6 @@ describe('chatHub', () => {
 				type: 'human',
 				content: 'message 3a',
 				previousMessageId: msg2.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:10:00Z'),
 			});
 			const msg4 = await messagesRepository.createChatMessage({
@@ -252,7 +234,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 4a',
 				previousMessageId: msg3.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:15:00Z'),
 			});
 			// Edit message 3 to create a branch
@@ -264,7 +245,6 @@ describe('chatHub', () => {
 				content: 'message 3b',
 				previousMessageId: msg2.id,
 				revisionOfMessageId: msg3.id,
-				turnId: ids[4],
 				createdAt: new Date('2025-01-03T00:20:00Z'),
 			});
 			const msg6 = await messagesRepository.createChatMessage({
@@ -274,7 +254,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 4b',
 				previousMessageId: msg5.id,
-				turnId: ids[4],
 				createdAt: new Date('2025-01-03T00:25:00Z'),
 			});
 
@@ -283,16 +262,10 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(6);
-			expect(activeMessageChain).toHaveLength(4);
-			expect(activeMessageChain[0]).toBe(msg1.id);
-			expect(activeMessageChain[1]).toBe(msg2.id);
-			expect(activeMessageChain[2]).toBe(msg5.id);
-			expect(activeMessageChain[3]).toBe(msg6.id);
 			expect(messages[msg1.id].content).toBe('message 1');
 			expect(messages[msg2.id].content).toBe('message 2');
 			expect(messages[msg3.id].content).toBe('message 3a');
@@ -322,7 +295,6 @@ describe('chatHub', () => {
 				name: 'Nathan',
 				type: 'human',
 				content: 'message 1a',
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:00:00Z'),
 			});
 			await messagesRepository.createChatMessage({
@@ -332,7 +304,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 2a',
 				previousMessageId: msg1.id,
-				turnId: ids[1],
 				createdAt: new Date('2025-01-03T00:05:00Z'),
 			});
 			// Edit message 1 to create a branch
@@ -343,17 +314,15 @@ describe('chatHub', () => {
 				type: 'human',
 				content: 'message 1b',
 				revisionOfMessageId: msg1.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:10:00Z'),
 			});
-			const msg4 = await messagesRepository.createChatMessage({
+			await messagesRepository.createChatMessage({
 				id: ids[3],
 				sessionId: session.id,
 				name: 'ChatGPT',
 				type: 'ai',
 				content: 'message 2b',
 				previousMessageId: msg3.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:15:00Z'),
 			});
 
@@ -362,14 +331,10 @@ describe('chatHub', () => {
 			expect(response).toBeDefined();
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id, msg3.id]);
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(activeMessageChain).toHaveLength(2);
-			expect(activeMessageChain[0]).toBe(msg3.id);
-			expect(activeMessageChain[1]).toBe(msg4.id);
 		});
 
 		it('should get conversation with a retry branch at last message', async () => {
@@ -394,7 +359,6 @@ describe('chatHub', () => {
 				name: 'Nathan',
 				type: 'human',
 				content: 'message 1',
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:00:00Z'),
 			});
 			const msg2 = await messagesRepository.createChatMessage({
@@ -404,7 +368,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 2',
 				previousMessageId: msg1.id,
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:05:00Z'),
 			});
 			const msg3 = await messagesRepository.createChatMessage({
@@ -414,7 +377,6 @@ describe('chatHub', () => {
 				type: 'human',
 				content: 'message 3',
 				previousMessageId: msg2.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:10:00Z'),
 			});
 			const msg4 = await messagesRepository.createChatMessage({
@@ -424,7 +386,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 4a',
 				previousMessageId: msg3.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:15:00Z'),
 			});
 			// Retry message 4 to create a branch
@@ -436,7 +397,6 @@ describe('chatHub', () => {
 				content: 'message 4b',
 				previousMessageId: msg3.id,
 				retryOfMessageId: msg4.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:20:00Z'),
 			});
 
@@ -445,16 +405,10 @@ describe('chatHub', () => {
 			expect(response.session.id).toBe(session.id);
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id]);
 			expect(Object.keys(messages)).toHaveLength(5);
-			expect(activeMessageChain).toHaveLength(4);
-			expect(activeMessageChain[0]).toBe(msg1.id);
-			expect(activeMessageChain[1]).toBe(msg2.id);
-			expect(activeMessageChain[2]).toBe(msg3.id);
-			expect(activeMessageChain[3]).toBe(msg5.id);
 			expect(messages[msg5.id].previousMessageId).toBe(msg3.id);
 			expect(messages[msg5.id].retryOfMessageId).toBe(msg4.id);
 		});
@@ -494,7 +448,6 @@ describe('chatHub', () => {
 				name: 'Nathan',
 				type: 'human',
 				content: 'message 1',
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:00:00Z'),
 			});
 			const msg2 = await messagesRepository.createChatMessage({
@@ -504,7 +457,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 2a',
 				previousMessageId: msg1.id,
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:05:00Z'),
 			});
 			const msg3a = await messagesRepository.createChatMessage({
@@ -514,7 +466,6 @@ describe('chatHub', () => {
 				type: 'human',
 				content: 'message 3a',
 				previousMessageId: msg2.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:10:00Z'),
 			});
 			await messagesRepository.createChatMessage({
@@ -524,7 +475,6 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 4a',
 				previousMessageId: msg3a.id,
-				turnId: ids[2],
 				createdAt: new Date('2025-01-03T00:15:00Z'),
 			});
 			const msg3b = await messagesRepository.createChatMessage({
@@ -535,7 +485,6 @@ describe('chatHub', () => {
 				content: 'message 3b',
 				revisionOfMessageId: msg3a.id,
 				previousMessageId: msg2.id,
-				turnId: ids[4],
 				createdAt: new Date('2025-01-03T00:20:00Z'),
 			});
 			await messagesRepository.createChatMessage({
@@ -545,17 +494,15 @@ describe('chatHub', () => {
 				type: 'ai',
 				content: 'message 4b',
 				previousMessageId: msg3b.id,
-				turnId: ids[4],
 				createdAt: new Date('2025-01-03T00:25:00Z'),
 			});
-			const msg1b = await messagesRepository.createChatMessage({
+			await messagesRepository.createChatMessage({
 				id: ids[6],
 				sessionId: session.id,
 				name: 'Nathan',
 				type: 'human',
 				content: 'message 1b',
 				revisionOfMessageId: msg1.id,
-				turnId: ids[6],
 				createdAt: new Date('2025-01-03T00:30:00Z'),
 			});
 			const msg2r = await messagesRepository.createChatMessage({
@@ -566,7 +513,6 @@ describe('chatHub', () => {
 				content: 'message 2b',
 				previousMessageId: msg1.id,
 				retryOfMessageId: msg2.id,
-				turnId: ids[0],
 				createdAt: new Date('2025-01-03T00:35:00Z'),
 			});
 			const msg3d = await messagesRepository.createChatMessage({
@@ -576,17 +522,15 @@ describe('chatHub', () => {
 				type: 'human',
 				content: 'message 3d',
 				previousMessageId: msg2r.id,
-				turnId: ids[8],
 				createdAt: new Date('2025-01-03T00:40:00Z'),
 			});
-			const msg4c = await messagesRepository.createChatMessage({
+			await messagesRepository.createChatMessage({
 				id: crypto.randomUUID(),
 				sessionId: session.id,
 				name: 'ChatGPT',
 				type: 'ai',
 				content: 'message 4c',
 				previousMessageId: msg3d.id,
-				turnId: ids[8],
 				createdAt: new Date('2025-01-03T00:45:00Z'),
 			});
 
@@ -595,17 +539,10 @@ describe('chatHub', () => {
 			expect(response.session.id).toBe(session.id);
 
 			const {
-				conversation: { rootIds, messages, activeMessageChain },
+				conversation: { messages },
 			} = response;
 
-			expect(rootIds).toEqual([msg1.id, msg1b.id]);
 			expect(Object.keys(messages)).toHaveLength(10);
-
-			expect(activeMessageChain).toHaveLength(4);
-			expect(activeMessageChain[0]).toBe(msg1.id);
-			expect(activeMessageChain[1]).toBe(msg2r.id);
-			expect(activeMessageChain[2]).toBe(msg3d.id);
-			expect(activeMessageChain[3]).toBe(msg4c.id);
 
 			expect(messages[msg2r.id].previousMessageId).toBe(msg1.id);
 			expect(messages[msg2r.id].retryOfMessageId).toBe(msg2.id);

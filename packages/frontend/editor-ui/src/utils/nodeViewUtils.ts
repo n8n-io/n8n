@@ -20,7 +20,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
-import type { ViewportBoundaries } from '@/features/canvas/canvas.types';
+import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
 	getRectOfNodes,
 	type Dimensions,

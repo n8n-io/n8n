@@ -12,7 +12,7 @@ import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
-import { useChatPanelStore } from '@/features/assistant/chatPanel.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
 

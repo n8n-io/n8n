@@ -1,7 +1,7 @@
 import jp from 'jsonpath';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from '@/composables/useDataSchema';
 import type { INodeUi, Schema } from '@/Interface';
-import type { IExecutionResponse } from '@/features/executions/executions.types';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import {
