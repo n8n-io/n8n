@@ -1,2 +1,2 @@
-export const SERVICE_NAME = 'groundstation';
-export const BASE_URL = '=https://groundstation.{{$credentials.region}}.amazonaws.com';
+export const BASE_URL = 'https://service.{region}.amazonaws.com';
+export const SERVICE_NAME = 'service';

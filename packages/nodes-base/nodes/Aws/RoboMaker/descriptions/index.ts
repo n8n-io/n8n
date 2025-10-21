@@ -1,2 +1,1 @@
-export * from './robotApplication/RobotApplication.resource';
-export * from './simulation/Simulation.resource';
+export * from './robot/Robot Application.resource';
