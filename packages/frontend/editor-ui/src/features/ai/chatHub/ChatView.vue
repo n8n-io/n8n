@@ -126,6 +126,9 @@ const inputPlaceholder = computed(() => {
 
 	return `Message ${modelName}`;
 });
+const credentialsId = computed(() =>
+	selectedModel.value ? mergedCredentials.value[selectedModel.value.provider] : undefined,
+);
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
@@ -218,29 +221,18 @@ onMounted(async () => {
 });
 
 function onSubmit(message: string) {
-	if (!message.trim() || chatStore.isResponding) {
+	if (!message.trim() || chatStore.isResponding || !selectedModel.value || !credentialsId.value) {
 		return;
 	}
 
-	const credentialsId = selectedModel.value
-		? mergedCredentials.value[selectedModel.value.provider]
-		: undefined;
-
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.sendMessage(
-		sessionId.value,
-		message,
-		selectedModel.value,
-		selectedModel.value && credentialsId
-			? {
-					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-						id: credentialsId,
-						name: '',
-					},
-				}
-			: null,
-	);
+	chatStore.sendMessage(sessionId.value, message, selectedModel.value, {
+		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			id: credentialsId.value,
+			name: '',
+		},
+	});
 
 	inputRef.value?.setText('');
 
@@ -263,13 +255,12 @@ function handleCancelEditMessage() {
 }
 
 function handleEditMessage(message: ChatHubMessageDto) {
-	if (chatStore.isResponding || message.type !== 'human' || !selectedModel.value) {
-		return;
-	}
-
-	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
-
-	if (!credentialsId) {
+	if (
+		chatStore.isResponding ||
+		message.type !== 'human' ||
+		!selectedModel.value ||
+		!credentialsId.value
+	) {
 		return;
 	}
 
@@ -277,7 +268,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 
 	chatStore.editMessage(sessionId.value, mesasgeToEdit, message.content, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId,
+			id: credentialsId.value,
 			name: '',
 		},
 	});
@@ -285,13 +276,12 @@ function handleEditMessage(message: ChatHubMessageDto) {
 }
 
 function handleRegenerateMessage(message: ChatHubMessageDto) {
-	if (chatStore.isResponding || message.type !== 'ai' || !selectedModel.value) {
-		return;
-	}
-
-	const credentialsId = mergedCredentials.value[selectedModel.value.provider];
-
-	if (!credentialsId) {
+	if (
+		chatStore.isResponding ||
+		message.type !== 'ai' ||
+		!selectedModel.value ||
+		!credentialsId.value
+	) {
 		return;
 	}
 
@@ -299,7 +289,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 	chatStore.regenerateMessage(sessionId.value, messageToRetry, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId,
+			id: credentialsId.value,
 			name: '',
 		},
 	});
@@ -384,7 +374,8 @@ function handleSwitchAlternative(messageId: string) {
 						:class="$style.prompt"
 						:placeholder="inputPlaceholder"
 						:is-responding="chatStore.isResponding"
-						:disabled="chatStore.isResponding"
+						:selected-model="selectedModel"
+						:is-credentials-selected="!!credentialsId"
 						@submit="onSubmit"
 						@stop="onStop"
 					/>

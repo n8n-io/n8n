@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
+import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import type { ChatHubConversationModel } from '@n8n/api-types';
 import { N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import { ref, useTemplateRef, watch } from 'vue';
 
-const { disabled } = defineProps<{
+defineProps<{
 	placeholder: string;
-	disabled: boolean;
 	isResponding: boolean;
+	selectedModel: ChatHubConversationModel | null;
+	isCredentialsSelected: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -89,6 +92,13 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
+			<div v-if="!selectedModel" :class="$style.callout">
+				Please select a model to start a conversation
+			</div>
+			<div v-else-if="!isCredentialsSelected" :class="$style.callout">
+				Please set credentials for {{ providerDisplayNames[selectedModel.provider] }} to start a
+				conversation
+			</div>
 			<N8nInput
 				ref="inputRef"
 				v-model="message"
@@ -98,6 +108,7 @@ defineExpose({
 				autocomplete="off"
 				:autosize="{ minRows: 1, maxRows: 6 }"
 				autofocus
+				:disabled="!isCredentialsSelected || !selectedModel"
 				@keydown="handleKeydownTextarea"
 			/>
 
@@ -106,7 +117,7 @@ defineExpose({
 					native-type="button"
 					type="secondary"
 					title="Attach"
-					:disabled="disabled"
+					:disabled="!isCredentialsSelected || !selectedModel || isResponding"
 					icon="paperclip"
 					icon-size="large"
 					text
@@ -117,7 +128,7 @@ defineExpose({
 					native-type="button"
 					:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
 					type="secondary"
-					:disabled="disabled"
+					:disabled="!isCredentialsSelected || !selectedModel || isResponding"
 					:icon="speechInput.isListening.value ? 'square' : 'mic'"
 					:class="{ [$style.recording]: speechInput.isListening.value }"
 					icon-size="large"
@@ -126,7 +137,7 @@ defineExpose({
 				<N8nIconButton
 					v-if="!isResponding"
 					native-type="submit"
-					:disabled="disabled || !message.trim()"
+					:disabled="!isCredentialsSelected || !selectedModel || !message.trim()"
 					title="Send"
 					icon="arrow-up"
 					icon-size="large"
@@ -154,7 +165,21 @@ defineExpose({
 	position: relative;
 	display: flex;
 	align-items: center;
+	flex-direction: column;
 	width: 100%;
+}
+
+.callout {
+	color: var(--color--warning--shade-1);
+	background-color: hsla(36, 77%, 47%, 0.1);
+	padding: 16px 16px 32px;
+	border-top-left-radius: 16px;
+	border-top-right-radius: 16px;
+	width: 100%;
+	border: var(--border);
+	border-color: hsla(36, 77%, 47%, 0.5);
+	text-align: center;
+	margin-bottom: -16px;
 }
 
 .input {
