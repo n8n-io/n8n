@@ -100,7 +100,7 @@ describe('AWS ELB', () => {
 										<Type>application</Type>
 									</member>
 									<member>
-										<LoadBalancerArn>arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-lb-2/2345678901234567</LoadBalancerArn>
+										<LoadBalancerArn>arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/test-lb-2/2345678901234567</LoadBalancerArn>
 										<LoadBalancerName>test-lb-2</LoadBalancerName>
 										<Scheme>internal</Scheme>
 										<Type>network</Type>
@@ -128,7 +128,7 @@ describe('AWS ELB', () => {
 										<Type>application</Type>
 									</member>
 									<member>
-										<LoadBalancerArn>arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-lb-2/2345678901234567</LoadBalancerArn>
+										<LoadBalancerArn>arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/test-lb-2/2345678901234567</LoadBalancerArn>
 										<LoadBalancerName>test-lb-2</LoadBalancerName>
 										<Scheme>internal</Scheme>
 										<Type>network</Type>

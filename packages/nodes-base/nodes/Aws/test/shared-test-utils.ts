@@ -324,12 +324,16 @@ export function createAwsApiRequestSOAPTests(
 					mockExecuteFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
 				).mockResolvedValue('<response>test</response>');
 
-				// Since SOAP parsing is complex and service-specific, we expect this to fail
-				// This just verifies the function attempts to call the underlying request
-				await expect(
-					awsApiRequestSOAPFunction.call(mockExecuteFunctions, serviceName, 'GET', '/test-path'),
-				).rejects.toThrow();
+				// awsApiRequestSOAP resolves to parsed XML or raw response, it doesn't reject
+				const result = await awsApiRequestSOAPFunction.call(
+					mockExecuteFunctions,
+					serviceName,
+					'GET',
+					'/test-path',
+				);
 
+				// Verify the function was called and returned a result
+				expect(result).toBeDefined();
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
 			});
 		});

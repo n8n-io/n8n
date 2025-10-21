@@ -131,13 +131,13 @@ describe('AWS GenericFunctions', () => {
 					's3',
 					'PUT',
 					'/bucket/object',
-					JSON.stringify(testBody),
+					testBody as any,
 				);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
 					expect.objectContaining({
-						body: JSON.stringify(JSON.stringify(testBody)),
+						body: JSON.stringify(testBody),
 					}),
 				);
 			});

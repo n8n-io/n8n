@@ -43,7 +43,7 @@
 			},
 			{
 				"json": {
-					"LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-lb-2/2345678901234567",
+					"LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/test-lb-2/2345678901234567",
 					"LoadBalancerName": "test-lb-2",
 					"Scheme": "internal",
 					"Type": "network"
