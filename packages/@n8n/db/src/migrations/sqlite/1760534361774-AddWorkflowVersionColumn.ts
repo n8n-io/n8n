@@ -13,17 +13,17 @@ export class AddWorkflowVersionColumn1760534361774 implements ReversibleMigratio
 			`ALTER TABLE ${tableName} ADD COLUMN "versionCounter" integer NOT NULL DEFAULT 1`,
 		);
 
-		// Create trigger that increments version counter on update
-		// WHEN clause prevents infinite recursion by only triggering if versionCounter wasn't changed
+		// Create trigger that increments version counter on update.
+		// Manually setting the value is prevented by raising an error.
 		await queryRunner.query(`
 			CREATE TRIGGER ${triggerName}
-			AFTER UPDATE ON ${tableName}
+			BEFORE UPDATE ON ${tableName}
 			FOR EACH ROW
-			WHEN OLD.versionCounter = NEW.versionCounter
 			BEGIN
-				UPDATE ${tableName}
-				SET versionCounter = versionCounter + 1
-				WHERE id = NEW.id;
+				IF OLD.versionCounter <> NEW.versionCounter THEN
+					RAISE(ABORT, 'versionCounter cannot be manually updated');
+				END IF;
+				SELECT NEW.versionCounter = OLD.versionCounter + 1;
 			END;
 		`);
 	}

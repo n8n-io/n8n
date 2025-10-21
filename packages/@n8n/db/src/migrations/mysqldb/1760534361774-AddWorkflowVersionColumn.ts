@@ -13,12 +13,19 @@ export class AddWorkflowVersionColumn1760534361774 implements ReversibleMigratio
 			`ALTER TABLE \`${tableName}\` ADD COLUMN \`versionCounter\` int NOT NULL DEFAULT 1`,
 		);
 
-		// Create trigger that increments version counter before update
+		// Create trigger that increments version counter before update.
+		// Manually setting the value is prevented by raising an error.
 		await queryRunner.query(`
 			CREATE TRIGGER \`${triggerName}\`
 			BEFORE UPDATE ON \`${tableName}\`
 			FOR EACH ROW
-			SET NEW.versionCounter = OLD.versionCounter + 1;
+			BEGIN
+				IF OLD.versionCounter <> NEW.versionCounter THEN
+					SIGNAL SQLSTATE '45000'
+					SET MESSAGE_TEXT = 'versionCounter cannot be manually updated';
+				END IF;
+				SET NEW.versionCounter = OLD.versionCounter + 1;
+			END;
 		`);
 	}
 

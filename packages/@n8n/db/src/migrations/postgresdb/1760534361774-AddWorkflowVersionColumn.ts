@@ -14,11 +14,15 @@ export class AddWorkflowVersionColumn1760534361774 implements ReversibleMigratio
 			`ALTER TABLE ${tableName} ADD COLUMN "versionCounter" integer NOT NULL DEFAULT 1`,
 		);
 
-		// Create function that increments version counter
+		// Create function that increments version counter.
+		// Manually setting the value is prevented by raising an error.
 		await queryRunner.query(`
 			CREATE OR REPLACE FUNCTION ${functionName}()
 			RETURNS TRIGGER AS $$
 			BEGIN
+				IF NEW.versionCounter IS DISTINCT FROM OLD.versionCounter THEN
+					RAISE EXCEPTION 'versionCounter cannot be manually updated';
+				END IF;
 				NEW."versionCounter" = OLD."versionCounter" + 1;
 				RETURN NEW;
 			END;
