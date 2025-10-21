@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { User, type UserRepository, type SettingsRepository } from '@n8n/db';
+import type { User, UserRepository, SettingsRepository } from '@n8n/db';
 import { type GlobalConfig } from '@n8n/config';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
