@@ -248,6 +248,7 @@ export class FrontendService {
 						limit: 0,
 					},
 				},
+				customRoles: false,
 			},
 			mfa: {
 				enabled: false,
@@ -377,6 +378,7 @@ export class FrontendService {
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
+			customRoles: this.licenseState.isCustomRolesLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
