@@ -226,6 +226,10 @@ const isOpen = computed({
 .content {
 	overflow: hidden;
 
+	&:focus-within {
+		overflow: initial;
+	}
+
 	&[data-state='open'] {
 		animation: slideDown var(--animation--duration--spring) var(--animation--easing--spring);
 	}
