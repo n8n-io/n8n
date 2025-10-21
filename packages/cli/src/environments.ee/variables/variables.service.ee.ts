@@ -158,6 +158,11 @@ export class VariablesService {
 		await this.updateCache();
 	}
 
+	async deleteByIds(ids: string[]): Promise<void> {
+		await this.variablesRepository.delete(ids);
+		await this.updateCache();
+	}
+
 	private async canCreateNewVariable() {
 		if (!this.licenseState.isVariablesLicensed()) {
 			throw new FeatureNotLicensedError('feat:variables');

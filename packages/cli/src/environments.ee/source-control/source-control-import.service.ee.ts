@@ -1023,6 +1023,9 @@ export class SourceControlImportService {
 	 */
 	async importTeamProjectsFromWorkFolder(candidates: SourceControlledFile[]) {
 		const importResults = [];
+		const existingProjectVariables = (await this.variablesService.getAllCached()).filter(
+			(v) => v.project,
+		);
 
 		for (const candidate of candidates) {
 			try {
@@ -1057,6 +1060,13 @@ export class SourceControlImportService {
 				await this.importVariables(
 					project.variableStubs?.map((v) => ({ ...v, projectId: project.id })) ?? [],
 				);
+
+				// Delete variables that existed before but are no longer present in the imported project
+				const deletedVariables = existingProjectVariables.filter(
+					(v) =>
+						v.project!.id === project.id && !project.variableStubs?.some((vs) => vs.key === v.key),
+				);
+				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
 
 				this.logger.info(`Imported team project: ${project.name}`);
 				importResults.push({

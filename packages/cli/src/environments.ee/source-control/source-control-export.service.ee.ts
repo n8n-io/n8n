@@ -48,6 +48,7 @@ import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
+import { ExportableVariable } from './types/exportable-variable';
 
 @Service()
 export class SourceControlExportService {
@@ -211,7 +212,7 @@ export class SourceControlExportService {
 				};
 			}
 			const fileName = getVariablesPath(this.gitFolder);
-			const sanitizedVariables = variables.map((e) => ({
+			const sanitizedVariables: ExportableVariable[] = variables.map((e) => ({
 				id: e.id,
 				key: e.key,
 				type: e.type,

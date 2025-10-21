@@ -738,6 +738,9 @@ export class SourceControlStatusService {
 						? localProject.description
 						: remoteProjectWithSameId.description,
 					icon: options.preferLocalVersion ? localProject.icon : remoteProjectWithSameId.icon,
+					variableStubs: options.preferLocalVersion
+						? localProject.variableStubs
+						: remoteProjectWithSameId.variableStubs,
 				});
 			}
 		});
