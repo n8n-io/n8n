@@ -10,6 +10,7 @@ const CONTAINER_ONLY_TAGS = [
 	'queue',
 	'multi-main',
 	'task-runner',
+	'gitea',
 ];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 

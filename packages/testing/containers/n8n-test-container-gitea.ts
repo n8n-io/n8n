@@ -96,3 +96,27 @@ export async function addGiteaRepo(
 		`{"name":"${repoName}","private":false,"auto_init":true}`,
 	]);
 }
+
+/**
+ * Add an SSH key to a Gitea user
+ */
+export async function addGiteaSSHKey(
+	container: StartedTestContainer,
+	keyTitle: string,
+	publicKey: string,
+	username = DEFAULT_ADMIN,
+	password = DEFAULT_PASSWORD,
+): Promise<void> {
+	await container.exec([
+		'curl',
+		'-X',
+		'POST',
+		'http://localhost:3000/api/v1/user/keys',
+		'-H',
+		'Content-Type: application/json',
+		'-u',
+		`${username}:${password}`,
+		'-d',
+		`{"title":"${keyTitle}","key":"${publicKey}","read_only":false}`,
+	]);
+}
