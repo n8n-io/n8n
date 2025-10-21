@@ -158,29 +158,6 @@
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--border: var(--border-base, var(--border-width) var(--border-style) var(--color--foreground));
 
-	--font-size--4xs: 0.5rem;
-	--font-size--3xs: 0.625rem;
-	--font-size--2xs: 0.75rem;
-	--font-size--xs: 0.8125rem;
-	--font-size--sm: 0.875rem;
-	--font-size--md: 1rem;
-	--font-size--lg: 1.125rem;
-	--font-size--xl: 1.25rem;
-	--font-size--2xl: 1.75rem;
-
-	--line-height--xs: 1;
-	--line-height--sm: 1.25;
-	--line-height--md: 1.3;
-	--line-height--lg: 1.35;
-	--line-height--xl: 1.5;
-
-	--font-weight--regular: 400;
-	--font-weight--medium: 500;
-	--font-weight--bold: 600;
-	--font-family: InterVariable, sans-serif;
-	--font-family--monospace:
-		CommitMono, ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
-
 	// Secondary tokens
 
 	// LangChain

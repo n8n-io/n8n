@@ -1,0 +1,67 @@
+// Should be semantic
+// We should avoid semantic naming that can become counterintuitive in dark mode "light" and naming that can conflict in dark mode
+
+@mixin theme {
+	// Action primary
+	// --action-primary--color: var(--some-color);
+	// --action--color--hover: var(--some-color);
+	// --action--color--active: var(--some-color);
+	// --action--color--disabled: var(--some-color);
+
+	// Action secondary
+
+	// Surface max 5
+	// J - Using 2 bgs for the Chat Hub project
+	// G - Limit the number + have semantic naming
+	// --surface-base....
+
+	// Border max 5
+	// --border--color: var(); <- ?
+	// --border--color--normal: var();
+	// --border--color--subtle: var(); // J +1 to the semantic naming. Avoid  "light" and naming that can conflict in dark mode
+
+	// Text
+	// --text--color: var();
+
+	// Feedback - Success
+
+	// Feedback - Warning
+
+	// Feedback - Danger
+
+	// perplexity
+	/*
+    --background-underlay-color: var(--light-background-underlay-color);
+    --background-base-color: var(--light-background-base-color);
+    --background-subtle-color: var(--light-background-subtle-color);
+    --background-subtler-color: var(--light-background-subtler-color);
+    --background-subtlest-color: var(--light-background-subtlest-color);
+    --background-raised-color: var(--light-background-raised-color);
+    --background-inverse-color: var(--light-background-inverse-color);
+    --foreground-color: var(--light-foreground-color);
+    --foreground-quiet-color: var(--light-foreground-quiet-color);
+    --foreground-quieter-color: var(--light-foreground-quieter-color);
+    --foreground-quietest-color: var(--light-foreground-quietest-color);
+    --foreground-subtle-color: var(--light-foreground-subtle-color);
+    --foreground-subtler-color: var(--light-foreground-subtler-color);
+    --foreground-subtlest-color: var(--light-foreground-subtlest-color);
+    --foreground-inverse-color: var(--light-foreground-inverse-color);
+	*/
+
+	// Notion
+	/*
+	  --ca-bacSecTra: rgba(66, 35, 3, .031);
+    --cd-bacEleTra: #fff;
+    --ca-bacTerTra: #2a1c0012;
+    --c-bacPri: #fff;
+    --c-bacSec: #f9f8f7;
+    --c-bacTer: #f0efed;
+    --c-bacEle: #fff;
+    --c-bacAccPri: #2c2c2b;
+    --c-bacAccSec: #989590;
+	*/
+}
+
+:root {
+	@include theme;
+}

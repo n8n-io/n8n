@@ -3,6 +3,9 @@
 // They can be only mapped to tokens.
 // Tokens should be used instead in components and other UI elements
 
+// ! To dos:
+// - Tweak the hue and saturation of grayscale
+
 @mixin primitives {
 	// White
 	--color--white-alpha-100: hsla(220, 1%, 100%, 0.1);
@@ -190,6 +193,34 @@
 	--spacing--3xl: 4rem; // 64px
 	--spacing--4xl: 8rem; // 128px
 	--spacing--5xl: 16rem; // 256px
+
+	// Font family
+	--font-family: InterVariable, sans-serif;
+	--font-family--monospace:
+		CommitMono, ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+
+	// Font size
+	--font-size--4xs: 0.5rem;
+	--font-size--3xs: 0.625rem;
+	--font-size--2xs: 0.75rem;
+	--font-size--xs: 0.8125rem;
+	--font-size--sm: 0.875rem;
+	--font-size--md: 1rem;
+	--font-size--lg: 1.125rem;
+	--font-size--xl: 1.25rem;
+	--font-size--2xl: 1.75rem;
+
+	// Font weight
+	--font-weight--regular: 400;
+	--font-weight--medium: 500;
+	--font-weight--bold: 600;
+
+	// Line height
+	--line-height--xs: 1;
+	--line-height--sm: 1.25;
+	--line-height--md: 1.3;
+	--line-height--lg: 1.35;
+	--line-height--xl: 1.5;
 }
 
 :root {
