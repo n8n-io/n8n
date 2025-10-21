@@ -8,6 +8,8 @@ import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ZodError } from 'zod';
 
 @Service()
 export class ProvisioningService {
@@ -33,7 +35,18 @@ export class ProvisioningService {
 	}
 
 	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {
-		const patchConfig = ProvisioningConfigPatchDto.parse(rawConfig);
+		let patchConfig: ProvisioningConfigPatchDto;
+
+		try {
+			patchConfig = ProvisioningConfigPatchDto.parse(rawConfig);
+		} catch (error) {
+			if (error instanceof ZodError) {
+				throw new BadRequestError(error.message);
+			}
+
+			throw error;
+		}
+
 		const currentConfig = await this.getConfig();
 
 		const supportedPatchFields = [
