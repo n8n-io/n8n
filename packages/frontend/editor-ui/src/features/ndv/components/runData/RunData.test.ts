@@ -19,7 +19,7 @@ import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow'
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 

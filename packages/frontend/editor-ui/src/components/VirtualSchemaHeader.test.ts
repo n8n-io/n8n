@@ -1,6 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
-import VirtualSchemaHeader from '@/components/VirtualSchemaHeader.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
@@ -10,6 +9,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useSettingsStore } from '@/stores/settings.store';
+import VirtualSchemaHeader from '@/features/ndv/components/runData/VirtualSchemaHeader.vue';
 
 describe('VirtualSchemaHeader.vue', () => {
 	let renderComponent: ReturnType<typeof createComponentRenderer>;
