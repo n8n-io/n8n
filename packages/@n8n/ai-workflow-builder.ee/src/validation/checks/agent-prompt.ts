@@ -1,8 +1,7 @@
 import type { SimpleWorkflow } from '@/types';
 
-import type { ProgrammaticViolation, SingleEvaluatorResult } from '../types';
+import type { ProgrammaticViolation } from '../types';
 import { containsExpression } from '../utils/expressions';
-import { calcSingleEvaluatorScore } from '../utils/score';
 
 export function validateAgentPrompt(workflow: SimpleWorkflow): ProgrammaticViolation[] {
 	const violations: ProgrammaticViolation[] = [];
@@ -29,10 +28,4 @@ export function validateAgentPrompt(workflow: SimpleWorkflow): ProgrammaticViola
 	}
 
 	return violations;
-}
-
-export function evaluateAgentPrompt(workflow: SimpleWorkflow): SingleEvaluatorResult {
-	const violations = validateAgentPrompt(workflow);
-
-	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

@@ -3,7 +3,6 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { SimpleWorkflow } from '@/types';
 
 import type { ProgrammaticViolation, SingleEvaluatorResult } from '../types';
-import { calcSingleEvaluatorScore } from '../utils/score';
 
 export interface TriggerEvaluationResult extends SingleEvaluatorResult {
 	hasTrigger: boolean;
@@ -52,12 +51,4 @@ export function validateTrigger(
 	}
 
 	return violations;
-}
-
-export function evaluateTrigger(
-	workflow: SimpleWorkflow,
-	nodeTypes: INodeTypeDescription[],
-): SingleEvaluatorResult {
-	const violations = validateTrigger(workflow, nodeTypes);
-	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

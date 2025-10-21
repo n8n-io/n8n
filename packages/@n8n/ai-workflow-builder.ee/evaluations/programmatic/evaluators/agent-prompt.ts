@@ -1,1 +1,10 @@
-export * from '@/validation/evaluators/agent-prompt';
+import type { SimpleWorkflow } from '@/types';
+import { validateAgentPrompt } from '@/validation/checks';
+import type { SingleEvaluatorResult } from '@/validation/types';
+import { calcSingleEvaluatorScore } from '@/validation/utils/score';
+
+export function evaluateAgentPrompt(workflow: SimpleWorkflow): SingleEvaluatorResult {
+	const violations = validateAgentPrompt(workflow);
+
+	return { violations, score: calcSingleEvaluatorScore({ violations }) };
+}

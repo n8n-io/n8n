@@ -1,115 +1,14 @@
-import type {
-	ExpressionString,
-	INodeConnections,
-	INodeInputConfiguration,
-	INodeTypeDescription,
-	NodeConnectionType,
-	IDataObject,
-} from 'n8n-workflow';
-import { mapConnectionsByDestination, Expression } from 'n8n-workflow';
+import type { INodeConnections, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
 
-import type { ProgrammaticViolation, SingleEvaluatorResult } from '../types';
-import { calcSingleEvaluatorScore } from '../utils/score';
-
-/**
- * Use light version of expression resolver to resolve connections
- * We need only parameter values of the specific node and no workflow context
- */
-export function resolveConnections<T = INodeInputConfiguration>(
-	connections: Array<NodeConnectionType | T> | ExpressionString,
-	parameters: Record<string, unknown>,
-	nodeVersion: number,
-): Array<NodeConnectionType | T> {
-	if (Array.isArray(connections)) {
-		return connections;
-	}
-
-	if (
-		typeof connections === 'string' &&
-		connections.startsWith('={{') &&
-		connections.endsWith('}}')
-	) {
-		const context: IDataObject = {};
-		Expression.initializeGlobalContext(context);
-
-		Object.assign(context, {
-			$parameter: parameters,
-			$nodeVersion: nodeVersion,
-		});
-
-		const result: unknown = Expression.resolveWithoutWorkflow(connections.substring(1), context);
-
-		if (!Array.isArray(result)) {
-			throw new Error('Expression did not resolve to an array');
-		}
-
-		return result as Array<NodeConnectionType | T>;
-	}
-
-	throw new Error('Unable to resolve connections');
-}
-
-interface NodeInfo {
-	node: SimpleWorkflow['nodes'][0];
-	nodeType: INodeTypeDescription;
-	resolvedInputs?: Array<{ type: NodeConnectionType; required: boolean }>;
-	resolvedOutputs?: Set<NodeConnectionType>;
-}
-
-function resolveNodeOutputs(nodeInfo: NodeInfo): Set<NodeConnectionType> {
-	const outputTypes = new Set<NodeConnectionType>();
-
-	if (!nodeInfo.nodeType.outputs) {
-		return outputTypes;
-	}
-
-	const resolvedOutputs = resolveConnections(
-		nodeInfo.nodeType.outputs,
-		nodeInfo.node.parameters,
-		nodeInfo.node.typeVersion || 1,
-	);
-
-	for (const output of resolvedOutputs) {
-		if (typeof output === 'string') {
-			outputTypes.add(output);
-		} else if (typeof output === 'object' && 'type' in output) {
-			outputTypes.add(output.type);
-		}
-	}
-
-	return outputTypes;
-}
-
-function resolveNodeInputs(
-	nodeInfo: NodeInfo,
-): Array<{ type: NodeConnectionType; required: boolean }> {
-	const requiredInputs: Array<{ type: NodeConnectionType; required: boolean }> = [];
-
-	if (!nodeInfo.nodeType.inputs) {
-		return requiredInputs;
-	}
-
-	const resolvedInputs = resolveConnections(
-		nodeInfo.nodeType.inputs,
-		nodeInfo.node.parameters,
-		nodeInfo.node.typeVersion || 1,
-	);
-
-	for (const input of resolvedInputs) {
-		if (typeof input === 'string') {
-			requiredInputs.push({ type: input, required: input === 'main' });
-		} else if (typeof input === 'object' && 'type' in input) {
-			requiredInputs.push({
-				type: input.type,
-				required: input.type === 'main' ? true : (input.required ?? false),
-			});
-		}
-	}
-
-	return requiredInputs;
-}
+import type {
+	NodeResolvedConnectionTypesInfo,
+	ProgrammaticViolation,
+	SingleEvaluatorResult,
+} from '../types';
 
 function getProvidedInputTypes(
 	nodeConnections?: INodeConnections,
@@ -133,7 +32,7 @@ function getProvidedInputTypes(
 }
 
 function checkMissingRequiredInputs(
-	nodeInfo: NodeInfo,
+	nodeInfo: NodeResolvedConnectionTypesInfo,
 	providedInputTypes: Map<NodeConnectionType, number>,
 ): SingleEvaluatorResult['violations'] {
 	const issues: SingleEvaluatorResult['violations'] = [];
@@ -156,7 +55,7 @@ function checkMissingRequiredInputs(
 }
 
 function checkUnsupportedConnections(
-	nodeInfo: NodeInfo,
+	nodeInfo: NodeResolvedConnectionTypesInfo,
 	providedInputTypes: Map<NodeConnectionType, number>,
 ): SingleEvaluatorResult['violations'] {
 	const issues: SingleEvaluatorResult['violations'] = [];
@@ -178,7 +77,7 @@ function checkUnsupportedConnections(
 }
 
 function checkMergeNodeConnections(
-	nodeInfo: NodeInfo,
+	nodeInfo: NodeResolvedConnectionTypesInfo,
 	nodeConnections?: INodeConnections,
 ): SingleEvaluatorResult['violations'] {
 	const issues: SingleEvaluatorResult['violations'] = [];
@@ -254,7 +153,7 @@ export function validateConnections(
 			continue;
 		}
 
-		const nodeInfo: NodeInfo = { node, nodeType };
+		const nodeInfo: NodeResolvedConnectionTypesInfo = { node, nodeType };
 
 		try {
 			nodeInfo.resolvedInputs = resolveNodeInputs(nodeInfo);
@@ -282,12 +181,4 @@ export function validateConnections(
 	}
 
 	return violations;
-}
-
-export function evaluateConnections(
-	workflow: SimpleWorkflow,
-	nodeTypes: INodeTypeDescription[],
-): SingleEvaluatorResult {
-	const violations = validateConnections(workflow, nodeTypes);
-	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

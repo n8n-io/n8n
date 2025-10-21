@@ -2,9 +2,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-import type { ProgrammaticViolation, SingleEvaluatorResult } from '../types';
+import type { ProgrammaticViolation } from '../types';
 import { isTool } from '../utils/is-tool';
-import { calcSingleEvaluatorScore } from '../utils/score';
 
 function containsFromAi(value: unknown): boolean {
 	if (typeof value !== 'string') {
@@ -74,12 +73,4 @@ export function validateFromAi(
 	}
 
 	return violations;
-}
-
-export function evaluateFromAi(
-	workflow: SimpleWorkflow,
-	nodeTypes: INodeTypeDescription[],
-): SingleEvaluatorResult {
-	const violations = validateFromAi(workflow, nodeTypes);
-	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

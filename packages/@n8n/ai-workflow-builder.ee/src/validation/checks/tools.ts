@@ -5,7 +5,6 @@ import type { SimpleWorkflow } from '@/types';
 import type { SingleEvaluatorResult } from '../types';
 import { nodeParametersContainExpression } from '../utils/expressions';
 import { isTool } from '../utils/is-tool';
-import { calcSingleEvaluatorScore } from '../utils/score';
 
 const toolsWithoutParameters = [
 	'@n8n/n8n-nodes-langchain.toolCalculator',
@@ -53,13 +52,4 @@ export function validateTools(
 	}
 
 	return violations;
-}
-
-export function evaluateTools(
-	workflow: SimpleWorkflow,
-	nodeTypes: INodeTypeDescription[],
-): SingleEvaluatorResult {
-	const violations = validateTools(workflow, nodeTypes);
-
-	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

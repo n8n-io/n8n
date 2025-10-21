@@ -1,3 +1,5 @@
+import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+
 import type { SimpleWorkflow } from '@/types';
 
 export type ProgrammaticViolationType = 'critical' | 'major' | 'minor';
@@ -34,4 +36,11 @@ export interface ProgrammaticEvaluationInput {
 	generatedWorkflow: SimpleWorkflow;
 	userPrompt?: string;
 	referenceWorkflow?: SimpleWorkflow;
+}
+
+export interface NodeResolvedConnectionTypesInfo {
+	node: SimpleWorkflow['nodes'][0];
+	nodeType: INodeTypeDescription;
+	resolvedInputs?: Array<{ type: NodeConnectionType; required: boolean }>;
+	resolvedOutputs?: Set<NodeConnectionType>;
 }

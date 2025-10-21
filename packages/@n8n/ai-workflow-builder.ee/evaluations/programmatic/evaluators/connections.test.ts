@@ -9,7 +9,8 @@ import type {
 
 import type { SimpleWorkflow } from '@/types';
 
-import { evaluateConnections, resolveConnections } from './connections';
+import { evaluateConnections } from './connections';
+import { resolveConnections } from '@/validation/utils/resolve-connections';
 
 const DEFAULT_VERSION = 1;
 
