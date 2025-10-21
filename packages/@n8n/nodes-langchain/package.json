@@ -221,7 +221,7 @@
     "langchain": "0.3.33",
     "lodash": "catalog:",
     "mammoth": "1.7.2",
-    "mem0ai": "^2.1.38",
+    "mem0ai": "2.1.38",
     "mime-types": "2.1.35",
     "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",
