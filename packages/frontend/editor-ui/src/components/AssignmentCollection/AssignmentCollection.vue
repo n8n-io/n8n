@@ -209,22 +209,25 @@ function optionSelected(action: string) {
 					v-model="state.paramValue.assignments"
 					item-key="id"
 					handle=".drag-handle"
+					:class="$style.assignments"
 					:drag-class="$style.dragging"
 					:ghost-class="$style.ghost"
 				>
 					<template #item="{ index, element: assignment }">
-						<Assignment
-							:model-value="assignment"
-							:index="index"
-							:path="`${path}.assignments.${index}`"
-							:issues="getIssues(index)"
-							:class="$style.assignment"
-							:is-read-only="isReadOnly"
-							:disable-type="disableType"
-							@update:model-value="(value) => onAssignmentUpdate(index, value)"
-							@remove="() => onAssignmentRemove(index)"
-						>
-						</Assignment>
+						<div :class="$style.assignmentWrapper">
+							<Assignment
+								:model-value="assignment"
+								:index="index"
+								:path="`${path}.assignments.${index}`"
+								:issues="getIssues(index)"
+								:class="$style.assignment"
+								:is-read-only="isReadOnly"
+								:disable-type="disableType"
+								@update:model-value="(value) => onAssignmentUpdate(index, value)"
+								@remove="() => onAssignmentRemove(index)"
+							>
+							</Assignment>
+						</div>
 					</template>
 				</Draggable>
 			</div>
@@ -267,10 +270,14 @@ function optionSelected(action: string) {
 	flex-direction: column;
 }
 
-.assignments {
+.assignments > div {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.overhaul .assignments > div {
+	gap: var(--spacing--xs);
 }
 
 .assignment {
@@ -362,9 +369,17 @@ function optionSelected(action: string) {
 .ghost,
 .dragging {
 	border-radius: var(--radius);
-	padding-right: var(--spacing--xs);
-	padding-bottom: var(--spacing--xs);
 }
+
+// Only add padding for old UI (when overhaul is disabled)
+.assignmentCollection:not(.overhaul) {
+	.ghost,
+	.dragging {
+		padding-right: var(--spacing--xs);
+		padding-bottom: var(--spacing--xs);
+	}
+}
+
 .ghost {
 	background-color: var(--color--background);
 	opacity: 0.5;
