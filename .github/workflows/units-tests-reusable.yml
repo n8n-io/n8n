@@ -26,11 +26,9 @@ env:
   NODE_OPTIONS: --max-old-space-size=7168
 
 jobs:
-  unit-test:
-    name: Unit tests
+  build:
+    name: Build
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    env:
-      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -41,8 +39,45 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      - name: Cache build artifacts
+        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            node_modules
+            packages/**/node_modules
+            packages/**/dist
+          key: build-${{ github.sha }}-${{ github.run_id }}
+
+  unit-test-backend:
+    name: Unit tests (Backend)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    needs: build
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca777af5130f47f0a85e7e84b7 # v4.2.0
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
+
+      - name: Restore build artifacts
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            node_modules
+            packages/**/node_modules
+            packages/**/dist
+          key: build-${{ github.sha }}-${{ github.run_id }}
+
       - name: Test
-        run: pnpm test:ci
+        run: pnpm test:ci:backend
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -54,3 +89,47 @@ jobs:
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          flags: backend
+
+  unit-test-frontend:
+    name: Unit tests (Frontend)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    needs: build
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca777af5130f47f0a85e7e84b7 # v4.2.0
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
+
+      - name: Restore build artifacts
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            node_modules
+            packages/**/node_modules
+            packages/**/dist
+          key: build-${{ github.sha }}-${{ github.run_id }}
+
+      - name: Test
+        run: pnpm test:ci:frontend
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: frontend
