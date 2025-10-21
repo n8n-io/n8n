@@ -117,15 +117,6 @@ const mergedCredentials = computed(() => ({
 
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const isNewChat = computed(() => route.name === CHAT_VIEW);
-const inputPlaceholder = computed(() => {
-	if (!selectedModel.value) {
-		return 'Select a model';
-	}
-
-	const modelName = selectedModel.value.model;
-
-	return `Message ${modelName}`;
-});
 const credentialsId = computed(() =>
 	selectedModel.value ? mergedCredentials.value[selectedModel.value.provider] : undefined,
 );
@@ -372,7 +363,6 @@ function handleSwitchAlternative(messageId: string) {
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
-						:placeholder="inputPlaceholder"
 						:is-responding="chatStore.isResponding"
 						:selected-model="selectedModel"
 						:is-credentials-selected="!!credentialsId"

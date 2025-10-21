@@ -4,10 +4,10 @@ import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import type { ChatHubConversationModel } from '@n8n/api-types';
 import { N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
+import { computed } from 'vue';
 import { ref, useTemplateRef, watch } from 'vue';
 
-defineProps<{
-	placeholder: string;
+const { selectedModel } = defineProps<{
 	isResponding: boolean;
 	selectedModel: ChatHubConversationModel | null;
 	isCredentialsSelected: boolean;
@@ -27,6 +27,16 @@ const speechInput = useSpeechRecognition({
 	continuous: true,
 	interimResults: true,
 	lang: navigator.language,
+});
+
+const placeholder = computed(() => {
+	if (!selectedModel) {
+		return 'Select a model';
+	}
+
+	const modelName = selectedModel.model;
+
+	return `Message ${modelName}`;
 });
 
 function onAttach() {}
