@@ -8,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 
 import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -22,6 +23,7 @@ const { canUserAccessRouteByName } = useUserHelpers(router);
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const assistantStore = useAssistantStore();
 
 const sidebarMenuItems = computed<IMenuItem[]>(() => {
 	const menuItems: IMenuItem[] = [
@@ -48,6 +50,16 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
 			route: { to: { name: VIEWS.USERS_SETTINGS } },
+		},
+		{
+			id: 'settings-ai',
+			icon: 'robot',
+			label: i18n.baseText('settings.ai'),
+			position: 'top',
+			available:
+				(assistantStore.isAssistantEnabled || settingsStore.isAskAiEnabled) &&
+				canUserAccessRouteByName(VIEWS.AI_SETTINGS),
+			route: { to: { name: VIEWS.AI_SETTINGS } },
 		},
 		{
 			id: 'settings-api',

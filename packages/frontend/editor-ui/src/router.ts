@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
@@ -92,6 +93,7 @@ const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const PrebuiltAgentTemplatesView = async () =>
 	await import('@/views/PrebuiltAgentTemplatesView.vue');
+const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -588,6 +590,34 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'users',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'ai',
+				name: VIEWS.AI_SETTINGS,
+				components: {
+					settingsView: SettingsAIView,
+				},
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'aiAssistant:manage',
+						},
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							const assistantStore = useAssistantStore();
+							return assistantStore.isAssistantEnabled || settingsStore.isAskAiEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'assistant',
 							};
 						},
 					},

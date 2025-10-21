@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { computed, ref } from 'vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { computed, ref, useSlots } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
+import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 
@@ -13,9 +15,13 @@ const emit = defineEmits<{
 const assistantStore = useAssistantStore();
 const workflowState = injectWorkflowState();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
+const slots = useSlots();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+
+const allowSendingParameterData = computed(() => settingsStore.settings.ai.allowSendingActualData);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -23,6 +29,10 @@ const user = computed(() => ({
 }));
 
 const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
+
+const showSettingsButton = computed(() => {
+	return assistantStore.canManageAISettings;
+});
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
@@ -69,7 +79,7 @@ defineExpose({
 </script>
 
 <template>
-	<div data-test-id="ask-assistant-chat" tabindex="0" class="wrapper" @keydown.stop>
+	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.wrapper" @keydown.stop>
 		<N8nAskAssistantChat
 			ref="n8nChatRef"
 			:user="user"
@@ -83,15 +93,33 @@ defineExpose({
 			@code-undo="undoCodeDiff"
 		>
 			<template #header>
-				<slot name="header" />
+				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
+					<slot name="header" />
+					<AISettingsButton
+						v-if="showSettingsButton"
+						:show-usability-notice="!allowSendingParameterData"
+						:disabled="assistantStore.streaming"
+					/>
+				</div>
 			</template>
 		</N8nAskAssistantChat>
 	</div>
 </template>
 
-<style scoped>
+<style module lang="scss">
 .wrapper {
 	height: 100%;
 	width: 100%;
+}
+
+.header {
+	display: flex;
+	justify-content: end;
+	align-items: center;
+	flex: 1;
+
+	&.with-slot {
+		justify-content: space-between;
+	}
 }
 </style>
