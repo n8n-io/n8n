@@ -76,6 +76,13 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const workflowState = injectWorkflowState();
 
+const canCreateCredentials = computed(
+	() =>
+		getResourcePermissions(
+			projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
+		).credential.create,
+);
+
 const nodeHelpers = useNodeHelpers();
 const toast = useToast();
 
@@ -517,9 +524,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 								type="button"
 								data-test-id="node-credentials-select-item-new"
 								:class="[$style.newCredential]"
-								:disabled="
-									!getResourcePermissions(projectsStore.currentProject?.scopes).credential.create
-								"
+								:disabled="!canCreateCredentials"
 								@click="onClickCreateCredential(type)"
 							>
 								<N8nIcon size="xsmall" icon="plus" />
