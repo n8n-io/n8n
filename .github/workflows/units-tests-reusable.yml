@@ -39,17 +39,18 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
-      - name: Cache build artifacts
-        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@4d4dc2f3e3e6ded78c4f5a3dd29c2e65e0898357 # v4.5.0
         with:
+          name: build-artifacts
           path: |
             node_modules
             packages/**/node_modules
             packages/**/dist
-          key: build-${{ github.sha }}-${{ github.run_id }}
+          retention-days: 1
 
   unit-test-backend:
-    name: Unit tests (Backend)
+    name: Backend
     runs-on: blacksmith-4vcpu-ubuntu-2204
     needs: build
     env:
@@ -67,14 +68,10 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
 
-      - name: Restore build artifacts
-        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+      - name: Download build artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
-          path: |
-            node_modules
-            packages/**/node_modules
-            packages/**/dist
-          key: build-${{ github.sha }}-${{ github.run_id }}
+          name: build-artifacts
 
       - name: Test
         run: pnpm test:ci:backend
@@ -92,7 +89,7 @@ jobs:
           flags: backend
 
   unit-test-frontend:
-    name: Unit tests (Frontend)
+    name: Frontend
     runs-on: blacksmith-4vcpu-ubuntu-2204
     needs: build
     env:
@@ -110,14 +107,10 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
 
-      - name: Restore build artifacts
-        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+      - name: Download build artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
-          path: |
-            node_modules
-            packages/**/node_modules
-            packages/**/dist
-          key: build-${{ github.sha }}-${{ github.run_id }}
+          name: build-artifacts
 
       - name: Test
         run: pnpm test:ci:frontend
