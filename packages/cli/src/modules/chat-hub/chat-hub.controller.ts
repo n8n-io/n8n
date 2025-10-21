@@ -119,7 +119,7 @@ export class ChatHubController {
 		this.logger.debug(`Chat edit request received: ${JSON.stringify(payload)}`);
 
 		try {
-			await this.chatService.editHumanMessage(res, req.user, {
+			await this.chatService.editMessage(res, req.user, {
 				...payload,
 				sessionId,
 				editId,
