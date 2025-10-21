@@ -11,6 +11,8 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
+	IHttpRequestMethods,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -20,12 +22,50 @@ export type AwsContextType =
 	| ILoadOptionsFunctions
 	| IWebhookFunctions;
 
+export type AwsRESTContextType = IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions;
+
+type AwsApiRequestFunction = (
+	this: AwsContextType,
+	service: string,
+	method: IHttpRequestMethods,
+	path: string,
+	body?: string | Buffer,
+	query?: IDataObject,
+	headers?: object,
+	_option?: IDataObject,
+	_region?: string,
+) => Promise<any>;
+
+type AwsApiRequestRESTFunction = (
+	this: AwsRESTContextType,
+	service: string,
+	method: IHttpRequestMethods,
+	path: string,
+	body?: string,
+	query?: IDataObject,
+	headers?: object,
+	options?: IDataObject,
+	region?: string,
+) => Promise<any>;
+
+type AwsApiRequestSOAPFunction = (
+	this: AwsContextType,
+	service: string,
+	method: IHttpRequestMethods,
+	path: string,
+	body?: string | Buffer,
+	query?: IDataObject,
+	headers?: object,
+	option?: IDataObject,
+	region?: string,
+) => Promise<any>;
+
 /**
  * Creates a comprehensive test suite for awsApiRequest function
  * Used by AWS nodes that implement the standard awsApiRequest pattern
  */
 export function createAwsApiRequestTests(
-	awsApiRequestFunction: Function,
+	awsApiRequestFunction: AwsApiRequestFunction,
 	serviceName: string = 'testService',
 ) {
 	return () => {
@@ -59,7 +99,9 @@ export function createAwsApiRequestTests(
 		describe('Successful Requests', () => {
 			it('should make successful API request with basic parameters', async () => {
 				const mockResponse = { success: true };
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(mockResponse);
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+					mockResponse,
+				);
 
 				const result = await awsApiRequestFunction.call(
 					mockExecuteFunctions,
@@ -84,7 +126,9 @@ export function createAwsApiRequestTests(
 			it('should handle string body parameter', async () => {
 				const mockResponse = { data: 'test' };
 				const testBody = 'test body content';
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(mockResponse);
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+					mockResponse,
+				);
 
 				await awsApiRequestFunction.call(
 					mockExecuteFunctions,
@@ -106,7 +150,9 @@ export function createAwsApiRequestTests(
 			it('should handle buffer body parameter', async () => {
 				const mockResponse = { success: true };
 				const bufferBody = Buffer.from('test buffer');
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(mockResponse);
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+					mockResponse,
+				);
 
 				await awsApiRequestFunction.call(
 					mockExecuteFunctions,
@@ -127,7 +173,9 @@ export function createAwsApiRequestTests(
 
 			it('should work with IHookFunctions context', async () => {
 				const mockResponse = { success: true };
-				mockHookFunctions.helpers.requestWithAuthentication.mockResolvedValue(mockResponse);
+				(mockHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+					mockResponse,
+				);
 
 				const result = await awsApiRequestFunction.call(
 					mockHookFunctions,
@@ -141,7 +189,9 @@ export function createAwsApiRequestTests(
 
 			it('should work with ILoadOptionsFunctions context', async () => {
 				const mockResponse = { options: [] };
-				mockLoadOptionsFunctions.helpers.requestWithAuthentication.mockResolvedValue(mockResponse);
+				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+					mockResponse,
+				);
 
 				const result = await awsApiRequestFunction.call(
 					mockLoadOptionsFunctions,
@@ -155,7 +205,9 @@ export function createAwsApiRequestTests(
 
 			it('should work with IWebhookFunctions context', async () => {
 				const mockResponse = { webhookData: true };
-				mockWebhookFunctions.helpers.requestWithAuthentication.mockResolvedValue(mockResponse);
+				(mockWebhookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+					mockResponse,
+				);
 
 				const result = await awsApiRequestFunction.call(
 					mockWebhookFunctions,
@@ -180,7 +232,9 @@ export function createAwsApiRequestTests(
 
 			it('should wrap API errors in NodeApiError', async () => {
 				const apiError = new Error('API Error');
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockRejectedValue(apiError);
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+					apiError,
+				);
 
 				await expect(
 					awsApiRequestFunction.call(mockExecuteFunctions, serviceName, 'GET', '/test-path'),
@@ -194,7 +248,7 @@ export function createAwsApiRequestTests(
  * Creates a comprehensive test suite for awsApiRequestREST function
  */
 export function createAwsApiRequestRESTTests(
-	awsApiRequestRESTFunction: Function,
+	awsApiRequestRESTFunction: AwsApiRequestRESTFunction,
 	serviceName: string = 'testService',
 ) {
 	return () => {
@@ -209,7 +263,9 @@ export function createAwsApiRequestRESTTests(
 			it('should parse valid JSON response', async () => {
 				const jsonResponse = '{"result": "success", "data": [1,2,3]}';
 				const expectedResult = { result: 'success', data: [1, 2, 3] };
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(jsonResponse);
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+					jsonResponse,
+				);
 
 				const result = await awsApiRequestRESTFunction.call(
 					mockExecuteFunctions,
@@ -223,7 +279,9 @@ export function createAwsApiRequestRESTTests(
 
 			it('should return raw response when JSON parsing fails', async () => {
 				const rawResponse = 'not json data';
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(rawResponse);
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+					rawResponse,
+				);
 
 				const result = await awsApiRequestRESTFunction.call(
 					mockExecuteFunctions,
@@ -243,7 +301,7 @@ export function createAwsApiRequestRESTTests(
  * Note: This creates basic structure - individual tests should handle their own XML mocking
  */
 export function createAwsApiRequestSOAPTests(
-	awsApiRequestSOAPFunction: Function,
+	awsApiRequestSOAPFunction: AwsApiRequestSOAPFunction,
 	serviceName: string = 'testService',
 ) {
 	return () => {
@@ -257,7 +315,7 @@ export function createAwsApiRequestSOAPTests(
 		describe('Basic SOAP functionality', () => {
 			it('should call awsApiRequest for SOAP requests', async () => {
 				// This is a basic test that SOAP function calls the underlying API request
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
 					'<response>test</response>',
 				);
 

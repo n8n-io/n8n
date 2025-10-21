@@ -1,11 +1,6 @@
 import get from 'lodash/get';
 import { mockDeep } from 'jest-mock-extended';
-import type {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IWebhookFunctions,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
 import {
 	awsApiRequest,
@@ -73,7 +68,9 @@ describe('ELB GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(xmlResponse);
+			(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				xmlResponse,
+			);
 			mockParseXml.mockImplementation((_xml, _options, callback) => {
 				callback(null, expectedParsedData);
 			});
@@ -92,9 +89,11 @@ describe('ELB GenericFunctions', () => {
 			const xmlResponse = 'invalid xml';
 			const xmlError = new Error('Invalid XML');
 
-			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(xmlResponse);
+			(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				xmlResponse,
+			);
 			mockParseXml.mockImplementation((_xml, _options, callback) => {
-				callback(xmlError);
+				callback(xmlError, null);
 			});
 
 			const result = await awsApiRequestSOAP.call(
@@ -134,7 +133,7 @@ describe('ELB GenericFunctions', () => {
 				};
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
 					'<xml>response</xml>',
 				);
 				mockParseXml.mockImplementation((_xml, _options, callback) => {
@@ -185,7 +184,7 @@ describe('ELB GenericFunctions', () => {
 				};
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockExecuteFunctions.helpers.requestWithAuthentication
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock)
 					.mockResolvedValueOnce('<xml>first-response</xml>')
 					.mockResolvedValueOnce('<xml>second-response</xml>');
 
@@ -239,7 +238,9 @@ describe('ELB GenericFunctions', () => {
 				);
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockExecuteFunctions.helpers.requestWithAuthentication.mockRejectedValue(elbError);
+				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+					elbError,
+				);
 
 				await expect(
 					awsApiRequestSOAPAllItems.call(
