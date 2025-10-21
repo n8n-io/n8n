@@ -283,9 +283,9 @@ export async function getAuthHeaders(
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
 		}
-		case 'oAuth2Api': {
+		case 'mcpOAuth2Api': {
 			const result = await ctx
-				.getCredentials<{ oauthTokenData: { access_token: string } }>('oAuth2Api')
+				.getCredentials<{ oauthTokenData: { access_token: string } }>('mcpOAuth2Api')
 				.catch(() => null);
 
 			if (!result) return {};
@@ -311,14 +311,13 @@ export async function tryRefreshOAuth2Token(
 	authentication: McpAuthenticationOption,
 	headers?: Record<string, string>,
 ) {
-	// TODO: if we make separate credentials for MCP, we should check for that instead of `oAuth2Api`
-	if (authentication !== 'oAuth2Api') {
+	if (authentication !== 'mcpOAuth2Api') {
 		return null;
 	}
 
 	const { access_token } = (await ctx.helpers.refreshOAuth2Token.call(
 		ctx,
-		'oAuth2Api',
+		'mcpOAuth2Api',
 	)) as ClientOAuth2TokenData;
 
 	if (!access_token) {

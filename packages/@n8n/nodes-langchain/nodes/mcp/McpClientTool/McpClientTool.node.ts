@@ -75,11 +75,11 @@ export class McpClientTool implements INodeType {
 				},
 			},
 			{
-				name: 'oAuth2Api',
+				name: 'mcpOAuth2Api',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['oAuth2Api'],
+						authentication: ['mcpOAuth2Api'],
 					},
 				},
 			},
@@ -136,6 +136,10 @@ export class McpClientTool implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'MCP OAuth2',
+						value: 'mcpOAuth2Api',
+					},
+					{
 						name: 'Bearer Auth',
 						value: 'bearerAuth',
 					},
@@ -146,10 +150,6 @@ export class McpClientTool implements INodeType {
 					{
 						name: 'None',
 						value: 'none',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2Api',
 					},
 				],
 				default: 'none',
@@ -162,7 +162,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth', 'oAuth2Api'],
+						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api'],
 					},
 				},
 			},
