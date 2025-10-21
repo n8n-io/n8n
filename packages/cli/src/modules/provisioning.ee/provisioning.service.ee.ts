@@ -42,14 +42,6 @@ export class ProvisioningService {
 	}
 
 	async provisionInstanceRoleForUser(user: User, role: unknown) {
-		if (typeof role !== 'string') {
-			this.logger.warn(
-				`Invalid role type: ${typeof role} expected string, skipping instance role provisioning`,
-				{ userId: user.id, role },
-			);
-			return;
-		}
-
 		let parsedRole: Role;
 
 		try {

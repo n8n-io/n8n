@@ -144,19 +144,6 @@ describe('ProvisioningService', () => {
 	});
 
 	describe('provisionInstanceRoleForUser', () => {
-		it('should do nothing if the role is not a string', async () => {
-			const user = mock<User>({ role: { slug: 'global:member' } });
-			const role = 123;
-
-			await provisioningService.provisionInstanceRoleForUser(user, role);
-			expect(userRepository.update).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Invalid role type: number expected string, skipping instance role provisioning',
-				{ userId: user.id, role },
-			);
-		});
-
 		it('should do nothing if the role is invalid', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const role = 'invalid';
