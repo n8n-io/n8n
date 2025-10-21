@@ -150,6 +150,7 @@ export class ProvisioningService {
 		const existingRoles = await this.roleRepository.find({
 			where: {
 				slug: In(roleSlugs),
+				roleType: 'project', // TODO: verify wheter we actually only support roles of type "project" here
 			},
 			select: ['slug'],
 		});

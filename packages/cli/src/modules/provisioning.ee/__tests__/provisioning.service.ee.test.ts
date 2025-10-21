@@ -362,6 +362,23 @@ describe('ProvisioningService', () => {
 				role: 'project:editor',
 			});
 		});
+		it('should filter out non-project roles', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = JSON.stringify({
+				project1: 'global:admin',
+			});
+
+			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project1' })]);
+			roleRepository.find.mockResolvedValue([]);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping project role provisioning. Role with slug global:admin not found or is not a project role.',
+				{ userId, projectId: 'project1', roleSlug: 'global:admin' },
+			);
+		});
 	});
 
 	describe('handleReloadSsoProvisioningConfiguration', () => {
