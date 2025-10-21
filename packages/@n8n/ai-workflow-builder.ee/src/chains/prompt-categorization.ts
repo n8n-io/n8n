@@ -15,15 +15,12 @@ const examplePrompts = [
 			WorkflowTechnique.MONITORING,
 			WorkflowTechnique.CHATBOT,
 			WorkflowTechnique.CONTENT_GENERATION,
-			WorkflowTechnique.NOTIFICATION,
 		],
 	},
 	{
 		prompt: 'Collect partner referral submissions and verify client instances via BigQuery',
 		techniques: [
 			WorkflowTechnique.FORM_INPUT,
-			WorkflowTechnique.ENRICHMENT,
-			WorkflowTechnique.TRIAGE,
 			WorkflowTechnique.HUMAN_IN_THE_LOOP,
 			WorkflowTechnique.NOTIFICATION,
 		],
@@ -35,7 +32,6 @@ const examplePrompts = [
 			WorkflowTechnique.SCRAPING_AND_RESEARCH,
 			WorkflowTechnique.DATA_EXTRACTION,
 			WorkflowTechnique.DATA_ANALYSIS,
-			WorkflowTechnique.DATA_TRANSFORMATION,
 		],
 	},
 	{
@@ -53,7 +49,6 @@ const examplePrompts = [
 			WorkflowTechnique.DATA_TRANSFORMATION,
 			WorkflowTechnique.DATA_ANALYSIS,
 			WorkflowTechnique.KNOWLEDGE_BASE,
-			WorkflowTechnique.CONTENT_GENERATION,
 		],
 	},
 ];
@@ -82,6 +77,10 @@ of how the categorization should be carried out.
 ${formatExamplePrompts()}
 </example_categorization>
 
+Select a maximum of 5 techniques that you believe are applicable, but only select them if you are
+confident that they are applicable. If the prompt is ambigious or does not provide an obvious workflow
+do not provide any techniques - if confidence is low avoid providing techniques.
+
 Select ALL techniques that apply to this workflow. Most workflows use multiple techniques.
 Rate your confidence in this categorization from 0.0 to 1.0.
 `,
@@ -100,8 +99,8 @@ export async function promptCategorizationChain(
 	const categorizationSchema = z.object({
 		techniques: z
 			.array(z.nativeEnum(WorkflowTechnique))
-			.min(1)
-			.describe('One or more workflow techniques identified in the prompt'),
+			.min(0)
+			.describe('Zero or more workflow techniques identified in the prompt'),
 		confidence: z
 			.number()
 			.min(0)
