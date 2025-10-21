@@ -158,18 +158,6 @@ describe('ProvisioningService', () => {
 			);
 		});
 
-		it('should do nothing if the role slug does not start with "global:"', async () => {
-			const user = mock<User>({ role: { slug: 'global:member' } });
-			const roleSlug = 'invalid';
-
-			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'skipping instance role provisioning. Invalid role slug: expected a role slug starting with "global:", received invalid',
-				{ userId: user.id, roleSlug: 'invalid' },
-			);
-		});
 		it('should do nothing if the role matching the slug is not found', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'global:invalid';
@@ -191,7 +179,9 @@ describe('ProvisioningService', () => {
 			const roleSlug = 'global:member';
 
 			userRepository.count.mockResolvedValue(0);
-			roleRepository.findOneOrFail.mockResolvedValue(mock<Role>({ slug: 'global:member' }));
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:member', roleType: 'global' }),
+			);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).not.toHaveBeenCalled();
@@ -206,7 +196,9 @@ describe('ProvisioningService', () => {
 			const user = mock<User>({ role: { slug: 'global:owner' } });
 			const roleSlug = 'global:member';
 			userRepository.count.mockResolvedValue(1);
-			roleRepository.findOneOrFail.mockResolvedValue(mock<Role>({ slug: 'global:member' }));
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:member', roleType: 'global' }),
+			);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: roleSlug } });
@@ -217,7 +209,9 @@ describe('ProvisioningService', () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'global:owner';
 
-			roleRepository.findOneOrFail.mockResolvedValue(mock<Role>({ slug: 'global:owner' }));
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+			);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: roleSlug } });
@@ -227,11 +221,30 @@ describe('ProvisioningService', () => {
 			const user = mock<User>({ role: { slug: 'global:owner' } });
 			const roleSlug = 'global:owner';
 
-			roleRepository.findOneOrFail.mockResolvedValue(mock<Role>({ slug: 'global:owner' }));
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+			);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).not.toHaveBeenCalled();
 			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should do nothing if the role is not a global role', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const roleSlug = 'global:owner';
+
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'project' }),
+			);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Skipping instance role provisioning. Role ${roleSlug} is not a global role`,
+				{ userId: user.id, roleSlug: 'global:owner' },
+			);
 		});
 	});
 

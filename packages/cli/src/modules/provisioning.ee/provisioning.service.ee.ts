@@ -50,14 +50,6 @@ export class ProvisioningService {
 			return;
 		}
 
-		if (!roleSlug.startsWith('global:')) {
-			this.logger.warn(
-				`skipping instance role provisioning. Invalid role slug: expected a role slug starting with "global:", received ${roleSlug}`,
-				{ userId: user.id, roleSlug },
-			);
-			return;
-		}
-
 		let dbRole: Role;
 
 		try {
@@ -66,6 +58,14 @@ export class ProvisioningService {
 			this.logger.warn(
 				`Skipping instance role provisioning, a role matching the slug ${roleSlug} was not found`,
 				{ userId: user.id, roleSlug, error },
+			);
+			return;
+		}
+
+		if (dbRole.roleType !== 'global') {
+			this.logger.warn(
+				`Skipping instance role provisioning. Role ${roleSlug} is not a global role`,
+				{ userId: user.id, roleSlug },
 			);
 			return;
 		}
