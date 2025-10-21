@@ -3,11 +3,12 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
 
-// Default credentials - always used for the initial admin user
+// Test credentials only
 const DEFAULT_ADMIN = 'giteaadmin';
 const DEFAULT_PASSWORD = 'giteapassword';
 const DEFAULT_REPO = 'n8n-test-repo';
 const DEFAULT_EMAIL = 'admin@example.com';
+const DEFAULT_BRANCHES = ['development', 'staging', 'production'];
 
 /**
  * Setup Gitea container with default admin user (giteaadmin/giteapassword) and test repository
@@ -49,6 +50,11 @@ export async function setupGitea({
 
 		await addGiteaUser(container, DEFAULT_ADMIN, DEFAULT_PASSWORD, DEFAULT_EMAIL, true);
 		await addGiteaRepo(container, DEFAULT_REPO, DEFAULT_ADMIN, DEFAULT_PASSWORD);
+
+		// Create default branches
+		for (const branch of DEFAULT_BRANCHES) {
+			await addGiteaBranch(container, DEFAULT_REPO, branch, DEFAULT_ADMIN, DEFAULT_PASSWORD);
+		}
 
 		return container;
 	} catch (error) {
@@ -118,5 +124,30 @@ export async function addGiteaSSHKey(
 		`${username}:${password}`,
 		'-d',
 		`{"title":"${keyTitle}","key":"${publicKey}","read_only":false}`,
+	]);
+}
+
+/**
+ * Create a new branch in a repository
+ */
+export async function addGiteaBranch(
+	container: StartedTestContainer,
+	repoName: string,
+	branchName: string,
+	username = DEFAULT_ADMIN,
+	password = DEFAULT_PASSWORD,
+	fromBranch = 'main',
+): Promise<void> {
+	await container.exec([
+		'curl',
+		'-X',
+		'POST',
+		`http://localhost:3000/api/v1/repos/${username}/${repoName}/branches`,
+		'-H',
+		'Content-Type: application/json',
+		'-u',
+		`${username}:${password}`,
+		'-d',
+		`{"new_branch_name":"${branchName}","old_branch_name":"${fromBranch}"}`,
 	]);
 }

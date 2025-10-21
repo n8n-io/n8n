@@ -23,16 +23,20 @@ async function setupSourceControl(n8n: n8nPage) {
 test.describe('Environments - Gitea Integration @capability:gitea', () => {
 	test('should connect to Gitea repository using SSH', async ({ n8n, n8nContainer }) => {
 		await setupSourceControl(n8n);
-		await n8n.navigate.toEnvironments();
 
-		const sshKey = await n8n.settingsEnvironment.getSSHKeyValue().textContent();
+		const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
+		const preferences = await preferencesResponse.json();
+		const sshKey = preferences.data.publicKey;
 
+		expect(sshKey).toBeTruthy();
 		expect(sshKey).toContain('ssh-');
 
 		// Get the Gitea container
 		const giteaContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
 		expect(giteaContainer).toBeDefined();
-		await addGiteaSSHKey(giteaContainer!, 'n8n-environments', sshKey!);
+		await addGiteaSSHKey(giteaContainer!, 'n8n-environments', sshKey);
+
+		await n8n.navigate.toEnvironments();
 
 		await n8n.settingsEnvironment.fillRepoUrl('ssh://git@gitea/giteaadmin/n8n-test-repo.git');
 		await expect(n8n.settingsEnvironment.getConnectButton()).toBeEnabled();
@@ -40,6 +44,11 @@ test.describe('Environments - Gitea Integration @capability:gitea', () => {
 
 		await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
 		await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
-		await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
+
+		await n8n.settingsEnvironment.getBranchSelect().click();
+		await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
+		await expect(n8n.page.getByRole('option', { name: 'development' })).toBeVisible();
+		await expect(n8n.page.getByRole('option', { name: 'staging' })).toBeVisible();
+		await expect(n8n.page.getByRole('option', { name: 'production' })).toBeVisible();
 	});
 });
