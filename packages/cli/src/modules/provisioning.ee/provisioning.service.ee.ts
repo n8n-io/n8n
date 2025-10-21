@@ -38,6 +38,7 @@ export class ProvisioningService {
 
 	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
 		const globalOwnerRoleSlug = 'global:owner';
+
 		if (typeof roleSlug !== 'string') {
 			this.logger.warn(
 				`skipping instance role provisioning. Invalid role type: expected string, received ${typeof roleSlug}`,
@@ -45,6 +46,14 @@ export class ProvisioningService {
 					userId: user.id,
 					roleSlug,
 				},
+			);
+			return;
+		}
+
+		if (!roleSlug.startsWith('global:')) {
+			this.logger.warn(
+				`skipping instance role provisioning. Invalid role slug: expected a role slug starting with "global:", received ${roleSlug}`,
+				{ userId: user.id, roleSlug },
 			);
 			return;
 		}

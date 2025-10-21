@@ -158,9 +158,21 @@ describe('ProvisioningService', () => {
 			);
 		});
 
-		it('should do nothing if the role matching the slug is not found', async () => {
+		it('should do nothing if the role slug does not start with "global:"', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'invalid';
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'skipping instance role provisioning. Invalid role slug: expected a role slug starting with "global:", received invalid',
+				{ userId: user.id, roleSlug: 'invalid' },
+			);
+		});
+		it('should do nothing if the role matching the slug is not found', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const roleSlug = 'global:invalid';
 			const thrownError = new Error('Role not found');
 
 			roleRepository.findOneOrFail.mockRejectedValue(thrownError);
