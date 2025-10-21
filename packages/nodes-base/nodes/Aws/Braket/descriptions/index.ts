@@ -1,2 +1,1 @@
-export * from './quantumTask/QuantumTask.resource';
-export * from './device/Device.resource';
+export * from './job/Quantum Job.resource';
