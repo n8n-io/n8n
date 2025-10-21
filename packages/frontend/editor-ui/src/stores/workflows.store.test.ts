@@ -49,6 +49,7 @@ vi.mock('@/api/workflows', () => ({
 	getWorkflows: vi.fn(),
 	getWorkflow: vi.fn(),
 	getNewWorkflow: vi.fn(),
+	getLastSuccessfulExecution: vi.fn(),
 }));
 
 const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription> | null => ({
@@ -1737,6 +1738,64 @@ describe('useWorkflowsStore', () => {
 			});
 
 			expect(result).toBe(0); // No nodes to update (only current node exists)
+		});
+	});
+
+	describe('fetchLastSuccessfulExecution', () => {
+		it('should fetch and store the last successful execution', async () => {
+			const workflowId = 'workflow-123';
+			const mockExecution = createTestWorkflowExecutionResponse({
+				id: 'execution-456',
+				status: 'success',
+			});
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(mockExecution);
+
+			await workflowsStore.fetchLastSuccessfulExecution(workflowId);
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				workflowId,
+			);
+			expect(workflowsStore.lastSuccessfulExecution).toEqual(mockExecution);
+		});
+
+		it('should handle null response from API', async () => {
+			const workflowId = 'workflow-123';
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
+
+			await workflowsStore.fetchLastSuccessfulExecution(workflowId);
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				workflowId,
+			);
+			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
+		});
+
+		it('should not throw error when API call fails', async () => {
+			const workflowId = 'workflow-123';
+			const error = new Error('API Error');
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
+
+			// Should not throw
+			await expect(workflowsStore.fetchLastSuccessfulExecution(workflowId)).resolves.not.toThrow();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				workflowId,
+			);
 		});
 	});
 });

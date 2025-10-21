@@ -92,8 +92,7 @@ const settingsStore = useSettingsStore();
 const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
 	useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleNode } = useFlattenSchema();
-const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted, getNodeTaskData } =
-	useNodeHelpers();
+const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted } = useNodeHelpers();
 
 const emit = defineEmits<{
 	'clear:search': [];
