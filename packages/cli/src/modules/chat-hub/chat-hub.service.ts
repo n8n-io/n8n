@@ -9,6 +9,7 @@ import {
 	type ChatMessageId,
 	type ChatSessionId,
 	ChatHubConversationModel,
+	ChatHubMessageStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -28,6 +29,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
+	ManualExecutionCancelledError,
 	type IConnections,
 	type INode,
 	type INodeCredentials,
@@ -36,8 +38,18 @@ import {
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
 	type StartNodeData,
+	type IRun,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
+
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import type {
@@ -50,14 +62,7 @@ import type {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
-
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { ChatHubSession } from './chat-hub-session.entity';
 
 const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -88,6 +93,7 @@ export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
+		private readonly executionService: ExecutionService,
 		private readonly nodeParametersService: DynamicNodeParametersService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
@@ -317,6 +323,14 @@ export class ChatHubService {
 		await this.workflowRepository.delete(workflowId);
 	}
 
+	private getErrorMessage(execution: IExecutionResponse): string | undefined {
+		if (execution.data.resultData.error) {
+			return execution.data.resultData.error.description ?? execution.data.resultData.error.message;
+		}
+
+		return undefined;
+	}
+
 	private getAIOutput(execution: IExecutionResponse): string | undefined {
 		const agent = execution.data.resultData.runData[NODE_NAMES.AI_AGENT];
 		if (!agent || !Array.isArray(agent) || agent.length === 0) return undefined;
@@ -365,8 +379,7 @@ export class ChatHubService {
 		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 		const history = this.buildMessageHistory(messages, payload.previousMessageId);
 
-		const turnId = messageId;
-		await this.saveHumanMessage(payload, user, turnId, payload.previousMessageId, selectedModel);
+		await this.saveHumanMessage(payload, user, payload.previousMessageId, selectedModel);
 
 		const workflow = await this.createChatWorkflow(
 			user,
@@ -385,7 +398,6 @@ export class ChatHubService {
 				replyId,
 				sessionId,
 				messageId,
-				turnId,
 				selectedModel,
 			);
 		} finally {
@@ -393,46 +405,46 @@ export class ChatHubService {
 		}
 	}
 
-	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
-		const { sessionId, editId, messageId, message, replyId } = payload;
+	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
+		const { sessionId, editId } = payload;
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, sessionId, selectedModel);
+		const session = await this.getChatSession(user, sessionId);
 		const messageToEdit = await this.getChatMessage(session.id, editId);
 
-		if (messageToEdit.type !== 'human') {
-			throw new BadRequestError('Can only edit human messages');
+		if (messageToEdit.type === 'human') {
+			await this.editHumanMessage(res, user, payload, session, messageToEdit, selectedModel);
+		} else if (messageToEdit.type === 'ai') {
+			await this.editAIMessage(payload.message, editId);
+		} else {
+			throw new BadRequestError('Only human and AI messages can be edited');
 		}
+	}
 
+	private async editHumanMessage(
+		res: Response,
+		user: User,
+		payload: EditMessagePayload,
+		session: ChatHubSession,
+		messageToEdit: ChatHubMessage,
+		selectedModel: ModelWithCredentials,
+	) {
+		const { sessionId, messageId, message, replyId } = payload;
 		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 		const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
 
 		// If the message to edit isn't the original message, we want to point to the original message
 		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
-		const otherRuns = (session.messages ?? []).filter(
-			(m) => m.revisionOfMessageId === revisionOfMessageId,
-		);
-		const runIndex = otherRuns.length + 1;
 
-		await this.messageRepository.updateChatMessage(revisionOfMessageId, { state: 'replaced' });
-		for (const run of otherRuns) {
-			if (run.state === 'active') {
-				await this.messageRepository.updateChatMessage(run.id, { state: 'replaced' });
-			}
-		}
-
-		const turnId = payload.messageId;
 		await this.saveHumanMessage(
 			payload,
 			user,
-			turnId,
 			messageToEdit.previousMessageId,
 			selectedModel,
 			revisionOfMessageId,
-			runIndex,
 		);
 
 		const workflow = await this.createChatWorkflow(
@@ -452,12 +464,16 @@ export class ChatHubService {
 				replyId,
 				sessionId,
 				messageId,
-				turnId,
 				selectedModel,
 			);
 		} finally {
 			await this.deleteChatWorkflow(workflow.workflowData.id);
 		}
+	}
+
+	private async editAIMessage(content: string, messageId: ChatMessageId) {
+		// AI edits just change the original message without revisioning
+		await this.messageRepository.updateChatMessage(messageId, { content });
 	}
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
@@ -468,7 +484,7 @@ export class ChatHubService {
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, sessionId, selectedModel);
+		const session = await this.getChatSession(user, sessionId);
 		const messageToRetry = await this.getChatMessage(session.id, retryId);
 
 		if (messageToRetry.type !== 'ai') {
@@ -493,17 +509,6 @@ export class ChatHubService {
 
 		// If the message being retried is itself a retry, we want to point to the original message
 		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
-		const otherRuns = (session.messages ?? []).filter(
-			(m) => m.retryOfMessageId === retryOfMessageId,
-		);
-		const runIndex = otherRuns.length + 1;
-
-		await this.messageRepository.updateChatMessage(retryOfMessageId, { state: 'replaced' });
-		for (const run of otherRuns) {
-			if (run.state === 'active') {
-				await this.messageRepository.updateChatMessage(run.id, { state: 'replaced' });
-			}
-		}
 
 		const workflow = await this.createChatWorkflow(
 			user,
@@ -522,14 +527,35 @@ export class ChatHubService {
 				replyId,
 				sessionId,
 				lastHumanMessage.id,
-				messageToRetry.turnId,
 				selectedModel,
 				retryOfMessageId,
-				runIndex,
 			);
 		} finally {
 			await this.deleteChatWorkflow(workflow.workflowData.id);
 		}
+	}
+
+	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
+		const session = await this.getChatSession(user, sessionId);
+		const message = await this.getChatMessage(session.id, messageId, [
+			'execution',
+			'execution.workflow',
+		]);
+
+		if (message.type !== 'ai') {
+			throw new BadRequestError('Can only stop AI messages');
+		}
+
+		if (!message.executionId || !message.execution) {
+			throw new BadRequestError('Message is not associated with a workflow execution');
+		}
+
+		if (message.status !== 'running') {
+			throw new BadRequestError('Can only stop messages that are currently running');
+		}
+
+		await this.executionService.stop(message.execution.id, [message.execution.workflowId]);
+		await this.messageRepository.updateChatMessage(messageId, { status: 'cancelled' });
 	}
 
 	private async executeChatWorkflow(
@@ -543,10 +569,8 @@ export class ChatHubService {
 		replyId: ChatMessageId,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		turnId: ChatMessageId,
 		selectedModel: ModelWithCredentials,
 		retryOfMessageId?: ChatMessageId,
-		runIndex?: number,
 	) {
 		const { workflowData, startNodes, triggerToStartFrom } = workflow;
 
@@ -569,29 +593,74 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		const result = await this.activeExecutions.getPostExecutePromise(executionId);
-		if (!result) {
-			throw new OperationalError('There was a problem executing the chat workflow.');
-		}
-
-		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-			workflowData.id,
-		]);
-		if (!execution) {
-			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
-		}
-		const message = this.getAIOutput(execution) ?? 'Error: No response generated';
-		await this.saveAIMessage(
-			replyId,
+		await this.saveAIMessage({
+			id: replyId,
 			sessionId,
-			turnId,
-			execution.id,
+			executionId,
 			previousMessageId,
-			message,
+			message: '',
 			selectedModel,
 			retryOfMessageId,
-			runIndex,
-		);
+			status: 'running',
+		});
+
+		try {
+			let result: IRun | undefined;
+			try {
+				result = await this.activeExecutions.getPostExecutePromise(executionId);
+				if (!result) {
+					throw new OperationalError('There was a problem executing the chat workflow.');
+				}
+			} catch (error: unknown) {
+				if (error instanceof ManualExecutionCancelledError) {
+					const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+						workflowData.id,
+					]);
+					if (!execution) {
+						throw new OperationalError(`Could not find execution with ID ${executionId}`);
+					}
+
+					if (execution.status === 'canceled') {
+						const message = 'Generation cancelled.';
+						await this.messageRepository.updateChatMessage(replyId, {
+							content: message,
+							status: 'cancelled',
+						});
+						return;
+					}
+				}
+
+				throw error;
+			}
+
+			const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+				workflowData.id,
+			]);
+			if (!execution) {
+				throw new OperationalError(`Could not find execution with ID ${executionId}`);
+			}
+
+			if (!execution.status || execution.status !== 'success') {
+				const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+				throw new OperationalError(message);
+			}
+
+			const message = this.getAIOutput(execution);
+			if (!message) {
+				throw new OperationalError('No response generated');
+			}
+
+			await this.messageRepository.updateChatMessage(replyId, {
+				content: message,
+				status: 'success',
+			});
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			await this.messageRepository.updateChatMessage(replyId, {
+				content: `Error: ${message}`,
+				status: 'error',
+			});
+		}
 	}
 
 	private prepareChatWorkflow(
@@ -754,50 +823,53 @@ export class ChatHubService {
 	private async saveHumanMessage(
 		payload: HumanMessagePayload | EditMessagePayload,
 		user: User,
-		turnId: string,
 		previousMessageId: ChatMessageId | null,
 		selectedModel: ModelWithCredentials,
 		revisionOfMessageId?: ChatMessageId,
-		runIndex?: number,
 	) {
 		await this.messageRepository.createChatMessage({
 			id: payload.messageId,
 			sessionId: payload.sessionId,
 			type: 'human',
 			name: user.firstName || 'User',
-			state: 'active',
+			status: 'success',
 			content: payload.message,
-			turnId,
 			previousMessageId,
 			revisionOfMessageId,
-			runIndex,
 			...selectedModel,
 		});
 	}
 
-	private async saveAIMessage(
-		id: ChatMessageId,
-		sessionId: ChatSessionId,
-		turnId: ChatMessageId,
-		executionId: string,
-		previousMessageId: ChatMessageId,
-		message: string,
-		selectedModel: ModelWithCredentials,
-		retryOfMessageId?: ChatMessageId,
-		runIndex?: number,
-	) {
+	private async saveAIMessage({
+		id,
+		sessionId,
+		executionId,
+		previousMessageId,
+		message,
+		selectedModel,
+		retryOfMessageId,
+		status,
+	}: {
+		id: ChatMessageId;
+		sessionId: ChatSessionId;
+		executionId: string;
+		previousMessageId: ChatMessageId;
+		message: string;
+		selectedModel: ModelWithCredentials;
+		retryOfMessageId?: ChatMessageId;
+		editOfMessageId?: ChatMessageId;
+		status?: ChatHubMessageStatus;
+	}) {
 		await this.messageRepository.createChatMessage({
 			id,
 			sessionId,
-			turnId,
 			previousMessageId,
 			executionId: parseInt(executionId, 10),
 			type: 'ai',
 			name: 'AI',
-			state: 'active',
+			status,
 			content: message,
 			retryOfMessageId,
-			runIndex,
 			...selectedModel,
 		});
 	}
@@ -805,7 +877,7 @@ export class ChatHubService {
 	private async getChatSession(
 		user: User,
 		sessionId: ChatSessionId,
-		selectedModel: ModelWithCredentials,
+		selectedModel?: ModelWithCredentials,
 		initialize: boolean = false,
 		title: string | null = null,
 	) {
@@ -826,8 +898,12 @@ export class ChatHubService {
 		});
 	}
 
-	private async getChatMessage(sessionId: ChatSessionId, messageId: ChatMessageId) {
-		const message = await this.messageRepository.getOneById(messageId, sessionId);
+	private async getChatMessage(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		relations: string[] = [],
+	) {
+		const message = await this.messageRepository.getOneById(messageId, sessionId, relations);
 		if (!message) {
 			throw new NotFoundError('Chat message not found');
 		}
@@ -941,15 +1017,13 @@ export class ChatHubService {
 			model: message.model,
 			workflowId: message.workflowId,
 			executionId: message.executionId,
-			state: message.state,
+			status: message.status,
 			createdAt: message.createdAt.toISOString(),
 			updatedAt: message.updatedAt.toISOString(),
 
 			previousMessageId: message.previousMessageId,
-			turnId: message.turnId,
 			retryOfMessageId: message.retryOfMessageId,
 			revisionOfMessageId: message.revisionOfMessageId,
-			runIndex: message.runIndex,
 		};
 	}
 

@@ -7,10 +7,12 @@ import { ref, useTemplateRef, watch } from 'vue';
 const { disabled } = defineProps<{
 	placeholder: string;
 	disabled: boolean;
+	isResponding: boolean;
 }>();
 
 const emit = defineEmits<{
 	submit: [string];
+	stop: [];
 }>();
 
 const inputRef = useTemplateRef('inputRef');
@@ -24,10 +26,16 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-function onAttach() {}
-
 function onMic() {
-	speechInput.isListening.value ? speechInput.stop() : speechInput.start();
+	if (speechInput.isListening.value) {
+		speechInput.stop();
+	} else {
+		speechInput.start();
+	}
+}
+
+function onStop() {
+	emit('stop');
 }
 
 function handleSubmitForm() {
@@ -96,6 +104,7 @@ defineExpose({
 			/>
 
 			<div :class="$style.actions">
+				<!-- TODO: Implement attachments
 				<N8nIconButton
 					native-type="button"
 					type="secondary"
@@ -105,7 +114,7 @@ defineExpose({
 					icon-size="large"
 					text
 					@click="onAttach"
-				/>
+				/> -->
 				<N8nIconButton
 					v-if="speechInput.isSupported"
 					native-type="button"
@@ -118,11 +127,20 @@ defineExpose({
 					@click="onMic"
 				/>
 				<N8nIconButton
+					v-if="!isResponding"
 					native-type="submit"
 					:disabled="disabled || !message.trim()"
 					title="Send"
 					icon="arrow-up"
 					icon-size="large"
+				/>
+				<N8nIconButton
+					v-else
+					native-type="button"
+					title="Stop generating"
+					icon="square"
+					icon-size="large"
+					@click="onStop"
 				/>
 			</div>
 		</div>
