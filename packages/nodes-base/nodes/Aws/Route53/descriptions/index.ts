@@ -1,2 +1,1 @@
-export * as hostedZone from './hostedZone/HostedZone.resource';
-export * as recordSet from './recordSet/RecordSet.resource';
+export * from './hostedzone/HostedZone.resource';
