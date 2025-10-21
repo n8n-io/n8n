@@ -26,10 +26,12 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-function onAttach() {}
-
 function onMic() {
-	speechInput.isListening.value ? speechInput.stop() : speechInput.start();
+	if (speechInput.isListening.value) {
+		speechInput.stop();
+	} else {
+		speechInput.start();
+	}
 }
 
 function onStop() {
