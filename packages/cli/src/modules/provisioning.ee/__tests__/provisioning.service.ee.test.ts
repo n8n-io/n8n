@@ -2,15 +2,26 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { User, UserRepository, SettingsRepository, RoleRepository, Role } from '@n8n/db';
+import type {
+	User,
+	UserRepository,
+	SettingsRepository,
+	RoleRepository,
+	Role,
+	ProjectRepository,
+} from '@n8n/db';
 import { type GlobalConfig } from '@n8n/config';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { type ProjectService } from '@/services/project.service.ee';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
 const userRepository = mock<UserRepository>();
+const projectRepository = mock<ProjectRepository>();
+const projectService = mock<ProjectService>();
+
 const logger = mock<Logger>();
 const publisher = mock<Publisher>();
 const roleRepository = mock<RoleRepository>();
@@ -18,6 +29,8 @@ const roleRepository = mock<RoleRepository>();
 const provisioningService = new ProvisioningService(
 	globalConfig,
 	settingsRepository,
+	projectRepository,
+	projectService,
 	roleRepository,
 	userRepository,
 	logger,
@@ -245,6 +258,70 @@ describe('ProvisioningService', () => {
 				`Skipping instance role provisioning. Role ${roleSlug} is not a global role`,
 				{ userId: user.id, roleSlug: 'global:owner' },
 			);
+		});
+	});
+
+	describe('provisionProjectRolesForUser', () => {
+		it('should do nothing if the projectIdToRole is not a string', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = { not: 'a string' };
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping project role provisioning. Invalid projectIdToRole type: expected string, received object',
+				{ userId, projectIdToRole },
+			);
+		});
+
+		it('should do nothing if the project does not exist', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = JSON.stringify({
+				'non-existent-project': 'project:viewer',
+			});
+
+			projectRepository.exists.mockResolvedValue(false);
+			roleRepository.exists.mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+			expect(projectService.addUser).not.toHaveBeenCalled();
+		});
+
+		it('should do nothing if the provided role does not exist', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = JSON.stringify({
+				'project-1': 'project:non-existent-role',
+			});
+
+			projectRepository.exists.mockResolvedValue(true);
+			roleRepository.exists.mockResolvedValue(false);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+			expect(projectService.addUser).not.toHaveBeenCalled();
+		});
+
+		it('should provision project roles for the user', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = JSON.stringify({
+				'project-1': 'project:viewer',
+				'project-2': 'project:editor',
+			});
+
+			projectRepository.exists.mockResolvedValue(true);
+			roleRepository.exists.mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(projectService.addUser).toHaveBeenCalledTimes(2);
+			expect(projectService.addUser).toHaveBeenCalledWith('project-1', {
+				userId,
+				role: 'project:viewer',
+			});
+			expect(projectService.addUser).toHaveBeenCalledWith('project-2', {
+				userId,
+				role: 'project:editor',
+			});
 		});
 	});
 

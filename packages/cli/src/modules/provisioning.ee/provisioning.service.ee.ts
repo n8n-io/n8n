@@ -1,7 +1,14 @@
 import { ProvisioningConfigDto, ProvisioningConfigPatchDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { RoleRepository, SettingsRepository, User, UserRepository, Role } from '@n8n/db';
+import {
+	RoleRepository,
+	SettingsRepository,
+	User,
+	UserRepository,
+	Role,
+	ProjectRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
@@ -10,6 +17,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
+import { ProjectService } from '@/services/project.service.ee';
 
 @Service()
 export class ProvisioningService {
@@ -18,6 +26,8 @@ export class ProvisioningService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
@@ -92,6 +102,53 @@ export class ProvisioningService {
 		if (user.role.slug !== dbRole.slug) {
 			await this.userRepository.update(user.id, { role: { slug: dbRole.slug } });
 		}
+	}
+
+	/**
+	 * @param projectIdToRole expected to be a JSON string for a map of project IDs to role slugs
+	 */
+	async provisionProjectRolesForUser(userId: string, projectIdToRole: unknown): Promise<void> {
+		if (typeof projectIdToRole !== 'string') {
+			this.logger.warn(
+				`Skipping project role provisioning. Invalid projectIdToRole type: expected string, received ${typeof projectIdToRole}`,
+				{ userId, projectIdToRole },
+			);
+			return;
+		}
+
+		let projectRoleMap: Record<string, string>;
+		try {
+			projectRoleMap = JSON.parse(projectIdToRole);
+		} catch {
+			// TODO: clarify wether this should throw an error.
+			throw new Error(
+				'Skipping project role provisioning. Invalid project to role mapping provided.',
+			);
+		}
+
+		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
+			const projectExists = await this.projectRepository.exists({ where: { id: projectId } });
+			if (!projectExists) {
+				this.logger.warn(
+					`Skipping project role provisioning. Project with ID ${projectId} not found.`,
+					{ userId, projectId, roleSlug },
+				);
+				continue;
+			}
+			const roleExists = await this.roleRepository.exists({ where: { slug: roleSlug } });
+			if (!roleExists) {
+				this.logger.warn(
+					`Skipping project role provisioning. Role with slug ${roleSlug} not found.`,
+					{ userId, projectId, roleSlug },
+				);
+				continue;
+			}
+			await this.projectService.addUser(projectId, { userId, role: roleSlug });
+		}
+
+		// TODO: look at existing project <> role mappings for given user and remove ones that are not in projectRoleMap anymore
+		// Make sure to do this in a transaction that includes the "projectService.addUser" calls above,
+		// so that in case of an error, all project access changes are reverted.
 	}
 
 	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {
