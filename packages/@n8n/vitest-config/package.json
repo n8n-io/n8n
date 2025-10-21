@@ -8,7 +8,6 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "unplugin-swc": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
@@ -47,5 +46,8 @@
     "format:check": "biome ci .",
     "watch": "tsc -p tsconfig.build.json --watch"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "See LICENSE.md file in the root of the repository",
+  "dependencies": {
+    "unplugin-swc": "catalog:"
+  }
 }
