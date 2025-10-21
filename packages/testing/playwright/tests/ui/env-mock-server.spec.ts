@@ -2,6 +2,11 @@ import assert from 'node:assert';
 
 import { test, expect } from '../../fixtures/base';
 
+test.use({
+	addContainerCapability: {
+		proxyServerEnabled: true,
+	},
+});
 // @capability:proxy tag ensures that test suite is only run when proxy is available
 test.describe('Proxy server @capability:proxy', () => {
 	test.beforeEach(async ({ proxyServer }) => {

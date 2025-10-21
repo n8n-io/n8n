@@ -4,11 +4,8 @@ import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
 
 test.use({
-	containerConfig: {
+	addContainerCapability: {
 		gitea: true,
-		env: {
-			E2E_TESTS: 'true',
-		},
 	},
 });
 
