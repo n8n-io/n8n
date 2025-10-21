@@ -139,16 +139,14 @@ describe('Test MergeV3, combineBySql operation', () => {
 				'SELECT *, input1.data as data_1\nFROM input1\nLEFT JOIN input2\nON input1.id = input2.id\n',
 		};
 
-		try {
-			await mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), [
+		await expect(
+			mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), [
 				inputsData[0],
-			]);
-
-			expect(true).toBe(false);
-		} catch (error) {
-			expect(error.message).toBe('Issue while executing query');
-			expect(error.description).toBe('Table does not exist: input2');
-		}
+			]),
+		).rejects.toMatchObject({
+			message: 'Issue while executing query',
+			description: 'Table does not exist: input2',
+		});
 	});
 
 	it('LEFT JOIN, invalid syntax', async () => {
@@ -158,18 +156,18 @@ describe('Test MergeV3, combineBySql operation', () => {
 				'SELECTTT *, input1.data as data_1\nFROM input1\nLEFT JOIN input2\nON input1.id = input2.id\n',
 		};
 
-		try {
-			await mode.combineBySql.execute.call(
-				createMockExecuteFunction(nodeParameters, node),
-				inputsData,
-			);
+		await expect(
+			mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+		).rejects.toMatchObject({
+			message: 'Issue while executing query',
+			description: expect.stringContaining('Parse error'),
+		});
 
-			expect(true).toBe(false);
-		} catch (error) {
-			expect(error.message).toBe('Issue while executing query');
-			expect(error.description.includes('Parse error')).toBe(true);
-			expect(error.description.includes('SELECTTT')).toBe(true);
-		}
+		await expect(
+			mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+		).rejects.toMatchObject({
+			description: expect.stringContaining('SELECTTT'),
+		});
 	});
 
 	it('RIGHT JOIN', async () => {
@@ -457,16 +455,12 @@ describe('Test MergeV3, combineBySql operation', () => {
 				query: "SELECT * FROM FILE('test.csv')",
 			};
 
-			try {
-				await mode.combineBySql.execute.call(
-					createMockExecuteFunction(nodeParameters, node),
-					inputsData,
-				);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error.message).toBe('Issue while executing query');
-				expect(error.description).toBe('File access operations are disabled for security reasons');
-			}
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
 		});
 
 		it('should block JSON() function access', async () => {
@@ -475,16 +469,12 @@ describe('Test MergeV3, combineBySql operation', () => {
 				query: "SELECT * FROM JSON('data.json')",
 			};
 
-			try {
-				await mode.combineBySql.execute.call(
-					createMockExecuteFunction(nodeParameters, node),
-					inputsData,
-				);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error.message).toBe('Issue while executing query');
-				expect(error.description).toBe('File access operations are disabled for security reasons');
-			}
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
 		});
 
 		it('should block TXT() function access', async () => {
@@ -493,16 +483,12 @@ describe('Test MergeV3, combineBySql operation', () => {
 				query: "SELECT * FROM TXT('data.txt')",
 			};
 
-			try {
-				await mode.combineBySql.execute.call(
-					createMockExecuteFunction(nodeParameters, node),
-					inputsData,
-				);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error.message).toBe('Issue while executing query');
-				expect(error.description).toBe('File access operations are disabled for security reasons');
-			}
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
 		});
 
 		it('should block CSV() function access', async () => {
@@ -511,16 +497,12 @@ describe('Test MergeV3, combineBySql operation', () => {
 				query: "SELECT * FROM CSV('data.csv')",
 			};
 
-			try {
-				await mode.combineBySql.execute.call(
-					createMockExecuteFunction(nodeParameters, node),
-					inputsData,
-				);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error.message).toBe('Issue while executing query');
-				expect(error.description).toBe('File access operations are disabled for security reasons');
-			}
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
 		});
 
 		it('should block XLSX() function access', async () => {
@@ -529,16 +511,12 @@ describe('Test MergeV3, combineBySql operation', () => {
 				query: "SELECT * FROM XLSX('data.xlsx')",
 			};
 
-			try {
-				await mode.combineBySql.execute.call(
-					createMockExecuteFunction(nodeParameters, node),
-					inputsData,
-				);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error.message).toBe('Issue while executing query');
-				expect(error.description).toBe('File access operations are disabled for security reasons');
-			}
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
 		});
 
 		it('should block XLS() function access', async () => {
@@ -547,16 +525,12 @@ describe('Test MergeV3, combineBySql operation', () => {
 				query: "SELECT * FROM XLS('data.xls')",
 			};
 
-			try {
-				await mode.combineBySql.execute.call(
-					createMockExecuteFunction(nodeParameters, node),
-					inputsData,
-				);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error.message).toBe('Issue while executing query');
-				expect(error.description).toBe('File access operations are disabled for security reasons');
-			}
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
 		});
 
 		it('should block LOAD() function access', async () => {
@@ -565,16 +539,12 @@ describe('Test MergeV3, combineBySql operation', () => {
 				query: "SELECT * FROM input1 WHERE id = LOAD('test.txt')",
 			};
 
-			try {
-				await mode.combineBySql.execute.call(
-					createMockExecuteFunction(nodeParameters, node),
-					inputsData,
-				);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error.message).toBe('Issue while executing query');
-				expect(error.description).toBe('File access operations are disabled for security reasons');
-			}
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
 		});
 
 		it('should block SAVE() function access', async () => {
@@ -583,16 +553,12 @@ describe('Test MergeV3, combineBySql operation', () => {
 				query: "SELECT id, SAVE('output.txt', name) as saved FROM input1",
 			};
 
-			try {
-				await mode.combineBySql.execute.call(
-					createMockExecuteFunction(nodeParameters, node),
-					inputsData,
-				);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error.message).toBe('Issue while executing query');
-				expect(error.description).toBe('File access operations are disabled for security reasons');
-			}
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
 		});
 
 		it('should still allow normal SQL operations', async () => {
