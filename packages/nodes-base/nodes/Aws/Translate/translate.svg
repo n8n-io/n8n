@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="#527FFF">
+  <text x="15" y="35" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#527FFF">A</text>
+  <text x="50" y="60" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#527FFF">あ</text>
+  <path d="M 30,40 L 50,40 L 45,35 M 50,40 L 45,45" stroke="#527FFF" fill="none" stroke-width="2"/>
+</svg>
