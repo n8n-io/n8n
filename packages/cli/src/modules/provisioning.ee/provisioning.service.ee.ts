@@ -1,13 +1,7 @@
-import {
-	ProvisioningConfigDto,
-	Role,
-	ROLE,
-	roleSchema,
-	ProvisioningConfigPatchDto,
-} from '@n8n/api-types';
+import { ProvisioningConfigDto, ProvisioningConfigPatchDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { SettingsRepository, User, UserRepository } from '@n8n/db';
+import { RoleRepository, SettingsRepository, User, UserRepository, Role } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
@@ -24,6 +18,7 @@ export class ProvisioningService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
@@ -41,15 +36,24 @@ export class ProvisioningService {
 		return this.provisioningConfig;
 	}
 
-	async provisionInstanceRoleForUser(user: User, role: unknown) {
-		let parsedRole: Role;
+	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
+		const globalOwnerRoleSlug = 'global:owner';
+		if (typeof roleSlug !== 'string') {
+			this.logger.warn('Invalid role type: expected string, skipping instance role provisioning', {
+				userId: user.id,
+				roleSlug,
+			});
+			return;
+		}
+
+		let dbRole: Role;
 
 		try {
-			parsedRole = roleSchema.parse(role);
+			dbRole = await this.roleRepository.findOneOrFail({ where: { slug: roleSlug } });
 		} catch (error) {
 			this.logger.warn(
-				`Invalid role: ${role} provided, expected oneof ${Object.values(ROLE).join(', ')}, skipping instance role provisioning`,
-				{ userId: user.id, role, error },
+				`Skipping instance role provisioning, a role matching the slug ${roleSlug} was not found`,
+				{ userId: user.id, roleSlug, error },
 			);
 			return;
 		}
@@ -58,23 +62,23 @@ export class ProvisioningService {
 		 * If the user is changing from an owner to a non-owner role,
 		 * we need to check if they are the last owner to avoid an instance losing its only owner
 		 */
-		if (user.role.slug === ROLE.Owner && parsedRole !== ROLE.Owner) {
+		if (user.role.slug === globalOwnerRoleSlug && dbRole.slug !== globalOwnerRoleSlug) {
 			const otherOwners = await this.userRepository.count({
-				where: { role: { slug: ROLE.Owner }, id: Not(user.id) },
+				where: { role: { slug: globalOwnerRoleSlug }, id: Not(user.id) },
 			});
 
 			if (otherOwners === 0) {
 				this.logger.warn(
-					`Cannot remove last owner role: ${ROLE.Owner} from user: ${user.id}, skipping instance role provisioning`,
-					{ userId: user.id, role },
+					`Cannot remove last owner role: ${globalOwnerRoleSlug} from user: ${user.id}, skipping instance role provisioning`,
+					{ userId: user.id, roleSlug },
 				);
 				return;
 			}
 		}
 
 		// No need to update record if the role hasn't changed
-		if (user.role.slug !== parsedRole) {
-			await this.userRepository.update(user.id, { role: { slug: parsedRole } });
+		if (user.role.slug !== dbRole.slug) {
+			await this.userRepository.update(user.id, { role: { slug: dbRole.slug } });
 		}
 	}
 
