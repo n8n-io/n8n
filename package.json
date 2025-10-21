@@ -89,6 +89,7 @@
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
+      "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
       "axios": "1.12.0",

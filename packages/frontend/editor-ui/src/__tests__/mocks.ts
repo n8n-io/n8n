@@ -29,8 +29,8 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { IExecutionResponse } from '@/features/executions/executions.types';
-import { CanvasNodeRenderType } from '@/features/canvas/canvas.types';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
@@ -237,6 +237,7 @@ export function createMockEnterpriseSettings(
 		ldap: false,
 		saml: false,
 		oidc: false,
+		provisioning: false,
 		mfaEnforcement: false,
 		logStreaming: false,
 		advancedExecutionFilters: false,
@@ -257,6 +258,7 @@ export function createMockEnterpriseSettings(
 				limit: 0,
 			},
 		},
+		customRoles: false,
 		...overrides, // Override with any passed properties
 	};
 }
