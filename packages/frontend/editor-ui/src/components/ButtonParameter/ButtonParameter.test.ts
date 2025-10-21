@@ -3,14 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ButtonParameter, { type Props } from '@/components/ButtonParameter/ButtonParameter.vue';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
 
-vi.mock('@/features/nodes/ndv/ndv.store');
+vi.mock('@/features/ndv/ndv.store');
 vi.mock('@/stores/workflows.store');
 vi.mock('@/stores/posthog.store');
 vi.mock('@n8n/stores/useRootStore');
