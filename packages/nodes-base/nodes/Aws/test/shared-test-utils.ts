@@ -79,6 +79,7 @@ export function createAwsApiRequestTests(
 			mockHookFunctions = mockDeep<IHookFunctions>();
 			mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 			mockWebhookFunctions = mockDeep<IWebhookFunctions>();
+
 			jest.clearAllMocks();
 
 			// Setup common node mock
@@ -100,9 +101,10 @@ export function createAwsApiRequestTests(
 		describe('Successful Requests', () => {
 			it('should make successful API request with basic parameters', async () => {
 				const mockResponse = { success: true };
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					mockResponse,
-				);
+				// Note: Type assertion needed because mockDeep doesn't expose Jest mock methods at TypeScript level
+				(
+					mockExecuteFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue(mockResponse);
 
 				const result = await awsApiRequestFunction.call(
 					mockExecuteFunctions,
@@ -127,9 +129,9 @@ export function createAwsApiRequestTests(
 			it('should handle string body parameter', async () => {
 				const mockResponse = { data: 'test' };
 				const testBody = 'test body content';
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					mockResponse,
-				);
+				(
+					mockExecuteFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue(mockResponse);
 
 				await awsApiRequestFunction.call(
 					mockExecuteFunctions,
@@ -151,9 +153,9 @@ export function createAwsApiRequestTests(
 			it('should handle buffer body parameter', async () => {
 				const mockResponse = { success: true };
 				const bufferBody = Buffer.from('test buffer');
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					mockResponse,
-				);
+				(
+					mockExecuteFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue(mockResponse);
 
 				await awsApiRequestFunction.call(
 					mockExecuteFunctions,
@@ -174,9 +176,9 @@ export function createAwsApiRequestTests(
 
 			it('should work with IHookFunctions context', async () => {
 				const mockResponse = { success: true };
-				(mockHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					mockResponse,
-				);
+				(
+					mockHookFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue(mockResponse);
 
 				const result = await awsApiRequestFunction.call(
 					mockHookFunctions,
@@ -190,9 +192,9 @@ export function createAwsApiRequestTests(
 
 			it('should work with ILoadOptionsFunctions context', async () => {
 				const mockResponse = { options: [] };
-				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					mockResponse,
-				);
+				(
+					mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue(mockResponse);
 
 				const result = await awsApiRequestFunction.call(
 					mockLoadOptionsFunctions,
@@ -206,9 +208,9 @@ export function createAwsApiRequestTests(
 
 			it('should work with IWebhookFunctions context', async () => {
 				const mockResponse = { webhookData: true };
-				(mockWebhookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					mockResponse,
-				);
+				(
+					mockWebhookFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue(mockResponse);
 
 				const result = await awsApiRequestFunction.call(
 					mockWebhookFunctions,
@@ -233,9 +235,9 @@ export function createAwsApiRequestTests(
 
 			it('should wrap API errors in NodeApiError', async () => {
 				const apiError = new Error('API Error');
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-					apiError,
-				);
+				(
+					mockExecuteFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockRejectedValue(apiError);
 
 				await expect(
 					awsApiRequestFunction.call(mockExecuteFunctions, serviceName, 'GET', '/test-path'),
@@ -257,6 +259,7 @@ export function createAwsApiRequestRESTTests(
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+
 			jest.clearAllMocks();
 		});
 
@@ -264,9 +267,9 @@ export function createAwsApiRequestRESTTests(
 			it('should parse valid JSON response', async () => {
 				const jsonResponse = '{"result": "success", "data": [1,2,3]}';
 				const expectedResult = { result: 'success', data: [1, 2, 3] };
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					jsonResponse,
-				);
+				(
+					mockExecuteFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue(jsonResponse);
 
 				const result = await awsApiRequestRESTFunction.call(
 					mockExecuteFunctions,
@@ -280,9 +283,9 @@ export function createAwsApiRequestRESTTests(
 
 			it('should return raw response when JSON parsing fails', async () => {
 				const rawResponse = 'not json data';
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					rawResponse,
-				);
+				(
+					mockExecuteFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue(rawResponse);
 
 				const result = await awsApiRequestRESTFunction.call(
 					mockExecuteFunctions,
@@ -310,15 +313,16 @@ export function createAwsApiRequestSOAPTests(
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+
 			jest.clearAllMocks();
 		});
 
 		describe('Basic SOAP functionality', () => {
 			it('should call awsApiRequest for SOAP requests', async () => {
 				// This is a basic test that SOAP function calls the underlying API request
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					'<response>test</response>',
-				);
+				(
+					mockExecuteFunctions.helpers.requestWithAuthentication as jest.MockedFunction<any>
+				).mockResolvedValue('<response>test</response>');
 
 				// Since SOAP parsing is complex and service-specific, we expect this to fail
 				// This just verifies the function attempts to call the underlying request

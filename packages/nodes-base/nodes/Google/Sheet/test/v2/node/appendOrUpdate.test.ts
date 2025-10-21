@@ -110,13 +110,20 @@ describe('Google Sheet - Append or Update', () => {
 			.mockReturnValueOnce('USER_ENTERED') // options.cellFormat
 			.mockReturnValueOnce({}) // options
 			.mockReturnValueOnce('defineBelow') // dataMode
-			.mockReturnValueOnce('id'); // columnToMatchOn
+			.mockReturnValueOnce('id') // columnToMatchOn
+			.mockReturnValueOnce('1') // valueToMatchOn
+			.mockReturnValueOnce([{ column: 'name', fieldValue: 'Test Name' }]); // fieldsUi.values
 
 		// Mock sheet with data but no header row at keyRowIndex
 		mockGoogleSheet.getData.mockResolvedValueOnce([
-			[], // Empty first row (keyRowIndex 0)
+			undefined as any, // No header row at keyRowIndex 0
 			['some', 'data', 'here'], // Has data but not at header position
 		]);
+		mockGoogleSheet.getColumnValues.mockResolvedValueOnce([]);
+		mockGoogleSheet.prepareDataForUpdateOrUpsert.mockResolvedValueOnce({
+			updateData: [],
+			appendData: [],
+		});
 
 		await expect(
 			execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1', '1234'),
