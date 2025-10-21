@@ -70,7 +70,6 @@ export {
 	usersListSchema,
 	userBaseSchema,
 	userDetailSchema,
-	roleSchema,
 } from './schemas/user.schema';
 
 export {
