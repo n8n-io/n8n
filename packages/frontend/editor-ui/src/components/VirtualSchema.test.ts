@@ -197,6 +197,11 @@ describe('VirtualSchema.vue', () => {
 		template: '<div v-bind="$attrs"><slot></slot></div>',
 	};
 
+	const N8nLinkStub = {
+		template:
+			'<button v-bind="$attrs" @click="(e) => { e.stopPropagation(); $emit(\'click\', e); }"><slot></slot></button>',
+	};
+
 	beforeEach(async () => {
 		cleanup();
 		vi.resetAllMocks();
@@ -209,6 +214,7 @@ describe('VirtualSchema.vue', () => {
 					DynamicScroller: DynamicScrollerStub,
 					DynamicScrollerItem: DynamicScrollerItemStub,
 					N8nIcon: true,
+					N8nLink: N8nLinkStub,
 					Notice: NoticeStub,
 					NodeIcon: {
 						template: '<node-icon-stub :node-type="nodeType.name" :size="size"></node-icon-stub>',
@@ -1017,23 +1023,45 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	describe('execute event emission', () => {
-		it('should emit execute event when node header triggers execution', async () => {
-			const { emitted, getByTestId } = renderComponent();
-
-			await waitFor(() => {
-				const header = getByTestId('run-data-schema-header');
-				expect(header).toBeInTheDocument();
+		it('should emit execute event when schema preview execute link is clicked', async () => {
+			// Set up schema preview mode
+			useWorkflowsStore().pinData({
+				node: mockNode1,
+				data: [],
 			});
 
-			// Find and click the execute button in the header
-			const executeButton = document.querySelector('[data-test-id="execute-node-button"]');
-			if (executeButton) {
-				await userEvent.click(executeButton);
+			const posthogStore = usePostHog();
+			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
 
-				await waitFor(() => {
-					expect(emitted()).toHaveProperty('execute');
-				});
-			}
+			const schemaPreviewStore = useSchemaPreviewStore();
+			vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
+				createResultOk({
+					type: 'object',
+					properties: {
+						name: { type: 'string' },
+						age: { type: 'number' },
+					},
+				}),
+			);
+
+			const { emitted, getByText } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			// Wait for the preview execute link to appear
+			const executeLink = await waitFor(() => getByText('Execute the node'));
+			expect(executeLink).toBeInTheDocument();
+
+			// Click the execute link
+			fireEvent.click(executeLink);
+
+			// Verify the execute event was emitted with the node name
+			await waitFor(() => {
+				expect(emitted()).toHaveProperty('execute');
+				expect(emitted().execute[0]).toEqual([mockNode1.name]);
+			});
 		});
 	});
 
