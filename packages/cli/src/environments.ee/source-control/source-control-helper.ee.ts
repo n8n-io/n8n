@@ -247,11 +247,15 @@ export function normalizeAndValidateSourceControlledFilePath(
 	return normalizedPath;
 }
 
-export function areOwnersDifferent(
+export function hasOwnerChanged(
 	owner1?: StatusResourceOwner,
 	owner2?: StatusResourceOwner,
 ): boolean {
-	if (!owner1 && !owner2) return false;
+	// We only compare owners when there is at least one team owner
+	// because personal owners projects are not synced with source control
+	if (owner1?.type !== 'team' && owner2?.type !== 'team') {
+		return false;
+	}
 
 	return owner1?.projectId !== owner2?.projectId;
 }
@@ -267,7 +271,7 @@ export function isWorkflowModified(
 	const hasVersionIdChanged = remote.versionId !== local.versionId;
 	const hasParentFolderIdChanged =
 		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
-	const hasOwnerChanged = areOwnersDifferent(remote.owner, local.owner);
+	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || hasOwnerChanged;
+	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
 }

@@ -7,7 +7,7 @@ import type {
 import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-} from '@/features/executions/executions.types';
+} from '@/features/execution/executions/executions.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,

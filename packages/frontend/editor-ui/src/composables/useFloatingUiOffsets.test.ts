@@ -1,6 +1,6 @@
 import { defaultSettings } from '@/__tests__/defaults';
 import { useLogsStore } from '@/stores/logs.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { setActivePinia } from 'pinia';

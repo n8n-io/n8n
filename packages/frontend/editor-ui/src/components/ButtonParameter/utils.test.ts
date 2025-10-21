@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateCodeForAiTransform, reducePayloadSizeOrThrow } from './utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { generateCodeForPrompt } from '@/api/ai';
-import type { AskAiRequest } from '@/features/assistant/assistant.types';
+import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
 import type { Schema } from '@/Interface';
 
 vi.mock('./utils', async () => {
@@ -23,7 +23,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/stores/ndv.store', () => ({
+vi.mock('@/features/nodes/ndv/ndv.store', () => ({
 	useNDVStore: () => ({
 		pushRef: 'mockNdvPushRef',
 	}),
