@@ -1,0 +1,184 @@
+{
+	"createdAt": "2025-09-29T08:00:00.000Z",
+	"updatedAt": "2025-09-29T08:00:00.000Z",
+	"name": "Agent:Tools:Error Handling",
+	"id": "269",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger-001",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [200, 200]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "prompt-assignment-001",
+							"name": "prompt",
+							"value": "Calculate 10 divided by 0",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [350, 200],
+			"id": "set-prompt-001",
+			"name": "Set Prompt"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "You are an assistant that handles various scenarios including error conditions. Test different response patterns and tool failures.",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.9,
+			"position": [500, 200],
+			"id": "ai-agent-001",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {
+				"responseFormat": "tool_calls",
+				"toolCallResponses": {
+					"values": [
+						{
+							"content": "I'll try to calculate that for you.",
+							"toolCalls": {
+								"values": [
+									{
+										"name": "calculator",
+										"args": "{\"query\": \"10 / 0\"}",
+										"id": "calc_error_001"
+									}
+								]
+							}
+						},
+						{
+							"content": "Let me try a different approach to solve this problem.",
+							"toolCalls": {
+								"values": [
+									{
+										"name": "calculator",
+										"args": "{\"query\": \"10 / 0\"}",
+										"id": "calc_error_002"
+									}
+								]
+							}
+						},
+						{
+							"content": "I apologize, but there seems to be an issue with the calculation. Let me try a simpler approach.",
+							"toolCalls": {
+								"values": [
+									{
+										"name": "calculator",
+										"args": "{\"expression\": \"2 + 2\"}",
+										"id": "calc_recovery_001"
+									}
+								]
+							}
+						},
+						{
+							"content": "I encountered an error with the previous tool. Let me provide an alternative response.",
+							"toolCalls": {
+								"values": []
+							}
+						},
+						{
+							"content": "Despite the technical difficulties, I can still help you with your question using my knowledge.",
+							"toolCalls": {
+								"values": []
+							}
+						},
+						{
+							"content": "The system has recovered and I can now provide accurate calculations.",
+							"toolCalls": {
+								"values": [
+									{
+										"name": "calculator",
+										"args": "{\"expression\": \"(100 + 200) / 2\"}",
+										"id": "calc_success_001"
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			"type": "@n8n/nodes-langchain.lmFakeSimple",
+			"typeVersion": 1,
+			"position": [600, 400],
+			"id": "2f239d5b-95ef-4949-92b6-5a7541e1029f",
+			"name": "Fake LLM"
+		},
+		{
+			"parameters": {},
+			"id": "calculator-tool-001",
+			"name": "Calculator",
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"typeVersion": 1.1,
+			"position": [600, 100]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Prompt": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [[]]
+		},
+		"Fake LLM": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "agent-error-handling-fake-llm-test"
+	}
+}

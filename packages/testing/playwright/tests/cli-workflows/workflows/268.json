@@ -1,0 +1,162 @@
+{
+	"name": "Agent:Multiple Tool Calls",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger-001",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-16, 64]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "prompt-assignment-001",
+							"name": "chatInput",
+							"value": "Search for information about artificial intelligence and calculate 15 * 23",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [288, 64],
+			"id": "set-prompt-001",
+			"name": "Set Prompt"
+		},
+		{
+			"parameters": {
+				"jsCode": "// Simulated code execution\nreturn \"Finished\";"
+			},
+			"id": "code-tool-001",
+			"name": "Code Tool",
+			"type": "@n8n/n8n-nodes-langchain.toolCode",
+			"typeVersion": 1.2,
+			"position": [816, 288]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [512, 64],
+			"id": "91cbbe97-4cb8-4b00-bb91-cd7b341771a8",
+			"name": "AI Agent2"
+		},
+		{
+			"parameters": {
+				"responseFormat": "tool_calls",
+				"toolCallResponses": {
+					"values": [
+						{
+							"toolCalls": {
+								"values": [
+									{
+										"name": "code_tool",
+										"id": "A"
+									},
+									{
+										"name": "calculator",
+										"args": "\"2+2\"",
+										"id": "B"
+									}
+								]
+							}
+						},
+						{
+							"content": "Finished",
+							"toolCalls": {
+								"values": []
+							}
+						}
+					]
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmFakeSimple",
+			"typeVersion": 1,
+			"position": [432, 288],
+			"id": "b5de6abd-6446-463e-bce5-df90f8b43c15",
+			"name": "Fake LLM (Simple)"
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"typeVersion": 1,
+			"position": [656, 288],
+			"id": "c264b77e-9d63-4250-aadd-7a46b9b722e4",
+			"name": "Calculator"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Prompt": {
+			"main": [
+				[
+					{
+						"node": "AI Agent2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent2",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fake LLM (Simple)": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent2",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent2",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "d11df69f-7ef8-45f2-9db5-6941efcc16fb",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "268",
+	"tags": []
+}
