@@ -1,9 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="#fff">
-  <g fill="#FF9900" stroke="none">
-    <path d="M40 15 L55 25 L55 45 L40 55 L25 45 L25 25 Z"/>
-    <circle cx="40" cy="30" r="4"/>
-    <circle cx="30" cy="40" r="4"/>
-    <circle cx="50" cy="40" r="4"/>
-    <path d="M40 30 L30 40 M40 30 L50 40 M30 40 L50 40" stroke="#fff" stroke-width="2"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="#FF9900"><path d="M40 20l-15 8.7v17.3L40 54.7l15-8.7V28.7L40 20zm-10 12l10-5.8 10 5.8v11.6L40 49.2l-10-5.6V32z"/><path d="M35 35l5 3 5-3M35 42l5 3 5-3" stroke="#FF9900" stroke-width="2"/></svg>

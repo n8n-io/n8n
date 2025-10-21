@@ -1,1 +1,1 @@
-export * as cacheCluster from './cacheCluster/CacheCluster.resource';
+export * from './cluster/Cluster.resource';
