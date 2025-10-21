@@ -8,6 +8,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '../credentials.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -85,6 +87,9 @@ describe('NodeCredentials', () => {
 	const credentialsStore = mockedStore(useCredentialsStore);
 	const ndvStore = mockedStore(useNDVStore);
 	const uiStore = mockedStore(useUIStore);
+	const projectsStore = mockedStore(useProjectsStore);
+
+	projectsStore.currentProject = { id: 'default', scopes: ['credential:create'] } as Project;
 
 	beforeAll(() => {
 		credentialsStore.state.credentialTypes = {
