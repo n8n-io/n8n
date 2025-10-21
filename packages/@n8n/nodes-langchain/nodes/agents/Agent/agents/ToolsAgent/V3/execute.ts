@@ -1,15 +1,11 @@
 import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
 import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
-import { AIMessage } from '@langchain/core/messages';
+import type { AIMessageChunk, BaseMessage, MessageContentText } from '@langchain/core/messages';
+import { AIMessage, trimMessages } from '@langchain/core/messages';
+import type { ToolCall } from '@langchain/core/messages/tool';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { getPromptInputByType } from '@utils/helpers';
-import {
-	getOptionalOutputParser,
-	type N8nOutputParser,
-} from '@utils/output_parsers/N8nOutputParser';
 import { type AgentRunnableSequence, createToolCallingAgent } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
@@ -32,6 +28,12 @@ import type {
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { getPromptInputByType } from '@utils/helpers';
+import {
+	getOptionalOutputParser,
+	type N8nOutputParser,
+} from '@utils/output_parsers/N8nOutputParser';
+
 import {
 	fixEmptyContentMessage,
 	getAgentStepsParser,
@@ -42,7 +44,6 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
-import type { ToolCall } from '@langchain/core/messages/tool';
 
 type ToolCallRequest = {
 	tool: string;
@@ -53,27 +54,34 @@ type ToolCallRequest = {
 	messageLog?: unknown[];
 };
 
-function createEngineRequests(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+async function createEngineRequests(
 	toolCalls: ToolCallRequest[],
 	itemIndex: number,
+	tools: Array<DynamicStructuredTool | Tool>,
 ) {
-	const connectedSubnodes = ctx.getParentNodes(ctx.getNode().name, {
-		connectionType: NodeConnectionTypes.AiTool,
-		depth: 1,
+	return toolCalls.map((toolCall) => {
+		// First try to get from metadata (for toolkit tools)
+		const foundTool = tools.find((tool) => tool.name === toolCall.tool);
+
+		if (!foundTool) return;
+
+		const nodeName = foundTool.metadata?.sourceNodeName;
+
+		// For toolkit tools, include the tool name so the node knows which tool to execute
+		const input = foundTool.metadata?.isFromToolkit
+			? { ...toolCall.toolInput, tool: toolCall.tool }
+			: toolCall.toolInput;
+
+		return {
+			nodeName,
+			input,
+			type: NodeConnectionTypes.AiTool,
+			id: toolCall.toolCallId,
+			metadata: {
+				itemIndex,
+			},
+		};
 	});
-	return toolCalls.map((toolCall) => ({
-		nodeName:
-			connectedSubnodes.find(
-				(node: { name: string }) => nodeNameToToolName(node.name) === toolCall.tool,
-			)?.name ?? toolCall.tool,
-		input: toolCall.toolInput,
-		type: NodeConnectionTypes.AiTool,
-		id: toolCall.toolCallId,
-		metadata: {
-			itemIndex,
-		},
-	}));
 }
 
 /**
@@ -398,6 +406,7 @@ export async function toolsAgentExecute(
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
 				enableStreaming?: boolean;
+				maxTokensFromMemory?: number;
 			};
 
 			if (options.enableStreaming === undefined) {
@@ -441,11 +450,10 @@ export async function toolsAgentExecute(
 				isStreamingAvailable &&
 				this.getNode().typeVersion >= 2.1
 			) {
-				let chatHistory = undefined;
+				let chatHistory: BaseMessage[] | undefined = undefined;
 				if (memory) {
 					// Load memory variables to respect context window length
-					const memoryVariables = await memory.loadMemoryVariables({});
-					chatHistory = memoryVariables['chat_history'];
+					chatHistory = await loadChatHistory(memory, model, options.maxTokensFromMemory);
 				}
 				const eventStream = executor.streamEvents(
 					{
@@ -469,7 +477,7 @@ export async function toolsAgentExecute(
 
 				// If result contains tool calls, build the request object like the normal flow
 				if (result.toolCalls && result.toolCalls.length > 0) {
-					const actions = createEngineRequests(this, result.toolCalls, itemIndex);
+					const actions = await createEngineRequests(result.toolCalls, itemIndex, tools);
 
 					return {
 						actions,
@@ -480,11 +488,10 @@ export async function toolsAgentExecute(
 				return result;
 			} else {
 				// Handle regular execution
-				let chatHistory = undefined;
+				let chatHistory: BaseMessage[] | undefined = undefined;
 				if (memory) {
 					// Load memory variables to respect context window length
-					const memoryVariables = await memory.loadMemoryVariables({});
-					chatHistory = memoryVariables['chat_history'];
+					chatHistory = await loadChatHistory(memory, model, options.maxTokensFromMemory);
 				}
 				const modelResponse = await executor.invoke({
 					...invokeParams,
@@ -519,7 +526,7 @@ export async function toolsAgentExecute(
 				}
 
 				// If response contains tool calls, we need to return this in the right format
-				const actions = createEngineRequests(this, modelResponse, itemIndex);
+				const actions = await createEngineRequests(modelResponse, itemIndex, tools);
 
 				return {
 					actions,
@@ -595,4 +602,25 @@ export async function toolsAgentExecute(
 
 	// Otherwise return execution data
 	return [returnData];
+}
+async function loadChatHistory(
+	memory: BaseChatMemory,
+	model: BaseChatModel,
+	maxTokensFromMemory?: number,
+): Promise<BaseMessage[]> {
+	const memoryVariables = await memory.loadMemoryVariables({});
+	let chatHistory = memoryVariables['chat_history'] as BaseMessage[];
+
+	if (maxTokensFromMemory) {
+		chatHistory = await trimMessages(chatHistory, {
+			strategy: 'last',
+			maxTokens: maxTokensFromMemory,
+			tokenCounter: model,
+			includeSystem: true,
+			startOn: 'human',
+			allowPartial: true,
+		});
+	}
+
+	return chatHistory;
 }

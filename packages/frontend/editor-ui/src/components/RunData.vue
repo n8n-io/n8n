@@ -19,7 +19,8 @@ import type {
 import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
-import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, ITab } from '@/Interface';
+import type { NodePanelType } from '@/features/nodes/ndv/ndv.types';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -38,7 +39,7 @@ import {
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-import JsonEditor from '@/features/editors/components/JsonEditor/JsonEditor.vue';
+import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEditor.vue';
 
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -49,11 +50,12 @@ import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
-import { useNDVStore } from '@/stores/ndv.store';
+import { dataPinningEventBus } from '@/event-bus';
+import { ndvEventBus } from '@/features/nodes/ndv/ndv.eventBus';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { getGenericHints } from '@/utils/nodeViewUtils';
@@ -65,7 +67,7 @@ import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
-import ViewSubExecution from './ViewSubExecution.vue';
+import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
 import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
 import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
@@ -73,9 +75,9 @@ import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
-import { hasTrimmedRunData } from '@/utils/executionUtils';
-import NDVEmptyState from '@/components/NDVEmptyState.vue';
-import { type SearchShortcut } from '@/features/canvas/canvas.types';
+import { hasTrimmedRunData } from '@/features/execution/executions/executions.utils';
+import NDVEmptyState from '@/features/nodes/ndv/components/NDVEmptyState.vue';
+import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
 import {
 	N8nBlockUi,

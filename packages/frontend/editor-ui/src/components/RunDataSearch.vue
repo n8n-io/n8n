@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, inject, ref, type StyleValue, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { IRunDataDisplayMode, NodePanelType } from '@/Interface';
+import type { IRunDataDisplayMode } from '@/Interface';
+import type { NodePanelType } from '@/features/nodes/ndv/ndv.types';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useEventListener } from '@vueuse/core';
 import { PopOutWindowKey } from '@/constants';
-import { type SearchShortcut } from '@/features/canvas/canvas.types';
+import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
 import { N8nIcon, N8nInput } from '@n8n/design-system';
 type Props = {

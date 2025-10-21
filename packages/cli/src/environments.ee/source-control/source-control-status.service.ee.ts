@@ -10,6 +10,7 @@ import { EventService } from '@/events/event.service';
 
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
+	hasOwnerChanged,
 	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPrePushResult,
@@ -303,12 +304,18 @@ export class SourceControlStatusService {
 			(local) => credRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		// only compares the name, since that is the only change synced for credentials
 		const credModifiedInEither: StatusExportableCredential[] = [];
 		credLocalIds.forEach((local) => {
+			// Compare name, type and owner since those are the synced properties for credentials
 			const mismatchingCreds = credRemoteIds.find((remote) => {
-				return remote.id === local.id && (remote.name !== local.name || remote.type !== local.type);
+				return (
+					remote.id === local.id &&
+					(remote.name !== local.name ||
+						remote.type !== local.type ||
+						hasOwnerChanged(remote.ownedBy, local.ownedBy))
+				);
 			});
+
 			if (mismatchingCreds) {
 				credModifiedInEither.push({
 					...local,
@@ -358,6 +365,7 @@ export class SourceControlStatusService {
 				owner: item.ownedBy,
 			});
 		});
+
 		return {
 			credMissingInLocal,
 			credMissingInRemote,
@@ -564,17 +572,50 @@ export class SourceControlStatusService {
 			(local) => foldersMappingsRemote.folders.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
+		const allTeamProjects = await this.sourceControlImportService.getLocalTeamProjectsFromDb();
+
 		const foldersModifiedInEither: ExportableFolder[] = [];
+
 		foldersMappingsLocal.folders.forEach((local) => {
-			const mismatchingIds = foldersMappingsRemote.folders.find(
-				(remote) =>
-					remote.id === local.id &&
-					(remote.name !== local.name || remote.parentFolderId !== local.parentFolderId),
+			const localHomeProject = allTeamProjects.find(
+				(project) => project.id === local.homeProjectId,
 			);
+
+			const mismatchingIds = foldersMappingsRemote.folders.find((remote) => {
+				const remoteHomeProject = allTeamProjects.find(
+					(project) => project.id === remote.homeProjectId,
+				);
+
+				const localOwner = localHomeProject
+					? {
+							type: 'team' as const,
+							projectId: localHomeProject.id,
+							projectName: localHomeProject.name,
+						}
+					: undefined;
+
+				const remoteOwner = remoteHomeProject
+					? {
+							type: 'team' as const,
+							projectId: remoteHomeProject?.id,
+							projectName: remoteHomeProject?.name,
+						}
+					: undefined;
+
+				const ownerChanged = hasOwnerChanged(localOwner, remoteOwner);
+
+				return (
+					remote.id === local.id &&
+					(remote.name !== local.name ||
+						remote.parentFolderId !== local.parentFolderId ||
+						ownerChanged)
+				);
+			});
 
 			if (!mismatchingIds) {
 				return;
 			}
+
 			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
 		});
 
