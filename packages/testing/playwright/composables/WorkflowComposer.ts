@@ -1,5 +1,6 @@
 import type { Request } from '@playwright/test';
 import { expect } from '@playwright/test';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -139,5 +140,18 @@ export class WorkflowComposer {
 		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
 		await expect(saveButton).toBeVisible();
 		await saveButton.click();
+	}
+
+	/**
+	 * Get workflow by name via API
+	 * @param workflowName - Name of the workflow to find
+	 * @returns Workflow object with id, name, and other properties
+	 */
+	async getWorkflowByName(workflowName: string): Promise<IWorkflowBase> {
+		const response = await this.n8n.api.request.get('/rest/workflows', {
+			params: new URLSearchParams({ filter: JSON.stringify({ name: workflowName }) }),
+		});
+		const workflows = await response.json();
+		return workflows.data[0];
 	}
 }

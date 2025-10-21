@@ -42,6 +42,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByRole('combobox', { name: 'Select Credential' });
 	}
 
+	getCredentialDropdown() {
+		return this.page.locator('.el-popper[aria-hidden="false"].el-select__popper');
+	}
+
 	async clickBackToCanvasButton() {
 		await this.clickByTestId('back-to-canvas');
 	}

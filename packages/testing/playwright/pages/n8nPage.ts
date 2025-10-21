@@ -6,6 +6,7 @@ import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -83,6 +84,10 @@ export class n8nPage {
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
+
+	// Components
+	readonly projectTabs: ProjectTabsComponent;
+
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
@@ -143,6 +148,10 @@ export class n8nPage {
 		this.dataTableDetails = new DataTableDetails(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
+
+		// Components
+		this.projectTabs = new ProjectTabsComponent(page);
+
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
