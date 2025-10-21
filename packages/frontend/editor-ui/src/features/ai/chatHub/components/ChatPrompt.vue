@@ -7,10 +7,12 @@ import { ref, useTemplateRef, watch } from 'vue';
 const { disabled } = defineProps<{
 	placeholder: string;
 	disabled: boolean;
+	isResponding: boolean;
 }>();
 
 const emit = defineEmits<{
 	submit: [string];
+	stop: [];
 }>();
 
 const inputRef = useTemplateRef('inputRef');
@@ -28,6 +30,10 @@ function onAttach() {}
 
 function onMic() {
 	speechInput.isListening.value ? speechInput.stop() : speechInput.start();
+}
+
+function onStop() {
+	emit('stop');
 }
 
 function handleSubmitForm() {
@@ -118,11 +124,20 @@ defineExpose({
 					@click="onMic"
 				/>
 				<N8nIconButton
+					v-if="!isResponding"
 					native-type="submit"
 					:disabled="disabled || !message.trim()"
 					title="Send"
 					icon="arrow-up"
 					icon-size="large"
+				/>
+				<N8nIconButton
+					v-else
+					native-type="button"
+					title="Stop generating"
+					icon="square"
+					icon-size="large"
+					@click="onStop"
 				/>
 			</div>
 		</div>
