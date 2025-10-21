@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
@@ -23,24 +23,13 @@ describe('BreakingChangeService', () => {
 	let ruleRegistry: RuleRegistry;
 	let service: BreakingChangeService;
 
-	type WorkflowData = {
-		id: string;
-		name: string;
-		active: boolean;
-		nodes?: INode[];
-	};
-
-	const createWorkflow = (
-		id: string,
-		name: string,
-		nodes: INode[],
-		active = true,
-	): WorkflowData => ({
-		id,
-		name,
-		active,
-		nodes,
-	});
+	const createWorkflow = (id: string, name: string, nodes: INode[], active = true) =>
+		({
+			id,
+			name,
+			active,
+			nodes,
+		}) as WorkflowEntity;
 
 	const createNode = (name: string, type: string, parameters: unknown = {}): INode => ({
 		id: `node-${name}`,
@@ -57,12 +46,12 @@ describe('BreakingChangeService', () => {
 		workflowRepository = mock<WorkflowRepository>();
 		ruleRegistry = new RuleRegistry(logger);
 
-		service = new BreakingChangeService(ruleRegistry, logger);
+		service = new BreakingChangeService(ruleRegistry, workflowRepository, logger);
 
 		// Manually register rules with real instances (mocked WorkflowRepository)
-		const removedNodesRule = new RemovedNodesRule(workflowRepository, logger);
-		const processEnvAccessRule = new ProcessEnvAccessRule(workflowRepository, logger);
-		const fileAccessRule = new FileAccessRule(workflowRepository, logger);
+		const removedNodesRule = new RemovedNodesRule(logger);
+		const processEnvAccessRule = new ProcessEnvAccessRule(logger);
+		const fileAccessRule = new FileAccessRule(logger);
 
 		ruleRegistry.registerAll([removedNodesRule, processEnvAccessRule, fileAccessRule]);
 	});
@@ -163,38 +152,12 @@ describe('BreakingChangeService', () => {
 			const workflow2 = createWorkflow('wf-2', 'Workflow 2', [
 				createNode('File Node', 'n8n-nodes-base.readWriteFile'), // High severity (not critical)
 			]);
-
-			workflowRepository.findWorkflowsWithNodeType.mockImplementation(async (nodeTypes) => {
-				if (nodeTypes.includes('n8n-nodes-base.spontit')) {
-					return [workflow1];
-				}
-				if (nodeTypes.includes('n8n-nodes-base.readWriteFile')) {
-					return [workflow2];
-				}
-				return [];
-			});
-			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.find.mockResolvedValue([workflow1, workflow2]);
 
 			const report = await service.detect('v2');
 
 			expect(report.summary.totalIssues).toBe(2);
 			expect(report.summary.criticalIssues).toBe(1); // Only removed nodes is critical
-		});
-
-		it('should handle rule failures gracefully', async () => {
-			// Mock an error for one of the repository queries
-			workflowRepository.findWorkflowsWithNodeType.mockRejectedValueOnce(
-				new Error('Database error'),
-			);
-			workflowRepository.find.mockResolvedValue([]);
-
-			const report = await service.detect('v2');
-
-			// Should still complete and return a valid report
-			expect(report.results).toBeDefined();
-			expect(report.summary).toBeDefined();
-			// The rules log their own errors, not the service
-			expect(logger.error).toHaveBeenCalled();
 		});
 
 		it('should log detection start and completion', async () => {
@@ -235,19 +198,6 @@ describe('BreakingChangeService', () => {
 			expect(report.summary).toHaveProperty('criticalIssues');
 			expect(report).toHaveProperty('results');
 			expect(Array.isArray(report.results)).toBe(true);
-		});
-	});
-
-	describe('registerRules()', () => {
-		it('should be callable externally (e.g., by controller)', () => {
-			const newService = new BreakingChangeService(ruleRegistry, logger);
-
-			// The method exists and can be called
-			expect(newService.registerRules).toBeDefined();
-			expect(typeof newService.registerRules).toBe('function');
-
-			// Note: We don't call it here because it requires Container.get() which needs DI setup
-			// In real usage, this is called by the controller after DI is initialized
 		});
 	});
 });

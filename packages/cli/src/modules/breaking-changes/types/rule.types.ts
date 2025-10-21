@@ -1,3 +1,5 @@
+import type { WorkflowEntity } from '@n8n/db';
+
 export const enum BreakingChangeSeverity {
 	CRITICAL = 'critical',
 	HIGH = 'high',
@@ -68,7 +70,11 @@ export interface Recommendation {
 	documentationUrl?: string;
 }
 
+export interface CommonDetectionInput {
+	workflows: WorkflowEntity[];
+}
+
 export interface IBreakingChangeRule {
 	getMetadata(): BreakingChangeMetadata;
-	detect(): Promise<DetectionResult>;
+	detect(input: CommonDetectionInput): Promise<DetectionResult>;
 }

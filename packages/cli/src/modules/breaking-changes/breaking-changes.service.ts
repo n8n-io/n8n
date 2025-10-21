@@ -7,11 +7,13 @@ import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { allRules, RuleInstances } from './rules';
 import type { DetectionReport, DetectionOptions, BreakingChangeVersion } from './types';
 import { BreakingChangeSeverity } from './types';
+import { WorkflowRepository } from '@n8n/db';
 
 @Service()
 export class BreakingChangeService {
 	constructor(
 		private readonly ruleRegistry: RuleRegistry,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly logger: Logger,
 	) {
 		this.logger = logger.scoped('breaking-changes');
@@ -32,11 +34,15 @@ export class BreakingChangeService {
 		this.logger.info('Starting breaking change detection', { targetVersion, options });
 
 		const rules = this.ruleRegistry.getRules(targetVersion);
+		const workflows = await this.workflowRepository.find({
+			select: ['id', 'name', 'active', 'nodes'],
+			relations: { nodes: true },
+		});
 
 		const results = await Promise.all(
 			rules.map(async (rule) => {
 				try {
-					return await rule.detect();
+					return await rule.detect({ workflows });
 				} catch (error) {
 					this.logger.error('Rule detection failed', {
 						ruleId: rule.getMetadata().id,

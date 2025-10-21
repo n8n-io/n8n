@@ -1,20 +1,11 @@
-import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { DetectionResult, BreakingChangeMetadata } from '../../types';
+import type { DetectionResult, BreakingChangeMetadata, CommonDetectionInput } from '../../types';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
 import { AbstractBreakingChangeRule } from '../abstract-rule';
 
 @Service()
 export class ProcessEnvAccessRule extends AbstractBreakingChangeRule {
-	constructor(
-		protected readonly workflowRepository: WorkflowRepository,
-		protected readonly logger: Logger,
-	) {
-		super(logger);
-	}
-
 	getMetadata(): BreakingChangeMetadata {
 		return {
 			id: 'process-env-access-v2',
@@ -26,14 +17,10 @@ export class ProcessEnvAccessRule extends AbstractBreakingChangeRule {
 		};
 	}
 
-	async detect(): Promise<DetectionResult> {
+	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
 		const result = this.createEmptyResult(this.getMetadata().id);
 
 		try {
-			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'nodes'],
-			});
-
 			const processEnvPattern = /process\.env/;
 
 			for (const workflow of workflows) {

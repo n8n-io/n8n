@@ -1,20 +1,11 @@
-import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { DetectionResult, BreakingChangeMetadata } from '../../types';
+import type { DetectionResult, BreakingChangeMetadata, CommonDetectionInput } from '../../types';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
 import { AbstractBreakingChangeRule } from '../abstract-rule';
 
 @Service()
 export class RemovedNodesRule extends AbstractBreakingChangeRule {
-	constructor(
-		protected readonly workflowRepository: WorkflowRepository,
-		protected readonly logger: Logger,
-	) {
-		super(logger);
-	}
-
 	private readonly REMOVED_NODES = [
 		'n8n-nodes-base.spontit',
 		'n8n-nodes-base.crowdDev',
@@ -32,17 +23,12 @@ export class RemovedNodesRule extends AbstractBreakingChangeRule {
 		};
 	}
 
-	async detect(): Promise<DetectionResult> {
+	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
 		const result = this.createEmptyResult(this.getMetadata().id);
 
 		try {
-			const workflows = await this.workflowRepository.findWorkflowsWithNodeType(
-				this.REMOVED_NODES,
-				true,
-			);
-
 			for (const workflow of workflows) {
-				const removedNodes = workflow.nodes!.filter((n) => this.REMOVED_NODES.includes(n.type));
+				const removedNodes = workflow.nodes.filter((n) => this.REMOVED_NODES.includes(n.type));
 
 				result.affectedWorkflows.push({
 					id: workflow.id,

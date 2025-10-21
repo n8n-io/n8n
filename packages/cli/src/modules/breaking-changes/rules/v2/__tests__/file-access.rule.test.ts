@@ -1,10 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import { FileAccessRule } from '../file-access.rule';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
+import { FileAccessRule } from '../file-access.rule';
 
 describe('FileAccessRule', () => {
 	const logger = mock<Logger>({
@@ -12,27 +12,20 @@ describe('FileAccessRule', () => {
 		error: jest.fn(),
 	});
 
-	let workflowRepository: jest.Mocked<WorkflowRepository>;
 	let rule: FileAccessRule;
-
-	type WorkflowData = {
-		id: string;
-		name: string;
-		active: boolean;
-		nodes?: INode[];
-	};
 
 	const createWorkflow = (
 		id: string,
 		name: string,
 		nodes: INode[],
 		active = true,
-	): WorkflowData => ({
-		id,
-		name,
-		active,
-		nodes,
-	});
+	): WorkflowEntity =>
+		({
+			id,
+			name,
+			active,
+			nodes,
+		}) as WorkflowEntity;
 
 	const createNode = (name: string, type: string): INode => ({
 		id: `node-${name}`,
@@ -45,8 +38,7 @@ describe('FileAccessRule', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		workflowRepository = mock<WorkflowRepository>();
-		rule = new FileAccessRule(workflowRepository, logger);
+		rule = new FileAccessRule(logger);
 	});
 
 	describe('getMetadata()', () => {
@@ -66,9 +58,7 @@ describe('FileAccessRule', () => {
 
 	describe('detect()', () => {
 		it('should return no issues when no file access nodes are found', async () => {
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [] });
 
 			expect(result).toEqual({
 				ruleId: 'file-access-restriction-v2',
@@ -84,9 +74,7 @@ describe('FileAccessRule', () => {
 				createNode('Read File', 'n8n-nodes-base.readWriteFile'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows).toHaveLength(1);
@@ -115,9 +103,7 @@ describe('FileAccessRule', () => {
 				createNode('Read Binary', 'n8n-nodes-base.readBinaryFiles'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows[0].issues[0]).toMatchObject({
@@ -132,9 +118,7 @@ describe('FileAccessRule', () => {
 				createNode('Read Binary', 'n8n-nodes-base.readBinaryFiles'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.affectedWorkflows[0].issues).toHaveLength(2);
 			expect(result.affectedWorkflows[0].issues).toEqual(
@@ -157,9 +141,7 @@ describe('FileAccessRule', () => {
 				createNode('Read Binary', 'n8n-nodes-base.readBinaryFiles'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow1, workflow2]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow1, workflow2] });
 
 			expect(result.affectedWorkflows).toHaveLength(2);
 			expect(result.affectedWorkflows[0].id).toBe('wf-1');
@@ -174,9 +156,7 @@ describe('FileAccessRule', () => {
 				false,
 			);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.affectedWorkflows[0]).toMatchObject({
 				id: 'wf-1',
@@ -192,29 +172,10 @@ describe('FileAccessRule', () => {
 				createNode('Code', 'n8n-nodes-base.code'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.affectedWorkflows[0].issues).toHaveLength(1);
 			expect(result.affectedWorkflows[0].issues[0].title).toContain('readWriteFile');
-		});
-
-		it('should handle database errors gracefully', async () => {
-			workflowRepository.findWorkflowsWithNodeType.mockRejectedValue(
-				new Error('Database connection failed'),
-			);
-
-			const result = await rule.detect();
-
-			expect(result.isAffected).toBe(false);
-			expect(result.affectedWorkflows).toHaveLength(0);
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to detect file access restrictions',
-				expect.objectContaining({
-					error: expect.any(Error),
-				}),
-			);
 		});
 	});
 });

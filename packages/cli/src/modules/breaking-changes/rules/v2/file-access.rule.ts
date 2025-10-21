@@ -1,20 +1,11 @@
-import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { DetectionResult, BreakingChangeMetadata } from '../../types';
+import type { DetectionResult, BreakingChangeMetadata, CommonDetectionInput } from '../../types';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
 import { AbstractBreakingChangeRule } from '../abstract-rule';
 
 @Service()
 export class FileAccessRule extends AbstractBreakingChangeRule {
-	constructor(
-		protected readonly workflowRepository: WorkflowRepository,
-		protected readonly logger: Logger,
-	) {
-		super(logger);
-	}
-
 	private readonly FILE_NODES = ['n8n-nodes-base.readWriteFile', 'n8n-nodes-base.readBinaryFiles'];
 
 	getMetadata(): BreakingChangeMetadata {
@@ -28,17 +19,13 @@ export class FileAccessRule extends AbstractBreakingChangeRule {
 		};
 	}
 
-	async detect(): Promise<DetectionResult> {
+	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
 		const result = this.createEmptyResult(this.getMetadata().id);
 
 		try {
-			const workflows = await this.workflowRepository.findWorkflowsWithNodeType(
-				this.FILE_NODES,
-				true,
-			);
-
 			for (const workflow of workflows) {
-				const fileNodes = workflow.nodes!.filter((n) => this.FILE_NODES.includes(n.type));
+				const fileNodes = workflow.nodes.filter((n) => this.FILE_NODES.includes(n.type));
+				if (fileNodes.length === 0) continue;
 
 				result.affectedWorkflows.push({
 					id: workflow.id,

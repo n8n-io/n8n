@@ -1,7 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import type { IBreakingChangeRule, BreakingChangeMetadata, DetectionResult } from '../types';
+import type {
+	IBreakingChangeRule,
+	BreakingChangeMetadata,
+	DetectionResult,
+	CommonDetectionInput,
+} from '../types';
 
 @Service()
 export abstract class AbstractBreakingChangeRule implements IBreakingChangeRule {
@@ -13,7 +18,7 @@ export abstract class AbstractBreakingChangeRule implements IBreakingChangeRule 
 
 	abstract getMetadata(): BreakingChangeMetadata;
 
-	abstract detect(): Promise<DetectionResult>;
+	abstract detect(input: CommonDetectionInput): Promise<DetectionResult>;
 
 	protected createEmptyResult(ruleId: string): DetectionResult {
 		return {

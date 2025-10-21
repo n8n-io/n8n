@@ -1,10 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import { ProcessEnvAccessRule } from '../process-env-access.rule';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
+import { ProcessEnvAccessRule } from '../process-env-access.rule';
 
 describe('ProcessEnvAccessRule', () => {
 	const logger = mock<Logger>({
@@ -12,27 +12,15 @@ describe('ProcessEnvAccessRule', () => {
 		error: jest.fn(),
 	});
 
-	let workflowRepository: jest.Mocked<WorkflowRepository>;
 	let rule: ProcessEnvAccessRule;
 
-	type WorkflowData = {
-		id: string;
-		name: string;
-		active: boolean;
-		nodes: INode[];
-	};
-
-	const createWorkflow = (
-		id: string,
-		name: string,
-		nodes: INode[],
-		active = true,
-	): WorkflowData => ({
-		id,
-		name,
-		active,
-		nodes,
-	});
+	const createWorkflow = (id: string, name: string, nodes: INode[], active = true) =>
+		({
+			id,
+			name,
+			active,
+			nodes,
+		}) as WorkflowEntity;
 
 	const createNode = (name: string, type: string, parameters: unknown = {}): INode => ({
 		id: `node-${name}`,
@@ -45,8 +33,7 @@ describe('ProcessEnvAccessRule', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		workflowRepository = mock<WorkflowRepository>();
-		rule = new ProcessEnvAccessRule(workflowRepository, logger);
+		rule = new ProcessEnvAccessRule(logger);
 	});
 
 	describe('getMetadata()', () => {
@@ -75,9 +62,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			workflowRepository.find.mockResolvedValue([workflow as never]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result).toEqual({
 				ruleId: 'process-env-access-v2',
@@ -95,9 +80,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			workflowRepository.find.mockResolvedValue([workflow as never]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows).toHaveLength(1);
@@ -137,9 +120,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			workflowRepository.find.mockResolvedValue([workflow as never]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows[0].issues[0]).toMatchObject({
@@ -162,9 +143,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			workflowRepository.find.mockResolvedValue([workflow as never]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.affectedWorkflows[0].issues[0].description).toContain('Code');
 			expect(result.affectedWorkflows[0].issues[0].description).toContain('HTTP');
@@ -179,9 +158,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			workflowRepository.find.mockResolvedValue([workflow as never]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			const description = result.affectedWorkflows[0].issues[0].description;
 			const httpCount = (description.match(/HTTP/g) || []).length;
@@ -200,9 +177,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			workflowRepository.find.mockResolvedValue([workflow1 as never, workflow2 as never]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow1, workflow2] });
 
 			expect(result.affectedWorkflows).toHaveLength(2);
 			expect(result.affectedWorkflows[0].id).toBe('wf-1');
@@ -221,9 +196,7 @@ describe('ProcessEnvAccessRule', () => {
 				false,
 			);
 
-			workflowRepository.find.mockResolvedValue([workflow as never]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.affectedWorkflows[0]).toMatchObject({
 				id: 'wf-1',
@@ -245,29 +218,12 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			workflowRepository.find.mockResolvedValue([workflow as never]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows[0].issues[0].description).toContain('Code1');
 			expect(result.affectedWorkflows[0].issues[0].description).toContain('Code2');
 			expect(result.affectedWorkflows[0].issues[0].description).toContain('Code3');
-		});
-
-		it('should handle database errors gracefully', async () => {
-			workflowRepository.find.mockRejectedValue(new Error('Database connection failed'));
-
-			const result = await rule.detect();
-
-			expect(result.isAffected).toBe(false);
-			expect(result.affectedWorkflows).toHaveLength(0);
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to detect process.env access',
-				expect.objectContaining({
-					error: expect.any(Error),
-				}),
-			);
 		});
 	});
 });

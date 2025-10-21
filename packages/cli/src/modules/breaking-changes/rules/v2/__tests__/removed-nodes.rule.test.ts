@@ -1,10 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import { RemovedNodesRule } from '../removed-nodes.rule';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
+import { RemovedNodesRule } from '../removed-nodes.rule';
 
 describe('RemovedNodesRule', () => {
 	const logger = mock<Logger>({
@@ -12,27 +12,15 @@ describe('RemovedNodesRule', () => {
 		error: jest.fn(),
 	});
 
-	let workflowRepository: jest.Mocked<WorkflowRepository>;
 	let rule: RemovedNodesRule;
 
-	type WorkflowData = {
-		id: string;
-		name: string;
-		active: boolean;
-		nodes?: INode[];
-	};
-
-	const createWorkflow = (
-		id: string,
-		name: string,
-		nodes: INode[],
-		active = true,
-	): WorkflowData => ({
-		id,
-		name,
-		active,
-		nodes,
-	});
+	const createWorkflow = (id: string, name: string, nodes: INode[], active = true) =>
+		({
+			id,
+			name,
+			active,
+			nodes,
+		}) as WorkflowEntity;
 
 	const createNode = (name: string, type: string): INode => ({
 		id: `node-${name}`,
@@ -45,8 +33,7 @@ describe('RemovedNodesRule', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		workflowRepository = mock<WorkflowRepository>();
-		rule = new RemovedNodesRule(workflowRepository, logger);
+		rule = new RemovedNodesRule(logger);
 	});
 
 	describe('getMetadata()', () => {
@@ -66,9 +53,7 @@ describe('RemovedNodesRule', () => {
 
 	describe('detect()', () => {
 		it('should return no issues when no removed nodes are found', async () => {
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [] });
 
 			expect(result).toEqual({
 				ruleId: 'removed-nodes-v2',
@@ -84,9 +69,7 @@ describe('RemovedNodesRule', () => {
 				createNode('Spontit', 'n8n-nodes-base.spontit'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows).toHaveLength(1);
@@ -115,9 +98,7 @@ describe('RemovedNodesRule', () => {
 				createNode('CrowdDev', 'n8n-nodes-base.crowdDev'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows[0].issues[0].title).toBe(
@@ -130,9 +111,7 @@ describe('RemovedNodesRule', () => {
 				createNode('Kitemaker', 'n8n-nodes-base.kitemaker'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows[0].issues[0].title).toBe(
@@ -147,9 +126,7 @@ describe('RemovedNodesRule', () => {
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'), // Not removed
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.affectedWorkflows[0].issues).toHaveLength(2);
 			expect(result.affectedWorkflows[0].issues).toEqual(
@@ -172,9 +149,7 @@ describe('RemovedNodesRule', () => {
 				createNode('Kitemaker', 'n8n-nodes-base.kitemaker'),
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow1, workflow2]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow1, workflow2] });
 
 			expect(result.affectedWorkflows).toHaveLength(2);
 			expect(result.affectedWorkflows[0].id).toBe('wf-1');
@@ -189,32 +164,13 @@ describe('RemovedNodesRule', () => {
 				false,
 			);
 
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([workflow]);
-
-			const result = await rule.detect();
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.affectedWorkflows[0]).toMatchObject({
 				id: 'wf-1',
 				name: 'Inactive Workflow',
 				active: false,
 			});
-		});
-
-		it('should handle database errors gracefully', async () => {
-			workflowRepository.findWorkflowsWithNodeType.mockRejectedValue(
-				new Error('Database connection failed'),
-			);
-
-			const result = await rule.detect();
-
-			expect(result.isAffected).toBe(false);
-			expect(result.affectedWorkflows).toHaveLength(0);
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to detect removed nodes',
-				expect.objectContaining({
-					error: expect.any(Error),
-				}),
-			);
 		});
 	});
 });
