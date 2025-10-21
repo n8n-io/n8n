@@ -1,1 +1,1 @@
-export { taskOperations, taskFields } from './task/Task.resource';
+export * from './task/Task.resource';

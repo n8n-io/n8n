@@ -1,1 +1,1 @@
-export { serviceOperations, serviceFields } from './service/Service.resource';
+export * from './service/Service.resource';
