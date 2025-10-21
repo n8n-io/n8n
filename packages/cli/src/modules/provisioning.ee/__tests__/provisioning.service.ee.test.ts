@@ -8,6 +8,7 @@ import type {
 	SettingsRepository,
 	RoleRepository,
 	Role,
+	Project,
 	ProjectRepository,
 } from '@n8n/db';
 import { type GlobalConfig } from '@n8n/config';
@@ -275,7 +276,7 @@ describe('ProvisioningService', () => {
 			);
 		});
 
-		it('should throw an error if projectIdToRole is not a valid JSON string', async () => {
+		it('should do nothing if projectIdToRole is not a valid JSON string', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = 'invalid-json-string';
 
@@ -313,8 +314,8 @@ describe('ProvisioningService', () => {
 				'non-existent-project': 'project:viewer',
 			});
 
-			projectRepository.exists.mockResolvedValue(false);
-			roleRepository.exists.mockResolvedValue(true);
+			projectRepository.find.mockResolvedValue([]);
+			roleRepository.find.mockResolvedValue([mock<Role>({ slug: 'project:viewer' })]);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 			expect(projectService.addUser).not.toHaveBeenCalled();
@@ -326,8 +327,8 @@ describe('ProvisioningService', () => {
 				'project-1': 'project:non-existent-role',
 			});
 
-			projectRepository.exists.mockResolvedValue(true);
-			roleRepository.exists.mockResolvedValue(false);
+			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project-1' })]);
+			roleRepository.find.mockResolvedValue([]);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 			expect(projectService.addUser).not.toHaveBeenCalled();
@@ -340,8 +341,14 @@ describe('ProvisioningService', () => {
 				'project-2': 'project:editor',
 			});
 
-			projectRepository.exists.mockResolvedValue(true);
-			roleRepository.exists.mockResolvedValue(true);
+			projectRepository.find.mockResolvedValue([
+				mock<Project>({ id: 'project-1' }),
+				mock<Project>({ id: 'project-2' }),
+			]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ slug: 'project:viewer' }),
+				mock<Role>({ slug: 'project:editor' }),
+			]);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 

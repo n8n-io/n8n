@@ -12,7 +12,7 @@ import {
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
-import { Not } from '@n8n/typeorm';
+import { Not, In } from '@n8n/typeorm';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -124,8 +124,7 @@ export class ProvisioningService {
 					throw new Error('Invalid project to role mapping structure');
 				}
 			}
-		} catch {
-			// TODO: clarify wether this should throw an error.
+		} catch (error) {
 			this.logger.warn(
 				'Skipping project role provisioning. Failed to parse project to role mapping.',
 				{ userId, projectIdToRole },
@@ -135,29 +134,55 @@ export class ProvisioningService {
 			);
 		}
 
+		const projectIds = Object.keys(projectRoleMap);
+		const roleSlugs = [...new Set(Object.values(projectRoleMap))];
+
+		if (projectIds.length === 0) {
+			return;
+		}
+
+		const existingProjects = await this.projectRepository.find({
+			where: { id: In(projectIds) },
+			select: ['id'],
+		});
+		const existingProjectIds = new Set(existingProjects.map((project) => project.id));
+
+		const existingRoles = await this.roleRepository.find({
+			where: {
+				slug: In(roleSlugs),
+			},
+			select: ['slug'],
+		});
+		const existingRoleSlugs = new Set(existingRoles.map((r) => r.slug));
+
+		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
+
 		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
-			const projectExists = await this.projectRepository.exists({ where: { id: projectId } });
-			if (!projectExists) {
+			if (!existingProjectIds.has(projectId)) {
 				this.logger.warn(
 					`Skipping project role provisioning. Project with ID ${projectId} not found.`,
 					{ userId, projectId, roleSlug },
 				);
 				continue;
 			}
-			const roleExists = await this.roleRepository.exists({ where: { slug: roleSlug } });
-			if (!roleExists) {
+
+			if (!existingRoleSlugs.has(roleSlug)) {
 				this.logger.warn(
-					`Skipping project role provisioning. Role with slug ${roleSlug} not found.`,
+					`Skipping project role provisioning. Role with slug ${roleSlug} not found or is not a project role.`,
 					{ userId, projectId, roleSlug },
 				);
 				continue;
 			}
-			// TODO: do we need to check for dbRole.roleType === 'project' or can global rules also be used?
+
+			validProjectToRoleMappings.push({ projectId, roleSlug });
+		}
+
+		for (const { projectId, roleSlug } of validProjectToRoleMappings) {
 			await this.projectService.addUser(projectId, { userId, role: roleSlug });
 		}
 
 		// TODO: look at existing project <> role mappings for given user and remove ones that are not in projectRoleMap anymore
-		// Make sure to do this in a transaction that includes the "projectService.addUser" calls above,
+		// Make sure to do this in a transaction that includes the "projectService.addUser" calls below,
 		// so that in case of an error, all project access changes are reverted.
 	}
 
