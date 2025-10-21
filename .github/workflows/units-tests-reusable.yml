@@ -49,6 +49,7 @@ jobs:
         run: pnpm test:ci:backend -- --shard=${{ matrix.shard }}/3
         env:
           JEST_SHARD: ${{ matrix.shard }}/3
+          VITEST_SHARD: ${{ matrix.shard }}/3
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
