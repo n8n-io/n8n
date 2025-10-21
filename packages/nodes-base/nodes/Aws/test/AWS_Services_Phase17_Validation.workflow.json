@@ -1,0 +1,140 @@
+{
+	"name": "AWS Services Phase 17 Validation",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "start",
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"resource": "dashboard",
+				"operation": "list",
+				"awsAccountId": "123456789012"
+			},
+			"id": "quicksight-test",
+			"name": "Test AWS QuickSight",
+			"type": "n8n-nodes-base.awsQuickSight",
+			"typeVersion": 1,
+			"position": [460, 200],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "finding",
+				"operation": "list"
+			},
+			"id": "macie-test",
+			"name": "Test AWS Macie",
+			"type": "n8n-nodes-base.awsMacie",
+			"typeVersion": 1,
+			"position": [460, 300],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bot",
+				"operation": "list"
+			},
+			"id": "lex-test",
+			"name": "Test AWS Lex",
+			"type": "n8n-nodes-base.awsLex",
+			"typeVersion": 1,
+			"position": [460, 400],
+			"credentials": {
+				"aws": {
+					"id": "aws-credentials",
+					"name": "AWS Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition"
+			},
+			"id": "merge-results",
+			"name": "Merge Results",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [680, 300]
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Test AWS QuickSight",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Test AWS Macie",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Test AWS Lex",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test AWS QuickSight": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test AWS Macie": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Test AWS Lex": {
+			"main": [
+				[
+					{
+						"node": "Merge Results",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"tags": [],
+	"triggerCount": 0,
+	"updatedAt": "2025-10-21T00:00:00.000Z",
+	"versionId": "1"
+}

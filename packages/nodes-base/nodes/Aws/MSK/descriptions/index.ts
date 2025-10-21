@@ -1,1 +1,1 @@
-export * as cluster from './cluster/Cluster.resource';
+export * from './cluster/Cluster.resource';

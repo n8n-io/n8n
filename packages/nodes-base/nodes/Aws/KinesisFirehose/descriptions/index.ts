@@ -1,1 +1,1 @@
-export * as deliveryStream from './deliveryStream/DeliveryStream.resource';
+export * from './resource/Resource.resource';

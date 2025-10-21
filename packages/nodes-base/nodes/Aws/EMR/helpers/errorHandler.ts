@@ -1,17 +1,1 @@
-import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
-
-export async function handleEMRError(
-	this: IExecuteFunctions,
-	error: IDataObject,
-	itemIndex: number,
-): Promise<never> {
-	const errorType = (error.__type || error.code || 'UnknownError') as string;
-	const message = (error.message || error.Message || 'An error occurred') as string;
-
-	throw new NodeApiError(this.getNode(), error as any, {
-		message: `EMR ${errorType}: ${message}`,
-		description: message,
-		itemIndex,
-	});
-}
+import{NodeApiError}from'n8n-workflow';export function handleErrors(error:any,context:any){if(error.response){const{status,data}=error.response;throw new NodeApiError(context.getNode(),{message:data.message||data.Message||'Unknown error',description:`Status: ${status}`,httpCode:status});}throw error;}
