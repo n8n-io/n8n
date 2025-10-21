@@ -14,7 +14,7 @@ import {
 	ref,
 	type App,
 } from 'vue';
-import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
+import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
