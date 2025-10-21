@@ -1,7 +1,7 @@
 import type { Schema } from '@/Interface';
 import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/api/ai';

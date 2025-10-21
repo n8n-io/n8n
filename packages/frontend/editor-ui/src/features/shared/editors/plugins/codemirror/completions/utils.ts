@@ -2,7 +2,7 @@ import { HTTP_REQUEST_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants'
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
 	insertCompletionText,
