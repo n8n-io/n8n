@@ -46,7 +46,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:backend --shard=${{ matrix.shard }}/3
+        run: pnpm test:ci:backend -- --shard=${{ matrix.shard }}/3
         env:
           JEST_SHARD: ${{ matrix.shard }}/3
 
@@ -84,7 +84,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend --shard=${{ matrix.shard }}/3
+        run: pnpm test:ci:frontend -- --shard=${{ matrix.shard }}/3
         env:
           VITEST_SHARD: ${{ matrix.shard }}/3
 
