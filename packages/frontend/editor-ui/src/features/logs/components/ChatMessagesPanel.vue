@@ -12,6 +12,7 @@ import {
 	useTemplateRef,
 	watch,
 	ref,
+	type App,
 } from 'vue';
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -48,7 +49,7 @@ const rootStore = useRootStore();
 const { runWorkflow } = useRunWorkflow({ router });
 const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
 
-let chatApp: any = null;
+let chatApp: App | null = null;
 const webhookRegistered = ref(false);
 const isRegistering = ref(false);
 
@@ -75,6 +76,28 @@ const isStreamingEnabled = computed(() => {
 	}
 
 	return false;
+});
+
+// Check if file uploads are allowed in ChatTrigger node
+const isFileUploadsAllowed = computed(() => {
+	const options = chatTriggerNode.value?.parameters?.options;
+
+	if (options && typeof options === 'object' && 'allowFileUploads' in options) {
+		return !!options.allowFileUploads;
+	}
+
+	return false;
+});
+
+// Get allowed file MIME types from ChatTrigger node
+const allowedFilesMimeTypes = computed(() => {
+	const options = chatTriggerNode.value?.parameters?.options;
+
+	if (options && typeof options === 'object' && 'allowedFilesMimeTypes' in options) {
+		return options.allowedFilesMimeTypes as string;
+	}
+
+	return 'image/*';
 });
 
 // Check if workflow is ready for chat execution
@@ -125,8 +148,9 @@ const chatOptions = computed<ChatOptions>(() => {
 		enableStreaming: isStreamingEnabled.value,
 		// Enable message actions (repost and copy to input)
 		enableMessageActions: true,
-		allowFileUploads: true,
-		allowedFilesMimeTypes: 'image/*',
+		// Enable file uploads based on ChatTrigger node configuration
+		allowFileUploads: isFileUploadsAllowed.value,
+		allowedFilesMimeTypes: allowedFilesMimeTypes.value,
 		// Use the correct field names that ChatTrigger expects
 		chatInputKey: 'chatInput',
 		chatSessionKey: 'sessionId',
@@ -264,6 +288,23 @@ watch(
 	async (newStreaming, oldStreaming) => {
 		if (props.isOpen && isWorkflowReadyForChat.value && chatApp && newStreaming !== oldStreaming) {
 			// Reinitialize chat when streaming configuration changes and workflow is ready
+			destroyChat();
+			await initializeChat();
+		}
+	},
+);
+
+// Watch for file upload configuration changes
+watch(
+	() => [isFileUploadsAllowed.value, allowedFilesMimeTypes.value],
+	async (newConfig, oldConfig) => {
+		if (
+			props.isOpen &&
+			isWorkflowReadyForChat.value &&
+			chatApp &&
+			JSON.stringify(newConfig) !== JSON.stringify(oldConfig)
+		) {
+			// Reinitialize chat when file upload configuration changes and workflow is ready
 			destroyChat();
 			await initializeChat();
 		}
