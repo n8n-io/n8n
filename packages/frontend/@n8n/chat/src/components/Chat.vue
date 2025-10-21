@@ -21,6 +21,7 @@ const showCloseButton = computed(() => options.mode === 'window' && options.show
 
 // Message history navigation
 const messageHistoryIndex = ref(-1);
+const currentInputBuffer = ref('');
 const userMessages = computed(() =>
 	messages.value
 		.filter((m) => m.sender === 'user')
@@ -58,24 +59,56 @@ function onArrowKeyDown(payload: ArrowKeyDownPayload) {
 		return;
 	}
 
+	// Save current input if we're starting navigation
+	if (messageHistoryIndex.value === -1 && payload.currentInputValue.length > 0) {
+		currentInputBuffer.value = payload.currentInputValue;
+	}
+
 	if (payload.key === 'ArrowUp') {
+		// Temporarily blur to avoid cursor position issues
+		chatEventBus.emit('blurInput');
+
 		// Navigate to previous message
 		if (messageHistoryIndex.value < userMessagesList.length - 1) {
 			messageHistoryIndex.value++;
 			const messageText = userMessagesList[userMessagesList.length - 1 - messageHistoryIndex.value];
 			chatEventBus.emit('setInputValue', messageText);
 		}
+
+		// Refocus and move cursor to end
+		chatEventBus.emit('focusInput');
 	} else if (payload.key === 'ArrowDown') {
-		// Navigate to next message or clear input
+		// Only navigate if we're in history mode
+		if (messageHistoryIndex.value === -1) return;
+
+		// Temporarily blur to avoid cursor position issues
+		chatEventBus.emit('blurInput');
+
+		// Navigate to next message or restore original input
 		if (messageHistoryIndex.value > 0) {
 			messageHistoryIndex.value--;
 			const messageText = userMessagesList[userMessagesList.length - 1 - messageHistoryIndex.value];
 			chatEventBus.emit('setInputValue', messageText);
 		} else if (messageHistoryIndex.value === 0) {
+			// Reached the end - restore original input or clear
 			messageHistoryIndex.value = -1;
-			chatEventBus.emit('setInputValue', '');
+			chatEventBus.emit('setInputValue', currentInputBuffer.value);
+			currentInputBuffer.value = '';
 		}
+
+		// Refocus and move cursor to end
+		chatEventBus.emit('focusInput');
 	}
+}
+
+function onEscapeKeyDown() {
+	// Only handle escape if we're in history navigation mode
+	if (messageHistoryIndex.value === -1) return;
+
+	// Exit history mode and restore original input
+	messageHistoryIndex.value = -1;
+	chatEventBus.emit('setInputValue', currentInputBuffer.value);
+	currentInputBuffer.value = '';
 }
 
 onMounted(async () => {
@@ -84,9 +117,10 @@ onMounted(async () => {
 		getStarted();
 	}
 
-	// Reset history index when a new message is sent
+	// Reset history index and buffer when a new message is sent
 	chatEventBus.on('messageSent', () => {
 		messageHistoryIndex.value = -1;
+		currentInputBuffer.value = '';
 	});
 });
 </script>
@@ -112,7 +146,11 @@ onMounted(async () => {
 		<GetStarted v-if="!currentSessionId && options.showWelcomeScreen" @click:button="getStarted" />
 		<MessagesList v-else :messages="messages" />
 		<template #footer>
-			<Input v-if="currentSessionId" @arrow-key-down="onArrowKeyDown" />
+			<Input
+				v-if="currentSessionId"
+				@arrow-key-down="onArrowKeyDown"
+				@escape-key-down="onEscapeKeyDown"
+			/>
 			<GetStartedFooter v-else />
 		</template>
 	</Layout>

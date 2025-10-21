@@ -19,7 +19,7 @@ vi.mock('../components/Input.vue', () => ({
 	default: {
 		name: 'Input',
 		template:
-			'<div data-test-id="chat-input" @arrow-key-down="$emit(\'arrowKeyDown\', $event)"></div>',
+			'<div data-test-id="chat-input" @arrow-key-down="$emit(\'arrowKeyDown\', $event)" @escape-key-down="$emit(\'escapeKeyDown\', $event)"></div>',
 	},
 }));
 
@@ -157,13 +157,18 @@ describe('Chat', () => {
 			await input.vm.$emit('arrowKeyDown', { key: 'ArrowUp', currentInputValue: 'Third message' });
 			await input.vm.$emit('arrowKeyDown', { key: 'ArrowUp', currentInputValue: 'Second message' });
 
-			const callCountBefore = vi.mocked(chatEventBus.emit).mock.calls.length;
+			vi.clearAllMocks();
 
-			// Try to go beyond
+			// Try to go beyond the oldest message
 			await input.vm.$emit('arrowKeyDown', { key: 'ArrowUp', currentInputValue: 'First message' });
 
-			// Should not have made another call
-			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledTimes(callCountBefore);
+			// Should still emit blur/focus, but not setInputValue
+			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('blurInput');
+			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('focusInput');
+			expect(vi.mocked(chatEventBus.emit)).not.toHaveBeenCalledWith(
+				'setInputValue',
+				expect.anything(),
+			);
 		});
 
 		it('should navigate forward on ArrowDown', async () => {
@@ -249,6 +254,85 @@ describe('Chat', () => {
 			// After reset, ArrowUp should start from the beginning again
 			await input.vm.$emit('arrowKeyDown', { key: 'ArrowUp', currentInputValue: '' });
 			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('setInputValue', 'Third message');
+		});
+
+		it('should preserve current input when starting navigation', async () => {
+			wrapper = mount(Chat);
+			const input = wrapper.findComponent({ name: 'Input' });
+
+			// Start navigation with some input
+			await input.vm.$emit('arrowKeyDown', {
+				key: 'ArrowUp',
+				currentInputValue: 'My partial message',
+			});
+
+			// Navigate down to restore
+			await input.vm.$emit('arrowKeyDown', {
+				key: 'ArrowDown',
+				currentInputValue: 'Third message',
+			});
+			await input.vm.$emit('arrowKeyDown', {
+				key: 'ArrowDown',
+				currentInputValue: 'Third message',
+			});
+
+			// Should restore the original input
+			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith(
+				'setInputValue',
+				'My partial message',
+			);
+		});
+
+		it('should emit blur and focus events during navigation', async () => {
+			wrapper = mount(Chat);
+			const input = wrapper.findComponent({ name: 'Input' });
+
+			vi.clearAllMocks();
+
+			await input.vm.$emit('arrowKeyDown', { key: 'ArrowUp', currentInputValue: '' });
+
+			// Should blur before setting value
+			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('blurInput');
+			// Should focus after setting value
+			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('focusInput');
+		});
+
+		it('should handle escape key to exit navigation mode', async () => {
+			wrapper = mount(Chat);
+			const input = wrapper.findComponent({ name: 'Input' });
+
+			// Navigate back in history
+			await input.vm.$emit('arrowKeyDown', {
+				key: 'ArrowUp',
+				currentInputValue: 'My draft message',
+			});
+
+			vi.clearAllMocks();
+
+			// Press escape
+			await input.vm.$emit('escapeKeyDown', {});
+
+			// Should restore original input
+			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith(
+				'setInputValue',
+				'My draft message',
+			);
+		});
+
+		it('should not handle escape when not in navigation mode', async () => {
+			wrapper = mount(Chat);
+			const input = wrapper.findComponent({ name: 'Input' });
+
+			vi.clearAllMocks();
+
+			// Press escape without being in navigation mode
+			await input.vm.$emit('escapeKeyDown', {});
+
+			// Should not emit setInputValue
+			expect(vi.mocked(chatEventBus.emit)).not.toHaveBeenCalledWith(
+				'setInputValue',
+				expect.anything(),
+			);
 		});
 	});
 });
