@@ -340,7 +340,7 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([mock()]);
 
 			// Act
-			const result = await service.exportVariablesToWorkFolder();
+			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(1);
@@ -352,7 +352,7 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportVariablesToWorkFolder();
+			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(0);
