@@ -40,6 +40,7 @@ import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
+import { CollaborationService } from '../collaboration/collaboration.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -84,6 +85,7 @@ export class WorkflowsController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderService: FolderService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Post('/')
@@ -376,7 +378,24 @@ export class WorkflowsController {
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 
+		await this.collaborationService.broadcastWorkflowUpdate(
+			workflowId,
+			updatedWorkflow.versionId,
+			req.user.id,
+		);
+
 		return { ...updatedWorkflow, scopes };
+	}
+
+	@Get('/:workflowId/collaboration/write-lock')
+	@ProjectScope('workflow:read')
+	async getWriteLock(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		const writeLockUserId = await this.collaborationService.getWriteLock(workflowId);
+		return { userId: writeLockUserId };
 	}
 
 	@Delete('/:workflowId')

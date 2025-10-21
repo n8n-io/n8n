@@ -108,4 +108,24 @@ export class CollaborationState {
 
 		return Date.now() > expiryTime;
 	}
+
+	async setWriteLock(workflowId: Workflow['id'], userId: User['id']) {
+		const cacheKey = this.formWriteLockCacheKey(workflowId);
+		await this.cache.set(cacheKey, userId);
+	}
+
+	async getWriteLock(workflowId: Workflow['id']): Promise<User['id'] | null> {
+		const cacheKey = this.formWriteLockCacheKey(workflowId);
+		const userId = await this.cache.get<User['id']>(cacheKey);
+		return userId ?? null;
+	}
+
+	async releaseWriteLock(workflowId: Workflow['id']) {
+		const cacheKey = this.formWriteLockCacheKey(workflowId);
+		await this.cache.delete(cacheKey);
+	}
+
+	private formWriteLockCacheKey(workflowId: Workflow['id']) {
+		return `collaboration:write-lock:${workflowId}`;
+	}
 }

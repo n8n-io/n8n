@@ -28,6 +28,8 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { injectWorkflowState } from './useWorkflowState';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useDebounceFn } from '@vueuse/core';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -42,6 +44,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
+	const collaborationStore = useCollaborationStore();
 
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
@@ -172,6 +175,18 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	): Promise<boolean> {
 		const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
 		if (readOnlyEnv) {
+			return false;
+		}
+
+		if (collaborationStore.shouldBeReadOnly) {
+			const writerName = collaborationStore.currentWriter
+				? `${collaborationStore.currentWriter.user.firstName} ${collaborationStore.currentWriter.user.lastName}`
+				: 'another user';
+			toast.showMessage({
+				title: i18n.baseText('workflowHelpers.showMessage.title'),
+				message: `Cannot save: ${writerName} is currently editing this workflow`,
+				type: 'error',
+			});
 			return false;
 		}
 
@@ -441,9 +456,21 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		}
 	}
 
+	const autoSaveWorkflow = useDebounceFn(
+		async () => {
+			const saved = await saveCurrentWorkflow({}, false, false);
+			if (saved) {
+				console.log('[AutoSave] ✅ Workflow saved successfully');
+			}
+		},
+		1500,
+		{ maxWait: 5000 },
+	);
+
 	return {
 		promptSaveUnsavedWorkflowChanges,
 		saveCurrentWorkflow,
 		saveAsNewWorkflow,
+		autoSaveWorkflow,
 	};
 }

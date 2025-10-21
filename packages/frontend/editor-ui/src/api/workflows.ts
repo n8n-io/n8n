@@ -104,3 +104,11 @@ export async function getExecutionData(context: IRestApiContext, executionId: st
 		`/executions/${executionId}`,
 	);
 }
+
+export async function getWorkflowWriteLock(context: IRestApiContext, workflowId: string) {
+	return await makeRestApiRequest<{ userId: string | null }>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/collaboration/write-lock`,
+	);
+}

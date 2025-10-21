@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-export type CollaborationMessage = WorkflowOpenedMessage | WorkflowClosedMessage;
+export type CollaborationMessage =
+	| WorkflowOpenedMessage
+	| WorkflowClosedMessage
+	| WriteAccessAcquiredMessage
+	| WriteAccessReleasedMessage;
 
 export const workflowOpenedMessageSchema = z
 	.object({
@@ -16,14 +20,35 @@ export const workflowClosedMessageSchema = z
 	})
 	.strict();
 
+export const writeAccessAcquiredMessageSchema = z
+	.object({
+		type: z.literal('writeAccessAcquired'),
+		workflowId: z.string().min(1),
+		userId: z.string().min(1),
+	})
+	.strict();
+
+export const writeAccessReleasedMessageSchema = z
+	.object({
+		type: z.literal('writeAccessReleased'),
+		workflowId: z.string().min(1),
+	})
+	.strict();
+
 export const workflowMessageSchema = z.discriminatedUnion('type', [
 	workflowOpenedMessageSchema,
 	workflowClosedMessageSchema,
+	writeAccessAcquiredMessageSchema,
+	writeAccessReleasedMessageSchema,
 ]);
 
 export type WorkflowOpenedMessage = z.infer<typeof workflowOpenedMessageSchema>;
 
 export type WorkflowClosedMessage = z.infer<typeof workflowClosedMessageSchema>;
+
+export type WriteAccessAcquiredMessage = z.infer<typeof writeAccessAcquiredMessageSchema>;
+
+export type WriteAccessReleasedMessage = z.infer<typeof writeAccessReleasedMessageSchema>;
 
 export type WorkflowMessage = z.infer<typeof workflowMessageSchema>;
 
