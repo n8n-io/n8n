@@ -2,16 +2,18 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { usePostHog } from '@/stores/posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_TEMPLATES_V3, () => {
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
 	const cloudPlanStore = useCloudPlanStore();
+	const settingsStore = useSettingsStore();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
 
@@ -98,6 +100,41 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 		hasInteractedWithTemplateRecommendations.value = true;
 		localStorage.setItem(INTERACTION_STORAGE_KEY, 'true');
 	}
+
+	const trackExperimentParticipation = async () => {
+		if (settingsStore.isCloudDeployment && !cloudPlanStore.state.initialized) {
+			try {
+				await cloudPlanStore.initialize();
+			} catch (error) {
+				console.warn('Could not load cloud plan data for experiment tracking:', error);
+				return;
+			}
+		}
+
+		if (!hasChosenHubSpot.value) {
+			return;
+		}
+
+		const variant = posthogStore.getVariant(PERSONALIZED_TEMPLATES_V3.name);
+		if (variant) {
+			telemetry.track('User is part of experiment', {
+				name: PERSONALIZED_TEMPLATES_V3.name,
+				variant,
+			});
+		}
+	};
+
+	let hasTrackedExperiment = false;
+	watch(
+		hasChosenHubSpot,
+		(hasHubSpot) => {
+			if (hasHubSpot && !hasTrackedExperiment) {
+				hasTrackedExperiment = true;
+				void trackExperimentParticipation();
+			}
+		},
+		{ immediate: true },
+	);
 
 	return {
 		isFeatureEnabled,
