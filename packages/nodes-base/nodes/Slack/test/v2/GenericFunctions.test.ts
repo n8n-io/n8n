@@ -77,9 +77,18 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			// Test detailed error properties
 			try {
 				await slackApiRequest.call(mockExecuteFunctions, 'GET', '/test');
+				throw new Error('Expected slackApiRequest to throw');
 			} catch (error) {
+				if (error.message === 'Expected slackApiRequest to throw') {
+					throw error; // Re-throw our custom error if the function didn't throw as expected
+				}
 				expect(error).toBeInstanceOf(NodeOperationError);
 				expect(error.message).toBe('Your Slack credential is missing required Oauth Scopes');
 				expect(error.description).toBe('Add the following scope(s) to your Slack App: undefined');

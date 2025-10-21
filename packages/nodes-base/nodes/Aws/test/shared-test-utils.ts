@@ -82,12 +82,13 @@ export function createAwsApiRequestTests(
 			jest.clearAllMocks();
 
 			// Setup common node mock
+			const position: [number, number] = [0, 0];
 			const nodeConfig = {
 				id: 'test-node',
 				name: `Test ${serviceName.toUpperCase()} Node`,
 				type: `n8n-nodes-base.aws${serviceName}`,
 				typeVersion: 1,
-				position: [0, 0] as [number, number],
+				position,
 				parameters: {},
 			};
 			mockExecuteFunctions.getNode.mockReturnValue(nodeConfig);
