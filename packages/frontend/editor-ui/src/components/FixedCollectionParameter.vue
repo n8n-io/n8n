@@ -12,7 +12,7 @@ import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
-import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
+import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import ParameterInputList from './ParameterInputList.vue';
 import Draggable from 'vuedraggable';
@@ -70,9 +70,8 @@ const { activeNode } = storeToRefs(ndvStore);
 
 const mutableValues = ref({} as Record<string, INodeParameters[]>);
 const selectedOption = ref<string | null | undefined>(null);
-const collapsedItems = ref<Record<string, boolean>>({});
-const lastAddedItemKey = ref<string | null>(null);
-const previousValueKeys = ref<Set<string>>(new Set());
+const expandedItems = ref<Record<string, boolean>>({});
+const isWrapperExpanded = ref(!props.isNested);
 
 const getOptionProperties = (optionName: string): INodePropertyCollection | undefined => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return undefined;
@@ -134,8 +133,8 @@ const showLegacyUI = computed(() => renderVariant.value.startsWith('legacy'));
 const getDefaultExpandedState = (index: number): boolean => {
 	const defaultCollapsed = props.parameter.typeOptions?.fixedCollection?.defaultCollapsed ?? 'all';
 
-	if (defaultCollapsed === 'all') return false; // All collapsed = none expanded
-	if (defaultCollapsed === 'none') return true; // None collapsed = all expanded
+	if (defaultCollapsed === 'all') return false;
+	if (defaultCollapsed === 'none') return true;
 	// 'first-expanded': first item is expanded, rest are collapsed
 	return index === 0;
 };
@@ -210,71 +209,43 @@ const getItemActions = (optionName: string, index: number) => {
 	return actions;
 };
 
-const initializeCollapsedStates = () => {
-	const newCollapsedItems: Record<string, boolean> = {};
-	const previousKeys = new Set(Object.keys(collapsedItems.value));
-	const hasExistingState = previousKeys.size > 0;
+const initExpandedState = () => {
+	expandedItems.value = Object.entries(mutableValues.value).reduce<Record<string, boolean>>(
+		(acc, [propertyName, items]) => {
+			const itemsArray = Array.isArray(items) ? items : [items];
 
-	// Initialize wrapper state for nested multiple-values fixedCollections
-	if (props.isNested && multipleValues.value) {
-		newCollapsedItems['_wrapper'] = collapsedItems.value['_wrapper'] ?? true; // Default to expanded
-	}
-
-	// Check if this fixedCollection was just added to a parent collection
-	// This happens when the entire component receives new values that didn't exist before
-	const currentKeys = new Set(Object.keys(mutableValues.value));
-	const wasJustAdded =
-		props.isNested &&
-		isCollectionOverhaulEnabled.value &&
-		previousValueKeys.value.size === 0 &&
-		currentKeys.size > 0;
-
-	for (const [optionName, items] of Object.entries(mutableValues.value)) {
-		if (Array.isArray(items)) {
-			items.forEach((_, index) => {
-				const key = `${optionName}-${index}`;
-				const isNewItem = hasExistingState && !previousKeys.has(key);
-
-				if (collapsedItems.value[key] === undefined) {
-					// If we have existing state and this key is new, it's a newly added item - expand it
-					// If this fixedCollection was just added to a parent collection - expand it
-					// Otherwise, use default state (collapsed for 'all', expanded for first item if 'first-expanded')
-					newCollapsedItems[key] =
-						isNewItem || wasJustAdded ? true : getDefaultExpandedState(index);
-				} else {
-					// Existing item - preserve its state
-					newCollapsedItems[key] = collapsedItems.value[key];
-				}
-			});
-		} else {
-			// Handle non-multiple fixed collections (single object)
-			const key = optionName;
-			const isNewItem = hasExistingState && !previousKeys.has(key);
-
-			if (collapsedItems.value[key] === undefined) {
-				// If we have existing state and this key is new, it's a newly added item - expand it
-				// If this fixedCollection was just added to a parent collection - expand it
-				// Otherwise, use default state
-				newCollapsedItems[key] = isNewItem || wasJustAdded ? true : getDefaultExpandedState(0);
+			// For multipleValues collections, use ${propertyName}-${index} format
+			// For single-value collections, use just propertyName
+			if (multipleValues.value) {
+				itemsArray
+					.map((_, index) => ({
+						index,
+						key: `${propertyName}-${index}`,
+					}))
+					.forEach(({ index, key }) => {
+						console.log('state', key, true);
+						acc[key] = getDefaultExpandedState(index);
+					});
 			} else {
-				// Existing item - preserve its state
-				newCollapsedItems[key] = collapsedItems.value[key];
+				// Single value collection - use propertyName without index
+				acc[propertyName] = getDefaultExpandedState(0);
 			}
-		}
-	}
 
-	collapsedItems.value = newCollapsedItems;
+			console.log(propertyName, itemsArray, acc);
+			return acc;
+		},
+		{},
+	);
 };
+
+watch(expandedItems, (newVal) => {
+	console.log('Expanded items changed:', newVal);
+});
 
 watch(
 	() => props.values,
 	(newValues: Record<string, INodeParameters[]>) => {
 		mutableValues.value = deepCopy(newValues);
-		if (isCollectionOverhaulEnabled.value) {
-			initializeCollapsedStates();
-			// Update tracked keys after initialization
-			previousValueKeys.value = new Set(Object.keys(mutableValues.value));
-		}
 	},
 	{ deep: true },
 );
@@ -282,9 +253,7 @@ watch(
 onBeforeMount(() => {
 	mutableValues.value = deepCopy(props.values);
 	if (isCollectionOverhaulEnabled.value) {
-		initializeCollapsedStates();
-		// Initialize tracked keys
-		previousValueKeys.value = new Set(Object.keys(mutableValues.value));
+		initExpandedState();
 	}
 });
 
@@ -359,47 +328,8 @@ const optionSelected = async (optionName: string) => {
 		? [...existingValues, newParameterValue]
 		: newParameterValue;
 
-	// Calculate the key for the newly added item
-	if (isCollectionOverhaulEnabled.value) {
-		if (multipleValues.value) {
-			// For multiple values, the new item will be at index existingValues.length
-			lastAddedItemKey.value = `${optionName}-${existingValues.length}`;
-		} else {
-			// For single value, just use the option name
-			lastAddedItemKey.value = optionName;
-		}
-
-		// If this is a nested multiple-values fixedCollection, expand the wrapper panel
-		if (props.isNested && multipleValues.value) {
-			collapsedItems.value['_wrapper'] = true; // true = expanded
-		}
-	}
-
 	emit('valueChanged', { name, value: newValue });
 	selectedOption.value = undefined;
-
-	// Scroll the newly added item into view after DOM update (only if needed)
-	if (isCollectionOverhaulEnabled.value && lastAddedItemKey.value) {
-		await nextTick();
-		const element = document.querySelector(
-			`[data-item-key="${lastAddedItemKey.value}"]`,
-		) as HTMLElement;
-		if (element) {
-			// Check if element is already visible in viewport
-			const rect = element.getBoundingClientRect();
-			const isVisible =
-				rect.top >= 0 &&
-				rect.left >= 0 &&
-				rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-				rect.right <= (window.innerWidth || document.documentElement.clientWidth);
-
-			// Only scroll if not already visible
-			if (!isVisible) {
-				element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-			}
-		}
-		lastAddedItemKey.value = null;
-	}
 };
 
 const onAddButtonClick = async (optionName: string) => {
@@ -498,7 +428,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 		<N8nCollapsiblePanel
 			v-if="showWrapper && parameter.displayName !== ''"
-			v-model="collapsedItems['_wrapper']"
+			v-model="isWrapperExpanded"
 			:title="locale.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 			:show-actions-on-hover="false"
 		>
@@ -550,7 +480,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 							<template #item="{ index }">
 								<N8nCollapsiblePanel
 									:key="`${property.name}-${index}`"
-									v-model="collapsedItems[`${property.name}-${index}`]"
+									v-model="expandedItems[`${property.name}-${index}`]"
 									:title="getItemTitle(property.name, index)"
 									:actions="getItemActions(property.name, index)"
 									:data-item-key="`${property.name}-${index}`"
@@ -639,7 +569,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 					<template #item="{ index }">
 						<N8nCollapsiblePanel
 							:key="`${property.name}-${index}`"
-							v-model="collapsedItems[`${property.name}-${index}`]"
+							v-model="expandedItems[`${property.name}-${index}`]"
 							:title="getItemTitle(property.name, index)"
 							:actions="getItemActions(property.name, index)"
 							:data-item-key="`${property.name}-${index}`"
@@ -716,7 +646,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 			<N8nCollapsiblePanel
 				v-else-if="renderVariant === 'nested-single'"
-				v-model="collapsedItems[property.name]"
+				v-model="expandedItems[property.name]"
 				:title="property.displayName"
 				:actions="
 					!isReadOnly
