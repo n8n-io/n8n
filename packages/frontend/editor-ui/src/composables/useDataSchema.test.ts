@@ -981,6 +981,7 @@ describe('useFlattenSchema', () => {
 						isDataEmpty: false,
 						hasBinary: false,
 						preview: false,
+						lastSuccessfulPreview: false,
 						schema,
 					}),
 					mock<SchemaNode>({
@@ -988,6 +989,7 @@ describe('useFlattenSchema', () => {
 						isDataEmpty: false,
 						hasBinary: false,
 						preview: false,
+						lastSuccessfulPreview: false,
 						schema,
 					}),
 				],
