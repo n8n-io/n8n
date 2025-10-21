@@ -1,0 +1,151 @@
+#!/usr/bin/env tsx
+
+import { writeFileSync } from 'fs';
+import { join } from 'path';
+import pLimit from 'p-limit';
+import pc from 'picocolors';
+
+import { promptCategorizationChain } from '../src/chains/prompt-categorization';
+import { TechniqueDescription } from '../src/types/categorization';
+
+import { setupIntegrationLLM } from '../src/chains/test/integration/test-helpers';
+
+// import { userPrompts } from '.prompts/100x3-prompts';
+
+const userPrompts = [
+	'Automate my business',
+	'I want to build a workflow that generates a haiku from a wikipedia page.',
+];
+
+interface CategorizationResult {
+	index: number;
+	prompt: string;
+	promptPreview: string;
+	techniques: string[];
+	confidence: number;
+	executionTime: number;
+}
+
+async function categorizeAllPrompts() {
+	// Get concurrency from environment or default to 10
+	const concurrency = process.env.CONCURRENCY ? parseInt(process.env.CONCURRENCY, 10) : 10;
+
+	console.log(pc.blue(`\n🚀 Starting categorization of ${userPrompts.length} prompts...`));
+	console.log(pc.dim(`   Processing with concurrency=${concurrency}\n`));
+
+	// Setup LLM
+	const llm = await setupIntegrationLLM();
+
+	const results: CategorizationResult[] = new Array(userPrompts.length);
+	let completed = 0;
+	const startTime = Date.now();
+
+	// Create concurrency limiter
+	const limit = pLimit(concurrency);
+
+	// Process prompts in parallel with concurrency limit
+	const promises = userPrompts.map((prompt, i) =>
+		limit(async () => {
+			const promptPreview = prompt.length > 80 ? prompt.substring(0, 80) + '...' : prompt;
+
+			try {
+				const taskStartTime = Date.now();
+				const result = await promptCategorizationChain(llm, prompt);
+				const executionTime = Date.now() - taskStartTime;
+
+				results[i] = {
+					index: i + 1,
+					prompt,
+					promptPreview,
+					techniques: result.techniques,
+					confidence: result.confidence ?? 0,
+					executionTime,
+				};
+
+				completed++;
+				const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+				console.log(
+					pc.green(`✓ [${completed}/${userPrompts.length}]`) +
+						pc.dim(` (${elapsed}s)`) +
+						` ${promptPreview}\n  Techniques: ${result.techniques.join(', ')}\n  Confidence: ${((result.confidence ?? 0) * 100).toFixed(1)}%\n`,
+				);
+			} catch (error) {
+				console.error(pc.red(`✗ [${i + 1}/${userPrompts.length}] Error:`) + ` ${error}\n`);
+				results[i] = {
+					index: i + 1,
+					prompt,
+					promptPreview,
+					techniques: [],
+					confidence: 0,
+					executionTime: 0,
+				};
+				completed++;
+			}
+		}),
+	);
+
+	// Wait for all promises to complete
+	await Promise.all(promises);
+	const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+	// Calculate statistics
+	const techniqueFrequency = new Map<string, number>();
+	for (const result of results) {
+		for (const technique of result.techniques) {
+			techniqueFrequency.set(technique, (techniqueFrequency.get(technique) ?? 0) + 1);
+		}
+	}
+
+	const sortedFrequency = Array.from(techniqueFrequency.entries()).sort((a, b) => b[1] - a[1]);
+
+	const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+	const outputDir = join(__dirname);
+
+	// Save technique frequency summary
+	const summaryPath = join(outputDir, `categorization-summary-${timestamp}.md`);
+	const summaryLines = [
+		'# Prompt Categorization Summary',
+		'',
+		`**Date:** ${new Date().toISOString()}`,
+		`**Total Prompts:** ${results.length}`,
+		`**Total Time:** ${totalTime}s`,
+		`**Concurrency:** ${concurrency} parallel executions`,
+		`**Average Confidence:** ${((results.reduce((sum, r) => sum + r.confidence, 0) / results.length) * 100).toFixed(1)}%`,
+		`**Average Execution Time:** ${(results.reduce((sum, r) => sum + r.executionTime, 0) / results.length).toFixed(0)}ms`,
+		'',
+		'## Technique Frequency',
+		'',
+		'| Rank | Technique | Count | Percentage | Description |',
+		'|------|-----------|-------|------------|-------------|',
+		...sortedFrequency.map(([technique, count], index) => {
+			const percentage = ((count / results.length) * 100).toFixed(1);
+			const description = TechniqueDescription[technique as keyof typeof TechniqueDescription];
+			return `| ${index + 1} | \`${technique}\` | ${count} | ${percentage}% | ${description} |`;
+		}),
+		'',
+		'## Detailed Results',
+		'',
+		...results.map((r) => {
+			const preview =
+				r.promptPreview.length > 100 ? r.promptPreview.substring(0, 100) + '...' : r.promptPreview;
+			return [
+				`### ${r.index}. ${preview}`,
+				'',
+				`**Techniques:** ${r.techniques.map((t) => `\`${t}\``).join(', ')}`,
+				`**Confidence:** ${(r.confidence * 100).toFixed(1)}%`,
+				`**Execution Time:** ${r.executionTime}ms`,
+				'',
+			].join('\n');
+		}),
+	];
+	writeFileSync(summaryPath, summaryLines.join('\n'));
+
+	console.log(pc.green('\n✓ Categorization complete!\n'));
+	console.log(`Results saved to: ${pc.dim(summaryPath)}\n`);
+}
+
+// Run the script
+categorizeAllPrompts().catch((error) => {
+	console.error(pc.red('\n✗ Error:'), error);
+	process.exit(1);
+});
