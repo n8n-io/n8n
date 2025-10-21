@@ -42,7 +42,7 @@ import { useExecutionData } from '@/features/execution/executions/composables/us
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
