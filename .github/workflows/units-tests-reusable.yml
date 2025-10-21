@@ -27,8 +27,12 @@ env:
 
 jobs:
   unit-test-backend:
-    name: Backend
+    name: Backend (shard ${{ matrix.shard }}/3)
     runs-on: blacksmith-4vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
@@ -42,23 +46,31 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:backend
+        run: pnpm test:ci:backend --shard=${{ matrix.shard }}/3
+        env:
+          JEST_SHARD: ${{ matrix.shard }}/3
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          name: backend-shard-${{ matrix.shard }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend
+          name: backend-shard-${{ matrix.shard }}
 
   unit-test-frontend:
-    name: Frontend
+    name: Frontend (shard ${{ matrix.shard }}/2)
     runs-on: blacksmith-4vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
@@ -72,16 +84,20 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend
+        run: pnpm test:ci:frontend --shard=${{ matrix.shard }}/3
+        env:
+          VITEST_SHARD: ${{ matrix.shard }}/3
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          name: frontend-shard-${{ matrix.shard }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: frontend
+          name: frontend-shard-${{ matrix.shard }}
