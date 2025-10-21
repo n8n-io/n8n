@@ -1,2 +1,1 @@
-export * from './finding/Finding.resource';
-export * from './classificationJob/ClassificationJob.resource';
+export * from './session/Session.resource';

@@ -1,18 +1,1 @@
-{
-	"node": "n8n-nodes-base.awsMacie",
-	"nodeVersion": "1.0",
-	"codexVersion": "1.0",
-	"categories": ["Security"],
-	"resources": {
-		"credentialDocumentation": [
-			{
-				"url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
-			}
-		],
-		"primaryDocumentation": [
-			{
-				"url": "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html"
-			}
-		]
-	}
-}
+{"node":"n8n-nodes-base.awsMacie","nodeVersion":"1.0","codexVersion":"1.0","categories":["Development"],"resources":{"credentialDocumentation":[{"url":"https://docs.n8n.io/integrations/builtin/credentials/aws/"}],"primaryDocumentation":[{"url":"https://docs.aws.amazon.com/macie/"}]}}
