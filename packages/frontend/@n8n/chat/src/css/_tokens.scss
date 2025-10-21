@@ -81,6 +81,7 @@
 	/* Input Area */
 	--chat--textarea--height: 50px;
 	--chat--textarea--max-height: 30rem;
+	--chat--input--width: 100%;
 	--chat--input--font-size: inherit;
 	--chat--input--border: 0;
 	--chat--input--border-radius: 0;
@@ -91,6 +92,11 @@
 	--chat--input--placeholder--font-size: var(--chat--input--font-size);
 	--chat--input--border-active: 0;
 	--chat--input--left--panel--width: 2rem;
+	--chat--input--container--background: var(--chat--color-white);
+	--chat--input--container--border: 0;
+	--chat--input--container--border-radius: 0;
+	--chat--input--container--padding: 0;
+	--chat--input--button--border-radius: 16px;
 
 	/* Button Styles */
 	--chat--button--color: var(--chat--color-light);
@@ -118,7 +124,8 @@
 
 	/* Body and Footer */
 	--chat--body--background: var(--chat--color-light);
-	--chat--footer--padding: var(--chat--spacing);
+	--chat--footer--padding: 0;
 	--chat--footer--background: var(--chat--color-light);
 	--chat--footer--color: var(--chat--color-dark);
+	--chat--footer--border-top: 1px solid var(--chat--color-light-shade-100);
 }
