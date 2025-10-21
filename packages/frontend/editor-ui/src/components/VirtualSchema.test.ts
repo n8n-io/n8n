@@ -236,15 +236,15 @@ describe('VirtualSchema.vue', () => {
 	it('renders schema for empty data with binary', async () => {
 		mockNodeOutputData(mockNode1.name, [{ json: {}, binary: { data: mock<IBinaryData>() } }]);
 
-		const { container } = renderComponent({
+		const { getAllByText } = renderComponent({
 			props: { nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }] },
 		});
 
-		// With the new empty data detection logic, [{}] is now treated as empty data
-		// even if there's binary data present, showing an empty message
+		// When there's empty JSON data with binary data, it should show the binary warning
 		await waitFor(() => {
-			const text = container.textContent;
-			expect(text).toMatch(/No fields/);
+			expect(getAllByText("Only binary data exists. View it using the 'Binary' tab").length).toBe(
+				1,
+			);
 		});
 	});
 

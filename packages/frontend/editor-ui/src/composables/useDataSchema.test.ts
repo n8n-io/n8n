@@ -866,6 +866,7 @@ describe('useFlattenSchema', () => {
 					mock<SchemaNode>({
 						node: { name: 'Test Node' },
 						isDataEmpty: true,
+						hasBinary: false,
 						schema: { type: 'object', value: [] },
 					}),
 				],

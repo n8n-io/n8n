@@ -480,7 +480,8 @@ export const useFlattenSchema = () => {
 				}
 
 				if (item.isDataEmpty) {
-					acc.push(emptyItem('emptyData', { level: 1 }));
+					// Check for binary data even when data is empty
+					acc.push(emptyItem(item.hasBinary ? 'emptySchemaWithBinary' : 'emptyData', { level: 1 }));
 					return acc;
 				}
 				acc.push(emptyItem(item.hasBinary ? 'emptySchemaWithBinary' : 'emptySchema', { level: 1 }));
