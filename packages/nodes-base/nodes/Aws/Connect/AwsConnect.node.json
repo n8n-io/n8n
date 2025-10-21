@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.awsConnect",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.aws.amazon.com/connect/latest/adminguide/what-is-amazon-connect.html"
+			}
+		]
+	}
+}
