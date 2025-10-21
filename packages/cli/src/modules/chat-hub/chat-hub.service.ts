@@ -62,6 +62,7 @@ import type {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
+import { ChatHubSession } from './chat-hub-session.entity';
 
 const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -404,8 +405,8 @@ export class ChatHubService {
 		}
 	}
 
-	async editHumanMessage(res: Response, user: User, payload: EditMessagePayload) {
-		const { sessionId, editId, messageId, message, replyId } = payload;
+	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
+		const { sessionId, editId } = payload;
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
@@ -414,10 +415,24 @@ export class ChatHubService {
 		const session = await this.getChatSession(user, sessionId);
 		const messageToEdit = await this.getChatMessage(session.id, editId);
 
-		if (messageToEdit.type !== 'human') {
-			throw new BadRequestError('Can only edit human messages');
+		if (messageToEdit.type === 'human') {
+			await this.editHumanMessage(res, user, payload, session, messageToEdit, selectedModel);
+		} else if (messageToEdit.type === 'ai') {
+			await this.editAIMessage(payload.message, editId);
+		} else {
+			throw new BadRequestError('Only human and AI messages can be edited');
 		}
+	}
 
+	private async editHumanMessage(
+		res: Response,
+		user: User,
+		payload: EditMessagePayload,
+		session: ChatHubSession,
+		messageToEdit: ChatHubMessage,
+		selectedModel: ModelWithCredentials,
+	) {
+		const { sessionId, messageId, message, replyId } = payload;
 		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 		const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
 
@@ -454,6 +469,11 @@ export class ChatHubService {
 		} finally {
 			await this.deleteChatWorkflow(workflow.workflowData.id);
 		}
+	}
+
+	private async editAIMessage(content: string, messageId: ChatMessageId) {
+		// AI edits just change the original message without revisioning
+		await this.messageRepository.updateChatMessage(messageId, { content });
 	}
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
