@@ -33,7 +33,7 @@ export class ProvisioningService {
 		return this.provisioningConfig;
 	}
 
-	async provisionInstanceRole(user: User, role: unknown) {
+	async provisionInstanceRoleForUser(user: User, role: unknown) {
 		if (typeof role !== 'string') {
 			this.logger.warn(
 				`Invalid role type: ${typeof role} expected string, skipping instance role provisioning`,
@@ -54,10 +54,15 @@ export class ProvisioningService {
 			return;
 		}
 
+		/*
+		 * If the user is changing from an owner to a non-owner role,
+		 * we need to check if they are the last owner to avoid an instance losing its only owner
+		 */
 		if (user.role.slug === ROLE.Owner && parsedRole !== ROLE.Owner) {
 			const otherOwners = await this.userRepository.count({
 				where: { role: { slug: ROLE.Owner }, id: Not(user.id) },
 			});
+
 			if (otherOwners === 0) {
 				this.logger.warn(
 					`Cannot remove last owner role: ${ROLE.Owner} from user: ${user.id}, skipping instance role provisioning`,

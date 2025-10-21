@@ -2,16 +2,23 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { type SettingsRepository } from '@n8n/db';
+import { User, UserRepository, type SettingsRepository } from '@n8n/db';
 import { type GlobalConfig } from '@n8n/config';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
+import { ZodError } from 'zod';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
+const userRepository = mock<UserRepository>();
 const logger = mock<Logger>();
 
-const provisioningService = new ProvisioningService(globalConfig, settingsRepository, logger);
+const provisioningService = new ProvisioningService(
+	globalConfig,
+	settingsRepository,
+	userRepository,
+	logger,
+);
 
 describe('ProvisioningService', () => {
 	beforeEach(() => {
@@ -130,6 +137,75 @@ describe('ProvisioningService', () => {
 
 			const config = await provisioningService.loadConfig();
 			expect(config).toEqual(provisioningConfigDto);
+		});
+	});
+
+	describe('provisionInstanceRoleForUser', () => {
+		it('should do nothing if the role is not a string', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const role = 123;
+
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Invalid role type: number expected string, skipping instance role provisioning',
+				{ userId: user.id, role },
+			);
+		});
+
+		it('should do nothing if the role is invalid', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const role = 'invalid';
+
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Invalid role: invalid provided, expected oneof global:owner, global:member, global:admin, default, skipping instance role provisioning',
+				{ userId: user.id, role, error: expect.any(ZodError) },
+			);
+		});
+
+		it('should do nothing if the user is the last owner', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const role = 'global:member';
+
+			userRepository.count.mockResolvedValue(0);
+
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Cannot remove last owner role: global:owner from user: ${user.id}, skipping instance role provisioning`,
+				{ userId: user.id, role },
+			);
+		});
+
+		it('should allow a user to change from an owner role to a non-owner role, if there are other owners', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const role = 'global:member';
+			userRepository.count.mockResolvedValue(1);
+
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: role } });
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should provision the instance role for the user', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const role = 'global:owner';
+
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: role } });
+		});
+
+		it('should do nothing if the role has not changed', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const role = 'global:owner';
+
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).not.toHaveBeenCalled();
 		});
 	});
 });
