@@ -623,7 +623,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
 							<template #link>
 								<a
-									href="https://docs.n8n.io/workflows/components/connections/"
+									href="https://docs.n8n.io/workflows/connections/"
 									target="_blank"
 									@click="onConnectionHelpClick"
 								>
@@ -644,7 +644,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					<N8nText tag="div">
 						{{ i18n.baseText('ndv.input.notConnected.message') }}
 						<a
-							href="https://docs.n8n.io/workflows/components/connections/"
+							href="https://docs.n8n.io/workflows/connections/"
 							target="_blank"
 							@click="onConnectionHelpClick"
 						>
