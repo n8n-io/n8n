@@ -26,9 +26,11 @@ env:
   NODE_OPTIONS: --max-old-space-size=7168
 
 jobs:
-  build:
-    name: Build
+  unit-test-backend:
+    name: Backend
     runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -38,40 +40,6 @@ jobs:
         uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
           node-version: ${{ inputs.nodeVersion }}
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.5.0
-        with:
-          name: build-artifacts
-          path: |
-            node_modules
-            packages/**/node_modules
-            packages/**/dist
-          retention-days: 1
-
-  unit-test-backend:
-    name: Backend
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    needs: build
-    env:
-      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ inputs.ref }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca777af5130f47f0a85e7e84b7 # v4.2.0
-        with:
-          node-version: ${{ inputs.nodeVersion }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v4.1.8
-        with:
-          name: build-artifacts
 
       - name: Test
         run: pnpm test:ci:backend
@@ -91,7 +59,6 @@ jobs:
   unit-test-frontend:
     name: Frontend
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    needs: build
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
@@ -99,18 +66,10 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca777af5130f47f0a85e7e84b7 # v4.2.0
+      - name: Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
           node-version: ${{ inputs.nodeVersion }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v4.1.8
-        with:
-          name: build-artifacts
 
       - name: Test
         run: pnpm test:ci:frontend
