@@ -3,7 +3,7 @@ import { ref, watch, onMounted, nextTick } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { storeToRefs } from 'pinia';
 
 import { ElDialog } from 'element-plus';
