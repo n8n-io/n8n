@@ -1,0 +1,60 @@
+name: Test Windows Build with Spaces in Path
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'cat-1514-test-windows-spaces-in-path'
+  pull_request:
+    branches: [master]
+    paths:
+      - '.github/workflows/test-windows-spaces.yml'
+      - 'packages/cli/scripts/build.mjs'
+
+jobs:
+  test-with-spaces:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: 'Test With Spaces'
+
+    steps:
+      - name: Checkout code to directory with spaces
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: 'Test With Spaces'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.x'
+
+      - name: Setup pnpm and Install Dependencies
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 10
+          run_install: |
+            - recursive: true
+              cwd: ./Test With Spaces
+
+      - name: Configure Turborepo Cache
+        uses: rharkor/caching-for-turbo@2b4b5b14a8d16b8556a58993a8ac331d56d8906d # v2.3.2
+
+      - name: Build Project
+        run: pnpm build
+        shell: bash
+
+      - name: Check for OpenAPI file
+        shell: cmd
+        run: |
+          echo === Checking for OpenAPI file ===
+          if exist "packages\cli\dist\public-api\v1\openapi.yml" (
+            echo SUCCESS: OpenAPI file exists
+            dir packages\cli\dist\public-api\v1\openapi.yml
+          ) else (
+            echo ERROR: OpenAPI file NOT found at packages\cli\dist\public-api\v1\openapi.yml
+            echo.
+            echo Listing public-api directory:
+            dir packages\cli\dist\public-api\ /s 2>nul || echo Directory not found
+            exit /b 1
+          )
