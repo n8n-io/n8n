@@ -26,6 +26,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import EulaAcceptanceModal from '../components/EulaAcceptanceModal.vue';
+
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
@@ -45,6 +47,8 @@ const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCa
 const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
+const eulaModal = ref(false);
+const eulaUrl = ref('');
 
 const canUserActivateLicense = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'license:manage' } }),
@@ -87,14 +91,40 @@ const showActivationError = (error: Error) => {
 	toast.showError(error, locale.baseText('settings.usageAndPlan.license.activation.error.title'));
 };
 
-const onLicenseActivation = async () => {
+const onLicenseActivation = async (eulaUri?: string) => {
 	try {
-		await usageStore.activateLicense(activationKey.value);
+		await usageStore.activateLicense(activationKey.value, eulaUri);
 		activationKeyModal.value = false;
+		eulaModal.value = false;
+		activationKey.value = '';
 		showActivationSuccess();
-	} catch (error) {
-		showActivationError(error);
+	} catch (error: unknown) {
+		// Check if error requires EULA acceptance
+		const responseError = error as { httpStatusCode?: number; meta?: { eulaUrl?: string } };
+
+		if (
+			responseError.httpStatusCode &&
+			responseError.httpStatusCode >= 400 &&
+			responseError.httpStatusCode < 500 &&
+			responseError.meta?.eulaUrl
+		) {
+			activationKeyModal.value = false;
+			eulaUrl.value = responseError.meta.eulaUrl;
+			eulaModal.value = true;
+			return;
+		}
+		showActivationError(error as Error);
 	}
+};
+
+const onEulaAccept = () => {
+	void onLicenseActivation(eulaUrl.value);
+};
+
+const onEulaCancel = () => {
+	eulaModal.value = false;
+	eulaUrl.value = '';
+	activationKey.value = '';
 };
 
 onMounted(async () => {
@@ -285,6 +315,13 @@ const openCommunityRegisterModal = () => {
 					</N8nButton>
 				</template>
 			</ElDialog>
+
+			<EulaAcceptanceModal
+				v-model="eulaModal"
+				:eula-url="eulaUrl"
+				@accept="onEulaAccept"
+				@cancel="onEulaCancel"
+			/>
 		</div>
 	</div>
 </template>
