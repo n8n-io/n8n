@@ -1,4 +1,4 @@
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { unwrapExpression } from '@/utils/expressions';
 import { syntaxTree } from '@codemirror/language';
 import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
