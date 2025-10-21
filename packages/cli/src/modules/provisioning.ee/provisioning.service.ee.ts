@@ -39,10 +39,13 @@ export class ProvisioningService {
 	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
 		const globalOwnerRoleSlug = 'global:owner';
 		if (typeof roleSlug !== 'string') {
-			this.logger.warn('Invalid role type: expected string, skipping instance role provisioning', {
-				userId: user.id,
-				roleSlug,
-			});
+			this.logger.warn(
+				`skipping instance role provisioning. Invalid role type: expected string, received ${typeof roleSlug}`,
+				{
+					userId: user.id,
+					roleSlug,
+				},
+			);
 			return;
 		}
 
@@ -69,7 +72,7 @@ export class ProvisioningService {
 
 			if (otherOwners === 0) {
 				this.logger.warn(
-					`Cannot remove last owner role: ${globalOwnerRoleSlug} from user: ${user.id}, skipping instance role provisioning`,
+					`Skipping instance role provisioning. Cannot remove last owner role: ${globalOwnerRoleSlug} from user: ${user.id}`,
 					{ userId: user.id, roleSlug },
 				);
 				return;

@@ -153,8 +153,8 @@ describe('ProvisioningService', () => {
 			expect(userRepository.update).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Invalid role type: expected string, skipping instance role provisioning',
-				{ userId: user.id, roleSlug },
+				'skipping instance role provisioning. Invalid role type: expected string, received number',
+				{ userId: user.id, roleSlug: 123 },
 			);
 		});
 
@@ -185,8 +185,8 @@ describe('ProvisioningService', () => {
 			expect(userRepository.update).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
-				`Cannot remove last owner role: global:owner from user: ${user.id}, skipping instance role provisioning`,
-				{ userId: user.id, roleSlug },
+				`Skipping instance role provisioning. Cannot remove last owner role: global:owner from user: ${user.id}`,
+				{ userId: user.id, roleSlug: 'global:member' },
 			);
 		});
 
