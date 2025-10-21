@@ -1,35 +1,43 @@
 import type {
+	INodeType,
+	INodeTypeDescription,
 	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { certificateFields, certificateOperations } from './CertificateDescription';
-import { awsApiRequestAllItems, awsApiRequestREST } from './GenericFunctions';
+import { BASE_URL } from './helpers/constants';
+import { handleCertificateManagerError } from './helpers/errorHandler';
+
+import { certificateOperations, certificateFields } from './descriptions';
 
 export class AwsCertificateManager implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Certificate Manager',
 		name: 'awsCertificateManager',
-		icon: 'file:acm.svg',
-		group: ['output'],
+		icon: 'file:certificatemanager.svg',
+		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to AWS Certificate Manager',
+		description: 'Interact with AWS Certificate Manager (ACM)',
 		defaults: {
 			name: 'AWS Certificate Manager',
 		},
-		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'aws',
 				required: true,
 			},
 		],
+		requestDefaults: {
+			baseURL: BASE_URL,
+			headers: {
+				Accept: 'application/json',
+				'Content-Type': 'application/x-amz-json-1.1',
+			},
+		},
 		properties: [
 			{
 				displayName: 'Resource',
@@ -44,7 +52,6 @@ export class AwsCertificateManager implements INodeType {
 				],
 				default: 'certificate',
 			},
-			// Certificate
 			...certificateOperations,
 			...certificateFields,
 		],
@@ -52,184 +59,86 @@ export class AwsCertificateManager implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const qs: IDataObject = {};
-		let responseData;
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-		for (let i = 0; i < items.length; i++) {
+		const returnData: INodeExecutionData[] = [];
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				if (resource === 'certificate') {
-					//https://docs.aws.amazon.com/acm/latest/APIReference/API_DeleteCertificate.html
-					if (operation === 'delete') {
-						const certificateArn = this.getNodeParameter('certificateArn', i) as string;
+				const resource = this.getNodeParameter('resource', itemIndex) as string;
+				const operation = this.getNodeParameter('operation', itemIndex) as string;
 
-						const body: IDataObject = {
-							CertificateArn: certificateArn,
-						};
+				let response: IDataObject | IDataObject[];
 
-						responseData = await awsApiRequestREST.call(
-							this,
-							'acm',
-							'POST',
-							'',
-							JSON.stringify(body),
-							qs,
-							{
-								'X-Amz-Target': 'CertificateManager.DeleteCertificate',
-								'Content-Type': 'application/x-amz-json-1.1',
-							},
-						);
+				const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
 
-						responseData = { success: true };
+				if (Object.keys(additionalFields).length > 0) {
+					const requestOptions = this.getNodeParameter('$request', itemIndex, {}) as IDataObject;
+					if (!requestOptions.body) {
+						requestOptions.body = {};
 					}
 
-					//https://docs.aws.amazon.com/acm/latest/APIReference/API_GetCertificate.html
-					if (operation === 'get') {
-						const certificateArn = this.getNodeParameter('certificateArn', i) as string;
-
-						const body: IDataObject = {
-							CertificateArn: certificateArn,
-						};
-
-						responseData = await awsApiRequestREST.call(
-							this,
-							'acm',
-							'POST',
-							'',
-							JSON.stringify(body),
-							qs,
-							{
-								'X-Amz-Target': 'CertificateManager.GetCertificate',
-								'Content-Type': 'application/x-amz-json-1.1',
-							},
-						);
+					if (additionalFields.SubjectAlternativeNames && typeof additionalFields.SubjectAlternativeNames === 'string') {
+						additionalFields.SubjectAlternativeNames = (additionalFields.SubjectAlternativeNames as string)
+							.split(',')
+							.map(s => s.trim());
 					}
 
-					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
-					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
-						const options = this.getNodeParameter('options', i);
+					if (additionalFields.CertificateStatuses && typeof additionalFields.CertificateStatuses === 'string') {
+						additionalFields.CertificateStatuses = (additionalFields.CertificateStatuses as string)
+							.split(',')
+							.map(s => s.trim());
+					}
 
-						const body: { Includes: IDataObject; CertificateStatuses: string[]; MaxItems: number } =
-							{
-								CertificateStatuses: [],
-								Includes: {},
-								MaxItems: 0,
-							};
-
-						if (options.certificateStatuses) {
-							body.CertificateStatuses = options.certificateStatuses as string[];
-						}
-
-						if (options.certificateStatuses) {
-							body.Includes.extendedKeyUsage = options.extendedKeyUsage as string[];
-						}
-
-						if (options.keyTypes) {
-							body.Includes.keyTypes = options.keyTypes as string[];
-						}
-
-						if (options.keyUsage) {
-							body.Includes.keyUsage = options.keyUsage as string[];
-						}
-
-						if (returnAll) {
-							responseData = await awsApiRequestAllItems.call(
-								this,
-								'CertificateSummaryList',
-								'acm',
-								'POST',
-								'',
-								'{}',
-								qs,
-								{
-									'X-Amz-Target': 'CertificateManager.ListCertificates',
-									'Content-Type': 'application/x-amz-json-1.1',
-								},
-							);
-						} else {
-							body.MaxItems = this.getNodeParameter('limit', 0);
-							responseData = await awsApiRequestREST.call(
-								this,
-								'acm',
-								'POST',
-								'',
-								JSON.stringify(body),
-								qs,
-								{
-									'X-Amz-Target': 'CertificateManager.ListCertificates',
-									'Content-Type': 'application/x-amz-json-1.1',
-								},
-							);
-							responseData = responseData.CertificateSummaryList;
+					if (additionalFields.Tags && typeof additionalFields.Tags === 'string') {
+						try {
+							additionalFields.Tags = JSON.parse(additionalFields.Tags as string);
+						} catch (error) {
+							throw new Error('Tags must be valid JSON array');
 						}
 					}
 
-					//https://docs.aws.amazon.com/acm/latest/APIReference/API_DescribeCertificate.html
-					if (operation === 'getMetadata') {
-						const certificateArn = this.getNodeParameter('certificateArn', i) as string;
-
-						const body: IDataObject = {
-							CertificateArn: certificateArn,
-						};
-
-						responseData = await awsApiRequestREST.call(
-							this,
-							'acm',
-							'POST',
-							'',
-							JSON.stringify(body),
-							qs,
-							{
-								'X-Amz-Target': 'CertificateManager.DescribeCertificate',
-								'Content-Type': 'application/x-amz-json-1.1',
-							},
-						);
-
-						responseData = responseData.Certificate;
-					}
-
-					//https://docs.aws.amazon.com/acm/latest/APIReference/API_RenewCertificate.html
-					if (operation === 'renew') {
-						const certificateArn = this.getNodeParameter('certificateArn', i) as string;
-
-						const body: IDataObject = {
-							CertificateArn: certificateArn,
-						};
-
-						responseData = await awsApiRequestREST.call(
-							this,
-							'acm',
-							'POST',
-							'',
-							JSON.stringify(body),
-							qs,
-							{
-								'X-Amz-Target': 'CertificateManager.RenewCertificate',
-								'Content-Type': 'application/x-amz-json-1.1',
-							},
-						);
-
-						responseData = { success: true };
-					}
-
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData as IDataObject),
-						{ itemData: { item: i } },
-					);
-
-					returnData.push(...executionData);
+					Object.assign(requestOptions.body, additionalFields);
 				}
+
+				if (resource === 'certificate' && operation === 'export') {
+					const passphrase = this.getNodeParameter('passphrase', itemIndex) as string;
+					const requestOptions = this.getNodeParameter('$request', itemIndex, {}) as IDataObject;
+					if (!requestOptions.body) {
+						requestOptions.body = {};
+					}
+					(requestOptions.body as IDataObject).Passphrase = Buffer.from(passphrase).toString('base64');
+				}
+
+				response = await this.helpers.requestWithAuthentication.call(this, 'aws', {
+					returnFullResponse: false,
+					ignoreHttpStatusErrors: true,
+				});
+
+				if (response && typeof response === 'object' && ('__type' in response || 'message' in response)) {
+					await handleCertificateManagerError.call(this, response, itemIndex);
+				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(response as IDataObject[]),
+					{ itemData: { item: itemIndex } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [returnData as INodeExecutionData[]];
+		return [returnData];
 	}
 }

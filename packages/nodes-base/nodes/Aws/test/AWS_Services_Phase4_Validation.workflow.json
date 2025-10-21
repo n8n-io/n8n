@@ -1,0 +1,138 @@
+{
+	"name": "AWS Services Phase 4 Validation",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 400],
+			"id": "manual-trigger"
+		},
+		{
+			"parameters": {
+				"resource": "deliveryStream",
+				"operation": "list"
+			},
+			"name": "AWS Kinesis Firehose - List Delivery Streams",
+			"type": "n8n-nodes-base.awsKinesisFirehose",
+			"typeVersion": 1,
+			"position": [460, 200],
+			"id": "firehose-list",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "graphqlApi",
+				"operation": "list"
+			},
+			"name": "AWS AppSync - List GraphQL APIs",
+			"type": "n8n-nodes-base.awsAppSync",
+			"typeVersion": 1,
+			"position": [460, 300],
+			"id": "appsync-list",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "list"
+			},
+			"name": "AWS Batch - List Jobs",
+			"type": "n8n-nodes-base.awsBatch",
+			"typeVersion": 1,
+			"position": [460, 400],
+			"id": "batch-list",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "server",
+				"operation": "list"
+			},
+			"name": "AWS Transfer - List Servers",
+			"type": "n8n-nodes-base.awsTransfer",
+			"typeVersion": 1,
+			"position": [460, 500],
+			"id": "transfer-list",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "cluster",
+				"operation": "list"
+			},
+			"name": "AWS MSK - List Clusters",
+			"type": "n8n-nodes-base.awsMSK",
+			"typeVersion": 1,
+			"position": [460, 600],
+			"id": "msk-list",
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition"
+			},
+			"name": "Merge Results",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [680, 400],
+			"id": "merge-results"
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{"node": "AWS Kinesis Firehose - List Delivery Streams", "type": "main", "index": 0},
+					{"node": "AWS AppSync - List GraphQL APIs", "type": "main", "index": 0},
+					{"node": "AWS Batch - List Jobs", "type": "main", "index": 0},
+					{"node": "AWS Transfer - List Servers", "type": "main", "index": 0},
+					{"node": "AWS MSK - List Clusters", "type": "main", "index": 0}
+				]
+			]
+		},
+		"AWS Kinesis Firehose - List Delivery Streams": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"AWS AppSync - List GraphQL APIs": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"AWS Batch - List Jobs": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"AWS Transfer - List Servers": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"AWS MSK - List Clusters": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		}
+	},
+	"pinData": {}
+}

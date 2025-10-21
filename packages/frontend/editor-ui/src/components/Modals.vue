@@ -57,6 +57,7 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import AboutModal from '@/components/AboutModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
@@ -106,6 +107,7 @@ import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
+import AIDialogModal from '@/features/ai/chatHub/components/AIDialogModal.vue';
 </script>
 
 <template>
@@ -114,6 +116,10 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 			<template #default="{ modalName }">
 				<ContactPromptModal :modal-name="modalName" />
 			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="AI_CHAT_DIALOG_MODAL_KEY">
+			<AIDialogModal />
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
