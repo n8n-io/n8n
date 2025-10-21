@@ -1,1 +1,1 @@
-export * from './check/Trusted Advisor Check.resource';
+export * from './resource/Resource.resource';
