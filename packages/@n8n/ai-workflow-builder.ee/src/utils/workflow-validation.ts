@@ -1,4 +1,4 @@
-import type { ProgrammaticEvaluationResult, ProgrammaticViolation } from '../programmatic/types';
+import type { ProgrammaticChecksResult, ProgrammaticViolation } from '../programmatic/types';
 
 function formatViolationsByCategory(
 	categories: Array<[string, ProgrammaticViolation[]]>,
@@ -17,22 +17,19 @@ function formatViolationsByCategory(
 	return lines;
 }
 
-export function formatWorkflowValidation(validation: ProgrammaticEvaluationResult | null): string {
+export function formatWorkflowValidation(validation: ProgrammaticChecksResult | null): string {
 	if (!validation) {
 		return 'Workflow validation not yet run. Call the validate_workflow tool to analyze the current workflow.';
 	}
 
-	const lines: string[] = [
-		'Workflow Validation Summary:',
-		`Overall score: ${Math.round(validation.overallScore * 100)}%`,
-	];
+	const lines: string[] = ['Workflow Validation Summary:'];
 
 	const violationLines = formatViolationsByCategory([
-		['Connections', validation.connections.violations],
-		['Trigger', validation.trigger.violations],
-		['Agent Prompt', validation.agentPrompt.violations],
-		['Tools', validation.tools.violations],
-		['From AI', validation.fromAi.violations],
+		['Connections', validation.connections],
+		['Trigger', validation.trigger],
+		['Agent Prompt', validation.agentPrompt],
+		['Tools', validation.tools],
+		['From AI', validation.fromAi],
 	]);
 
 	if (violationLines.length === 0) {

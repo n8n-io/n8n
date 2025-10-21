@@ -6,38 +6,19 @@ import { z } from 'zod';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 import { ToolExecutionError, ValidationError } from '../errors';
-import { programmaticEvaluation } from '../programmatic/programmatic';
-import type { ProgrammaticEvaluationResult, ProgrammaticViolation } from '../programmatic/types';
+import { programmaticValidation } from '../programmatic/programmatic';
+import type { ProgrammaticViolation } from '../programmatic/types';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';
 import { getWorkflowState } from './helpers/state';
 
-const validateWorkflowSchema = z
-	.object({
-		includeDetails: z
-			.boolean()
-			.optional()
-			.describe('Include detailed category breakdown in the response'),
-	})
-	.strict()
-	.default({});
+const validateWorkflowSchema = z.object({}).strict().default({});
 
 export const VALIDATE_WORKFLOW_TOOL: BuilderToolBase = {
 	toolName: 'validate_workflow',
 	displayTitle: 'Validating workflow',
 };
-
-function buildValidationMessage(
-	result: ProgrammaticEvaluationResult,
-	includeDetails: boolean,
-): string {
-	if (!includeDetails) {
-		return `Workflow validation completed. Overall score: ${Math.round(result.overallScore * 100)}%.`;
-	}
-
-	return `Workflow validation completed.\n${formatWorkflowValidation(result)}`;
-}
 
 export function createValidateWorkflowTool(
 	parsedNodeTypes: INodeTypeDescription[],
@@ -58,7 +39,7 @@ export function createValidateWorkflowTool(
 				const state = getWorkflowState();
 				reportProgress(reporter, 'Running programmatic checks');
 
-				const evaluation = await programmaticEvaluation(
+				const violations = programmaticValidation(
 					{
 						generatedWorkflow: state.workflowJSON,
 					},
@@ -66,15 +47,15 @@ export function createValidateWorkflowTool(
 				);
 
 				const blockingViolations: ProgrammaticViolation[] = [
-					...evaluation.connections.violations,
-					...evaluation.trigger.violations,
-					...evaluation.agentPrompt.violations,
-					...evaluation.tools.violations,
-					...evaluation.fromAi.violations,
+					...violations.connections,
+					...violations.trigger,
+					...violations.agentPrompt,
+					...violations.tools,
+					...violations.fromAi,
 				].filter((violation) => violation.type === 'critical' || violation.type === 'major');
 
 				if (blockingViolations.length > 0) {
-					const summary = formatWorkflowValidation(evaluation);
+					const summary = formatWorkflowValidation(violations);
 					const validationError = new ValidationError(
 						`Workflow validation failed due to critical or major violations.\n${summary}`,
 						{ extra: { violations: blockingViolations } },
@@ -88,12 +69,12 @@ export function createValidateWorkflowTool(
 					return createErrorResponse(config, validationError);
 				}
 
-				const message = buildValidationMessage(evaluation, validatedInput.includeDetails ?? true);
+				const message = formatWorkflowValidation(violations);
 
 				reporter.complete({ message });
 
 				return createSuccessResponse(config, message, {
-					workflowValidation: evaluation,
+					workflowValidation: violations,
 				});
 			} catch (error) {
 				if (error instanceof z.ZodError) {

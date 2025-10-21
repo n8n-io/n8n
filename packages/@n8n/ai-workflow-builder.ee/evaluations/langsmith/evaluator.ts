@@ -121,7 +121,7 @@ export function createLangsmithEvaluator(
 			const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
 
 			// Run programmatic evaluation
-			const programmaticResult = await programmaticEvaluation(evaluationInput, parsedNodeTypes);
+			const programmaticResult = programmaticEvaluation(evaluationInput, parsedNodeTypes);
 
 			const results: LangsmithEvaluationResult[] = [];
 

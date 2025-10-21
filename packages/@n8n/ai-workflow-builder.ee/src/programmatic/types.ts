@@ -13,6 +13,14 @@ export interface SingleEvaluatorResult {
 	score: number;
 }
 
+export interface ProgrammaticChecksResult {
+	connections: ProgrammaticViolation[];
+	trigger: ProgrammaticViolation[];
+	agentPrompt: ProgrammaticViolation[];
+	tools: ProgrammaticViolation[];
+	fromAi: ProgrammaticViolation[];
+}
+
 export interface ProgrammaticEvaluationResult {
 	overallScore: number;
 	connections: SingleEvaluatorResult;

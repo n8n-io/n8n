@@ -10,7 +10,7 @@ import { mapConnectionsByDestination, Expression } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-import type { SingleEvaluatorResult } from '../types';
+import type { ProgrammaticViolation, SingleEvaluatorResult } from '../types';
 import { calcSingleEvaluatorScore } from '../utils/score';
 
 /**
@@ -231,10 +231,10 @@ function checkMergeNodeConnections(
 	return issues;
 }
 
-export function evaluateConnections(
+export function validateConnections(
 	workflow: SimpleWorkflow,
 	nodeTypes: INodeTypeDescription[],
-): SingleEvaluatorResult {
+): ProgrammaticViolation[] {
 	const violations: SingleEvaluatorResult['violations'] = [];
 
 	if (!workflow.connections) {
@@ -281,5 +281,13 @@ export function evaluateConnections(
 		violations.push(...checkMergeNodeConnections(nodeInfo, nodeConnections));
 	}
 
+	return violations;
+}
+
+export function evaluateConnections(
+	workflow: SimpleWorkflow,
+	nodeTypes: INodeTypeDescription[],
+): SingleEvaluatorResult {
+	const violations = validateConnections(workflow, nodeTypes);
 	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

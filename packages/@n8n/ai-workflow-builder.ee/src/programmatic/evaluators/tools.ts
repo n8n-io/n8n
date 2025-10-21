@@ -16,14 +16,14 @@ const toolsWithoutParameters = [
 	'@n8n/n8n-nodes-langchain.toolSerpApi',
 ];
 
-export function evaluateTools(
+export function validateTools(
 	workflow: SimpleWorkflow,
 	nodeTypes: INodeTypeDescription[],
-): SingleEvaluatorResult {
+): SingleEvaluatorResult['violations'] {
 	const violations: SingleEvaluatorResult['violations'] = [];
 
 	if (!workflow.nodes || workflow.nodes.length === 0) {
-		return { violations, score: 0 };
+		return violations;
 	}
 
 	for (const node of workflow.nodes) {
@@ -51,6 +51,15 @@ export function evaluateTools(
 			}
 		}
 	}
+
+	return violations;
+}
+
+export function evaluateTools(
+	workflow: SimpleWorkflow,
+	nodeTypes: INodeTypeDescription[],
+): SingleEvaluatorResult {
+	const violations = validateTools(workflow, nodeTypes);
 
 	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

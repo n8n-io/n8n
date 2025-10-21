@@ -2,7 +2,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-import type { SingleEvaluatorResult } from '../types';
+import type { ProgrammaticViolation, SingleEvaluatorResult } from '../types';
 import { calcSingleEvaluatorScore } from '../utils/score';
 
 export interface TriggerEvaluationResult extends SingleEvaluatorResult {
@@ -12,11 +12,11 @@ export interface TriggerEvaluationResult extends SingleEvaluatorResult {
 
 const isTriggerNode = (nodeType: INodeTypeDescription) => nodeType.group.includes('trigger');
 
-export function evaluateTrigger(
+export function validateTrigger(
 	workflow: SimpleWorkflow,
 	nodeTypes: INodeTypeDescription[],
-): TriggerEvaluationResult {
-	const violations: SingleEvaluatorResult['violations'] = [];
+): ProgrammaticViolation[] {
+	const violations: ProgrammaticViolation[] = [];
 	const triggerNodes: string[] = [];
 
 	if (!workflow.nodes || workflow.nodes.length === 0) {
@@ -25,7 +25,8 @@ export function evaluateTrigger(
 			description: 'Workflow has no nodes',
 			pointsDeducted: 50,
 		});
-		return { hasTrigger: false, violations, triggerNodes, score: 0 };
+
+		return violations;
 	}
 
 	for (const node of workflow.nodes) {
@@ -50,10 +51,13 @@ export function evaluateTrigger(
 		});
 	}
 
-	return {
-		hasTrigger,
-		violations,
-		triggerNodes,
-		score: calcSingleEvaluatorScore({ violations }),
-	};
+	return violations;
+}
+
+export function evaluateTrigger(
+	workflow: SimpleWorkflow,
+	nodeTypes: INodeTypeDescription[],
+): SingleEvaluatorResult {
+	const violations = validateTrigger(workflow, nodeTypes);
+	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

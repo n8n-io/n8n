@@ -2,7 +2,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-import type { SingleEvaluatorResult } from '../types';
+import type { ProgrammaticViolation, SingleEvaluatorResult } from '../types';
 import { isTool } from '../utils/is-tool';
 import { calcSingleEvaluatorScore } from '../utils/score';
 
@@ -44,14 +44,14 @@ function parametersContainFromAi(parameters: Record<string, unknown>): boolean {
 	return false;
 }
 
-export function evaluateFromAi(
+export function validateFromAi(
 	workflow: SimpleWorkflow,
 	nodeTypes: INodeTypeDescription[],
-): SingleEvaluatorResult {
-	const violations: SingleEvaluatorResult['violations'] = [];
+): ProgrammaticViolation[] {
+	const violations: ProgrammaticViolation[] = [];
 
 	if (!workflow.nodes || workflow.nodes.length === 0) {
-		return { violations, score: 0 };
+		return violations;
 	}
 
 	for (const node of workflow.nodes) {
@@ -73,5 +73,13 @@ export function evaluateFromAi(
 		}
 	}
 
+	return violations;
+}
+
+export function evaluateFromAi(
+	workflow: SimpleWorkflow,
+	nodeTypes: INodeTypeDescription[],
+): SingleEvaluatorResult {
+	const violations = validateFromAi(workflow, nodeTypes);
 	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }

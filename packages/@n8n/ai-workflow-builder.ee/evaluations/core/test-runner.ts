@@ -117,7 +117,7 @@ export async function runSingleTest(
 		};
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
-		const programmaticEvaluationResult = await programmaticEvaluation(evaluationInput, nodeTypes);
+		const programmaticEvaluationResult = programmaticEvaluation(evaluationInput, nodeTypes);
 
 		return {
 			testCase,
