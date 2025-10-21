@@ -9,6 +9,7 @@ import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
 import { Get, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import axios from 'axios';
 import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
@@ -23,6 +24,7 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
@@ -61,13 +63,12 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
 			const serverUrl = new URL(oauthCredentials.serverUrl);
-			// TODO: Check if we should use `fetch` or `axios`
-			const response = await fetch(`${serverUrl.origin}/.well-known/oauth-authorization-server`);
-			const data = (await response.json()) as OAuthAuthorizationServerMetadata;
+			const { data } = await axios.get<OAuthAuthorizationServerMetadata>(
+				`${serverUrl.origin}/.well-known/oauth-authorization-server`,
+			);
 			const { authorization_endpoint, token_endpoint, registration_endpoint } = data;
 			if (!authorization_endpoint || !token_endpoint || !registration_endpoint) {
-				// TODO: better error type?
-				throw new Error(
+				throw new BadRequestError(
 					'The OAuth2 server does not support dynamic client registration. Missing endpoints in metadata.',
 				);
 			}
@@ -95,27 +96,17 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				grantType,
 				authentication,
 			);
-			// TODO: Check if we should use `fetch` or `axios`
-			const registerResult = await fetch(registration_endpoint, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					redirect_uris: [`${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`],
-					token_endpoint_auth_method,
-					grant_types,
-					response_types: ['code'],
-					client_name: 'n8n',
-					client_uri: 'https://n8n.io/',
-				}),
-			}).then(
-				async (res) =>
-					(await res.json()) as {
-						client_id: string;
-						client_secret?: string;
-					},
-			);
+			const { data: registerResult } = await axios.post<{
+				client_id: string;
+				client_secret?: string;
+			}>(registration_endpoint, {
+				redirect_uris: [`${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`],
+				token_endpoint_auth_method,
+				grant_types,
+				response_types: ['code'],
+				client_name: 'n8n',
+				client_uri: 'https://n8n.io/',
+			});
 
 			const { client_id, client_secret } = registerResult;
 			oauthCredentials.clientId = client_id;
@@ -298,8 +289,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			}
 		}
 
-		// TODO: better error type?
-		throw new Error('No supported grant type and authentication method found');
+		throw new BadRequestError('No supported grant type and authentication method found');
 	}
 
 	private mapGrantTypeAndAuthenticationMethod(
