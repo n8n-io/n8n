@@ -11,6 +11,7 @@ import {
 	fetchSingleConversationApi as fetchMessagesApi,
 	updateConversationTitleApi,
 	deleteConversationApi,
+	stopGenerationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -245,7 +246,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model: null,
 			workflowId: null,
 			executionId: null,
-			state: 'success',
+			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			previousMessageId: replyToMessageId,
@@ -266,8 +267,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		appendMessage(sessionId, messageId, chunk);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
+	function onEndMessage() {
 		streamingMessageId.value = undefined;
 	}
 
@@ -289,17 +289,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
 				break;
 			case 'end':
-				onEndMessage(messageId, nodeId, runIndex);
+				onEndMessage();
 				break;
 			case 'error':
-				onChunk(
-					sessionId,
-					messageId,
-					`Error: ${message.content ?? 'Unknown error'}`,
-					nodeId,
-					runIndex,
-				);
-				onEndMessage(messageId, nodeId, runIndex);
+				if (streamingMessageId.value === messageId) {
+					onChunk(
+						sessionId,
+						messageId,
+						`Error: ${message.content ?? 'Unknown error'}`,
+						nodeId,
+						runIndex,
+					);
+					onEndMessage();
+				}
 				break;
 		}
 	}
@@ -337,7 +339,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model: model?.model ?? null,
 			workflowId: null,
 			executionId: null,
-			state: 'success',
+			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			previousMessageId,
@@ -358,7 +360,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model: null,
 				workflowId: null,
 				executionId: null,
-				state: 'error',
+				status: 'error',
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				previousMessageId: messageId,
@@ -410,7 +412,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model: null,
 			workflowId: null,
 			executionId: null,
-			state: 'success',
+			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			previousMessageId,
@@ -422,12 +424,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		editMessageApi(
 			rootStore.restApiContext,
+			sessionId,
+			editId,
 			{
 				model,
 				messageId,
-				sessionId,
 				replyId,
-				editId,
 				message,
 				credentials,
 			},
@@ -453,10 +455,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		regenerateMessageApi(
 			rootStore.restApiContext,
+			sessionId,
+			retryId,
 			{
 				model,
-				sessionId,
-				retryId,
 				replyId,
 				credentials,
 			},
@@ -465,6 +467,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
+	}
+
+	async function stopStreamingMessage(sessionId: ChatSessionId) {
+		if (streamingMessageId.value) {
+			const messageId = streamingMessageId.value;
+			onEndMessage();
+			await stopGenerationApi(rootStore.restApiContext, sessionId, messageId);
+		}
 	}
 
 	async function renameSession(sessionId: ChatSessionId, title: string) {
@@ -504,6 +514,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sendMessage,
 		editMessage,
 		regenerateMessage,
+		stopStreamingMessage,
 		fetchSessions,
 		fetchMessages,
 		renameSession,

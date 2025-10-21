@@ -436,6 +436,7 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
+	PROVISIONING_SETTINGS = 'ProvisioningSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	MFA_VIEW = 'MfaView',
@@ -447,6 +448,9 @@ export const enum VIEWS {
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
+	PROJECT_ROLES_SETTINGS = 'ProjectRolesSettingsView',
+	PROJECT_ROLE_SETTINGS = 'ProjectRoleSettingsView',
+	PROJECT_NEW_ROLE = 'ProjectNewRoleView',
 	PROJECTS_VARIABLES = 'ProjectsVariables',
 	HOME_VARIABLES = 'HomeVariables',
 	FOLDERS = 'Folders',
@@ -538,6 +542,7 @@ export const EnterpriseEditionFeature: Record<
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
 	ApiKeyScopes: 'apiKeyScopes',
+	Provisioning: 'provisioning',
 };
 
 export const MAIN_NODE_PANEL_WIDTH = 390;
@@ -709,9 +714,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
-	READY_TO_RUN_V2_EXPERIMENT.name,
-	PERSONALIZED_TEMPLATES_V3.name,
-	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
 	PROJECT_VARIABLES_EXPERIMENT.name,
 ];
 
