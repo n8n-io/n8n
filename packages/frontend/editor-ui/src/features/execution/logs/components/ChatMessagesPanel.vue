@@ -20,6 +20,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useRouter } from 'vue-router';
+import { useClipboard } from '@vueuse/core';
+import { useToast } from '@/composables/useToast';
 
 interface Props {
 	sessionId: string;
@@ -43,6 +45,8 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
+const clipboard = useClipboard();
+const toast = useToast();
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
@@ -65,6 +69,15 @@ const chatTriggerNode = computed(() => {
 		(node) => node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
 	);
 });
+
+async function copySessionId() {
+	await clipboard.copy(props.sessionId);
+	toast.showMessage({
+		title: locale.baseText('generic.copiedToClipboard'),
+		message: '',
+		type: 'success',
+	});
+}
 
 // Check if streaming is enabled in ChatTrigger node
 const isStreamingEnabled = computed(() => {
@@ -340,7 +353,7 @@ onUnmounted(() => {
 			<template #actions>
 				<N8nTooltip v-if="!isReadOnly">
 					<template #content>
-						{{ props.sessionId }}
+						{{ sessionId }}
 						<br />
 						{{ locale.baseText('chat.window.session.id.copy') }}
 					</template>
@@ -349,6 +362,7 @@ onUnmounted(() => {
 						type="secondary"
 						size="mini"
 						:class="$style.newHeaderButton"
+						@click.stop="copySessionId"
 						>{{ sessionIdText }}</N8nButton
 					>
 				</N8nTooltip>
