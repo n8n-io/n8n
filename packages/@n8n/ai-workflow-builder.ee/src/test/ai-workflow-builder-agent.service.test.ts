@@ -4,7 +4,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 import { Client as TracingClient } from 'langsmith';
-import type { IUser, INodeTypes, INodeTypeDescription } from 'n8n-workflow';
+import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
 import { LLMServiceError } from '@/errors';
@@ -43,7 +43,6 @@ const formatMessagesMock = formatMessages as jest.MockedFunction<typeof formatMe
 
 describe('AiWorkflowBuilderService', () => {
 	let service: AiWorkflowBuilderService;
-	let mockNodeTypes: INodeTypes;
 	let mockClient: AiAssistantClient;
 	let mockLogger: Logger;
 	let mockUser: IUser;
@@ -62,9 +61,16 @@ describe('AiWorkflowBuilderService', () => {
 			defaults: {},
 			inputs: [],
 			outputs: [],
-			properties: [],
+			properties: [
+				{
+					displayName: 'Test Property',
+					name: 'testProperty',
+					type: 'string',
+					default: '',
+				},
+			],
 			group: ['transform'],
-		} as INodeTypeDescription,
+		},
 		{
 			name: 'HiddenNode',
 			displayName: 'Hidden Node',
@@ -76,7 +82,19 @@ describe('AiWorkflowBuilderService', () => {
 			properties: [],
 			group: ['transform'],
 			hidden: true,
-		} as INodeTypeDescription,
+		},
+		{
+			name: 'n8n-nodes-base.dataTable',
+			displayName: 'Data Table',
+			description: 'Data table node',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			group: ['transform'],
+			hidden: true,
+		},
 		{
 			name: '@n8n/n8n-nodes-langchain.toolVectorStore',
 			displayName: 'Tool Vector Store',
@@ -87,27 +105,30 @@ describe('AiWorkflowBuilderService', () => {
 			outputs: [],
 			properties: [],
 			group: ['transform'],
-		} as INodeTypeDescription,
+		},
+		{
+			name: 'TestNodeTool',
+			displayName: 'Test Tool Node',
+			description: 'Test tool node description',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [
+				{
+					displayName: 'Test Tool Property',
+					name: 'testToolProperty',
+					type: 'string',
+					default: '',
+				},
+			],
+			group: ['transform'],
+		},
 	];
 
 	beforeEach(() => {
 		// Reset all mocks
 		jest.clearAllMocks();
-
-		// Mock node types
-		mockNodeTypes = mock<INodeTypes>();
-		(mockNodeTypes.getKnownTypes as jest.Mock).mockReturnValue({
-			TestNode: { type: {} },
-			HiddenNode: { type: {} },
-			'@n8n/n8n-nodes-langchain.toolVectorStore': { type: {} },
-		});
-		(mockNodeTypes.getByNameAndVersion as jest.Mock).mockImplementation((name: string) => {
-			const nodeType = mockNodeTypeDescriptions.find((n) => n.name === name);
-			if (nodeType) {
-				return { description: nodeType };
-			}
-			throw new Error(`Node type ${name} not found`);
-		});
 
 		// Mock AI assistant client
 		mockClient = mock<AiAssistantClient>();
@@ -164,7 +185,7 @@ describe('AiWorkflowBuilderService', () => {
 
 		// Create service instance
 		service = new AiWorkflowBuilderService(
-			mockNodeTypes,
+			mockNodeTypeDescriptions,
 			mockClient,
 			mockLogger,
 			'https://n8n.example.com',
@@ -175,7 +196,7 @@ describe('AiWorkflowBuilderService', () => {
 	describe('constructor', () => {
 		it('should initialize with provided dependencies', () => {
 			const testService = new AiWorkflowBuilderService(
-				mockNodeTypes,
+				mockNodeTypeDescriptions,
 				mockClient,
 				mockLogger,
 				'https://test.com',
@@ -183,7 +204,6 @@ describe('AiWorkflowBuilderService', () => {
 			);
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
-			expect(mockNodeTypes.getKnownTypes).toHaveBeenCalled();
 			expect(MockedSessionManagerService).toHaveBeenCalledWith(
 				expect.arrayContaining([expect.objectContaining({ name: 'TestNode' })]),
 				mockLogger,
@@ -191,152 +211,61 @@ describe('AiWorkflowBuilderService', () => {
 		});
 
 		it('should initialize without optional dependencies', () => {
-			const testService = new AiWorkflowBuilderService(mockNodeTypes);
+			const testService = new AiWorkflowBuilderService(mockNodeTypeDescriptions);
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
 			expect(MockedSessionManagerService).toHaveBeenCalledWith(expect.any(Array), undefined);
 		});
 
-		it('should filter out ignored and hidden node types', () => {
-			// The service filters ignored types at the filter stage, not at getByNameAndVersion stage
-			// Hidden nodes are filtered out after being retrieved in the filter() call
-			expect(mockNodeTypes.getKnownTypes).toHaveBeenCalled();
-			expect(mockNodeTypes.getByNameAndVersion).toHaveBeenCalledWith('TestNode');
-			// Hidden nodes are still retrieved but filtered out later, so this call happens
-			expect(mockNodeTypes.getByNameAndVersion).toHaveBeenCalledWith('HiddenNode');
-			// Ignored types are filtered out before getByNameAndVersion call
-			expect(mockNodeTypes.getByNameAndVersion).not.toHaveBeenCalledWith(
-				'@n8n/n8n-nodes-langchain.toolVectorStore',
+		it('should filter out ignored types and hidden nodes except the data table', () => {
+			MockedSessionManagerService.mockClear();
+
+			new AiWorkflowBuilderService(
+				mockNodeTypeDescriptions,
+				mockClient,
+				mockLogger,
+				'https://test.com',
+				mockOnCreditsUpdated,
 			);
+
+			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
+			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
+
+			expect(filteredNodeTypes.find((node) => node.name === 'HiddenNode')).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === '@n8n/n8n-nodes-langchain.toolVectorStore'),
+			).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.dataTable'),
+			).toMatchObject({ name: 'n8n-nodes-base.dataTable' });
 		});
 
-		it('should handle errors when getting node types', () => {
-			(mockNodeTypes.getByNameAndVersion as jest.Mock).mockImplementation(() => {
-				throw new Error('Node type error');
-			});
+		it('should merge tool node descriptions with their base node types', () => {
+			MockedSessionManagerService.mockClear();
 
-			// Should not throw when constructing, but should log error
-			const testService = new AiWorkflowBuilderService(mockNodeTypes, mockClient, mockLogger);
-
-			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
-			expect(mockLogger.error).toHaveBeenCalledWith('Error getting node type', expect.any(Object));
-		});
-
-		it('should handle tool node merging correctly when calling chat', async () => {
-			// Setup node types that include tool nodes
-			(mockNodeTypes.getKnownTypes as jest.Mock).mockReturnValue({
-				HttpRequestTool: { type: {} },
-				HttpRequest: { type: {} },
-			});
-
-			const httpRequestToolNode: INodeTypeDescription = {
-				name: 'HttpRequestTool',
-				displayName: 'HTTP Request Tool',
-				description: 'Tool version of HTTP Request',
-				version: 1,
-				defaults: {},
-				inputs: [],
-				outputs: [],
-				properties: [
-					{
-						name: 'toolProp',
-						type: 'string',
-						displayName: '',
-						default: undefined,
-					},
-				],
-				group: ['transform'],
-			};
-
-			const httpRequestNode: INodeTypeDescription = {
-				name: 'HttpRequest',
-				displayName: 'HTTP Request',
-				description: 'Regular HTTP Request node',
-				version: 1,
-				defaults: {},
-				inputs: [],
-				outputs: [],
-				properties: [
-					{
-						name: 'regularProp',
-						type: 'string',
-						displayName: '',
-						default: undefined,
-					},
-				],
-				group: ['transform'],
-			};
-
-			(mockNodeTypes.getByNameAndVersion as jest.Mock).mockImplementation((name: string) => {
-				if (name === 'HttpRequestTool') return { description: httpRequestToolNode };
-				if (name === 'HttpRequest') return { description: httpRequestNode };
-				throw new Error(`Node type ${name} not found`);
-			});
-
-			// Get the mocked WorkflowBuilderAgent constructor
-			const MockedWorkflowBuilderAgent = WorkflowBuilderAgent as jest.MockedClass<
-				typeof WorkflowBuilderAgent
-			>;
-
-			// Clear previous calls and setup return value
-			MockedWorkflowBuilderAgent.mockClear();
-
-			const testService = new AiWorkflowBuilderService(mockNodeTypes, mockClient, mockLogger);
-
-			const payload: ChatPayload = {
-				message: 'Create a workflow',
-				workflowContext: {
-					currentWorkflow: { id: 'test-workflow' },
-				},
-				useDeprecatedCredentials: false,
-			};
-
-			// Call chat to trigger agent creation
-			const generator = testService.chat(payload, mockUser);
-			await generator.next();
-
-			// Verify WorkflowBuilderAgent was called with merged node types
-			expect(MockedWorkflowBuilderAgent).toHaveBeenCalledWith(
-				expect.objectContaining({
-					parsedNodeTypes: expect.arrayContaining([
-						expect.objectContaining({
-							name: 'HttpRequestTool',
-							displayName: 'HTTP Request Tool',
-							// Should have tool properties (since tool node overrides regular node in merge)
-							properties: [
-								{ name: 'toolProp', type: 'string', displayName: '', default: undefined },
-							],
-						}),
-					]),
-				}),
+			new AiWorkflowBuilderService(
+				mockNodeTypeDescriptions,
+				mockClient,
+				mockLogger,
+				'https://test.com',
+				mockOnCreditsUpdated,
 			);
 
-			// Also verify that the merged node has the correct structure
-			const actualCall = MockedWorkflowBuilderAgent.mock.calls[0][0];
-			const parsedNodeTypes = actualCall.parsedNodeTypes;
+			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
+			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			// Should have the merged HttpRequestTool node and keep the separate HttpRequest node
-			const toolNode = parsedNodeTypes.find(
-				(node: INodeTypeDescription) => node.name === 'HttpRequestTool',
-			);
-			const regularNode = parsedNodeTypes.find(
-				(node: INodeTypeDescription) => node.name === 'HttpRequest',
-			);
-
-			expect(toolNode).toBeDefined();
-			expect(toolNode?.displayName).toBe('HTTP Request Tool');
-			expect(toolNode?.properties).toEqual([
+			const testToolNode = filteredNodeTypes.find((node) => node.name === 'TestNodeTool');
+			expect(testToolNode).toBeDefined();
+			expect(testToolNode?.description).toBe('Test tool node description');
+			expect(testToolNode?.displayName).toBe('Test Tool Node');
+			expect(testToolNode?.properties).toEqual([
 				{
-					name: 'toolProp',
+					displayName: 'Test Tool Property',
+					name: 'testToolProperty',
 					type: 'string',
-					displayName: '',
-					default: undefined,
+					default: '',
 				},
 			]);
-
-			// The regular node should still exist separately (not merged into tool)
-			expect(regularNode).toBeDefined();
-			expect(regularNode?.displayName).toBe('HTTP Request');
 		});
 	});
 
@@ -415,7 +344,7 @@ describe('AiWorkflowBuilderService', () => {
 
 		it('should create WorkflowBuilderAgent without tracer when no client', async () => {
 			const serviceWithoutClient = new AiWorkflowBuilderService(
-				mockNodeTypes,
+				mockNodeTypeDescriptions,
 				undefined,
 				mockLogger,
 			);
@@ -467,7 +396,7 @@ describe('AiWorkflowBuilderService', () => {
 		});
 
 		it('should use environment variables when no client provided', async () => {
-			const serviceWithoutClient = new AiWorkflowBuilderService(mockNodeTypes);
+			const serviceWithoutClient = new AiWorkflowBuilderService(mockNodeTypeDescriptions);
 			process.env.N8N_AI_ANTHROPIC_KEY = 'test-env-key';
 
 			const generator = serviceWithoutClient.chat(mockPayload, mockUser);
@@ -703,7 +632,7 @@ describe('AiWorkflowBuilderService', () => {
 		});
 
 		it('should return default values when client is not configured', async () => {
-			const serviceWithoutClient = new AiWorkflowBuilderService(mockNodeTypes);
+			const serviceWithoutClient = new AiWorkflowBuilderService(mockNodeTypeDescriptions);
 
 			const result = await serviceWithoutClient.getBuilderInstanceCredits(mockUser);
 

@@ -856,7 +856,8 @@ export type CloudUpdateLinkSourceType =
 	| 'insights'
 	| 'evaluations'
 	| 'ai-builder-sidebar'
-	| 'ai-builder-canvas';
+	| 'ai-builder-canvas'
+	| 'custom-roles';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -882,7 +883,8 @@ export type UTMCampaign =
 	| 'upgrade-debug'
 	| 'upgrade-insights'
 	| 'upgrade-evaluations'
-	| 'upgrade-builder';
+	| 'upgrade-builder'
+	| 'upgrade-custom-roles';
 
 export type N8nBanners = {
 	[key in BannerName]: {

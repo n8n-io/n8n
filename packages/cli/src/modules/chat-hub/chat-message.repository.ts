@@ -1,4 +1,4 @@
-import type { ChatHubMessageState, ChatMessageId, ChatSessionId } from '@n8n/api-types';
+import type { ChatHubMessageStatus, ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
@@ -26,7 +26,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 
 	async updateChatMessage(
 		id: ChatMessageId,
-		fields: { state: ChatHubMessageState },
+		fields: { status: ChatHubMessageStatus; content?: string },
 		trx?: EntityManager,
 	) {
 		return await withTransaction(this.manager, trx, async (em) => {
@@ -47,9 +47,10 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		});
 	}
 
-	async getOneById(id: ChatMessageId, sessionId: ChatSessionId) {
+	async getOneById(id: ChatMessageId, sessionId: ChatSessionId, relations: string[] = []) {
 		return await this.findOne({
 			where: { id, sessionId },
+			relations,
 		});
 	}
 }

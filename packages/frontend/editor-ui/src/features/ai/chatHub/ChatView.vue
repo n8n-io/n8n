@@ -31,7 +31,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
-import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
+import { credentialsMapSchema, type CredentialsMap } from './chat.types';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const router = useRouter();
@@ -250,8 +250,8 @@ function onSubmit(message: string) {
 	}
 }
 
-function onSuggestionClick(s: Suggestion) {
-	inputRef.value?.setText(`${s.title} ${s.subtitle}`);
+async function onStop() {
+	await chatStore.stopStreamingMessage(sessionId.value);
 }
 
 function handleStartEditMessage(messageId: string) {
@@ -343,12 +343,7 @@ function handleSwitchAlternative(messageId: string) {
 			:class="$style.scrollArea"
 		>
 			<div :class="$style.scrollable" ref="scrollable">
-				<ChatStarter
-					v-if="isNewChat"
-					:class="$style.starter"
-					:is-mobile-device="isMobileDevice"
-					@select="onSuggestionClick"
-				/>
+				<ChatStarter v-if="isNewChat" :class="$style.starter" :is-mobile-device="isMobileDevice" />
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
@@ -388,8 +383,10 @@ function handleSwitchAlternative(messageId: string) {
 						ref="inputRef"
 						:class="$style.prompt"
 						:placeholder="inputPlaceholder"
+						:is-responding="chatStore.isResponding"
 						:disabled="chatStore.isResponding"
 						@submit="onSubmit"
+						@stop="onStop"
 					/>
 				</div>
 			</div>
