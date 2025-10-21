@@ -1,7 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { ProgrammaticEvaluationInput } from '@/validation/types';
-import { calculateOverallScore } from '@/validation/utils/score';
 
 import {
 	evaluateConnections,
@@ -10,6 +9,7 @@ import {
 	evaluateFromAi,
 	evaluateTrigger,
 } from './evaluators';
+import { calculateOverallScore } from '../utils/score';
 
 export function programmaticEvaluation(
 	input: ProgrammaticEvaluationInput,

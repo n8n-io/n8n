@@ -3,7 +3,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { SimpleWorkflow } from '@/types';
 import { validateTrigger } from '@/validation/checks';
 import type { SingleEvaluatorResult } from '@/validation/types';
-import { calcSingleEvaluatorScore } from '@/validation/utils/score';
+
+import { calcSingleEvaluatorScore } from '../../utils/score';
 
 export function evaluateTrigger(
 	workflow: SimpleWorkflow,
