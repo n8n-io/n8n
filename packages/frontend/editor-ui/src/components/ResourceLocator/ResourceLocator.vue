@@ -8,8 +8,8 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { ndvEventBus } from '@/event-bus';
-import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/features/nodes/ndv/ndv.eventBus';
+import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
@@ -54,7 +54,7 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
 import { completeExpressionSyntax } from '@/utils/expressions';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import FromAiOverrideButton from '@/components/ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from '@/components/ParameterInputOverrides/ParameterOverrideSelectableList.vue';

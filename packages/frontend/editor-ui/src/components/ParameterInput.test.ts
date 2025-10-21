@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ParameterInput from '@/components/ParameterInput.vue';
-import type { useNDVStore } from '@/stores/ndv.store';
+import type { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
@@ -63,7 +63,7 @@ beforeEach(() => {
 	mockCompletionResult = {};
 });
 
-vi.mock('@/stores/ndv.store', () => {
+vi.mock('@/features/nodes/ndv/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
 	};
@@ -75,7 +75,7 @@ vi.mock('@/stores/nodeTypes.store', () => {
 	};
 });
 
-vi.mock('@/features/editors/plugins/codemirror/completions/datatype.completions', () => {
+vi.mock('@/features/shared/editors/plugins/codemirror/completions/datatype.completions', () => {
 	return {
 		datatypeCompletions: vi.fn(() => mockCompletionResult),
 	};
