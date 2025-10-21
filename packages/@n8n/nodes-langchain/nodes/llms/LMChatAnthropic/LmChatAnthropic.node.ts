@@ -1,4 +1,5 @@
 import { ChatAnthropic } from '@langchain/anthropic';
+import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -70,6 +71,58 @@ const modelField: INodeProperties = {
 
 const MIN_THINKING_BUDGET = 1024;
 const DEFAULT_MAX_TOKENS = 4096;
+
+/**
+ * Adds Anthropic prompt caching to system messages.
+ * This reduces costs by up to 90% and latency by up to 85% for repeated calls with the same system prompt.
+ *
+ * @param model - The ChatAnthropic model to wrap
+ * @returns The model with automatic caching enabled
+ */
+function enablePromptCaching(model: ChatAnthropic): ChatAnthropic {
+	// Store reference to original invoke method
+	const originalInvoke = model.invoke.bind(model);
+
+	// Override invoke to add caching to system messages
+	model.invoke = async function (input: BaseMessage[] | string, options?: unknown) {
+		// If input is an array of messages, apply caching to system messages
+		if (Array.isArray(input)) {
+			for (const message of input) {
+				// Check if this is a system message by examining the _getType method
+				if (typeof message._getType === 'function' && message._getType() === 'system') {
+					// Convert content to array format with cache_control if it's a string
+					if (typeof message.content === 'string') {
+						message.content = [
+							{
+								type: 'text',
+								text: message.content,
+								cache_control: { type: 'ephemeral' },
+							},
+						];
+					} else if (Array.isArray(message.content)) {
+						// If content is already an array, add cache_control to the last text block
+						const lastBlock = message.content[message.content.length - 1];
+						if (
+							typeof lastBlock === 'object' &&
+							lastBlock !== null &&
+							'text' in lastBlock &&
+							typeof lastBlock.text === 'string'
+						) {
+							(lastBlock as { text: string; cache_control?: { type: 'ephemeral' } }).cache_control =
+								{
+									type: 'ephemeral',
+								};
+						}
+					}
+				}
+			}
+		}
+		return originalInvoke(input, options);
+	};
+
+	return model;
+}
+
 export class LmChatAnthropic implements INodeType {
 	methods = {
 		listSearch: {
@@ -367,8 +420,11 @@ export class LmChatAnthropic implements INodeType {
 			delete model.temperature;
 		}
 
+		// Enable automatic prompt caching for system messages
+		const modelWithCaching = enablePromptCaching(model);
+
 		return {
-			response: model,
+			response: modelWithCaching,
 		};
 	}
 }
