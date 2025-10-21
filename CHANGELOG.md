@@ -1,3 +1,12 @@
+## [1.115.4](https://github.com/n8n-io/n8n/compare/n8n@1.115.3...n8n@1.115.4) (2025-10-21)
+
+
+### Bug Fixes
+
+* **ai-builder:** AI builder memory consumption issue ([#20982](https://github.com/n8n-io/n8n/issues/20982)) ([9a1d221](https://github.com/n8n-io/n8n/commit/9a1d2218933c0c474148bb52a02fb0f0b26a2360))
+
+
+
 ## [1.115.3](https://github.com/n8n-io/n8n/compare/n8n@1.115.2...n8n@1.115.3) (2025-10-14)
 
 
