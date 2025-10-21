@@ -42,6 +42,8 @@ import type {
 	SelectProps,
 	SelectSlots,
 	SelectValue,
+	SelectSizes,
+	SelectVariants,
 } from './Select.types';
 
 defineOptions({ inheritAttrs: false });
@@ -52,7 +54,6 @@ const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
 	valueKey: 'value' as never,
 	labelKey: 'label' as never,
 	placeholder: 'Select an option',
-	selectedIcon: 'check',
 	variant: 'default',
 	size: 'small',
 });
@@ -85,14 +86,14 @@ defineExpose({
 	triggerRef,
 });
 
-const variants = {
+const variants: Record<SelectVariants, string> = {
 	default: $style.Default,
 	ghost: $style.Ghost,
 };
 
 const variant = computed(() => variants[props.variant]);
 
-const sizes = {
+const sizes: Record<SelectSizes, string> = {
 	xsmall: $style.XSmall,
 	small: $style.Small,
 	medium: $style.Medium,
@@ -109,7 +110,6 @@ const size = computed(() => sizes[props.size]);
 		:disabled="disabled"
 		:default-value="castToSelectItemValue(defaultValue)"
 		:model-value="castToSelectItemValue(modelValue)"
-		style="z-index: 1000"
 	>
 		<SelectTrigger
 			:id="id"

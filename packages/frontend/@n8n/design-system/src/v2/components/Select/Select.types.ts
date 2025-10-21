@@ -30,6 +30,9 @@ export type SelectItem =
 			[key: string]: unknown;
 	  };
 
+export type SelectVariants = 'default' | 'ghost';
+export type SelectSizes = 'xsmall' | 'small' | 'medium';
+
 export type SelectProps<
 	T extends ArrayOrNested<SelectItem> = ArrayOrNested<SelectItem>,
 	VK extends GetItemKeys<T> = 'value',
@@ -41,7 +44,7 @@ export type SelectProps<
 	/**
 	 * @defaultValue 'small'
 	 */
-	size?: 'xsmall' | 'small' | 'medium';
+	size?: SelectSizes;
 	/**
 	 * When `items` is an array of objects, select the field to use as the value.
 	 * @defaultValue 'value'
@@ -60,7 +63,7 @@ export type SelectProps<
 	/** Whether multiple options can be selected or not. */
 	multiple?: M & boolean;
 
-	variant?: 'default' | 'ghost';
+	variant?: SelectVariants;
 
 	/** Icon to be displayed in the trigger */
 	icon?: IconName;
