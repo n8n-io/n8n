@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import alasqlImport, { Database } from 'alasql';
+import alasqlImport from 'alasql';
 import { ErrorReporter } from 'n8n-core';
 
 import type {
