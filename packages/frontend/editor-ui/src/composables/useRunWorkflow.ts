@@ -225,27 +225,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				(node) => node.type.toLowerCase().includes('trigger') && !node.disabled,
 			);
 
-			//if no destination node is specified
-			//and execution is not triggered from chat
-			//and there are other triggers in the workflow
-			//disable chat trigger node to avoid modal opening and webhook creation
-			// if (
-			// 	!options.destinationNode &&
-			// 	options.source !== 'RunData.ManualChatMessage' &&
-			// 	workflowData.nodes.some((node) => node.type === CHAT_TRIGGER_NODE_TYPE)
-			// ) {
-			// 	const otherTriggers = triggers.filter((node) => node.type !== CHAT_TRIGGER_NODE_TYPE);
-			//
-			// 	if (otherTriggers.length) {
-			// 		const chatTriggerNode = workflowData.nodes.find(
-			// 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-			// 		);
-			// 		if (chatTriggerNode) {
-			// 			chatTriggerNode.disabled = true;
-			// 		}
-			// 	}
-			// }
-
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
 

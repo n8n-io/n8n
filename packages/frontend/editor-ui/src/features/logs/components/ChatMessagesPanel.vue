@@ -119,13 +119,14 @@ const chatOptions = computed<ChatOptions>(() => {
 		mode: 'fullscreen' as const,
 		showWindowCloseButton: false,
 		showWelcomeScreen: false,
-		loadPreviousSession: true,
 		// Force the chat SDK to use our canvas session ID
 		sessionId: props.sessionId,
 		// Enable streaming based on ChatTrigger node configuration
 		enableStreaming: isStreamingEnabled.value,
 		// Enable message actions (repost and copy to input)
 		enableMessageActions: true,
+		allowFileUploads: true,
+		allowedFilesMimeTypes: 'image/*',
 		// Use the correct field names that ChatTrigger expects
 		chatInputKey: 'chatInput',
 		chatSessionKey: 'sessionId',
