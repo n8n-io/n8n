@@ -275,6 +275,38 @@ describe('ProvisioningService', () => {
 			);
 		});
 
+		it('should throw an error if projectIdToRole is not a valid JSON string', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = 'invalid-json-string';
+
+			await expect(
+				provisioningService.provisionProjectRolesForUser(userId, projectIdToRole),
+			).rejects.toThrow(
+				'Skipping project role provisioning. Invalid project to role mapping provided.',
+			);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping project role provisioning. Failed to parse project to role mapping.',
+				{ userId, projectIdToRole },
+			);
+		});
+
+		it('should throw an error if projectIdToRole has an invalid structure', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = JSON.stringify({ project_1: { nested: 'object' } }); // invalid key type
+
+			await expect(
+				provisioningService.provisionProjectRolesForUser(userId, projectIdToRole),
+			).rejects.toThrow(
+				'Skipping project role provisioning. Invalid project to role mapping provided.',
+			);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping project role provisioning. Failed to parse project to role mapping.',
+				{ userId, projectIdToRole },
+			);
+		});
+
 		it('should do nothing if the project does not exist', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = JSON.stringify({

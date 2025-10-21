@@ -119,8 +119,17 @@ export class ProvisioningService {
 		let projectRoleMap: Record<string, string>;
 		try {
 			projectRoleMap = JSON.parse(projectIdToRole);
+			for (const [key, value] of Object.entries(projectRoleMap)) {
+				if (typeof key !== 'string' || typeof value !== 'string') {
+					throw new Error('Invalid project to role mapping structure');
+				}
+			}
 		} catch {
 			// TODO: clarify wether this should throw an error.
+			this.logger.warn(
+				'Skipping project role provisioning. Failed to parse project to role mapping.',
+				{ userId, projectIdToRole },
+			);
 			throw new Error(
 				'Skipping project role provisioning. Invalid project to role mapping provided.',
 			);
@@ -143,6 +152,7 @@ export class ProvisioningService {
 				);
 				continue;
 			}
+			// TODO: do we need to check for dbRole.roleType === 'project' or can global rules also be used?
 			await this.projectService.addUser(projectId, { userId, role: roleSlug });
 		}
 
