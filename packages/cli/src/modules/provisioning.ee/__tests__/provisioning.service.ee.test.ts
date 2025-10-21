@@ -140,26 +140,6 @@ describe('ProvisioningService', () => {
 		});
 	});
 
-	describe('applyPatchField', () => {
-		it('should apply the patch field to the provisioning config', () => {
-			const config = provisioningService.applyPatchField(
-				{ ...provisioningConfigDto },
-				'scopesProvisionInstanceRole',
-				false,
-			);
-			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
-		});
-
-		it('should remove the field if the value is null', () => {
-			const config = provisioningService.applyPatchField(
-				{ ...provisioningConfigDto },
-				'scopesProvisionInstanceRole',
-				null,
-			);
-			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: undefined });
-		});
-	});
-
 	describe('handleReloadSsoProvisioningConfiguration', () => {
 		it('should reload the provisioning config', async () => {
 			const originStateLoadConfig = provisioningService.loadConfig;

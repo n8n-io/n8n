@@ -45,12 +45,15 @@ export class ProvisioningService {
 			'scopesProjectsRolesClaimName',
 		] as const;
 
-		let updatedConfig: Record<string, unknown> = {
+		const updatedConfig: Record<string, unknown> = {
 			...currentConfig,
+			...patchConfig,
 		};
 
-		for (const field of supportedPatchFields) {
-			updatedConfig = this.applyPatchField(updatedConfig, field, patchConfig[field]);
+		for (const supportedPatchField of supportedPatchFields) {
+			if (patchConfig[supportedPatchField] === null) {
+				delete updatedConfig[supportedPatchField];
+			}
 		}
 
 		ProvisioningConfigDto.parse(updatedConfig);
@@ -63,23 +66,6 @@ export class ProvisioningService {
 		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
 		this.provisioningConfig = await this.loadConfig();
 		return await this.getConfig();
-	}
-
-	applyPatchField(
-		config: Record<string, unknown>,
-		field: keyof ProvisioningConfigDto,
-		value: unknown,
-	) {
-		if (value === null) {
-			// removes the config value if it null, meaning it should be unset, and default back to env provided config
-			delete config[field];
-		}
-
-		if (value !== undefined && value !== null) {
-			config[field] = value;
-		}
-
-		return config;
 	}
 
 	@OnPubSubEvent('reload-sso-provisioning-configuration')
