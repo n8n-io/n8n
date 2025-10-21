@@ -554,11 +554,10 @@ const onDragEnd = (el: HTMLElement) => {
 											v-if="ndvStore.activeNodeName"
 											:node-name="ndvStore.activeNodeName"
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-											text
 											telemetry-source="inputs"
-											hide-icon
 											size="small"
-											:class="$style.executeButton"
+											type="secondary"
+											hide-icon
 										/>
 									</template>
 								</I18nT>
@@ -576,12 +575,6 @@ const onDragEnd = (el: HTMLElement) => {
 		</Draggable>
 	</div>
 </template>
-
-<style lang="css" module>
-.executeButton {
-	padding: 0;
-}
-</style>
 
 <style lang="css" scoped>
 .full-height {
