@@ -411,13 +411,45 @@ export class LmChatOpenAi implements INodeType {
 		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
 			modelKwargs.reasoning_effort = options.reasoningEffort;
 
+	// Fix for OpenAI-compatible APIs (like NVIDIA) that require non-empty content
+	// in assistant messages even when making tool calls
+	const configWithContentFix = {
+		...configuration,
+		fetch: async (url: any, init?: any) => {
+			if (init?.body && typeof init.body === 'string') {
+				try {
+					const requestBody = JSON.parse(init.body);
+					if (requestBody.messages && Array.isArray(requestBody.messages)) {
+						requestBody.messages = requestBody.messages.map((msg: any) => {
+							if (
+								msg.role === 'assistant' &&
+								msg.tool_calls &&
+								Array.isArray(msg.tool_calls) &&
+								msg.tool_calls.length > 0 &&
+								typeof msg.content === 'string' &&
+								msg.content.trim() === ''
+							) {
+								return { ...msg, content: ' ' };
+							}
+							return msg;
+						});
+						init.body = JSON.stringify(requestBody);
+					}
+				} catch (e) {
+					// If parsing fails, continue with original body
+				}
+			}
+			return fetch(url, init);
+		},
+	};
+
 		const model = new ChatOpenAIWithContentFix({
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
-			configuration,
+			configuration: configWithContentFix,
 			callbacks: [new N8nLlmTracing(this)],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
