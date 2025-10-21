@@ -102,6 +102,7 @@ defineExpose({
 			/>
 
 			<div :class="$style.actions">
+				<!-- TODO: Implement attachments
 				<N8nIconButton
 					native-type="button"
 					type="secondary"
@@ -111,7 +112,7 @@ defineExpose({
 					icon-size="large"
 					text
 					@click="onAttach"
-				/>
+				/> -->
 				<N8nIconButton
 					v-if="speechInput.isSupported"
 					native-type="button"
