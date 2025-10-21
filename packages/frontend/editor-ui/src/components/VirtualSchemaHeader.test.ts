@@ -114,6 +114,7 @@ describe('VirtualSchemaHeader.vue', () => {
 
 			const header = getByTestId('run-data-schema-header');
 			expect(header).toBeInTheDocument();
+			expect(header.querySelector('.trigger-icon')).toBeInTheDocument();
 		});
 	});
 
