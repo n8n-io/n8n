@@ -15,7 +15,7 @@ export class AddWorkflowVersionColumn1761047826451 implements ReversibleMigratio
 		);
 
 		// Create function that increments version counter.
-		// Manually setting the value is prevented by raising an error.
+		// NOTE: we're modifying the NEW record before the update happens, so we do it BEFORE the update.
 		await queryRunner.query(`
 			CREATE OR REPLACE FUNCTION ${functionName}()
 			RETURNS TRIGGER AS $$
