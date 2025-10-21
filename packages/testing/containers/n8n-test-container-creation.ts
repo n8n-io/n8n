@@ -85,7 +85,7 @@ export interface N8NConfig {
 		cpu?: number; // in cores
 	};
 	proxyServerEnabled?: boolean;
-	gitea?: boolean;
+	sourceControl?: boolean;
 	taskRunner?: boolean;
 }
 
@@ -126,10 +126,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		projectName,
 		resourceQuota,
 		taskRunner = false,
-		gitea = false,
+		sourceControl = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const taskRunnerEnabled = !!taskRunner;
+	const sourceControlEnabled = !!sourceControl;
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
@@ -142,7 +143,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		needsLoadBalancer ||
 		proxyServerEnabled ||
 		taskRunnerEnabled ||
-		gitea;
+		sourceControlEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -309,7 +310,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		containers.push(taskRunnerContainer);
 	}
 
-	if (config.gitea && network) {
+	if (sourceControlEnabled && network) {
 		const giteaContainer = await setupGitea({
 			giteaImage: GITEA_IMAGE,
 			projectName: uniqueProjectName,

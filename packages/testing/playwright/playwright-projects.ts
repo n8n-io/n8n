@@ -3,7 +3,14 @@ import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
 
 // Tags that require test containers environment
 // These tests won't be run against local
-const CONTAINER_ONLY_TAGS = ['proxy', 'postgres', 'queue', 'multi-main', 'task-runner', 'gitea'];
+const CONTAINER_ONLY_TAGS = [
+	'proxy',
+	'postgres',
+	'queue',
+	'multi-main',
+	'task-runner',
+	'source-control',
+];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 
 // Tags that need serial execution

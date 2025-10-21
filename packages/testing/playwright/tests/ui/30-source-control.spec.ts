@@ -5,7 +5,7 @@ import type { n8nPage } from '../../pages/n8nPage';
 
 test.use({
 	addContainerCapability: {
-		gitea: true,
+		sourceControl: true,
 	},
 });
 
@@ -20,8 +20,8 @@ async function setupSourceControl(n8n: n8nPage) {
 	});
 }
 
-test.describe('Environments - Gitea Integration @capability:gitea', () => {
-	test('should connect to Gitea repository using SSH', async ({ n8n, n8nContainer }) => {
+test.describe('Source Control Integration @capability:source-control', () => {
+	test('should connect to Git repository using SSH', async ({ n8n, n8nContainer }) => {
 		await setupSourceControl(n8n);
 
 		const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
@@ -31,10 +31,12 @@ test.describe('Environments - Gitea Integration @capability:gitea', () => {
 		expect(sshKey).toBeTruthy();
 		expect(sshKey).toContain('ssh-');
 
-		// Get the Gitea container
-		const giteaContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
-		expect(giteaContainer).toBeDefined();
-		await addGiteaSSHKey(giteaContainer!, 'n8n-environments', sshKey);
+		// Get the source control container
+		const sourceControlContainer = n8nContainer.containers.find((c) =>
+			c.getName().includes('gitea'),
+		);
+		expect(sourceControlContainer).toBeDefined();
+		await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
 
 		await n8n.navigate.toEnvironments();
 

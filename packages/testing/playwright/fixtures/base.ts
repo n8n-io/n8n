@@ -38,7 +38,7 @@ interface ContainerConfig {
 	env?: Record<string, string>;
 	proxyServerEnabled?: boolean;
 	taskRunner?: boolean;
-	gitea?: boolean;
+	sourceControl?: boolean;
 }
 
 /**
