@@ -76,6 +76,10 @@ const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 		version: 1.2,
 	},
+	ollama: {
+		name: '@n8n/n8n-nodes-langchain.lmChatOllama',
+		version: 1,
+	},
 };
 
 const NODE_NAMES = {
@@ -150,6 +154,7 @@ export class ChatHubService {
 				openai: { models: [] },
 				anthropic: { models: [] },
 				google: { models: [] },
+				ollama: { models: [] },
 			},
 		);
 	}
@@ -166,6 +171,8 @@ export class ChatHubService {
 				return await this.fetchAnthropicModels(credentials, additionalData);
 			case 'google':
 				return await this.fetchGoogleModels(credentials, additionalData);
+			case 'ollama':
+				return await this.fetchOllamaModels(credentials, additionalData);
 		}
 	}
 
@@ -259,6 +266,60 @@ export class ChatHubService {
 		return {
 			models: results.map((result) => ({ name: String(result.value) })),
 		};
+	}
+
+	private async fetchOllamaModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		try {
+			const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+				{
+					routing: {
+						request: {
+							method: 'GET',
+							url: '/api/tags',
+						},
+						output: {
+							postReceive: [
+								{
+									type: 'rootProperty',
+									properties: {
+										property: 'models',
+									},
+								},
+								{
+									type: 'setKeyValue',
+									properties: {
+										name: '={{$responseItem.name}}',
+										value: '={{$responseItem.name}}',
+									},
+								},
+								{
+									type: 'sort',
+									properties: {
+										key: 'name',
+									},
+								},
+							],
+						},
+					},
+				},
+				additionalData,
+				providerNodeTypeMapping.ollama,
+				{},
+				credentials,
+			);
+
+			return {
+				models: results.map((result) => ({ name: String(result.value) })),
+			};
+		} catch (error) {
+			return {
+				models: [],
+				error: 'Could not retrieve Ollama models. Verify Ollama is running and credentials are correct.',
+			};
+		}
 	}
 
 	private async createChatWorkflow(
@@ -930,6 +991,14 @@ export class ChatHubService {
 					...common,
 					parameters: {
 						model: { __rl: true, mode: 'list', value: model },
+						options: {},
+					},
+				};
+			case 'ollama':
+				return {
+					...common,
+					parameters: {
+						model: model,
 						options: {},
 					},
 				};

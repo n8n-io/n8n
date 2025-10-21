@@ -1,0 +1,153 @@
+{
+	"name": "AWS Services Complete Validation Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [250, 500],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {
+				"resource": "restApi",
+				"operation": "list",
+				"limit": 10
+			},
+			"id": "api-gateway",
+			"name": "API Gateway - List APIs",
+			"type": "n8n-nodes-base.awsApiGateway",
+			"position": [450, 200],
+			"typeVersion": 1,
+			"credentials": {"aws": {"id": "1", "name": "AWS account"}}
+		},
+		{
+			"parameters": {
+				"resource": "stateMachine",
+				"operation": "list",
+				"maxResults": 10
+			},
+			"id": "step-functions",
+			"name": "Step Functions - List State Machines",
+			"type": "n8n-nodes-base.awsStepFunctions",
+			"position": [450, 300],
+			"typeVersion": 1,
+			"credentials": {"aws": {"id": "1", "name": "AWS account"}}
+		},
+		{
+			"parameters": {
+				"resource": "stack",
+				"operation": "list"
+			},
+			"id": "cloudformation",
+			"name": "CloudFormation - List Stacks",
+			"type": "n8n-nodes-base.awsCloudFormation",
+			"position": [450, 400],
+			"typeVersion": 1,
+			"credentials": {"aws": {"id": "1", "name": "AWS account"}}
+		},
+		{
+			"parameters": {
+				"resource": "cluster",
+				"operation": "list",
+				"maxResults": 10
+			},
+			"id": "ecs",
+			"name": "ECS - List Clusters",
+			"type": "n8n-nodes-base.awsECS",
+			"position": [450, 500],
+			"typeVersion": 1,
+			"credentials": {"aws": {"id": "1", "name": "AWS account"}}
+		},
+		{
+			"parameters": {
+				"resource": "hostedZone",
+				"operation": "list",
+				"maxItems": 10
+			},
+			"id": "route53",
+			"name": "Route 53 - List Hosted Zones",
+			"type": "n8n-nodes-base.awsRoute53",
+			"position": [450, 600],
+			"typeVersion": 1,
+			"credentials": {"aws": {"id": "1", "name": "AWS account"}}
+		},
+		{
+			"parameters": {
+				"resource": "cacheCluster",
+				"operation": "describe",
+				"cacheClusterId": "",
+				"maxRecords": 10
+			},
+			"id": "elasticache",
+			"name": "ElastiCache - Describe Clusters",
+			"type": "n8n-nodes-base.awsElastiCache",
+			"position": [450, 700],
+			"typeVersion": 1,
+			"credentials": {"aws": {"id": "1", "name": "AWS account"}}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "list",
+				"sortBy": "NAME"
+			},
+			"id": "codebuild",
+			"name": "CodeBuild - List Projects",
+			"type": "n8n-nodes-base.awsCodeBuild",
+			"position": [450, 800],
+			"typeVersion": 1,
+			"credentials": {"aws": {"id": "1", "name": "AWS account"}}
+		},
+		{
+			"parameters": {},
+			"id": "merge-results",
+			"name": "Merge Results",
+			"type": "n8n-nodes-base.merge",
+			"position": [650, 500],
+			"typeVersion": 2
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{"node": "API Gateway - List APIs", "type": "main", "index": 0},
+					{"node": "Step Functions - List State Machines", "type": "main", "index": 0},
+					{"node": "CloudFormation - List Stacks", "type": "main", "index": 0},
+					{"node": "ECS - List Clusters", "type": "main", "index": 0},
+					{"node": "Route 53 - List Hosted Zones", "type": "main", "index": 0},
+					{"node": "ElastiCache - Describe Clusters", "type": "main", "index": 0},
+					{"node": "CodeBuild - List Projects", "type": "main", "index": 0}
+				]
+			]
+		},
+		"API Gateway - List APIs": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"Step Functions - List State Machines": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"CloudFormation - List Stacks": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"ECS - List Clusters": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"Route 53 - List Hosted Zones": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"ElastiCache - Describe Clusters": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		},
+		"CodeBuild - List Projects": {
+			"main": [[{"node": "Merge Results", "type": "main", "index": 0}]]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"tags": ["AWS", "Validation", "Complete"],
+	"pinData": {},
+	"versionId": "2"
+}

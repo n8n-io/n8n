@@ -1,0 +1,246 @@
+{
+	"name": "AWS Services Validation Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [250, 300],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {
+				"resource": "restApi",
+				"operation": "create",
+				"apiName": "TestAPI",
+				"description": "Test REST API created by n8n",
+				"endpointConfiguration": "{\"types\": [\"REGIONAL\"]}",
+				"tags": "{\"Environment\": \"Test\", \"CreatedBy\": \"n8n\"}"
+			},
+			"id": "api-gateway-create",
+			"name": "API Gateway - Create REST API",
+			"type": "n8n-nodes-base.awsApiGateway",
+			"position": [450, 200],
+			"typeVersion": 1,
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "restApi",
+				"operation": "list",
+				"limit": 10
+			},
+			"id": "api-gateway-list",
+			"name": "API Gateway - List REST APIs",
+			"type": "n8n-nodes-base.awsApiGateway",
+			"position": [650, 200],
+			"typeVersion": 1,
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stateMachine",
+				"operation": "create",
+				"stateMachineName": "TestStateMachine",
+				"definition": "{\"Comment\": \"A Hello World example\", \"StartAt\": \"HelloWorld\", \"States\": {\"HelloWorld\": {\"Type\": \"Pass\", \"Result\": \"Hello World!\", \"End\": true}}}",
+				"roleArn": "arn:aws:iam::123456789012:role/StepFunctionsRole",
+				"type": "STANDARD",
+				"tags": "[{\"key\": \"Environment\", \"value\": \"Test\"}]"
+			},
+			"id": "step-functions-create",
+			"name": "Step Functions - Create State Machine",
+			"type": "n8n-nodes-base.awsStepFunctions",
+			"position": [450, 400],
+			"typeVersion": 1,
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "execution",
+				"operation": "start",
+				"stateMachineArn": "={{$json[\"stateMachineArn\"]}}",
+				"executionName": "TestExecution",
+				"input": "{\"message\": \"Hello from n8n\"}"
+			},
+			"id": "step-functions-start",
+			"name": "Step Functions - Start Execution",
+			"type": "n8n-nodes-base.awsStepFunctions",
+			"position": [650, 400],
+			"typeVersion": 1,
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stack",
+				"operation": "validateTemplate",
+				"templateBody": "{\"AWSTemplateFormatVersion\": \"2010-09-09\", \"Description\": \"Test template\", \"Resources\": {\"TestBucket\": {\"Type\": \"AWS::S3::Bucket\"}}}"
+			},
+			"id": "cloudformation-validate",
+			"name": "CloudFormation - Validate Template",
+			"type": "n8n-nodes-base.awsCloudFormation",
+			"position": [450, 600],
+			"typeVersion": 1,
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stack",
+				"operation": "list",
+				"stackStatusFilter": "[\"CREATE_COMPLETE\", \"UPDATE_COMPLETE\"]"
+			},
+			"id": "cloudformation-list",
+			"name": "CloudFormation - List Stacks",
+			"type": "n8n-nodes-base.awsCloudFormation",
+			"position": [650, 600],
+			"typeVersion": 1,
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "cluster",
+				"operation": "create",
+				"clusterName": "TestCluster",
+				"capacityProviders": "[\"FARGATE\", \"FARGATE_SPOT\"]",
+				"tags": "[{\"key\": \"Environment\", \"value\": \"Test\"}]"
+			},
+			"id": "ecs-create-cluster",
+			"name": "ECS - Create Cluster",
+			"type": "n8n-nodes-base.awsECS",
+			"position": [450, 800],
+			"typeVersion": 1,
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "listTasks",
+				"cluster": "TestCluster",
+				"desiredStatus": "RUNNING"
+			},
+			"id": "ecs-list-tasks",
+			"name": "ECS - List Tasks",
+			"type": "n8n-nodes-base.awsECS",
+			"position": [650, 800],
+			"typeVersion": 1,
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "API Gateway - Create REST API",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Step Functions - Create State Machine",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "CloudFormation - Validate Template",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "ECS - Create Cluster",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"API Gateway - Create REST API": {
+			"main": [
+				[
+					{
+						"node": "API Gateway - List REST APIs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Step Functions - Create State Machine": {
+			"main": [
+				[
+					{
+						"node": "Step Functions - Start Execution",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"CloudFormation - Validate Template": {
+			"main": [
+				[
+					{
+						"node": "CloudFormation - List Stacks",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ECS - Create Cluster": {
+			"main": [
+				[
+					{
+						"node": "ECS - List Tasks",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"tags": [],
+	"pinData": {},
+	"versionId": "1"
+}
