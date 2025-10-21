@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
