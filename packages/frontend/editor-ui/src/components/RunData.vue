@@ -934,7 +934,8 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		workflowsStore.lastSuccessfulExecution,
 		node.value,
 	);
-	previousExecutionDataUsedInEditMode.value = Boolean(lastSuccessfulExecutionItems.length);
+	previousExecutionDataUsedInEditMode.value =
+		inputDataLength === 0 && Boolean(lastSuccessfulExecutionItems.length);
 	const mockData = lastSuccessfulExecutionItems.length
 		? executionDataToJson(lastSuccessfulExecutionItems)
 		: DUMMY_PIN_DATA;
