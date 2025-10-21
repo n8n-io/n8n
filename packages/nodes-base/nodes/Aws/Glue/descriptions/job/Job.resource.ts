@@ -1,13 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleError } from '../../helpers/errorHandler';
 
-export const description: INodeProperties[] = [
+export const jobOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'create',
 		displayOptions: {
 			show: {
 				resource: ['job'],
@@ -15,110 +13,78 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a Glue job',
-				action: 'Create a Glue job',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/',
-						headers: {
-							'X-Amz-Target': 'AWSGlue.CreateJob',
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
-						body: {
-							Name: '={{ $parameter["jobName"] }}',
-							Role: '={{ $parameter["role"] }}',
-							Command: '={{ $parameter["command"] }}',
-							DefaultArguments: '={{ $parameter["defaultArguments"] }}',
-							MaxRetries: '={{ $parameter["maxRetries"] }}',
-							Timeout: '={{ $parameter["timeout"] }}',
-							GlueVersion: '={{ $parameter["glueVersion"] }}',
-							NumberOfWorkers: '={{ $parameter["numberOfWorkers"] }}',
-							WorkerType: '={{ $parameter["workerType"] }}',
-							Tags: '={{ $parameter["tags"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
-					},
-				},
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a Glue job',
-				action: 'Delete a Glue job',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/',
-						headers: {
-							'X-Amz-Target': 'AWSGlue.DeleteJob',
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
-						body: {
-							JobName: '={{ $parameter["jobName"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
-					},
-				},
-			},
-			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a Glue job',
-				action: 'Get a Glue job',
+				description: 'Get details about a job',
+				action: 'Get a job',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '/',
 						headers: {
 							'X-Amz-Target': 'AWSGlue.GetJob',
-							'Content-Type': 'application/x-amz-json-1.1',
 						},
 						body: {
 							JobName: '={{ $parameter["jobName"] }}',
 						},
-						ignoreHttpStatusErrors: true,
 					},
-					output: {
-						postReceive: [handleError],
+				},
+			},
+			{
+				name: 'Get Run',
+				value: 'getRun',
+				description: 'Get details about a job run',
+				action: 'Get a job run',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '/',
+						headers: {
+							'X-Amz-Target': 'AWSGlue.GetJobRun',
+						},
+						body: {
+							JobName: '={{ $parameter["jobName"] }}',
+							RunId: '={{ $parameter["runId"] }}',
+						},
 					},
 				},
 			},
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List Glue jobs',
-				action: 'List Glue jobs',
+				description: 'List all jobs',
+				action: 'List jobs',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '/',
 						headers: {
 							'X-Amz-Target': 'AWSGlue.GetJobs',
-							'Content-Type': 'application/x-amz-json-1.1',
 						},
-						body: {
-							MaxResults: '={{ $parameter["maxResults"] }}',
-							NextToken: '={{ $parameter["nextToken"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
-				name: 'Start Run',
-				value: 'startRun',
+				name: 'List Runs',
+				value: 'listRuns',
+				description: 'List job runs',
+				action: 'List job runs',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '/',
+						headers: {
+							'X-Amz-Target': 'AWSGlue.GetJobRuns',
+						},
+						body: {
+							JobName: '={{ $parameter["jobName"] }}',
+						},
+					},
+				},
+			},
+			{
+				name: 'Start',
+				value: 'start',
 				description: 'Start a job run',
 				action: 'Start a job run',
 				routing: {
@@ -127,49 +93,19 @@ export const description: INodeProperties[] = [
 						url: '/',
 						headers: {
 							'X-Amz-Target': 'AWSGlue.StartJobRun',
-							'Content-Type': 'application/x-amz-json-1.1',
 						},
 						body: {
 							JobName: '={{ $parameter["jobName"] }}',
-							Arguments: '={{ $parameter["arguments"] }}',
-							Timeout: '={{ $parameter["timeout"] }}',
-							NumberOfWorkers: '={{ $parameter["numberOfWorkers"] }}',
-							WorkerType: '={{ $parameter["workerType"] }}',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
-					},
-				},
-			},
-			{
-				name: 'Get Run',
-				value: 'getRun',
-				description: 'Get job run details',
-				action: 'Get job run details',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/',
-						headers: {
-							'X-Amz-Target': 'AWSGlue.GetJobRun',
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
-						body: {
-							JobName: '={{ $parameter["jobName"] }}',
-							RunId: '={{ $parameter["runId"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 		],
+		default: 'list',
 	},
-	// Common field
+];
+
+export const jobFields: INodeProperties[] = [
 	{
 		displayName: 'Job Name',
 		name: 'jobName',
@@ -178,153 +114,12 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['job'],
+				operation: ['get', 'getRun', 'start', 'listRuns'],
 			},
 		},
 		default: '',
-		description: 'Name of the Glue job',
+		description: 'Name of the job',
 	},
-	// Create operation fields
-	{
-		displayName: 'Role ARN',
-		name: 'role',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-		description: 'IAM role ARN for the job',
-	},
-	{
-		displayName: 'Command',
-		name: 'command',
-		type: 'json',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create'],
-			},
-		},
-		default: '{"Name": "glueetl", "ScriptLocation": "s3://bucket/path/script.py", "PythonVersion": "3"}',
-		description: 'Job command configuration',
-	},
-	{
-		displayName: 'Default Arguments',
-		name: 'defaultArguments',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create'],
-			},
-		},
-		default: '{}',
-		description: 'Default arguments for the job',
-	},
-	{
-		displayName: 'Max Retries',
-		name: 'maxRetries',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create'],
-			},
-		},
-		default: 0,
-		description: 'Maximum number of retries',
-	},
-	{
-		displayName: 'Timeout',
-		name: 'timeout',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create', 'startRun'],
-			},
-		},
-		default: 2880,
-		description: 'Job timeout in minutes',
-	},
-	{
-		displayName: 'Glue Version',
-		name: 'glueVersion',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create'],
-			},
-		},
-		default: '4.0',
-		description: 'Glue version (e.g., 4.0, 3.0, 2.0)',
-	},
-	{
-		displayName: 'Number of Workers',
-		name: 'numberOfWorkers',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create', 'startRun'],
-			},
-		},
-		default: 2,
-		description: 'Number of workers',
-	},
-	{
-		displayName: 'Worker Type',
-		name: 'workerType',
-		type: 'options',
-		options: [
-			{ name: 'Standard', value: 'Standard' },
-			{ name: 'G.1X', value: 'G.1X' },
-			{ name: 'G.2X', value: 'G.2X' },
-			{ name: 'G.025X', value: 'G.025X' },
-			{ name: 'Z.2X', value: 'Z.2X' },
-		],
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create', 'startRun'],
-			},
-		},
-		default: 'Standard',
-		description: 'Type of worker',
-	},
-	{
-		displayName: 'Tags',
-		name: 'tags',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['create'],
-			},
-		},
-		default: '{}',
-		description: 'Key-value pairs for tagging',
-	},
-	// Start Run operation fields
-	{
-		displayName: 'Arguments',
-		name: 'arguments',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['job'],
-				operation: ['startRun'],
-			},
-		},
-		default: '{}',
-		description: 'Arguments for the job run',
-	},
-	// Get Run operation fields
 	{
 		displayName: 'Run ID',
 		name: 'runId',
@@ -339,31 +134,94 @@ export const description: INodeProperties[] = [
 		default: '',
 		description: 'ID of the job run',
 	},
-	// List operation fields
 	{
-		displayName: 'Max Results',
-		name: 'maxResults',
-		type: 'number',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['job'],
-				operation: ['list'],
+				operation: ['start'],
 			},
 		},
-		default: 100,
-		description: 'Maximum number of results to return',
+		options: [
+			{
+				displayName: 'Arguments',
+				name: 'Arguments',
+				type: 'json',
+				default: '{}',
+				description: 'Job arguments as JSON',
+				routing: {
+					request: {
+						body: {
+							Arguments: '={{ JSON.parse($value) }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Timeout',
+				name: 'Timeout',
+				type: 'number',
+				default: 2880,
+				description: 'Job timeout in minutes',
+				routing: {
+					request: {
+						body: {
+							Timeout: '={{ $value }}',
+						},
+					},
+				},
+			},
+		],
 	},
 	{
-		displayName: 'Next Token',
-		name: 'nextToken',
-		type: 'string',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['job'],
-				operation: ['list'],
+				operation: ['list', 'listRuns'],
 			},
 		},
-		default: '',
-		description: 'Pagination token from previous response',
+		options: [
+			{
+				displayName: 'Max Results',
+				name: 'MaxResults',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 100,
+				description: 'Maximum number of results',
+				routing: {
+					request: {
+						body: {
+							MaxResults: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Next Token',
+				name: 'NextToken',
+				type: 'string',
+				default: '',
+				description: 'Pagination token',
+				routing: {
+					request: {
+						body: {
+							NextToken: '={{ $value }}',
+						},
+					},
+				},
+			},
+		],
 	},
 ];

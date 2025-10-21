@@ -1,3 +1,3 @@
-export * as restApi from './restApi/RestApi.resource';
-export * as deployment from './deployment/Deployment.resource';
-export * as stage from './stage/Stage.resource';
+export { restApiOperations, restApiFields } from './restApi/RestApi.resource';
+export { deploymentOperations, deploymentFields } from './deployment/Deployment.resource';
+export { stageOperations, stageFields } from './stage/Stage.resource';

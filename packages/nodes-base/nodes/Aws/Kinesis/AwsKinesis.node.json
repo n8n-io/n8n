@@ -1,8 +1,8 @@
 {
 	"node": "n8n-nodes-base.awsKinesis",
-	"nodeVersion": "1",
-	"codexVersion": "1",
-	"categories": ["Development"],
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Integration"],
 	"resources": {
 		"credentialDocumentation": [
 			{

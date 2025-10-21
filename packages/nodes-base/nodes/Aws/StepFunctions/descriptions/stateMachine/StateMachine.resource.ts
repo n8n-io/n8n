@@ -1,13 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleError } from '../../helpers/errorHandler';
 
-export const description: INodeProperties[] = [
+export const stateMachineOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'create',
 		displayOptions: {
 			show: {
 				resource: ['stateMachine'],
@@ -17,7 +15,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a state machine',
+				description: 'Create a new state machine',
 				action: 'Create a state machine',
 				routing: {
 					request: {
@@ -25,21 +23,7 @@ export const description: INodeProperties[] = [
 						url: '/',
 						headers: {
 							'X-Amz-Target': 'AWSStepFunctions.CreateStateMachine',
-							'Content-Type': 'application/x-amz-json-1.0',
 						},
-						body: {
-							name: '={{ $parameter["stateMachineName"] }}',
-							definition: '={{ $parameter["definition"] }}',
-							roleArn: '={{ $parameter["roleArn"] }}',
-							type: '={{ $parameter["type"] }}',
-							loggingConfiguration: '={{ $parameter["loggingConfiguration"] }}',
-							tracingConfiguration: '={{ $parameter["tracingConfiguration"] }}',
-							tags: '={{ $parameter["tags"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
@@ -54,22 +38,17 @@ export const description: INodeProperties[] = [
 						url: '/',
 						headers: {
 							'X-Amz-Target': 'AWSStepFunctions.DeleteStateMachine',
-							'Content-Type': 'application/x-amz-json-1.0',
 						},
 						body: {
 							stateMachineArn: '={{ $parameter["stateMachineArn"] }}',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
 				name: 'Describe',
 				value: 'describe',
-				description: 'Describe a state machine',
+				description: 'Get details about a state machine',
 				action: 'Describe a state machine',
 				routing: {
 					request: {
@@ -77,22 +56,17 @@ export const description: INodeProperties[] = [
 						url: '/',
 						headers: {
 							'X-Amz-Target': 'AWSStepFunctions.DescribeStateMachine',
-							'Content-Type': 'application/x-amz-json-1.0',
 						},
 						body: {
 							stateMachineArn: '={{ $parameter["stateMachineArn"] }}',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List state machines',
+				description: 'List all state machines',
 				action: 'List state machines',
 				routing: {
 					request: {
@@ -100,16 +74,7 @@ export const description: INodeProperties[] = [
 						url: '/',
 						headers: {
 							'X-Amz-Target': 'AWSStepFunctions.ListStateMachines',
-							'Content-Type': 'application/x-amz-json-1.0',
 						},
-						body: {
-							maxResults: '={{ $parameter["maxResults"] }}',
-							nextToken: '={{ $parameter["nextToken"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
@@ -124,28 +89,36 @@ export const description: INodeProperties[] = [
 						url: '/',
 						headers: {
 							'X-Amz-Target': 'AWSStepFunctions.UpdateStateMachine',
-							'Content-Type': 'application/x-amz-json-1.0',
 						},
 						body: {
 							stateMachineArn: '={{ $parameter["stateMachineArn"] }}',
-							definition: '={{ $parameter["definition"] }}',
-							roleArn: '={{ $parameter["roleArn"] }}',
-							loggingConfiguration: '={{ $parameter["loggingConfiguration"] }}',
-							tracingConfiguration: '={{ $parameter["tracingConfiguration"] }}',
 						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
 					},
 				},
 			},
 		],
+		default: 'list',
 	},
-	// Create operation fields
+];
+
+export const stateMachineFields: INodeProperties[] = [
 	{
-		displayName: 'State Machine Name',
-		name: 'stateMachineName',
+		displayName: 'State Machine ARN',
+		name: 'stateMachineArn',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['stateMachine'],
+				operation: ['describe', 'delete', 'update'],
+			},
+		},
+		default: '',
+		description: 'The ARN of the state machine',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -155,7 +128,14 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of the state machine (1-80 characters)',
+		description: 'Name of the state machine (1-80 characters)',
+		routing: {
+			request: {
+				body: {
+					name: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Definition',
@@ -165,11 +145,18 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['stateMachine'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
-		default: '',
-		description: 'Amazon States Language definition (JSON string)',
+		default: '{"Comment":"A Hello World example","StartAt":"HelloWorld","States":{"HelloWorld":{"Type":"Pass","Result":"Hello World!","End":true}}}',
+		description: 'Amazon States Language definition (JSON)',
+		routing: {
+			request: {
+				body: {
+					definition: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Role ARN',
@@ -183,110 +170,212 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'IAM role ARN for execution',
+		description: 'IAM role ARN for state machine execution',
+		routing: {
+			request: {
+				body: {
+					roleArn: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
-		displayName: 'Type',
-		name: 'type',
-		type: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['stateMachine'],
+				operation: ['create'],
+			},
+		},
 		options: [
 			{
-				name: 'STANDARD',
-				value: 'STANDARD',
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				options: [
+					{ name: 'Standard', value: 'STANDARD' },
+					{ name: 'Express', value: 'EXPRESS' },
+				],
+				default: 'STANDARD',
+				description: 'State machine type',
+				routing: {
+					request: {
+						body: {
+							type: '={{ $value }}',
+						},
+					},
+				},
 			},
 			{
-				name: 'EXPRESS',
-				value: 'EXPRESS',
+				displayName: 'Logging Level',
+				name: 'loggingLevel',
+				type: 'options',
+				options: [
+					{ name: 'All', value: 'ALL' },
+					{ name: 'Error', value: 'ERROR' },
+					{ name: 'Fatal', value: 'FATAL' },
+					{ name: 'Off', value: 'OFF' },
+				],
+				default: 'OFF',
+				description: 'CloudWatch logging level',
+				routing: {
+					request: {
+						body: {
+							loggingConfiguration: {
+								level: '={{ $value }}',
+							},
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Tracing Enabled',
+				name: 'tracingEnabled',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable X-Ray tracing',
+				routing: {
+					request: {
+						body: {
+							tracingConfiguration: {
+								enabled: '={{ $value }}',
+							},
+						},
+					},
+				},
 			},
 		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['stateMachine'],
-				operation: ['create'],
+				operation: ['update'],
 			},
 		},
-		default: 'STANDARD',
-		description: 'Type of state machine',
-	},
-	{
-		displayName: 'Logging Configuration',
-		name: 'loggingConfiguration',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['stateMachine'],
-				operation: ['create', 'update'],
+		options: [
+			{
+				displayName: 'Definition',
+				name: 'definition',
+				type: 'json',
+				default: '',
+				description: 'New Amazon States Language definition',
+				routing: {
+					request: {
+						body: {
+							definition: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '{}',
-		description: 'Logging configuration for the state machine',
-	},
-	{
-		displayName: 'Tracing Configuration',
-		name: 'tracingConfiguration',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['stateMachine'],
-				operation: ['create', 'update'],
+			{
+				displayName: 'Role ARN',
+				name: 'roleArn',
+				type: 'string',
+				default: '',
+				description: 'New IAM role ARN',
+				routing: {
+					request: {
+						body: {
+							roleArn: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '{}',
-		description: 'X-Ray tracing configuration',
-	},
-	{
-		displayName: 'Tags',
-		name: 'tags',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['stateMachine'],
-				operation: ['create'],
+			{
+				displayName: 'Logging Level',
+				name: 'loggingLevel',
+				type: 'options',
+				options: [
+					{ name: 'All', value: 'ALL' },
+					{ name: 'Error', value: 'ERROR' },
+					{ name: 'Fatal', value: 'FATAL' },
+					{ name: 'Off', value: 'OFF' },
+				],
+				default: 'OFF',
+				description: 'CloudWatch logging level',
+				routing: {
+					request: {
+						body: {
+							loggingConfiguration: {
+								level: '={{ $value }}',
+							},
+						},
+					},
+				},
 			},
-		},
-		default: '[]',
-		description: 'Array of {key, value} tag objects',
-	},
-	// Delete/Describe/Update operation fields
-	{
-		displayName: 'State Machine ARN',
-		name: 'stateMachineArn',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['stateMachine'],
-				operation: ['delete', 'describe', 'update'],
+			{
+				displayName: 'Tracing Enabled',
+				name: 'tracingEnabled',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable X-Ray tracing',
+				routing: {
+					request: {
+						body: {
+							tracingConfiguration: {
+								enabled: '={{ $value }}',
+							},
+						},
+					},
+				},
 			},
-		},
-		default: '',
-		description: 'ARN of the state machine',
+		],
 	},
-	// List operation fields
 	{
-		displayName: 'Max Results',
-		name: 'maxResults',
-		type: 'number',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['stateMachine'],
 				operation: ['list'],
 			},
 		},
-		default: 100,
-		description: 'Maximum number of results to return (1-1000)',
-	},
-	{
-		displayName: 'Next Token',
-		name: 'nextToken',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['stateMachine'],
-				operation: ['list'],
+		options: [
+			{
+				displayName: 'Max Results',
+				name: 'maxResults',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 100,
+				description: 'Maximum number of results to return',
+				routing: {
+					request: {
+						body: {
+							maxResults: '={{ $value }}',
+						},
+					},
+				},
 			},
-		},
-		default: '',
-		description: 'Pagination token from previous response',
+			{
+				displayName: 'Next Token',
+				name: 'nextToken',
+				type: 'string',
+				default: '',
+				description: 'Pagination token from previous response',
+				routing: {
+					request: {
+						body: {
+							nextToken: '={{ $value }}',
+						},
+					},
+				},
+			},
+		],
 	},
 ];

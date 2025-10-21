@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="#fff">
-  <g fill="#FF9900" stroke="none">
-    <rect x="15" y="20" width="18" height="18" rx="2"/>
-    <rect x="47" y="20" width="18" height="18" rx="2"/>
-    <rect x="15" y="47" width="18" height="18" rx="2"/>
-    <rect x="47" y="47" width="18" height="18" rx="2"/>
-    <rect x="31" y="33" width="18" height="18" rx="2" opacity="0.6"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+	<rect width="80" height="80" fill="#FF9900"/>
+	<rect x="15" y="20" width="15" height="15" rx="2" fill="#FFF"/>
+	<rect x="33" y="20" width="15" height="15" rx="2" fill="#FFF"/>
+	<rect x="51" y="20" width="15" height="15" rx="2" fill="#FFF"/>
+	<rect x="15" y="42" width="15" height="15" rx="2" fill="#FFF"/>
+	<rect x="33" y="42" width="15" height="15" rx="2" fill="#FFF"/>
+	<rect x="51" y="42" width="15" height="15" rx="2" fill="#FFF"/>
 </svg>

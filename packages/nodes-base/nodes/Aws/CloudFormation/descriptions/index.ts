@@ -1,2 +1,1 @@
-export * as stack from './stack/Stack.resource';
-export * as changeSet from './changeSet/ChangeSet.resource';
+export { stackOperations, stackFields } from './stack/Stack.resource';

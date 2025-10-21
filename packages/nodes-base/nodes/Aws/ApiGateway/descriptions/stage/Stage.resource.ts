@@ -1,13 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleError } from '../../helpers/errorHandler';
 
-export const description: INodeProperties[] = [
+export const stageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'create',
 		displayOptions: {
 			show: {
 				resource: ['stage'],
@@ -22,21 +20,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/stages',
-						body: {
-							stageName: '={{ $parameter["stageName"] }}',
-							deploymentId: '={{ $parameter["deploymentId"] }}',
-							description: '={{ $parameter["description"] }}',
-							cacheClusterEnabled: '={{ $parameter["cacheClusterEnabled"] }}',
-							cacheClusterSize: '={{ $parameter["cacheClusterSize"] }}',
-							variables: '={{ $parameter["variables"] }}',
-							tracingEnabled: '={{ $parameter["tracingEnabled"] }}',
-							tags: '={{ $parameter["tags"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/stages',
 					},
 				},
 			},
@@ -48,43 +32,31 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/stages/{{ $parameter["stageName"] }}',
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/stages/{{$parameter["stageName"]}}',
 					},
 				},
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a stage',
+				description: 'Get details about a stage',
 				action: 'Get a stage',
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/stages/{{ $parameter["stageName"] }}',
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/stages/{{$parameter["stageName"]}}',
 					},
 				},
 			},
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List all stages',
+				description: 'List stages for an API',
 				action: 'List stages',
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/stages',
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/stages',
 					},
 				},
 			},
@@ -96,20 +68,16 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '=/restapis/{{ $parameter["restApiId"] }}/stages/{{ $parameter["stageName"] }}',
-						body: {
-							patchOperations: '={{ $parameter["patchOperations"] }}',
-						},
-						ignoreHttpStatusErrors: true,
-					},
-					output: {
-						postReceive: [handleError],
+						url: '=/restapis/{{$parameter["restApiId"]}}/stages/{{$parameter["stageName"]}}',
 					},
 				},
 			},
 		],
+		default: 'list',
 	},
-	// Common fields
+];
+
+export const stageFields: INodeProperties[] = [
 	{
 		displayName: 'REST API ID',
 		name: 'restApiId',
@@ -121,7 +89,7 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The identifier of the REST API',
+		description: 'The ID of the REST API',
 	},
 	{
 		displayName: 'Stage Name',
@@ -131,12 +99,29 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['stage'],
+				operation: ['create', 'get', 'delete', 'update'],
 			},
 		},
 		default: '',
 		description: 'The name of the stage',
+		routing: {
+			request: {
+				body: {
+					stageName: '={{ $value }}',
+				},
+			},
+			send: {
+				preSend: [
+					async function (this, requestOptions) {
+						if (requestOptions.method !== 'POST') {
+							delete (requestOptions.body as any)?.stageName;
+						}
+						return requestOptions;
+					},
+				],
+			},
+		},
 	},
-	// Create operation fields
 	{
 		displayName: 'Deployment ID',
 		name: 'deploymentId',
@@ -149,98 +134,96 @@ export const description: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The deployment ID to associate with the stage',
+		description: 'The ID of the deployment',
+		routing: {
+			request: {
+				body: {
+					deploymentId: '={{ $value }}',
+				},
+			},
+		},
 	},
 	{
-		displayName: 'Description',
-		name: 'description',
-		type: 'string',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['stage'],
 				operation: ['create'],
 			},
 		},
-		default: '',
-		description: 'Description of the stage',
-	},
-	{
-		displayName: 'Cache Cluster Enabled',
-		name: 'cacheClusterEnabled',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['stage'],
-				operation: ['create'],
-			},
-		},
-		default: false,
-		description: 'Whether to enable caching for the stage',
-	},
-	{
-		displayName: 'Cache Cluster Size',
-		name: 'cacheClusterSize',
-		type: 'options',
 		options: [
-			{ name: '0.5 GB', value: '0.5' },
-			{ name: '1.6 GB', value: '1.6' },
-			{ name: '6.1 GB', value: '6.1' },
-			{ name: '13.5 GB', value: '13.5' },
-			{ name: '28.4 GB', value: '28.4' },
-			{ name: '58.2 GB', value: '58.2' },
-			{ name: '118 GB', value: '118' },
-			{ name: '237 GB', value: '237' },
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'Description of the stage',
+				routing: {
+					request: {
+						body: {
+							description: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Cache Cluster Enabled',
+				name: 'cacheClusterEnabled',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable the cache cluster',
+				routing: {
+					request: {
+						body: {
+							cacheClusterEnabled: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Cache Cluster Size',
+				name: 'cacheClusterSize',
+				type: 'options',
+				options: [
+					{ name: '0.5 GB', value: '0.5' },
+					{ name: '1.6 GB', value: '1.6' },
+					{ name: '6.1 GB', value: '6.1' },
+					{ name: '13.5 GB', value: '13.5' },
+					{ name: '28.4 GB', value: '28.4' },
+					{ name: '58.2 GB', value: '58.2' },
+					{ name: '118 GB', value: '118' },
+					{ name: '237 GB', value: '237' },
+				],
+				default: '0.5',
+				description: 'Cache cluster size',
+				routing: {
+					request: {
+						body: {
+							cacheClusterSize: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Tracing Enabled',
+				name: 'tracingEnabled',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable X-Ray tracing',
+				routing: {
+					request: {
+						body: {
+							tracingEnabled: '={{ $value }}',
+						},
+					},
+				},
+			},
 		],
-		displayOptions: {
-			show: {
-				resource: ['stage'],
-				operation: ['create'],
-				cacheClusterEnabled: [true],
-			},
-		},
-		default: '0.5',
-		description: 'Size of the cache cluster',
 	},
-	{
-		displayName: 'Variables',
-		name: 'variables',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['stage'],
-				operation: ['create'],
-			},
-		},
-		default: '{}',
-		description: 'Stage variables',
-	},
-	{
-		displayName: 'Tracing Enabled',
-		name: 'tracingEnabled',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['stage'],
-				operation: ['create'],
-			},
-		},
-		default: false,
-		description: 'Whether to enable X-Ray tracing',
-	},
-	{
-		displayName: 'Tags',
-		name: 'tags',
-		type: 'json',
-		displayOptions: {
-			show: {
-				resource: ['stage'],
-				operation: ['create'],
-			},
-		},
-		default: '{}',
-		description: 'Key-value pairs for tagging',
-	},
-	// Update operation fields
 	{
 		displayName: 'Patch Operations',
 		name: 'patchOperations',
@@ -252,7 +235,14 @@ export const description: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		default: '[]',
-		description: 'Array of patch operations to apply',
+		default: '[{"op":"replace","path":"/description","value":"Updated stage"}]',
+		description: 'Array of patch operations to perform',
+		routing: {
+			request: {
+				body: {
+					patchOperations: '={{ JSON.parse($value) }}',
+				},
+			},
+		},
 	},
 ];

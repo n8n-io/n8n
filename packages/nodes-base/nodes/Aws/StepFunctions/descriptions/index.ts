@@ -1,3 +1,3 @@
-export * as stateMachine from './stateMachine/StateMachine.resource';
-export * as execution from './execution/Execution.resource';
-export * as activity from './activity/Activity.resource';
+export { stateMachineOperations, stateMachineFields } from './stateMachine/StateMachine.resource';
+export { executionOperations, executionFields } from './execution/Execution.resource';
+export { activityOperations, activityFields } from './activity/Activity.resource';

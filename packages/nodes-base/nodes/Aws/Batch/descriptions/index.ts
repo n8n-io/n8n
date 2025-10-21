@@ -1,2 +1,3 @@
-export * as job from './job/Job.resource';
-export * as jobQueue from './jobQueue/JobQueue.resource';
+export { jobOperations, jobFields } from './job/Job.resource';
+export { jobQueueOperations, jobQueueFields } from './jobQueue/JobQueue.resource';
+export { computeEnvironmentOperations, computeEnvironmentFields } from './computeEnvironment/ComputeEnvironment.resource';
