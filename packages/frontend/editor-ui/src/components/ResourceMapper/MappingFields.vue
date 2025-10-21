@@ -14,7 +14,7 @@ import ParameterIssues from '@/components//ParameterIssues.vue';
 import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale, useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import {
 	fieldCannotBeDeleted,
 	isMatchingField,

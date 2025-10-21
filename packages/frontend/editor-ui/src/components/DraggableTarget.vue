@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { XYPosition } from '@/Interface';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { v4 as uuid } from 'uuid';
 import { computed, ref, watch } from 'vue';
 

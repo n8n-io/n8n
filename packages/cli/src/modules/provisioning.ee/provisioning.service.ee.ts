@@ -1,4 +1,4 @@
-import { ProvisioningConfigDto, Role, ROLE, roleSchema } from '@n8n/api-types';
+import { ProvisioningConfigDto, Role, ROLE, roleSchema, ProvisioningConfigPatchDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, User, UserRepository } from '@n8n/db';
@@ -6,6 +6,10 @@ import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { Not } from '@n8n/typeorm';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ZodError } from 'zod';
 
 @Service()
 export class ProvisioningService {
@@ -16,6 +20,7 @@ export class ProvisioningService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
+		private readonly publisher: Publisher,
 	) {}
 
 	async init() {
@@ -73,6 +78,58 @@ export class ProvisioningService {
 		if (user.role.slug !== parsedRole) {
 			await this.userRepository.update(user.id, { role: { slug: parsedRole } });
 		}
+	}
+	
+	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {
+		let patchConfig: ProvisioningConfigPatchDto;
+
+		try {
+			patchConfig = ProvisioningConfigPatchDto.parse(rawConfig);
+		} catch (error) {
+			if (error instanceof ZodError) {
+				throw new BadRequestError(error.message);
+			}
+
+			throw error;
+		}
+
+		const currentConfig = await this.getConfig();
+
+		const supportedPatchFields = [
+			'scopesProvisionInstanceRole',
+			'scopesProvisionProjectRoles',
+			'scopesProvisioningFrequency',
+			'scopesName',
+			'scopesInstanceRoleClaimName',
+			'scopesProjectsRolesClaimName',
+		] as const;
+
+		const updatedConfig: Record<string, unknown> = {
+			...currentConfig,
+			...patchConfig,
+		};
+
+		for (const supportedPatchField of supportedPatchFields) {
+			if (patchConfig[supportedPatchField] === null) {
+				delete updatedConfig[supportedPatchField];
+			}
+		}
+
+		ProvisioningConfigDto.parse(updatedConfig);
+
+		await this.settingsRepository.update(
+			{ key: PROVISIONING_PREFERENCES_DB_KEY },
+			{ value: JSON.stringify(updatedConfig) },
+		);
+
+		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
+		this.provisioningConfig = await this.loadConfig();
+		return await this.getConfig();
+	}
+
+	@OnPubSubEvent('reload-sso-provisioning-configuration')
+	async handleReloadSsoProvisioningConfiguration() {
+		this.provisioningConfig = await this.loadConfig();
 	}
 
 	async loadConfigurationFromDatabase(): Promise<ProvisioningConfigDto | undefined> {
