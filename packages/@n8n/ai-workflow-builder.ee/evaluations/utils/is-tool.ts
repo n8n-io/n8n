@@ -1,1 +1,1 @@
-export { isTool } from '../../src/programmatic/utils/is-tool';
+export { isTool } from '@/validation/utils/is-tool';

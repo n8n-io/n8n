@@ -1,4 +1,4 @@
-import type { ProgrammaticChecksResult, ProgrammaticViolation } from '../programmatic/types';
+import type { ProgrammaticChecksResult, ProgrammaticViolation } from '@/validation/types';
 
 function formatViolationsByCategory(
 	categories: Array<[string, ProgrammaticViolation[]]>,

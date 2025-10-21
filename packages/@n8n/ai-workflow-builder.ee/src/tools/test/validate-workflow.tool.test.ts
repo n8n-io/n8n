@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
-import type { ProgrammaticEvaluationResult } from '../../programmatic/types';
+import type { ProgrammaticEvaluationResult } from '@/validation/types';
 
 import {
 	createWorkflow,
@@ -28,11 +28,11 @@ jest.mock('@langchain/langgraph', () => ({
 	})),
 }));
 
-jest.mock('../../programmatic/programmatic', () => ({
+jest.mock('@/validation/programmatic', () => ({
 	programmaticEvaluation: jest.fn(),
 }));
 
-const mockProgrammaticEvaluation = jest.requireMock('../../programmatic/programmatic')
+const mockProgrammaticEvaluation = jest.requireMock('@/validation/programmatic')
 	.programmaticEvaluation as jest.Mock;
 
 describe('validateWorkflow tool', () => {

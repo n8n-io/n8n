@@ -1,11 +1,11 @@
 import type { TestCase, EvaluationResult } from './evaluation';
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
-import type { ProgrammaticEvaluationResult } from '../../src/programmatic/types';
+import type { ProgrammaticEvaluationResult } from '@/validation/types';
 
 export type {
 	ProgrammaticEvaluationResult,
 	SingleEvaluatorResult,
-} from '../../src/programmatic/types';
+} from '@/validation/types';
 
 /**
  * Cache statistics for prompt caching analysis

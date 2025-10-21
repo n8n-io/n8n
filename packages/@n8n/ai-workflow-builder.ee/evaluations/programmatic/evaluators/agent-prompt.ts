@@ -1,1 +1,1 @@
-export * from '../../../src/programmatic/evaluators/agent-prompt';
+export * from '@/validation/evaluators/agent-prompt';

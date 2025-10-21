@@ -1,4 +1,4 @@
 export {
 	calculateOverallScore,
 	calcSingleEvaluatorScore,
-} from '../../src/programmatic/utils/score';
+} from '@/validation/utils/score';

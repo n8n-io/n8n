@@ -6,8 +6,8 @@ import { z } from 'zod';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 import { ToolExecutionError, ValidationError } from '../errors';
-import { programmaticValidation } from '../programmatic/programmatic';
-import type { ProgrammaticViolation } from '../programmatic/types';
+import { programmaticValidation } from '@/validation/programmatic';
+import type { ProgrammaticViolation } from '@/validation/types';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';
@@ -102,7 +102,7 @@ export function createValidateWorkflowTool(
 		{
 			name: VALIDATE_WORKFLOW_TOOL.toolName,
 			description:
-				'Run programmatic checks against the current workflow. Call this after making changes to ensure the workflow is valid.',
+				'Run validation checks against the current workflow. Call this after making changes to ensure the workflow is valid.',
 			schema: validateWorkflowSchema,
 		},
 	);

@@ -1,1 +1,1 @@
-export * from '../../../src/programmatic/evaluators/from-ai';
+export * from '@/validation/evaluators/from-ai';

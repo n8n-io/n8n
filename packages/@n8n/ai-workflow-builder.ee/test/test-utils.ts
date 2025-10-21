@@ -14,7 +14,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
 import type { SimpleWorkflow } from '../src/types/workflow';
-import type { ProgrammaticEvaluationResult } from '../src/programmatic/types';
+import type { ProgrammaticEvaluationResult } from '@/validation/types';
 
 export const mockProgress = (): MockProxy<ProgressReporter> => mock<ProgressReporter>();
 

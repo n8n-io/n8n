@@ -1,1 +1,1 @@
-export * from '../../../src/programmatic/evaluators/trigger';
+export * from '@/validation/evaluators/trigger';

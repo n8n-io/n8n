@@ -1,9 +1,9 @@
 import { INodeTypeDescription } from 'n8n-workflow';
-import { validateAgentPrompt } from '@/programmatic/evaluators/agent-prompt';
-import { validateConnections } from '@/programmatic/evaluators/connections';
-import { validateFromAi } from '@/programmatic/evaluators/from-ai';
-import { validateTools } from '@/programmatic/evaluators/tools';
-import { validateTrigger } from '@/programmatic/evaluators/trigger';
+import { validateAgentPrompt } from '@/validation/evaluators/agent-prompt';
+import { validateConnections } from '@/validation/evaluators/connections';
+import { validateFromAi } from '@/validation/evaluators/from-ai';
+import { validateTools } from '@/validation/evaluators/tools';
+import { validateTrigger } from '@/validation/evaluators/trigger';
 
 import type { ProgrammaticChecksResult, ProgrammaticEvaluationInput } from './types';
 

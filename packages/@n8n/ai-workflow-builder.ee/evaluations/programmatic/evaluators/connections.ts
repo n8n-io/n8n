@@ -1,1 +1,1 @@
-export * from '../../../src/programmatic/evaluators/connections';
+export * from '@/validation/evaluators/connections';

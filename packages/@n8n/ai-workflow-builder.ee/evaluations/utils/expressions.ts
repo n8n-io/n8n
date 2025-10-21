@@ -1,4 +1,4 @@
 export {
 	containsExpression,
 	nodeParametersContainExpression,
-} from '../../src/programmatic/utils/expressions';
+} from '@/validation/utils/expressions';
