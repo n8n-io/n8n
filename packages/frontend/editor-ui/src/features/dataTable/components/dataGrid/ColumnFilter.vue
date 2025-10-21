@@ -208,6 +208,7 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 	<div class="ag-custom-filter ag-custom-component-popup">
 		<N8nInputLabel
 			v-if="filterType === 'json'"
+			size="small"
 			label="Path"
 			:tooltip-text="i18n.baseText('dataTable.filters.pathInstructions')"
 		>
@@ -215,63 +216,72 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 				v-model="inputPath"
 				data-test-id="json-path-input"
 				size="small"
-				placeholder="a.b[0].c"
+				placeholder="user.address.city"
 			/>
 		</N8nInputLabel>
-		<N8nSelect
-			v-model="selectedOperation"
-			size="small"
-			:popper-append-to-body="false"
-			popper-class="ag-custom-component-popup"
-		>
-			<N8nOption
-				v-for="opt in availableOptions"
-				:key="opt.key"
-				:label="opt.label"
-				:value="opt.key"
-			/>
-		</N8nSelect>
+		<N8nInputLabel size="small" label="Operator">
+			<N8nSelect
+				v-model="selectedOperation"
+				size="small"
+				:popper-append-to-body="false"
+				popper-class="ag-custom-component-popup"
+			>
+				<N8nOption
+					v-for="opt in availableOptions"
+					:key="opt.key"
+					:label="opt.label"
+					:value="opt.key"
+				/>
+			</N8nSelect>
+		</N8nInputLabel>
 
 		<div v-if="numberOfInputs === 1" class="ag-filter-inputs">
-			<ElDatePickerFilter
-				v-if="filterType === 'date'"
-				ref="singleDatePicker"
-				:on-change="onSingleDateChange"
-			/>
-			<N8nInput
-				v-else
-				v-model="inputValue"
-				data-test-id="single-input"
-				:type="filterType === 'number' ? 'number' : 'text'"
-				size="small"
-				:placeholder="i18n.baseText('dataTable.filters.placeholder')"
-			/>
+			<N8nInputLabel size="small" label="Value">
+				<ElDatePickerFilter
+					v-if="filterType === 'date'"
+					ref="singleDatePicker"
+					:on-change="onSingleDateChange"
+				/>
+				<N8nInput
+					v-else
+					v-model="inputValue"
+					data-test-id="single-input"
+					:type="filterType === 'number' ? 'number' : 'text'"
+					size="small"
+				/>
+			</N8nInputLabel>
 		</div>
 
 		<div v-if="numberOfInputs === 2" class="ag-filter-inputs">
 			<template v-if="filterType === 'number'">
-				<N8nInput
-					v-model="inputValue"
-					data-test-id="number-input-first"
-					type="number"
-					size="small"
-					:placeholder="i18n.baseText('generic.from')"
-				/>
-				<N8nInput
-					v-model="inputValueTo"
-					data-test-id="number-input-second"
-					type="number"
-					size="small"
-					:placeholder="i18n.baseText('generic.to')"
-				/>
+				<N8nInputLabel size="small" :label="i18n.baseText('generic.from')">
+					<N8nInput
+						v-model="inputValue"
+						data-test-id="number-input-first"
+						type="number"
+						size="small"
+					/>
+				</N8nInputLabel>
+				<N8nInputLabel size="small" :label="i18n.baseText('generic.to')">
+					<N8nInput
+						v-model="inputValueTo"
+						data-test-id="number-input-second"
+						type="number"
+						size="small"
+					/>
+				</N8nInputLabel>
 			</template>
 			<template v-else>
-				<ElDatePickerFilter ref="startDatePicker" :on-change="onStartDateChange" />
-				<ElDatePickerFilter ref="endDatePicker" :on-change="onEndDateChange" />
+				<N8nInputLabel size="small" :label="i18n.baseText('generic.from')">
+					<ElDatePickerFilter ref="startDatePicker" :on-change="onStartDateChange" />
+				</N8nInputLabel>
+				<N8nInputLabel size="small" :label="i18n.baseText('generic.to')">
+					<ElDatePickerFilter ref="endDatePicker" :on-change="onEndDateChange" />
+				</N8nInputLabel>
 			</template>
 		</div>
 
-		<div class="ag-filter-buttons">
+		<div v-if="isActive" class="ag-filter-buttons">
 			<N8nButton data-test-id="reset-filter-button" text size="small" @click="onReset">{{
 				i18n.baseText('generic.reset')
 			}}</N8nButton>
@@ -292,6 +302,10 @@ watch([selectedOperation, inputValue, inputValueTo, filterType, inputPath], upda
 		flex-direction: column;
 		align-items: center;
 		gap: var(--spacing--2xs);
+
+		> div {
+			width: 100%;
+		}
 	}
 	.ag-filter-buttons {
 		display: flex;
