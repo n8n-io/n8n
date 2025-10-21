@@ -140,13 +140,9 @@ describe('OIDC service', () => {
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
-			console.log('Updating OIDC config with:', newConfig);
-
 			await oidcService.updateConfig(newConfig);
 
 			const loadedConfig = await oidcService.loadConfig(true);
-
-			console.log(loadedConfig);
 
 			expect(loadedConfig.clientId).toEqual('test-client-id');
 			// The secret should be encrypted and not match the original value
