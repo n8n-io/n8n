@@ -1,11 +1,14 @@
 import { ProvisioningConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { SettingsRepository } from '@n8n/db';
+import { SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
+import { Role, ROLE } from '@n8n/api-types';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
+import { roleSchema } from '@n8n/api-types/src/schemas/user.schema';
+import { Not } from '@n8n/typeorm';
 
 @Service()
 export class ProvisioningService {
@@ -14,6 +17,7 @@ export class ProvisioningService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 	) {}
 
@@ -27,6 +31,46 @@ export class ProvisioningService {
 		}
 
 		return this.provisioningConfig;
+	}
+
+	async provisionInstanceRole(user: User, role: unknown) {
+		if (typeof role !== 'string') {
+			this.logger.warn(
+				`Invalid role type: ${typeof role} expected string, skipping instance role provisioning`,
+				{ userId, role },
+			);
+			return;
+		}
+
+		let parsedRole: Role;
+
+		try {
+			parsedRole = roleSchema.parse(role);
+		} catch (error) {
+			this.logger.warn(
+				`Invalid role: ${role} provided, expected oneof ${Object.values(ROLE).join(', ')}, skipping instance role provisioning`,
+				{ userId, role, error },
+			);
+			return;
+		}
+
+		if (user.role.slug === ROLE.Owner && parsedRole !== ROLE.Owner) {
+			const otherOwners = await this.userRepository.find({
+				where: { role: { slug: ROLE.Owner }, id: Not(userId) },
+			});
+			if (otherOwners.length === 0) {
+				this.logger.warn(
+					`Cannot remove last owner role: ${ROLE.Owner} from user: ${userId}, skipping instance role provisioning`,
+					{ userId, role },
+				);
+				return;
+			}
+		}
+
+		// No need to update record if the role hasn't changed
+		if (user.role.slug !== parsedRole) {
+			await this.userRepository.update(user.id, { role: { slug: parsedRole } });
+		}
 	}
 
 	async loadConfigurationFromDatabase(): Promise<ProvisioningConfigDto | undefined> {
