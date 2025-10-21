@@ -1,7 +1,14 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { job } from './descriptions';
+import {
+	databaseOperations,
+	databaseFields,
+	crawlerOperations,
+	crawlerFields,
+	jobOperations,
+	jobFields,
+} from './descriptions';
 import { BASE_URL } from './helpers/constants';
 
 export class AwsGlue implements INodeType {
@@ -35,15 +42,28 @@ export class AwsGlue implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				default: 'job',
+				default: 'database',
 				options: [
+					{
+						name: 'Crawler',
+						value: 'crawler',
+					},
+					{
+						name: 'Database',
+						value: 'database',
+					},
 					{
 						name: 'Job',
 						value: 'job',
 					},
 				],
 			},
-			...job.description,
+			...databaseOperations,
+			...databaseFields,
+			...crawlerOperations,
+			...crawlerFields,
+			...jobOperations,
+			...jobFields,
 		],
 	};
 }
