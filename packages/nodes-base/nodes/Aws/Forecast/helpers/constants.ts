@@ -1,2 +1,2 @@
+export const BASE_URL = 'https://forecast.{region}.amazonaws.com';
 export const SERVICE_NAME = 'forecast';
-export const BASE_URL = '=https://forecast.{{$credentials.region}}.amazonaws.com';

@@ -1,2 +1,2 @@
+export const BASE_URL = 'https://polly.{region}.amazonaws.com';
 export const SERVICE_NAME = 'polly';
-export const BASE_URL = '=https://polly.{{$credentials.region}}.amazonaws.com';
