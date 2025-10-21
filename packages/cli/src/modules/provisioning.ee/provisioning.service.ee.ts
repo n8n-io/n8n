@@ -37,7 +37,7 @@ export class ProvisioningService {
 		if (typeof role !== 'string') {
 			this.logger.warn(
 				`Invalid role type: ${typeof role} expected string, skipping instance role provisioning`,
-				{ userId, role },
+				{ userId: user.id, role },
 			);
 			return;
 		}
@@ -49,19 +49,19 @@ export class ProvisioningService {
 		} catch (error) {
 			this.logger.warn(
 				`Invalid role: ${role} provided, expected oneof ${Object.values(ROLE).join(', ')}, skipping instance role provisioning`,
-				{ userId, role, error },
+				{ userId: user.id, role, error },
 			);
 			return;
 		}
 
 		if (user.role.slug === ROLE.Owner && parsedRole !== ROLE.Owner) {
-			const otherOwners = await this.userRepository.find({
-				where: { role: { slug: ROLE.Owner }, id: Not(userId) },
+			const otherOwners = await this.userRepository.count({
+				where: { role: { slug: ROLE.Owner }, id: Not(user.id) },
 			});
-			if (otherOwners.length === 0) {
+			if (otherOwners === 0) {
 				this.logger.warn(
-					`Cannot remove last owner role: ${ROLE.Owner} from user: ${userId}, skipping instance role provisioning`,
-					{ userId, role },
+					`Cannot remove last owner role: ${ROLE.Owner} from user: ${user.id}, skipping instance role provisioning`,
+					{ userId: user.id, role },
 				);
 				return;
 			}
