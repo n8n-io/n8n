@@ -1,13 +1,10 @@
-import { ProvisioningConfigDto } from '@n8n/api-types';
+import { ProvisioningConfigDto, Role, ROLE, roleSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
-import { Role, ROLE } from '@n8n/api-types';
-
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
-import { roleSchema } from '@n8n/api-types/src/schemas/user.schema';
 import { Not } from '@n8n/typeorm';
 
 @Service()
