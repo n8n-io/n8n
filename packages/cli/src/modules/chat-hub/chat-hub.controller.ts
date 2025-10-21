@@ -6,10 +6,12 @@ import {
 	ChatHubEditMessageRequest,
 	ChatHubRegenerateMessageRequest,
 	ChatHubChangeConversationTitleRequest,
+	ChatSessionId,
+	ChatMessageId,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Post, Body, GlobalScope, Get, Delete } from '@n8n/decorators';
+import { RestController, Post, Body, GlobalScope, Get, Delete, Param } from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
@@ -51,13 +53,14 @@ export class ChatHubController {
 		return await this.chatService.getConversations(req.user.id);
 	}
 
-	@Get('/conversations/:id')
+	@Get('/conversations/:sessionId')
 	@GlobalScope('chatHub:message')
 	async getConversationMessages(
-		req: AuthenticatedRequest<{ id: string }>,
+		req: AuthenticatedRequest,
 		_res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
 	): Promise<ChatHubConversationResponse> {
-		return await this.chatService.getConversation(req.user.id, req.params.id);
+		return await this.chatService.getConversation(req.user.id, sessionId);
 	}
 
 	@GlobalScope('chatHub:message')
@@ -102,10 +105,12 @@ export class ChatHubController {
 	}
 
 	@GlobalScope('chatHub:message')
-	@Post('/conversations/edit')
+	@Post('/conversations/:sessionId/messages/:messageId/edit')
 	async editMessage(
 		req: AuthenticatedRequest,
 		res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
 	) {
 		res.writeHead(200, JSONL_STREAM_HEADERS);
@@ -116,6 +121,8 @@ export class ChatHubController {
 		try {
 			await this.chatService.editHumanMessage(res, req.user, {
 				...payload,
+				sessionId,
+				editId,
 				userId: req.user.id,
 			});
 		} catch (executionError: unknown) {
@@ -144,10 +151,12 @@ export class ChatHubController {
 	}
 
 	@GlobalScope('chatHub:message')
-	@Post('/conversations/regenerate')
+	@Post('/conversations/:sessionId/messages/:messageId/regenerate')
 	async regenerateMessage(
 		req: AuthenticatedRequest,
 		res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
 	) {
 		res.writeHead(200, JSONL_STREAM_HEADERS);
@@ -158,6 +167,8 @@ export class ChatHubController {
 		try {
 			await this.chatService.regenerateAIMessage(res, req.user, {
 				...payload,
+				sessionId,
+				retryId,
 				userId: req.user.id,
 			});
 		} catch (executionError: unknown) {
@@ -185,24 +196,42 @@ export class ChatHubController {
 		}
 	}
 
-	@Post('/conversations/:id/rename')
 	@GlobalScope('chatHub:message')
-	async updateConversationTitle(
-		req: AuthenticatedRequest<{ id: string }>,
-		_res: Response,
-		@Body payload: ChatHubChangeConversationTitleRequest,
-	): Promise<ChatHubConversationResponse> {
-		await this.chatService.updateSessionTitle(req.user.id, req.params.id, payload.title);
+	@Post('/conversations/:sessionId/messages/:messageId/stop')
+	async stopGeneration(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') messageId: ChatMessageId,
+	) {
+		this.logger.debug(`Chat stop request received: ${JSON.stringify({ sessionId, messageId })}`);
 
-		return await this.chatService.getConversation(req.user.id, req.params.id);
+		await this.chatService.stopGeneration(req.user, sessionId, messageId);
+		res.status(204).send();
 	}
 
-	@Delete('/conversations/:id')
+	@Post('/conversations/:sessionId/rename')
+	@GlobalScope('chatHub:message')
+	async updateConversationTitle(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Body payload: ChatHubChangeConversationTitleRequest,
+	): Promise<ChatHubConversationResponse> {
+		await this.chatService.updateSessionTitle(req.user.id, sessionId, payload.title);
+
+		return await this.chatService.getConversation(req.user.id, sessionId);
+	}
+
+	@Delete('/conversations/:sessionId')
 	@GlobalScope('chatHub:message')
 	async deleteConversation(
-		req: AuthenticatedRequest<{ id: string }>,
-		_res: Response,
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
 	): Promise<void> {
-		await this.chatService.deleteSession(req.user.id, req.params.id);
+		await this.chatService.deleteSession(req.user.id, sessionId);
+
+		res.status(204).send();
 	}
 }

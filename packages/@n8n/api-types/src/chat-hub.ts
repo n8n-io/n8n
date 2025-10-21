@@ -62,8 +62,6 @@ export class ChatHubSendMessageRequest extends Z.class({
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
-	retryId: z.string().uuid(),
-	sessionId: z.string().uuid(),
 	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
@@ -75,10 +73,8 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 }) {}
 
 export class ChatHubEditMessageRequest extends Z.class({
-	editId: z.string().uuid(),
 	message: z.string(),
 	messageId: z.string().uuid(),
-	sessionId: z.string().uuid(),
 	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
