@@ -19,10 +19,12 @@ import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
 	User,
+	withTransaction,
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
@@ -53,8 +55,7 @@ import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
-import { ChatHubMessage } from './chat-hub-message.entity';
-import { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatHubMessage } from './chat-hub-message.entity';
 import type {
 	HumanMessagePayload,
 	RegenerateMessagePayload,
@@ -272,22 +273,22 @@ export class ChatHubService {
 		humanMessage: string,
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
+		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
 		startNodes: StartNodeData[];
 		triggerToStartFrom: { name: string; data: ITaskData };
 	}> {
-		const { nodes, connections, startNodes, triggerToStartFrom } = this.prepareChatWorkflow(
-			sessionId,
-			history,
-			humanMessage,
-			credentials,
-			model,
-		);
+		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
+			const { nodes, connections, startNodes, triggerToStartFrom } = this.prepareChatWorkflow(
+				sessionId,
+				history,
+				humanMessage,
+				credentials,
+				model,
+			);
 
-		const { manager } = this.projectRepository;
-		return await manager.transaction(async (trx) => {
-			const project = await this.projectRepository.getPersonalProjectForUser(user.id, trx);
+			const project = await this.projectRepository.getPersonalProjectForUser(user.id, em);
 			if (!project) {
 				throw new NotFoundError('Could not find a personal project for this user');
 			}
@@ -299,9 +300,9 @@ export class ChatHubService {
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
 
-			const workflow = await trx.save<WorkflowEntity>(newWorkflow);
+			const workflow = await em.save<WorkflowEntity>(newWorkflow);
 
-			await trx.save<SharedWorkflow>(
+			await em.save<SharedWorkflow>(
 				this.sharedWorkflowRepository.create({
 					role: 'workflow:owner',
 					projectId: project.id,
@@ -366,32 +367,44 @@ export class ChatHubService {
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, sessionId, selectedModel, true, message);
+		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
+			const session = await this.getChatSession(user, sessionId, selectedModel, true, message, trx);
 
-		// Ensure that the previous message exists in the session
-		if (payload.previousMessageId) {
-			const previousMessage = await this.messageRepository.getOneById(
-				payload.previousMessageId,
-				sessionId,
-			);
-			if (!previousMessage) {
-				throw new BadRequestError('The previous message does not exist in the session');
+			// Ensure that the previous message exists in the session
+			if (payload.previousMessageId) {
+				const previousMessage = await this.messageRepository.getOneById(
+					payload.previousMessageId,
+					sessionId,
+					[],
+					trx,
+				);
+				if (!previousMessage) {
+					throw new BadRequestError('The previous message does not exist in the session');
+				}
 			}
-		}
 
-		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-		const history = this.buildMessageHistory(messages, payload.previousMessageId);
+			const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+			const history = this.buildMessageHistory(messages, payload.previousMessageId);
 
-		await this.saveHumanMessage(payload, user, payload.previousMessageId, selectedModel);
+			await this.saveHumanMessage(
+				payload,
+				user,
+				payload.previousMessageId,
+				selectedModel,
+				undefined,
+				trx,
+			);
 
-		const workflow = await this.createChatWorkflow(
-			user,
-			session.id,
-			history,
-			message,
-			payload.credentials,
-			payload.model,
-		);
+			return await this.createChatWorkflow(
+				user,
+				session.id,
+				history,
+				message,
+				payload.credentials,
+				payload.model,
+				trx,
+			);
+		});
 
 		try {
 			await this.executeChatWorkflow(
@@ -409,55 +422,61 @@ export class ChatHubService {
 	}
 
 	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
-		const { sessionId, editId } = payload;
+		const { sessionId, editId, messageId, replyId } = payload;
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, sessionId);
-		const messageToEdit = await this.getChatMessage(session.id, editId);
+		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
+			const session = await this.getChatSession(user, sessionId, undefined, false, undefined, trx);
+			const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
-		if (messageToEdit.type === 'human') {
-			await this.editHumanMessage(res, user, payload, session, messageToEdit, selectedModel);
-		} else if (messageToEdit.type === 'ai') {
-			await this.editAIMessage(payload.message, editId);
-		} else {
-			throw new BadRequestError('Only human and AI messages can be edited');
+			if (!['ai', 'human'].includes(messageToEdit.type)) {
+				throw new BadRequestError('Only human and AI messages can be edited');
+			}
+
+			if (messageToEdit.type === 'ai') {
+				// AI edits just change the original message without revisioning
+				await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
+				return null;
+			}
+
+			if (messageToEdit.type === 'human') {
+				// Human messages branch the conversation and trigger an AI reply
+				const { message } = payload;
+				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+				const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
+
+				// If the message to edit isn't the original message, we want to point to the original message
+				const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
+
+				await this.saveHumanMessage(
+					payload,
+					user,
+					messageToEdit.previousMessageId,
+					selectedModel,
+					revisionOfMessageId,
+					trx,
+				);
+
+				return await this.createChatWorkflow(
+					user,
+					session.id,
+					history,
+					message,
+					payload.credentials,
+					payload.model,
+					trx,
+				);
+			}
+
+			return null;
+		});
+
+		if (!workflow) {
+			return;
 		}
-	}
-
-	private async editHumanMessage(
-		res: Response,
-		user: User,
-		payload: EditMessagePayload,
-		session: ChatHubSession,
-		messageToEdit: ChatHubMessage,
-		selectedModel: ModelWithCredentials,
-	) {
-		const { sessionId, messageId, message, replyId } = payload;
-		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-		const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
-
-		// If the message to edit isn't the original message, we want to point to the original message
-		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
-
-		await this.saveHumanMessage(
-			payload,
-			user,
-			messageToEdit.previousMessageId,
-			selectedModel,
-			revisionOfMessageId,
-		);
-
-		const workflow = await this.createChatWorkflow(
-			user,
-			session.id,
-			history,
-			message,
-			payload.credentials,
-			payload.model,
-		);
 
 		try {
 			await this.executeChatWorkflow(
@@ -472,11 +491,6 @@ export class ChatHubService {
 		} finally {
 			await this.deleteChatWorkflow(workflow.workflowData.id);
 		}
-	}
-
-	private async editAIMessage(content: string, messageId: ChatMessageId) {
-		// AI edits just change the original message without revisioning
-		await this.messageRepository.updateChatMessage(messageId, { content });
 	}
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
@@ -843,18 +857,22 @@ export class ChatHubService {
 		previousMessageId: ChatMessageId | null,
 		selectedModel: ModelWithCredentials,
 		revisionOfMessageId?: ChatMessageId,
+		trx?: EntityManager,
 	) {
-		await this.messageRepository.createChatMessage({
-			id: payload.messageId,
-			sessionId: payload.sessionId,
-			type: 'human',
-			name: user.firstName || 'User',
-			status: 'success',
-			content: payload.message,
-			previousMessageId,
-			revisionOfMessageId,
-			...selectedModel,
-		});
+		await this.messageRepository.createChatMessage(
+			{
+				id: payload.messageId,
+				sessionId: payload.sessionId,
+				type: 'human',
+				name: user.firstName || 'User',
+				status: 'success',
+				content: payload.message,
+				previousMessageId,
+				revisionOfMessageId,
+				...selectedModel,
+			},
+			trx,
+		);
 	}
 
 	private async saveAIMessage({
@@ -897,30 +915,35 @@ export class ChatHubService {
 		selectedModel?: ModelWithCredentials,
 		initialize: boolean = false,
 		title: string | null = null,
+		trx?: EntityManager,
 	) {
 		// TODO: Handle session ID conflicts better (different user, same ID)
 
-		const existing = await this.sessionRepository.getOneById(sessionId, user.id);
+		const existing = await this.sessionRepository.getOneById(sessionId, user.id, trx);
 		if (existing) {
 			return existing;
 		} else if (!initialize) {
 			throw new NotFoundError('Chat session not found');
 		}
 
-		return await this.sessionRepository.createChatSession({
-			id: sessionId,
-			ownerId: user.id,
-			title: title ?? 'New Chat',
-			...selectedModel,
-		});
+		return await this.sessionRepository.createChatSession(
+			{
+				id: sessionId,
+				ownerId: user.id,
+				title: title ?? 'New Chat',
+				...selectedModel,
+			},
+			trx,
+		);
 	}
 
 	private async getChatMessage(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		relations: string[] = [],
+		trx?: EntityManager,
 	) {
-		const message = await this.messageRepository.getOneById(messageId, sessionId, relations);
+		const message = await this.messageRepository.getOneById(messageId, sessionId, relations, trx);
 		if (!message) {
 			throw new NotFoundError('Chat message not found');
 		}
