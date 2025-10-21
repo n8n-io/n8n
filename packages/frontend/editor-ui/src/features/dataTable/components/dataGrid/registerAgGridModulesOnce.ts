@@ -20,6 +20,7 @@ import {
 	NumberFilterModule,
 	DateFilterModule,
 	EventApiModule,
+	CustomFilterModule,
 } from 'ag-grid-community';
 
 let modulesRegistered = false;
@@ -47,6 +48,7 @@ export const registerAgGridModulesOnce = () => {
 		NumberFilterModule,
 		DateFilterModule,
 		EventApiModule,
+		CustomFilterModule,
 	]);
 	modulesRegistered = true;
 };
