@@ -9,6 +9,7 @@ import type {
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
 	ChatSessionId,
+	ChatMessageId,
 } from '@n8n/api-types';
 import type { StructuredChunk } from './chat.types';
 
@@ -43,6 +44,8 @@ export function sendMessageApi(
 
 export function editMessageApi(
 	ctx: IRestApiContext,
+	sessionId: ChatSessionId,
+	editId: ChatMessageId,
 	payload: ChatHubEditMessageRequest,
 	onMessageUpdated: (data: StructuredChunk) => void,
 	onDone: () => void,
@@ -50,7 +53,7 @@ export function editMessageApi(
 ) {
 	void streamRequest<StructuredChunk>(
 		ctx,
-		'/chat/conversations/edit',
+		`/chat/conversations/${sessionId}/messages/${editId}/edit`,
 		payload,
 		onMessageUpdated,
 		onDone,
@@ -61,6 +64,8 @@ export function editMessageApi(
 
 export function regenerateMessageApi(
 	ctx: IRestApiContext,
+	sessionId: ChatSessionId,
+	retryId: ChatMessageId,
 	payload: ChatHubRegenerateMessageRequest,
 	onMessageUpdated: (data: StructuredChunk) => void,
 	onDone: () => void,
@@ -68,7 +73,7 @@ export function regenerateMessageApi(
 ) {
 	void streamRequest<StructuredChunk>(
 		ctx,
-		'/chat/conversations/regenerate',
+		`/chat/conversations/${sessionId}/messages/${retryId}/regenerate`,
 		payload,
 		onMessageUpdated,
 		onDone,
@@ -76,6 +81,15 @@ export function regenerateMessageApi(
 		STREAM_SEPARATOR,
 	);
 }
+
+export const stopGenerationApi = async (
+	context: IRestApiContext,
+	sessionId: ChatSessionId,
+	messageId: ChatMessageId,
+): Promise<void> => {
+	const apiEndpoint = `/chat/conversations/${sessionId}/messages/${messageId}/stop`;
+	await makeRestApiRequest(context, 'POST', apiEndpoint);
+};
 
 export const fetchConversationsApi = async (
 	context: IRestApiContext,
@@ -86,10 +100,10 @@ export const fetchConversationsApi = async (
 
 export const updateConversationTitleApi = async (
 	context: IRestApiContext,
-	conversationId: ChatSessionId,
+	sessionId: ChatSessionId,
 	title: string,
 ): Promise<ChatHubConversationResponse> => {
-	const apiEndpoint = `/chat/conversations/${conversationId}/rename`;
+	const apiEndpoint = `/chat/conversations/${sessionId}/rename`;
 	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'POST', apiEndpoint, {
 		title,
 	});
@@ -97,16 +111,16 @@ export const updateConversationTitleApi = async (
 
 export const deleteConversationApi = async (
 	context: IRestApiContext,
-	conversationId: ChatSessionId,
+	sessionId: ChatSessionId,
 ): Promise<void> => {
-	const apiEndpoint = `/chat/conversations/${conversationId}`;
+	const apiEndpoint = `/chat/conversations/${sessionId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
 };
 
 export const fetchSingleConversationApi = async (
 	context: IRestApiContext,
-	conversationId: ChatSessionId,
+	sessionId: ChatSessionId,
 ): Promise<ChatHubConversationResponse> => {
-	const apiEndpoint = `/chat/conversations/${conversationId}`;
+	const apiEndpoint = `/chat/conversations/${sessionId}`;
 	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);
 };
