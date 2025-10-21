@@ -15,6 +15,7 @@ import {
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
+import { AI_CHAT_DIALOG_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
@@ -85,6 +86,11 @@ onMounted(async () => {
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
+
+	// Auto-open AI dialog on startup
+	if (uiStore.modalsById[AI_CHAT_DIALOG_MODAL_KEY]) {
+		uiStore.openModal(AI_CHAT_DIALOG_MODAL_KEY);
+	}
 });
 
 watch(showCommandBar, (newVal) => {

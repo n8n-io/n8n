@@ -9,7 +9,7 @@ import type {
 } from '@/features/ai/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INodeParameters, IWorkflowDb } from 'n8n-workflow';
 
 export function chatWithBuilder(
 	ctx: IRestApiContext,

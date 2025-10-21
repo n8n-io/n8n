@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import { ref, useTemplateRef, watch } from 'vue';
@@ -18,7 +18,7 @@ const emit = defineEmits<{
 const inputRef = useTemplateRef('inputRef');
 const message = ref('');
 
-const toast = useToast();
+const chatStore = useChatStore();
 
 const speechInput = useSpeechRecognition({
 	continuous: true,
@@ -63,18 +63,12 @@ watch(speechInput.result, (spoken) => {
 
 watch(speechInput.error, (event) => {
 	if (event?.error === 'not-allowed') {
-		toast.showError(
-			new Error('Microphone access denied'),
-			'Please allow microphone access to use voice input',
-		);
+		chatStore.setError('Microphone access denied. Please allow microphone access to use voice input');
 		return;
 	}
 
 	if (event?.error === 'no-speech') {
-		toast.showMessage({
-			title: 'No speech detected. Please try again',
-			type: 'warning',
-		});
+		chatStore.setError('No speech detected. Please try again');
 	}
 });
 

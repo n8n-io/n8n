@@ -7,6 +7,9 @@ export const CHAT_CONVERSATION_VIEW = 'chat-conversation';
 
 export const CHAT_STORE = 'chatStore';
 
+// Modal keys
+export const AI_CHAT_DIALOG_MODAL_KEY = 'aiChatDialog';
+
 export const SUGGESTIONS: Suggestion[] = [
 	{
 		title: 'Brainstorm ideas',

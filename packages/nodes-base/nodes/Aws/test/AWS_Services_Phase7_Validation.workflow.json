@@ -1,0 +1,152 @@
+{
+  "name": "AWS Services Phase 7 Validation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "cluster",
+        "operation": "list"
+      },
+      "id": "redshift",
+      "name": "AWS Redshift - List Clusters",
+      "type": "n8n-nodes-base.awsRedshift",
+      "typeVersion": 1,
+      "position": [460, 180],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "thing",
+        "operation": "list"
+      },
+      "id": "iot",
+      "name": "AWS IoT Core - List Things",
+      "type": "n8n-nodes-base.awsIoTCore",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "key",
+        "operation": "list"
+      },
+      "id": "kms",
+      "name": "AWS KMS - List Keys",
+      "type": "n8n-nodes-base.awsKMS",
+      "typeVersion": 1,
+      "position": [460, 420],
+      "credentials": {
+        "aws": {
+          "id": "1",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate Phase 7 service responses\nconst results = [];\n\nfor (const item of $input.all()) {\n  const nodeName = item.json._node || 'Unknown';\n  const success = item.json.error ? false : true;\n  \n  results.push({\n    service: nodeName,\n    success: success,\n    timestamp: new Date().toISOString(),\n    data: success ? 'Operation completed successfully' : item.json.error\n  });\n}\n\nreturn results.map(r => ({ json: r }));"
+      },
+      "id": "validate",
+      "name": "Validate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "AWS Redshift - List Clusters",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AWS IoT Core - List Things",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AWS KMS - List Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS Redshift - List Clusters": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS IoT Core - List Things": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "AWS KMS - List Keys": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Validate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
