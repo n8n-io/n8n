@@ -1,14 +1,13 @@
 #!/usr/bin/env tsx
 
 import { writeFileSync } from 'fs';
-import { join } from 'path';
 import pLimit from 'p-limit';
+import { join } from 'path';
 import pc from 'picocolors';
 
 import { promptCategorizationChain } from '../src/chains/prompt-categorization';
-import { TechniqueDescription } from '../src/types/categorization';
-
 import { setupIntegrationLLM } from '../src/chains/test/integration/test-helpers';
+import { TechniqueDescription } from '../src/types/categorization';
 
 // import { userPrompts } from '.prompts/100x3-prompts';
 
@@ -36,7 +35,9 @@ async function categorizeAllPrompts() {
 	// Setup LLM
 	const llm = await setupIntegrationLLM();
 
-	const results: CategorizationResult[] = new Array(userPrompts.length);
+	const results: CategorizationResult[] = new Array(userPrompts.length).fill(
+		null,
+	) as CategorizationResult[];
 	let completed = 0;
 	const startTime = Date.now();
 
@@ -44,45 +45,48 @@ async function categorizeAllPrompts() {
 	const limit = pLimit(concurrency);
 
 	// Process prompts in parallel with concurrency limit
-	const promises = userPrompts.map((prompt, i) =>
-		limit(async () => {
-			const promptPreview = prompt.length > 80 ? prompt.substring(0, 80) + '...' : prompt;
+	const processPrompt = async (prompt: string, i: number): Promise<void> => {
+		const promptPreview = prompt.length > 80 ? prompt.substring(0, 80) + '...' : prompt;
 
-			try {
-				const taskStartTime = Date.now();
-				const result = await promptCategorizationChain(llm, prompt);
-				const executionTime = Date.now() - taskStartTime;
+		try {
+			const taskStartTime = Date.now();
+			const result = await promptCategorizationChain(llm, prompt);
+			const executionTime = Date.now() - taskStartTime;
 
-				results[i] = {
-					index: i + 1,
-					prompt,
-					promptPreview,
-					techniques: result.techniques,
-					confidence: result.confidence ?? 0,
-					executionTime,
-				};
+			results[i] = {
+				index: i + 1,
+				prompt,
+				promptPreview,
+				techniques: result.techniques,
+				confidence: result.confidence ?? 0,
+				executionTime,
+			};
 
-				completed++;
-				const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-				console.log(
-					pc.green(`✓ [${completed}/${userPrompts.length}]`) +
-						pc.dim(` (${elapsed}s)`) +
-						` ${promptPreview}\n  Techniques: ${result.techniques.join(', ')}\n  Confidence: ${((result.confidence ?? 0) * 100).toFixed(1)}%\n`,
-				);
-			} catch (error) {
-				console.error(pc.red(`✗ [${i + 1}/${userPrompts.length}] Error:`) + ` ${error}\n`);
-				results[i] = {
-					index: i + 1,
-					prompt,
-					promptPreview,
-					techniques: [],
-					confidence: 0,
-					executionTime: 0,
-				};
-				completed++;
-			}
-		}),
-	);
+			completed++;
+			const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+			console.log(
+				pc.green(`✓ [${completed}/${userPrompts.length}]`) +
+					pc.dim(` (${elapsed}s)`) +
+					` ${promptPreview}\n  Techniques: ${result.techniques.join(', ')}\n  Confidence: ${((result.confidence ?? 0) * 100).toFixed(1)}%\n`,
+			);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.error(pc.red(`✗ [${i + 1}/${userPrompts.length}] Error:`) + ` ${errorMessage}\n`);
+			results[i] = {
+				index: i + 1,
+				prompt,
+				promptPreview,
+				techniques: [],
+				confidence: 0,
+				executionTime: 0,
+			};
+			completed++;
+		}
+	};
+
+	const promises = userPrompts.map(async (prompt, i) => {
+		return await limit(async () => await processPrompt(prompt, i));
+	});
 
 	// Wait for all promises to complete
 	await Promise.all(promises);
