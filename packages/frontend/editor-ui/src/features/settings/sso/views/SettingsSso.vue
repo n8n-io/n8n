@@ -352,7 +352,7 @@ async function onOidcSettingsSave() {
 			authenticationContextClassReference: acrArray,
 		});
 
-		// Update store wi th saved protocol selection
+		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = authProtocol.value;
 
 		clientSecret.value = newConfig.clientSecret;
