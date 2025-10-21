@@ -250,6 +250,10 @@ function onSubmit(message: string) {
 	}
 }
 
+async function onStop() {
+	await chatStore.stopStreamingMessage(sessionId.value);
+}
+
 function onSuggestionClick(s: Suggestion) {
 	inputRef.value?.setText(`${s.title} ${s.subtitle}`);
 }
@@ -388,8 +392,10 @@ function handleSwitchAlternative(messageId: string) {
 						ref="inputRef"
 						:class="$style.prompt"
 						:placeholder="inputPlaceholder"
+						:is-responding="chatStore.isResponding"
 						:disabled="chatStore.isResponding"
 						@submit="onSubmit"
+						@stop="onStop"
 					/>
 				</div>
 			</div>
