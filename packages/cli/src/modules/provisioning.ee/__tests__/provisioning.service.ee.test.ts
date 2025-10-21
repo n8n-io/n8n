@@ -144,74 +144,74 @@ describe('ProvisioningService', () => {
 	});
 
 	describe('provisionInstanceRoleForUser', () => {
-			it('should do nothing if the role is not a string', async () => {
-				const user = mock<User>({ role: { slug: 'global:member' } });
-				const role = 123;
+		it('should do nothing if the role is not a string', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const role = 123;
 
-				await provisioningService.provisionInstanceRoleForUser(user, role);
-				expect(userRepository.update).not.toHaveBeenCalled();
-				expect(logger.warn).toHaveBeenCalledTimes(1);
-				expect(logger.warn).toHaveBeenCalledWith(
-					'Invalid role type: number expected string, skipping instance role provisioning',
-					{ userId: user.id, role },
-				);
-			});
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Invalid role type: number expected string, skipping instance role provisioning',
+				{ userId: user.id, role },
+			);
+		});
 
-			it('should do nothing if the role is invalid', async () => {
-				const user = mock<User>({ role: { slug: 'global:member' } });
-				const role = 'invalid';
+		it('should do nothing if the role is invalid', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const role = 'invalid';
 
-				await provisioningService.provisionInstanceRoleForUser(user, role);
-				expect(userRepository.update).not.toHaveBeenCalled();
-				expect(logger.warn).toHaveBeenCalledTimes(1);
-				expect(logger.warn).toHaveBeenCalledWith(
-					'Invalid role: invalid provided, expected oneof global:owner, global:member, global:admin, default, skipping instance role provisioning',
-					{ userId: user.id, role, error: expect.any(ZodError) },
-				);
-			});
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Invalid role: invalid provided, expected oneof global:owner, global:member, global:admin, default, skipping instance role provisioning',
+				{ userId: user.id, role, error: expect.any(ZodError) },
+			);
+		});
 
-			it('should do nothing if the user is the last owner', async () => {
-				const user = mock<User>({ role: { slug: 'global:owner' } });
-				const role = 'global:member';
+		it('should do nothing if the user is the last owner', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const role = 'global:member';
 
-				userRepository.count.mockResolvedValue(0);
+			userRepository.count.mockResolvedValue(0);
 
-				await provisioningService.provisionInstanceRoleForUser(user, role);
-				expect(userRepository.update).not.toHaveBeenCalled();
-				expect(logger.warn).toHaveBeenCalledTimes(1);
-				expect(logger.warn).toHaveBeenCalledWith(
-					`Cannot remove last owner role: global:owner from user: ${user.id}, skipping instance role provisioning`,
-					{ userId: user.id, role },
-				);
-			});
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Cannot remove last owner role: global:owner from user: ${user.id}, skipping instance role provisioning`,
+				{ userId: user.id, role },
+			);
+		});
 
-			it('should allow a user to change from an owner role to a non-owner role, if there are other owners', async () => {
-				const user = mock<User>({ role: { slug: 'global:owner' } });
-				const role = 'global:member';
-				userRepository.count.mockResolvedValue(1);
+		it('should allow a user to change from an owner role to a non-owner role, if there are other owners', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const role = 'global:member';
+			userRepository.count.mockResolvedValue(1);
 
-				await provisioningService.provisionInstanceRoleForUser(user, role);
-				expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: role } });
-				expect(logger.warn).not.toHaveBeenCalled();
-			});
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: role } });
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
 
-			it('should provision the instance role for the user', async () => {
-				const user = mock<User>({ role: { slug: 'global:member' } });
-				const role = 'global:owner';
+		it('should provision the instance role for the user', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			const role = 'global:owner';
 
-				await provisioningService.provisionInstanceRoleForUser(user, role);
-				expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: role } });
-			});
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: role } });
+		});
 
-			it('should do nothing if the role has not changed', async () => {
-				const user = mock<User>({ role: { slug: 'global:owner' } });
-				const role = 'global:owner';
+		it('should do nothing if the role has not changed', async () => {
+			const user = mock<User>({ role: { slug: 'global:owner' } });
+			const role = 'global:owner';
 
-				await provisioningService.provisionInstanceRoleForUser(user, role);
-				expect(userRepository.update).not.toHaveBeenCalled();
+			await provisioningService.provisionInstanceRoleForUser(user, role);
+			expect(userRepository.update).not.toHaveBeenCalled();
 		});
 	});
-		
+
 	describe('handleReloadSsoProvisioningConfiguration', () => {
 		it('should reload the provisioning config', async () => {
 			const originStateLoadConfig = provisioningService.loadConfig;

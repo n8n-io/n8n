@@ -1,4 +1,10 @@
-import { ProvisioningConfigDto, Role, ROLE, roleSchema, ProvisioningConfigPatchDto } from '@n8n/api-types';
+import {
+	ProvisioningConfigDto,
+	Role,
+	ROLE,
+	roleSchema,
+	ProvisioningConfigPatchDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, User, UserRepository } from '@n8n/db';
@@ -79,7 +85,7 @@ export class ProvisioningService {
 			await this.userRepository.update(user.id, { role: { slug: parsedRole } });
 		}
 	}
-	
+
 	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {
 		let patchConfig: ProvisioningConfigPatchDto;
 
