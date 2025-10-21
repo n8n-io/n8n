@@ -1,0 +1,53 @@
+import type {
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+
+import { speechOperations, speechFields } from './descriptions';
+import { BASE_URL } from './helpers/constants';
+
+export class AwsPolly implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'AWS Polly',
+		name: 'awsPolly',
+		icon: 'file:polly.svg',
+		group: ['transform'],
+		version: 1,
+		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
+		description: 'Interact with AWS Polly (Text-to-Speech)',
+		defaults: {
+			name: 'AWS Polly',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'aws',
+				required: true,
+			},
+		],
+		requestDefaults: {
+			baseURL: BASE_URL,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		},
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Speech',
+						value: 'speech',
+					},
+				],
+				default: 'speech',
+			},
+			...speechOperations,
+			...speechFields,
+		],
+	};
+}
