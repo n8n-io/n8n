@@ -10,7 +10,7 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
