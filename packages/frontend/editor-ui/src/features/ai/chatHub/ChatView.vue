@@ -123,6 +123,10 @@ const credentialsId = computed(() =>
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
+const initialization = ref({ credentialsFetched: false, modelsFetched: false });
+const isInitialized = computed(
+	() => initialization.value.credentialsFetched && initialization.value.modelsFetched,
+);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -173,6 +177,8 @@ watch(
 		if (selected === null) {
 			selectedModel.value = findOneFromModelsResponse(models) ?? null;
 		}
+
+		initialization.value.modelsFetched = true;
 	},
 	{ immediate: true },
 );
@@ -209,6 +215,7 @@ onMounted(async () => {
 		credentialsStore.fetchCredentialTypes(false),
 		credentialsStore.fetchAllCredentials(),
 	]);
+	initialization.value.credentialsFetched = true;
 });
 
 function onSubmit(message: string) {
@@ -310,6 +317,7 @@ function handleSwitchAlternative(messageId: string) {
 		]"
 	>
 		<ChatConversationHeader
+			v-if="isInitialized"
 			:selected-model="selectedModel"
 			:credentials="mergedCredentials"
 			@select-model="handleSelectModel"
@@ -317,6 +325,7 @@ function handleSwitchAlternative(messageId: string) {
 		/>
 
 		<N8nScrollArea
+			v-if="isInitialized"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
@@ -361,6 +370,7 @@ function handleSwitchAlternative(messageId: string) {
 					/>
 
 					<ChatPrompt
+						v-if="isInitialized"
 						ref="inputRef"
 						:class="$style.prompt"
 						:is-responding="chatStore.isResponding"
