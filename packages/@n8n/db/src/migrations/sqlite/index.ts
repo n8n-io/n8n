@@ -101,6 +101,7 @@ import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
+import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -205,6 +206,7 @@ const sqliteMigrations: Migration[] = [
 	CreateChatHubTables1760019379982,
 	UniqueRoleNames1760020838000,
 	CreateWorkflowDependencyTable1760314000000,
+	DropUnusedChatHubColumns1760965142113,
 ];
 
 export { sqliteMigrations };
