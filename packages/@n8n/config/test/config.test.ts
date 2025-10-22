@@ -313,6 +313,7 @@ describe('GlobalConfig', () => {
 			awsSystemCredentialsAccess: false,
 		},
 		executions: {
+			mode: 'regular',
 			timeout: -1,
 			maxTimeout: 3600,
 			pruneData: true,

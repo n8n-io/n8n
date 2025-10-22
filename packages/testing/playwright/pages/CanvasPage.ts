@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModal';
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
@@ -21,6 +22,9 @@ export class CanvasPage extends BasePage {
 	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
 	readonly tagsManagerModal = new TagsManagerModal(
 		this.page.getByRole('dialog').filter({ hasText: 'Manage tags' }),
+	);
+	readonly convertToSubworkflowModal = new ConvertToSubworkflowModal(
+		this.page.getByRole('dialog').filter({ hasText: 'Convert' }),
 	);
 
 	saveWorkflowButton(): Locator {
@@ -190,6 +194,10 @@ export class CanvasPage extends BasePage {
 
 	async openNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).dblclick();
+	}
+
+	getRenamePrompt(): Locator {
+		return this.page.locator('.rename-prompt');
 	}
 
 	/**
@@ -412,6 +420,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator('.el-loading-mask');
 	}
 
+	getNodeViewLoader(): Locator {
+		return this.page.getByTestId('node-view-loader');
+	}
+
 	getWorkflowIdFromUrl(): string {
 		const url = new URL(this.page.url());
 		const workflowId = url.pathname.split('/workflow/')[1]?.split('/')[0];
@@ -579,6 +591,10 @@ export class CanvasPage extends BasePage {
 		await this.canvasPane().click({ position: { x: 10, y: 10 } });
 	}
 
+	async openCanvasContextMenu(): Promise<void> {
+		await this.canvasPane().click({ button: 'right', position: { x: 10, y: 10 } });
+	}
+
 	getNodeLeftPosition(nodeLocator: Locator): Promise<number> {
 		return nodeLocator.evaluate((el) => el.getBoundingClientRect().left);
 	}
@@ -689,6 +705,14 @@ export class CanvasPage extends BasePage {
 
 	async rightClickNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
+	}
+
+	async rightClickCanvas(): Promise<void> {
+		await this.canvasBody().click({ button: 'right' });
+	}
+
+	getContextMenuItem(itemId: string): Locator {
+		return this.page.getByTestId(`context-menu-item-${itemId}`);
 	}
 
 	async clickContextMenuAction(actionText: string): Promise<void> {
@@ -819,6 +843,14 @@ export class CanvasPage extends BasePage {
 		await this.page.getByTestId('radio-button-executions').click();
 	}
 
+	getZoomInButton(): Locator {
+		return this.page.getByTestId('zoom-in-button');
+	}
+
+	getResetZoomButton(): Locator {
+		return this.page.getByTestId('reset-zoom-button');
+	}
+
 	async clickZoomInButton(): Promise<void> {
 		await this.clickByTestId('zoom-in-button');
 	}
@@ -833,7 +865,9 @@ export class CanvasPage extends BasePage {
 	 */
 	async getCanvasZoomLevel(): Promise<number> {
 		return await this.page.evaluate(() => {
-			const canvasViewport = document.querySelector('.vue-flow__viewport');
+			const canvasViewport = document.querySelector(
+				'.vue-flow__transformationpane.vue-flow__container',
+			);
 			if (canvasViewport) {
 				const transform = window.getComputedStyle(canvasViewport).transform;
 				if (transform && transform !== 'none') {
@@ -864,6 +898,22 @@ export class CanvasPage extends BasePage {
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
 		return this.nodeByName(nodeName).locator('[data-icon="refresh-cw"]');
+	}
+
+	getSuccessEdges(): Locator {
+		return this.page.locator('[data-edge-status="success"]');
+	}
+
+	getAllNodeSuccessIndicators(): Locator {
+		return this.page.getByTestId('canvas-node-status-success');
+	}
+
+	getCanvasHandlePlusWrapper(): Locator {
+		return this.page.getByTestId('canvas-handle-plus-wrapper');
+	}
+
+	getCanvasHandlePlus(): Locator {
+		return this.page.getByTestId('canvas-handle-plus');
 	}
 
 	stopExecutionWaitingForWebhookButton(): Locator {
@@ -934,6 +984,35 @@ export class CanvasPage extends BasePage {
 	getNodeInputHandles(nodeName: string): Locator {
 		return this.page.locator(
 			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"]`,
+		);
+	}
+
+	getNodeOutputHandle(nodeName: string, outputIndex = 0): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${outputIndex}"]`,
+		);
+	}
+
+	getNodeInputHandle(nodeName: string, inputIndex = 0): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-index="${inputIndex}"]`,
+		);
+	}
+
+	async connectNodesByDrag(
+		sourceNode: string,
+		targetNode: string,
+		sourceIndex = 0,
+		targetIndex = 0,
+	): Promise<void> {
+		const outputHandle = this.getNodeOutputHandle(sourceNode, sourceIndex);
+		const inputHandle = this.getNodeInputHandle(targetNode, targetIndex);
+		await outputHandle.dragTo(inputHandle);
+	}
+
+	getConnectionLabelBetweenNodes(sourceNode: string, targetNode: string): Locator {
+		return this.page.locator(
+			`[data-test-id="edge-label"][data-source-node-name="${sourceNode}"][data-target-node-name="${targetNode}"]`,
 		);
 	}
 

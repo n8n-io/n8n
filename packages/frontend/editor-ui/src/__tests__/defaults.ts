@@ -41,11 +41,13 @@ export const defaultSettings: FrontendSettings = {
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		provisioning: true,
 		projects: {
 			team: {
 				limit: 1,
 			},
 		},
+		customRoles: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
