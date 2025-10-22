@@ -8,6 +8,7 @@ import {
 	UserRepository,
 	Role,
 	ProjectRepository,
+	ProjectRelation,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
@@ -160,6 +161,7 @@ export class ProvisioningService {
 
 		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
 
+		// populate validProjectToRoleMappings
 		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
 			if (!existingProjectIds.has(projectId)) {
 				this.logger.warn(
@@ -180,13 +182,30 @@ export class ProvisioningService {
 			validProjectToRoleMappings.push({ projectId, roleSlug });
 		}
 
-		for (const { projectId, roleSlug } of validProjectToRoleMappings) {
-			await this.projectService.addUser(projectId, { userId, role: roleSlug });
-		}
+		const currentlyAccessibleProjects = await this.projectRepository.find({
+			where: {
+				type: Not('personal'),
+				projectRelations: {
+					userId,
+				},
+			},
+			relations: ['projectRelations'],
+		});
 
-		// TODO: look at existing project <> role mappings for given user and remove ones that are not in projectRoleMap anymore
-		// Make sure to do this in a transaction that includes the "projectService.addUser" calls below,
-		// so that in case of an error, all project access changes are reverted.
+		const validProjectIds = new Set(validProjectToRoleMappings.map((m) => m.projectId));
+		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
+			(project) => !validProjectIds.has(project.id),
+		);
+
+		await this.projectRepository.manager.transaction(async (tx) => {
+			for (const project of projectsToRemoveAccessFrom) {
+				await tx.delete(ProjectRelation, { projectId: project.id, userId });
+			}
+
+			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
+				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
+			}
+		});
 	}
 
 	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {

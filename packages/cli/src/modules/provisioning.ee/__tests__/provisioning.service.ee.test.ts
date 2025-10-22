@@ -2,25 +2,28 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type {
-	User,
-	UserRepository,
-	SettingsRepository,
-	RoleRepository,
-	Role,
-	Project,
-	ProjectRepository,
+import {
+	type User,
+	type UserRepository,
+	type SettingsRepository,
+	type RoleRepository,
+	type Role,
+	type Project,
+	type ProjectRepository,
+	ProjectRelation,
 } from '@n8n/db';
 import { type GlobalConfig } from '@n8n/config';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { type ProjectService } from '@/services/project.service.ee';
+import type { EntityManager } from '@n8n/typeorm';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
 const userRepository = mock<UserRepository>();
-const projectRepository = mock<ProjectRepository>();
+const entityManager = mock<EntityManager>();
+const projectRepository = mock<ProjectRepository>({ manager: entityManager });
 const projectService = mock<ProjectService>();
 
 const logger = mock<Logger>();
@@ -41,6 +44,10 @@ const provisioningService = new ProvisioningService(
 describe('ProvisioningService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		entityManager.transaction.mockImplementation(async (cb) => {
+			// @ts-expect-error Mock
+			await cb(entityManager);
+		});
 	});
 
 	const provisioningConfigDto: ProvisioningConfigDto = {
@@ -268,6 +275,7 @@ describe('ProvisioningService', () => {
 			const projectIdToRole = { not: 'a string' };
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -309,11 +317,11 @@ describe('ProvisioningService', () => {
 			const projectIdToRole = JSON.stringify({
 				'non-existent-project': 'project:viewer',
 			});
-
 			projectRepository.find.mockResolvedValue([]);
 			roleRepository.find.mockResolvedValue([mock<Role>({ slug: 'project:viewer' })]);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
 			expect(projectService.addUser).not.toHaveBeenCalled();
 		});
 
@@ -322,11 +330,11 @@ describe('ProvisioningService', () => {
 			const projectIdToRole = JSON.stringify({
 				'project-1': 'project:non-existent-role',
 			});
-
 			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project-1' })]);
 			roleRepository.find.mockResolvedValue([]);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
 			expect(projectService.addUser).not.toHaveBeenCalled();
 		});
 
@@ -336,8 +344,10 @@ describe('ProvisioningService', () => {
 				personalProject1: 'project:viewer',
 				teamProject1: 'project:editor',
 			});
-
-			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'teamProject1' })]);
+			// Mocks query to find existing projects
+			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'teamProject1' })]);
+			// Mocks query to find currently accessible projects
+			projectRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValue([
 				mock<Role>({ slug: 'project:viewer' }),
 				mock<Role>({ slug: 'project:editor' }),
@@ -346,11 +356,11 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).toHaveBeenCalledTimes(1);
-			expect(projectService.addUser).toHaveBeenCalledWith('teamProject1', {
-				userId,
-				role: 'project:editor',
-			});
-
+			expect(projectService.addUser).toHaveBeenCalledWith(
+				'teamProject1',
+				{ userId, role: 'project:editor' },
+				entityManager,
+			);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning. Project with ID personalProject1 not found.',
 				{ userId, projectId: 'personalProject1', roleSlug: 'project:viewer' },
@@ -363,11 +373,13 @@ describe('ProvisioningService', () => {
 				'project-1': 'project:viewer',
 				'project-2': 'project:editor',
 			});
-
-			projectRepository.find.mockResolvedValue([
+			// Mocks query to find existing projects
+			projectRepository.find.mockResolvedValueOnce([
 				mock<Project>({ id: 'project-1' }),
 				mock<Project>({ id: 'project-2' }),
 			]);
+			// Mocks query to find currently accessible projects
+			projectRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValue([
 				mock<Role>({ slug: 'project:viewer' }),
 				mock<Role>({ slug: 'project:editor' }),
@@ -376,21 +388,22 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).toHaveBeenCalledTimes(2);
-			expect(projectService.addUser).toHaveBeenCalledWith('project-1', {
-				userId,
-				role: 'project:viewer',
-			});
-			expect(projectService.addUser).toHaveBeenCalledWith('project-2', {
-				userId,
-				role: 'project:editor',
-			});
+			expect(projectService.addUser).toHaveBeenCalledWith(
+				'project-1',
+				{ userId, role: 'project:viewer' },
+				entityManager,
+			);
+			expect(projectService.addUser).toHaveBeenCalledWith(
+				'project-2',
+				{ userId, role: 'project:editor' },
+				entityManager,
+			);
 		});
 		it('should filter out non-project roles', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = JSON.stringify({
 				project1: 'global:admin',
 			});
-
 			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project1' })]);
 			roleRepository.find.mockResolvedValue([]);
 
@@ -400,6 +413,34 @@ describe('ProvisioningService', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning. Role with slug global:admin not found or is not a project role.',
 				{ userId, projectId: 'project1', roleSlug: 'global:admin' },
+			);
+		});
+
+		it('removes existing access to non-personal projects that are no longer present in the provided mapping', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = JSON.stringify({
+				'project-1': 'project:viewer',
+			});
+			// Mocks query to find existing projects
+			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'project-1' })]);
+			// Mocks query to find currently accessible projects
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'project-1', type: 'team' }),
+				mock<Project>({ id: 'project-2', type: 'team' }),
+			]);
+			roleRepository.find.mockResolvedValue([mock<Role>({ slug: 'project:viewer' })]);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(entityManager.transaction).toHaveBeenCalledTimes(1);
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project-2',
+				userId,
+			});
+			expect(projectService.addUser).toHaveBeenCalledWith(
+				'project-1',
+				{ userId, role: 'project:viewer' },
+				entityManager,
 			);
 		});
 	});
