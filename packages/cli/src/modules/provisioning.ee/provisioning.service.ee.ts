@@ -182,6 +182,14 @@ export class ProvisioningService {
 			validProjectToRoleMappings.push({ projectId, roleSlug });
 		}
 
+		if (validProjectToRoleMappings.length === 0) {
+			this.logger.warn(
+				'Skipping project role provisioning altogether. No valid project to role mappings found.',
+				{ userId, projectRoleMap },
+			);
+			return;
+		}
+
 		const currentlyAccessibleProjects = await this.projectRepository.find({
 			where: {
 				type: Not('personal'),

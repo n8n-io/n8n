@@ -338,6 +338,32 @@ describe('ProvisioningService', () => {
 			expect(projectService.addUser).not.toHaveBeenCalled();
 		});
 
+		it('should do nothing if no valid project to role mappings are found', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = {
+				nonExistentProject: 'non-existent-role',
+				anotherNonExistentProject: 'project:viewer',
+			};
+			// Mock that no projects exist
+			projectRepository.find.mockResolvedValueOnce([]);
+			// Mock that roles exist but projects don't
+			roleRepository.find.mockResolvedValue([mock<Role>({ slug: 'project:viewer' })]);
+
+			await provisioningService.provisionProjectRolesForUser(
+				userId,
+				JSON.stringify(projectIdToRole),
+			);
+
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping project role provisioning altogether. No valid project to role mappings found.',
+				{
+					userId,
+					projectRoleMap: projectIdToRole,
+				},
+			);
+		});
+
 		it('should skip projectIds that reference a personal project', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = JSON.stringify({
