@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import BaseBanner from '@/components/banners/BaseBanner.vue';
+import BaseBanner from './BaseBanner.vue';
 import { useToast } from '@/composables/useToast';
 import { i18n as locale } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';

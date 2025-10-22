@@ -44,6 +44,8 @@
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
+    "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**'",
+    "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**'",
     "test:affected": "turbo run test --affected --concurrency=1",
     "test:with:docker": "pnpm --filter=n8n-playwright test:container:standard",
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
