@@ -15,7 +15,6 @@ import { Logger } from '@n8n/backend-common';
 import {
 	ExecutionRepository,
 	IExecutionResponse,
-	ProjectRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
 	User,
@@ -47,8 +46,9 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -96,17 +96,16 @@ const NODE_NAMES = {
 export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly credentialsService: CredentialsService,
 		private readonly executionService: ExecutionService,
 		private readonly nodeParametersService: DynamicNodeParametersService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly sessionRepository: ChatHubSessionRepository,
 		private readonly messageRepository: ChatHubMessageRepository,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async getModels(
@@ -114,6 +113,10 @@ export class ChatHubService {
 		credentialIds: Record<ChatHubProvider, string | null>,
 	): Promise<ChatModelsResponse> {
 		const additionalData = await getBase({ userId: user.id });
+
+		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+			'credential:read',
+		]);
 
 		const responses = await Promise.all(
 			chatHubProviderSchema.options.map<
@@ -126,7 +129,12 @@ export class ChatHubService {
 				}
 
 				// Ensure the user has the permission to read the credential
-				await this.credentialsService.getOne(user, credentialId, false);
+				if (!allCredentials.some((credential) => credential.id === credentialId)) {
+					return [
+						provider,
+						{ models: [], error: 'Could not retrieve models. Verify credentials.' },
+					];
+				}
 
 				try {
 					const credentials = {
@@ -267,8 +275,8 @@ export class ChatHubService {
 	}
 
 	private async createChatWorkflow(
-		user: User,
 		sessionId: ChatSessionId,
+		projectId: string,
 		history: ChatHubMessage[],
 		humanMessage: string,
 		credentials: INodeCredentials,
@@ -288,11 +296,6 @@ export class ChatHubService {
 				model,
 			);
 
-			const project = await this.projectRepository.getPersonalProjectForUser(user.id, em);
-			if (!project) {
-				throw new NotFoundError('Could not find a personal project for this user');
-			}
-
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId}`;
@@ -305,7 +308,7 @@ export class ChatHubService {
 			await em.save<SharedWorkflow>(
 				this.sharedWorkflowRepository.create({
 					role: 'workflow:owner',
-					projectId: project.id,
+					projectId,
 					workflow,
 				}),
 			);
@@ -321,6 +324,35 @@ export class ChatHubService {
 				triggerToStartFrom,
 			};
 		});
+	}
+
+	private async ensureCredentials(
+		user: User,
+		model: {
+			provider: 'openai' | 'anthropic' | 'google';
+			model: string;
+			workflowId: string | null;
+		},
+		credentials: INodeCredentials,
+		trx?: EntityManager,
+	) {
+		const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
+			user,
+			['credential:read'],
+			trx,
+		);
+
+		const credentialId = this.pickCredentialId(model.provider, credentials);
+		if (!credentialId) {
+			throw new BadRequestError('No credentials provided for the selected model provider');
+		}
+
+		// If credential is shared through multiple projects just pick the first one.
+		const credential = allCredentials.find((c) => c.id === credentialId);
+		if (!credential) {
+			throw new ForbiddenError("You don't have access to the provided credentials");
+		}
+		return credential;
 	}
 
 	private async deleteChatWorkflow(workflowId: string): Promise<void> {
@@ -356,18 +388,28 @@ export class ChatHubService {
 		return undefined;
 	}
 
-	private getCredentialId(provider: ChatHubProvider, credentials: INodeCredentials): string | null {
+	private pickCredentialId(
+		provider: ChatHubProvider,
+		credentials: INodeCredentials,
+	): string | null {
 		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
 	}
 
 	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
 		const { sessionId, messageId, replyId, message } = payload;
+
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
-			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+			credentialId: this.pickCredentialId(payload.model.provider, payload.credentials),
 		};
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
+			const credential = await this.ensureCredentials(
+				user,
+				payload.model,
+				payload.credentials,
+				trx,
+			);
 			const session = await this.getChatSession(user, sessionId, selectedModel, true, message, trx);
 
 			// Ensure that the previous message exists in the session
@@ -396,8 +438,8 @@ export class ChatHubService {
 			);
 
 			return await this.createChatWorkflow(
-				user,
 				session.id,
+				credential.projectId,
 				history,
 				message,
 				payload.credentials,
@@ -425,10 +467,16 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, replyId } = payload;
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
-			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+			credentialId: this.pickCredentialId(payload.model.provider, payload.credentials),
 		};
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
+			const credential = await this.ensureCredentials(
+				user,
+				payload.model,
+				payload.credentials,
+				trx,
+			);
 			const session = await this.getChatSession(user, sessionId, undefined, false, undefined, trx);
 			const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
@@ -461,8 +509,8 @@ export class ChatHubService {
 				);
 
 				return await this.createChatWorkflow(
-					user,
 					session.id,
+					credential.projectId,
 					history,
 					message,
 					payload.credentials,
@@ -498,11 +546,17 @@ export class ChatHubService {
 
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
-			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+			credentialId: this.pickCredentialId(payload.model.provider, payload.credentials),
 		};
 
 		const { workflow, retryOfMessageId, previousMessageId } =
 			await this.messageRepository.manager.transaction(async (trx) => {
+				const credential = await this.ensureCredentials(
+					user,
+					payload.model,
+					payload.credentials,
+					trx,
+				);
 				const session = await this.getChatSession(
 					user,
 					sessionId,
@@ -536,8 +590,8 @@ export class ChatHubService {
 				// If the message being retried is itself a retry, we want to point to the original message
 				const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
 				const workflow = await this.createChatWorkflow(
-					user,
 					session.id,
+					credential.projectId,
 					history,
 					lastHumanMessage ? lastHumanMessage.content : '',
 					payload.credentials,
