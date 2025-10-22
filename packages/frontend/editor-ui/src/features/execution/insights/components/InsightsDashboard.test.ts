@@ -207,6 +207,7 @@ let projectsStore: MockedStore<typeof useProjectsStore>;
 const personalProject = createProjectListItem('personal');
 const teamProjects = Array.from({ length: 2 }, () => createProjectListItem('team'));
 const projects = [personalProject, ...teamProjects];
+const date = new Date(2000, 11, 19);
 
 describe('InsightsDashboard', () => {
 	beforeEach(() => {
@@ -326,67 +327,68 @@ describe('InsightsDashboard', () => {
 
 	describe('Date Range Selection', () => {
 		it('should update the selected time range', async () => {
-			renderComponent({
+			vi.setSystemTime(date);
+			const { getByText } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			expect(screen.getByTestId('range-select')).toBeVisible();
-			const select = within(screen.getByTestId('range-select')).getByRole('combobox');
-			await userEvent.click(select);
+			const trigger = getByText('13 Dec - 19 Dec, 2000', { selector: 'button' });
+			expect(trigger).toBeInTheDocument();
+			await userEvent.click(trigger);
 
-			const controllingId = select.getAttribute('aria-controls');
-			const actions = document.querySelector(`#${controllingId}`);
-			if (!actions) {
-				throw new Error('Actions menu not found');
-			}
+			const controllingId = trigger.getAttribute('aria-controls');
+			expect(controllingId).toBeDefined();
 
-			await userEvent.click(actions.querySelectorAll('li')[0]);
-			expect((select as HTMLInputElement).value).toBe('Last 24 hours');
+			const picker = document.getElementById(controllingId as string);
+			expect(picker).toBeInTheDocument();
+
+			const dayOption = within(picker as HTMLElement).getByText('Last 24 hours');
+			await userEvent.click(dayOption);
 
 			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
-				range: 1,
+				end_date: '2000-12-19T00:00:00.000Z',
+				start_date: '2000-12-19T00:00:00.000Z',
+				range_length_days: 1,
+				type: 'preset',
 			});
 
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, { dateRange: 'day' });
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, { dateRange: 'day' });
+			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-19T00:00:00.000Z',
+			});
+			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-19T00:00:00.000Z',
+			});
 			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
 				take: 25,
 				sortBy: 'total:desc',
-				dateRange: 'day',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-19T00:00:00.000Z',
 			});
 		});
 
 		it('should show upgrade modal when unlicensed time range selected ', async () => {
-			renderComponent({
+			vi.setSystemTime(date);
+			const { getByText } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			expect(screen.getByTestId('range-select')).toBeVisible();
-			const select = within(screen.getByTestId('range-select')).getByRole('combobox');
-			await userEvent.click(select);
+			const trigger = getByText('13 Dec - 19 Dec, 2000', { selector: 'button' });
+			expect(trigger).toBeInTheDocument();
+			await userEvent.click(trigger);
 
-			const controllingId = select.getAttribute('aria-controls');
-			const actions = document.querySelector(`#${controllingId}`);
-			if (!actions) {
-				throw new Error('Actions menu not found');
-			}
+			const controllingId = trigger.getAttribute('aria-controls');
+			expect(controllingId).toBeDefined();
 
-			// Select a range that requires an enterprise plan
-			await userEvent.click(actions.querySelectorAll('li')[3]);
+			const picker = document.getElementById(controllingId as string);
+			expect(picker).toBeInTheDocument();
 
-			// Verify the select value is remained the original, default value, as unlicensed options should not change the selection
-			expect((select as HTMLInputElement).value).toBe('Last 7 days');
+			const dayOption = within(picker as HTMLElement).getByText('Last 90 days');
+			await userEvent.click(dayOption);
 
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'total:desc',
-				dateRange: 'week',
-			});
 
 			expect(
 				screen.getByText(/Viewing this time period requires an enterprise plan/),
@@ -396,21 +398,30 @@ describe('InsightsDashboard', () => {
 
 	describe('Component Lifecycle', () => {
 		it('should execute data fetching on mount', () => {
+			vi.setSystemTime(date);
 			renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
+			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
+			});
+			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
+			});
 			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
 				take: 25,
 				sortBy: 'total:desc',
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 			});
 		});
 
 		it('should refetch data when insight type changes', async () => {
+			vi.setSystemTime(date);
 			const { rerender } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
@@ -419,17 +430,25 @@ describe('InsightsDashboard', () => {
 
 			await rerender({ insightType: INSIGHT_TYPES.FAILED });
 
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
+			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
+			});
+			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
+			});
 			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
 				take: 25,
 				sortBy: 'failed:desc',
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 			});
 		});
 
 		it('should update sort order when insight type changes', async () => {
+			vi.setSystemTime(date);
 			const { rerender } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
@@ -440,7 +459,8 @@ describe('InsightsDashboard', () => {
 				skip: 0,
 				take: 25,
 				sortBy: 'timeSaved:desc',
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 			});
 		});
 	});
@@ -464,6 +484,7 @@ describe('InsightsDashboard', () => {
 
 	describe('Table Functionality', () => {
 		it('should handle table pagination', async () => {
+			vi.setSystemTime(date);
 			renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
@@ -481,51 +502,60 @@ describe('InsightsDashboard', () => {
 				skip: 50,
 				take: 50,
 				sortBy: 'total:desc',
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 			});
 		});
 
 		it('should handle table sorting', async () => {
+			vi.setSystemTime(date);
 			renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
 			await waitAllPromises();
 
-			// Simulate sort event
-			emitters.n8nDataTableServer.emit('update:options', {
-				page: 0,
-				itemsPerPage: 25,
-				sortBy: [{ id: 'failed', desc: false }],
+			await waitFor(() => {
+				// Simulate sort event
+				emitters.n8nDataTableServer.emit('update:options', {
+					page: 0,
+					itemsPerPage: 25,
+					sortBy: [{ id: 'failed', desc: false }],
+				});
 			});
 
 			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
 				take: 25,
 				sortBy: 'failed:asc',
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 			});
 		});
 
 		it('should handle empty sort array', async () => {
+			vi.setSystemTime(date);
 			renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
 			await waitAllPromises();
 
-			// Simulate event with no sortBy
-			emitters.n8nDataTableServer.emit('update:options', {
-				page: 0,
-				itemsPerPage: 25,
-				sortBy: [],
+			await waitFor(() => {
+				// Simulate event with no sortBy
+				emitters.n8nDataTableServer.emit('update:options', {
+					page: 0,
+					itemsPerPage: 25,
+					sortBy: [],
+				});
 			});
 
 			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
 				take: 25,
 				sortBy: undefined,
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 			});
 		});
 	});
@@ -542,6 +572,7 @@ describe('InsightsDashboard', () => {
 		});
 
 		it('should select a project and filter data by project ID', async () => {
+			vi.setSystemTime(date);
 			renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
@@ -569,24 +600,28 @@ describe('InsightsDashboard', () => {
 
 			// Verify that all data fetching methods were called with the selected project ID
 			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
 				take: 25,
 				sortBy: 'total:desc',
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 		});
 
 		it('should combine project filter with date range changes', async () => {
-			renderComponent({
+			vi.setSystemTime(date);
+			const { html, getByText } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
@@ -603,37 +638,43 @@ describe('InsightsDashboard', () => {
 			vi.clearAllMocks();
 
 			// Now change the date range
-			const dateRangeSelect = within(screen.getByTestId('range-select')).getByRole('combobox');
-			await userEvent.click(dateRangeSelect);
+			const trigger = getByText('13 Dec - 19 Dec, 2000', { selector: 'button' });
+			expect(trigger).toBeInTheDocument();
+			await userEvent.click(trigger);
 
-			const controllingId = dateRangeSelect.getAttribute('aria-controls');
-			const actions = document.querySelector(`#${controllingId}`);
-			if (!actions) {
-				throw new Error('Actions menu not found');
-			}
+			const controllingId = trigger.getAttribute('aria-controls');
+			expect(controllingId).toBeDefined();
 
-			// Select the first option (day range)
-			await userEvent.click(actions.querySelectorAll('li')[0]);
+			const picker = document.getElementById(controllingId as string);
+			expect(picker).toBeInTheDocument();
+
+			const dayOption = within(picker as HTMLElement).getByText('Last 24 hours');
+			await userEvent.click(dayOption);
 
 			// Verify both project ID and new date range are passed
 			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'day',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-19T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'day',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-19T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
 				take: 25,
 				sortBy: 'total:desc',
-				dateRange: 'day',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-19T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 		});
 
 		it('should maintain project filter when insight type changes', async () => {
+			vi.setSystemTime(date);
+
 			const { rerender } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
@@ -655,23 +696,28 @@ describe('InsightsDashboard', () => {
 
 			// Verify the project ID is still passed with the new insight type
 			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
 				take: 25,
 				sortBy: 'failed:desc',
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 		});
 
 		it('should pass project ID to table pagination and sorting events', async () => {
+			vi.setSystemTime(date);
+
 			renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
@@ -703,7 +749,8 @@ describe('InsightsDashboard', () => {
 				skip: 50,
 				take: 50,
 				sortBy: 'failed:desc',
-				dateRange: 'week',
+				endDate: '2000-12-19T00:00:00.000Z',
+				startDate: '2000-12-13T00:00:00.000Z',
 				projectId: teamProjects[0].id,
 			});
 		});
