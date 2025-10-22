@@ -144,7 +144,7 @@ export class ProvisioningService {
 		}
 
 		const existingProjects = await this.projectRepository.find({
-			where: { id: In(projectIds) },
+			where: { id: In(projectIds), type: Not('personal') },
 			select: ['id'],
 		});
 		const existingProjectIds = new Set(existingProjects.map((project) => project.id));

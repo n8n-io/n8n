@@ -330,6 +330,33 @@ describe('ProvisioningService', () => {
 			expect(projectService.addUser).not.toHaveBeenCalled();
 		});
 
+		it('should skip projectIds that reference a personal project', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = JSON.stringify({
+				personalProject1: 'project:viewer',
+				teamProject1: 'project:editor',
+			});
+
+			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'teamProject1' })]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ slug: 'project:viewer' }),
+				mock<Role>({ slug: 'project:editor' }),
+			]);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(projectService.addUser).toHaveBeenCalledTimes(1);
+			expect(projectService.addUser).toHaveBeenCalledWith('teamProject1', {
+				userId,
+				role: 'project:editor',
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping project role provisioning. Project with ID personalProject1 not found.',
+				{ userId, projectId: 'personalProject1', roleSlug: 'project:viewer' },
+			);
+		});
+
 		it('should provision project roles for the user', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = JSON.stringify({
