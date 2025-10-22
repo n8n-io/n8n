@@ -121,7 +121,11 @@ export class ProvisioningService {
 			projectRoleMap = JSON.parse(projectIdToRole);
 			for (const [key, value] of Object.entries(projectRoleMap)) {
 				if (typeof key !== 'string' || typeof value !== 'string') {
-					throw new Error('Invalid project to role mapping structure');
+					this.logger.warn(
+						`Skipping project role mapping for ${key}:${value}. Invalid types: expected both key and value to be strings.`,
+						{ userId },
+					);
+					delete projectRoleMap[key];
 				}
 			}
 		} catch (error) {
@@ -129,9 +133,7 @@ export class ProvisioningService {
 				'Skipping project role provisioning. Failed to parse project to role mapping.',
 				{ userId, projectIdToRole },
 			);
-			throw new Error(
-				'Skipping project role provisioning. Invalid project to role mapping provided.',
-			);
+			return;
 		}
 
 		const projectIds = Object.keys(projectRoleMap);
@@ -150,7 +152,7 @@ export class ProvisioningService {
 		const existingRoles = await this.roleRepository.find({
 			where: {
 				slug: In(roleSlugs),
-				roleType: 'project', // TODO: verify wheter we actually only support roles of type "project" here
+				roleType: 'project',
 			},
 			select: ['slug'],
 		});

@@ -276,15 +276,13 @@ describe('ProvisioningService', () => {
 			);
 		});
 
-		it('should throw an error if projectIdToRole is not a valid JSON string', async () => {
+		it('should do nothing if projectIdToRole is not a valid JSON string', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = 'invalid-json-string';
 
-			await expect(
-				provisioningService.provisionProjectRolesForUser(userId, projectIdToRole),
-			).rejects.toThrow(
-				'Skipping project role provisioning. Invalid project to role mapping provided.',
-			);
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning. Failed to parse project to role mapping.',
@@ -292,19 +290,17 @@ describe('ProvisioningService', () => {
 			);
 		});
 
-		it('should throw an error if projectIdToRole has an invalid structure', async () => {
+		it('should filter out entries where key:value is not a string', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = JSON.stringify({ project_1: { nested: 'object' } }); // invalid key type
+			const projectIdToRole = JSON.stringify({ project_1: { nested: 'object' } }); // invalid value type
 
-			await expect(
-				provisioningService.provisionProjectRolesForUser(userId, projectIdToRole),
-			).rejects.toThrow(
-				'Skipping project role provisioning. Invalid project to role mapping provided.',
-			);
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipping project role provisioning. Failed to parse project to role mapping.',
-				{ userId, projectIdToRole },
+				'Skipping project role mapping for project_1:[object Object]. Invalid types: expected both key and value to be strings.',
+				{ userId },
 			);
 		});
 
