@@ -15,11 +15,7 @@ services:
         value: "change-this-password"
       - key: N8N_ENCRYPTION_KEY
         value: "my-super-secret-key"
-      - key: N8N_HOST
-        value: "Futgtg9-n8n.onrender.com"
-      - key: N8N_PORT
-        value: "10000"
       - key: WEBHOOK_URL_BASE
-        value: "https://Futgtg9-n8n.onrender.com"
+        value: "https://futgtg9-n8n.onrender.com"
       - key: GENERIC_TIMEZONE
         value: "Asia/Taipei"
