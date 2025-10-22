@@ -720,10 +720,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 
 		for (const item of toolCalls) {
-			if (item.type !== 'function_call') {
-				continue;
-			}
-
 			if (item.type === 'function_call') {
 				const functionName = item.name;
 				const functionArgs = item.arguments;
