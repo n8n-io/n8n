@@ -272,6 +272,7 @@ const slots = useSlots();
 	animation-duration: 400ms;
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
+	z-index: 9999;
 }
 .PopoverContent:focus {
 	box-shadow: var(--shadow);
@@ -339,9 +340,5 @@ const slots = useSlots();
 		opacity: 1;
 		transform: translateX(0);
 	}
-}
-
-:global([data-reka-popper-content-wrapper]) {
-	z-index: 9999 !important;
 }
 </style>
