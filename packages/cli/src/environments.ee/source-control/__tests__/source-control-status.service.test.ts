@@ -62,7 +62,7 @@ describe('getStatus', () => {
 
 		// variables
 		sourceControlImportService.getRemoteVariablesFromFile.mockResolvedValue([]);
-		sourceControlImportService.getLocalVariablesFromDb.mockResolvedValue([]);
+		sourceControlImportService.getLocalGlobalVariablesFromDb.mockResolvedValue([]);
 
 		// folders
 		// Define a folder that does only exist remotely.
@@ -201,7 +201,7 @@ describe('getStatus', () => {
 		// Pulling this would delete it so it should be marked as a conflict.
 		// Pushing this is conflict free.
 		sourceControlImportService.getRemoteVariablesFromFile.mockResolvedValue([]);
-		sourceControlImportService.getLocalVariablesFromDb.mockResolvedValue([mock<Variables>()]);
+		sourceControlImportService.getLocalGlobalVariablesFromDb.mockResolvedValue([mock<Variables>()]);
 
 		// Define a tag that does only exist locally.
 		// Pulling this would delete it so it should be marked as a conflict.
@@ -504,6 +504,48 @@ describe('getStatus', () => {
 			const remoteProject: ExportableProjectWithFileName = {
 				...mockProjects.basic,
 				icon: { type: 'icon', value: 'icon-modified' },
+			};
+
+			// both projects exist but are different
+			setupProjectMocks({
+				remote: [remoteProject],
+				local: [localProject],
+			});
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object.');
+			}
+
+			expect(result).toMatchObject({
+				projectsRemote: [remoteProject],
+				projectsLocal: [localProject],
+				projectsMissingInLocal: [],
+				projectsMissingInRemote: [],
+				projectsModifiedInEither: [remoteProject],
+				sourceControlledFiles: [
+					expect.objectContaining({
+						id: remoteProject.id,
+						conflict: true,
+					}),
+				],
+			});
+		});
+
+		it('should identify projects with modified variables', async () => {
+			// ARRANGE
+			const user = mockUsers.globalAdmin;
+			const localProject = mockProjects.basic;
+			const remoteProject: ExportableProjectWithFileName = {
+				...mockProjects.basic,
+				variableStubs: [{ id: 'var1', key: 'VAR1', value: '', type: 'string' }],
 			};
 
 			// both projects exist but are different
