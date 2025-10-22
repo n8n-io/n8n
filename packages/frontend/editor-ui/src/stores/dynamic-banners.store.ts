@@ -24,11 +24,12 @@ export const useDynamicBannersStore = defineStore(STORES.DYNAMIC_BANNERS, () => 
 		) {
 			return [];
 		}
+		const version = settingsStore.settings.versionCli;
+		const deploymentType = mapDeploymentTypeValue(
+			settingsStore.settings.deployment?.type ?? 'default',
+		);
+
 		try {
-			const version = settingsStore.settings.versionCli;
-			const deploymentType = mapDeploymentTypeValue(
-				settingsStore.settings.deployment?.type ?? 'default',
-			);
 			items.value = (
 				await getDynamicBanners(
 					settingsStore.settings.dynamicBanners.endpoint,
