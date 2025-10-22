@@ -10,9 +10,9 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import { getTools } from './loadOptions';
-import { McpClientTool } from './McpClientTool.node';
-import { McpToolkit } from './utils';
+import { getTools } from '../loadOptions';
+import { McpClientTool } from '../McpClientTool.node';
+import { McpToolkit } from '../utils';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
