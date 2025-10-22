@@ -4,12 +4,14 @@
   "type": "module",
   "peerDependencies": {
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "unplugin-swc": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "unplugin-swc": "catalog:"
   },
   "files": [
     "backend.mjs",
@@ -46,8 +48,5 @@
     "format:check": "biome ci .",
     "watch": "tsc -p tsconfig.build.json --watch"
   },
-  "license": "See LICENSE.md file in the root of the repository",
-  "dependencies": {
-    "unplugin-swc": "catalog:"
-  }
+  "license": "See LICENSE.md file in the root of the repository"
 }
