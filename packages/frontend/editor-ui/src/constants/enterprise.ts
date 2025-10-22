@@ -1,4 +1,4 @@
-import type { EnterpriseEditionFeatureKey, EnterpriseEditionFeatureValue } from './Interface';
+import type { EnterpriseEditionFeatureKey, EnterpriseEditionFeatureValue } from '@/Interface';
 
 export const EnterpriseEditionFeature: Record<
 	EnterpriseEditionFeatureKey,
