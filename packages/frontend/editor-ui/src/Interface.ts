@@ -1,7 +1,5 @@
-import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
-	BannerName,
 	FrontendSettings,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
@@ -10,7 +8,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
-import type { NodeCreatorTag } from '@n8n/design-system';
+import type { NodeCreatorTag, IconName } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -57,7 +55,6 @@ import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentia
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type {
 	BaseFolderItem,
 	FolderListItem,
@@ -885,16 +882,6 @@ export type UTMCampaign =
 	| 'upgrade-evaluations'
 	| 'upgrade-builder'
 	| 'upgrade-custom-roles';
-
-export type N8nBanners = {
-	[key in BannerName]: {
-		priority: number;
-		component: Component;
-		content?: string;
-		theme?: CalloutTheme;
-		isDismissible?: boolean;
-	};
-};
 
 export type AddedNode = {
 	type: string;

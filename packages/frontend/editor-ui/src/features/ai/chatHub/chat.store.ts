@@ -23,7 +23,8 @@ import type {
 	ChatSessionId,
 	ChatHubMessageDto,
 } from '@n8n/api-types';
-import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type { StructuredChunk } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -333,8 +334,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
-		model: ChatHubConversationModel | null,
-		credentials: ChatHubSendMessageRequest['credentials'] | null,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const messageId = uuidv4();
 		const replyId = uuidv4();
@@ -362,29 +363,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			responses: [],
 			alternatives: [],
 		});
-
-		if (!model || !credentials) {
-			addMessage(sessionId, {
-				id: replyId,
-				sessionId,
-				type: 'ai',
-				name: 'AI',
-				content: '**ERROR:** Select a model to start a conversation.',
-				provider: null,
-				model: null,
-				workflowId: null,
-				executionId: null,
-				status: 'error',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				previousMessageId: messageId,
-				retryOfMessageId: null,
-				revisionOfMessageId: null,
-				responses: [],
-				alternatives: [],
-			});
-			return;
-		}
 
 		sendMessageApi(
 			rootStore.restApiContext,
