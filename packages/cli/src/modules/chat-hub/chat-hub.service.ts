@@ -39,7 +39,6 @@ import {
 	type ITaskData,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
-	type StartNodeData,
 	type IRun,
 	jsonParse,
 	StructuredChunk,
@@ -67,6 +66,7 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
 import { captureResponseWrites } from './stream-capturer';
+import { CONVERSATION_TITLE_GENERATION_PROMPT } from './chat-hub.constants';
 
 const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -85,7 +85,8 @@ const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 
 const NODE_NAMES = {
 	CHAT_TRIGGER: 'When chat message received',
-	AI_AGENT: 'AI Agent',
+	REPLY_AGENT: 'AI Agent',
+	TITLE_GENERATOR_AGENT: 'Title Generator Agent',
 	CHAT_MODEL: 'Chat Model',
 	MEMORY: 'Memory',
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
@@ -273,20 +274,21 @@ export class ChatHubService {
 		humanMessage: string,
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
+		generateConversationTitle: boolean,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
-		startNodes: StartNodeData[];
 		triggerToStartFrom: { name: string; data: ITaskData };
 	}> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
-			const { nodes, connections, startNodes, triggerToStartFrom } = this.prepareChatWorkflow(
+			const { nodes, connections, triggerToStartFrom } = this.prepareChatWorkflow({
 				sessionId,
 				history,
 				humanMessage,
 				credentials,
 				model,
-			);
+				generateConversationTitle,
+			});
 
 			const project = await this.projectRepository.getPersonalProjectForUser(user.id, em);
 			if (!project) {
@@ -317,7 +319,6 @@ export class ChatHubService {
 					connections,
 					versionId: uuidv4(),
 				},
-				startNodes,
 				triggerToStartFrom,
 			};
 		});
@@ -335,8 +336,8 @@ export class ChatHubService {
 		return undefined;
 	}
 
-	private getAIOutput(execution: IExecutionResponse): string | undefined {
-		const agent = execution.data.resultData.runData[NODE_NAMES.AI_AGENT];
+	private getAIOutput(execution: IExecutionResponse, nodeName: string): string | undefined {
+		const agent = execution.data.resultData.runData[nodeName];
 		if (!agent || !Array.isArray(agent) || agent.length === 0) return undefined;
 
 		const runIndex = agent.length - 1;
@@ -368,7 +369,7 @@ export class ChatHubService {
 		};
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, selectedModel, true, message, trx);
+			const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
 
 			// Ensure that the previous message exists in the session
 			if (payload.previousMessageId) {
@@ -402,6 +403,7 @@ export class ChatHubService {
 				message,
 				payload.credentials,
 				payload.model,
+				payload.previousMessageId === null, // generate title on receiving the first human message only
 				trx,
 			);
 		});
@@ -429,7 +431,7 @@ export class ChatHubService {
 		};
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, undefined, false, undefined, trx);
+			const session = await this.getChatSession(user, sessionId, undefined, false, trx);
 			const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
 			if (!['ai', 'human'].includes(messageToEdit.type)) {
@@ -467,6 +469,7 @@ export class ChatHubService {
 					message,
 					payload.credentials,
 					payload.model,
+					messageToEdit.previousMessageId === null,
 					trx,
 				);
 			}
@@ -503,14 +506,7 @@ export class ChatHubService {
 
 		const { workflow, retryOfMessageId, previousMessageId } =
 			await this.messageRepository.manager.transaction(async (trx) => {
-				const session = await this.getChatSession(
-					user,
-					sessionId,
-					undefined,
-					false,
-					undefined,
-					trx,
-				);
+				const session = await this.getChatSession(user, sessionId, undefined, false, trx);
 				const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
 
 				if (messageToRetry.type !== 'ai') {
@@ -542,6 +538,7 @@ export class ChatHubService {
 					lastHumanMessage ? lastHumanMessage.content : '',
 					payload.credentials,
 					payload.model,
+					false,
 					trx,
 				);
 
@@ -596,7 +593,6 @@ export class ChatHubService {
 		user: User,
 		workflow: {
 			workflowData: IWorkflowBase;
-			startNodes: StartNodeData[];
 			triggerToStartFrom: { name: string; data?: ITaskData };
 		},
 		replyId: ChatMessageId,
@@ -605,7 +601,7 @@ export class ChatHubService {
 		selectedModel: ModelWithCredentials,
 		retryOfMessageId?: ChatMessageId,
 	) {
-		const { workflowData, startNodes, triggerToStartFrom } = workflow;
+		const { workflowData, triggerToStartFrom } = workflow;
 
 		this.logger.debug(
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
@@ -626,7 +622,6 @@ export class ChatHubService {
 		const { executionId } = await this.workflowExecutionService.executeManually(
 			{
 				workflowData,
-				startNodes,
 				triggerToStartFrom,
 			},
 			user,
@@ -692,7 +687,7 @@ export class ChatHubService {
 			// TODO: We should consider can we just save the output from the captured stream always instead
 			// of parsing it from execution data, which seems error prone, especially with custom workflows.
 			// That could make handling multiple agents, multiple runes, tool executions etc easier...?
-			const output = this.getAIOutput(execution);
+			const output = this.getAIOutput(execution, NODE_NAMES.REPLY_AGENT);
 			if (!output) {
 				throw new OperationalError('No response generated');
 			}
@@ -701,6 +696,11 @@ export class ChatHubService {
 				content: output,
 				status: 'success',
 			});
+
+			const title = this.getAIOutput(execution, NODE_NAMES.TITLE_GENERATOR_AGENT);
+			if (title) {
+				await this.sessionRepository.updateChatTitle(sessionId, title);
+			}
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : 'Unknown error';
 			await this.messageRepository.updateChatMessage(replyId, {
@@ -710,13 +710,21 @@ export class ChatHubService {
 		}
 	}
 
-	private prepareChatWorkflow(
-		sessionId: ChatSessionId,
-		history: ChatHubMessage[],
-		humanMessage: string,
-		credentials: INodeCredentials,
-		model: ChatHubConversationModel,
-	) {
+	private prepareChatWorkflow({
+		sessionId,
+		history,
+		humanMessage,
+		credentials,
+		model,
+		generateConversationTitle,
+	}: {
+		sessionId: ChatSessionId;
+		history: ChatHubMessage[];
+		humanMessage: string;
+		credentials: INodeCredentials;
+		model: ChatHubConversationModel;
+		generateConversationTitle: boolean;
+	}) {
 		const nodes: INode[] = [
 			{
 				parameters: {
@@ -744,7 +752,7 @@ export class ChatHubService {
 				typeVersion: 3,
 				position: [600, 0],
 				id: uuidv4(),
-				name: NODE_NAMES.AI_AGENT,
+				name: NODE_NAMES.REPLY_AGENT,
 			},
 			this.createModelNode(credentials, model),
 			{
@@ -797,6 +805,22 @@ export class ChatHubService {
 				id: uuidv4(),
 				name: NODE_NAMES.CLEAR_CHAT_MEMORY,
 			},
+			{
+				disabled: !generateConversationTitle,
+				parameters: {
+					promptType: 'define',
+					text: "={{ $('When chat message received').item.json.chatInput }}",
+					options: {
+						enableStreaming: false,
+						systemMessage: CONVERSATION_TITLE_GENERATION_PROMPT,
+					},
+				},
+				type: AGENT_LANGCHAIN_NODE_TYPE,
+				typeVersion: 3,
+				position: [224, 360],
+				id: uuidv4(),
+				name: NODE_NAMES.TITLE_GENERATOR_AGENT,
+			},
 		];
 
 		const connections: IConnections = {
@@ -806,24 +830,36 @@ export class ChatHubService {
 				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
-				main: [[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
+				main: [
+					[
+						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 },
+						{ node: NODE_NAMES.TITLE_GENERATOR_AGENT, type: NodeConnectionTypes.Main, index: 0 },
+					],
+				],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
 				ai_languageModel: [
-					[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					[
+						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						{
+							node: NODE_NAMES.TITLE_GENERATOR_AGENT,
+							type: NodeConnectionTypes.AiLanguageModel,
+							index: 0,
+						},
+					],
 				],
 			},
 			[NODE_NAMES.MEMORY]: {
 				ai_memory: [
 					[
-						{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
 						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
 						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
 					],
 				],
 			},
-			[NODE_NAMES.AI_AGENT]: {
+			[NODE_NAMES.REPLY_AGENT]: {
 				main: [
 					[
 						{
@@ -836,7 +872,6 @@ export class ChatHubService {
 			},
 		};
 
-		const startNodes: StartNodeData[] = [{ name: 'Restore Chat Memory', sourceData: null }];
 		const triggerToStartFrom: {
 			name: string;
 			data: ITaskData;
@@ -864,7 +899,7 @@ export class ChatHubService {
 			},
 		};
 
-		return { nodes, connections, startNodes, triggerToStartFrom };
+		return { nodes, connections, triggerToStartFrom };
 	}
 
 	private async saveHumanMessage(
@@ -930,7 +965,6 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		selectedModel?: ModelWithCredentials,
 		initialize: boolean = false,
-		title: string | null = null,
 		trx?: EntityManager,
 	) {
 		const existing = await this.sessionRepository.getOneById(sessionId, user.id, trx);
@@ -944,7 +978,7 @@ export class ChatHubService {
 			{
 				id: sessionId,
 				ownerId: user.id,
-				title: title ?? 'New Chat',
+				title: 'New Chat',
 				...selectedModel,
 			},
 			trx,
@@ -969,7 +1003,7 @@ export class ChatHubService {
 		{ provider, model }: ChatHubConversationModel,
 	): INode {
 		const common = {
-			position: [600, 200] as [number, number],
+			position: [600, 500] as [number, number],
 			id: uuidv4(),
 			name: 'Chat Model',
 			credentials,
