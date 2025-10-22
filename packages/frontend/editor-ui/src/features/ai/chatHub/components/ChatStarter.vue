@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { N8nHeading } from '@n8n/design-system';
-import Logo from '@n8n/design-system/components/N8nLogo/Logo.vue';
 import { computed } from 'vue';
 
 defineProps<{ isMobileDevice: boolean }>();
 
 const userStore = useUsersStore();
-const settingsStore = useSettingsStore();
 
 const greetings = computed(
 	() => `Hello, ${userStore.currentUser?.firstName ?? userStore.currentUser?.fullName ?? 'User'}!`,
@@ -17,13 +14,9 @@ const greetings = computed(
 
 <template>
 	<div :class="[$style.starter, { [$style.isMobileDevice]: isMobileDevice }]">
-		<Logo size="large" collapsed :release-channel="settingsStore.settings.releaseChannel" />
-
-		<div :class="$style.header">
-			<N8nHeading tag="h2" bold size="xlarge">
-				{{ greetings }}
-			</N8nHeading>
-		</div>
+		<N8nHeading tag="h2" bold size="xlarge">
+			{{ greetings }}
+		</N8nHeading>
 	</div>
 </template>
 

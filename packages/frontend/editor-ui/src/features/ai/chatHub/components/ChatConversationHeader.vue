@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
-import CredentialSelectorModal from '@/features/ai/chatHub/components/CredentialSelectorModal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useUIStore } from '@/stores/ui.store';
 import {
 	type ChatHubConversationModel,
 	type ChatHubProvider,
 	type ChatSessionId,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { N8nIconButton } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { selectedModel, credentials } = defineProps<{
@@ -24,17 +21,15 @@ const { selectedModel, credentials } = defineProps<{
 
 const emit = defineEmits<{
 	selectModel: [ChatHubConversationModel];
-	selectCredentials: [provider: ChatHubProvider, credentialsId: string];
+	setCredentials: [provider: ChatHubProvider];
 	renameConversation: [id: ChatSessionId, title: string];
 }>();
 
 const sidebar = useChatHubSidebarState();
 const chatStore = useChatStore();
-const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const router = useRouter();
-
-const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
+const modelSelectorRef = useTemplateRef('modelSelectorRef');
 
 const credentialsName = computed(() =>
 	selectedModel
@@ -46,32 +41,15 @@ function onModelChange(selection: ChatHubConversationModel) {
 	emit('selectModel', selection);
 }
 
-function onConfigure(provider: ChatHubProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-
-	if (existingCredentials.length === 0) {
-		uiStore.openNewCredential(credentialType);
-		return;
-	}
-
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
-}
-
 function onNewChat() {
 	sidebar.toggleOpen(false);
 
 	void router.push({ name: CHAT_VIEW, force: true });
 }
 
-function onCredentialSelected(provider: ChatHubProvider, credentialsId: string) {
-	emit('selectCredentials', provider, credentialsId);
-}
-
-function onCreateNewCredential(provider: ChatHubProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
-}
+defineExpose({
+	openModelSelector: () => modelSelectorRef.value?.open(),
+});
 </script>
 
 <template>
@@ -95,20 +73,12 @@ function onCreateNewCredential(provider: ChatHubProvider) {
 			@click="onNewChat"
 		/>
 		<ModelSelector
+			ref="modelSelectorRef"
 			:models="chatStore.models ?? null"
 			:selected-model="selectedModel"
 			:credentials-name="credentialsName"
 			@change="onModelChange"
-			@configure="onConfigure"
-		/>
-
-		<CredentialSelectorModal
-			v-if="credentialSelectorProvider"
-			:key="credentialSelectorProvider"
-			:provider="credentialSelectorProvider"
-			:initial-value="credentials[credentialSelectorProvider] ?? null"
-			@select="onCredentialSelected"
-			@create-new="onCreateNewCredential"
+			@configure="emit('setCredentials', $event)"
 		/>
 	</div>
 </template>
