@@ -326,7 +326,7 @@ test.describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// Only Test project credential visible
 		await n8n.ndv.getNodeCredentialsSelect().click();
-		await expect(n8n.ndv.getCredentialDropdown().locator('li')).toHaveCount(1);
+		await expect(n8n.ndv.getVisiblePopper().locator('li')).toHaveCount(1);
 	});
 
 	test('should only show credentials in their personal project for members', async ({ n8n }) => {
@@ -355,7 +355,7 @@ test.describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// Own credential and shared credential visible
 		await n8n.ndv.getNodeCredentialsSelect().click();
-		await expect(n8n.ndv.getCredentialDropdown().locator('li')).toHaveCount(2);
+		await expect(n8n.ndv.getVisiblePopper().locator('li')).toHaveCount(2);
 	});
 
 	test('should only show credentials in their personal project for members if the workflow was shared with them', async ({
@@ -385,7 +385,7 @@ test.describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// Only own credential visible (not owner's)
 		await n8n.ndv.getNodeCredentialsSelect().click();
-		await expect(n8n.ndv.getCredentialDropdown().locator('li')).toHaveCount(1);
+		await expect(n8n.ndv.getVisiblePopper().locator('li')).toHaveCount(1);
 	});
 
 	test("should show all credentials from all personal projects the workflow's been shared into for the global owner", async ({
@@ -432,7 +432,7 @@ test.describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// Owner sees 3 credentials: admin's, U2's, owner's
 		await n8n.ndv.getNodeCredentialsSelect().click();
-		await expect(n8n.ndv.getCredentialDropdown().locator('li')).toHaveCount(3);
+		await expect(n8n.ndv.getVisiblePopper().locator('li')).toHaveCount(3);
 	});
 
 	test('should show all personal credentials if the global owner owns the workflow', async ({
@@ -454,6 +454,6 @@ test.describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// Owner sees member's credential (global owner privilege)
 		await n8n.ndv.getNodeCredentialsSelect().click();
-		await expect(n8n.ndv.getCredentialDropdown().locator('li')).toHaveCount(1);
+		await expect(n8n.ndv.getVisiblePopper().locator('li')).toHaveCount(1);
 	});
 });
