@@ -7,7 +7,7 @@ import InsightsSummary from '@/features/execution/insights/components/InsightsSu
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, today } from '@internationalized/date';
-import type { InsightsDateFilterDto, InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
+import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import {
 	computed,
@@ -126,21 +126,20 @@ const fetchPaginatedTableData = ({
 	page = 0,
 	itemsPerPage = 25,
 	sortBy,
-	startDate,
-	endDate,
 	projectId = selectedProject.value?.id,
 }: {
 	page?: number;
 	itemsPerPage?: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
-	startDate?: InsightsDateFilterDto['startDate'];
-	endDate?: InsightsDateFilterDto['endDate'];
 	projectId?: string;
 }) => {
 	const skip = page * itemsPerPage;
 	const take = itemsPerPage;
 
 	const sortKey = sortBy.length ? transformFilter(sortBy[0]) : undefined;
+
+	const startDate = range.value.start?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
+	const endDate = range.value.end?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
 
 	void insightsStore.table.execute(0, {
 		skip,
@@ -178,8 +177,6 @@ watch(
 		if (insightsStore.isDashboardEnabled) {
 			fetchPaginatedTableData({
 				sortBy: sortTableBy.value,
-				startDate,
-				endDate,
 				projectId: selectedProject.value?.id,
 			});
 		}
