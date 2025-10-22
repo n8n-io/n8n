@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import type { DynamicBanner } from '@n8n/rest-api-client/api/dynamic-banners';
 import { getDynamicBanners } from '@n8n/rest-api-client/api/dynamic-banners';
 import type { BannerName } from '@n8n/api-types';
-import DynamicBannerComponent from '@/components/banners/DynamicBanner.vue';
+import DynamicBannerComponent from '@/features/shared/banners/components/banners/DynamicBanner.vue';
 
 export const useDynamicBannersStore = defineStore(STORES.DYNAMIC_BANNERS, () => {
 	const settingsStore = useSettingsStore();
