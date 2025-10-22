@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import BaseBanner from '@/components/banners/BaseBanner.vue';
+import BaseBanner from './BaseBanner.vue';
 import { i18n as locale } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useUIStore } from '@/stores/ui.store';

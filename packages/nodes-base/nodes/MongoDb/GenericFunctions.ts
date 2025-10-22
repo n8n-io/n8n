@@ -5,7 +5,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
-	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { createSecureContext } from 'tls';
@@ -37,7 +37,7 @@ export function buildParameterizedConnString(credentials: IMongoParametricCreden
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function buildMongoConnectionParams(
-	self: IExecuteFunctions,
+	node: INode,
 	credentials: IMongoCredentialsType,
 ): IMongoCredentials {
 	const sanitizedDbName =
@@ -52,7 +52,7 @@ export function buildMongoConnectionParams(
 			};
 		} else {
 			throw new NodeOperationError(
-				self.getNode(),
+				node,
 				'Cannot override credentials: valid MongoDB connection string not provided ',
 			);
 		}
@@ -70,13 +70,13 @@ export function buildMongoConnectionParams(
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function validateAndResolveMongoCredentials(
-	self: IExecuteFunctions,
+	node: INode,
 	credentials?: ICredentialDataDecryptedObject,
 ): IMongoCredentials {
 	if (credentials === undefined) {
-		throw new NodeOperationError(self.getNode(), 'No credentials got returned!');
+		throw new NodeOperationError(node, 'No credentials got returned!');
 	} else {
-		return buildMongoConnectionParams(self, credentials as unknown as IMongoCredentialsType);
+		return buildMongoConnectionParams(node, credentials as unknown as IMongoCredentialsType);
 	}
 }
 
