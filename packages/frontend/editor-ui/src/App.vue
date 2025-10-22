@@ -3,7 +3,7 @@ import '@/polyfills';
 
 import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
-import BannerStack from '@/components/banners/BannerStack.vue';
+import BannerStack from '@/features/shared/banners/components/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
