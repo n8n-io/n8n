@@ -102,6 +102,34 @@ const defaultNodes = [
 	{ name: 'Set2', indicies: [], depth: 2 },
 ];
 
+// Mock i18n keys used in the component
+const mockI18nKeys: Record<string, string> = {
+	'dataMapping.schemaView.emptyData':
+		'No fields - node executed, but no items were sent on this branch',
+	'dataMapping.schemaView.emptySchema': "No fields - item(s) exist, but they're empty",
+	'dataMapping.schemaView.emptySchemaWithBinary':
+		"Only binary data exists. View it using the 'Binary' tab",
+	'dataMapping.schemaView.executeSchema': '{link} to view input data',
+	'dataMapping.schemaView.variablesContextTitle': 'Variables and context',
+	'dataMapping.schemaView.variablesUpgrade':
+		'Set global variables and use them across workflows with the Pro or Enterprise plan. <a href="https://docs.n8n.io/code/variables/" target="_blank">Details</a>',
+	'dataMapping.schemaView.variablesEmpty':
+		'Create variables that can be used across workflows <a href="/variables" target="_blank">here</a>',
+	'dataMapping.schemaView.execution.resumeUrl': "The URL for resuming a 'Wait' node",
+	'dataMapping.schemaView.preview':
+		'Usually outputs the following fields. {execute} to see the actual ones. {link}',
+	'dataMapping.schemaView.previewLastExecution':
+		'The fields below come from the last successful execution. {execute} to refresh them.',
+	'dataMapping.schemaView.previewLastExecution.executePreviousNodes': 'Execute node',
+	'dataMapping.schemaView.preview.executeNode': 'Execute the node',
+	'node.disabled': 'Deactivated',
+	'ndv.input.noOutputData.executePrevious': 'Execute previous nodes',
+	'ndv.search.noNodeMatch.title': 'No matching nodes',
+	'ndv.search.noMatchSchema.description': 'Try different search terms or {link}',
+	'ndv.search.noMatchSchema.description.link': 'clear search',
+	'generic.learnMore': 'Learn more',
+};
+
 async function setupStore() {
 	const workflow = {
 		id: '123',
@@ -219,6 +247,11 @@ describe('VirtualSchema.vue', () => {
 					NodeIcon: {
 						template: '<node-icon-stub :node-type="nodeType.name" :size="size"></node-icon-stub>',
 						props: ['node-type', 'size'],
+					},
+				},
+				mocks: {
+					$locale: {
+						baseText: (key: string) => mockI18nKeys[key] || key,
 					},
 				},
 			},

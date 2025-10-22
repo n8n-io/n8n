@@ -14,6 +14,17 @@ import VirtualSchemaHeader from '@/features/ndv/components/runData/VirtualSchema
 describe('VirtualSchemaHeader.vue', () => {
 	let renderComponent: ReturnType<typeof createComponentRenderer>;
 
+	// Mock i18n keys used in the component
+	const mockI18nKeys = {
+		'dataMapping.schemaView.preview':
+			'Usually outputs the following fields. {execute} to see the actual ones. {link}',
+		'dataMapping.schemaView.previewLastExecution':
+			'The fields below come from the last successful execution. {execute} to refresh them.',
+		'dataMapping.schemaView.previewLastExecution.executePreviousNodes': 'Execute node',
+		'dataMapping.schemaView.preview.executeNode': 'Execute the node',
+		'generic.learnMore': 'Learn more',
+	};
+
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -46,6 +57,11 @@ describe('VirtualSchemaHeader.vue', () => {
 					},
 					I18nT: {
 						template: '<span><slot name="execute"></slot><slot name="link"></slot></span>',
+					},
+				},
+				mocks: {
+					$locale: {
+						baseText: (key: string) => mockI18nKeys[key as keyof typeof mockI18nKeys] || key,
 					},
 				},
 			},
@@ -272,7 +288,7 @@ describe('VirtualSchemaHeader.vue', () => {
 
 	describe('Preview modes', () => {
 		it('should render different notice content for lastSuccessfulPreview', () => {
-			const { container } = renderComponent({
+			const { container, getByText } = renderComponent({
 				props: {
 					title: 'Test Node',
 					collapsable: true,
@@ -285,10 +301,12 @@ describe('VirtualSchemaHeader.vue', () => {
 
 			const notice = container.querySelector('.notice');
 			expect(notice).toBeInTheDocument();
+			// Check that the notice contains the execute link text
+			expect(getByText('Execute node')).toBeInTheDocument();
 		});
 
 		it('should render standard preview notice when not in lastSuccessfulPreview mode', () => {
-			const { container } = renderComponent({
+			const { container, getByText } = renderComponent({
 				props: {
 					title: 'Test Node',
 					collapsable: true,
@@ -301,6 +319,9 @@ describe('VirtualSchemaHeader.vue', () => {
 
 			const notice = container.querySelector('.notice');
 			expect(notice).toBeInTheDocument();
+			// Check that the notice contains both execute and learn more links
+			expect(getByText('Execute the node')).toBeInTheDocument();
+			expect(getByText('Learn more')).toBeInTheDocument();
 		});
 	});
 
