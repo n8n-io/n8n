@@ -12,7 +12,12 @@ export class ChatbotBestPractices implements BestPracticesDocument {
 Break chatbot logic into manageable steps and use error handling nodes (IF, Switch) with fallback mechanisms to manage unexpected inputs.
 
 Most chatbots run through external platforms like Slack, Telegram, or WhatsApp rather than through the n8n chat interface - if the user
-requests a service like this don't use the built in chat interface nodes.
+requests a service like this don't use the built in chat interface nodes. If the user mentions chatting but does not mention a service
+then use the built in n8n chat node.
+
+The user may ask to be able to chat to a workflow as well as trigger it via some other method, for example scheduling information
+gathering but also being able to chat with the agent - in scenarios like this the two separate workflows MUST be connected - through
+shared memory or a data store.
 
 ## Context & Memory Management
 
