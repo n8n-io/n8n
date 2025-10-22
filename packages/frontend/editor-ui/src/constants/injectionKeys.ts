@@ -4,9 +4,9 @@ import type {
 	CanvasNodeInjectionData,
 } from '@/features/workflows/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
-import type { ExpressionLocalResolveContext } from './types/expressions';
-import type { TelemetryContext } from './types/telemetry';
-import type { WorkflowState } from './composables/useWorkflowState';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import type { TelemetryContext } from '@/types/telemetry';
+import type { WorkflowState } from '@/composables/useWorkflowState';
 
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;

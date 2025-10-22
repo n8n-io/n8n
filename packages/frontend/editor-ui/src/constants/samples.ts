@@ -1,5 +1,5 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { INodeUi } from './Interface';
+import type { INodeUi } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 
 export const SAMPLE_PIN_DATA = [
