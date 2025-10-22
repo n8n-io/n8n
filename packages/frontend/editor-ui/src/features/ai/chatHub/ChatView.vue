@@ -33,6 +33,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { credentialsMapSchema, type CredentialsMap } from './chat.types';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useUIStore } from '@/stores/ui.store';
+import CredentialSelectorModal from '@/features/ai/chatHub/components/CredentialSelectorModal.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -42,7 +44,9 @@ const credentialsStore = useCredentialsStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
+const uiStore = useUIStore();
 
+const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
@@ -124,6 +128,7 @@ const credentialsId = computed(() =>
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 const initialization = ref({ credentialsFetched: false, modelsFetched: false });
+const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
 const isInitialized = computed(
 	() => initialization.value.credentialsFetched && initialization.value.modelsFetched,
 );
@@ -255,16 +260,16 @@ function handleCancelEditMessage() {
 function handleEditMessage(message: ChatHubMessageDto) {
 	if (
 		chatStore.isResponding ||
-		 !['human', 'ai'].includes(message.type) ||
+		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsId.value
 	) {
 		return;
 	}
 
-	const mesasgeToEdit = message.revisionOfMessageId ?? message.id;
+	const messageToEdit = message.revisionOfMessageId ?? message.id;
 
-	chatStore.editMessage(sessionId.value, mesasgeToEdit, message.content, selectedModel.value, {
+	chatStore.editMessage(sessionId.value, messageToEdit, message.content, selectedModel.value, {
 		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 			id: credentialsId.value,
 			name: '',
@@ -304,6 +309,27 @@ function handleSelectCredentials(provider: ChatHubProvider, credentialsId: strin
 function handleSwitchAlternative(messageId: string) {
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
+
+function handleConfigureCredentials(provider: ChatHubProvider) {
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+	if (existingCredentials.length === 0) {
+		uiStore.openNewCredential(credentialType);
+		return;
+	}
+
+	credentialSelectorProvider.value = provider;
+	uiStore.openModal('chatCredentialSelector');
+}
+
+function handleConfigureModel() {
+	headerRef.value?.expandModelSelector();
+}
+
+function handleCreateNewCredential(provider: ChatHubProvider) {
+	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
+}
 </script>
 
 <template>
@@ -318,10 +344,20 @@ function handleSwitchAlternative(messageId: string) {
 	>
 		<ChatConversationHeader
 			v-if="isInitialized"
+			ref="headerRef"
 			:selected-model="selectedModel"
 			:credentials="mergedCredentials"
 			@select-model="handleSelectModel"
-			@select-credentials="handleSelectCredentials"
+			@set-credentials="handleConfigureCredentials"
+		/>
+
+		<CredentialSelectorModal
+			v-if="credentialSelectorProvider"
+			:key="credentialSelectorProvider"
+			:provider="credentialSelectorProvider"
+			:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
+			@select="handleSelectCredentials"
+			@create-new="handleCreateNewCredential"
 		/>
 
 		<N8nScrollArea
@@ -378,6 +414,8 @@ function handleSwitchAlternative(messageId: string) {
 						:is-credentials-selected="!!credentialsId"
 						@submit="onSubmit"
 						@stop="onStop"
+						@select-model="handleConfigureModel"
+						@set-credentials="handleConfigureCredentials"
 					/>
 				</div>
 			</div>

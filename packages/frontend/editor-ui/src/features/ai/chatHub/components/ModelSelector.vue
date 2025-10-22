@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import {
@@ -22,6 +22,8 @@ const emit = defineEmits<{
 	change: [ChatHubConversationModel];
 	configure: [ChatHubProvider];
 }>();
+
+const dropdownRef = useTemplateRef('dropdownRef');
 
 const menu = computed(() =>
 	chatHubProviderSchema.options.map((provider) => {
@@ -76,10 +78,14 @@ function onSelect(id: string) {
 
 	emit('change', { provider: parsedProvider, model, workflowId: null });
 }
+
+defineExpose({
+	expand: () => dropdownRef.value?.open(),
+});
 </script>
 
 <template>
-	<N8nNavigationDropdown :menu="menu" @select="onSelect">
+	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" @select="onSelect">
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import type { ChatHubConversationModel } from '@n8n/api-types';
+import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
 import { N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import { computed } from 'vue';
@@ -16,6 +16,8 @@ const { selectedModel } = defineProps<{
 const emit = defineEmits<{
 	submit: [string];
 	stop: [];
+	selectModel: [];
+	setCredentials: [ChatHubProvider];
 }>();
 
 const inputRef = useTemplateRef('inputRef');
@@ -105,11 +107,15 @@ defineExpose({
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
 			<div v-if="!selectedModel" :class="$style.callout">
-				Please select a model to start a conversation
+				Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
+				conversation
 			</div>
 			<div v-else-if="!isCredentialsSelected" :class="$style.callout">
-				Please set credentials for {{ providerDisplayNames[selectedModel.provider] }} to start a
-				conversation
+				Please
+				<a href="" @click.prevent="emit('setCredentials', selectedModel.provider)">
+					set credentials
+				</a>
+				for {{ providerDisplayNames[selectedModel.provider] }} to start a conversation
 			</div>
 			<N8nInput
 				ref="inputRef"
@@ -193,6 +199,11 @@ defineExpose({
 	border-color: var(--color--secondary);
 	text-align: center;
 	margin-bottom: -16px;
+
+	& a {
+		text-decoration: underline;
+		color: inherit;
+	}
 }
 
 .input {
