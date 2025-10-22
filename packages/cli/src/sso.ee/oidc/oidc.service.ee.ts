@@ -31,6 +31,7 @@ import {
 } from '../sso-helpers';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 import { OnPubSubEvent } from '@n8n/decorators';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientId: '',
@@ -66,6 +67,7 @@ export class OidcService {
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly provisioningService: ProvisioningService,
 	) {}
 
 	async init() {
@@ -176,13 +178,14 @@ export class OidcService {
 
 		const prompt = this.oidcConfig.prompt;
 
-		const provisioning = this.globalConfig.sso.provisioning;
+		const provisioningConfig = await this.provisioningService.getConfig();
 		const provisioningEnabled =
-			provisioning.scopesProvisionInstanceRole || provisioning.scopesProvisionProjectRoles;
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles;
 
 		// Include the custom n8n scope if provisioning is enabled
 		const scope = provisioningEnabled
-			? `openid email profile ${provisioning.scopesName}`
+			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
 
 		const authorizationURL = client.buildAuthorizationUrl(configuration, {
@@ -242,6 +245,11 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const provisioningEnabled =
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles;
+
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: {
@@ -252,6 +260,13 @@ export class OidcService {
 		});
 
 		if (openidUser) {
+			if (provisioningEnabled) {
+				await this.provisioningService.provisionInstanceRoleForUser(
+					openidUser.user,
+					claims.n8n_instance_role,
+				);
+			}
+
 			return openidUser.user;
 		}
 
@@ -296,6 +311,10 @@ export class OidcService {
 					userId: user.id,
 				}),
 			);
+
+			if (provisioningEnabled) {
+				await this.provisioningService.provisionInstanceRoleForUser(user, claims.n8n_instance_role);
+			}
 
 			return user;
 		});
