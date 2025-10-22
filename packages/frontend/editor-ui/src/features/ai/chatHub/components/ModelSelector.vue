@@ -11,6 +11,7 @@ import {
 } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { onClickOutside } from '@vueuse/core';
 
 const props = defineProps<{
 	models: ChatModelsResponse | null;
@@ -78,6 +79,11 @@ function onSelect(id: string) {
 
 	emit('change', { provider: parsedProvider, model, workflowId: null });
 }
+
+onClickOutside(
+	computed(() => dropdownRef.value?.$el),
+	() => dropdownRef.value?.close(),
+);
 
 defineExpose({
 	expand: () => dropdownRef.value?.open(),
