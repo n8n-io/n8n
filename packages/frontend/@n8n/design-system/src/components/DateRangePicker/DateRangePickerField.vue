@@ -21,7 +21,7 @@ function hasTime(segments: Segments) {
 
 <template>
 	<DateRangePickerField v-slot="{ segments }" as-child>
-		<div v-if="hasTime(segments)" :class="$style.Stacked">
+		<div v-if="hasTime(segments)">
 			<N8nText bold color="text-light" tag="div" class="mb-3xs">Start</N8nText>
 			<div :class="$style.Inline" class="mb-xs">
 				<template v-for="item in segments.start" :key="item.part">
