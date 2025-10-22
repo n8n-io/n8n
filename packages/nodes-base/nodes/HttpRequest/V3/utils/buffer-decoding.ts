@@ -40,27 +40,33 @@ export async function binaryToStringWithEncodingDetection(
 	contentType: string,
 	helpers: BinaryHelperFunctions,
 ): Promise<string> {
+	let bufferedData: Buffer;
+
+	if (body instanceof Buffer) {
+		bufferedData = body;
+	} else {
+		bufferedData = await helpers.binaryToBuffer(body);
+	}
+
 	const encoding = detectEncoding(contentType);
 
 	if (encoding && encoding !== DEFAULT_ENCODING) {
-		return await helpers.binaryToString(body, encoding);
+		return await helpers.binaryToString(bufferedData, encoding);
 	}
 
-	const decodedString = await helpers.binaryToString(body);
+	const decodedString = await helpers.binaryToString(bufferedData);
 
 	if (decodedString.includes(REPLACEMENT_CHAR) || HIGH_ASCII_PATTERN.test(decodedString)) {
-		if (body instanceof Buffer) {
-			const detected = chardet.detect(body)?.toLowerCase() as BufferEncoding;
-			if (detected && detected !== DEFAULT_ENCODING) {
-				return await helpers.binaryToString(body, detected);
-			}
-		} else {
-			for (const chinese of CHINESE_ENCODINGS) {
-				try {
-					const reDecoded = await helpers.binaryToString(body, chinese as BufferEncoding);
-					if (!reDecoded.includes(REPLACEMENT_CHAR) && reDecoded.length > 0) return reDecoded;
-				} catch {}
-			}
+		const detected = chardet.detect(bufferedData)?.toLowerCase() as BufferEncoding;
+		if (detected && detected !== DEFAULT_ENCODING) {
+			return await helpers.binaryToString(bufferedData, detected);
+		}
+
+		for (const chinese of CHINESE_ENCODINGS) {
+			try {
+				const reDecoded = await helpers.binaryToString(bufferedData, chinese as BufferEncoding);
+				if (!reDecoded.includes(REPLACEMENT_CHAR) && reDecoded.length > 0) return reDecoded;
+			} catch {}
 		}
 	}
 
