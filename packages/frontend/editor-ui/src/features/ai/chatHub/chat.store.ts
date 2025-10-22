@@ -329,7 +329,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// wait up to 3 seconds until conversation title is generated
 		await retry(
 			async () => {
-				console.log('trying...');
 				const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
 
 				return session.session.title !== 'New Chat';
