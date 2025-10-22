@@ -437,7 +437,7 @@ export class ChatHubService {
 			}
 
 			if (messageToEdit.type === 'ai') {
-				// AI edits just change the original message without revisioning
+				// AI edits just change the original message without revisioning or response generation
 				await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
 				return null;
 			}
@@ -501,40 +501,56 @@ export class ChatHubService {
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
 		};
 
-		const session = await this.getChatSession(user, sessionId);
-		const messageToRetry = await this.getChatMessage(session.id, retryId);
+		const { workflow, retryOfMessageId, previousMessageId } =
+			await this.messageRepository.manager.transaction(async (trx) => {
+				const session = await this.getChatSession(
+					user,
+					sessionId,
+					undefined,
+					false,
+					undefined,
+					trx,
+				);
+				const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
 
-		if (messageToRetry.type !== 'ai') {
-			throw new BadRequestError('Can only retry AI messages');
-		}
+				if (messageToRetry.type !== 'ai') {
+					throw new BadRequestError('Can only retry AI messages');
+				}
 
-		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-		const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
+				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+				const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
 
-		const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
-		if (!lastHumanMessage) {
-			throw new BadRequestError('No human message found to base the retry on');
-		}
+				const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
+				if (!lastHumanMessage) {
+					throw new BadRequestError('No human message found to base the retry on');
+				}
 
-		// Remove any (AI) messages that came after the last human message
-		const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
-		if (lastHumanMessageIndex !== -1) {
-			history.splice(lastHumanMessageIndex + 1);
-		}
+				// Remove any (AI) messages that came after the last human message
+				const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
+				if (lastHumanMessageIndex !== -1) {
+					history.splice(lastHumanMessageIndex + 1);
+				}
 
-		// Rerun the workflow, replaying the last human message
+				// Rerun the workflow, replaying the last human message
 
-		// If the message being retried is itself a retry, we want to point to the original message
-		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
+				// If the message being retried is itself a retry, we want to point to the original message
+				const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
+				const workflow = await this.createChatWorkflow(
+					user,
+					session.id,
+					history,
+					lastHumanMessage ? lastHumanMessage.content : '',
+					payload.credentials,
+					payload.model,
+					trx,
+				);
 
-		const workflow = await this.createChatWorkflow(
-			user,
-			session.id,
-			history,
-			lastHumanMessage ? lastHumanMessage.content : '',
-			payload.credentials,
-			payload.model,
-		);
+				return {
+					workflow,
+					previousMessageId: lastHumanMessage.id,
+					retryOfMessageId,
+				};
+			});
 
 		try {
 			await this.executeChatWorkflow(
@@ -543,7 +559,7 @@ export class ChatHubService {
 				workflow,
 				replyId,
 				sessionId,
-				lastHumanMessage.id,
+				previousMessageId,
 				selectedModel,
 				retryOfMessageId,
 			);
