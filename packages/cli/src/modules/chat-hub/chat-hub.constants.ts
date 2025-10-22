@@ -5,5 +5,5 @@ Requirements:
 - Use normal sentence case (not title case)
 - No quotation marks
 - Only output the title, nothing else
-- Use the the same language as the user's message
+- Use the same language as the user's message
 `;
