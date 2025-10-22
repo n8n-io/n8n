@@ -369,7 +369,7 @@ export class ChatHubService {
 		};
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, selectedModel, true, message, trx);
+			const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
 
 			// Ensure that the previous message exists in the session
 			if (payload.previousMessageId) {
@@ -431,7 +431,7 @@ export class ChatHubService {
 		};
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, undefined, false, undefined, trx);
+			const session = await this.getChatSession(user, sessionId, undefined, false, trx);
 			const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
 			if (!['ai', 'human'].includes(messageToEdit.type)) {
@@ -506,14 +506,7 @@ export class ChatHubService {
 
 		const { workflow, retryOfMessageId, previousMessageId } =
 			await this.messageRepository.manager.transaction(async (trx) => {
-				const session = await this.getChatSession(
-					user,
-					sessionId,
-					undefined,
-					false,
-					undefined,
-					trx,
-				);
+				const session = await this.getChatSession(user, sessionId, undefined, false, trx);
 				const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
 
 				if (messageToRetry.type !== 'ai') {
@@ -972,7 +965,6 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		selectedModel?: ModelWithCredentials,
 		initialize: boolean = false,
-		title: string | null = null,
 		trx?: EntityManager,
 	) {
 		const existing = await this.sessionRepository.getOneById(sessionId, user.id, trx);
@@ -986,7 +978,7 @@ export class ChatHubService {
 			{
 				id: sessionId,
 				ownerId: user.id,
-				title: title ?? 'New Chat',
+				title: 'New Chat',
 				...selectedModel,
 			},
 			trx,
