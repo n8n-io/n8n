@@ -4,7 +4,6 @@ import {
 	DateRangePickerCell,
 	DateRangePickerCellTrigger,
 	DateRangePickerContent,
-	// DateRangePickerField,
 	DateRangePickerGrid,
 	DateRangePickerGridBody,
 	DateRangePickerGridHead,
@@ -12,7 +11,6 @@ import {
 	DateRangePickerHeadCell,
 	DateRangePickerHeader,
 	DateRangePickerHeading,
-	// DateRangePickerInput,
 	DateRangePickerNext,
 	DateRangePickerPrev,
 	DateRangePickerRoot,
@@ -274,7 +272,6 @@ const slots = useSlots();
 	animation-duration: 400ms;
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
-	/* display: flex; */
 }
 .PopoverContent:focus {
 	box-shadow: var(--shadow);
