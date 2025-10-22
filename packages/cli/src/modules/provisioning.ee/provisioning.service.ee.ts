@@ -1,15 +1,24 @@
 import { ProvisioningConfigDto, ProvisioningConfigPatchDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { RoleRepository, SettingsRepository, User, UserRepository, Role } from '@n8n/db';
+import {
+	RoleRepository,
+	SettingsRepository,
+	User,
+	UserRepository,
+	Role,
+	ProjectRepository,
+	ProjectRelation,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
-import { Not } from '@n8n/typeorm';
+import { Not, In } from '@n8n/typeorm';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
+import { ProjectService } from '@/services/project.service.ee';
 
 @Service()
 export class ProvisioningService {
@@ -18,6 +27,8 @@ export class ProvisioningService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
@@ -92,6 +103,118 @@ export class ProvisioningService {
 		if (user.role.slug !== dbRole.slug) {
 			await this.userRepository.update(user.id, { role: { slug: dbRole.slug } });
 		}
+	}
+
+	/**
+	 * @param projectIdToRole expected to be a JSON string for a map of project IDs to role slugs
+	 */
+	async provisionProjectRolesForUser(userId: string, projectIdToRole: unknown): Promise<void> {
+		if (typeof projectIdToRole !== 'string') {
+			this.logger.warn(
+				`Skipping project role provisioning. Invalid projectIdToRole type: expected string, received ${typeof projectIdToRole}`,
+				{ userId, projectIdToRole },
+			);
+			return;
+		}
+
+		let projectRoleMap: Record<string, string>;
+		try {
+			projectRoleMap = JSON.parse(projectIdToRole);
+			for (const [key, value] of Object.entries(projectRoleMap)) {
+				if (typeof key !== 'string' || typeof value !== 'string') {
+					this.logger.warn(
+						`Skipping project role mapping for ${key}:${value}. Invalid types: expected both key and value to be strings.`,
+						{ userId },
+					);
+					delete projectRoleMap[key];
+				}
+			}
+		} catch (error) {
+			this.logger.warn(
+				'Skipping project role provisioning. Failed to parse project to role mapping.',
+				{ userId, projectIdToRole },
+			);
+			return;
+		}
+
+		const projectIds = Object.keys(projectRoleMap);
+		const roleSlugs = [...new Set(Object.values(projectRoleMap))];
+
+		if (projectIds.length === 0) {
+			return;
+		}
+
+		const [existingProjects, existingRoles] = await Promise.all([
+			this.projectRepository.find({
+				where: { id: In(projectIds), type: Not('personal') },
+				select: ['id'],
+			}),
+			this.roleRepository.find({
+				where: {
+					slug: In(roleSlugs),
+					roleType: 'project',
+				},
+				select: ['slug'],
+			}),
+		]);
+		const existingProjectIds = new Set(existingProjects.map((project) => project.id));
+		const existingRoleSlugs = new Set(existingRoles.map((r) => r.slug));
+
+		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
+
+		// populate validProjectToRoleMappings
+		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
+			if (!existingProjectIds.has(projectId)) {
+				this.logger.warn(
+					`Skipping project role provisioning. Project with ID ${projectId} not found.`,
+					{ userId, projectId, roleSlug },
+				);
+				continue;
+			}
+
+			if (!existingRoleSlugs.has(roleSlug)) {
+				this.logger.warn(
+					`Skipping project role provisioning. Role with slug ${roleSlug} not found or is not a project role.`,
+					{ userId, projectId, roleSlug },
+				);
+				continue;
+			}
+
+			validProjectToRoleMappings.push({ projectId, roleSlug });
+		}
+
+		if (validProjectToRoleMappings.length === 0) {
+			this.logger.warn(
+				'Skipping project role provisioning altogether. No valid project to role mappings found.',
+				{ userId, projectRoleMap },
+			);
+			return;
+		}
+
+		const currentlyAccessibleProjects = await this.projectRepository.find({
+			where: {
+				type: Not('personal'),
+				projectRelations: {
+					userId,
+				},
+			},
+			relations: ['projectRelations'],
+		});
+
+		const validProjectIds = new Set(validProjectToRoleMappings.map((m) => m.projectId));
+		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
+			(project) => !validProjectIds.has(project.id),
+		);
+
+		await this.projectRepository.manager.transaction(async (tx) => {
+			for (const project of projectsToRemoveAccessFrom) {
+				await tx.delete(ProjectRelation, { projectId: project.id, userId });
+			}
+
+			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
+				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
+			}
+		});
 	}
 
 	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {
