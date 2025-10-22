@@ -119,12 +119,11 @@ async function categorizeAllPrompts() {
 		'',
 		'## Technique Frequency',
 		'',
-		'| Rank | Technique | Count | Percentage | Description |',
-		'|------|-----------|-------|------------|-------------|',
+		'| Rank | Technique | Used in | Description |',
+		'|------|-----------|---------|-------------|',
 		...sortedFrequency.map(([technique, count], index) => {
-			const percentage = ((count / results.length) * 100).toFixed(1);
 			const description = TechniqueDescription[technique as keyof typeof TechniqueDescription];
-			return `| ${index + 1} | \`${technique}\` | ${count} | ${percentage}% | ${description} |`;
+			return `| ${index + 1} | \`${technique}\` | ${count} | ${description} |`;
 		}),
 		'',
 		'## Detailed Results',

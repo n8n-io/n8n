@@ -7,6 +7,12 @@ export class FormInputBestPractices implements BestPracticesDocument {
 
 	private readonly documentation = `# Best Practices: Form Input Workflows
 
+## Workflow Design
+
+Always store form responses somewhere (e.g. Googlesheets, data table) even if the purpose of the workflow is
+to trigger some other action, like take a form response and send to an API. This allows users to monitor
+form responses as part of the administration of their workflow.
+
 ## Multi-Step Forms
 
 Build multi-step forms by chaining multiple Form nodes together. Each Form node represents a page or step in your form
@@ -62,11 +68,6 @@ Purpose: Processes form data, generates dynamic form definitions, or implements 
 ### Set
 
 Purpose: Aggregates and transforms form data between steps
-
-Pitfalls:
-
-- Make sure JSON keys match destination column names for automatic mapping
-- Use Set nodes to clean and prepare data before final storage
 
 ### Merge
 

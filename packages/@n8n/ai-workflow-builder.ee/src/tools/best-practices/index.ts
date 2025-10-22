@@ -1,6 +1,9 @@
 import type { BestPracticesDocument } from '@/types';
 import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization';
 
+import { ChatbotBestPractices } from './chatbot';
+import { ContentGenerationBestPractices } from './content-generation';
+import { DataExtractionBestPractices } from './data-extraction';
 import { FormInputBestPractices } from './form-input';
 import { ScrapingAndResearchBestPractices } from './scraping-and-research';
 
@@ -8,10 +11,10 @@ export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument 
 	[WorkflowTechnique.SCRAPING_AND_RESEARCH]: new ScrapingAndResearchBestPractices(),
 
 	/** currently no best practice documentation defined */
-	[WorkflowTechnique.CHATBOT]: undefined,
-	[WorkflowTechnique.CONTENT_GENERATION]: undefined,
+	[WorkflowTechnique.CHATBOT]: new ChatbotBestPractices(),
+	[WorkflowTechnique.CONTENT_GENERATION]: new ContentGenerationBestPractices(),
 	[WorkflowTechnique.DATA_ANALYSIS]: undefined,
-	[WorkflowTechnique.DATA_EXTRACTION]: undefined,
+	[WorkflowTechnique.DATA_EXTRACTION]: new DataExtractionBestPractices(),
 	[WorkflowTechnique.DATA_TRANSFORMATION]: undefined,
 	[WorkflowTechnique.DOCUMENT_PROCESSING]: undefined,
 	[WorkflowTechnique.ENRICHMENT]: undefined,

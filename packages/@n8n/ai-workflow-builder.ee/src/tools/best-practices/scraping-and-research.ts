@@ -33,6 +33,11 @@ Purpose: Fetches web pages or API data for scraping and research workflows
 
 Pitfalls:
 
+- Depending on the data which the user wishes to scrape/research, it maybe against the terms of service to attempt to
+fetch it from the site directly. Using scraping nodes is the best way to get around this.
+
+Pitfalls:
+
 - Double-check URL formatting, query parameters, and ensure all required fields are present to avoid bad request errors
 - Be aware of 429 rate limiting errors when the service receives too many requests - implement batching or use "Retry on
 Fail" feature
@@ -105,14 +110,17 @@ Purpose: For research, summarization, and advanced data extraction. AI agents ca
 from websites, analyze content, and organize findings into structured formats, integrating tools for web scraping,
 content analysis, and database storage
 
+### Scraping nodes (Apify, BrightData, PhantomBuster)
+
+Purpose: If the user wishes to scrap data from sites like LinkedIn, Facebook, Instagram, Twitter/X, Indeed, Glassdoor
+or any other service similar to these large providers it is better to use a node designed for this. The scraping
+nodes provide access to these datasets while avoiding issues like rate limiting or breaking terms of service for
+sites like these.
+
 ## Common Pitfalls to Avoid
 
 Bad Request Errors: Double-check URL formatting, query parameters, and ensure all required fields are present to
 avoid 400 errors when making HTTP requests.
-
-Authentication Issues: Refresh expired tokens, verify API keys, and ensure correct permissions. Test credentials in
-the Credentials section, re-authenticate via OAuth, verify API keys aren't IP or scope-restricted, confirm proper
-permissions are granted, and test credentials externally using tools like Postman before deployment.
 
 Rate Limits: Use batching and Wait nodes to avoid 429 errors. When the service receives too many requests, implement
 batching to reduce request frequency or use the "Retry on Fail" feature.
@@ -123,8 +131,7 @@ increase execution timeouts via environment variables.
 
 Empty or Unexpected Data: Some sites use JavaScript to render content, which may not be accessible via simple HTTP
 requests. Standard HTTP and HTML parsing nodes fail because sites load data asynchronously via JavaScript, leaving the
-initial HTML empty of actual content. Consider using browser automation tools, web scraping services (ScrapingBee,
-Ninja), or APIs if needed.
+initial HTML empty of actual content. Web scraping nodes can be used to avoid this.
 `;
 
 	getDocumentation(): string {
