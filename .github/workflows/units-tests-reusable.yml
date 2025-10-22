@@ -94,8 +94,8 @@ jobs:
           flags: frontend
           name: frontend-shard-${{ matrix.shard }}
 
-  post-e2e-tests:
-    name: E2E - Checks
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
     needs: [unit-test-backend, unit-test-frontend]
     if: always()
