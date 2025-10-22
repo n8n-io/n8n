@@ -403,7 +403,7 @@ export class ChatHubService {
 				message,
 				payload.credentials,
 				payload.model,
-				session.lastMessageAt === null, // generate title on receiving the first human message only
+				payload.previousMessageId === null, // generate title on receiving the first human message only
 				trx,
 			);
 		});
@@ -469,7 +469,7 @@ export class ChatHubService {
 					message,
 					payload.credentials,
 					payload.model,
-					false,
+					messageToEdit.previousMessageId === null,
 					trx,
 				);
 			}
