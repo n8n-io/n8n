@@ -334,10 +334,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 				return session.session.title !== 'New Chat';
 			},
-			// 1000,
-			// 3,
-			100,
-			30,
+			1000,
+			3,
 		);
 
 		// update the conversation list
