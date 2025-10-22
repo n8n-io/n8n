@@ -11,6 +11,7 @@ export {
 	type ChatHubConversationModel,
 	chatHubProviderSchema,
 	type ChatHubProvider,
+	type LLMProvider,
 	type ChatHubMessageType,
 	type ChatHubMessageStatus,
 	PROVIDER_CREDENTIAL_TYPE_MAP,

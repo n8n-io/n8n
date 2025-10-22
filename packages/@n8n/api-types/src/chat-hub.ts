@@ -4,14 +4,16 @@ import { Z } from 'zod-class';
 /**
  * Supported AI model providers
  */
-export const chatHubProviderSchema = z.enum(['openai', 'anthropic', 'google']);
+export const llmProviderSchema = z.enum(['openai', 'anthropic', 'google']);
+export type LLMProvider = z.infer<typeof llmProviderSchema>;
 
+export const chatHubProviderSchema = z.enum([...llmProviderSchema.options, 'n8n'] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
 /**
  * Map of providers to their credential types
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubProvider, string> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<LLMProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
@@ -20,11 +22,32 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubProvider, string> = {
 /**
  * Chat Hub conversation model configuration
  */
-export const chatHubConversationModelSchema = z.object({
-	provider: chatHubProviderSchema,
+const openAIModelSchema = z.object({
+	provider: z.literal('openai'),
 	model: z.string(),
-	workflowId: z.string().nullable().default(null),
 });
+
+const anthropicModelSchema = z.object({
+	provider: z.literal('anthropic'),
+	model: z.string(),
+});
+
+const googleModelSchema = z.object({
+	provider: z.literal('google'),
+	model: z.string(),
+});
+
+const n8nModelSchema = z.object({
+	provider: z.literal('n8n'),
+	workflowId: z.string(),
+});
+
+export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
+	openAIModelSchema,
+	anthropicModelSchema,
+	googleModelSchema,
+	n8nModelSchema,
+]);
 
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
 
@@ -43,7 +66,10 @@ export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
  */
 export type ChatModelsResponse = Record<
 	ChatHubProvider,
-	{ models: Array<{ name: string }>; error?: string }
+	{
+		models: Array<{ name: string; model: string | null; workflowId: string | null }>;
+		error?: string;
+	}
 >;
 
 export class ChatHubSendMessageRequest extends Z.class({
