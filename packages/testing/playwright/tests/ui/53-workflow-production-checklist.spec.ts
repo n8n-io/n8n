@@ -34,9 +34,9 @@ test.describe('Workflow Production Checklist', () => {
 		await n8n.api.enableFeature('evaluation');
 
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.addNode('OpenAI', { action: 'Create a model response', closeNDV: true });
+		await n8n.canvas.addNode('OpenAI', { action: 'Generate a model response', closeNDV: true });
 
-		await n8n.canvas.nodeDisableButton('Create a model response').click();
+		await n8n.canvas.nodeDisableButton('Generate a model response').click();
 
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.activateWorkflow();

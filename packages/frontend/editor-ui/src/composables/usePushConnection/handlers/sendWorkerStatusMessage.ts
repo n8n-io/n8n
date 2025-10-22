@@ -1,5 +1,5 @@
 import type { SendWorkerStatusMessage } from '@n8n/api-types';
-import { useOrchestrationStore } from '@/features/orchestration.ee/orchestration.store';
+import { useOrchestrationStore } from '@/features/settings/orchestration.ee/orchestration.store';
 
 /**
  * Handles the 'sendWorkerStatusMessage' event from the push connection, which indicates
