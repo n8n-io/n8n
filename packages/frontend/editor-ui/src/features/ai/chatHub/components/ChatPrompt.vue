@@ -183,14 +183,14 @@ defineExpose({
 }
 
 .callout {
-	color: var(--color--warning--shade-1);
-	background-color: hsla(36, 77%, 47%, 0.1);
+	color: var(--color--secondary);
+	background-color: hsla(247, 49%, 53%, 0.1);
 	padding: 16px 16px 32px;
 	border-top-left-radius: 16px;
 	border-top-right-radius: 16px;
 	width: 100%;
 	border: var(--border);
-	border-color: hsla(36, 77%, 47%, 0.5);
+	border-color: var(--color--secondary);
 	text-align: center;
 	margin-bottom: -16px;
 }
