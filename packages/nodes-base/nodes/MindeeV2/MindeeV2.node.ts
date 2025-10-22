@@ -85,7 +85,7 @@ export class MindeeV2 implements INodeType {
 						action: 'Get result from an uploaded document',
 					},
 				],
-				default: 'enqueue',
+				default: 'enqueueAndGetInference',
 			},
 			{
 				displayName: 'Binary Property Name',
