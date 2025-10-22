@@ -819,6 +819,11 @@ export interface RequestHelperFunctions {
 		requestOptions: IRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	refreshOAuth2Token(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		oAuth2Options?: IOAuth2Options,
+	): Promise<any>;
 }
 
 export type SSHCredentials = {

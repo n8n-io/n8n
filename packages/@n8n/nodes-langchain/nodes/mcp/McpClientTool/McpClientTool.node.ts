@@ -24,6 +24,7 @@ import {
 	getSelectedTools,
 	McpToolkit,
 	mcpToolToDynamicTool,
+	tryRefreshOAuth2Token,
 } from './utils';
 
 /**
@@ -89,6 +90,8 @@ async function connectAndGetTools(
 		headers,
 		name: node.type,
 		version: node.typeVersion,
+		onUnauthorized: async (headers) =>
+			await tryRefreshOAuth2Token(ctx, config.authentication, headers),
 	});
 
 	if (!client.ok) {
@@ -156,6 +159,15 @@ export class McpClientTool implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'mcpOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['mcpOAuth2Api'],
+					},
+				},
+			},
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
@@ -209,6 +221,10 @@ export class McpClientTool implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'MCP OAuth2',
+						value: 'mcpOAuth2Api',
+					},
+					{
 						name: 'Bearer Auth',
 						value: 'bearerAuth',
 					},
@@ -231,7 +247,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth'],
+						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api'],
 					},
 				},
 			},
