@@ -12,6 +12,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import DynamicBanner from './banners/DynamicBanner.vue';
+import type { Component } from 'vue';
 
 let uiStore: ReturnType<typeof useUIStore>;
 
@@ -34,6 +36,10 @@ const initialState = {
 				role: ROLE.Member,
 			},
 		},
+	},
+	[STORES.DYNAMIC_BANNERS]: {
+		items: [],
+		itemsMap: {},
 	},
 };
 
@@ -150,5 +156,180 @@ describe('BannerStack', () => {
 			}),
 		});
 		expect(queryByTestId('banner-stack')).toBeEmptyDOMElement();
+	});
+
+	it('should render dynamic banner when present in banner stack', () => {
+		const dynamicBannerId = 'dynamic-banner-test-123';
+		const { getByTestId } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					...initialState,
+					[STORES.UI]: {
+						bannerStack: [dynamicBannerId],
+					},
+					[STORES.DYNAMIC_BANNERS]: {
+						items: [
+							{
+								id: dynamicBannerId,
+								priority: 200,
+								content: '**Test Dynamic Banner** - This is a test',
+								theme: 'info' as const,
+								isDismissible: true,
+								component: DynamicBanner as Component,
+							},
+						],
+						itemsMap: {
+							[dynamicBannerId]: {
+								id: dynamicBannerId,
+								priority: 200,
+								content: '**Test Dynamic Banner** - This is a test',
+								theme: 'info' as const,
+								isDismissible: true,
+								component: DynamicBanner as Component,
+							},
+						},
+					},
+				},
+			}),
+		});
+
+		expect(getByTestId('banner-stack')).toBeInTheDocument();
+		expect(getByTestId(`banners-${dynamicBannerId}`)).toBeInTheDocument();
+	});
+
+	it('should pass correct props to dynamic banner component', () => {
+		const dynamicBannerId = 'dynamic-banner-props-test';
+		const bannerContent = '**Important** - Test content with *markdown*';
+		const bannerTheme = 'warning' as const;
+		const bannerIsDismissible = false;
+
+		const { container, getByTestId } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					...initialState,
+					[STORES.UI]: {
+						bannerStack: [dynamicBannerId],
+					},
+					[STORES.DYNAMIC_BANNERS]: {
+						items: [
+							{
+								id: dynamicBannerId,
+								priority: 200,
+								content: bannerContent,
+								theme: bannerTheme,
+								isDismissible: bannerIsDismissible,
+								component: DynamicBanner as Component,
+							},
+						],
+						itemsMap: {
+							[dynamicBannerId]: {
+								id: dynamicBannerId,
+								priority: 200,
+								content: bannerContent,
+								theme: bannerTheme,
+								isDismissible: bannerIsDismissible,
+								component: DynamicBanner as Component,
+							},
+						},
+					},
+				},
+			}),
+		});
+
+		const banner = getByTestId(`banners-${dynamicBannerId}`);
+		expect(banner).toBeInTheDocument();
+
+		// Verify content is rendered (checking for the word "Important" from the markdown)
+		expect(container.textContent).toContain('Important');
+		expect(container.textContent).toContain('Test content with');
+		expect(container.textContent).toContain('markdown');
+
+		// Verify banner is not dismissible (no close button should be present)
+		const closeButton = container.querySelector(
+			'[data-test-id="banner-dynamic-banner-props-test-close"]',
+		);
+		expect(closeButton).not.toBeInTheDocument();
+	});
+
+	it('should render dynamic banner with highest priority over static banners', () => {
+		const dynamicBannerId = 'dynamic-banner-high-priority';
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					...initialState,
+					[STORES.UI]: {
+						bannerStack: ['V1', dynamicBannerId],
+					},
+					[STORES.DYNAMIC_BANNERS]: {
+						items: [
+							{
+								id: dynamicBannerId,
+								priority: 500, // Higher than V1 (350)
+								content: '**High Priority Dynamic Banner** - This should be shown',
+								theme: 'warning' as const,
+								isDismissible: true,
+								component: DynamicBanner as Component,
+							},
+						],
+						itemsMap: {
+							[dynamicBannerId]: {
+								id: dynamicBannerId,
+								priority: 500,
+								content: '**High Priority Dynamic Banner** - This should be shown',
+								theme: 'warning' as const,
+								isDismissible: true,
+								component: DynamicBanner as Component,
+							},
+						},
+					},
+				},
+			}),
+		});
+
+		// Dynamic banner should be visible due to higher priority
+		expect(getByTestId(`banners-${dynamicBannerId}`)).toBeInTheDocument();
+		// V1 banner should not be visible
+		expect(queryByTestId('banners-V1')).not.toBeInTheDocument();
+	});
+
+	it('should render static banner when it has higher priority than dynamic banner', () => {
+		const dynamicBannerId = 'dynamic-banner-low-priority';
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					...initialState,
+					[STORES.UI]: {
+						bannerStack: ['V1', dynamicBannerId],
+					},
+					[STORES.DYNAMIC_BANNERS]: {
+						items: [
+							{
+								id: dynamicBannerId,
+								priority: 100, // Lower than V1 (350)
+								content: '**Low Priority Dynamic Banner** - This should not be shown',
+								theme: 'info' as const,
+								isDismissible: true,
+								component: DynamicBanner as Component,
+							},
+						],
+						itemsMap: {
+							[dynamicBannerId]: {
+								id: dynamicBannerId,
+								priority: 100,
+								content: '**Low Priority Dynamic Banner** - This should not be shown',
+								theme: 'info' as const,
+								isDismissible: true,
+								component: DynamicBanner as Component,
+							},
+						},
+					},
+				},
+			}),
+		});
+
+		// V1 banner should be visible due to higher priority
+		expect(getByTestId('banners-V1')).toBeInTheDocument();
+		// Dynamic banner should not be visible
+		expect(queryByTestId(`banners-${dynamicBannerId}`)).not.toBeInTheDocument();
 	});
 });
