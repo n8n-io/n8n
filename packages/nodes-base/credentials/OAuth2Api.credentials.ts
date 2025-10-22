@@ -13,9 +13,8 @@ export class OAuth2Api implements ICredentialType {
 		{
 			displayName: 'Use Dynamic Client Registration',
 			name: 'useDynamicClientRegistration',
-			type: 'boolean',
+			type: 'hidden',
 			default: false,
-			required: true,
 		},
 		{
 			displayName: 'Grant Type',

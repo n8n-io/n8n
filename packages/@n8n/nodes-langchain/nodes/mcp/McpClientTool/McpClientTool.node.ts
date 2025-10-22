@@ -90,7 +90,8 @@ async function connectAndGetTools(
 		headers,
 		name: node.type,
 		version: node.typeVersion,
-		onUnauthorized: async (headers) => await tryRefreshOAuth2Token(ctx, config.authentication, headers),
+		onUnauthorized: async (headers) =>
+			await tryRefreshOAuth2Token(ctx, config.authentication, headers),
 	});
 
 	if (!client.ok) {
