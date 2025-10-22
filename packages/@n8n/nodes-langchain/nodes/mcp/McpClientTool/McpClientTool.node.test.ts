@@ -232,7 +232,7 @@ describe('McpClientTool', () => {
 			});
 
 			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
-			await customFetch?.(url);
+			await customFetch?.(url, {} as any);
 			expect(fetchSpy).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', 'my-header': 'header-value' },
 			});
@@ -281,7 +281,7 @@ describe('McpClientTool', () => {
 			});
 
 			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
-			await customFetch?.(url);
+			await customFetch?.(url, {} as any);
 			expect(fetchSpy).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
 			});
