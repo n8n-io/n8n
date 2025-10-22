@@ -68,7 +68,18 @@ export class ToolWorkflowV2 implements INodeType {
 				continue;
 			}
 			const result = await tool.invoke(item.json);
-			response.push(result);
+
+			// When manualLogging is false, tool.invoke returns INodeExecutionData[]
+			// We need to spread these into the response array
+			if (Array.isArray(result)) {
+				response.push(...result);
+			} else {
+				// Fallback for unexpected types (shouldn't happen with manualLogging=false)
+				response.push({
+					json: { response: result },
+					pairedItem: { item: itemIndex },
+				});
+			}
 		}
 
 		return [response];

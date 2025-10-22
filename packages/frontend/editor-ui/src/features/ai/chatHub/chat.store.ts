@@ -12,6 +12,7 @@ import {
 	updateConversationTitleApi,
 	deleteConversationApi,
 	stopGenerationApi,
+	fetchSingleConversationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -23,7 +24,9 @@ import type {
 	ChatSessionId,
 	ChatHubMessageDto,
 } from '@n8n/api-types';
-import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type { StructuredChunk } from 'n8n-workflow';
+import { retry } from '@n8n/utils/retry';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -187,6 +190,20 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, message.id);
 	}
 
+	function replaceMessageContent(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		content: string,
+	) {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+		if (!message) {
+			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
+		}
+
+		message.content = content;
+	}
+
 	function appendMessage(sessionId: ChatSessionId, messageId: ChatMessageId, chunk: string) {
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[messageId];
@@ -306,9 +323,22 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	async function onStreamDone() {
+	async function onStreamDone(sessionId: string) {
 		streamingMessageId.value = undefined;
-		await fetchSessions(); // update the conversation list
+
+		// wait up to 3 seconds until conversation title is generated
+		await retry(
+			async () => {
+				const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
+
+				return session.session.title !== 'New Chat';
+			},
+			1000,
+			3,
+		);
+
+		// update the conversation list
+		await fetchSessions();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -319,8 +349,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
-		model: ChatHubConversationModel | null,
-		credentials: ChatHubSendMessageRequest['credentials'] | null,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const messageId = uuidv4();
 		const replyId = uuidv4();
@@ -349,29 +379,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
-		if (!model || !credentials) {
-			addMessage(sessionId, {
-				id: replyId,
-				sessionId,
-				type: 'ai',
-				name: 'AI',
-				content: '**ERROR:** Select a model to start a conversation.',
-				provider: null,
-				model: null,
-				workflowId: null,
-				executionId: null,
-				status: 'error',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				previousMessageId: messageId,
-				retryOfMessageId: null,
-				revisionOfMessageId: null,
-				responses: [],
-				alternatives: [],
-			});
-			return;
-		}
-
 		sendMessageApi(
 			rootStore.restApiContext,
 			{
@@ -384,7 +391,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				previousMessageId,
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
-			onStreamDone,
+			async () => await onStreamDone(sessionId),
 			onStreamError,
 		);
 	}
@@ -392,7 +399,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function editMessage(
 		sessionId: ChatSessionId,
 		editId: ChatMessageId,
-		message: string,
+		content: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
@@ -400,27 +407,32 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const replyId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
-		const previousMessageId = conversation.messages[editId]?.previousMessageId ?? null;
+		const message = conversation.messages[editId];
+		const previousMessageId = message?.previousMessageId ?? null;
 
-		addMessage(sessionId, {
-			id: messageId,
-			sessionId,
-			type: 'human',
-			name: 'User',
-			content: message,
-			provider: null,
-			model: null,
-			workflowId: null,
-			executionId: null,
-			status: 'success',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			previousMessageId,
-			retryOfMessageId: null,
-			revisionOfMessageId: editId,
-			responses: [],
-			alternatives: [],
-		});
+		if (message?.type === 'human') {
+			addMessage(sessionId, {
+				id: messageId,
+				sessionId,
+				type: 'human',
+				name: message.name ?? 'User',
+				content,
+				provider: null,
+				model: null,
+				workflowId: null,
+				executionId: null,
+				status: 'success',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				previousMessageId,
+				retryOfMessageId: null,
+				revisionOfMessageId: editId,
+				responses: [],
+				alternatives: [],
+			});
+		} else if (message?.type === 'ai') {
+			replaceMessageContent(sessionId, editId, content);
+		}
 
 		editMessageApi(
 			rootStore.restApiContext,
@@ -430,11 +442,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model,
 				messageId,
 				replyId,
-				message,
+				message: content,
 				credentials,
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
-			onStreamDone,
+			async () => await onStreamDone(sessionId),
 			onStreamError,
 		);
 	}
@@ -464,7 +476,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			},
 			(chunk: StructuredChunk) =>
 				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId),
-			onStreamDone,
+			async () => await onStreamDone(sessionId),
 			onStreamError,
 		);
 	}
