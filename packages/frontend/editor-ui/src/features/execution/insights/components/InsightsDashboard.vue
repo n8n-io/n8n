@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useTelemetry } from '@/composables/useTelemetry';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
@@ -20,10 +19,9 @@ import {
 	watch,
 } from 'vue';
 import { useRoute } from 'vue-router';
-import { INSIGHT_TYPES, TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
+import { INSIGHT_TYPES } from '../insights.constants';
 import { getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
-import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
@@ -60,7 +58,6 @@ const props = defineProps<{
 
 const route = useRoute();
 const i18n = useI18n();
-const telemetry = useTelemetry();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
@@ -156,16 +153,6 @@ const fetchPaginatedTableData = ({
 	});
 };
 
-function handleTimeChange(value: InsightsDateRange['key'] | typeof UNLICENSED_TIME_RANGE) {
-	if (value === UNLICENSED_TIME_RANGE) {
-		upgradeModalVisible.value = true;
-		return;
-	}
-
-	selectedDateRange.value = value;
-	telemetry.track('User updated insights time range', { range: TELEMETRY_TIME_RANGE[value] });
-}
-
 watch(
 	() => [props.insightType, selectedDateRange.value, selectedProject.value, range.value],
 	() => {
@@ -245,8 +232,6 @@ const projects = computed(() =>
 					:min-value="minimumValue"
 					:presets
 				/>
-
-				<InsightsUpgradeModal v-model="upgradeModalVisible" />
 			</div>
 
 			<InsightsSummary

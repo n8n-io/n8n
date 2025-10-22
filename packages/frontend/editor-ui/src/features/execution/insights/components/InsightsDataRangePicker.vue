@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useTelemetry } from '@/composables/useTelemetry';
 import { getLocalTimeZone, isToday } from '@internationalized/date';
 import type {
 	DateRange,
@@ -9,21 +10,39 @@ import type {
 import { N8nButton, N8nDateRangePicker, N8nIcon } from '@n8n/design-system';
 import dateformat from 'dateformat';
 import { computed, ref, shallowRef, watch } from 'vue';
+import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
 const DATE_FORMAT_DAY_MONTH_YEAR = 'd mmm, yyyy';
 const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 type Props = Pick<N8nDateRangePickerProps, 'maxValue' | 'minValue'>;
+type Value = {
+	start: DateValue;
+	end: DateValue;
+};
+
 const props = defineProps<
 	Required<Props> & {
-		modelValue: {
-			start: DateValue;
-			end: DateValue;
-		};
+		modelValue: Value;
 		presets: Array<{ value: number; label: string; disabled?: boolean }>;
 	}
 >();
 const emit = defineEmits<N8nDateRangePickerRootEmits>();
+const telemetry = useTelemetry();
+
+const upgradeModal = ref(false);
+function showUpgradeModal() {
+	upgradeModal.value = true;
+}
+
+const actionType = ref<'preset' | 'custom'>('custom');
+
+function getDaysDiff({ start, end }: DateRange) {
+	if (!start) return 0;
+	if (!end) return 0;
+
+	return end.compare(start) + 1;
+}
 
 function isBeforeOrSame(dateToCompare: DateValue, referenceDate: DateValue): boolean {
 	return dateToCompare.compare(referenceDate) <= 0;
@@ -86,16 +105,28 @@ function syncData(isOpen: boolean) {
 		return;
 	}
 	emit('update:modelValue', normalizedRange);
+
+	const trackData = {
+		start_date: normalizedRange.start?.toDate(getLocalTimeZone()).toISOString(),
+		end_date: normalizedRange.end?.toDate(getLocalTimeZone()).toISOString(),
+		range_length_days: getDaysDiff(normalizedRange),
+		type: actionType.value,
+	};
+
+	telemetry.track('User updated insights time range', trackData);
 }
 const open = ref(false);
-watch(open, syncData);
+watch(open, (opened) => {
+	syncData(opened);
+	actionType.value = 'custom';
+});
 
 function setPresetRange(days: number) {
 	range.value = {
 		start: props.maxValue.copy().subtract({ days }),
 		end: props.maxValue.copy(),
 	};
-
+	actionType.value = 'preset';
 	open.value = false;
 }
 
@@ -126,6 +157,7 @@ function isActiveRange(presetValue: number) {
 </script>
 
 <template>
+	<!-- eslint-disable vue/no-multiple-template-root -->
 	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value>
 		<template #trigger>
 			<N8nButton icon="calendar" type="secondary">{{ formattedRange }}</N8nButton>
@@ -136,19 +168,24 @@ function isActiveRange(presetValue: number) {
 				:key="preset.value"
 				:class="$style.PresetButton"
 				:type="isActiveRange(preset.value) ? 'primary' : 'secondary'"
-				:disabled="preset.disabled"
 				size="small"
-				@click="setPresetRange(preset.value)"
+				@click="preset.disabled ? showUpgradeModal() : setPresetRange(preset.value)"
 			>
 				{{ preset.label }}
-				<N8nIcon v-if="preset.disabled" icon="lock" />
+				<N8nIcon v-if="preset.disabled" icon="lock" :class="$style.LockIcon" />
 			</N8nButton>
 		</template>
 	</N8nDateRangePicker>
+	<InsightsUpgradeModal v-model="upgradeModal" />
 </template>
 
 <style module>
 .PresetButton {
 	--button-border-color: transparent;
+	text-align: left;
+	display: flex;
+}
+.LockIcon {
+	margin-left: auto;
 }
 </style>
