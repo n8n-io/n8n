@@ -38,7 +38,12 @@ export = {
 
 				Object.assign(newCredential, encryptedData);
 
-				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
+				const savedCredential = await saveCredential(
+					newCredential,
+					req.user,
+					encryptedData,
+					req.body.projectId,
+				);
 
 				return res.json(sanitizeCredentials(savedCredential));
 			} catch ({ message, httpStatusCode }) {
