@@ -76,6 +76,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useDynamicBannersStore } from '@/stores/dynamic-banners.store';
 import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import type { BannerName } from '@n8n/api-types';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
@@ -305,6 +306,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
+	const { fetch: fetchDynamicBanners } = useDynamicBannersStore();
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
 	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
@@ -629,6 +631,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const initialize = (options: { banners: BannerName[] }) => {
 		options.banners.forEach(pushBannerToStack);
+		void fetchDynamicBanners().then((banners) => {
+			banners?.forEach((banner) => pushBannerToStack(banner.id));
+		});
 	};
 
 	/**

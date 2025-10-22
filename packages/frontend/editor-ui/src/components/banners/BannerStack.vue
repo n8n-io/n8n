@@ -6,8 +6,10 @@ import V1Banner from '@/components/banners/V1Banner.vue';
 import EmailConfirmationBanner from '@/components/banners/EmailConfirmationBanner.vue';
 import DataTableStorageLimitWarningBanner from '@/components/banners/DataTableStorageLimitWarningBanner.vue';
 import DataTableStorageLimitErrorBanner from '@/components/banners/DataTableStorageLimitErrorBanner.vue';
+import { useDynamicBannersStore } from '@/stores/dynamic-banners.store';
 import type { Component } from 'vue';
 import type { N8nBanners } from '@/Interface';
+import type { BannerName } from '@n8n/api-types';
 
 // All banners that can be shown in the app should be registered here.
 // This component renders the banner with the highest priority from the banner stack, located in the UI store.
@@ -36,25 +38,41 @@ import { computed, onMounted } from 'vue';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
 
 const uiStore = useUIStore();
+const dynamicBannersStore = useDynamicBannersStore();
 
 async function updateCurrentBannerHeight() {
 	const bannerHeight = await getBannerRowHeight();
 	uiStore.updateBannersHeight(bannerHeight);
 }
 
+const getBannerForName = (bannerName: BannerName) => {
+	return N8N_BANNERS[bannerName] || dynamicBannersStore.itemsMap[bannerName];
+};
+
 const currentlyShownBanner = computed(() => {
 	void updateCurrentBannerHeight();
 	if (uiStore.bannerStack.length === 0) return null;
 	// Find the banner with the highest priority
-	let banner = N8N_BANNERS[uiStore.bannerStack[0]];
+	let currentBanner = getBannerForName(uiStore.bannerStack[0]);
+	let currentBannerName = uiStore.bannerStack[0];
 	uiStore.bannerStack.forEach((bannerName, index) => {
 		if (index === 0) return;
-		const bannerToCompare = N8N_BANNERS[bannerName];
-		if (bannerToCompare.priority > banner.priority) {
-			banner = bannerToCompare;
+		const bannerToCompare = getBannerForName(bannerName);
+		if (bannerToCompare.priority > currentBanner.priority) {
+			currentBanner = bannerToCompare;
+			currentBannerName = bannerName;
 		}
 	});
-	return banner.component;
+
+	return {
+		component: currentBanner.component,
+		props: {
+			name: currentBannerName,
+			content: currentBanner.content,
+			theme: currentBanner.theme,
+			isDismissible: currentBanner.isDismissible,
+		},
+	};
 });
 
 onMounted(async () => {
@@ -64,6 +82,10 @@ onMounted(async () => {
 
 <template>
 	<div data-test-id="banner-stack">
-		<component :is="currentlyShownBanner" />
+		<component
+			:is="currentlyShownBanner.component"
+			v-if="currentlyShownBanner"
+			v-bind="currentlyShownBanner.props"
+		/>
 	</div>
 </template>

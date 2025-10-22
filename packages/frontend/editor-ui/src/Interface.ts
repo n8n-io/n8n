@@ -890,6 +890,9 @@ export type N8nBanners = {
 	[key in BannerName]: {
 		priority: number;
 		component: Component;
+		content?: string;
+		theme?: CalloutTheme;
+		isDismissible?: boolean;
 	};
 };
 
