@@ -51,6 +51,7 @@ export function generateMarkdownReport(
 - Connections: ${formatPercentage(categoryAverages.connections)}
 - Expressions: ${formatPercentage(categoryAverages.expressions)}
 - Node Configuration: ${formatPercentage(categoryAverages.nodeConfiguration)}
+- Best Practices: ${formatPercentage(categoryAverages.bestPractices ?? 0)}
 
 ## Violations Summary
 - Critical: ${violationCounts.critical}
@@ -78,10 +79,14 @@ export function generateMarkdownReport(
 `;
 
 	results.forEach((result) => {
+		const techniques = result.evaluationResult.bestPractices.techniques;
+		const techniquesDisplay = techniques.length > 0 ? techniques.join(', ') : 'None identified';
+
 		report += `### ${result.testCase.name} (${result.testCase.id})
 - **Score**: ${formatPercentage(result.evaluationResult.overallScore)}
 - **Generation Time**: ${result.generationTime}ms
 - **Nodes Generated**: ${result.generatedWorkflow.nodes.length}
+- **Techniques**: ${techniquesDisplay}
 - **Summary**: ${result.evaluationResult.summary}
 `;
 
@@ -122,6 +127,10 @@ export function generateMarkdownReport(
 			...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
 				...v,
 				category: 'Node Configuration',
+			})),
+			...result.evaluationResult.bestPractices.violations.map((v) => ({
+				...v,
+				category: 'Best Practices',
 			})),
 		];
 
@@ -165,6 +174,13 @@ export function displayTestResults(
 			console.log(
 				`     LLM Score: ${llmScore} | Prog Score: ${progScore} | Nodes: ${result.generatedWorkflow?.nodes?.length} | Time: ${result.generationTime}ms`,
 			);
+
+			// Display techniques if available
+			if (!result.error && result.evaluationResult.bestPractices.techniques.length > 0) {
+				const techniques = result.evaluationResult.bestPractices.techniques.join(', ');
+				console.log(`     ${pc.dim('Techniques:')} ${pc.cyan(techniques)}`);
+			}
+
 			if (result.error) {
 				console.log(`     ${pc.red('Error:')} ${pc.dim(result.error)}`);
 			}
@@ -216,6 +232,7 @@ export function displaySummaryTable(
 		['  Connections', formatColoredScore(categoryAverages.connections)],
 		['  Expressions', formatColoredScore(categoryAverages.expressions)],
 		['  Node Config', formatColoredScore(categoryAverages.nodeConfiguration)],
+		['  Best Practices', formatColoredScore(categoryAverages.bestPractices ?? 0)],
 		['  Violations', ''],
 		[
 			'    Critical',
@@ -358,6 +375,11 @@ export function displayViolationsDetail(results: TestResult[]): void {
 				})),
 				...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
 					violation: { ...v, category: 'Node Config' },
+					testName: result.testCase.name,
+					source: 'llm' as const,
+				})),
+				...result.evaluationResult.bestPractices.violations.map((v) => ({
+					violation: { ...v, category: 'Best Practices' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
