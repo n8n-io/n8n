@@ -1,0 +1,20 @@
+/* Hide all n8n branding */
+[data-test-id="logo"], .logo, .n8n-branding {
+  display: none !important;
+}
+
+/* Change header background */
+header {
+  background-color: #000 !important;
+}
+
+/* Add your High Consulting AI logo */
+header::after {
+  content: "";
+  display: block;
+  height: 60px;
+  width: 180px;
+  background: url('https://i.imgur.com/Zi6msrW.png') no-repeat center;
+  background-size: contain;
+  margin: 10px auto;
+}
