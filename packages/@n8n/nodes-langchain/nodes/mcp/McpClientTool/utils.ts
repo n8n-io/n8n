@@ -307,7 +307,7 @@ export async function getAuthHeaders(
  * @returns The refreshed headers or null if the authentication method is not oAuth2Api or has failed
  */
 export async function tryRefreshOAuth2Token(
-	ctx: ISupplyDataFunctions | ILoadOptionsFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
 	headers?: Record<string, string>,
 ) {
