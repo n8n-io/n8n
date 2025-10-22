@@ -94,7 +94,7 @@ jobs:
           flags: frontend
           name: frontend-shard-${{ matrix.shard }}
 
-  unit-tests:
+  unit-test:
     name: Unit Tests
     runs-on: ubuntu-latest
     needs: [unit-test-backend, unit-test-frontend]
