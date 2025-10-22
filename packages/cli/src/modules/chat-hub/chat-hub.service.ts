@@ -328,11 +328,7 @@ export class ChatHubService {
 
 	private async ensureCredentials(
 		user: User,
-		model: {
-			provider: 'openai' | 'anthropic' | 'google';
-			model: string;
-			workflowId: string | null;
-		},
+		model: ChatHubConversationModel,
 		credentials: INodeCredentials,
 		trx?: EntityManager,
 	) {
