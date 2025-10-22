@@ -62,8 +62,6 @@ export class ChatHubSendMessageRequest extends Z.class({
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
-	retryId: z.string().uuid(),
-	sessionId: z.string().uuid(),
 	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
@@ -75,10 +73,8 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 }) {}
 
 export class ChatHubEditMessageRequest extends Z.class({
-	editId: z.string().uuid(),
 	message: z.string(),
 	messageId: z.string().uuid(),
-	sessionId: z.string().uuid(),
 	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
@@ -89,8 +85,12 @@ export class ChatHubEditMessageRequest extends Z.class({
 	),
 }) {}
 
+export class ChatHubChangeConversationTitleRequest extends Z.class({
+	title: z.string(),
+}) {}
+
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageState = 'active' | 'replaced';
+export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID
@@ -118,29 +118,22 @@ export interface ChatHubMessageDto {
 	model: string | null;
 	workflowId: string | null;
 	executionId: number | null;
-	state: ChatHubMessageState;
+	status: ChatHubMessageStatus;
 	createdAt: string;
 	updatedAt: string;
 
 	previousMessageId: ChatMessageId | null;
-	turnId: ChatMessageId | null;
 	retryOfMessageId: ChatMessageId | null;
 	revisionOfMessageId: ChatMessageId | null;
-	runIndex: number;
-
-	responseIds: ChatMessageId[];
-	retryIds: ChatMessageId[];
-	revisionIds: ChatMessageId[];
 }
 
 export type ChatHubConversationsResponse = ChatHubSessionDto[];
 
+export interface ChatHubConversationDto {
+	messages: Record<ChatMessageId, ChatHubMessageDto>;
+}
+
 export interface ChatHubConversationResponse {
 	session: ChatHubSessionDto;
-
-	conversation: {
-		messages: Record<string, ChatHubMessageDto>;
-		rootIds: string[];
-		activeMessageChain: string[];
-	};
+	conversation: ChatHubConversationDto;
 }

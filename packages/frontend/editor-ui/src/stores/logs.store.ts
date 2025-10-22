@@ -1,4 +1,4 @@
-import { type LogDetailsPanelState } from '@/features/logs/logs.types';
+import { type LogDetailsPanelState } from '@/features/execution/logs/logs.types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL,
@@ -9,7 +9,10 @@ import {
 import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { LOG_DETAILS_PANEL_STATE, LOGS_PANEL_STATE } from '@/features/logs/logs.constants';
+import {
+	LOG_DETAILS_PANEL_STATE,
+	LOGS_PANEL_STATE,
+} from '@/features/execution/logs/logs.constants';
 import type { ChatMessage } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
 
