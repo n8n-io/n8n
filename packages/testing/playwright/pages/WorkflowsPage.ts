@@ -35,6 +35,41 @@ export class WorkflowsPage extends BasePage {
 		await this.clickByTestId('easy-ai-workflow-card');
 	}
 
+	/**
+	 * Gets the ready-to-run card on the empty state layout
+	 */
+	getReadyToRunCard() {
+		return this.page.getByTestId('ready-to-run-card');
+	}
+
+	/**
+	 * Clicks the ready-to-run card on the empty state layout
+	 */
+	async clickReadyToRunCard() {
+		await this.clickByTestId('ready-to-run-card');
+	}
+
+	/**
+	 * Gets the ready-to-run button in the project header
+	 */
+	getReadyToRunButton() {
+		return this.page.getByTestId('ready-to-run-button');
+	}
+
+	/**
+	 * Clicks the ready-to-run button in the project header
+	 */
+	async clickReadyToRunButton() {
+		await this.clickByTestId('ready-to-run-button');
+	}
+
+	/**
+	 * Checks if the empty state layout is visible
+	 */
+	async isEmptyStateLayoutVisible() {
+		return this.page.getByTestId('ready-to-run-card').isVisible();
+	}
+
 	async clearSearch() {
 		await this.clickByTestId('resources-list-search');
 		await this.page.getByTestId('resources-list-search').clear();
