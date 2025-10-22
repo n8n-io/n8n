@@ -1,5 +1,5 @@
 import type { Component } from 'vue';
-import { computed, ref } from 'vue';
+import { computed, markRaw, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -39,7 +39,7 @@ export const useDynamicBannersStore = defineStore(STORES.DYNAMIC_BANNERS, () => 
 			).map((item) => ({
 				...item,
 				id: `dynamic-banner-${item.id}`,
-				component: DynamicBannerComponent as Component,
+				component: markRaw(DynamicBannerComponent as Component),
 			}));
 			return items.value;
 		} catch (e) {

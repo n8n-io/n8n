@@ -14,6 +14,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import DynamicBanner from './banners/DynamicBanner.vue';
 import type { Component } from 'vue';
+import { markRaw } from 'vue';
 
 let uiStore: ReturnType<typeof useUIStore>;
 
@@ -175,7 +176,7 @@ describe('BannerStack', () => {
 								content: '**Test Dynamic Banner** - This is a test',
 								theme: 'info' as const,
 								isDismissible: true,
-								component: DynamicBanner as Component,
+								component: markRaw(DynamicBanner as Component),
 							},
 						],
 						itemsMap: {
@@ -185,7 +186,7 @@ describe('BannerStack', () => {
 								content: '**Test Dynamic Banner** - This is a test',
 								theme: 'info' as const,
 								isDismissible: true,
-								component: DynamicBanner as Component,
+								component: markRaw(DynamicBanner as Component),
 							},
 						},
 					},
@@ -218,7 +219,7 @@ describe('BannerStack', () => {
 								content: bannerContent,
 								theme: bannerTheme,
 								isDismissible: bannerIsDismissible,
-								component: DynamicBanner as Component,
+								component: markRaw(DynamicBanner as Component),
 							},
 						],
 						itemsMap: {
@@ -228,7 +229,7 @@ describe('BannerStack', () => {
 								content: bannerContent,
 								theme: bannerTheme,
 								isDismissible: bannerIsDismissible,
-								component: DynamicBanner as Component,
+								component: markRaw(DynamicBanner as Component),
 							},
 						},
 					},
@@ -268,7 +269,7 @@ describe('BannerStack', () => {
 								content: '**High Priority Dynamic Banner** - This should be shown',
 								theme: 'warning' as const,
 								isDismissible: true,
-								component: DynamicBanner as Component,
+								component: markRaw(DynamicBanner as Component),
 							},
 						],
 						itemsMap: {
@@ -278,7 +279,7 @@ describe('BannerStack', () => {
 								content: '**High Priority Dynamic Banner** - This should be shown',
 								theme: 'warning' as const,
 								isDismissible: true,
-								component: DynamicBanner as Component,
+								component: markRaw(DynamicBanner as Component),
 							},
 						},
 					},
@@ -309,7 +310,7 @@ describe('BannerStack', () => {
 								content: '**Low Priority Dynamic Banner** - This should not be shown',
 								theme: 'info' as const,
 								isDismissible: true,
-								component: DynamicBanner as Component,
+								component: markRaw(DynamicBanner as Component),
 							},
 						],
 						itemsMap: {
@@ -319,7 +320,7 @@ describe('BannerStack', () => {
 								content: '**Low Priority Dynamic Banner** - This should not be shown',
 								theme: 'info' as const,
 								isDismissible: true,
-								component: DynamicBanner as Component,
+								component: markRaw(DynamicBanner as Component),
 							},
 						},
 					},
