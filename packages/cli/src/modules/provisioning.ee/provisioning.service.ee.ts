@@ -144,19 +144,20 @@ export class ProvisioningService {
 			return;
 		}
 
-		const existingProjects = await this.projectRepository.find({
-			where: { id: In(projectIds), type: Not('personal') },
-			select: ['id'],
-		});
+		const [existingProjects, existingRoles] = await Promise.all([
+			this.projectRepository.find({
+				where: { id: In(projectIds), type: Not('personal') },
+				select: ['id'],
+			}),
+			this.roleRepository.find({
+				where: {
+					slug: In(roleSlugs),
+					roleType: 'project',
+				},
+				select: ['slug'],
+			}),
+		]);
 		const existingProjectIds = new Set(existingProjects.map((project) => project.id));
-
-		const existingRoles = await this.roleRepository.find({
-			where: {
-				slug: In(roleSlugs),
-				roleType: 'project',
-			},
-			select: ['slug'],
-		});
 		const existingRoleSlugs = new Set(existingRoles.map((r) => r.slug));
 
 		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
