@@ -419,7 +419,7 @@ export class ChatHubService {
 				selectedModel,
 			);
 		} finally {
-			// await this.deleteChatWorkflow(workflow.workflowData.id);
+			await this.deleteChatWorkflow(workflow.workflowData.id);
 		}
 	}
 
