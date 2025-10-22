@@ -100,16 +100,20 @@ const onLicenseActivation = async (eulaUri?: string) => {
 		showActivationSuccess();
 	} catch (error: unknown) {
 		// Check if error requires EULA acceptance
-		const responseError = error as { httpStatusCode?: number; meta?: { eulaUrl?: string } };
+		// Handle ResponseError (has httpStatusCode and meta directly)
+		const responseError = error as {
+			httpStatusCode?: number;
+			meta?: { eulaUrl?: string };
+			response?: { status?: number; data?: { meta?: { eulaUrl?: string } } };
+		};
 
-		if (
-			responseError.httpStatusCode &&
-			responseError.httpStatusCode >= 400 &&
-			responseError.httpStatusCode < 500 &&
-			responseError.meta?.eulaUrl
-		) {
+		const statusCode = responseError.httpStatusCode ?? responseError.response?.status;
+		const eulaUrlFromError =
+			responseError.meta?.eulaUrl ?? responseError.response?.data?.meta?.eulaUrl;
+
+		if (statusCode && statusCode >= 400 && statusCode < 500 && eulaUrlFromError) {
 			activationKeyModal.value = false;
-			eulaUrl.value = responseError.meta.eulaUrl;
+			eulaUrl.value = eulaUrlFromError;
 			eulaModal.value = true;
 			return;
 		}
