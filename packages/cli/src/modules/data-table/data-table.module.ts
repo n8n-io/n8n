@@ -7,6 +7,7 @@ export class DataTableModule implements ModuleInterface {
 	async init() {
 		await import('./data-table.controller');
 		await import('./data-table-aggregate.controller');
+		await import('./csv-upload/data-table-uploads.controller');
 
 		const { DataTableService } = await import('./data-table.service');
 		await Container.get(DataTableService).start();
