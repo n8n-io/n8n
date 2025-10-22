@@ -32,7 +32,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, isCommunityPackageName } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

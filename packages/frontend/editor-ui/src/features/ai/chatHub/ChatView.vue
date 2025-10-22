@@ -255,7 +255,7 @@ function handleCancelEditMessage() {
 function handleEditMessage(message: ChatHubMessageDto) {
 	if (
 		chatStore.isResponding ||
-		message.type !== 'human' ||
+		 !['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsId.value
 	) {

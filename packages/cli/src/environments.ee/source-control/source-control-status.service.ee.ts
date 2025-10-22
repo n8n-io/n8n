@@ -1,6 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { type TagEntity, FolderRepository, TagRepository, type User, Variables } from '@n8n/db';
+import { FolderRepository, type TagEntity, TagRepository, type User, Variables } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
@@ -693,9 +693,16 @@ export class SourceControlStatusService {
 				(remote) => !outOfScopeProjects.some((outOfScope) => outOfScope.id === remote.id),
 			);
 
-		const projectsMissingInRemote = projectsLocal.filter(
+		// BACKWARD COMPATIBILITY: When there are no remote projects we can't safely delete local projects
+		// because we don't know if it's the first pull or if all team projects have been removed
+		// As a downside this means that it's not possible to delete all team projects via source control sync
+		const areRemoteProjectsEmpty = projectsRemote.length === 0;
+		let projectsMissingInRemote = projectsLocal.filter(
 			(local) => !projectsRemote.some((remote) => remote.id === local.id),
 		);
+		if (options.direction === 'pull' && areRemoteProjectsEmpty) {
+			projectsMissingInRemote = [];
+		}
 
 		const projectsModifiedInEither: ExportableProjectWithFileName[] = [];
 
