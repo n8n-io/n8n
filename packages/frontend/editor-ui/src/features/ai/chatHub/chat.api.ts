@@ -11,7 +11,7 @@ import type {
 	ChatSessionId,
 	ChatMessageId,
 } from '@n8n/api-types';
-import type { StructuredChunk } from './chat.types';
+import type { StructuredChunk } from 'n8n-workflow';
 
 // Workflows stream data as newline separated JSON objects (jsonl)
 const STREAM_SEPARATOR = '\n';
