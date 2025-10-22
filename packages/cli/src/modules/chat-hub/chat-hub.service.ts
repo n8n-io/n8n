@@ -39,6 +39,8 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type StartNodeData,
 	type IRun,
+	jsonParse,
+	StructuredChunk,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -52,6 +54,7 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubSession } from './chat-hub-session.entity';
 import type {
 	HumanMessagePayload,
 	RegenerateMessagePayload,
@@ -62,7 +65,7 @@ import type {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
-import { ChatHubSession } from './chat-hub-session.entity';
+import { captureResponseWrites } from './stream-capturer';
 
 const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -578,6 +581,18 @@ export class ChatHubService {
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
 		);
 
+		// Capture the streaming response as it's being generated to save
+		// partial messages in the database when generation gets cancelled.
+		let message = '';
+		const onChunk = (chunk: string) => {
+			const data = jsonParse<StructuredChunk>(chunk);
+			if (data && data.type === 'item' && typeof data.content === 'string') {
+				message += data.content;
+			}
+		};
+
+		const stream = captureResponseWrites(res, onChunk);
+
 		const { executionId } = await this.workflowExecutionService.executeManually(
 			{
 				workflowData,
@@ -587,7 +602,7 @@ export class ChatHubService {
 			user,
 			undefined,
 			true,
-			res,
+			stream,
 		);
 		if (!executionId) {
 			throw new OperationalError('There was a problem starting the chat execution.');
@@ -598,7 +613,7 @@ export class ChatHubService {
 			sessionId,
 			executionId,
 			previousMessageId,
-			message: '',
+			message,
 			selectedModel,
 			retryOfMessageId,
 			status: 'running',
@@ -621,9 +636,8 @@ export class ChatHubService {
 					}
 
 					if (execution.status === 'canceled') {
-						const message = 'Generation cancelled.';
 						await this.messageRepository.updateChatMessage(replyId, {
-							content: message,
+							content: message || 'Generation cancelled.',
 							status: 'cancelled',
 						});
 						return;
@@ -645,13 +659,16 @@ export class ChatHubService {
 				throw new OperationalError(message);
 			}
 
-			const message = this.getAIOutput(execution);
-			if (!message) {
+			// TODO: We should consider can we just save the output from the captured stream always instead
+			// of parsing it from execution data, which seems error prone, especially with custom workflows.
+			// That could make handling multiple agents, multiple runes, tool executions etc easier...?
+			const output = this.getAIOutput(execution);
+			if (!output) {
 				throw new OperationalError('No response generated');
 			}
 
 			await this.messageRepository.updateChatMessage(replyId, {
-				content: message,
+				content: output,
 				status: 'success',
 			});
 		} catch (error: unknown) {

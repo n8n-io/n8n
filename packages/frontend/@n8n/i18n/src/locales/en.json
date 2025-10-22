@@ -125,6 +125,7 @@
 	"generic.list.clearSelection": "Clear selection",
 	"generic.list.selected": "{count} row selected | {count} rows selected",
 	"generic.project": "Project",
+	"generic.projects": "Projects",
 	"generic.your": "Your",
 	"generic.apiKey": "API Key",
 	"about.aboutN8n": "About n8n",

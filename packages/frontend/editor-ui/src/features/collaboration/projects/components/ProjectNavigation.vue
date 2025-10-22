@@ -1,15 +1,16 @@
 <script lang="ts" setup>
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/constants';
-import { useProjectsStore } from '../projects.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import type { ProjectListItem } from '../projects.types';
+import { useSettingsStore } from '@/stores/settings.store';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeMount } from 'vue';
+import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
+import { useProjectsStore } from '../projects.store';
+import type { ProjectListItem } from '../projects.types';
 
-import { N8nButton, N8nMenuItem, N8nTooltip, N8nHeading } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nMenuItem, N8nTooltip } from '@n8n/design-system';
 
 type Props = {
 	collapsed: boolean;
@@ -86,8 +87,18 @@ const activeTabId = computed(() => {
 	);
 });
 
+async function onSourceControlPull() {
+	// Update myProjects for the sidebar display
+	await projectsStore.getMyProjects();
+}
+
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
+	sourceControlEventBus.on('pull', onSourceControlPull);
+});
+
+onBeforeUnmount(() => {
+	sourceControlEventBus.off('pull', onSourceControlPull);
 });
 </script>
 

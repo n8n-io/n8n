@@ -13,6 +13,7 @@ import type {
 	WorkflowRepository,
 	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
+	Variables,
 } from '@n8n/db';
 import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -340,7 +341,7 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([mock()]);
 
 			// Act
-			const result = await service.exportVariablesToWorkFolder();
+			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(1);
@@ -352,7 +353,7 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportVariablesToWorkFolder();
+			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(0);
@@ -418,6 +419,7 @@ describe('SourceControlExportService', () => {
 				icon: { type: 'icon', value: 'icon.png' },
 				description: 'Project 1',
 				type: 'team',
+				variables: [],
 			});
 			const project2 = mock<Project>({
 				id: 'project-id-2',
@@ -425,6 +427,7 @@ describe('SourceControlExportService', () => {
 				icon: null,
 				description: 'Team Project',
 				type: 'team',
+				variables: [mock<Variables>({ key: 'VAR1', value: 'value1' })],
 			});
 
 			const expectedProject1Json = JSON.stringify(
@@ -439,6 +442,7 @@ describe('SourceControlExportService', () => {
 						teamId: project1.id,
 						teamName: project1.name,
 					},
+					variableStubs: [],
 				},
 				null,
 				2,
@@ -455,6 +459,12 @@ describe('SourceControlExportService', () => {
 						teamId: project2.id,
 						teamName: project2.name,
 					},
+					variableStubs: [
+						{
+							key: 'VAR1',
+							value: '',
+						},
+					],
 				},
 				null,
 				2,
@@ -468,6 +478,7 @@ describe('SourceControlExportService', () => {
 			// Assert
 			expect(projectRepository.find).toHaveBeenCalledWith({
 				where: { id: In([project1.id, project2.id]), type: 'team' },
+				relations: ['variables'],
 			});
 			expect(fsWriteFile).toHaveBeenCalledWith(
 				'/mock/n8n/git/projects/project-id-1.json',

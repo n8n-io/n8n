@@ -23,7 +23,8 @@ import type {
 	ChatSessionId,
 	ChatHubMessageDto,
 } from '@n8n/api-types';
-import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type { StructuredChunk } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();

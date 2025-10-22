@@ -44,7 +44,7 @@ env:
   NODE_OPTIONS: --max-old-space-size=3072
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
-  PLAYWRIGHT_WORKERS: ${{ inputs.workers || (inputs.test-mode == 'docker-pull' && '2' || '3') }} # Configurable workers, defaults: 1 for docker-pull, 3 for others
+  PLAYWRIGHT_WORKERS: ${{ inputs.workers || '2' }} # Configurable workers, defaults to 2 to reduce resource contention
 
 jobs:
   test:

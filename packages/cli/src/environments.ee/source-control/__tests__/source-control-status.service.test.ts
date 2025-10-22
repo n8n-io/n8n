@@ -17,6 +17,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 
 import type { SourceControlGitService } from '../source-control-git.service.ee';
+import * as sourceControlHelper from '../source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import { SourceControlStatusService } from '../source-control-status.service.ee';
@@ -61,7 +62,7 @@ describe('getStatus', () => {
 
 		// variables
 		sourceControlImportService.getRemoteVariablesFromFile.mockResolvedValue([]);
-		sourceControlImportService.getLocalVariablesFromDb.mockResolvedValue([]);
+		sourceControlImportService.getLocalGlobalVariablesFromDb.mockResolvedValue([]);
 
 		// folders
 		// Define a folder that does only exist remotely.
@@ -90,6 +91,8 @@ describe('getStatus', () => {
 		// repositories
 		tagRepository.find.mockResolvedValue([]);
 		folderRepository.find.mockResolvedValue([]);
+
+		jest.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(true);
 	});
 
 	it('ensure updatedAt field for last deleted tag', async () => {
@@ -198,7 +201,7 @@ describe('getStatus', () => {
 		// Pulling this would delete it so it should be marked as a conflict.
 		// Pushing this is conflict free.
 		sourceControlImportService.getRemoteVariablesFromFile.mockResolvedValue([]);
-		sourceControlImportService.getLocalVariablesFromDb.mockResolvedValue([mock<Variables>()]);
+		sourceControlImportService.getLocalGlobalVariablesFromDb.mockResolvedValue([mock<Variables>()]);
 
 		// Define a tag that does only exist locally.
 		// Pulling this would delete it so it should be marked as a conflict.
@@ -238,13 +241,27 @@ describe('getStatus', () => {
 			],
 		});
 
-		// Define a project that does only exist locally.
-		// Pulling this would delete it so it should be marked as a conflict.
-		// Pushing this is conflict free.
-
-		sourceControlImportService.getRemoteProjectsFromFiles.mockResolvedValue([]);
+		// Define a project that only exists locally and another that exists both locally and remotely.
+		const project1 = mock<ExportableProjectWithFileName>({
+			id: 'project-id-1',
+			name: 'Project 1 Remote',
+			owner: {
+				type: 'team',
+				teamId: 'team-id-1',
+				teamName: 'Team 1',
+			},
+		});
+		sourceControlImportService.getRemoteProjectsFromFiles.mockResolvedValue([
+			mock<ExportableProjectWithFileName>({ ...project1 }),
+		]);
 		sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([
-			mock<ExportableProjectWithFileName>(),
+			mock<ExportableProjectWithFileName>({
+				...project1,
+				name: 'Project 1 Local',
+			}),
+			mock<ExportableProjectWithFileName>({
+				id: 'project-id-2',
+			}),
 		]);
 
 		// ACT
@@ -269,8 +286,8 @@ describe('getStatus', () => {
 			fail('Expected pushResult to be an array.');
 		}
 
-		expect(pullResult).toHaveLength(6);
-		expect(pushResult).toHaveLength(6);
+		expect(pullResult).toHaveLength(7);
+		expect(pushResult).toHaveLength(7);
 
 		expect(pullResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', true);
 		expect(pushResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', false);
@@ -287,8 +304,23 @@ describe('getStatus', () => {
 		expect(pullResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', true);
 		expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
 
-		expect(pullResult.find((i) => i.type === 'project')).toHaveProperty('conflict', true);
-		expect(pushResult.find((i) => i.type === 'project')).toHaveProperty('conflict', false);
+		expect(pullResult.find((i) => i.type === 'project' && i.id === 'project-id-2')).toHaveProperty(
+			'conflict',
+			true,
+		);
+		expect(pushResult.find((i) => i.type === 'project' && i.id === 'project-id-2')).toHaveProperty(
+			'conflict',
+			false,
+		);
+
+		expect(pullResult.find((i) => i.type === 'project' && i.id === 'project-id-1')).toHaveProperty(
+			'conflict',
+			true,
+		);
+		expect(pushResult.find((i) => i.type === 'project' && i.id === 'project-id-1')).toHaveProperty(
+			'conflict',
+			true,
+		);
 	});
 
 	it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
@@ -472,6 +504,48 @@ describe('getStatus', () => {
 			const remoteProject: ExportableProjectWithFileName = {
 				...mockProjects.basic,
 				icon: { type: 'icon', value: 'icon-modified' },
+			};
+
+			// both projects exist but are different
+			setupProjectMocks({
+				remote: [remoteProject],
+				local: [localProject],
+			});
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object.');
+			}
+
+			expect(result).toMatchObject({
+				projectsRemote: [remoteProject],
+				projectsLocal: [localProject],
+				projectsMissingInLocal: [],
+				projectsMissingInRemote: [],
+				projectsModifiedInEither: [remoteProject],
+				sourceControlledFiles: [
+					expect.objectContaining({
+						id: remoteProject.id,
+						conflict: true,
+					}),
+				],
+			});
+		});
+
+		it('should identify projects with modified variables', async () => {
+			// ARRANGE
+			const user = mockUsers.globalAdmin;
+			const localProject = mockProjects.basic;
+			const remoteProject: ExportableProjectWithFileName = {
+				...mockProjects.basic,
+				variableStubs: [{ id: 'var1', key: 'VAR1', value: '', type: 'string' }],
 			};
 
 			// both projects exist but are different
@@ -703,6 +777,52 @@ describe('getStatus', () => {
 					]),
 				);
 			});
+		});
+
+		it('should not mark projects for deletion when projects folder does not exist (backward compatibility)', async () => {
+			// ARRANGE
+			const user = mockUsers.globalAdmin;
+			const localProjects = [
+				{
+					id: 'local-project-1',
+					name: 'Local Project 1',
+					description: 'Local project description',
+					icon: null,
+					type: 'team' as const,
+					owner: {
+						type: 'team' as const,
+						teamId: 'local-project-1',
+						teamName: 'Local Project 1',
+					},
+					filename: '/mock/n8n/git/projects/local-project-1.json',
+				},
+			];
+
+			setupProjectMocks({
+				remote: [],
+				local: localProjects,
+			});
+
+			// Override the default mock: folder doesn't exist (backward compatibility scenario)
+			jest.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(false);
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (!Array.isArray(result)) {
+				fail('Expected result to be an array.');
+			}
+
+			// Should NOT include any project deletion entries
+			const projectDeletions = result.filter(
+				(file) => file.type === 'project' && file.status === 'deleted',
+			);
+			expect(projectDeletions).toHaveLength(0);
 		});
 	});
 

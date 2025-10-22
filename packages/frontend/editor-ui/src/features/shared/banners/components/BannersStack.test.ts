@@ -6,7 +6,7 @@ import { ROLE } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 
 import { createTestingPinia } from '@pinia/testing';
-import BannerStack from '@/components/banners/BannerStack.vue';
+import BannerStack from './BannerStack.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';

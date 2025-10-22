@@ -874,11 +874,19 @@ describe('SourceControlService', () => {
 				const credentialFiles = result.statusResult
 					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
 					.map((change) => change.file);
+
+				const projectFiles = result.statusResult
+					.filter((change) => change.type === 'project' && change.status !== 'deleted')
+					.map((change) => change.file);
+
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
+				expect(projectFiles).toHaveLength(2);
 
 				expect(gitService.push).toBeCalled();
-				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				expect(fsWriteFile).toBeCalledTimes(
+					workflowFiles.length + credentialFiles.length + projectFiles.length + 2,
+				); // folders + tags
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
@@ -908,14 +916,22 @@ describe('SourceControlService', () => {
 				const credentialFiles = result.statusResult
 					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
 					.map((change) => change.file);
+				const projectFiles = result.statusResult
+					.filter((change) => change.type === 'project' && change.status !== 'deleted')
+					.map((change) => change.file);
+
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
-				const numberFilesToWrite = workflowFiles.length + credentialFiles.length + 2; // folders + tags
+				expect(projectFiles).toHaveLength(2);
+				const numberFilesToWrite =
+					workflowFiles.length + credentialFiles.length + projectFiles.length + 2; // folders + tags + projects
 
 				const filesToWrite =
 					allChanges.filter(
 						(change) =>
-							(change.type === 'workflow' || change.type === 'credential') &&
+							(change.type === 'workflow' ||
+								change.type === 'credential' ||
+								change.type === 'project') &&
 							change.status !== 'deleted',
 					).length + 2; // folders + tags
 
@@ -924,6 +940,7 @@ describe('SourceControlService', () => {
 
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(projectFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
 					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_FOLDERS_EXPORT_FILE)]),
 				);
@@ -961,11 +978,18 @@ describe('SourceControlService', () => {
 				const credentialFiles = result.statusResult
 					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
 					.map((change) => change.file);
+				const projectFiles = result.statusResult
+					.filter((change) => change.type === 'project' && change.status !== 'deleted')
+					.map((change) => change.file);
 
 				expect(workflowFiles).toHaveLength(2);
 				expect(credentialFiles).toHaveLength(1);
+				expect(projectFiles).toHaveLength(1);
 
-				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				// folders + tags + projects (1)
+				expect(fsWriteFile).toBeCalledTimes(
+					workflowFiles.length + credentialFiles.length + projectFiles.length + 2,
+				);
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
@@ -974,6 +998,7 @@ describe('SourceControlService', () => {
 				expect(Object.keys(updatedFiles)).toEqual(
 					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_TAGS_EXPORT_FILE)]),
 				);
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(projectFiles));
 			});
 
 			it('should throw ForbiddenError when trying to push workflows out of scope', async () => {

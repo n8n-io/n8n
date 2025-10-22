@@ -1,4 +1,7 @@
 <script setup lang="ts">
+/**
+ * @TODO Move to design system
+ */
 import { ref } from 'vue';
 
 import { ElTag } from 'element-plus';
