@@ -191,6 +191,7 @@ function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
 export async function toolsAgentExecute(
 	this: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<INodeExecutionData[][]> {
+	const version = this.getNode().typeVersion;
 	this.logger.debug('Executing Tools Agent V2');
 
 	const returnData: INodeExecutionData[] = [];
@@ -212,14 +213,14 @@ export async function toolsAgentExecute(
 	if (checkIsResponsesApi(model)) {
 		throw new NodeOperationError(
 			this.getNode(),
-			'This model is not supported in this version of the Agent node. Please upgrade the Agent node.',
+			`This model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
 		);
 	}
 
 	if (checkIsResponsesApi(fallbackModel)) {
 		throw new NodeOperationError(
 			this.getNode(),
-			'This fallback model is not supported in this version of the Agent node. Please upgrade the Agent node.',
+			`This fallback model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
 		);
 	}
 
