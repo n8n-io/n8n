@@ -315,10 +315,16 @@ export async function tryRefreshOAuth2Token(
 		return null;
 	}
 
-	const { access_token } = (await ctx.helpers.refreshOAuth2Token.call(
-		ctx,
-		'mcpOAuth2Api',
-	)) as ClientOAuth2TokenData;
+	let access_token: string | null = null;
+	try {
+		const result = (await ctx.helpers.refreshOAuth2Token.call(
+			ctx,
+			'mcpOAuth2Api',
+		)) as ClientOAuth2TokenData;
+		access_token = result?.access_token;
+	} catch (error) {
+		return null;
+	}
 
 	if (!access_token) {
 		return null;
