@@ -95,7 +95,7 @@ jobs:
           name: frontend-shard-${{ matrix.shard }}
 
   unit-test:
-    name: Unit Tests
+    name: Unit tests
     runs-on: ubuntu-latest
     needs: [unit-test-backend, unit-test-frontend]
     if: always()
