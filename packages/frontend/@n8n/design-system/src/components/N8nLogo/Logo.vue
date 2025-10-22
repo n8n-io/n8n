@@ -2,8 +2,12 @@
 import { useFavicon } from '@vueuse/core';
 import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 
-import LogoIcon from './logo-icon.svg';
-import LogoText from './logo-text.svg';
+import { getBrandOwner } from '@n8n/design-system/utils/brandOwner';
+
+import CortexLogoIcon from './cortex-logo-icon.svg';
+import CortexLogoText from './cortex-logo-text.svg';
+import MOHLogoIcon from './moh-logo-icon.svg';
+import MOHLogoText from './moh-logo-text.svg';
 
 const props = defineProps<
 	(
@@ -25,6 +29,20 @@ const showLogoText = computed(() => {
 	if (size === 'large') return true;
 	return !props.collapsed;
 });
+
+const getLogoText = () => {
+	if (getBrandOwner() === 'MOH') {
+		return MOHLogoText;
+	}
+	return CortexLogoText;
+};
+
+const getLogoIcon = () => {
+	if (getBrandOwner() === 'MOH') {
+		return MOHLogoIcon;
+	}
+	return CortexLogoIcon;
+};
 
 const $style = useCssModule();
 const containerClasses = computed(() => {
@@ -56,8 +74,8 @@ onMounted(() => {
 
 <template>
 	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon ref="logo" :class="$style.logo" />
-		<LogoText v-if="showLogoText" :class="$style.logoText" />
+		<component :is="getLogoIcon()" ref="logo" :class="$style.logo" />
+		<component v-if="showLogoText" :is="getLogoText()" :class="$style.logoText" />
 		<slot />
 	</div>
 </template>
@@ -71,49 +89,37 @@ onMounted(() => {
 
 .logoText {
 	margin-left: var(--spacing--5xs);
-	path {
-		fill: var(--color--text--shade-1);
-	}
 }
 
 .large {
 	transform: scale(2);
-	margin-bottom: var(--spacing-xl);
 
-	svg > path {
-		fill: var(--color-text-dark, #13285a);
-	}
 	margin-bottom: var(--spacing--xl);
 
 	.logo,
 	.logoText {
 		transform: scale(1.3) translateY(-2px);
-		path {
-			fill: var(--color-text-dark);
-		}
 	}
 
 	.logoText {
-		margin-left: var(--spacing--xs);
+		margin-left: var(--spacing--lg);
 		margin-right: var(--spacing--3xs);
 	}
 }
 
 .sidebarExpanded .logo {
-	margin-left: var(--spacing-2xs);
-	path {
-		fill: var(--color-text-dark);
-	}
 	margin-left: var(--spacing--2xs);
 }
 
 .sidebarCollapsed .logo {
 	width: 40px;
 	height: 30px;
-	padding: 0 var(--spacing-4xs);
-	path {
-		fill: var(--color-text-dark);
-	}
 	padding: 0 var(--spacing--4xs);
+}
+.dark .logoContainer .logoText text {
+	fill: var(--color-text-light, #fff);
+}
+.dark .logoContainer .logo path {
+	fill: var(--color-text-light, #fff);
 }
 </style>
