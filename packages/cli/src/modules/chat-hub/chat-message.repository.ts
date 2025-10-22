@@ -17,8 +17,10 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 
 	async createChatMessage(message: Partial<ChatHubMessage>, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			const chatMessage = em.create(ChatHubMessage, message);
-			const saved = await em.save(chatMessage);
+			await em.insert(ChatHubMessage, message);
+			const saved = await em.findOneOrFail(ChatHubMessage, {
+				where: { id: message.id },
+			});
 			await this.chatSessionRepository.updateLastMessageAt(saved.sessionId, saved.createdAt, em);
 			return saved;
 		});

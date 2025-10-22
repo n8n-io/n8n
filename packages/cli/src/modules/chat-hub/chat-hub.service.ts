@@ -933,8 +933,6 @@ export class ChatHubService {
 		title: string | null = null,
 		trx?: EntityManager,
 	) {
-		// TODO: Handle session ID conflicts better (different user, same ID)
-
 		const existing = await this.sessionRepository.getOneById(sessionId, user.id, trx);
 		if (existing) {
 			return existing;
