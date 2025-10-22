@@ -27,7 +27,6 @@ import {
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -39,6 +38,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 let owner: User;
 let runner: WorkflowRunner;
+const globalConfig = Container.get(GlobalConfig);
 setupTestServer({ endpointGroups: [] });
 
 mockInstance(Telemetry);
@@ -71,6 +71,7 @@ describe('processError', () => {
 
 	beforeEach(async () => {
 		jest.clearAllMocks();
+		globalConfig.executions.mode = 'regular';
 		workflow = await createWorkflow({}, owner);
 		execution = await createExecution({ status: 'success', finished: true }, workflow);
 		hooks = new core.ExecutionLifecycleHooks('webhook', execution.id, workflow);
@@ -86,7 +87,7 @@ describe('processError', () => {
 			},
 			workflow,
 		);
-		config.set('executions.mode', 'queue');
+		globalConfig.executions.mode = 'queue';
 		await runner.processError(
 			new Error('test') as ExecutionError,
 			new Date(),
@@ -123,7 +124,7 @@ describe('processError', () => {
 			{ executionMode: 'webhook', workflowData: workflow },
 			execution.id,
 		);
-		config.set('executions.mode', 'regular');
+		globalConfig.executions.mode = 'regular';
 		await runner.processError(
 			new Error('test') as ExecutionError,
 			new Date(),

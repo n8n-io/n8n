@@ -28,8 +28,13 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import { SourceControlStatusService } from './source-control-status.service.ee';
+import {
+	filterByType,
+	getDeletedResources,
+	getNonDeletedResources,
+} from './source-control-resource-helper';
 import { SourceControlScopedService } from './source-control-scoped.service';
+import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
@@ -38,13 +43,6 @@ import type { SourceControlPreferences } from './types/source-control-preference
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-
-import {
-	filterByType,
-	getDeletedResources,
-	getNonDeletedResources,
-} from './source-control-resource-helper';
-
 import { IWorkflowToImport } from '@/interfaces';
 
 @Service()
@@ -297,7 +295,7 @@ export class SourceControlService {
 			we keep track of them in a single file unlike workflows and credentials
 		*/
 		filesToPush
-			.filter((f) => ['workflow', 'credential'].includes(f.type))
+			.filter((f) => ['workflow', 'credential', 'project'].includes(f.type))
 			.forEach((e) => {
 				if (e.status !== 'deleted') {
 					filesToBePushed.add(e.file);
@@ -322,6 +320,9 @@ export class SourceControlService {
 				);
 			});
 		}
+
+		const projectsToBeExported = getNonDeletedResources(filesToPush, 'project');
+		await this.sourceControlExportService.exportTeamProjectsToWorkFolder(projectsToBeExported);
 
 		// The tags file is always re-generated and exported to make sure the workflow-tag mappings are up to date
 		filesToBePushed.add(getTagsPath(this.gitFolder));
@@ -365,10 +366,6 @@ export class SourceControlService {
 		};
 	}
 
-	private getConflicts(files: SourceControlledFile[]): SourceControlledFile[] {
-		return files.filter((file) => file.conflict || file.status === 'modified');
-	}
-
 	async pullWorkfolder(
 		user: User,
 		options: PullWorkFolderRequestDto,
@@ -382,7 +379,10 @@ export class SourceControlService {
 		})) as SourceControlledFile[];
 
 		if (options.force !== true) {
-			const possibleConflicts = this.getConflicts(statusResult);
+			const possibleConflicts = statusResult.filter(
+				(file) => file.conflict || file.status === 'modified',
+			);
+
 			if (possibleConflicts?.length > 0) {
 				await this.gitService.resetBranch();
 				return {
@@ -392,7 +392,10 @@ export class SourceControlService {
 			}
 		}
 
-		// Make sure the folders get processed first as the workflows depend on them
+		// IMPORTANT: Make sure the projects and folders get processed first as the workflows depend on them
+		const projectsToBeImported = getNonDeletedResources(statusResult, 'project');
+		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(projectsToBeImported);
+
 		const foldersToBeImported = getNonDeletedResources(statusResult, 'folders')[0];
 		if (foldersToBeImported) {
 			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
@@ -408,6 +411,7 @@ export class SourceControlService {
 			user,
 			workflowsToBeDeleted,
 		);
+
 		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
 		await this.sourceControlImportService.importCredentialsFromWorkFolder(
 			credentialsToBeImported,
@@ -435,6 +439,9 @@ export class SourceControlService {
 
 		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
+
+		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
+		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
 
 		// #region Tracking Information
 		this.eventService.emit(

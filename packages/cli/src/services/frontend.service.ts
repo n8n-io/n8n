@@ -207,7 +207,7 @@ export class FrontendService {
 				enabled: this.globalConfig.templates.enabled,
 				host: this.globalConfig.templates.host,
 			},
-			executionMode: config.getEnv('executions.mode'),
+			executionMode: this.globalConfig.executions.mode,
 			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
 
@@ -441,7 +441,7 @@ export class FrontendService {
 		// TODO: read from settings
 		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
 
-		this.settings.executionMode = config.getEnv('executions.mode');
+		this.settings.executionMode = this.globalConfig.executions.mode;
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 

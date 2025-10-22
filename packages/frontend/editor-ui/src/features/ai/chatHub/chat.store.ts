@@ -187,6 +187,20 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, message.id);
 	}
 
+	function replaceMessageContent(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		content: string,
+	) {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+		if (!message) {
+			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
+		}
+
+		message.content = content;
+	}
+
 	function appendMessage(sessionId: ChatSessionId, messageId: ChatMessageId, chunk: string) {
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[messageId];
@@ -392,7 +406,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function editMessage(
 		sessionId: ChatSessionId,
 		editId: ChatMessageId,
-		message: string,
+		content: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
@@ -400,27 +414,32 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const replyId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
-		const previousMessageId = conversation.messages[editId]?.previousMessageId ?? null;
+		const message = conversation.messages[editId];
+		const previousMessageId = message?.previousMessageId ?? null;
 
-		addMessage(sessionId, {
-			id: messageId,
-			sessionId,
-			type: 'human',
-			name: 'User',
-			content: message,
-			provider: null,
-			model: null,
-			workflowId: null,
-			executionId: null,
-			status: 'success',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			previousMessageId,
-			retryOfMessageId: null,
-			revisionOfMessageId: editId,
-			responses: [],
-			alternatives: [],
-		});
+		if (message?.type === 'human') {
+			addMessage(sessionId, {
+				id: messageId,
+				sessionId,
+				type: 'human',
+				name: message.name ?? 'User',
+				content,
+				provider: null,
+				model: null,
+				workflowId: null,
+				executionId: null,
+				status: 'success',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				previousMessageId,
+				retryOfMessageId: null,
+				revisionOfMessageId: editId,
+				responses: [],
+				alternatives: [],
+			});
+		} else if (message?.type === 'ai') {
+			replaceMessageContent(sessionId, editId, content);
+		}
 
 		editMessageApi(
 			rootStore.restApiContext,
@@ -430,7 +449,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model,
 				messageId,
 				replyId,
-				message,
+				message: content,
 				credentials,
 			},
 			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),

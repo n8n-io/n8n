@@ -26,10 +26,12 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-function onAttach() {}
-
 function onMic() {
-	speechInput.isListening.value ? speechInput.stop() : speechInput.start();
+	if (speechInput.isListening.value) {
+		speechInput.stop();
+	} else {
+		speechInput.start();
+	}
 }
 
 function onStop() {
@@ -102,6 +104,7 @@ defineExpose({
 			/>
 
 			<div :class="$style.actions">
+				<!-- TODO: Implement attachments
 				<N8nIconButton
 					native-type="button"
 					type="secondary"
@@ -111,7 +114,7 @@ defineExpose({
 					icon-size="large"
 					text
 					@click="onAttach"
-				/>
+				/> -->
 				<N8nIconButton
 					v-if="speechInput.isSupported"
 					native-type="button"

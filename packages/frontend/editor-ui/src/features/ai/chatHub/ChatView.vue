@@ -31,7 +31,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
-import { credentialsMapSchema, type CredentialsMap, type Suggestion } from './chat.types';
+import { credentialsMapSchema, type CredentialsMap } from './chat.types';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const router = useRouter();
@@ -254,10 +254,6 @@ async function onStop() {
 	await chatStore.stopStreamingMessage(sessionId.value);
 }
 
-function onSuggestionClick(s: Suggestion) {
-	inputRef.value?.setText(`${s.title} ${s.subtitle}`);
-}
-
 function handleStartEditMessage(messageId: string) {
 	editingMessageId.value = messageId;
 }
@@ -267,7 +263,7 @@ function handleCancelEditMessage() {
 }
 
 function handleEditMessage(message: ChatHubMessageDto) {
-	if (chatStore.isResponding || message.type !== 'human' || !selectedModel.value) {
+	if (chatStore.isResponding || !['human', 'ai'].includes(message.type) || !selectedModel.value) {
 		return;
 	}
 
@@ -347,12 +343,7 @@ function handleSwitchAlternative(messageId: string) {
 			:class="$style.scrollArea"
 		>
 			<div :class="$style.scrollable" ref="scrollable">
-				<ChatStarter
-					v-if="isNewChat"
-					:class="$style.starter"
-					:is-mobile-device="isMobileDevice"
-					@select="onSuggestionClick"
-				/>
+				<ChatStarter v-if="isNewChat" :class="$style.starter" :is-mobile-device="isMobileDevice" />
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage

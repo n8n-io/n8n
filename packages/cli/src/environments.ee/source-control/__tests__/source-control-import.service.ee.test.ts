@@ -11,6 +11,7 @@ import {
 	WorkflowEntity,
 	type WorkflowRepository,
 } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
@@ -368,114 +369,6 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
-	describe('getRemoteFoldersAndMappingsFromFile', () => {
-		it('should parse folders and mappings file correctly', async () => {
-			globMock.mockResolvedValue(['/mock/folders.json']);
-
-			const now = new Date();
-
-			const mockFoldersData: {
-				folders: ExportableFolder[];
-			} = {
-				folders: [
-					{
-						id: 'folder1',
-						name: 'folder 1',
-						parentFolderId: null,
-						homeProjectId: 'project1',
-						createdAt: now.toISOString(),
-						updatedAt: now.toISOString(),
-					},
-				],
-			};
-
-			fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
-
-			const result = await service.getRemoteFoldersAndMappingsFromFile(globalAdminContext);
-
-			expect(result.folders).toEqual(mockFoldersData.folders);
-		});
-
-		it('should return empty folders and mappings if no file found', async () => {
-			globMock.mockResolvedValue([]);
-
-			const result = await service.getRemoteFoldersAndMappingsFromFile(globalAdminContext);
-
-			expect(result.folders).toHaveLength(0);
-		});
-
-		it('should return only folder that belong to a project that belongs to the user', async () => {
-			globMock.mockResolvedValue(['/mock/folders.json']);
-
-			const now = new Date();
-
-			const foldersToFind: ExportableFolder[] = [
-				{
-					id: 'folder1',
-					name: 'folder 1',
-					parentFolderId: null,
-					homeProjectId: 'project1',
-					createdAt: now.toISOString(),
-					updatedAt: now.toISOString(),
-				},
-				{
-					id: 'folder3',
-					name: 'folder 3',
-					parentFolderId: null,
-					homeProjectId: 'project1',
-					createdAt: now.toISOString(),
-					updatedAt: now.toISOString(),
-				},
-				{
-					id: 'folder4',
-					name: 'folder 3',
-					parentFolderId: null,
-					homeProjectId: 'project3',
-					createdAt: now.toISOString(),
-					updatedAt: now.toISOString(),
-				},
-			];
-
-			const mockFoldersData: {
-				folders: ExportableFolder[];
-			} = {
-				folders: [
-					{
-						id: 'folder0',
-						name: 'folder 0',
-						parentFolderId: null,
-						homeProjectId: 'project0',
-						createdAt: now.toISOString(),
-						updatedAt: now.toISOString(),
-					},
-					...foldersToFind,
-					{
-						id: 'folder2',
-						name: 'folder 2',
-						parentFolderId: null,
-						homeProjectId: 'project2',
-						createdAt: now.toISOString(),
-						updatedAt: now.toISOString(),
-					},
-				],
-			};
-
-			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
-				Object.assign(new Project(), {
-					id: 'project1',
-				}),
-				Object.assign(new Project(), {
-					id: 'project3',
-				}),
-			]);
-			fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
-
-			const result = await service.getRemoteFoldersAndMappingsFromFile(globalMemberContext);
-
-			expect(result.folders).toEqual(foldersToFind);
-		});
-	});
-
 	describe('getLocalVersionIdsFromDb', () => {
 		const now = new Date();
 		jest.useFakeTimers({ now });
@@ -497,26 +390,156 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
-	describe('getLocalFoldersAndMappingsFromDb', () => {
-		it('should return data from DB', async () => {
-			// Arrange
+	describe('folders', () => {
+		describe('getRemoteFoldersAndMappingsFromFile', () => {
+			it('should parse folders and mappings file correctly', async () => {
+				globMock.mockResolvedValue(['/mock/folders.json']);
 
-			folderRepository.find.mockResolvedValue([
-				mock({ createdAt: new Date(), updatedAt: new Date() }),
-			]);
-			workflowRepository.find.mockResolvedValue([mock()]);
+				const now = new Date();
 
-			// Act
+				const mockFoldersData: {
+					folders: ExportableFolder[];
+				} = {
+					folders: [
+						{
+							id: 'folder1',
+							name: 'folder 1',
+							parentFolderId: null,
+							homeProjectId: 'project1',
+							createdAt: now.toISOString(),
+							updatedAt: now.toISOString(),
+						},
+					],
+				};
 
-			const result = await service.getLocalFoldersAndMappingsFromDb(globalAdminContext);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
 
-			// Assert
+				const result = await service.getRemoteFoldersAndMappingsFromFile(globalAdminContext);
 
-			expect(result.folders).toHaveLength(1);
-			expect(result.folders[0]).toHaveProperty('id');
-			expect(result.folders[0]).toHaveProperty('name');
-			expect(result.folders[0]).toHaveProperty('parentFolderId');
-			expect(result.folders[0]).toHaveProperty('homeProjectId');
+				expect(result.folders).toEqual(mockFoldersData.folders);
+			});
+
+			it('should return empty folders and mappings if no file found', async () => {
+				globMock.mockResolvedValue([]);
+
+				const result = await service.getRemoteFoldersAndMappingsFromFile(globalAdminContext);
+
+				expect(result.folders).toHaveLength(0);
+			});
+
+			it('should return only folder that belong to a project that belongs to the user', async () => {
+				globMock.mockResolvedValue(['/mock/folders.json']);
+
+				const now = new Date();
+
+				const foldersToFind: ExportableFolder[] = [
+					{
+						id: 'folder1',
+						name: 'folder 1',
+						parentFolderId: null,
+						homeProjectId: 'project1',
+						createdAt: now.toISOString(),
+						updatedAt: now.toISOString(),
+					},
+					{
+						id: 'folder3',
+						name: 'folder 3',
+						parentFolderId: null,
+						homeProjectId: 'project1',
+						createdAt: now.toISOString(),
+						updatedAt: now.toISOString(),
+					},
+					{
+						id: 'folder4',
+						name: 'folder 3',
+						parentFolderId: null,
+						homeProjectId: 'project3',
+						createdAt: now.toISOString(),
+						updatedAt: now.toISOString(),
+					},
+				];
+
+				const mockFoldersData: {
+					folders: ExportableFolder[];
+				} = {
+					folders: [
+						{
+							id: 'folder0',
+							name: 'folder 0',
+							parentFolderId: null,
+							homeProjectId: 'project0',
+							createdAt: now.toISOString(),
+							updatedAt: now.toISOString(),
+						},
+						...foldersToFind,
+						{
+							id: 'folder2',
+							name: 'folder 2',
+							parentFolderId: null,
+							homeProjectId: 'project2',
+							createdAt: now.toISOString(),
+							updatedAt: now.toISOString(),
+						},
+					],
+				};
+
+				sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
+					Object.assign(new Project(), {
+						id: 'project1',
+					}),
+					Object.assign(new Project(), {
+						id: 'project3',
+					}),
+				]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
+
+				const result = await service.getRemoteFoldersAndMappingsFromFile(globalMemberContext);
+
+				expect(result.folders).toEqual(foldersToFind);
+			});
+		});
+
+		describe('getLocalFoldersAndMappingsFromDb', () => {
+			it('should return data from DB', async () => {
+				// Arrange
+
+				folderRepository.find.mockResolvedValue([
+					mock({ createdAt: new Date(), updatedAt: new Date() }),
+				]);
+				workflowRepository.find.mockResolvedValue([mock()]);
+
+				// Act
+
+				const result = await service.getLocalFoldersAndMappingsFromDb(globalAdminContext);
+
+				// Assert
+
+				expect(result.folders).toHaveLength(1);
+				expect(result.folders[0]).toHaveProperty('id');
+				expect(result.folders[0]).toHaveProperty('name');
+				expect(result.folders[0]).toHaveProperty('parentFolderId');
+				expect(result.folders[0]).toHaveProperty('homeProjectId');
+			});
+		});
+
+		describe('deleteFoldersNotInWorkfolder', () => {
+			it('should call folderRepository.delete with correct ids', async () => {
+				const candidates = [
+					mock<SourceControlledFile>({ id: 'folder1' }),
+					mock<SourceControlledFile>({ id: 'folder2' }),
+					mock<SourceControlledFile>({ id: 'folder3' }),
+				];
+				await service.deleteFoldersNotInWorkfolder(candidates as any);
+
+				expect(folderRepository.delete).toHaveBeenCalledWith({
+					id: In(['folder1', 'folder2', 'folder3']),
+				});
+			});
+
+			it('should not call folderRepository.delete if candidates is empty', async () => {
+				await service.deleteFoldersNotInWorkfolder([]);
+				expect(folderRepository.delete).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -871,6 +894,27 @@ describe('SourceControlImportService', () => {
 						teamName: mockProjectData1.name,
 					},
 				});
+			});
+		});
+
+		describe('deleteTeamProjectsNotInWorkfolder', () => {
+			it('should delete candidate files', async () => {
+				const candidates = [
+					mock<SourceControlledFile>({ id: 'project-1' }),
+					mock<SourceControlledFile>({ id: 'project-2' }),
+				];
+
+				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+
+				expect(projectRepository.delete).toHaveBeenCalledWith({
+					id: In(['project-1', 'project-2']),
+				});
+			});
+
+			it('should handle empty candidates array', async () => {
+				await service.deleteTeamProjectsNotInWorkfolder([]);
+
+				expect(projectRepository.delete).not.toHaveBeenCalled();
 			});
 		});
 	});
