@@ -80,7 +80,6 @@ const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
 
 const sortTableBy = ref([{ id: props.insightType, desc: true }]);
 
-const upgradeModalVisible = ref(false);
 const selectedDateRange = ref<InsightsDateRange['key']>('week');
 const granularity = computed(() => {
 	const { start, end } = range.value;
