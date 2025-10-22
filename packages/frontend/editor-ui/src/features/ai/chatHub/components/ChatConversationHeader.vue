@@ -48,7 +48,7 @@ function onNewChat() {
 }
 
 defineExpose({
-	expandModelSelector: () => modelSelectorRef.value?.expand(),
+	openModelSelector: () => modelSelectorRef.value?.open(),
 });
 </script>
 

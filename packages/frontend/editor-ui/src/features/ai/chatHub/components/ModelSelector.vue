@@ -86,7 +86,7 @@ onClickOutside(
 );
 
 defineExpose({
-	expand: () => dropdownRef.value?.open(),
+	open: () => dropdownRef.value?.open(),
 });
 </script>
 

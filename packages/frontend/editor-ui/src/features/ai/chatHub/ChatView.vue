@@ -324,7 +324,7 @@ function handleConfigureCredentials(provider: ChatHubProvider) {
 }
 
 function handleConfigureModel() {
-	headerRef.value?.expandModelSelector();
+	headerRef.value?.openModelSelector();
 }
 
 function handleCreateNewCredential(provider: ChatHubProvider) {
