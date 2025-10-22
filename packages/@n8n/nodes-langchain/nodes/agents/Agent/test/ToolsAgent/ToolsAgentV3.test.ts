@@ -1,5 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk } from '@langchain/core/messages';
+import {
+	AIMessage,
+	HumanMessage,
+	type BaseMessage,
+	type AIMessageChunk,
+} from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { mock } from 'jest-mock-extended';
@@ -628,6 +633,82 @@ describe('toolsAgentExecute V3', () => {
 				output:
 					'[Used tools: Tool: TestTool, Input: "test data", Result: [{"json":{"result":"tool result"}}]] success',
 			},
+		);
+	});
+
+	it('should trim chat history to fit within `maxTokensFromMemory` limits', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 3;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		// Mock model that only counts "tokens", and for simplicity we say each character is a token.
+		// Normally we pass a BaseLanguageModel and its `BaseLanguageModel.getNumTokens()` is used but I couldn't to mock that.
+		const mockModel = (async (messages: BaseMessage[]) => {
+			return await Promise.resolve(
+				messages.map((m: BaseMessage) => m.content.length).reduce((a, b) => a + b, 0),
+			);
+		}) as unknown as BaseChatModel;
+
+		const mockHistory: BaseMessage[] = [
+			new HumanMessage({ content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' }), // 56 "tokens"
+			new AIMessage({ content: 'Vivamus volutpat felis a sapien viverra pretium.' }), // 48 "tokens"
+			new HumanMessage({
+				content: 'Nam id felis condimentum, venenatis ligula non, pulvinar nunc.',
+			}), // 62
+			new AIMessage({ content: 'Praesent eget ante magna.' }), // 25 "tokens"
+			new HumanMessage({
+				content: 'Curabitur euismod sem at dui efficitur, at convallis erat facilisis.', // 68 "tokens"
+			}),
+			new AIMessage({ content: 'Sed nec eros euismod, tincidunt nunc at, fermentum massa.' }), // 57 "tokens"
+		];
+		const mockMemory = mock<BaseChatMemory>();
+		(mockMemory.saveContext as jest.Mock) = jest.fn();
+		(mockMemory.loadMemoryVariables as jest.Mock) = jest.fn().mockResolvedValue({
+			chat_history: mockHistory,
+		});
+		mockMemory.chatHistory = { getMessages: jest.fn().mockResolvedValue(mockHistory) } as any;
+
+		const mockAgent = mock<any>();
+		const mockRunnableSequence = mock<any>();
+		mockRunnableSequence.singleAction = true;
+		mockRunnableSequence.streamRunnable = false;
+		mockRunnableSequence.invoke = jest
+			.fn()
+			.mockResolvedValue({ returnValues: { output: 'success' } });
+
+		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+
+		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(mockMemory);
+		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mock<Tool>()]);
+		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
+		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'needsFallback') return false;
+			if (param === 'options.enableStreaming') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+					maxTokensFromMemory: 250, // Last four messages fit (25+68+57+62=212), first two (56+48=104) get removed
+				};
+			return defaultValue;
+		});
+
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		await toolsAgentExecute.call(mockContext);
+
+		expect(mockRunnableSequence.invoke).toHaveBeenCalledWith(
+			expect.objectContaining({
+				chat_history: [mockHistory[2], mockHistory[3], mockHistory[4], mockHistory[5]],
+			}),
 		);
 	});
 

@@ -3,9 +3,9 @@ import { fireEvent, screen } from '@testing-library/vue';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/features/users/users.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
@@ -28,15 +28,15 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: vi.fn(),
 }));
 
-vi.mock('@/features/users/users.store', () => ({
+vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
-vi.mock('@/stores/ndv.store', () => ({
+vi.mock('@/features/ndv/ndv.store', () => ({
 	useNDVStore: vi.fn(),
 }));
 
-vi.mock('@/features/projects/projects.store', () => ({
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(),
 }));
 

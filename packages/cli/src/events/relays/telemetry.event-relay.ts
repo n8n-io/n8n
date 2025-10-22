@@ -846,7 +846,7 @@ export class TelemetryEventRelay extends EventRelay {
 				is_docker: this.instanceSettings.isDocker,
 			},
 			execution_variables: {
-				executions_mode: config.getEnv('executions.mode'),
+				executions_mode: this.globalConfig.executions.mode,
 				executions_timeout: this.globalConfig.executions.timeout,
 				executions_timeout_max: this.globalConfig.executions.maxTimeout,
 				executions_data_save_on_error: this.globalConfig.executions.saveDataOnError,
