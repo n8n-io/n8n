@@ -281,7 +281,7 @@ const getOidcConfig = async () => {
 	discoveryEndpoint.value = config.discoveryEndpoint;
 	prompt.value = config.prompt ?? 'select_account';
 	authenticationContextClassReference.value =
-		config.authenticationContextClassReference?.join(', ') || '';
+		config.authenticationContextClassReference?.join(',') || '';
 };
 
 async function loadOidcConfig() {
@@ -306,8 +306,7 @@ const cannotSaveOidcSettings = computed(() => {
 		.filter(Boolean)
 		.join(',');
 
-	const storedAcrString =
-		ssoStore.oidcConfig?.authenticationContextClassReference?.join(', ') || '';
+	const storedAcrString = ssoStore.oidcConfig?.authenticationContextClassReference?.join(',') || '';
 
 	return (
 		ssoStore.oidcConfig?.clientId === clientId.value &&
