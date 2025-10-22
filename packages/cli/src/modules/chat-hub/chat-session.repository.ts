@@ -54,12 +54,17 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 	}
 
 	async getOneById(id: string, userId: string, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.findOne(ChatHubSession, {
-				where: { id, ownerId: userId },
-				relations: ['messages'],
-			});
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.findOne(ChatHubSession, {
+					where: { id, ownerId: userId },
+					relations: ['messages'],
+				});
+			},
+			false,
+		);
 	}
 
 	async deleteAll(trx?: EntityManager) {

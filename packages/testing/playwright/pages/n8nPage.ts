@@ -19,6 +19,7 @@ import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
@@ -83,6 +84,7 @@ export class n8nPage {
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
+	readonly settingsEnvironment: SettingsEnvironmentPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
@@ -141,6 +143,7 @@ export class n8nPage {
 		this.workflowSharingModal = new WorkflowSharingModal(page);
 		this.dataTable = new DataTableView(page);
 		this.dataTableDetails = new DataTableDetails(page);
+		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
 		// Modals

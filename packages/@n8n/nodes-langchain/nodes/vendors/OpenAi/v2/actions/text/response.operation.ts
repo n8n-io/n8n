@@ -706,7 +706,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const hasFunctionCall = () => toolCalls.some((item) => item.type === 'function_call');
 
-	const answeredToolCalls = new Set<string>();
 	let currentIteration = 1;
 	// make sure there's actually a function call to answer
 	while (toolCalls.length && hasFunctionCall()) {
@@ -714,14 +713,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
+		// if there's conversation, we don't need to include function_call or reasoning items in the request
+		// if we include them, OpenAI will throw "Duplicate item with id" error
+		if (!body.conversation) {
+			body.input.push.apply(body.input, toolCalls);
+		}
+
 		for (const item of toolCalls) {
-			if (item.type === 'function_call' && answeredToolCalls.has(item.call_id)) {
-				continue;
-			}
-
-			// include function_call or reasoning items in the request
-			body.input.push(item);
-
 			if (item.type === 'function_call') {
 				const functionName = item.name;
 				const functionArgs = item.arguments;
@@ -745,8 +743,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					call_id: callId,
 					output: functionResponse,
 				});
-
-				answeredToolCalls.add(callId);
 			}
 		}
 
