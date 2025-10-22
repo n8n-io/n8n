@@ -9,10 +9,10 @@ import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
-} from '@/features/canvas/canvas.types';
+} from '@/features/workflows/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
-import { DATA_TABLE_MODULE_NAME } from './features/dataTable/constants';
+import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
 import type { TelemetryContext } from './types/telemetry';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type { WorkflowState } from './composables/useWorkflowState';
@@ -51,8 +51,6 @@ export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
-export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
-export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
@@ -64,16 +62,12 @@ export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const NODE_PINNING_MODAL_KEY = 'nodePinning';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
-export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
-export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
-export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
@@ -83,16 +77,9 @@ export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
-export const VARIABLE_MODAL_KEY = 'variableModal';
 export const CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY = 'chatHubSideMenuDrawer';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
-
-export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
-	UNINSTALL: 'uninstall',
-	UPDATE: 'update',
-	VIEW_DOCS: 'view-documentation',
-};
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -108,12 +95,7 @@ export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`
 export const SCHEMA_PREVIEW_DOCS_URL = `https://${DOCS_DOMAIN}/data/schema-preview/`;
 export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-auth/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
-export const NPM_KEYWORD_SEARCH_URL =
-	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
-export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
-export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluations/overview/`;
@@ -363,17 +345,12 @@ export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^https?:\/\/.+/i;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
-export const LOCAL_STORAGE_MAPPING_IS_ONBOARDED = 'N8N_MAPPING_ONBOARDED';
-export const LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED = 'N8N_AUTOCOMPLETE_ONBOARDED';
-export const LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED = 'N8N_TABLE_HOVER_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
 export const LOCAL_STORAGE_NDV_DIMENSIONS = 'N8N_NDV_DIMENSIONS';
 export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
-export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
-export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
 export const LOCAL_STORAGE_TURN_OFF_WORKFLOW_SUGGESTIONS = 'N8N_TURN_OFF_WORKFLOW_SUGGESTIONS';
 export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION_ENABLED';
@@ -382,7 +359,6 @@ export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE = 'N8N_LOGS_DETAILS
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
 export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLES';
 export const LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT = 'N8N_DISMISSED_WHATS_NEW_CALLOUT';
-export const LOCAL_STORAGE_NDV_PANEL_WIDTH = 'N8N_NDV_PANEL_WIDTH';
 export const LOCAL_STORAGE_FOCUS_PANEL = 'N8N_FOCUS_PANEL';
 export const LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS =
 	'N8N_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS';
@@ -391,6 +367,8 @@ export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_SELECTED_MODEL`;
 export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_CREDENTIALS`;
+export const LOCAL_STORAGE_CHAT_HUB_STATIC_SIDEBAR = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_STATIC_SIDEBAR`;
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';
@@ -458,6 +436,7 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
+	PROVISIONING_SETTINGS = 'ProvisioningSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	MFA_VIEW = 'MfaView',
@@ -469,6 +448,9 @@ export const enum VIEWS {
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
+	PROJECT_ROLES_SETTINGS = 'ProjectRolesSettingsView',
+	PROJECT_ROLE_SETTINGS = 'ProjectRoleSettingsView',
+	PROJECT_NEW_ROLE = 'ProjectNewRoleView',
 	PROJECTS_VARIABLES = 'ProjectsVariables',
 	HOME_VARIABLES = 'HomeVariables',
 	FOLDERS = 'Folders',
@@ -560,6 +542,7 @@ export const EnterpriseEditionFeature: Record<
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
 	ApiKeyScopes: 'apiKeyScopes',
+	Provisioning: 'provisioning',
 };
 
 export const MAIN_NODE_PANEL_WIDTH = 390;
@@ -731,9 +714,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
-	READY_TO_RUN_V2_EXPERIMENT.name,
-	PERSONALIZED_TEMPLATES_V3.name,
-	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
 	PROJECT_VARIABLES_EXPERIMENT.name,
 ];
 

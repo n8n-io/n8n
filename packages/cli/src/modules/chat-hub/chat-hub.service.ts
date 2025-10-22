@@ -7,6 +7,9 @@ import {
 	chatHubProviderSchema,
 	ChatHubMessageDto,
 	type ChatMessageId,
+	type ChatSessionId,
+	ChatHubConversationModel,
+	ChatHubMessageStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -24,35 +27,74 @@ import type { Response } from 'express';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
-	INodeCredentials,
+	NodeConnectionTypes,
 	OperationalError,
+	ManualExecutionCancelledError,
 	type IConnections,
 	type INode,
+	type INodeCredentials,
+	type INodeTypeNameVersion,
 	type ITaskData,
 	type IWorkflowBase,
+	type IWorkflowExecuteAdditionalData,
 	type StartNodeData,
+	type IRun,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsHelper } from '@/credentials-helper';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
-import { ChatHubSession } from './chat-hub-session.entity';
-import type { ChatPayloadWithCredentials, MessageRecord } from './chat-hub.types';
+import type {
+	HumanMessagePayload,
+	RegenerateMessagePayload,
+	EditMessagePayload,
+	MessageRecord,
+	ModelWithCredentials,
+} from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
+import { getMaxContextWindowTokens } from './context-limits';
+import { ChatHubSession } from './chat-hub-session.entity';
+
+const providerNodeTypeMapping: Record<ChatHubProvider, INodeTypeNameVersion> = {
+	openai: {
+		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		version: 1.2,
+	},
+	anthropic: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+		version: 1.3,
+	},
+	google: {
+		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+		version: 1.2,
+	},
+};
+
+const NODE_NAMES = {
+	CHAT_TRIGGER: 'When chat message received',
+	AI_AGENT: 'AI Agent',
+	CHAT_MODEL: 'Chat Model',
+	MEMORY: 'Memory',
+	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
+	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
+} as const;
 
 @Service()
 export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsHelper: CredentialsHelper,
+		private readonly executionService: ExecutionService,
+		private readonly nodeParametersService: DynamicNodeParametersService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -82,27 +124,15 @@ export class ChatHubService {
 				// Ensure the user has the permission to read the credential
 				await this.credentialsService.getOne(user, credentialId, false);
 
-				const credentials = await this.credentialsHelper.getDecrypted(
-					additionalData,
-					{
-						id: credentialId,
-						name: PROVIDER_CREDENTIAL_TYPE_MAP[provider],
-					},
-					PROVIDER_CREDENTIAL_TYPE_MAP[provider],
-					'internal',
-					undefined,
-					true,
-				);
-
-				// Extract API key from credentials based on provider
-				const apiKey = this.extractApiKey(provider, credentials);
-
-				if (!apiKey) {
-					return [provider, { models: [] }];
-				}
-
 				try {
-					return [provider, await this.fetchModelsForProvider(provider, apiKey)];
+					const credentials = {
+						[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]: { name: '', id: credentialId },
+					};
+
+					return [
+						provider,
+						await this.fetchModelsForProvider(provider, credentials, additionalData),
+					];
 				} catch {
 					return [
 						provider,
@@ -127,130 +157,132 @@ export class ChatHubService {
 
 	private async fetchModelsForProvider(
 		provider: ChatHubProvider,
-		apiKey: string,
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<ChatModelsResponse[ChatHubProvider]> {
 		switch (provider) {
 			case 'openai':
-				return await this.fetchOpenAiModels(apiKey);
+				return await this.fetchOpenAiModels(credentials, additionalData);
 			case 'anthropic':
-				return await this.fetchAnthropicModels(apiKey);
+				return await this.fetchAnthropicModels(credentials, additionalData);
 			case 'google':
-				return await this.fetchGoogleModels(apiKey);
+				return await this.fetchGoogleModels(credentials, additionalData);
 		}
 	}
 
-	private async fetchOpenAiModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch('https://api.openai.com/v1/models', {
-			method: 'GET',
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch OpenAI models: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-
-		return {
-			models: data.data
-				.filter(
-					(model: { id: string }) =>
-						model.id.includes('gpt') &&
-						!model.id.includes('instruct') &&
-						!model.id.includes('audio'),
-				)
-				.map((model: { id: string }) => ({ name: model.id })),
-		};
-	}
-
-	private async fetchAnthropicModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch('https://api.anthropic.com/v1/models', {
-			method: 'GET',
-			headers: {
-				'x-api-key': apiKey,
-				'anthropic-version': '2023-06-01',
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch Anthropic models: ${response.statusText}`);
-		}
-
-		const data = (await response.json()) as {
-			data: Array<{ id: string; display_name: string; type: string; created_at: string }>;
-		};
-
-		return {
-			models: (data.data || [])
-				.sort((a, b) => {
-					const dateA = new Date(a.created_at);
-					const dateB = new Date(b.created_at);
-					return dateB.getTime() - dateA.getTime();
-				})
-				.map((model) => ({ name: model.id })),
-		};
-	}
-
-	private async fetchGoogleModels(apiKey: string): Promise<ChatModelsResponse[ChatHubProvider]> {
-		const response = await fetch(
-			`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
-			{
-				method: 'GET',
-			},
+	private async fetchOpenAiModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
+			'searchModels',
+			'parameters.model',
+			additionalData,
+			providerNodeTypeMapping.openai,
+			{},
+			credentials,
 		);
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch Google models: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-
 		return {
-			models: data.models
-				?.filter(
-					(model: { name: string; supportedGenerationMethods?: string[] }) =>
-						model.name.includes('gemini') &&
-						model.supportedGenerationMethods?.includes('generateContent'),
-				)
-				.map((model: { name: string }) => {
-					// Extract model ID from the full name (e.g., "models/gemini-1.5-pro" -> "gemini-1.5-pro")
-					const modelId = model.name.split('/').pop();
-
-					return { name: modelId };
-				}),
+			models: resourceLocatorResults.results.map((result) => ({ name: String(result.value) })),
 		};
 	}
 
-	private extractApiKey(provider: ChatHubProvider, credentials: unknown): string | undefined {
-		if (typeof credentials !== 'object' || credentials === null) {
-			return undefined;
-		}
+	private async fetchAnthropicModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
+			'searchModels',
+			'parameters.model',
+			additionalData,
+			providerNodeTypeMapping.anthropic,
+			{},
+			credentials,
+		);
 
-		const creds = credentials as Record<string, unknown>;
+		return {
+			models: resourceLocatorResults.results.map((result) => ({ name: String(result.value) })),
+		};
+	}
 
-		switch (provider) {
-			case 'openai':
-			case 'anthropic':
-			case 'google':
-				// All providers use 'apiKey' field
-				return typeof creds.apiKey === 'string' ? creds.apiKey : undefined;
-		}
+	private async fetchGoogleModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				// From Gemini node
+				// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts#L75
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1beta/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'models',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: "={{ !$responseItem.name.includes('embedding') }}",
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.name}}',
+									value: '={{$responseItem.name}}',
+									description: '={{$responseItem.description}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			providerNodeTypeMapping.google,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({ name: String(result.value) })),
+		};
 	}
 
 	private async createChatWorkflow(
 		user: User,
-		sessionId: string,
-		nodes: INode[],
-		connections: IConnections,
-	) {
-		const { manager } = this.projectRepository;
-		const existing = await this.workflowRepository.findOneBy({ id: sessionId });
-		if (existing) {
-			return existing;
-		}
+		sessionId: ChatSessionId,
+		history: ChatHubMessage[],
+		humanMessage: string,
+		credentials: INodeCredentials,
+		model: ChatHubConversationModel,
+	): Promise<{
+		workflowData: IWorkflowBase;
+		startNodes: StartNodeData[];
+		triggerToStartFrom: { name: string; data: ITaskData };
+	}> {
+		const { nodes, connections, startNodes, triggerToStartFrom } = this.prepareChatWorkflow(
+			sessionId,
+			history,
+			humanMessage,
+			credentials,
+			model,
+		);
 
+		const { manager } = this.projectRepository;
 		return await manager.transaction(async (trx) => {
 			const project = await this.projectRepository.getPersonalProjectForUser(user.id, trx);
 			if (!project) {
@@ -259,7 +291,6 @@ export class ChatHubService {
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
-			newWorkflow.id = sessionId;
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
@@ -275,22 +306,45 @@ export class ChatHubService {
 				}),
 			);
 
-			return workflow;
+			return {
+				workflowData: {
+					...workflow,
+					nodes,
+					connections,
+					versionId: uuidv4(),
+				},
+				startNodes,
+				triggerToStartFrom,
+			};
 		});
 	}
 
-	private getMessage(execution: IExecutionResponse): string | undefined {
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
-		if (typeof lastNodeExecuted !== 'string') return undefined;
+	private async deleteChatWorkflow(workflowId: string): Promise<void> {
+		await this.workflowRepository.delete(workflowId);
+	}
 
-		const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
-		const mainOutputs = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main;
+	private getErrorMessage(execution: IExecutionResponse): string | undefined {
+		if (execution.data.resultData.error) {
+			return execution.data.resultData.error.description ?? execution.data.resultData.error.message;
+		}
+
+		return undefined;
+	}
+
+	private getAIOutput(execution: IExecutionResponse): string | undefined {
+		const agent = execution.data.resultData.runData[NODE_NAMES.AI_AGENT];
+		if (!agent || !Array.isArray(agent) || agent.length === 0) return undefined;
+
+		const runIndex = agent.length - 1;
+		const mainOutputs = agent[runIndex].data?.main;
 
 		// Check all main output branches for a message
 		if (mainOutputs && Array.isArray(mainOutputs)) {
 			for (const branch of mainOutputs) {
 				if (branch && Array.isArray(branch) && branch.length > 0 && branch[0].json?.output) {
-					return branch[0].json.output as string;
+					if (typeof branch[0].json.output === 'string') {
+						return branch[0].json.output;
+					}
 				}
 			}
 		}
@@ -299,183 +353,230 @@ export class ChatHubService {
 	}
 
 	private getCredentialId(provider: ChatHubProvider, credentials: INodeCredentials): string | null {
-		switch (provider) {
-			case 'openai':
-				return credentials['openAiApi'].id;
-			case 'anthropic':
-				return credentials['anthropicApi'].id;
-			case 'google':
-				return credentials['googlePalmApi'].id;
-			default:
-				return null;
+		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
+	}
+
+	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
+		const { sessionId, messageId, replyId, message } = payload;
+		const selectedModel: ModelWithCredentials = {
+			...payload.model,
+			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+		};
+
+		const session = await this.getChatSession(user, sessionId, selectedModel, true, message);
+
+		// Ensure that the previous message exists in the session
+		if (payload.previousMessageId) {
+			const previousMessage = await this.messageRepository.getOneById(
+				payload.previousMessageId,
+				sessionId,
+			);
+			if (!previousMessage) {
+				throw new BadRequestError('The previous message does not exist in the session');
+			}
+		}
+
+		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+		const history = this.buildMessageHistory(messages, payload.previousMessageId);
+
+		await this.saveHumanMessage(payload, user, payload.previousMessageId, selectedModel);
+
+		const workflow = await this.createChatWorkflow(
+			user,
+			session.id,
+			history,
+			message,
+			payload.credentials,
+			payload.model,
+		);
+
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
 		}
 	}
 
-	async respondMessage(res: Response, user: User, payload: ChatPayloadWithCredentials) {
-		const existing = await this.sessionRepository.getOneById(payload.sessionId, user.id);
-		const turnId = payload.messageId;
-
-		const usedModel = {
+	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
+		const { sessionId, editId } = payload;
+		const selectedModel: ModelWithCredentials = {
+			...payload.model,
 			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
-			provider: payload.model.provider,
-			model: payload.model.model,
-			workflowId: payload.model.workflowId,
 		};
 
-		// TODO: we're now providing both replyId and messageId from the frontend, but we shouldn't.
+		const session = await this.getChatSession(user, sessionId);
+		const messageToEdit = await this.getChatMessage(session.id, editId);
 
-		// TODO: Handle session ID conflicts better (different user, same ID)
-		let session: ChatHubSession;
-		if (existing) {
-			session = existing;
+		if (messageToEdit.type === 'human') {
+			await this.editHumanMessage(res, user, payload, session, messageToEdit, selectedModel);
+		} else if (messageToEdit.type === 'ai') {
+			await this.editAIMessage(payload.message, editId);
 		} else {
-			session = await this.sessionRepository.createChatSession({
-				id: payload.sessionId,
-				ownerId: user.id,
-				title: 'New Chat',
-				...usedModel,
-			});
+			throw new BadRequestError('Only human and AI messages can be edited');
+		}
+	}
+
+	private async editHumanMessage(
+		res: Response,
+		user: User,
+		payload: EditMessagePayload,
+		session: ChatHubSession,
+		messageToEdit: ChatHubMessage,
+		selectedModel: ModelWithCredentials,
+	) {
+		const { sessionId, messageId, message, replyId } = payload;
+		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+		const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
+
+		// If the message to edit isn't the original message, we want to point to the original message
+		const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
+
+		await this.saveHumanMessage(
+			payload,
+			user,
+			messageToEdit.previousMessageId,
+			selectedModel,
+			revisionOfMessageId,
+		);
+
+		const workflow = await this.createChatWorkflow(
+			user,
+			session.id,
+			history,
+			message,
+			payload.credentials,
+			payload.model,
+		);
+
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				messageId,
+				selectedModel,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
+	}
+
+	private async editAIMessage(content: string, messageId: ChatMessageId) {
+		// AI edits just change the original message without revisioning
+		await this.messageRepository.updateChatMessage(messageId, { content });
+	}
+
+	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
+		const { sessionId, retryId, replyId } = payload;
+
+		const selectedModel: ModelWithCredentials = {
+			...payload.model,
+			credentialId: this.getCredentialId(payload.model.provider, payload.credentials),
+		};
+
+		const session = await this.getChatSession(user, sessionId);
+		const messageToRetry = await this.getChatMessage(session.id, retryId);
+
+		if (messageToRetry.type !== 'ai') {
+			throw new BadRequestError('Can only retry AI messages');
 		}
 
-		await this.messageRepository.createChatMessage({
-			id: payload.messageId,
-			sessionId: payload.sessionId,
-			type: 'human',
-			name: user.firstName || 'User',
-			state: 'active',
-			content: payload.message,
-			turnId,
-			previousMessageId: payload.previousMessageId ?? null,
-			...usedModel,
-		});
+		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+		const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
 
-		/* eslint-disable @typescript-eslint/naming-convention */
-		const nodes: INode[] = [
-			{
-				parameters: {
-					public: true,
-					mode: 'webhook',
-					options: { responseMode: 'streaming' },
-				},
-				type: CHAT_TRIGGER_NODE_TYPE,
-				typeVersion: 1.3,
-				position: [0, 0],
-				id: uuidv4(),
-				name: 'When chat message received',
-				webhookId: uuidv4(),
-			},
-			{
-				parameters: {
-					promptType: 'define',
-					text: "={{ $('When chat message received').item.json.chatInput }}",
-					options: {
-						enableStreaming: true,
-					},
-				},
-				type: AGENT_LANGCHAIN_NODE_TYPE,
-				typeVersion: 3,
-				position: [600, 0],
-				id: uuidv4(),
-				name: 'AI Agent',
-			},
-			this.createModelNode(payload),
-			{
-				parameters: {
-					sessionIdType: 'customKey',
-					sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
-				},
-				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-				typeVersion: 1.3,
-				position: [500, 200],
-				id: uuidv4(),
-				name: 'Memory',
-			},
-			{
-				parameters: {
-					mode: 'insert',
-					messages: {
-						messageValues: session.messages?.map((message) => {
-							const typeMap: Record<string, MessageRecord['type']> = {
-								human: 'user',
-								ai: 'ai',
-								system: 'system',
-							};
+		const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
+		if (!lastHumanMessage) {
+			throw new BadRequestError('No human message found to base the retry on');
+		}
 
-							// TODO: Tools ?
-							return {
-								type: typeMap[message.type] || 'system',
-								message: message.content,
-								hideFromUI: false,
-							};
-						}),
-					},
-				},
-				type: '@n8n/n8n-nodes-langchain.memoryManager',
-				typeVersion: 1.1,
-				position: [200, 0],
-				id: uuidv4(),
-				name: 'Restore Chat Memory',
-			},
-		];
+		// Remove any (AI) messages that came after the last human message
+		const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
+		if (lastHumanMessageIndex !== -1) {
+			history.splice(lastHumanMessageIndex + 1);
+		}
 
-		const connections: IConnections = {
-			'When chat message received': {
-				main: [[{ node: 'Restore Chat Memory', type: 'main', index: 0 }]],
-			},
-			'Restore Chat Memory': {
-				main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
-			},
-			'Chat Model': {
-				ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
-			},
-			Memory: {
-				ai_memory: [
-					[
-						{ node: 'AI Agent', type: 'ai_memory', index: 0 },
-						{ node: 'Restore Chat Memory', type: 'ai_memory', index: 0 },
-					],
-				],
-			},
-		};
+		// Rerun the workflow, replaying the last human message
 
-		const workflow = await this.createChatWorkflow(user, payload.sessionId, nodes, connections);
-		const workflowData: IWorkflowBase = {
-			...workflow,
-			nodes,
-			connections,
-			versionId: uuidv4(),
-		};
-		/* eslint-enable @typescript-eslint/naming-convention */
+		// If the message being retried is itself a retry, we want to point to the original message
+		const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
 
-		const startNodes: StartNodeData[] = [{ name: 'Restore Chat Memory', sourceData: null }];
-		const triggerToStartFrom: {
-			name: string;
-			data?: ITaskData;
-		} = {
-			name: 'When chat message received',
-			data: {
-				startTime: Date.now(),
-				executionTime: 0,
-				executionIndex: 0,
-				executionStatus: 'success',
-				data: {
-					main: [
-						[
-							{
-								json: {
-									sessionId: `${payload.sessionId}-${payload.messageId}`,
-									action: 'sendMessage',
-									chatInput: payload.message,
-								},
-							},
-						],
-					],
-				},
-				source: [null],
-			},
-		};
+		const workflow = await this.createChatWorkflow(
+			user,
+			session.id,
+			history,
+			lastHumanMessage ? lastHumanMessage.content : '',
+			payload.credentials,
+			payload.model,
+		);
 
-		this.logger.debug(`Starting execution of workflow "${workflow.name}" with ID ${workflow.id}`);
+		try {
+			await this.executeChatWorkflow(
+				res,
+				user,
+				workflow,
+				replyId,
+				sessionId,
+				lastHumanMessage.id,
+				selectedModel,
+				retryOfMessageId,
+			);
+		} finally {
+			await this.deleteChatWorkflow(workflow.workflowData.id);
+		}
+	}
+
+	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
+		const session = await this.getChatSession(user, sessionId);
+		const message = await this.getChatMessage(session.id, messageId, [
+			'execution',
+			'execution.workflow',
+		]);
+
+		if (message.type !== 'ai') {
+			throw new BadRequestError('Can only stop AI messages');
+		}
+
+		if (!message.executionId || !message.execution) {
+			throw new BadRequestError('Message is not associated with a workflow execution');
+		}
+
+		if (message.status !== 'running') {
+			throw new BadRequestError('Can only stop messages that are currently running');
+		}
+
+		await this.executionService.stop(message.execution.id, [message.execution.workflowId]);
+		await this.messageRepository.updateChatMessage(messageId, { status: 'cancelled' });
+	}
+
+	private async executeChatWorkflow(
+		res: Response,
+		user: User,
+		workflow: {
+			workflowData: IWorkflowBase;
+			startNodes: StartNodeData[];
+			triggerToStartFrom: { name: string; data?: ITaskData };
+		},
+		replyId: ChatMessageId,
+		sessionId: ChatSessionId,
+		previousMessageId: ChatMessageId,
+		selectedModel: ModelWithCredentials,
+		retryOfMessageId?: ChatMessageId,
+	) {
+		const { workflowData, startNodes, triggerToStartFrom } = workflow;
+
+		this.logger.debug(
+			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
+		);
 
 		const { executionId } = await this.workflowExecutionService.executeManually(
 			{
@@ -492,53 +593,344 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		const result = await this.activeExecutions.getPostExecutePromise(executionId);
-		if (!result) {
-			throw new OperationalError('There was a problem executing the chat workflow.');
-		}
+		await this.saveAIMessage({
+			id: replyId,
+			sessionId,
+			executionId,
+			previousMessageId,
+			message: '',
+			selectedModel,
+			retryOfMessageId,
+			status: 'running',
+		});
 
-		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-			workflow.id,
-		]);
-		if (!execution) {
-			throw new NotFoundError(`Could not find execution with ID ${executionId}`);
-		}
+		try {
+			let result: IRun | undefined;
+			try {
+				result = await this.activeExecutions.getPostExecutePromise(executionId);
+				if (!result) {
+					throw new OperationalError('There was a problem executing the chat workflow.');
+				}
+			} catch (error: unknown) {
+				if (error instanceof ManualExecutionCancelledError) {
+					const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+						workflowData.id,
+					]);
+					if (!execution) {
+						throw new OperationalError(`Could not find execution with ID ${executionId}`);
+					}
 
-		const message = this.getMessage(execution);
-		if (message) {
-			await this.messageRepository.createChatMessage({
-				id: payload.replyId,
-				sessionId: payload.sessionId,
-				type: 'ai',
-				name: 'AI',
+					if (execution.status === 'canceled') {
+						const message = 'Generation cancelled.';
+						await this.messageRepository.updateChatMessage(replyId, {
+							content: message,
+							status: 'cancelled',
+						});
+						return;
+					}
+				}
+
+				throw error;
+			}
+
+			const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+				workflowData.id,
+			]);
+			if (!execution) {
+				throw new OperationalError(`Could not find execution with ID ${executionId}`);
+			}
+
+			if (!execution.status || execution.status !== 'success') {
+				const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+				throw new OperationalError(message);
+			}
+
+			const message = this.getAIOutput(execution);
+			if (!message) {
+				throw new OperationalError('No response generated');
+			}
+
+			await this.messageRepository.updateChatMessage(replyId, {
 				content: message,
-				state: 'active',
-				turnId,
-				executionId: parseInt(execution.id, 10),
-				previousMessageId: payload.messageId,
-				...usedModel,
+				status: 'success',
+			});
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			await this.messageRepository.updateChatMessage(replyId, {
+				content: `Error: ${message}`,
+				status: 'error',
 			});
 		}
 	}
 
-	private createModelNode(payload: ChatPayloadWithCredentials): INode {
+	private prepareChatWorkflow(
+		sessionId: ChatSessionId,
+		history: ChatHubMessage[],
+		humanMessage: string,
+		credentials: INodeCredentials,
+		model: ChatHubConversationModel,
+	) {
+		const nodes: INode[] = [
+			{
+				parameters: {
+					public: true,
+					mode: 'webhook',
+					options: { responseMode: 'streaming' },
+				},
+				type: CHAT_TRIGGER_NODE_TYPE,
+				typeVersion: 1.3,
+				position: [0, 0],
+				id: uuidv4(),
+				name: NODE_NAMES.CHAT_TRIGGER,
+				webhookId: uuidv4(),
+			},
+			{
+				parameters: {
+					promptType: 'define',
+					text: "={{ $('When chat message received').item.json.chatInput }}",
+					options: {
+						enableStreaming: true,
+						maxTokensFromMemory: getMaxContextWindowTokens(model.provider, model.model),
+					},
+				},
+				type: AGENT_LANGCHAIN_NODE_TYPE,
+				typeVersion: 3,
+				position: [600, 0],
+				id: uuidv4(),
+				name: NODE_NAMES.AI_AGENT,
+			},
+			this.createModelNode(credentials, model),
+			{
+				parameters: {
+					sessionIdType: 'customKey',
+					sessionKey: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.sessionId }}`,
+					contextWindowLength: 20, // TODO: Decide this based on selected model & chat history token size
+				},
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				typeVersion: 1.3,
+				position: [480, 208],
+				id: uuidv4(),
+				name: NODE_NAMES.MEMORY,
+			},
+			{
+				parameters: {
+					mode: 'insert',
+					insertMode: 'override',
+					messages: {
+						messageValues: history.map((message) => {
+							const typeMap: Record<string, MessageRecord['type']> = {
+								human: 'user',
+								ai: 'ai',
+								system: 'system',
+							};
+
+							// TODO: Tool messages ?
+							return {
+								type: typeMap[message.type] || 'system',
+								message: message.content,
+								hideFromUI: false,
+							};
+						}),
+					},
+				},
+				type: '@n8n/n8n-nodes-langchain.memoryManager',
+				typeVersion: 1.1,
+				position: [224, 0],
+				id: uuidv4(),
+				name: NODE_NAMES.RESTORE_CHAT_MEMORY,
+			},
+			{
+				parameters: {
+					mode: 'delete',
+					deleteMode: 'all',
+				},
+				type: '@n8n/n8n-nodes-langchain.memoryManager',
+				typeVersion: 1.1,
+				position: [976, 0],
+				id: uuidv4(),
+				name: NODE_NAMES.CLEAR_CHAT_MEMORY,
+			},
+		];
+
+		const connections: IConnections = {
+			[NODE_NAMES.CHAT_TRIGGER]: {
+				main: [
+					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
+				],
+			},
+			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
+				main: [[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+			[NODE_NAMES.CHAT_MODEL]: {
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				ai_languageModel: [
+					[{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+			[NODE_NAMES.MEMORY]: {
+				ai_memory: [
+					[
+						{ node: NODE_NAMES.AI_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
+					],
+				],
+			},
+			[NODE_NAMES.AI_AGENT]: {
+				main: [
+					[
+						{
+							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		};
+
+		const startNodes: StartNodeData[] = [{ name: 'Restore Chat Memory', sourceData: null }];
+		const triggerToStartFrom: {
+			name: string;
+			data: ITaskData;
+		} = {
+			name: NODE_NAMES.CHAT_TRIGGER,
+			data: {
+				startTime: Date.now(),
+				executionTime: 0,
+				executionIndex: 0,
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{
+								json: {
+									sessionId,
+									action: 'sendMessage',
+									chatInput: humanMessage,
+								},
+							},
+						],
+					],
+				},
+				source: [null],
+			},
+		};
+
+		return { nodes, connections, startNodes, triggerToStartFrom };
+	}
+
+	private async saveHumanMessage(
+		payload: HumanMessagePayload | EditMessagePayload,
+		user: User,
+		previousMessageId: ChatMessageId | null,
+		selectedModel: ModelWithCredentials,
+		revisionOfMessageId?: ChatMessageId,
+	) {
+		await this.messageRepository.createChatMessage({
+			id: payload.messageId,
+			sessionId: payload.sessionId,
+			type: 'human',
+			name: user.firstName || 'User',
+			status: 'success',
+			content: payload.message,
+			previousMessageId,
+			revisionOfMessageId,
+			...selectedModel,
+		});
+	}
+
+	private async saveAIMessage({
+		id,
+		sessionId,
+		executionId,
+		previousMessageId,
+		message,
+		selectedModel,
+		retryOfMessageId,
+		status,
+	}: {
+		id: ChatMessageId;
+		sessionId: ChatSessionId;
+		executionId: string;
+		previousMessageId: ChatMessageId;
+		message: string;
+		selectedModel: ModelWithCredentials;
+		retryOfMessageId?: ChatMessageId;
+		editOfMessageId?: ChatMessageId;
+		status?: ChatHubMessageStatus;
+	}) {
+		await this.messageRepository.createChatMessage({
+			id,
+			sessionId,
+			previousMessageId,
+			executionId: parseInt(executionId, 10),
+			type: 'ai',
+			name: 'AI',
+			status,
+			content: message,
+			retryOfMessageId,
+			...selectedModel,
+		});
+	}
+
+	private async getChatSession(
+		user: User,
+		sessionId: ChatSessionId,
+		selectedModel?: ModelWithCredentials,
+		initialize: boolean = false,
+		title: string | null = null,
+	) {
+		// TODO: Handle session ID conflicts better (different user, same ID)
+
+		const existing = await this.sessionRepository.getOneById(sessionId, user.id);
+		if (existing) {
+			return existing;
+		} else if (!initialize) {
+			throw new NotFoundError('Chat session not found');
+		}
+
+		return await this.sessionRepository.createChatSession({
+			id: sessionId,
+			ownerId: user.id,
+			title: title ?? 'New Chat',
+			...selectedModel,
+		});
+	}
+
+	private async getChatMessage(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		relations: string[] = [],
+	) {
+		const message = await this.messageRepository.getOneById(messageId, sessionId, relations);
+		if (!message) {
+			throw new NotFoundError('Chat message not found');
+		}
+		return message;
+	}
+
+	private createModelNode(
+		credentials: INodeCredentials,
+		{ provider, model }: ChatHubConversationModel,
+	): INode {
 		const common = {
 			position: [600, 200] as [number, number],
 			id: uuidv4(),
 			name: 'Chat Model',
-			credentials: payload.credentials,
+			credentials,
+			type: providerNodeTypeMapping[provider].name,
+			typeVersion: providerNodeTypeMapping[provider].version,
 		};
 
-		switch (payload.model.provider) {
+		switch (provider) {
 			case 'openai':
 				return {
 					...common,
 					parameters: {
-						model: { __rl: true, mode: 'list', value: payload.model.model },
+						model: { __rl: true, mode: 'list', value: model },
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-					typeVersion: 1.2,
 				};
 			case 'anthropic':
 				return {
@@ -547,23 +939,19 @@ export class ChatHubService {
 						model: {
 							__rl: true,
 							mode: 'list',
-							value: payload.model.model,
-							cachedResultName: payload.model.model,
+							value: model,
+							cachedResultName: model,
 						},
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-					typeVersion: 1.3,
 				};
 			case 'google':
 				return {
 					...common,
 					parameters: {
-						model: { __rl: true, mode: 'list', value: payload.model.model },
+						model: { __rl: true, mode: 'list', value: model },
 						options: {},
 					},
-					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-					typeVersion: 1.2,
 				};
 		}
 	}
@@ -598,11 +986,6 @@ export class ChatHubService {
 		}
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
-		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> =
-			this.buildMessagesGraph(messages);
-
-		const rootIds = messages.filter((r) => r.previousMessageId === null).map((r) => r.id);
-		const activeMessageChain = this.buildActiveMessageChain(messages);
 
 		return {
 			session: {
@@ -618,100 +1001,84 @@ export class ChatHubService {
 				updatedAt: session.updatedAt.toISOString(),
 			},
 			conversation: {
-				messages: messagesGraph,
-				rootIds,
-				activeMessageChain,
+				messages: Object.fromEntries(messages.map((m) => [m.id, this.convertMessageToDto(m)])),
 			},
 		};
 	}
 
-	private buildMessagesGraph(messages: ChatHubMessage[]) {
-		const messagesGraph: Record<ChatMessageId, ChatHubMessageDto> = {};
+	private convertMessageToDto(message: ChatHubMessage): ChatHubMessageDto {
+		return {
+			id: message.id,
+			sessionId: message.sessionId,
+			type: message.type,
+			name: message.name,
+			content: message.content,
+			provider: message.provider,
+			model: message.model,
+			workflowId: message.workflowId,
+			executionId: message.executionId,
+			status: message.status,
+			createdAt: message.createdAt.toISOString(),
+			updatedAt: message.updatedAt.toISOString(),
 
-		for (const message of messages) {
-			messagesGraph[message.id] = {
-				id: message.id,
-				sessionId: message.sessionId,
-				type: message.type,
-				name: message.name,
-				content: message.content,
-				provider: message.provider,
-				model: message.model,
-				workflowId: message.workflowId,
-				executionId: message.executionId,
-				state: message.state,
-				createdAt: message.createdAt.toISOString(),
-				updatedAt: message.updatedAt.toISOString(),
-
-				previousMessageId: message.previousMessageId,
-				turnId: message.turnId,
-				retryOfMessageId: message.retryOfMessageId,
-				revisionOfMessageId: message.revisionOfMessageId,
-				runIndex: message.runIndex,
-
-				responseIds: [],
-				retryIds: [],
-				revisionIds: [],
-			};
-		}
-
-		for (const node of Object.values(messagesGraph)) {
-			if (node.previousMessageId && messagesGraph[node.previousMessageId]) {
-				messagesGraph[node.previousMessageId].responseIds.push(node.id);
-			}
-			if (node.retryOfMessageId && messagesGraph[node.retryOfMessageId]) {
-				messagesGraph[node.retryOfMessageId].retryIds.push(node.id);
-			}
-			if (node.revisionOfMessageId && messagesGraph[node.revisionOfMessageId]) {
-				messagesGraph[node.revisionOfMessageId].revisionIds.push(node.id);
-			}
-		}
-
-		const sortByRunThenTime = (first: ChatMessageId, second: ChatMessageId) => {
-			const a = messagesGraph[first];
-			const b = messagesGraph[second];
-
-			if (a.runIndex !== b.runIndex) {
-				return a.runIndex - b.runIndex;
-			}
-
-			if (a.createdAt !== b.createdAt) {
-				return a.createdAt < b.createdAt ? -1 : 1;
-			}
-
-			return a.id < b.id ? -1 : 1;
+			previousMessageId: message.previousMessageId,
+			retryOfMessageId: message.retryOfMessageId,
+			revisionOfMessageId: message.revisionOfMessageId,
 		};
-
-		for (const node of Object.values(messagesGraph)) {
-			node.responseIds.sort(sortByRunThenTime);
-			node.retryIds.sort(sortByRunThenTime);
-			node.revisionIds.sort(sortByRunThenTime);
-		}
-		return messagesGraph;
 	}
 
-	private buildActiveMessageChain(messages: ChatHubMessage[]) {
-		const nodes = new Map(messages.map((m) => [m.id, m]));
-		const activeMessages = messages.filter((m) => m.state === 'active');
+	/**
+	 * Build the message history chain ending to the message with ID `lastMessageId`
+	 */
+	private buildMessageHistory(
+		messages: Record<ChatMessageId, ChatHubMessage>,
+		lastMessageId: ChatMessageId | null,
+	) {
+		if (!lastMessageId) return [];
 
 		const visited = new Set<string>();
-		const activeMessageChain = [];
-		const latest = activeMessages[activeMessages.length - 1]; // Messages are sorted by createdAt
+		const historyIds = [];
 
-		let current = latest ? latest.id : null;
+		let current: ChatMessageId | null = lastMessageId;
 
 		while (current && !visited.has(current)) {
-			activeMessageChain.unshift(current);
+			historyIds.unshift(current);
 			visited.add(current);
-			current = nodes.get(current)?.previousMessageId ?? null;
+			current = messages[current]?.previousMessageId ?? null;
 		}
 
-		return activeMessageChain;
+		const history = historyIds.flatMap((id) => messages[id] ?? []);
+		return history;
 	}
 
 	async deleteAllSessions() {
 		const result = await this.sessionRepository.deleteAll();
-
 		return result;
+	}
+
+	/**
+	 * Updates the title of a session
+	 */
+	async updateSessionTitle(userId: string, sessionId: ChatSessionId, title: string) {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+
+		if (!session) {
+			throw new NotFoundError('Session not found');
+		}
+
+		return await this.sessionRepository.updateChatTitle(sessionId, title);
+	}
+
+	/**
+	 * Deletes a session
+	 */
+	async deleteSession(userId: string, sessionId: ChatSessionId) {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+
+		if (!session) {
+			throw new NotFoundError('Session not found');
+		}
+
+		await this.sessionRepository.deleteChatHubSession(sessionId);
 	}
 }
