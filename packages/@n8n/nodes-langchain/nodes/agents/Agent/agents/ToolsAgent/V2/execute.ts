@@ -209,10 +209,17 @@ export async function toolsAgentExecute(
 
 	// FIXME: remove when this is fixed: https://github.com/langchain-ai/langchainjs/pull/9082
 	// Responses API + tools is broken when using langchain default call handling. In V3 calls are handled differently, so it works.
-	if (checkIsResponsesApi(model) || checkIsResponsesApi(fallbackModel)) {
+	if (checkIsResponsesApi(model)) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'This model is not supported in this version of the Agent node. Please upgrade the Agent node.',
+		);
+	}
+
+	if (checkIsResponsesApi(fallbackModel)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'This fallback model is not supported in this version of the Agent node. Please upgrade the Agent node.',
 		);
 	}
 
