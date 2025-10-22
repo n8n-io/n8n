@@ -1,19 +1,20 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin } from '@n8n/backend-common';
-import { type User, type WorkflowEntity, GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, type WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { PushResult } from 'simple-git';
 
-import type { SourceControlGitService } from '../source-control-git.service.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
+import type { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
-import type { SourceControlExportService } from '../source-control-export.service.ee';
+import type { ExportResult } from '../types/export-result';
 
 // Mock the status service to avoid complex dependency issues
 const mockStatusService = {
@@ -57,6 +58,210 @@ describe('SourceControlService', () => {
 	});
 
 	describe('pushWorkfolder', () => {
+		it('should push the workfolder', async () => {
+			const mockExportResult = mock<ExportResult>();
+			// Arrange
+			const user = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			const mockPushResult = mock<PushResult>();
+			const now = new Date().toISOString();
+
+			// Prepare a set of files of all types, some deleted, some not
+			const files: SourceControlledFile[] = [
+				{
+					file: 'workflow-1.json',
+					id: 'wf-1',
+					name: 'Workflow 1',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'credential-1.json',
+					id: 'cred-1',
+					name: 'Credential 1',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'project-1.json',
+					id: 'proj-1',
+					name: 'Project 1',
+					type: 'project',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'folders.json',
+					id: 'folders',
+					name: 'Folders',
+					type: 'folders',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'variables.json',
+					id: 'variables',
+					name: 'Variables',
+					type: 'variables',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'tags.json',
+					id: 'tags',
+					name: 'Tags',
+					type: 'tags',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				// Deleted resources
+				{
+					file: 'workflow-2.json',
+					id: 'wf-2',
+					name: 'Workflow 2',
+					type: 'workflow',
+					status: 'deleted',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'credential-2.json',
+					id: 'cred-2',
+					name: 'Credential 2',
+					type: 'credential',
+					status: 'deleted',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'project-2.json',
+					id: 'proj-2',
+					name: 'Project 2',
+					type: 'project',
+					status: 'deleted',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+			];
+
+			// The status service should return all these files as allowed
+			mockStatusService.getStatus.mockResolvedValueOnce(files);
+
+			// Mock all export and delete methods
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 1,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValueOnce(mockExportResult);
+			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
+			sourceControlExportService.exportVariablesToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
+			sourceControlExportService.exportVariablesToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+
+			(isContainedWithin as jest.Mock).mockReturnValue(true);
+
+			gitService.push.mockResolvedValueOnce(mockPushResult);
+
+			const commitMessage = 'Test commit message';
+
+			// Act
+			const result = await sourceControlService.pushWorkfolder(user, {
+				fileNames: files.map((f) => ({
+					file: f.file,
+					id: f.id,
+					name: f.name,
+					type: f.type,
+					status: f.status,
+					location: f.location,
+					conflict: f.conflict,
+					updatedAt: f.updatedAt,
+				})),
+				commitMessage,
+			});
+
+			// Assert
+			// All export methods for non-deleted resources should be called
+			expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ id: 'wf-1' })]),
+			);
+			expect(sourceControlExportService.exportCredentialsToWorkFolder).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ id: 'cred-1' })]),
+			);
+			expect(sourceControlExportService.exportTeamProjectsToWorkFolder).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ id: 'proj-1' })]),
+			);
+			expect(sourceControlExportService.exportTagsToWorkFolder).toHaveBeenCalled();
+			expect(sourceControlExportService.exportFoldersToWorkFolder).toHaveBeenCalled();
+			expect(sourceControlExportService.exportVariablesToWorkFolder).toHaveBeenCalled();
+
+			// Deleted resources should be passed to rmFilesFromExportFolder
+			expect(sourceControlExportService.rmFilesFromExportFolder).toHaveBeenCalledWith(
+				new Set([
+					`${preferencesService.gitFolder}/workflow-2.json`,
+					`${preferencesService.gitFolder}/credential-2.json`,
+					`${preferencesService.gitFolder}/project-2.json`,
+				]),
+			);
+
+			// Git operations should be called
+			expect(gitService.stage).toHaveBeenCalledWith(
+				new Set([
+					`${preferencesService.gitFolder}/workflow-1.json`,
+					`${preferencesService.gitFolder}/credential-1.json`,
+					`${preferencesService.gitFolder}/project-1.json`,
+					`${preferencesService.gitFolder}/folders.json`,
+					`${preferencesService.gitFolder}/variables.json`,
+					`${preferencesService.gitFolder}/tags.json`,
+				]),
+				new Set([
+					`${preferencesService.gitFolder}/workflow-2.json`,
+					`${preferencesService.gitFolder}/credential-2.json`,
+					`${preferencesService.gitFolder}/project-2.json`,
+				]),
+			);
+			expect(gitService.commit).toHaveBeenCalledWith(commitMessage);
+			expect(gitService.push).toHaveBeenCalledWith({
+				branch: 'main', // default branch
+				force: false,
+			});
+
+			// The result should include the status and push result
+			expect(result).toMatchObject({
+				statusCode: 200,
+			});
+		});
+
 		it('should throw an error if file path validation fails', async () => {
 			const user = mock<User>();
 			(isContainedWithin as jest.Mock).mockReturnValueOnce(false);
@@ -78,12 +283,15 @@ describe('SourceControlService', () => {
 					],
 				}),
 			).rejects.toThrow('File path /etc/passwd is invalid');
+
+			expect(gitService.stage).not.toHaveBeenCalled();
+			expect(gitService.commit).not.toHaveBeenCalled();
+			expect(gitService.push).not.toHaveBeenCalled();
 		});
 
 		it('should include the tags file even if not explicitly specified', async () => {
 			// ARRANGE
 			const user = mock<User>();
-			const mockPushResult = mock<PushResult>();
 			const mockFile: SourceControlledFile = {
 				file: 'some-workflow.json',
 				id: 'test',
@@ -103,7 +311,10 @@ describe('SourceControlService', () => {
 				files: [],
 			});
 			eventService.emit.mockReturnValueOnce(true);
+
+			const mockPushResult = mock<PushResult>();
 			gitService.push.mockResolvedValueOnce(mockPushResult);
+
 			(isContainedWithin as jest.Mock).mockReturnValueOnce(true);
 
 			const expectedTagsPath = `${preferencesService.gitFolder}/tags.json`;

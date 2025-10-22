@@ -192,6 +192,10 @@ const otherFiles = computed(() => {
 	if (folders) {
 		others.push.apply(others, folders);
 	}
+	const projects = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.project];
+	if (projects) {
+		others.push.apply(others, projects);
+	}
 
 	return others;
 });
@@ -399,7 +403,10 @@ onMounted(() => {
 						Tags ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.tags]?.length || 0 }}),
 					</template>
 					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.folders]?.length">
-						Folders ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.folders]?.length || 0 }})
+						Folders ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.folders]?.length || 0 }}),
+					</template>
+					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.project]?.length">
+						Projects ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.project]?.length || 0 }})
 					</template>
 				</N8nText>
 			</div>

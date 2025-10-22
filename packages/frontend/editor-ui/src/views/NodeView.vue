@@ -1451,6 +1451,7 @@ async function onSourceControlPull() {
 			environmentsStore.fetchAllVariables(),
 			tagsStore.fetchAll(),
 			loadCredentials(),
+			projectsStore.getAvailableProjects(),
 		]);
 
 		if (workflowId.value && !uiStore.stateIsDirty) {
