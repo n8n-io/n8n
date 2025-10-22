@@ -1,0 +1,1 @@
+import{NodeApiError}from'n8n-workflow';export function handleErrors(error:any,context:any){if(error.response){const{status,data}=error.response;throw new NodeApiError(context.getNode(),{message:data.message||data.Message||'Unknown error',description:`Status: ${status}`,httpCode:status});}throw error;}
