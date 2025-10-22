@@ -35,6 +35,28 @@ export class MicrosoftOutlookTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
+				displayName: 'Microsoft Graph API Base URL',
+				name: 'graphApiBaseUrl',
+				type: 'options',
+				options: [
+					{ name: 'Global (https://graph.microsoft.com)', value: 'https://graph.microsoft.com' },
+					{
+						name: 'US Government (https://graph.microsoft.us)',
+						value: 'https://graph.microsoft.us',
+					},
+					{
+						name: 'US Government DOD (https://dod-graph.microsoft.us)',
+						value: 'https://dod-graph.microsoft.us',
+					},
+					{
+						name: 'China (https://microsoftgraph.chinacloudapi.cn)',
+						value: 'https://microsoftgraph.chinacloudapi.cn',
+					},
+				],
+				default: 'https://graph.microsoft.com',
+				description: 'Select the endpoint for your Microsoft cloud environment.',
+			},
+			{
 				displayName: 'Trigger On',
 				name: 'event',
 				type: 'options',

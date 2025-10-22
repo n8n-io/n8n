@@ -26,6 +26,25 @@ export const versionDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
+			displayName: 'Microsoft Graph API Base URL',
+			name: 'graphApiBaseUrl',
+			type: 'options',
+			options: [
+				{ name: 'Global (https://graph.microsoft.com)', value: 'https://graph.microsoft.com' },
+				{ name: 'US Government (https://graph.microsoft.us)', value: 'https://graph.microsoft.us' },
+				{
+					name: 'US Government DOD (https://dod-graph.microsoft.us)',
+					value: 'https://dod-graph.microsoft.us',
+				},
+				{
+					name: 'China (https://microsoftgraph.chinacloudapi.cn)',
+					value: 'https://microsoftgraph.chinacloudapi.cn',
+				},
+			],
+			default: 'https://graph.microsoft.com',
+			description: 'Select the endpoint for your Microsoft cloud environment.',
+		},
+		{
 			displayName:
 				'This node connects to the Microsoft 365 cloud platform. Use the \'Extract from File\' and \'Convert to File\' nodes to directly manipulate spreadsheet files (.xls, .csv, etc). <a href="https://n8n.io/workflows/890-read-in-an-excel-spreadsheet-file/" target="_blank">More info</a>.',
 			name: 'notice',

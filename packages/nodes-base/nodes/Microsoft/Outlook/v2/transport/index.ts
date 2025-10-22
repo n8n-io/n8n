@@ -23,10 +23,22 @@ export async function microsoftApiRequest(
 ) {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
-	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
+	// Only try to get node parameter in IExecuteFunctions context
+	let nodeBaseParam = '';
+	try {
+		if ('getNodeParameter' in this && typeof this.getNodeParameter === 'function') {
+			nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
+		}
+	} catch (error) {
+		// Silently fallback to default if getNodeParameter fails (e.g., in ILoadOptionsFunctions/IPollFunctions)
+		nodeBaseParam = '';
+	}
+
+	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	let apiUrl = `${baseUrl}/v1.0/me${resource}`;
 	// If accessing shared mailbox
 	if (credentials.useShared && credentials.userPrincipalName) {
-		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+		apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
 	const options: IRequestOptions = {

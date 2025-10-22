@@ -23,6 +23,18 @@ export async function msGraphSecurityApiRequest(
 		};
 	}>('microsoftGraphSecurityOAuth2Api');
 
+	// Only try to get node parameter in IExecuteFunctions context
+	let nodeBaseParam = '';
+	try {
+		if ('getNodeParameter' in this && typeof this.getNodeParameter === 'function') {
+			nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
+		}
+	} catch (error) {
+		// Silently fallback to default if getNodeParameter fails
+		nodeBaseParam = '';
+	}
+
+	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${access_token}`,
@@ -30,7 +42,7 @@ export async function msGraphSecurityApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://graph.microsoft.com/v1.0/security${endpoint}`,
+		uri: `${baseUrl}/v1.0/security${endpoint}`,
 		json: true,
 	};
 

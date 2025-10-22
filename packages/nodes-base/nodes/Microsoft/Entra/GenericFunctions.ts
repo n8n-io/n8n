@@ -25,9 +25,21 @@ export async function microsoftApiRequest(
 	headers?: IDataObject,
 	url?: string,
 ): Promise<any> {
+	// Only try to get node parameter in IExecuteFunctions context
+	let nodeBaseParam = '';
+	try {
+		if ('getNodeParameter' in this && typeof this.getNodeParameter === 'function') {
+			nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
+		}
+	} catch (error) {
+		// Silently fallback to default if getNodeParameter fails (e.g., in ILoadOptionsFunctions)
+		nodeBaseParam = '';
+	}
+
+	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
 	const options: IHttpRequestOptions = {
 		method,
-		url: url ?? `https://graph.microsoft.com/v1.0${endpoint}`,
+		url: url ?? `${baseUrl}/v1.0${endpoint}`,
 		json: true,
 		headers,
 		body,
@@ -51,10 +63,22 @@ export async function microsoftApiPaginateRequest(
 	url?: string,
 	itemIndex: number = 0,
 ): Promise<IDataObject[]> {
+	// Only try to get node parameter in IExecuteFunctions context
+	let nodeBaseParam = '';
+	try {
+		if ('getNodeParameter' in this && typeof this.getNodeParameter === 'function') {
+			nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
+		}
+	} catch (error) {
+		// Silently fallback to default if getNodeParameter fails (e.g., in ILoadOptionsFunctions)
+		nodeBaseParam = '';
+	}
+
+	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
 	// Todo: IHttpRequestOptions doesn't have uri property which is required for requestWithAuthenticationPaginated
 	const options: IRequestOptions = {
 		method,
-		uri: url ?? `https://graph.microsoft.com/v1.0${endpoint}`,
+		uri: url ?? `${baseUrl}/v1.0${endpoint}`,
 		json: true,
 		headers,
 		body,
