@@ -85,6 +85,9 @@ export class Telemetry {
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,
+				errorHandler: (error) => {
+					this.logger.error('Telemetry request failed', { error });
+				},
 			});
 
 			this.startPulse();
