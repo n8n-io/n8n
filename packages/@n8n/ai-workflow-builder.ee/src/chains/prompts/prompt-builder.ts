@@ -1,4 +1,4 @@
-import type { INodeTypeDescription, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
+import type { INodeTypeDescription, INodeProperties } from 'n8n-workflow';
 
 import { COMMON_PATTERNS } from './base/common-patterns';
 import { CORE_INSTRUCTIONS } from './base/core-instructions';
@@ -12,9 +12,9 @@ import { SIMPLE_UPDATE_EXAMPLES } from './examples/basic/simple-updates';
 import { HTTP_REQUEST_GUIDE } from './node-types/http-request';
 import { IF_NODE_GUIDE } from './node-types/if-node';
 import { SET_NODE_GUIDE } from './node-types/set-node';
-import { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
 import { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
 import { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
+import { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
 import { TEXT_FIELDS_GUIDE } from './parameter-types/text-fields';
 import {
 	DEFAULT_PROMPT_CONFIG,
