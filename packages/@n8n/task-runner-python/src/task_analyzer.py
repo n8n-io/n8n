@@ -8,6 +8,7 @@ from src.config.security_config import SecurityConfig
 from src.constants import (
     MAX_VALIDATION_CACHE_SIZE,
     ERROR_RELATIVE_IMPORT,
+    ERROR_DANGEROUS_NAME,
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
     BLOCKED_ATTRIBUTES,
@@ -50,7 +51,7 @@ class SecurityValidator(ast.NodeVisitor):
     def visit_Name(self, node: ast.Name) -> None:
         if node.id in BLOCKED_NAMES:
             self._add_violation(
-                node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.id)
+                node.lineno, ERROR_DANGEROUS_NAME.format(name=node.id)
             )
 
         self.generic_visit(node)
