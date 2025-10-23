@@ -51,7 +51,9 @@ const menu = computed(() => {
 	const agentMenu: ComponentProps<typeof N8nNavigationDropdown>['menu'][number] = {
 		id: 'my-agents',
 		title: i18n.baseText('chatHub.agent.myAgents'),
-		icon: 'user',
+		icon: 'robot',
+		iconSize: 'large',
+		iconMargin: false,
 		submenu: [
 			...agentOptions,
 			...(agentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),

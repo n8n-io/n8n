@@ -156,9 +156,10 @@ function onCancel() {
 		<template #content>
 			<div :class="$style.content">
 				<div :class="$style.field">
-					<N8nText tag="label" size="small" bold :class="$style.label">{{
-						i18n.baseText('chatHub.agent.editor.name.label')
-					}}</N8nText>
+					<N8nText tag="label" size="small" bold :class="$style.label">
+						{{ i18n.baseText('chatHub.agent.editor.name.label') }}
+						<span :class="$style.required">*</span>
+					</N8nText>
 					<N8nInput
 						v-model="name"
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
@@ -182,9 +183,10 @@ function onCancel() {
 				</div>
 
 				<div :class="$style.field">
-					<N8nText tag="label" size="small" bold :class="$style.label">{{
-						i18n.baseText('chatHub.agent.editor.systemPrompt.label')
-					}}</N8nText>
+					<N8nText tag="label" size="small" bold :class="$style.label">
+						{{ i18n.baseText('chatHub.agent.editor.systemPrompt.label') }}
+						<span :class="$style.required">*</span>
+					</N8nText>
 					<N8nInput
 						v-model="systemPrompt"
 						type="textarea"
@@ -195,9 +197,10 @@ function onCancel() {
 				</div>
 
 				<div :class="$style.field">
-					<N8nText tag="label" size="small" bold :class="$style.label">{{
-						i18n.baseText('chatHub.agent.editor.model.label')
-					}}</N8nText>
+					<N8nText tag="label" size="small" bold :class="$style.label">
+						{{ i18n.baseText('chatHub.agent.editor.model.label') }}
+						<span :class="$style.required">*</span>
+					</N8nText>
 					<ModelSelector
 						:models="chatStore.models ?? null"
 						:selected-model="selectedModel"
@@ -248,6 +251,11 @@ function onCancel() {
 
 .label {
 	display: block;
+}
+
+.required {
+	color: var(--color--primary);
+	margin-left: var(--spacing--5xs);
 }
 
 .input {
