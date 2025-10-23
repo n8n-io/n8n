@@ -42,6 +42,7 @@ import {
 	type IRun,
 	jsonParse,
 	StructuredChunk,
+	RESPOND_TO_CHAT_NODE_TYPE,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -544,6 +545,16 @@ export class ChatHubService {
 
 		if (chatTriggers.length !== 1) {
 			throw new BadRequestError('Workflow must have exactly one chat trigger');
+		}
+
+		const chatResponseNodes = workflowEntity.nodes.filter(
+			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
+		);
+
+		if (chatResponseNodes.length > 0) {
+			throw new BadRequestError(
+				'Respond to Chat nodes are not supported in custom agent workflows',
+			);
 		}
 
 		return {
