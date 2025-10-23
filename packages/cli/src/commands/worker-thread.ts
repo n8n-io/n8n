@@ -90,12 +90,20 @@ async function executeWorkflow(
 
 /**
  * IPC message handler for child process communication
+ * Handles multiple executions without exiting, allowing process reuse
  */
 process.on('message', async (msg: any) => {
 	if (msg.type === 'execute') {
 		const result = await executeWorkflow(msg.task);
-		process.send!({ type: 'done', run: result.run });
-		process.exit(0);
+		// Send result back with executionId for routing in main thread
+		if (process.send) {
+			process.send({
+				type: 'done',
+				executionId: msg.task.executionId,
+				run: result.run,
+			});
+		}
+		// Don't exit - keep process alive for reuse
 	}
 });
 

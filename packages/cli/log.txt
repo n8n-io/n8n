@@ -1,0 +1,176 @@
+Permissions 0644 for n8n settings file /home/despairblue/git/n8n/worker-threads/.n8n/.n8n/config are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.
+Initializing n8n process
+n8n ready on ::, port 5678
+n8n Task Broker ready on 127.0.0.1, port 5679
+
+There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
+ - DB_SQLITE_POOL_SIZE -> Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite
+ - N8N_BLOCK_ENV_ACCESS_IN_NODE -> The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+ - N8N_GIT_NODE_DISABLE_BARE_REPOS -> Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+
+[license SDK] Skipping renewal on init: license cert is not due for renewal
+Registered runner "JS Task Runner" (4wHwovnTXh0WIwYin2hry) 
+Version: 1.117.0
+Start Active Workflows:
+Activated workflow "My workflow" (ID: MSo0KiYIo9xHQJr0)
+
+Editor is now accessible via:
+http://localhost:5678
+[main]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 436.453125,
+    heapTotal: 268.4765625,
+    heapUsed: 234.08338928222656,
+    external: 68.87755107879639
+  }
+}
+Starting execution 40346 in child process pool
+[ChildProcessPool] Initialized with max 15 processes
+[ChildProcessPool] Spawned new process 89503614-2266-4940-a472-dc50f7748a9c for execution 40346 (1/15)
+memory before loading node types {
+  type: 'memoryReport',
+  memory: {
+    rss: 192.0625,
+    heapTotal: 108.99609375,
+    heapUsed: 85.51114654541016,
+    external: 3.3427906036376953
+  }
+}
+[worker]: Initializing worker - loading nodes and credentials
+Permissions 0644 for n8n settings file /home/despairblue/git/n8n/worker-threads/.n8n/.n8n/config are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.
+[worker]: Worker initialized
+[worker]: going to call workflow execute now
+running node Schedule Trigger
+running node No Operation, do nothing
+running node DebugHelper
+[main]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 437.578125,
+    heapTotal: 268.9765625,
+    heapUsed: 238.34581756591797,
+    external: 68.90357112884521
+  }
+}
+Starting execution 40347 in child process pool
+[ChildProcessPool] Spawned new process 16a41b83-5a3c-4d38-a4d9-7aa933d798f6 for execution 40347 (2/15)
+[main]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 263.87890625,
+    heapTotal: 165.890625,
+    heapUsed: 133.53456115722656,
+    external: 20.20680522918701
+  }
+}
+memory before loading node types {
+  type: 'memoryReport',
+  memory: {
+    rss: 193.3046875,
+    heapTotal: 109.49609375,
+    heapUsed: 85.34654998779297,
+    external: 3.3427906036376953
+  }
+}
+[worker]: Initializing worker - loading nodes and credentials
+Permissions 0644 for n8n settings file /home/despairblue/git/n8n/worker-threads/.n8n/.n8n/config are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.
+[worker]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 264.00390625,
+    heapTotal: 165.890625,
+    heapUsed: 133.56546783447266,
+    external: 20.20680522918701
+  }
+}
+[worker]: Worker initialized
+[worker]: going to call workflow execute now
+running node Schedule Trigger
+running node No Operation, do nothing
+running node DebugHelper
+[main]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 434.48046875,
+    heapTotal: 268.52734375,
+    heapUsed: 231.94847869873047,
+    external: 68.90447044372559
+  }
+}
+Starting execution 40348 in child process pool
+[ChildProcessPool] Spawned new process ae2c280c-17bf-4e82-ba65-27db59917dda for execution 40348 (3/15)
+[main]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 265.08203125,
+    heapTotal: 165.390625,
+    heapUsed: 133.54895782470703,
+    external: 19.70642375946045
+  }
+}
+[worker]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 265.08203125,
+    heapTotal: 165.390625,
+    heapUsed: 133.57986450195312,
+    external: 19.70642375946045
+  }
+}
+[main]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 264.00390625,
+    heapTotal: 165.890625,
+    heapUsed: 133.58631134033203,
+    external: 20.20680522918701
+  }
+}
+[worker]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 264.00390625,
+    heapTotal: 165.890625,
+    heapUsed: 133.62149810791016,
+    external: 20.20680522918701
+  }
+}
+memory before loading node types {
+  type: 'memoryReport',
+  memory: {
+    rss: 192.9921875,
+    heapTotal: 109.24609375,
+    heapUsed: 85.5611343383789,
+    external: 3.3427906036376953
+  }
+}
+[worker]: Initializing worker - loading nodes and credentials
+Permissions 0644 for n8n settings file /home/despairblue/git/n8n/worker-threads/.n8n/.n8n/config are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.
+[worker]: Worker initialized
+[worker]: going to call workflow execute now
+running node Schedule Trigger
+running node No Operation, do nothing
+running node DebugHelper
+Received SIGINT. Shutting down...
+Deregistered all crons for workflow
+[runnner:js] Received SIGINT signal, shutting down...
+[runnner:js] Task runner stopped
+
+Stopping n8n...
+Waiting for 3 active executions to finish...
+[ChildProcessPool] Process 89503614-2266-4940-a472-dc50f7748a9c exited (code: null, signal: SIGINT)
+[ChildProcessPool] Removing process 89503614-2266-4940-a472-dc50f7748a9c from pool
+[ChildProcessPool] Process 16a41b83-5a3c-4d38-a4d9-7aa933d798f6 exited (code: null, signal: SIGINT)
+[ChildProcessPool] Removing process 16a41b83-5a3c-4d38-a4d9-7aa933d798f6 from pool
+[ChildProcessPool] Process ae2c280c-17bf-4e82-ba65-27db59917dda exited (code: null, signal: SIGINT)
+[ChildProcessPool] Removing process ae2c280c-17bf-4e82-ba65-27db59917dda from pool
+[main]: {
+  type: 'memoryReport',
+  memory: {
+    rss: 306.7265625,
+    heapTotal: 142.41796875,
+    heapUsed: 133.70375061035156,
+    external: 19.8669376373291
+  }
+}

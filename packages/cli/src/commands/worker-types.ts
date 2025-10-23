@@ -42,4 +42,13 @@ export type WorkerMessage =
 			executionData: IRunExecutionData;
 	  };
 
-export type MainMessage = { type: 'pong' } | { type: 'done'; run: IRun } | HookMessage;
+/**
+ * Messages sent from child process to main thread
+ */
+export interface DoneMessage {
+	type: 'done';
+	executionId: string;
+	run: IRun;
+}
+
+export type MainMessage = { type: 'pong' } | DoneMessage | HookMessage;

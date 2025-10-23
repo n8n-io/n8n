@@ -33,8 +33,9 @@ import { fork, type ChildProcess } from 'child_process';
 import { isMainThread } from 'worker_threads';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ChildProcessPool } from '@/commands/child-process-pool';
 import { MainHookListener } from '@/commands/main-hook-listener';
-import type { ChildProcessExecutionTask } from '@/commands/worker-types';
+import type { ChildProcessExecutionTask, DoneMessage, HookMessage } from '@/commands/worker-types';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import {
@@ -53,9 +54,18 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { EventService } from './events/event.service';
 
+interface ExecutionCallbacks {
+	resolve: (run: IRun) => void;
+	reject: (error: Error) => void;
+	hookListener: MainHookListener;
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
+	private pool?: ChildProcessPool;
+	// Track execution callbacks and hook listeners by executionId
+	private executionCallbacks = new Map<string, ExecutionCallbacks>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -399,6 +409,52 @@ export class WorkflowRunner {
 		return run;
 	}
 
+	/**
+	 * Get or create the child process pool
+	 */
+	private getPool(): ChildProcessPool {
+		if (!this.pool) {
+			this.pool = new ChildProcessPool();
+		}
+		return this.pool;
+	}
+
+	/**
+	 * Handle a message from a child process and route to correct execution
+	 */
+	private handleChildMessage(processId: string, msg: DoneMessage | HookMessage): void {
+		if (msg.type === 'done') {
+			// Execution completed
+			const callbacks = this.executionCallbacks.get(msg.executionId);
+			if (!callbacks) {
+				this.logger.warn(`Received done message for unknown execution ${msg.executionId}`);
+				return;
+			}
+
+			this.logger.info(`Child process completed execution ${msg.executionId}`, {
+				executionId: msg.executionId,
+			});
+
+			// Reconstruct Date objects that were serialized during IPC
+			const run = this.reconstructRunDates(msg.run);
+
+			// Clean up
+			this.executionCallbacks.delete(msg.executionId);
+			callbacks.hookListener.close();
+			this.getPool().releaseProcess(processId);
+
+			// Resolve the execution
+			callbacks.resolve(run);
+		} else if (msg.type === 'hook') {
+			// Route hook message to the correct listener
+			const callbacks = this.executionCallbacks.get(msg.executionId);
+			if (callbacks) {
+				// Hook listener handles the message internally via its child.on('message') handler
+				// No action needed here as the listener is already set up
+			}
+		}
+	}
+
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	private dispatch(
 		options: {
@@ -413,66 +469,62 @@ export class WorkflowRunner {
 	): PCancelable<IRun> {
 		const executionId = options.executionId;
 
-		this.logger.info(`Starting execution ${executionId} in child process`, { executionId });
+		this.logger.info(`Starting execution ${executionId} in child process pool`, { executionId });
 
 		return new PCancelable(async (resolve, reject, _onCancel) => {
-			const workerPath = pathResolve(__dirname, 'commands/worker-thread.js');
+			try {
+				// Get a process from the pool (or create new one if under limit)
+				const pooledProcess = await this.getPool().getProcess(executionId);
 
-			// Fork a new child process
-			const child: ChildProcess = fork(workerPath, [], {
-				execArgv: ['--enable-source-maps'],
-			});
+				// Create hook listener for this execution
+				const hookListener = new MainHookListener(pooledProcess.child, fullData, executionId);
 
-			// Create hook listener to handle lifecycle hooks from child process
-			const hookListener = new MainHookListener(child, fullData, executionId);
-
-			let resolved = false;
-
-			// Listen for messages from child process
-			child.on('message', (msg: any) => {
-				if (msg.type === 'done') {
-					this.logger.info(`Child process completed execution ${executionId}`, { executionId });
-					resolved = true;
-					// Reconstruct Date objects that were serialized during IPC
-					const run = this.reconstructRunDates(msg.run);
-					resolve(run);
-				}
-			});
-
-			// Handle child process errors
-			child.on('error', (error) => {
-				this.logger.error(`Child process error for execution ${executionId}`, {
-					error,
-					executionId,
+				// Store callbacks for this execution
+				this.executionCallbacks.set(executionId, {
+					resolve,
+					reject,
+					hookListener,
 				});
-				if (!resolved) {
-					reject(error);
-				}
-			});
 
-			// Handle child process exit
-			child.on('exit', (code, signal) => {
-				if (!resolved) {
-					const error = new Error(`Child process exited with code ${code} and signal ${signal}`);
-					this.logger.error(`Child process exited unexpectedly for execution ${executionId}`, {
-						code,
-						signal,
-						executionId,
+				// Set up message listener if not already set up for this process
+				// Check if this process already has a listener by checking if it has any listeners
+				const existingListeners = pooledProcess.child.listenerCount('message');
+				if (existingListeners === 0) {
+					// First time using this process, set up the message handler
+					pooledProcess.child.on('message', (msg: DoneMessage | HookMessage) => {
+						this.handleChildMessage(pooledProcess.id, msg);
 					});
-					reject(error);
+
+					// Handle process errors
+					pooledProcess.child.on('error', (error) => {
+						this.logger.error(`Child process ${pooledProcess.id} error`, { error });
+						// Fail any pending execution on this process
+						if (pooledProcess.currentExecutionId) {
+							const callbacks = this.executionCallbacks.get(pooledProcess.currentExecutionId);
+							if (callbacks) {
+								this.executionCallbacks.delete(pooledProcess.currentExecutionId);
+								callbacks.hookListener.close();
+								callbacks.reject(error);
+							}
+						}
+						this.getPool().removeProcess(pooledProcess.id, error);
+					});
 				}
-				hookListener.close();
-			});
 
-			// Send execution task to child process
-			const task: ChildProcessExecutionTask = {
-				workflow: deepCopy(options.workflowData),
-				executionId,
-				executionMode: options.executionMode,
-				executionData: options.executionData!,
-			};
+				// Prepare task for child process
+				const task: ChildProcessExecutionTask = {
+					workflow: deepCopy(options.workflowData),
+					executionId,
+					executionMode: options.executionMode,
+					executionData: options.executionData ?? ({} as IRunExecutionData),
+				};
 
-			child.send({ type: 'execute', task });
+				// Send execution task to child process
+				pooledProcess.child.send({ type: 'execute', task });
+			} catch (error) {
+				this.logger.error(`Failed to dispatch execution ${executionId}`, { error, executionId });
+				reject(error as Error);
+			}
 		});
 	}
 

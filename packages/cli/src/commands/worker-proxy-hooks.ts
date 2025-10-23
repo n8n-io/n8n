@@ -37,12 +37,14 @@ export class WorkerProxyHooks extends ExecutionLifecycleHooks {
 		// Serialize the parameters for sending across process boundary
 		const serializedParams = this.serializeParameters(hookName, parameters);
 
-		process.send!({
-			type: 'hook',
-			hookName,
-			executionId: this.executionId,
-			params: serializedParams,
-		});
+		if (process.send) {
+			process.send({
+				type: 'hook',
+				hookName,
+				executionId: this.executionId,
+				params: serializedParams,
+			});
+		}
 	}
 
 	/**
