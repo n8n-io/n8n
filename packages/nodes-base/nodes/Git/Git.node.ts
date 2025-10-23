@@ -534,7 +534,12 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const returnAll = this.getNodeParameter('returnAll', itemIndex, false);
-					const reference = (options.reference as string) || 'HEAD';
+
+					let reference = 'HEAD';
+					if (options.reference !== undefined && options.reference !== '') {
+						assertParamIsString('reference', options.reference, this.getNode());
+						reference = options.reference;
+					}
 
 					const reflogResult = await git.raw(['reflog', reference]);
 
