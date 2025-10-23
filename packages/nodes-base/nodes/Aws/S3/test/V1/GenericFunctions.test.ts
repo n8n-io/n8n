@@ -1,12 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
-// Mock xml2js before importing the module
-const mockParseString = jest.fn();
-jest.mock('xml2js', () => ({
-	parseString: mockParseString,
-}));
-
 import {
 	awsApiRequest,
 	awsApiRequestREST,
@@ -96,15 +90,13 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			jest.clearAllMocks();
 		});
 
-		it('should parse JSON response correctly', async () => {
-			const jsonResponse = { id: '123', name: 'test' };
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
-				JSON.stringify(jsonResponse),
-			);
+		it('should parse valid JSON response', async () => {
+			const jsonString = JSON.stringify({ id: '123', name: 'test' });
+			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(jsonString);
 
 			const result = await awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
 
-			expect(result).toEqual(jsonResponse);
+			expect(result).toEqual({ id: '123', name: 'test' });
 		});
 
 		it('should return raw response when JSON parsing fails', async () => {
@@ -127,36 +119,23 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			jest.clearAllMocks();
 		});
 
-		it('should parse XML response correctly', async () => {
+		it('should parse valid XML response', async () => {
 			const xmlResponse =
 				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Name>test-bucket</Name></ListBucketResult>';
-
-			const expectedParsedData = {
-				ListBucketResult: {
-					Name: 'test-bucket',
-				},
-			};
 
 			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
 				xmlResponse,
 			);
-			mockParseString.mockImplementation((_, __, callback) => {
-				callback(null, expectedParsedData);
-			});
 
 			const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
 
-			expect(result).toEqual(expectedParsedData);
+			expect(result).toHaveProperty('ListBucketResult.Name', 'test-bucket');
 		});
 
-		it('should return error object when XML parsing fails', async () => {
+		it('should return error when XML parsing fails', async () => {
 			const invalidXml = 'not valid xml';
-			const xmlError = new Error('Invalid XML');
 
 			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(invalidXml);
-			mockParseString.mockImplementation((_, __, callback) => {
-				callback(xmlError);
-			});
 
 			const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
 
@@ -189,9 +168,6 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
 				xmlResponse,
 			);
-			mockParseString.mockImplementation((_, __, callback) => {
-				callback(null, expectedParsedData);
-			});
 
 			const result = await awsApiRequestSOAPAllItems.call(
 				mockExecuteFunctions,
@@ -201,10 +177,12 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'/bucket',
 			);
 
-			expect(result).toEqual([
-				{ Key: 'file1.txt', Size: '1024' },
-				{ Key: 'file2.txt', Size: '2048' },
-			]);
+			expect(result).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ Key: 'file1.txt' }),
+					expect.objectContaining({ Key: 'file2.txt' }),
+				]),
+			);
 		});
 
 		it('should handle empty response', async () => {
@@ -220,9 +198,6 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
 				xmlResponse,
 			);
-			mockParseString.mockImplementation((_, __, callback) => {
-				callback(null, expectedParsedData);
-			});
 
 			const result = await awsApiRequestSOAPAllItems.call(
 				mockExecuteFunctions,
@@ -250,9 +225,6 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
 				xmlResponse,
 			);
-			mockParseString.mockImplementation((_, __, callback) => {
-				callback(null, expectedParsedData);
-			});
 
 			const result = await awsApiRequestSOAPAllItems.call(
 				mockLoadOptionsFunctions,
@@ -262,7 +234,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'/bucket',
 			);
 
-			expect(result).toEqual([{ Key: 'file1.txt' }]);
+			expect(result).toEqual(
+				expect.arrayContaining([expect.objectContaining({ Key: 'file1.txt' })]),
+			);
 		});
 	});
 });

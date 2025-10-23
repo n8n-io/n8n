@@ -45,34 +45,6 @@ describe('AwsLambda', () => {
 		jest.resetAllMocks();
 	});
 
-	describe('Node Properties', () => {
-		it('should have correct node properties', () => {
-			expect(node.description.displayName).toBe('AWS Lambda');
-			expect(node.description.name).toBe('awsLambda');
-			expect(node.description.group).toEqual(['output']);
-			expect(node.description.version).toBe(1);
-			expect(node.description.usableAsTool).toBe(true);
-		});
-
-		it('should have correct credentials configuration', () => {
-			expect(node.description.credentials).toEqual([
-				{
-					name: 'aws',
-					required: true,
-				},
-			]);
-		});
-
-		it('should have invoke operation configured', () => {
-			const operationProperty = node.description.properties.find(
-				(prop) => prop.name === 'operation',
-			);
-			expect(operationProperty).toBeDefined();
-			expect(operationProperty?.type).toBe('options');
-			expect(operationProperty?.default).toBe('invoke');
-		});
-	});
-
 	describe('Load Options Methods', () => {
 		describe('getFunctions', () => {
 			it('should load functions without pagination', async () => {

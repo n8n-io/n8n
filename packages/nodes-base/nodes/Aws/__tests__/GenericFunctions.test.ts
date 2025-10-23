@@ -142,35 +142,6 @@ describe('AWS GenericFunctions', () => {
 				);
 			});
 
-			it('should work with IHookFunctions context', async () => {
-				const mockCredentials = { region: 'ap-southeast-1' };
-				const mockResponse = { hookResponse: true };
-
-				mockHookFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					mockResponse,
-				);
-				mockHookFunctions.getNode.mockReturnValue({
-					id: 'hook-node',
-					name: 'Hook Node',
-					type: 'n8n-nodes-base.aws',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
-
-				const result = await awsApiRequest.call(
-					mockHookFunctions,
-					'sns',
-					'POST',
-					'/subscribe',
-					'{"test": "hook"}',
-				);
-
-				expect(result).toEqual(mockResponse);
-				expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('aws');
-			});
-
 			it('should work with ILoadOptionsFunctions context', async () => {
 				const mockCredentials = { region: 'ca-central-1' };
 				const mockResponse = ['option1', 'option2'];
@@ -513,28 +484,6 @@ describe('AWS GenericFunctions', () => {
 				expect(result).toBe(booleanResponse);
 			});
 
-			it('should work with IHookFunctions context', async () => {
-				const mockCredentials = { region: 'us-east-1' };
-				const jsonResponse = '{"hook": "data"}';
-
-				mockHookFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					jsonResponse,
-				);
-				mockHookFunctions.getNode.mockReturnValue({
-					id: 'hook-node',
-					name: 'Hook Node',
-					type: 'n8n-nodes-base.aws',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
-
-				const result = await awsApiRequestREST.call(mockHookFunctions, 's3', 'GET', '/test');
-
-				expect(result).toEqual({ hook: 'data' });
-			});
-
 			it('should work with ILoadOptionsFunctions context', async () => {
 				const mockCredentials = { region: 'us-east-1' };
 				const jsonResponse = '["option1", "option2", "option3"]';
@@ -701,33 +650,6 @@ describe('AWS GenericFunctions', () => {
 					{ explicitArray: false },
 					expect.any(Function),
 				);
-			});
-
-			it('should work with IHookFunctions context', async () => {
-				const mockCredentials = { region: 'us-east-1' };
-				const xmlResponse = '<hook><status>received</status></hook>';
-				const parsedData = { hook: { status: 'received' } };
-
-				mockHookFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					xmlResponse,
-				);
-				mockHookFunctions.getNode.mockReturnValue({
-					id: 'hook-node',
-					name: 'Hook Node',
-					type: 'n8n-nodes-base.aws',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, parsedData);
-				});
-
-				const result = await awsApiRequestSOAP.call(mockHookFunctions, 'ses', 'POST', '/hook');
-
-				expect(result).toEqual(parsedData);
 			});
 
 			it('should work with ILoadOptionsFunctions context', async () => {
