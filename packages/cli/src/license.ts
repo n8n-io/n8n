@@ -171,10 +171,7 @@ export class License implements LicenseProvider {
 			return;
 		}
 
-		await (this.manager.activate as (key: string, uri?: string) => Promise<void>)(
-			activationKey,
-			eulaUri,
-		);
+		await this.manager.activate(activationKey, eulaUri);
 		this.logger.debug('License activated');
 	}
 
