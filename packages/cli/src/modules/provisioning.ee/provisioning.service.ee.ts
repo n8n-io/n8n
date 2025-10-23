@@ -106,7 +106,12 @@ export class ProvisioningService {
 	}
 
 	/**
-	 * @param projectIdToRole expected to be a JSON string for a map of project IDs to role slugs
+	 * @param projectIdToRole expected to be a JSON string with a string of arrays like this:
+	 * [
+	 *   "<projectUuid>:<projectRoleDisplayName>",
+	 *   "<projectUuid>:<projectRoleDisplayName>",
+	 *   ...
+	 * ]
 	 */
 	async provisionProjectRolesForUser(userId: string, projectIdToRole: unknown): Promise<void> {
 		if (typeof projectIdToRole !== 'string') {
@@ -119,15 +124,38 @@ export class ProvisioningService {
 
 		let projectRoleMap: Record<string, string>;
 		try {
-			projectRoleMap = JSON.parse(projectIdToRole);
-			for (const [key, value] of Object.entries(projectRoleMap)) {
-				if (typeof key !== 'string' || typeof value !== 'string') {
+			const parsedArray = JSON.parse(projectIdToRole);
+
+			if (!Array.isArray(parsedArray)) {
+				this.logger.warn(
+					'Skipping project role provisioning. Expected an array of project:role mappings.',
+					{ userId, projectIdToRole },
+				);
+				return;
+			}
+
+			projectRoleMap = {};
+			for (const entry of parsedArray) {
+				if (typeof entry !== 'string') {
 					this.logger.warn(
-						`Skipping project role mapping for ${key}:${value}. Invalid types: expected both key and value to be strings.`,
-						{ userId },
+						`Skipping invalid project role mapping entry. Expected string, received ${typeof entry}.`,
+						{ userId, entry },
 					);
-					delete projectRoleMap[key];
+					continue;
 				}
+
+				const [projectId, roleDisplayName] = entry.split(':');
+				if (!projectId || !roleDisplayName) {
+					this.logger.warn(
+						`Skipping invalid project role mapping entry. Expected format "projectId:displayName", received "${entry}".`,
+						{ userId, entry },
+					);
+					continue;
+				}
+
+				// This means that if the external SSO setup has two roles configured
+				// for the same projectId, we only provision the one we see last in the sent list.
+				projectRoleMap[projectId] = roleDisplayName;
 			}
 		} catch (error) {
 			this.logger.warn(
@@ -138,7 +166,7 @@ export class ProvisioningService {
 		}
 
 		const projectIds = Object.keys(projectRoleMap);
-		const roleSlugs = [...new Set(Object.values(projectRoleMap))];
+		const roleDisplayNames = [...new Set(Object.values(projectRoleMap))];
 
 		if (projectIds.length === 0) {
 			return;
@@ -151,36 +179,35 @@ export class ProvisioningService {
 			}),
 			this.roleRepository.find({
 				where: {
-					slug: In(roleSlugs),
+					displayName: In(roleDisplayNames),
 					roleType: 'project',
 				},
-				select: ['slug'],
+				select: ['displayName', 'slug'],
 			}),
 		]);
 		const existingProjectIds = new Set(existingProjects.map((project) => project.id));
-		const existingRoleSlugs = new Set(existingRoles.map((r) => r.slug));
 
 		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
 
 		// populate validProjectToRoleMappings
-		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
+		for (const [projectId, roleDisplayName] of Object.entries(projectRoleMap)) {
 			if (!existingProjectIds.has(projectId)) {
 				this.logger.warn(
-					`Skipping project role provisioning. Project with ID ${projectId} not found.`,
-					{ userId, projectId, roleSlug },
+					`Skipped provisioning project role for project with ID ${projectId}, because project does not exist or is a personal project.`,
+					{ userId, projectId, roleDisplayName },
 				);
 				continue;
 			}
-
-			if (!existingRoleSlugs.has(roleSlug)) {
+			const role = existingRoles.find((role) => role.displayName === roleDisplayName);
+			if (!role) {
 				this.logger.warn(
-					`Skipping project role provisioning. Role with slug ${roleSlug} not found or is not a project role.`,
-					{ userId, projectId, roleSlug },
+					`Skipping project role provisioning for role with display name ${roleDisplayName}, because role does not exist or is not specific to projects.`,
+					{ userId, projectId, roleDisplayName },
 				);
 				continue;
 			}
 
-			validProjectToRoleMappings.push({ projectId, roleSlug });
+			validProjectToRoleMappings.push({ projectId, roleSlug: role.slug });
 		}
 
 		if (validProjectToRoleMappings.length === 0) {
