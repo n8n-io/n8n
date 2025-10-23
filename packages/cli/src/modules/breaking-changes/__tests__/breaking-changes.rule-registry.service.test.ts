@@ -27,8 +27,8 @@ describe('RuleRegistry', () => {
 			version: version as 'v2',
 			title,
 			description: `Description for ${title}`,
-			category: BreakingChangeCategory.WORKFLOW,
-			severity: BreakingChangeSeverity.MEDIUM,
+			category: BreakingChangeCategory.workflow,
+			severity: BreakingChangeSeverity.medium,
 		};
 
 		const mockRule: IBreakingChangeRule = {

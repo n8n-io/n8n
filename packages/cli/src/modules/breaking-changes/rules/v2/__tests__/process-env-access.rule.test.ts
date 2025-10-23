@@ -43,10 +43,10 @@ describe('ProcessEnvAccessRule', () => {
 			expect(metadata).toEqual({
 				id: 'process-env-access-v2',
 				version: 'v2',
-				title: 'Block process.env Access in Expressions',
+				title: 'Block process.env Access in Expressions and Code nodes',
 				description: 'Direct access to process.env is blocked by default for security',
-				category: BreakingChangeCategory.WORKFLOW,
-				severity: BreakingChangeSeverity.HIGH,
+				category: BreakingChangeCategory.workflow,
+				severity: BreakingChangeSeverity.high,
 			});
 		});
 	});
@@ -92,8 +92,8 @@ describe('ProcessEnvAccessRule', () => {
 					{
 						title: 'process.env access detected',
 						description:
-							'The following nodes contain process.env access: Code. This will be blocked in v2.0.0.',
-						level: IssueLevel.ERROR,
+							"The following nodes contain process.env access: 'Code'. This will be blocked by default in v2.0.0.",
+						level: IssueLevel.error,
 					},
 				],
 			});
@@ -125,7 +125,7 @@ describe('ProcessEnvAccessRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows[0].issues[0]).toMatchObject({
 				title: 'process.env access detected',
-				level: IssueLevel.ERROR,
+				level: IssueLevel.error,
 			});
 			expect(result.affectedWorkflows[0].issues[0].description).toContain('HTTP');
 		});

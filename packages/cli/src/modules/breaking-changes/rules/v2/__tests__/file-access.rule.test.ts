@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
@@ -38,7 +39,7 @@ describe('FileAccessRule', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		rule = new FileAccessRule(logger);
+		rule = new FileAccessRule(logger, mock<ErrorReporter>());
 	});
 
 	describe('getMetadata()', () => {
@@ -50,8 +51,8 @@ describe('FileAccessRule', () => {
 				version: 'v2',
 				title: 'File Access Restrictions',
 				description: 'File access is now restricted to a default directory for security purposes',
-				category: BreakingChangeCategory.WORKFLOW,
-				severity: BreakingChangeSeverity.HIGH,
+				category: BreakingChangeCategory.workflow,
+				severity: BreakingChangeSeverity.high,
 			});
 		});
 	});
@@ -84,9 +85,9 @@ describe('FileAccessRule', () => {
 				active: true,
 				issues: [
 					{
-						title: "File access node 'n8n-nodes-base.readWriteFile' affected",
+						title: "File access node 'n8n-nodes-base.readWriteFile' with name 'Read File' affected",
 						description: 'File access for this node is now restricted to configured directories.',
-						level: IssueLevel.WARNING,
+						level: IssueLevel.warning,
 					},
 				],
 			});
@@ -107,8 +108,8 @@ describe('FileAccessRule', () => {
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows[0].issues[0]).toMatchObject({
-				title: "File access node 'n8n-nodes-base.readBinaryFiles' affected",
-				level: IssueLevel.WARNING,
+				title: "File access node 'n8n-nodes-base.readBinaryFiles' with name 'Read Binary' affected",
+				level: IssueLevel.warning,
 			});
 		});
 
@@ -124,10 +125,11 @@ describe('FileAccessRule', () => {
 			expect(result.affectedWorkflows[0].issues).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						title: "File access node 'n8n-nodes-base.readWriteFile' affected",
+						title: "File access node 'n8n-nodes-base.readWriteFile' with name 'Read File' affected",
 					}),
 					expect.objectContaining({
-						title: "File access node 'n8n-nodes-base.readBinaryFiles' affected",
+						title:
+							"File access node 'n8n-nodes-base.readBinaryFiles' with name 'Read Binary' affected",
 					}),
 				]),
 			);

@@ -5,9 +5,7 @@ import { BreakingChangeVersion } from './types';
 
 @RestController('/breaking-changes')
 export class BreakingChangesController {
-	constructor(private readonly service: BreakingChangeService) {
-		this.service.registerRules();
-	}
+	constructor(private readonly service: BreakingChangeService) {}
 
 	/**
 	 * Get all registered breaking change rules

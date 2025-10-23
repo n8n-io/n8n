@@ -1,10 +1,18 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core/src/errors/error-reporter';
+import { strict as assert } from 'node:assert';
 
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { allRules, RuleInstances } from './rules';
-import type { DetectionReport, DetectionOptions, BreakingChangeVersion } from './types';
+import type {
+	DetectionReport,
+	DetectionOptions,
+	BreakingChangeVersion,
+	DetectionResult,
+	IBreakingChangeRule,
+} from './types';
 import { BreakingChangeSeverity } from './types';
 
 import { N8N_VERSION } from '@/constants';
@@ -15,8 +23,10 @@ export class BreakingChangeService {
 		private readonly ruleRegistry: RuleRegistry,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('breaking-changes');
+		this.registerRules();
 	}
 
 	registerRules() {
@@ -36,7 +46,6 @@ export class BreakingChangeService {
 		const rules = this.ruleRegistry.getRules(targetVersion);
 		const workflows = await this.workflowRepository.find({
 			select: ['id', 'name', 'active', 'nodes'],
-			relations: { nodes: true },
 		});
 
 		const results = await Promise.all(
@@ -44,6 +53,7 @@ export class BreakingChangeService {
 				try {
 					return await rule.detect({ workflows });
 				} catch (error) {
+					this.errorReporter.error(error);
 					this.logger.error('Rule detection failed', {
 						ruleId: rule.getMetadata().id,
 						error,
@@ -54,24 +64,7 @@ export class BreakingChangeService {
 		);
 
 		const validResults = results.filter((r) => r !== null);
-		const affectedResults = validResults.filter((r) => r.isAffected);
-
-		const criticalIssues = affectedResults.filter((r) => {
-			const rule = rules.find((rule) => rule.getMetadata().id === r.ruleId);
-			return rule?.getMetadata().severity === BreakingChangeSeverity.CRITICAL;
-		}).length;
-
-		const report: DetectionReport = {
-			generatedAt: new Date(),
-			targetVersion,
-			currentVersion: N8N_VERSION,
-			summary: {
-				totalIssues: affectedResults.length,
-				criticalIssues,
-			},
-
-			results: validResults,
-		};
+		const report = this.createDetectionReport(targetVersion, validResults, rules);
 
 		const duration = Date.now() - startTime;
 		this.logger.info('Breaking change detection completed', {
@@ -81,5 +74,31 @@ export class BreakingChangeService {
 		});
 
 		return report;
+	}
+
+	private createDetectionReport(
+		targetVersion: BreakingChangeVersion,
+		validResults: DetectionResult[],
+		rules: IBreakingChangeRule[],
+	): DetectionReport {
+		const affectedResults = validResults.filter((r) => r.isAffected);
+
+		const criticalIssues = affectedResults.filter((r) => {
+			const rule = rules.find((rule) => rule.getMetadata().id === r.ruleId);
+			assert(rule);
+
+			return rule.getMetadata().severity === BreakingChangeSeverity.critical;
+		}).length;
+
+		return {
+			generatedAt: new Date(),
+			targetVersion,
+			currentVersion: N8N_VERSION,
+			summary: {
+				totalIssues: affectedResults.length,
+				criticalIssues,
+			},
+			results: validResults,
+		};
 	}
 }

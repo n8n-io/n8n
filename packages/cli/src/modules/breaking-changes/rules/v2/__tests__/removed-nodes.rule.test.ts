@@ -45,8 +45,8 @@ describe('RemovedNodesRule', () => {
 				version: 'v2',
 				title: 'Removed Deprecated Nodes',
 				description: 'Several deprecated nodes have been removed and will no longer work',
-				category: BreakingChangeCategory.WORKFLOW,
-				severity: BreakingChangeSeverity.CRITICAL,
+				category: BreakingChangeCategory.workflow,
+				severity: BreakingChangeSeverity.critical,
 			});
 		});
 	});
@@ -67,59 +67,38 @@ describe('RemovedNodesRule', () => {
 			});
 		});
 
-		it('should detect spontit node', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Spontit', 'n8n-nodes-base.spontit'),
-			]);
+		it.each([
+			{
+				nodeName: 'Spontit',
+				nodeType: 'n8n-nodes-base.spontit',
+			},
+			{
+				nodeName: 'CrowdDev',
+				nodeType: 'n8n-nodes-base.crowdDev',
+			},
+			{
+				nodeName: 'Kitemaker',
+				nodeType: 'n8n-nodes-base.kitemaker',
+			},
+		])('should detect removed node: %s', async ({ nodeName, nodeType }) => {
+			const workflow = createWorkflow('wf-1', 'Test Workflow', [createNode(nodeName, nodeType)]);
 
 			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result.isAffected).toBe(true);
 			expect(result.affectedWorkflows).toHaveLength(1);
-			expect(result.affectedWorkflows[0]).toMatchObject({
-				id: 'wf-1',
-				name: 'Test Workflow',
-				active: true,
-				issues: [
-					{
-						title: "Node 'n8n-nodes-base.spontit' has been removed",
-						description:
-							"The node type 'n8n-nodes-base.spontit' is no longer available. Please replace it with an alternative.",
-						level: IssueLevel.ERROR,
-					},
-				],
-			});
+			expect(result.affectedWorkflows[0].issues[0].title).toBe(
+				`Node '${nodeType}' with name '${nodeName}' has been removed`,
+			);
+			expect(result.affectedWorkflows[0].issues[0].description).toBe(
+				`The node type '${nodeType}' is no longer available. Please replace it with an alternative.`,
+			);
+			expect(result.affectedWorkflows[0].issues[0].level).toBe(IssueLevel.error);
 			expect(result.recommendations).toHaveLength(1);
 			expect(result.recommendations[0]).toMatchObject({
 				action: 'Update affected workflows',
 				description: 'Replace removed nodes with their updated versions or alternatives',
 			});
-		});
-
-		it('should detect crowdDev node', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('CrowdDev', 'n8n-nodes-base.crowdDev'),
-			]);
-
-			const result = await rule.detect({ workflows: [workflow] });
-
-			expect(result.isAffected).toBe(true);
-			expect(result.affectedWorkflows[0].issues[0].title).toBe(
-				"Node 'n8n-nodes-base.crowdDev' has been removed",
-			);
-		});
-
-		it('should detect kitemaker node', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Kitemaker', 'n8n-nodes-base.kitemaker'),
-			]);
-
-			const result = await rule.detect({ workflows: [workflow] });
-
-			expect(result.isAffected).toBe(true);
-			expect(result.affectedWorkflows[0].issues[0].title).toBe(
-				"Node 'n8n-nodes-base.kitemaker' has been removed",
-			);
 		});
 
 		it('should detect multiple removed nodes in the same workflow', async () => {
@@ -135,10 +114,10 @@ describe('RemovedNodesRule', () => {
 			expect(result.affectedWorkflows[0].issues).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						title: "Node 'n8n-nodes-base.spontit' has been removed",
+						title: "Node 'n8n-nodes-base.spontit' with name 'Spontit' has been removed",
 					}),
 					expect.objectContaining({
-						title: "Node 'n8n-nodes-base.crowdDev' has been removed",
+						title: "Node 'n8n-nodes-base.crowdDev' with name 'CrowdDev' has been removed",
 					}),
 				]),
 			);

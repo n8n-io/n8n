@@ -18,41 +18,37 @@ export class RemovedNodesRule extends AbstractBreakingChangeRule {
 			version: 'v2',
 			title: 'Removed Deprecated Nodes',
 			description: 'Several deprecated nodes have been removed and will no longer work',
-			category: BreakingChangeCategory.WORKFLOW,
-			severity: BreakingChangeSeverity.CRITICAL,
+			category: BreakingChangeCategory.workflow,
+			severity: BreakingChangeSeverity.critical,
 		};
 	}
 
 	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
 		const result = this.createEmptyResult();
 
-		try {
-			for (const workflow of workflows) {
-				const removedNodes = workflow.nodes.filter((n) => this.REMOVED_NODES.includes(n.type));
-				if (removedNodes.length === 0) continue;
+		for (const workflow of workflows) {
+			const removedNodes = workflow.nodes.filter((n) => this.REMOVED_NODES.includes(n.type));
+			if (removedNodes.length === 0) continue;
 
-				result.affectedWorkflows.push({
-					id: workflow.id,
-					name: workflow.name,
-					active: workflow.active,
-					issues: removedNodes.map((node) => ({
-						title: `Node '${node.type}' has been removed`,
-						description: `The node type '${node.type}' is no longer available. Please replace it with an alternative.`,
-						level: IssueLevel.ERROR,
-					})),
-				});
-			}
+			result.affectedWorkflows.push({
+				id: workflow.id,
+				name: workflow.name,
+				active: workflow.active,
+				issues: removedNodes.map((node) => ({
+					title: `Node '${node.type}' with name '${node.name}' has been removed`,
+					description: `The node type '${node.type}' is no longer available. Please replace it with an alternative.`,
+					level: IssueLevel.error,
+				})),
+			});
+		}
 
-			if (result.affectedWorkflows.length > 0) {
-				result.isAffected = true;
-				result.recommendations.push({
-					action: 'Update affected workflows',
-					description: 'Replace removed nodes with their updated versions or alternatives',
-					documentationUrl: this.getMetadata().documentationUrl,
-				});
-			}
-		} catch (error) {
-			this.logger.error('Failed to detect removed nodes', { error });
+		if (result.affectedWorkflows.length > 0) {
+			result.isAffected = true;
+			result.recommendations.push({
+				action: 'Update affected workflows',
+				description: 'Replace removed nodes with their updated versions or alternatives',
+				documentationUrl: this.getMetadata().documentationUrl,
+			});
 		}
 
 		return result;

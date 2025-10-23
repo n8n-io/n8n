@@ -1,24 +1,24 @@
 import type { WorkflowEntity } from '@n8n/db';
 
 export const enum BreakingChangeSeverity {
-	CRITICAL = 'critical',
-	HIGH = 'high',
-	MEDIUM = 'medium',
-	LOW = 'low',
+	critical = 'critical',
+	high = 'high',
+	medium = 'medium',
+	low = 'low',
 }
 
 export const enum BreakingChangeCategory {
-	WORKFLOW = 'workflow',
-	INSTANCE = 'instance',
-	ENVIRONMENT = 'environment',
-	DATABASE = 'database',
-	INFRASTRUCTURE = 'infrastructure',
+	workflow = 'workflow',
+	instance = 'instance',
+	environment = 'environment',
+	database = 'database',
+	infrastructure = 'infrastructure',
 }
 
 export const enum IssueLevel {
-	ERROR = 'error',
-	WARNING = 'warning',
-	INFO = 'info',
+	error = 'error',
+	warning = 'warning',
+	info = 'info',
 }
 
 export type BreakingChangeVersion = 'v2';
@@ -33,30 +33,24 @@ export interface BreakingChangeMetadata {
 	documentationUrl?: string;
 }
 
-export interface WorkflowIssue {
-	title: string;
-	description: string;
-	level: IssueLevel;
-}
-
 export interface AffectedWorkflow {
 	id: string;
 	name: string;
 	active: boolean;
 	recentExecutionCount?: number;
-	issues: WorkflowIssue[]; // List of issues affecting this workflow
+	issues: DetectionIssue[]; // List of issues affecting this workflow
 }
 
 export interface DetectionResult {
 	ruleId: string;
 	isAffected: boolean;
 	affectedWorkflows: AffectedWorkflow[];
-	instanceIssues: InstanceIssue[];
+	instanceIssues: DetectionIssue[];
 	recommendations: Recommendation[];
 	details?: Record<string, unknown>;
 }
 
-export interface InstanceIssue {
+export interface DetectionIssue {
 	title: string; // e.g., "Environment Variables", "Database Configuration"
 	description: string;
 	level: IssueLevel; // error, warning, info

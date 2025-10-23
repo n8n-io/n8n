@@ -43,8 +43,8 @@ describe('AbstractBreakingChangeRule', () => {
 		version: 'v2',
 		title: 'Test Rule',
 		description: 'A test rule description',
-		category: BreakingChangeCategory.WORKFLOW,
-		severity: BreakingChangeSeverity.MEDIUM,
+		category: BreakingChangeCategory.workflow,
+		severity: BreakingChangeSeverity.medium,
 	};
 
 	beforeEach(() => {
@@ -107,7 +107,7 @@ describe('AbstractBreakingChangeRule', () => {
 							{
 								title: 'Test Issue',
 								description: 'Test Description',
-								level: IssueLevel.WARNING,
+								level: IssueLevel.warning,
 							},
 						],
 					},

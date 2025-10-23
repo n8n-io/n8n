@@ -80,6 +80,8 @@ Create your rule file in the appropriate version directory (e.g., `rules/v2/my-n
 
 ```typescript
 import { Service } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
+import { ErrorReporter } from 'n8n-core';
 
 import type { DetectionResult, BreakingChangeMetadata } from '../../types';
 import { BreakingChangeSeverity, BreakingChangeCategory } from '../../types';
@@ -87,6 +89,13 @@ import { AbstractBreakingChangeRule } from '../abstract-rule';
 
 @Service()
 export class MyNewRule extends AbstractBreakingChangeRule {
+	constructor(
+		protected readonly logger: Logger,
+		protected errorReporter: ErrorReporter,
+	) {
+		super(logger);
+	}
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
 			id: 'my-rule-v2',
@@ -133,6 +142,7 @@ export class MyNewRule extends AbstractBreakingChangeRule {
 				});
 			}
 		} catch (error) {
+			this.errorReporter.error(error);
 			this.logger.error('Detection failed', { error });
 		}
 

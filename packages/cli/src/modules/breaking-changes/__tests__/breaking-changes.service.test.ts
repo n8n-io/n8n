@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
@@ -46,12 +47,17 @@ describe('BreakingChangeService', () => {
 		workflowRepository = mock<WorkflowRepository>();
 		ruleRegistry = new RuleRegistry(logger);
 
-		service = new BreakingChangeService(ruleRegistry, workflowRepository, logger);
+		service = new BreakingChangeService(
+			ruleRegistry,
+			workflowRepository,
+			logger,
+			mock<ErrorReporter>(),
+		);
 
 		// Manually register rules with real instances (mocked WorkflowRepository)
 		const removedNodesRule = new RemovedNodesRule(logger);
 		const processEnvAccessRule = new ProcessEnvAccessRule(logger);
-		const fileAccessRule = new FileAccessRule(logger);
+		const fileAccessRule = new FileAccessRule(logger, mock<ErrorReporter>());
 
 		ruleRegistry.registerAll([removedNodesRule, processEnvAccessRule, fileAccessRule]);
 	});

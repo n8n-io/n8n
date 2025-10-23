@@ -1,4 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
 
 import type { DetectionResult, BreakingChangeMetadata, CommonDetectionInput } from '../../types';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
@@ -6,6 +8,13 @@ import { AbstractBreakingChangeRule } from '../abstract-rule';
 
 @Service()
 export class FileAccessRule extends AbstractBreakingChangeRule {
+	constructor(
+		protected readonly logger: Logger,
+		protected errorReporter: ErrorReporter,
+	) {
+		super(logger);
+	}
+
 	private readonly FILE_NODES = ['n8n-nodes-base.readWriteFile', 'n8n-nodes-base.readBinaryFiles'];
 
 	getMetadata(): BreakingChangeMetadata {
@@ -14,8 +23,8 @@ export class FileAccessRule extends AbstractBreakingChangeRule {
 			version: 'v2',
 			title: 'File Access Restrictions',
 			description: 'File access is now restricted to a default directory for security purposes',
-			category: BreakingChangeCategory.WORKFLOW,
-			severity: BreakingChangeSeverity.HIGH,
+			category: BreakingChangeCategory.workflow,
+			severity: BreakingChangeSeverity.high,
 		};
 	}
 
@@ -32,9 +41,9 @@ export class FileAccessRule extends AbstractBreakingChangeRule {
 					name: workflow.name,
 					active: workflow.active,
 					issues: fileNodes.map((node) => ({
-						title: `File access node '${node.type}' affected`,
+						title: `File access node '${node.type}' with name '${node.name}' affected`,
 						description: 'File access for this node is now restricted to configured directories.',
-						level: IssueLevel.WARNING,
+						level: IssueLevel.warning,
 					})),
 				});
 			}
@@ -49,6 +58,7 @@ export class FileAccessRule extends AbstractBreakingChangeRule {
 				});
 			}
 		} catch (error) {
+			this.errorReporter.error(error);
 			this.logger.error('Failed to detect file access restrictions', { error });
 		}
 
