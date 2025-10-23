@@ -107,6 +107,4 @@ jobs:
     uses: ./.github/workflows/test-workflows-callable.yml
     with:
       git_ref: ${{ needs.handle_comment_command.outputs.git_ref }}
-      send_webhook_report: true
-      pr_number: ${{ needs.handle_comment_command.outputs.pr_number }}
     secrets: inherit

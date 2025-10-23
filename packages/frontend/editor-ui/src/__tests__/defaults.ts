@@ -40,11 +40,14 @@ export const defaultSettings: FrontendSettings = {
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
+		workflowDiffs: false,
+		provisioning: true,
 		projects: {
 			team: {
 				limit: 1,
 			},
 		},
+		customRoles: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -65,6 +68,7 @@ export const defaultSettings: FrontendSettings = {
 		debug: false,
 		disableSessionRecording: false,
 		enabled: false,
+		proxy: '',
 	},
 	publicApi: {
 		enabled: false,
@@ -100,13 +104,18 @@ export const defaultSettings: FrontendSettings = {
 	},
 	versionCli: '',
 	nodeJsVersion: '',
+	nodeEnv: '',
 	concurrency: -1,
+	isNativePythonRunnerEnabled: false,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',
 		infoUrl: '',
 		whatsNewEnabled: true,
 		whatsNewEndpoint: '',
+	},
+	dataTables: {
+		maxSize: 0,
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
@@ -128,6 +137,10 @@ export const defaultSettings: FrontendSettings = {
 	askAi: {
 		enabled: false,
 	},
+	aiBuilder: {
+		enabled: false,
+		setup: false,
+	},
 	workflowHistory: {
 		pruneTime: 0,
 		licensePruneTime: 0,
@@ -137,15 +150,13 @@ export const defaultSettings: FrontendSettings = {
 	},
 	aiAssistant: {
 		enabled: false,
+		setup: false,
 	},
 	aiCredits: {
 		enabled: false,
 		credits: 0,
 	},
 	easyAIWorkflowOnboarded: false,
-	partialExecution: {
-		version: 1,
-	},
 	folders: {
 		enabled: false,
 	},

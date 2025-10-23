@@ -1,0 +1,480 @@
+{
+	"createdAt": "2021-03-24T14:46:45.567Z",
+	"updatedAt": "2024-02-23T14:00:43.000Z",
+	"id": "151",
+	"name": "Wise:Account:getStatement getBalances getCurrencies:ExchangeRate:get:Profile:get getAll:Recipient:getAll:Quote:create get:Transfer:create get getAll execute delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 650],
+			"id": "b6204c57-404f-4c53-acc1-a9c9f2e698f5"
+		},
+		{
+			"parameters": {
+				"profileId": 16154361
+			},
+			"name": "Wise",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [650, 200],
+			"id": "b5851401-b389-4093-9ac2-4f3006f0d21c",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getCurrencies"
+			},
+			"name": "Wise1",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [800, 200],
+			"id": "f0ae63de-1ea4-4ab7-9e72-27aad926e330",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			},
+			"notes": "CAP_RESULTS_LENGTH=1"
+		},
+		{
+			"parameters": {
+				"operation": "getStatement",
+				"profileId": 16154361,
+				"borderlessAccountId": 23302,
+				"currency": "EUR",
+				"additionalFields": {
+					"lineStyle": "FLAT"
+				}
+			},
+			"name": "Wise2",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [500, 200],
+			"id": "519dda48-ddf1-403b-8dd0-9d91d503f2bb",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "exchangeRate",
+				"source": "EUR",
+				"target": "USD",
+				"additionalFields": {}
+			},
+			"name": "Wise3",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [500, 350],
+			"id": "ea08c815-9107-41b5-a5af-e2f45b251423",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			},
+			"notes": "CAP_RESULTS_LENGTH=1"
+		},
+		{
+			"parameters": {
+				"resource": "profile",
+				"profileId": 16154361
+			},
+			"name": "Wise4",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [500, 500],
+			"id": "8565eca9-04f5-4c9c-be56-8e3e424e907f",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "recipient",
+				"limit": 1
+			},
+			"name": "Wise5",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [500, 650],
+			"id": "4e57ca88-b2a7-4459-a0c7-09c71da2162b",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "create",
+				"profileId": 16154361,
+				"targetAccountId": 147784112,
+				"amount": 2,
+				"sourceCurrency": "EUR",
+				"targetCurrency": "EUR"
+			},
+			"name": "Wise6",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [500, 800],
+			"id": "0d28f340-cf11-4c34-922e-e82336dfed81",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"quoteId": "={{$node[\"Wise6\"].json[\"id\"]}}"
+			},
+			"name": "Wise7",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [640, 800],
+			"id": "463946cf-45f9-4499-af29-ca3f7ea4f149",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "create",
+				"profileId": 16154361,
+				"quoteId": "={{$node[\"Wise6\"].json[\"id\"]}}",
+				"targetAccountId": 700007874,
+				"additionalFields": {}
+			},
+			"name": "Wise8",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [800, 850],
+			"id": "7adccbb0-f2c0-433c-a80d-5ce191e71ec6",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"transferId": "={{$node[\"Wise8\"].json[\"id\"]}}"
+			},
+			"name": "Wise9",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [950, 850],
+			"id": "6f34d46a-b8a9-462c-912f-a9de39b43aba",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "getAll",
+				"profileId": 16154361,
+				"limit": 1,
+				"filters": {}
+			},
+			"name": "Wise10",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [1100, 850],
+			"executeOnce": false,
+			"alwaysOutputData": true,
+			"id": "ba5f7e05-3192-4727-9340-a1003b6b73cb",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "profile",
+				"operation": "getAll"
+			},
+			"name": "Wise12",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [650, 500],
+			"id": "a33da4e1-d27c-4f69-9ce0-0734dbce5df7",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "execute",
+				"profileId": 16154361,
+				"transferId": "={{$node[\"Wise8\"].json[\"id\"]}}"
+			},
+			"name": "Wise13",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [1250, 850],
+			"id": "093d0ca7-9888-4fb1-9734-bc3bf746ce73",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			},
+			"disabled": true
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "create",
+				"profileId": 16154361,
+				"targetAccountId": 147784112,
+				"amount": 2,
+				"sourceCurrency": "EUR",
+				"targetCurrency": "EUR"
+			},
+			"name": "Wise14",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [500, 1000],
+			"id": "52b98874-8d52-4e6f-bd45-808afaa13e20",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "create",
+				"profileId": 16154361,
+				"quoteId": "={{$node[\"Wise14\"].json[\"id\"]}}",
+				"targetAccountId": 700007874,
+				"additionalFields": {}
+			},
+			"name": "Wise16",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [650, 1050],
+			"id": "e3d1a7a9-db38-4786-a21a-400182843da5",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "delete",
+				"transferId": "={{$node[\"Wise16\"].json[\"id\"]}}"
+			},
+			"name": "Wise15",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [800, 1050],
+			"id": "18f10919-83ea-48e0-8df0-19b0ebb2673f",
+			"credentials": {
+				"wiseApi": {
+					"id": "122",
+					"name": "Wise API creds"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Wise5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Wise4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Wise3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Wise2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Wise6",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Wise14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise": {
+			"main": [
+				[
+					{
+						"node": "Wise1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise2": {
+			"main": [
+				[
+					{
+						"node": "Wise",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise6": {
+			"main": [
+				[
+					{
+						"node": "Wise7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise4": {
+			"main": [
+				[
+					{
+						"node": "Wise12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise7": {
+			"main": [
+				[
+					{
+						"node": "Wise8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise8": {
+			"main": [
+				[
+					{
+						"node": "Wise9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise9": {
+			"main": [
+				[
+					{
+						"node": "Wise10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise10": {
+			"main": [
+				[
+					{
+						"node": "Wise13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise14": {
+			"main": [
+				[
+					{
+						"node": "Wise16",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wise16": {
+			"main": [
+				[
+					{
+						"node": "Wise15",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "12d5670d-e8b6-4c6a-bf37-bcc7f8e53f43",
+	"triggerCount": 0,
+	"tags": []
+}

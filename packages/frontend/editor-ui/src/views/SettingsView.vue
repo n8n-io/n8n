@@ -1,10 +1,10 @@
 <script lang="ts" setup>
+import SettingsSidebar from '@/components/SettingsSidebar.vue';
+import { VIEWS } from '@/constants';
+import { isRouteLocationRaw } from '@/utils/typeGuards';
 import { onMounted, ref } from 'vue';
 import type { HistoryState } from 'vue-router';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
-import SettingsSidebar from '@/components/SettingsSidebar.vue';
-import { isRouteLocationRaw } from '@/utils/typeGuards';
 
 const router = useRouter();
 
@@ -37,7 +37,7 @@ onMounted(() => {
 					Because we're using nested routes the props are going to be bind to the top level route
 					so we need to pass them down to the child component
 				-->
-				<router-view name="settingsView" v-bind="$attrs" />
+				<RouterView name="settingsView" v-bind="$attrs" />
 			</div>
 		</div>
 	</div>
@@ -57,13 +57,14 @@ onMounted(() => {
 	padding-top: 70.5px;
 	height: 100%;
 	overflow: auto;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
+	position: relative;
 }
 
 .content {
 	height: 100%;
 	width: 100%;
 	max-width: 1440px;
-	padding: 0 var(--spacing-2xl);
+	padding: 0 var(--spacing--2xl);
 }
 </style>

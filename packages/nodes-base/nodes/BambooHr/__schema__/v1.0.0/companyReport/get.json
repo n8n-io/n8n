@@ -6,16 +6,10 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "firstName": {
-                        "type": "string"
-                    },
-                    "hireDate": {
+                    "fullName2": {
                         "type": "string"
                     },
                     "id": {
-                        "type": "string"
-                    },
-                    "lastName": {
                         "type": "string"
                     }
                 }
@@ -39,5 +33,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

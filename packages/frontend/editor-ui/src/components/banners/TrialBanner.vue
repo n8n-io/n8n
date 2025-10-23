@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { N8nButton, N8nText } from '@n8n/design-system';
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const cloudPlanStore = useCloudPlanStore();
@@ -85,9 +86,9 @@ function onUpdatePlanClick() {
 			</div>
 		</template>
 		<template #trailingContent>
-			<n8n-button type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
+			<N8nButton type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
 				locale.baseText('generic.upgradeNow')
-			}}</n8n-button>
+			}}</N8nButton>
 		</template>
 	</BaseBanner>
 </template>
@@ -96,12 +97,12 @@ function onUpdatePlanClick() {
 .content {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 .pipe {
 	display: inline-block;
-	font-size: var(--font-size-m);
+	font-size: var(--font-size--md);
 	padding: 0 0 2px;
 }
 
@@ -115,47 +116,47 @@ function onUpdatePlanClick() {
 	border: 0;
 	height: 5px;
 	border-radius: 20px;
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 .progressBar::-webkit-progress-bar {
 	width: 62.4px;
 	border: 0;
 	height: 5px;
 	border-radius: 20px;
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 .progressBar::-moz-progress-bar {
 	width: 62.4px;
 	border: 0;
 	height: 5px;
 	border-radius: 20px;
-	background-color: var(--color-foreground-base);
+	background-color: var(--color--foreground);
 }
 
 .progressBarSuccess::-moz-progress-bar {
-	background: var(--color-foreground-xdark);
+	background: var(--color--foreground--shade-2);
 	border-radius: 20px;
 }
 
 .progressBarSuccess::-webkit-progress-value {
-	background: var(--color-foreground-xdark);
+	background: var(--color--foreground--shade-2);
 	border-radius: 20px;
 }
 
 .progressBarDanger::-webkit-progress-value {
-	background: var(--color-danger);
+	background: var(--color--danger);
 	border-radius: 20px;
 }
 
 .progressBarDanger::-moz-progress-bar {
-	background: var(--color-danger);
+	background: var(--color--danger);
 }
 
 .usageText {
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-s);
-	margin-top: var(--spacing-xs);
-	line-height: var(--spacing-xs);
+	margin-left: var(--spacing--sm);
+	margin-right: var(--spacing--sm);
+	margin-top: var(--spacing--xs);
+	line-height: var(--spacing--xs);
 }
 
 .usageCounter {
@@ -163,14 +164,14 @@ function onUpdatePlanClick() {
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 }
 
 .danger {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .executionsCountSection {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 </style>

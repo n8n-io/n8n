@@ -40,6 +40,9 @@ export namespace PubSub {
 
 	namespace Commands {
 		export type ReloadLicense = ToCommand<'reload-license'>;
+		export type ReloadOIDCConfiguration = ToCommand<'reload-oidc-config'>;
+		export type ReloadSamlConfiguration = ToCommand<'reload-saml-config'>;
+		export type ReloadCredentialsOverwrites = ToCommand<'reload-overwrite-credentials'>;
 		export type RestartEventBus = ToCommand<'restart-event-bus'>;
 		export type ReloadExternalSecretsProviders = ToCommand<'reload-external-secrets-providers'>;
 		export type CommunityPackageInstall = ToCommand<'community-package-install'>;
@@ -54,6 +57,8 @@ export namespace PubSub {
 		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
+		export type ReloadSsoProvisioningConfiguration =
+			ToCommand<'reload-sso-provisioning-configuration'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -72,7 +77,11 @@ export namespace PubSub {
 		| Commands.DisplayWorkflowDeactivation
 		| Commands.DisplayWorkflowActivationError
 		| Commands.RelayExecutionLifecycleEvent
-		| Commands.ClearTestWebhooks;
+		| Commands.ClearTestWebhooks
+		| Commands.ReloadOIDCConfiguration
+		| Commands.ReloadSamlConfiguration
+		| Commands.ReloadCredentialsOverwrites
+		| Commands.ReloadSsoProvisioningConfiguration;
 
 	// ----------------------------------
 	//         worker responses

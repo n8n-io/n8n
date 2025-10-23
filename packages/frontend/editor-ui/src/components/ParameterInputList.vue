@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import type {
-	CalloutActionType,
+	CalloutAction,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { ADD_FORM_NOTICE, getParameterValueByPath, NodeHelpers } from 'n8n-workflow';
+import {
+	ADD_FORM_NOTICE,
+	getParameterValueByPath,
+	NodeHelpers,
+	resolveRelativePath,
+} from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -28,12 +33,18 @@ import {
 	MODAL_CONFIRM,
 	WAIT_NODE_TYPE,
 } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
+import { storeToRefs } from 'pinia';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
 import {
 	N8nCallout,
 	N8nIcon,
@@ -42,11 +53,8 @@ import {
 	N8nLink,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
-import { storeToRefs } from 'pinia';
-import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
-
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
 );
@@ -78,14 +86,21 @@ const emit = defineEmits<{
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 
 const message = useMessage();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
-const { dismissCallout, isCalloutDismissed, openRagStarterTemplate, isRagStarterCalloutVisible } =
-	useCalloutHelpers();
+const {
+	dismissCallout,
+	isCalloutDismissed,
+	openPreBuiltAgentsCollection,
+	openSampleWorkflowTemplate,
+	isRagStarterCalloutVisible,
+	isPreBuiltAgentsCalloutVisible,
+} = useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -152,12 +167,22 @@ const credentialsParameterIndex = computed(() => {
 	return filteredParameters.value.findIndex((parameter) => parameter.type === 'credentials');
 });
 
+const calloutParameterIndex = computed(() => {
+	return filteredParameters.value.findIndex((parameter) => parameter.type === 'callout');
+});
+
 const indexToShowSlotAt = computed(() => {
 	if (credentialsParameterIndex.value !== -1) {
 		return credentialsParameterIndex.value;
 	}
 
 	let index = 0;
+
+	// If the node has a callout don't show credentials before it
+	if (calloutParameterIndex.value !== -1) {
+		index = calloutParameterIndex.value + 1;
+	}
+
 	// For nodes that use old credentials UI, keep credentials below authentication field in NDV
 	// otherwise credentials will use auth filed position since the auth field is moved to credentials modal
 	const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.includes(nodeType.value?.name || '') ? 1 : 0;
@@ -192,11 +217,11 @@ watch(filteredParameterNames, (newValue, oldValue) => {
 });
 
 function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const connectedNodes = workflow.getChildNodes(triggerName);
+	const workflowObject = workflowsStore.workflowObject;
+	const connectedNodes = workflowObject.getChildNodes(triggerName);
 
 	const hasFormPage = connectedNodes.some((nodeName) => {
-		const _node = workflow.getNode(nodeName);
+		const _node = workflowObject.getNode(nodeName);
 		return _node && _node.type === FORM_NODE_TYPE;
 	});
 
@@ -237,18 +262,18 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 }
 
 function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const parentNodes = workflow.getParentNodes(nodeName);
+	const workflowObject = workflowsStore.workflowObject;
+	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflow.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
 	);
 	if (!formTriggerName) return parameters;
 
-	const connectedNodes = workflow.getChildNodes(formTriggerName);
+	const connectedNodes = workflowObject.getChildNodes(formTriggerName);
 
 	const hasFormPage = connectedNodes.some((_nodeName) => {
-		const _node = workflow.getNode(_nodeName);
+		const _node = workflowObject.getNode(_nodeName);
 		return _node && _node.type === FORM_NODE_TYPE;
 	});
 
@@ -276,11 +301,11 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const parentNodes = workflow.getParentNodes(nodeName);
+	const workflowObject = workflowsStore.workflowObject;
+	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflow.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
 	);
 
 	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
@@ -368,10 +393,7 @@ function shouldShowOptions(parameter: INodeProperties): boolean {
 }
 
 function getDependentParametersValues(parameter: INodeProperties): string | null {
-	const loadOptionsDependsOn = getParameterTypeOption<string[] | undefined>(
-		parameter,
-		'loadOptionsDependsOn',
-	);
+	const loadOptionsDependsOn = getParameterTypeOption(parameter, 'loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
 		return null;
@@ -383,7 +405,9 @@ function getDependentParametersValues(parameter: INodeProperties): string | null
 		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
-		for (const parameterPath of loadOptionsDependsOn) {
+		for (let parameterPath of loadOptionsDependsOn) {
+			parameterPath = resolveRelativePath(props.path, parameterPath);
+
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
 
@@ -403,6 +427,14 @@ function isRagStarterCallout(parameter: INodeProperties): boolean {
 	return parameter.type === 'callout' && parameter.name === 'ragStarterCallout';
 }
 
+function isAgentDefaultCallout(parameter: INodeProperties): boolean {
+	return parameter.type === 'callout' && parameter.name === 'aiAgentStarterCallout';
+}
+
+function isPreBuiltAgentsCallout(parameter: INodeProperties): boolean {
+	return parameter.type === 'callout' && parameter.name.startsWith('preBuiltAgentsCallout');
+}
+
 function isCalloutVisible(parameter: INodeProperties): boolean {
 	if (isCalloutDismissed(parameter.name)) return false;
 
@@ -410,16 +442,42 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 		return isRagStarterCalloutVisible.value;
 	}
 
+	if (isAgentDefaultCallout(parameter)) {
+		return !isPreBuiltAgentsCalloutVisible.value;
+	}
+
+	if (isPreBuiltAgentsCallout(parameter)) {
+		return isPreBuiltAgentsCalloutVisible.value;
+	}
+
 	return true;
 }
 
-async function onCalloutAction(action: CalloutActionType) {
-	if (action === 'openRagStarterTemplate') {
-		await openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
+function onCalloutAction(action: CalloutAction) {
+	switch (action.type) {
+		case 'openPreBuiltAgentsCollection':
+			void openPreBuiltAgentsCollection({
+				telemetry: {
+					source: 'ndv',
+					nodeType: activeNode.value?.type,
+				},
+				resetStacks: false,
+			});
+			break;
+		case 'openSampleWorkflowTemplate':
+			void openSampleWorkflowTemplate(action.templateId, {
+				telemetry: {
+					source: 'ndv',
+					nodeType: activeNode.value?.type,
+				},
+			});
+			break;
+		default:
+			break;
 	}
 }
 
-const onCalloutDismiss = async (parameter: INodeProperties) => {
+async function onCalloutDismiss(parameter: INodeProperties) {
 	const dismissConfirmed = await message.confirm(
 		i18n.baseText('parameterInputList.callout.dismiss.confirm.text'),
 		{
@@ -438,7 +496,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 	}
 
 	await dismissCallout(parameter.name);
-};
+}
 </script>
 
 <template>
@@ -481,6 +539,8 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 			<template v-else-if="parameter.type === 'callout'">
 				<N8nCallout
 					v-if="isCalloutVisible(parameter)"
+					:icon="(parameter.typeOptions?.calloutAction?.icon as IconName) || 'info'"
+					icon-size="large"
 					:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 					theme="secondary"
 				>
@@ -497,7 +557,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 								size="small"
 								:bold="true"
 								:underline="true"
-								@click="onCalloutAction(parameter.typeOptions.calloutAction.type)"
+								@click="onCalloutAction(parameter.typeOptions.calloutAction)"
 							>
 								{{ parameter.typeOptions.calloutAction.label }}
 							</N8nLink>
@@ -607,6 +667,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 				:path="getPath(parameter.name)"
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
 				:is-read-only="isReadOnly"
+				:allow-empty-strings="parameter.typeOptions?.resourceMapper?.allowEmptyValues"
 				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"
@@ -668,28 +729,28 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	--disabled-fill: var(--color-background-base);
+	--input--color--background--disabled: var(--color--background);
 	.icon-button {
 		position: absolute;
 		opacity: 0;
 		top: -3px;
-		left: calc(-0.5 * var(--spacing-xs));
+		left: calc(-0.5 * var(--spacing--xs));
 		transition: opacity 100ms ease-in;
 		Button {
-			color: var(--color-icon-base);
+			color: var(--icon--color);
 		}
 	}
 	.icon-button > Button:hover {
-		color: var(--color-icon-hover);
+		color: var(--icon--color--hover);
 	}
 
 	.indent > div {
-		padding-left: var(--spacing-s);
+		padding-left: var(--spacing--sm);
 	}
 
 	.multi-parameter {
 		position: relative;
-		margin: var(--spacing-xs) 0;
+		margin: var(--spacing--xs) 0;
 
 		.parameter-info {
 			display: none;
@@ -698,7 +759,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 
 	.parameter-item {
 		position: relative;
-		margin: var(--spacing-xs) 0;
+		margin: var(--spacing--xs) 0;
 	}
 	.parameter-item:hover > .icon-button,
 	.multi-parameter:hover > .icon-button {
@@ -706,28 +767,28 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 	}
 
 	.parameter-notice {
-		background-color: var(--color-warning-tint-2);
+		background-color: var(--color--warning--tint-2);
 		color: $custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;
 
 		a {
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 		}
 	}
 
 	.async-notice {
 		display: block;
-		padding: var(--spacing-3xs) 0;
+		padding: var(--spacing--3xs) 0;
 	}
 
 	.callout-dismiss {
-		margin-left: var(--spacing-xs);
+		margin-left: var(--spacing--xs);
 		line-height: 1;
 		cursor: pointer;
 	}
 	.callout-dismiss:hover {
-		color: var(--color-icon-hover);
+		color: var(--icon--color--hover);
 	}
 }
 </style>

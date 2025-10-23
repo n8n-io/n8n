@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeSettingsParameters } from './useNodeSettingsParameters';
@@ -38,6 +38,7 @@ describe('useNodeSettingsParameters', () => {
 			};
 			ndvStore.activeNodeName = 'Node1';
 			ndvStore.setActiveNodeName = vi.fn();
+			ndvStore.unsetActiveNodeName = vi.fn();
 			ndvStore.resetNDVPushRef = vi.fn();
 			focusPanelStore.openWithFocusedNodeParameter = vi.fn();
 			focusPanelStore.focusPanelActive = false;
@@ -73,7 +74,7 @@ describe('useNodeSettingsParameters', () => {
 				parameter,
 			});
 
-			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(null);
+			expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(ndvStore.resetNDVPushRef).toHaveBeenCalled();
 		});
 

@@ -1,0 +1,593 @@
+{
+	"createdAt": "2021-02-22T08:19:03.344Z",
+	"updatedAt": "2021-02-25T09:52:14.205Z",
+	"id": "52",
+	"name": "Coda:Table:getAllColumns getColumn getAllRows getRow createRow pushButton deleteRow:View:getAll get getAllViewColumns getAllViewRows updateViewRow pushViewButto n:Formula:get getAll:Control:get getAll",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 450],
+			"id": "20619e15-af58-4fc0-9d21-275a6e4d4ebb"
+		},
+		{
+			"parameters": {
+				"resource": "control",
+				"operation": "getAll",
+				"docId": "2-5DWWeFZp",
+				"limit": 1
+			},
+			"name": "Coda",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [430, 220],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "fc0f43ee-65aa-4676-b393-6e3e9ffc33ca"
+		},
+		{
+			"parameters": {
+				"resource": "control",
+				"docId": "2-5DWWeFZp",
+				"controlId": "={{$node[\"Coda\"].json[\"id\"]}}"
+			},
+			"name": "Coda1",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [580, 220],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "ac99a243-1fed-4faf-842d-96108d5b4d60"
+		},
+		{
+			"parameters": {
+				"resource": "formula",
+				"operation": "getAll",
+				"docId": "2-5DWWeFZp",
+				"limit": 1
+			},
+			"name": "Coda2",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [430, 370],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "8523646e-fffb-4958-b9fb-2ac34e3282e8"
+		},
+		{
+			"parameters": {
+				"resource": "formula",
+				"docId": "2-5DWWeFZp",
+				"formulaId": "={{$node[\"Coda2\"].json[\"id\"]}}"
+			},
+			"name": "Coda3",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [580, 370],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "7027e41a-e726-4a36-af68-e05d5c64efac"
+		},
+		{
+			"parameters": {
+				"operation": "getAllColumns",
+				"docId": "2-5DWWeFZp",
+				"tableId": "grid-lDqTU2W4nP",
+				"limit": 1
+			},
+			"name": "Coda4",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [430, 530],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "ddb40d66-f1ad-49c3-a11d-c10c384f3e4f"
+		},
+		{
+			"parameters": {
+				"operation": "getColumn",
+				"docId": "2-5DWWeFZp",
+				"tableId": "grid-lDqTU2W4nP",
+				"columnId": "={{$node[\"Coda4\"].json[\"id\"]}}"
+			},
+			"name": "Coda5",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [580, 530],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "e0443974-4778-4c76-9a7b-3307506f7ad9"
+		},
+		{
+			"parameters": {
+				"operation": "getAllRows",
+				"docId": "2-5DWWeFZp",
+				"tableId": "grid-lDqTU2W4nP",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Coda6",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [730, 530],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "4d07fe9e-29f0-481d-860d-623d5e2f4116"
+		},
+		{
+			"parameters": {
+				"operation": "getRow",
+				"docId": "2-5DWWeFZp",
+				"tableId": "grid-lDqTU2W4nP",
+				"rowId": "={{$node[\"Coda6\"].json[\"id\"]}}",
+				"options": {}
+			},
+			"name": "Coda7",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [880, 530],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "b00e4b21-5acb-493a-bb52-20725a4c4dde"
+		},
+		{
+			"parameters": {
+				"docId": "2-5DWWeFZp",
+				"tableId": "grid-lDqTU2W4nP",
+				"options": {}
+			},
+			"name": "Coda8",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [1180, 530],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "814390a0-e0f7-4981-9243-b34b5b613071"
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"number": [
+						{
+							"name": "number",
+							"value": 101
+						},
+						{
+							"name": "sum"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1030, 530],
+			"id": "99b92bf6-f5d5-4c43-bd76-f55735c496f2"
+		},
+		{
+			"parameters": {
+				"operation": "deleteRow",
+				"docId": "2-5DWWeFZp",
+				"tableId": "grid-lDqTU2W4nP",
+				"rowId": "={{$node[\"Coda6\"].json[\"id\"]}}"
+			},
+			"name": "Coda9",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [1480, 530],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "783160e7-a206-4dc3-9bce-b4b914c54a49"
+		},
+		{
+			"parameters": {
+				"operation": "pushButton",
+				"docId": "2-5DWWeFZp",
+				"tableId": "grid-lDqTU2W4nP",
+				"rowId": "={{$node[\"Coda6\"].json[\"id\"]}}",
+				"columnId": "c-hTB8QwFtUS"
+			},
+			"name": "Coda10",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [1330, 530],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "43a39974-ac1c-4c2c-9011-113b8865f770"
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "getAll",
+				"docId": "2-5DWWeFZp",
+				"limit": 1
+			},
+			"name": "Coda11",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [430, 700],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "01270518-cd5e-41bc-860e-800107940b68"
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"docId": "2-5DWWeFZp",
+				"viewId": "table-FTj1L0rh08"
+			},
+			"name": "Coda12",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [580, 700],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "f3f9ed26-a541-4107-ba9f-c1bd2004f886"
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "getAllViewColumns",
+				"docId": "2-5DWWeFZp",
+				"viewId": "table-FTj1L0rh08",
+				"limit": 1
+			},
+			"name": "Coda13",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [730, 700],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "6edc3858-5763-410f-8bb5-15bf84ce38db"
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "getAllViewRows",
+				"docId": "2-5DWWeFZp",
+				"viewId": "table-FTj1L0rh08",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Coda14",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [880, 700],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "2e87f275-a020-4629-8319-7a47d149796e"
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "updateViewRow",
+				"docId": "2-5DWWeFZp",
+				"viewId": "table-FTj1L0rh08",
+				"rowId": "={{$node[\"Coda14\"].json[\"id\"]}}",
+				"keyName": "number",
+				"options": {
+					"disableParsing": true
+				}
+			},
+			"name": "Coda15",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [1180, 700],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "0594b22d-0857-450a-9aa2-f2bf6cefd24d"
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"number": [
+						{
+							"name": "number",
+							"value": 102
+						},
+						{
+							"name": "sum"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1030, 700],
+			"id": "8af848c3-52a4-465b-99c7-e73c480825e4"
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "pushViewButton",
+				"docId": "2-5DWWeFZp",
+				"viewId": "table-FTj1L0rh08",
+				"rowId": "={{$node[\"Coda14\"].json[\"id\"]}}",
+				"columnId": "c-hTB8QwFtUS"
+			},
+			"name": "Coda16",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1,
+			"position": [1330, 700],
+			"credentials": {
+				"codaApi": {
+					"id": "37",
+					"name": "Code creds"
+				}
+			},
+			"id": "a48740c3-b5b1-4ac0-825b-accc0296dba0"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Coda11",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coda4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coda2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coda",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda": {
+			"main": [
+				[
+					{
+						"node": "Coda1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda2": {
+			"main": [
+				[
+					{
+						"node": "Coda3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda4": {
+			"main": [
+				[
+					{
+						"node": "Coda5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda5": {
+			"main": [
+				[
+					{
+						"node": "Coda6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda6": {
+			"main": [
+				[
+					{
+						"node": "Coda7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda7": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda8": {
+			"main": [
+				[
+					{
+						"node": "Coda10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Coda8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda10": {
+			"main": [
+				[
+					{
+						"node": "Coda9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda11": {
+			"main": [
+				[
+					{
+						"node": "Coda12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda12": {
+			"main": [
+				[
+					{
+						"node": "Coda13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda13": {
+			"main": [
+				[
+					{
+						"node": "Coda14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda14": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coda15": {
+			"main": [
+				[
+					{
+						"node": "Coda16",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "Coda15",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

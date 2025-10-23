@@ -15,7 +15,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -33,6 +33,8 @@ import { useUIStore } from '@/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nButton, N8nTooltip } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
 const POPUP_UPDATE_DELAY = 3000;
@@ -52,11 +54,13 @@ const props = withDefaults(
 		hideLabel?: boolean;
 		tooltip?: string;
 		tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
+		showLoadingSpinner?: boolean;
 	}>(),
 	{
 		disabled: false,
 		transparent: false,
 		square: false,
+		showLoadingSpinner: true,
 	},
 );
 
@@ -65,6 +69,8 @@ const emit = defineEmits<{
 	execute: [];
 	valueChanged: [value: IUpdateInformation];
 }>();
+
+const slots = defineSlots<{ persistentTooltipContent?: {} }>();
 
 defineOptions({
 	inheritAttrs: false,
@@ -77,6 +83,7 @@ const router = useRouter();
 const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const externalHooks = useExternalHooks();
 const toast = useToast();
 const ndvStore = useNDVStore();
@@ -97,7 +104,8 @@ const isNodeRunning = computed(() => {
 	if (!workflowsStore.isWorkflowRunning || codeGenerationInProgress.value) return false;
 	const triggeredNode = workflowsStore.executedNode;
 	return (
-		workflowsStore.isNodeExecuting(node.value?.name ?? '') || triggeredNode === node.value?.name
+		workflowState.executingNode.isNodeExecuting(node.value?.name ?? '') ||
+		triggeredNode === node.value?.name
 	);
 });
 
@@ -330,7 +338,7 @@ async function onClick() {
 	}
 
 	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
-		ndvStore.setActiveNodeName(null);
+		ndvStore.unsetActiveNodeName();
 		workflowsStore.chatPartialExecutionDestinationNode = props.nodeName;
 		nodeViewEventBus.emit('openChat');
 	} else if (isListeningForEvents.value) {
@@ -390,13 +398,18 @@ async function onClick() {
 <template>
 	<N8nTooltip
 		:placement="tooltipPlacement ?? 'right'"
-		:disabled="!tooltipText"
-		:content="tooltipText"
+		:disabled="!tooltipText && !slots.persistentTooltipContent"
+		:visible="slots.persistentTooltipContent ? true : undefined"
 	>
+		<template #content>
+			<slot name="persistentTooltipContent">
+				{{ tooltipText }}
+			</slot>
+		</template>
 		<N8nButton
 			v-bind="$attrs"
-			:loading="isLoading"
-			:disabled="disabled || !!disabledHint"
+			:loading="isLoading && showLoadingSpinner"
+			:disabled="disabled || !!disabledHint || (isLoading && !showLoadingSpinner)"
 			:label="buttonLabel"
 			:type="type"
 			:size="size"

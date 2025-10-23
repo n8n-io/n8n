@@ -20,7 +20,13 @@ import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
 
-type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
+type ExecutionTrackDataKey =
+	| 'manual_error'
+	| 'manual_success'
+	| 'prod_error'
+	| 'prod_success'
+	| 'manual_crashed'
+	| 'prod_crashed';
 
 interface IExecutionTrackData {
 	count: number;
@@ -33,6 +39,8 @@ interface IExecutionsBuffer {
 		manual_success?: IExecutionTrackData;
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
+		manual_crashed?: IExecutionTrackData;
+		prod_crashed?: IExecutionTrackData;
 		user_id: string | undefined;
 	};
 }
@@ -103,7 +111,10 @@ export class Telemetry {
 				(data.manual_error?.count ?? 0) +
 				(data.manual_success?.count ?? 0) +
 				(data.prod_error?.count ?? 0) +
-				(data.prod_success?.count ?? 0);
+				(data.prod_success?.count ?? 0) +
+				(data.manual_crashed?.count ?? 0) +
+				(data.prod_crashed?.count ?? 0);
+
 			return sum > 0;
 		});
 
@@ -146,9 +157,14 @@ export class Telemetry {
 				user_id: properties.user_id,
 			};
 
-			const key: ExecutionTrackDataKey = `${properties.is_manual ? 'manual' : 'prod'}_${
-				properties.success ? 'success' : 'error'
-			}`;
+			let key: ExecutionTrackDataKey;
+			if (properties.crashed) {
+				key = `${properties.is_manual ? 'manual' : 'prod'}_crashed`;
+			} else {
+				key = `${properties.is_manual ? 'manual' : 'prod'}_${
+					properties.success ? 'success' : 'error'
+				}`;
+			}
 
 			const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
 
@@ -214,6 +230,8 @@ export class Telemetry {
 			properties: updatedProperties,
 			context: {},
 		};
+
+		this.postHog?.track(payload);
 
 		return this.rudderStack.track({
 			...payload,

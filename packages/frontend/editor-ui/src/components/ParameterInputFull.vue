@@ -7,9 +7,10 @@ import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import FromAiOverrideButton from '@/components/ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOverrideField.vue';
+import ParameterOverrideSelectableList from '@/components/ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -19,7 +20,6 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { N8nInputLabel } from '@n8n/design-system';
 import {
 	buildValueFromOverride,
 	type FromAIOverride,
@@ -28,7 +28,10 @@ import {
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverrideUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { inject } from 'vue';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
 
+import { N8nInputLabel } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -57,6 +60,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	blur: [];
 	update: [value: IUpdateInformation];
+	hover: [hovered: boolean];
 }>();
 
 const i18n = useI18n();
@@ -66,11 +70,21 @@ const eventBus = ref(createEventBus());
 const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
+const wrapperHovered = ref(false);
 
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
 
-const activeNode = computed(() => ndvStore.activeNode);
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const activeNode = computed(() => {
+	const ctx = expressionLocalResolveCtx?.value;
+
+	if (ctx) {
+		return ctx.workflow.getNode(ctx.nodeName);
+	}
+
+	return ndvStore.activeNode;
+});
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
 const canBeContentOverride = computed(() => {
@@ -137,6 +151,14 @@ function onBlur() {
 
 function onMenuExpanded(expanded: boolean) {
 	menuExpanded.value = expanded;
+}
+
+function onWrapperMouseEnter() {
+	wrapperHovered.value = true;
+}
+
+function onWrapperMouseLeave() {
+	wrapperHovered.value = false;
 }
 
 function optionSelected(command: string) {
@@ -249,6 +271,10 @@ watch(
 	},
 );
 
+watch(wrapperHovered, (hovered) => {
+	emit('hover', hovered);
+});
+
 const parameterInputWrapper = useTemplateRef('parameterInputWrapper');
 const isSingleLineInput: ComputedRef<boolean> = computed(
 	() => parameterInputWrapper.value?.isSingleLineInput ?? false,
@@ -304,7 +330,10 @@ function removeOverride(clearField = false) {
 		:options-position="optionsPosition"
 		:bold="false"
 		:size="label.size"
+		:input-name="parameter.name"
 		color="text-dark"
+		@mouseenter="onWrapperMouseEnter"
+		@mouseleave="onWrapperMouseLeave"
 	>
 		<template
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
@@ -328,6 +357,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -390,6 +420,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>

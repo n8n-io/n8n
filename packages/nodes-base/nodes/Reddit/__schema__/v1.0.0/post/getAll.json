@@ -4,6 +4,12 @@
         "allow_live_comments": {
             "type": "boolean"
         },
+        "approved_at_utc": {
+            "type": "null"
+        },
+        "approved_by": {
+            "type": "null"
+        },
         "archived": {
             "type": "boolean"
         },
@@ -15,10 +21,16 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "a": {
+                        "type": "string"
+                    },
                     "e": {
                         "type": "string"
                     },
                     "t": {
+                        "type": "string"
+                    },
+                    "u": {
                         "type": "string"
                     }
                 }
@@ -57,9 +69,6 @@
         "clicked": {
             "type": "boolean"
         },
-        "content_categories": {
-            "type": "null"
-        },
         "contest_mode": {
             "type": "boolean"
         },
@@ -68,6 +77,9 @@
         },
         "created_utc": {
             "type": "integer"
+        },
+        "discussion_type": {
+            "type": "null"
         },
         "domain": {
             "type": "string"
@@ -158,6 +170,9 @@
         "num_crossposts": {
             "type": "integer"
         },
+        "num_reports": {
+            "type": "null"
+        },
         "over_18": {
             "type": "boolean"
         },
@@ -174,6 +189,12 @@
             "type": "null"
         },
         "removed_by": {
+            "type": "null"
+        },
+        "removed_by_category": {
+            "type": "null"
+        },
+        "report_reasons": {
             "type": "null"
         },
         "saved": {
@@ -234,5 +255,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 4
 }

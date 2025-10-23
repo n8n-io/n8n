@@ -1,0 +1,28 @@
+{
+	"id": 200,
+	"planId": 1,
+	"pruneExecutionsInterval": 168,
+	"monthlyExecutionsLimit": 1000,
+	"activeWorkflowsLimit": 20,
+	"credentialsLimit": 100,
+	"supportTier": "community",
+	"displayName": "Trial",
+	"enabledFeatures": ["userManagement", "advancedExecutionFilters", "sharing"],
+	"licenseFeatures": {
+		"feat:sharing": true,
+		"feat:advancedExecutionFilters": true,
+		"quota:users": -1,
+		"quota:maxVariables": -1,
+		"feat:variables": true
+	},
+	"metadata": {
+		"version": "v1",
+		"group": "trial",
+		"slug": "trial-2",
+		"trial": {
+			"length": 14,
+			"gracePeriod": 3
+		}
+	},
+	"expirationDate": "2023-08-30T15:47:27.611Z"
+}

@@ -1,4 +1,4 @@
-import { type LogDetailsPanelState } from '@/features/logs/logs.types';
+import { type LogDetailsPanelState } from '@/features/execution/logs/logs.types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL,
@@ -9,7 +9,12 @@ import {
 import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { LOG_DETAILS_PANEL_STATE, LOGS_PANEL_STATE } from '@/features/logs/logs.constants';
+import {
+	LOG_DETAILS_PANEL_STATE,
+	LOGS_PANEL_STATE,
+} from '@/features/execution/logs/logs.constants';
+import type { ChatMessage } from '@n8n/chat/types';
+import { v4 as uuid } from 'uuid';
 
 export const useLogsStore = defineStore('logs', () => {
 	const isOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
@@ -39,8 +44,23 @@ export const useLogsStore = defineStore('logs', () => {
 
 	const telemetry = useTelemetry();
 
+	const chatSessionId = ref<string>(getNewSessionId());
+	const chatSessionMessages = ref<ChatMessage[]>([]);
+
 	function setHeight(value: number) {
 		height.value = value;
+	}
+
+	function getNewSessionId(): string {
+		return uuid().replace(/-/g, '');
+	}
+
+	function resetChatSessionId() {
+		chatSessionId.value = getNewSessionId();
+	}
+
+	function resetMessages() {
+		chatSessionMessages.value = [];
 	}
 
 	function toggleOpen(value?: boolean) {
@@ -101,6 +121,10 @@ export const useLogsStore = defineStore('logs', () => {
 		isLogSelectionSyncedWithCanvas.value = value ?? !isLogSelectionSyncedWithCanvas.value;
 	}
 
+	function addChatMessage(message: ChatMessage) {
+		chatSessionMessages.value.push(message);
+	}
+
 	return {
 		state,
 		isOpen: computed(() => state.value !== LOGS_PANEL_STATE.CLOSED),
@@ -109,6 +133,9 @@ export const useLogsStore = defineStore('logs', () => {
 		),
 		height: computed(() => height.value),
 		isLogSelectionSyncedWithCanvas: computed(() => isLogSelectionSyncedWithCanvas.value),
+		chatSessionId: computed(() => chatSessionId.value),
+		chatSessionMessages: computed(() => chatSessionMessages.value),
+		addChatMessage,
 		setHeight,
 		toggleOpen,
 		setPreferPoppedOut,
@@ -116,5 +143,7 @@ export const useLogsStore = defineStore('logs', () => {
 		toggleInputOpen,
 		toggleOutputOpen,
 		toggleLogSelectionSync,
+		resetChatSessionId,
+		resetMessages,
 	};
 });

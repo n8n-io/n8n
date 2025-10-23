@@ -7,6 +7,7 @@ import { useVersionsStore } from '@/stores/versions.store';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 const versionsStore = useVersionsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -50,7 +51,7 @@ const i18n = useI18n();
 					{{ i18n.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
-				<n8n-button
+				<N8nButton
 					v-if="versionsStore.infoUrl"
 					:text="true"
 					type="primary"
@@ -59,11 +60,11 @@ const i18n = useI18n();
 					:bold="true"
 					@click="pageRedirectionHelper.goToVersions()"
 				>
-					<n8n-icon icon="info" class="mr-2xs" />
+					<N8nIcon icon="info" class="mr-2xs" />
 					<span>
 						{{ i18n.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
-				</n8n-button>
+				</N8nButton>
 			</section>
 			<section :class="$style.versions">
 				<div
@@ -84,11 +85,11 @@ const i18n = useI18n();
 	font-size: 24px;
 	line-height: 24px;
 	color: $updates-panel-text-color;
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 }
 
 .description {
-	padding: 0px 30px;
+	padding: 0 30px;
 	margin-block-start: 16px;
 	margin-block-end: 30px;
 
@@ -96,8 +97,8 @@ const i18n = useI18n();
 		font-size: 16px;
 		line-height: 22px;
 		color: $updates-panel-description-text-color;
-		font-weight: var(--font-weight-regular);
-		margin: 0 0 16px 0;
+		font-weight: var(--font-weight--regular);
+		margin: 0 0 16px;
 	}
 
 	div {
@@ -105,12 +106,12 @@ const i18n = useI18n();
 	}
 
 	.link {
-		padding-left: 0px;
+		padding-left: 0;
 		display: flex;
 	}
 
 	.link:hover {
-		color: var(--prim-color-primary);
+		color: var(--color--primary);
 		text-decoration: none;
 	}
 }

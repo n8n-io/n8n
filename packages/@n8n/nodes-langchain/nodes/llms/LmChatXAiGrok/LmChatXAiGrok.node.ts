@@ -234,7 +234,7 @@ export class LmChatXAiGrok implements INodeType {
 		};
 
 		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey,
+			apiKey: credentials.apiKey,
 			model: modelName,
 			...options,
 			timeout: options.timeout ?? 60000,

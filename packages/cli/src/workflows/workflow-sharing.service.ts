@@ -3,10 +3,10 @@ import { ProjectRelationRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	hasGlobalScope,
-	rolesWithScope,
 	type ProjectRole,
 	type WorkflowSharingRole,
 	type Scope,
+	PROJECT_OWNER_ROLE_SLUG,
 } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -46,9 +46,13 @@ export class WorkflowSharingService {
 		}
 
 		const projectRoles =
-			'scopes' in options ? rolesWithScope('project', options.scopes) : options.projectRoles;
+			'scopes' in options
+				? await this.roleService.rolesWithScope('project', options.scopes)
+				: options.projectRoles;
 		const workflowRoles =
-			'scopes' in options ? rolesWithScope('workflow', options.scopes) : options.workflowRoles;
+			'scopes' in options
+				? await this.roleService.rolesWithScope('workflow', options.scopes)
+				: options.workflowRoles;
 
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: {
@@ -74,7 +78,7 @@ export class WorkflowSharingService {
 				project: {
 					projectRelations: {
 						userId: user.id,
-						role: 'project:personalOwner',
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					},
 				},
 			},
@@ -115,7 +119,7 @@ export class WorkflowSharingService {
 				project: {
 					projectRelations: {
 						userId: user.id,
-						role: 'project:personalOwner',
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					},
 				},
 			},

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import type {
-	FieldType,
 	INodeIssues,
 	INodeParameters,
 	INodeProperties,
@@ -14,7 +13,7 @@ import ParameterIssues from '@/components//ParameterIssues.vue';
 import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale, useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import {
 	fieldCannotBeDeleted,
 	isMatchingField,
@@ -27,9 +26,9 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-
 interface Props {
 	parameter: INodeProperties;
 	path: string;
@@ -51,7 +50,6 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	isDataStale: false,
 });
-const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
 const {
 	resourceMapperTypeOptions,
@@ -254,10 +252,15 @@ function getFieldIssues(field: INodeProperties): string[] {
 }
 
 function getParamType(field: ResourceMapperField): NodePropertyTypes {
-	if (field.type && !FORCE_TEXT_INPUT_FOR_TYPES.includes(field.type)) {
-		return field.type as NodePropertyTypes;
+	switch (field.type) {
+		case 'object':
+		case 'array':
+			return 'json';
+		case 'time':
+			return 'string';
+		default:
+			return (field.type as NodePropertyTypes) ?? 'string';
 	}
-	return 'string';
 }
 
 function getParsedFieldName(fullName: string): string {
@@ -445,7 +448,7 @@ defineExpose({
 .parameterItem {
 	--delete-option-width: 22px;
 	display: flex;
-	padding: 0 0 0 var(--spacing-s);
+	padding: 0 0 0 var(--spacing--sm);
 
 	.parameterInput {
 		width: calc(100% - var(--delete-option-width));
@@ -458,32 +461,32 @@ defineExpose({
 	&.hasIssues {
 		.parameterIssues {
 			float: none;
-			padding-top: var(--spacing-xl);
+			padding-top: var(--spacing--xl);
 		}
 		input,
 		input:focus {
-			--input-border-color: var(--color-danger);
-			border-color: var(--color-danger);
+			--input--border-color: var(--color--danger);
+			border-color: var(--color--danger);
 		}
 	}
 }
 
 .parameterTooltipIcon {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-light) !important;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1) !important;
 	width: 26px; // match trash button size
 	text-align: center;
 }
 
 .addOption {
-	margin-top: var(--spacing-l);
-	padding: 0 0 0 var(--spacing-s);
+	margin-top: var(--spacing--lg);
+	padding: 0 0 0 var(--spacing--sm);
 }
 
 .staleDataWarning {
 	display: flex;
-	height: var(--spacing-m);
+	height: var(--spacing--md);
 	align-items: baseline;
-	gap: var(--spacing-5xs);
+	gap: var(--spacing--5xs);
 }
 </style>

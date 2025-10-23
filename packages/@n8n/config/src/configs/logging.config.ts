@@ -16,12 +16,30 @@ export const LOG_SCOPES = [
 	'scaling',
 	'waiting-executions',
 	'task-runner',
+	'task-runner-js',
+	'task-runner-py',
 	'insights',
 	'workflow-activation',
 	'ssh-client',
+	'data-table',
+	'cron',
+	'community-nodes',
+	'legacy-sqlite-execution-recovery',
+	'chat-hub',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
+
+@Config
+export class CronLoggingConfig {
+	/**
+	 * Interval in minutes to log currently active cron jobs. Set to `0` to disable.
+	 *
+	 * @example `N8N_LOG_CRON_ACTIVE_INTERVAL=30` will log active crons every 30 minutes.
+	 */
+	@Env('N8N_LOG_CRON_ACTIVE_INTERVAL')
+	activeInterval: number = 0;
+}
 
 @Config
 class FileLoggingConfig {
@@ -79,6 +97,9 @@ export class LoggingConfig {
 	@Nested
 	file: FileLoggingConfig;
 
+	@Nested
+	cron: CronLoggingConfig;
+
 	/**
 	 * Scopes to filter logs by. Nothing is filtered by default.
 	 *
@@ -94,9 +115,11 @@ export class LoggingConfig {
 	 * - `redis`
 	 * - `scaling`
 	 * - `waiting-executions`
-	 * - `task-runner`
+	 * - `task-runner-js`
+	 * - `task-runner-py`
 	 * - `workflow-activation`
 	 * - `insights`
+	 * - `chat-hub`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

@@ -1,28 +1,34 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 
+import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
-import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
-import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { useNDVStore } from '@/stores/ndv.store';
+import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
+import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import { useTelemetry } from '@/composables/useTelemetry';
-import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
+import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
+import { CanvasKey } from '@/constants';
+import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
+import { N8nButton } from '@n8n/design-system';
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
 const selection = ref<SelectionRange>();
 const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 const container = ref<HTMLDivElement>();
+const outputPopover = ref<InstanceType<typeof InlineExpressionEditorOutput>>();
 
 type Props = {
 	path: string;
@@ -46,14 +52,20 @@ const emit = defineEmits<{
 	'modal-opener-click': [];
 	'update:model-value': [value: string];
 	focus: [];
-	blur: [];
+	blur: [FocusEvent | KeyboardEvent | undefined];
 }>();
 
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
+const canvas = inject(CanvasKey, undefined);
+const isInExperimentalNdv = useIsInExperimentalNdv();
+
 const isDragging = computed(() => ndvStore.isDraggableDragging);
+const isOutputPopoverVisible = computed(
+	() => isFocused.value && (!isInExperimentalNdv.value || !canvas?.isPaneMoving.value),
+);
 
 function select() {
 	if (inlineInput.value) {
@@ -80,12 +92,16 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		return; // prevent blur on resizing
 	}
 
+	if (isEventTargetContainedBy(event?.target, outputPopover.value?.contentRef)) {
+		return;
+	}
+
 	const wasFocused = isFocused.value;
 
 	isFocused.value = false;
 
 	if (wasFocused) {
-		emit('blur');
+		emit('blur', event);
 
 		const telemetryPayload = createExpressionTelemetryPayload(
 			segments.value,
@@ -161,7 +177,8 @@ onBeforeUnmount(() => {
 });
 
 watch(isDragging, (newIsDragging) => {
-	if (newIsDragging) {
+	// The input must stay focused in experimental NDV so that the input panel popover is open while dragging
+	if (newIsDragging && !isInExperimentalNdv.value) {
 		onBlur();
 	}
 });
@@ -200,7 +217,7 @@ defineExpose({ focus, select });
 					/>
 				</template>
 			</DraggableTarget>
-			<n8n-button
+			<N8nButton
 				v-if="!isDragging"
 				square
 				outline
@@ -212,13 +229,16 @@ defineExpose({ focus, select });
 				@click="emit('modal-opener-click')"
 			/>
 		</div>
+
 		<InlineExpressionEditorOutput
+			ref="outputPopover"
+			:visible="isOutputPopoverVisible"
 			:unresolved-expression="modelValue"
 			:selection="selection"
 			:editor-state="editorState"
 			:segments="segments"
 			:is-read-only="isReadOnly"
-			:visible="isFocused"
+			:virtual-ref="container"
 		/>
 	</div>
 </template>
@@ -229,7 +249,7 @@ defineExpose({ focus, select });
 	flex-grow: 1;
 
 	:global(.cm-editor) {
-		background-color: var(--color-code-background);
+		background-color: var(--code--color--background);
 	}
 
 	.all-sections {
@@ -257,20 +277,19 @@ defineExpose({ focus, select });
 	position: absolute;
 	right: 0;
 	bottom: 0;
-	background-color: var(--color-code-background);
+	background-color: var(--code--color--background);
 	padding: 3px;
 	line-height: 9px;
-	border: var(--input-border-color, var(--border-color-base))
-		var(--input-border-style, var(--border-style-base))
-		var(--input-border-width, var(--border-width-base));
+	border: var(--input--border-color, var(--border-color))
+		var(--input--border-style, var(--border-style)) var(--input--border-width, var(--border-width));
 	cursor: pointer;
 	border-radius: 0;
-	border-top-left-radius: var(--border-radius-base);
+	border-top-left-radius: var(--radius);
 
 	&:hover {
-		border: var(--input-border-color, var(--border-color-base))
-			var(--input-border-style, var(--border-style-base))
-			var(--input-border-width, var(--border-width-base));
+		border: var(--input--border-color, var(--border-color))
+			var(--input--border-style, var(--border-style))
+			var(--input--border-width, var(--border-width));
 	}
 
 	svg {
@@ -281,24 +300,24 @@ defineExpose({ focus, select });
 }
 
 .focused > .prepend-section {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 	border-bottom-left-radius: 0;
 }
 
 .focused :global(.cm-editor) {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 }
 
 .focused > .expression-editor-modal-opener {
-	border-color: var(--color-secondary);
+	border-color: var(--color--secondary);
 	border-bottom-right-radius: 0;
-	background-color: var(--color-code-background);
+	background-color: var(--code--color--background);
 }
 
 .droppable {
-	--input-border-color: var(--color-ndv-droppable-parameter);
-	--input-border-right-color: var(--color-ndv-droppable-parameter);
-	--input-border-style: dashed;
+	--input--border-color: var(--ndv--droppable-parameter--color);
+	--input--border-right-color: var(--ndv--droppable-parameter--color);
+	--input--border-style: dashed;
 
 	:global(.cm-editor) {
 		border-width: 1.5px;
@@ -306,10 +325,10 @@ defineExpose({ focus, select });
 }
 
 .activeDrop {
-	--input-border-color: var(--color-success);
-	--input-border-right-color: var(--color-success);
-	--input-background-color: var(--color-foreground-xlight);
-	--input-border-style: solid;
+	--input--border-color: var(--color--success);
+	--input--border-right-color: var(--color--success);
+	--input--color--background: var(--color--foreground--tint-2);
+	--input--border-style: solid;
 
 	:global(.cm-editor) {
 		cursor: grabbing !important;

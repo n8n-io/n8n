@@ -18,6 +18,7 @@ import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 
 import { AuthController } from '../auth.controller';
+import { AuthError } from '@/errors/response-errors/auth.error';
 
 jest.mock('@/auth');
 
@@ -40,6 +41,10 @@ describe('AuthController', () => {
 	const postHog = Container.get(PostHogClient);
 
 	describe('login', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
 		it('should not validate email in "emailOrLdapLoginId" if LDAP is enabled', async () => {
 			// Arrange
 
@@ -47,7 +52,7 @@ describe('AuthController', () => {
 
 			const member = mock<User>({
 				id: '123',
-				role: 'global:member',
+				role: { slug: 'global:member' },
 				mfaEnabled: false,
 			});
 
@@ -97,6 +102,79 @@ describe('AuthController', () => {
 				posthog: postHog,
 				withScopes: true,
 			});
+		});
+
+		it('should not allow members to login with email if "OIDC" is the authentication method', async () => {
+			const member = mock<User>({
+				id: '123',
+				role: { slug: 'global:member' },
+				mfaEnabled: false,
+			});
+
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'password',
+			});
+
+			const req = mock<AuthenticatedRequest>({
+				user: member,
+				body,
+				browserId: '1',
+			});
+
+			const res = mock<Response>();
+
+			mockedAuth.handleEmailLogin.mockResolvedValue(member);
+			config.set('userManagement.authenticationMethod', 'oidc');
+
+			// Act
+
+			await expect(controller.login(req, res, body)).rejects.toThrowError(
+				new AuthError('SSO is enabled, please log in with SSO'),
+			);
+
+			// Assert
+
+			expect(mockedAuth.handleEmailLogin).toHaveBeenCalledWith(
+				body.emailOrLdapLoginId,
+				body.password,
+			);
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+		});
+
+		it('should allow owners to login with email if "OIDC" is the authentication method', async () => {
+			config.set('userManagement.authenticationMethod', 'oidc');
+
+			const member = mock<User>({
+				id: '123',
+				role: { slug: 'global:owner' },
+				mfaEnabled: false,
+			});
+
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'password',
+			});
+
+			const req = mock<AuthenticatedRequest>({
+				user: member,
+				body,
+				browserId: '1',
+			});
+
+			const res = mock<Response>();
+
+			mockedAuth.handleEmailLogin.mockResolvedValue(member); // Act
+
+			await controller.login(req, res, body);
+
+			// Assert
+
+			expect(mockedAuth.handleEmailLogin).toHaveBeenCalledWith(
+				body.emailOrLdapLoginId,
+				body.password,
+			);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, '1');
 		});
 	});
 });

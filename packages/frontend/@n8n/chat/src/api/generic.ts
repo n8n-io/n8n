@@ -24,7 +24,15 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 		headers,
 	});
 
-	return (await response.json()) as T;
+	let responseData;
+
+	try {
+		responseData = await response.clone().json();
+	} catch (error) {
+		responseData = await response.text();
+	}
+
+	return responseData as T;
 }
 
 export async function get<T>(url: string, query: object = {}, options: RequestInit = {}) {
@@ -47,14 +55,19 @@ export async function post<T>(url: string, body: object = {}, options: RequestIn
 }
 export async function postWithFiles<T>(
 	url: string,
-	body: Record<string, unknown> = {},
+	body: Record<string, string | object> = {},
 	files: File[] = [],
 	options: RequestInit = {},
 ) {
 	const formData = new FormData();
 
 	for (const key in body) {
-		formData.append(key, body[key] as string);
+		const value = body[key];
+		if (typeof value === 'object' && value !== null) {
+			formData.append(key, JSON.stringify(value));
+		} else {
+			formData.append(key, value);
+		}
 	}
 
 	for (const file of files) {

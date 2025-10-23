@@ -4,6 +4,10 @@
 @use '../common/var';
 @use 'config';
 
+// Module-level variables for BEM mixins
+$B: null;
+$E: null;
+
 /* Break-points
  -------------------------- */
 @mixin res($key, $map: var.$breakpoints) {
@@ -21,7 +25,7 @@
  -------------------------- */
 @mixin scroll-bar {
 	$scrollbar-thumb-background: #b4bccc;
-	$scrollbar-track-background: var(--color-foreground-xlight);
+	$scrollbar-track-background: var(--color--foreground--tint-2);
 
 	&::-webkit-scrollbar {
 		z-index: 11;

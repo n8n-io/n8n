@@ -45,8 +45,10 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 export const useActions = () => {
+	const workflowState = injectWorkflowState();
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
@@ -182,7 +184,13 @@ export const useActions = () => {
 	function actionDataToNodeTypeSelectedPayload(actionData: ActionData): NodeTypeSelectedPayload {
 		const result: NodeTypeSelectedPayload = {
 			type: actionData.key,
+			actionName: actionData.name,
 		};
+
+		if (typeof actionData.value.language === 'string') {
+			result.parameters = { language: actionData.value.language };
+			return result;
+		}
 
 		if (
 			typeof actionData.value.resource === 'string' ||
@@ -365,17 +373,15 @@ export const useActions = () => {
 		rootView = '',
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-		const storeWatcher = onWorkflowStoreAction(
-			({ name, after, store: { setLastNodeParameters }, args }) => {
-				if (name !== 'addNode' || args[0].type !== action.key) return;
-				after(() => {
-					setLastNodeParameters(action);
-					if (telemetry) trackActionSelected(action, telemetry, rootView);
-					// Unsubscribe from the store watcher
-					storeWatcher();
-				});
-			},
-		);
+		const storeWatcher = onWorkflowStoreAction(({ name, after, args }) => {
+			if (name !== 'addNode' || args[0].type !== action.key) return;
+			after(() => {
+				workflowState.setLastNodeParameters(action);
+				if (telemetry) trackActionSelected(action, telemetry, rootView);
+				// Unsubscribe from the store watcher
+				storeWatcher();
+			});
+		});
 		return storeWatcher;
 	}
 
@@ -391,7 +397,6 @@ export const useActions = () => {
 			resource: (action.value as INodeParameters).resource || '',
 		};
 		void useExternalHooks().run('nodeCreateList.addAction', payload);
-		useNodeCreatorStore().onAddActions(payload);
 	}
 
 	return {

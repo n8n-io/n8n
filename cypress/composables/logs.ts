@@ -71,13 +71,14 @@ export function toggleInputPanel() {
 }
 
 export function clickOpenNdvAtRow(rowIndex: number) {
-	getLogEntries().eq(rowIndex).realHover();
+	getLogEntries().eq(rowIndex).trigger('focus').realHover();
 	getLogEntries().eq(rowIndex).find('[aria-label="Open..."]').click();
 }
 
 export function clickTriggerPartialExecutionAtRow(rowIndex: number) {
+	getLogEntries().eq(rowIndex).scrollIntoView();
 	getLogEntries().eq(rowIndex).realHover();
-	getLogEntries().eq(rowIndex).find('[aria-label="Execute step"]').click();
+	getLogEntries().eq(rowIndex).find('[aria-label="Execute step"]').click({ force: true });
 }
 
 export function setInputDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema') {

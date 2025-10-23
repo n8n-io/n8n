@@ -23,7 +23,7 @@ import {
 } from '@/utils/nodeSettingsUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import {
@@ -31,9 +31,11 @@ import {
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
+import { injectWorkflowState } from './useWorkflowState';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
@@ -126,10 +128,10 @@ export function useNodeSettingsParameters() {
 		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
 
 		if (updatedConnections) {
-			workflowsStore.setConnections(updatedConnections, true);
+			workflowsStore.setConnections(updatedConnections);
 		}
 
-		workflowsStore.setNodeParameters(updateInformation);
+		workflowState.setNodeParameters(updateInformation);
 
 		void externalHooks.run('nodeSettings.valueChanged', {
 			parameterPath,
@@ -156,7 +158,7 @@ export function useNodeSettingsParameters() {
 		});
 
 		if (ndvStore.activeNode) {
-			ndvStore.setActiveNodeName(null);
+			ndvStore.unsetActiveNodeName();
 			ndvStore.resetNDVPushRef();
 		}
 	}

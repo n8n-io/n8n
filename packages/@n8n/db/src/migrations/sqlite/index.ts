@@ -1,3 +1,4 @@
+import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -85,7 +86,23 @@ import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
+import { AddScopeTables1750252139166 } from '../common/1750252139166-AddScopeTables';
+import { AddRolesTables1750252139167 } from '../common/1750252139167-AddRolesTables';
+import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRoleToUserTable';
+import { RemoveOldRoleColumn1750252139170 } from '../common/1750252139170-RemoveOldRoleColumn';
+import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
+import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
+import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
+import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
+import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import type { Migration } from '../migration-types';
+import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
+import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
+import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
+import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
+import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
+
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
@@ -174,6 +191,22 @@ const sqliteMigrations: Migration[] = [
 	ClearEvaluation1745322634000,
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
+	AddScopeTables1750252139166,
+	AddRolesTables1750252139167,
+	LinkRoleToUserTable1750252139168,
+	AddInputsOutputsToTestCaseExecution1752669793000,
+	CreateDataStoreTables1754475614601,
+	RemoveOldRoleColumn1750252139170,
+	ReplaceDataStoreTablesWithDataTables1754475614602,
+	LinkRoleToProjectRelationTable1753953244168,
+	AddTimestampsToRoleAndRoleIndexes1756906557570,
+	AddProjectIdToVariableTable1758794506893,
+	AddAudienceColumnToApiKeys1758731786132,
+	ChangeValueTypesForInsights1759399811000,
+	CreateChatHubTables1760019379982,
+	UniqueRoleNames1760020838000,
+	CreateWorkflowDependencyTable1760314000000,
+	DropUnusedChatHubColumns1760965142113,
 ];
 
 export { sqliteMigrations };

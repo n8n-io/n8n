@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import type { CredentialsEntity, User } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import { type Response } from 'express';
@@ -10,6 +10,7 @@ import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
+import * as pkceChallenge from 'pkce-challenge';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
@@ -46,7 +47,7 @@ describe('OAuth2CredentialController', () => {
 		id: '123',
 		password: 'password',
 		authIdentities: [],
-		role: 'global:owner',
+		role: GLOBAL_OWNER_ROLE,
 	});
 	const credential = mock<CredentialsEntity>({
 		id: '1',
@@ -129,6 +130,122 @@ describe('OAuth2CredentialController', () => {
 				false,
 			);
 		});
+
+		it.each([
+			[
+				['authorization_code', 'refresh_token'],
+				['client_secret_basic', 'client_secret_post', 'none'],
+				['authorization_code', 'refresh_token'],
+				'none',
+				{
+					code_challenge: 'code-challenge',
+					code_challenge_method: 'S256',
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['authorization_code', 'refresh_token'],
+				['client_secret_basic', 'client_secret_post'],
+				['authorization_code', 'refresh_token'],
+				'client_secret_basic',
+				{
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['authorization_code', 'refresh_token'],
+				['client_secret_post'],
+				['authorization_code', 'refresh_token'],
+				'client_secret_post',
+				{
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['client_credentials'],
+				['client_secret_basic', 'client_secret_post'],
+				['client_credentials'],
+				'client_secret_basic',
+				{
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['client_credentials'],
+				['client_secret_post'],
+				['client_credentials'],
+				'client_secret_post',
+				{
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+		])(
+			'should return a valid auth URI for dynamic client registration',
+			async (
+				supportedGrantTypes,
+				supportedTokenEndpointAuthMethods,
+				expectedGrantTypes,
+				expectedTokenEndpointAuthMethod,
+				expectedQueryParams,
+			) => {
+				jest.spyOn(Csrf.prototype, 'secretSync').mockReturnValueOnce(csrfSecret);
+				jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
+				jest.spyOn(pkceChallenge, 'default').mockResolvedValueOnce({
+					code_verifier: 'code-verifier',
+					code_challenge: 'code-challenge',
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+				credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+				credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+					useDynamicClientRegistration: true,
+					serverUrl: 'https://example.com',
+				});
+				nock('https://example.com')
+					.get('/.well-known/oauth-authorization-server')
+					.reply(200, {
+						authorization_endpoint: 'https://example.com/auth',
+						token_endpoint: 'https://example.com/token',
+						registration_endpoint: 'https://example.com/registration',
+						grant_types_supported: supportedGrantTypes,
+						token_endpoint_auth_methods_supported: supportedTokenEndpointAuthMethods,
+						code_challenge_methods_supported: ['S256'],
+					})
+					.post('/registration', {
+						redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
+						token_endpoint_auth_method: expectedTokenEndpointAuthMethod,
+						grant_types: expectedGrantTypes,
+						response_types: ['code'],
+						client_name: 'n8n',
+						client_uri: 'https://n8n.io/',
+					})
+					.reply(200, { client_id: 'test-client-id', client_secret: 'test-client-secret' });
+
+				const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+				const authUri = await controller.getAuthUri(req);
+
+				const url = new URL(authUri);
+				expect(url.origin).toEqual('https://example.com');
+				expect(url.pathname).toEqual('/auth');
+				Object.entries(expectedQueryParams).forEach(([param, value]) => {
+					expect(url.searchParams.get(param)).toEqual(value);
+				});
+			},
+		);
 	});
 
 	describe('handleCallback', () => {
@@ -239,6 +356,30 @@ describe('OAuth2CredentialController', () => {
 				error: {
 					message: 'Code could not be exchanged',
 					reason: '{"error":"Code could not be exchanged"}',
+				},
+			});
+		});
+
+		it('should render the error page when code exchange fails, and the server responses with html', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post(
+					'/token',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+				)
+				.reply(403, '<html><body>Code could not be exchanged</body></html>', {
+					'Content-Type': 'text/html',
+				});
+
+			await controller.handleCallback(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalled();
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'Unsupported content type: text/html',
+					reason: '"<html><body>Code could not be exchanged</body></html>"',
 				},
 			});
 		});

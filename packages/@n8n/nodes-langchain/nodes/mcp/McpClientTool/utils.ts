@@ -56,17 +56,27 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 };
 
 export const createCallTool =
-	(name: string, client: Client, onError: (error: string | undefined) => void) =>
+	(name: string, client: Client, timeout: number, onError: (error: string) => void) =>
 	async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
+
+		function handleError(error: unknown) {
+			const errorDescription =
+				getErrorDescriptionFromToolCall(error) ?? `Failed to execute tool "${name}"`;
+			onError(errorDescription);
+			return errorDescription;
+		}
+
 		try {
-			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema);
+			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema, {
+				timeout,
+			});
 		} catch (error) {
-			return onError(getErrorDescriptionFromToolCall(error));
+			return handleError(error);
 		}
 
 		if (result.isError) {
-			return onError(getErrorDescriptionFromToolCall(result));
+			return handleError(result);
 		}
 
 		if (result.toolResult !== undefined) {
@@ -83,7 +93,7 @@ export const createCallTool =
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
-): DynamicStructuredTool<z.ZodObject<any, any, any, any>> {
+): DynamicStructuredTool {
 	const rawSchema = convertJsonSchemaToZod(tool.inputSchema);
 
 	// Ensure we always have an object schema for structured tools
@@ -100,7 +110,7 @@ export function mcpToolToDynamicTool(
 }
 
 export class McpToolkit extends Toolkit {
-	constructor(public tools: Array<DynamicStructuredTool<z.ZodObject<any, any, any, any>>>) {
+	constructor(public tools: DynamicStructuredTool[]) {
 		super();
 	}
 }

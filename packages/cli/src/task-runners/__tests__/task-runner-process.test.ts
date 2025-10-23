@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
-import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 
 import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
 
@@ -28,7 +28,7 @@ describe('TaskRunnerProcess', () => {
 	runnerConfig.mode = 'internal';
 	runnerConfig.insecureMode = false;
 	const authService = mock<TaskBrokerAuthService>();
-	let taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
+	let taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
 
 	afterEach(async () => {
 		spawnMock.mockClear();
@@ -38,14 +38,14 @@ describe('TaskRunnerProcess', () => {
 		it('should throw if runner mode is external', () => {
 			runnerConfig.mode = 'external';
 
-			expect(() => new TaskRunnerProcess(logger, runnerConfig, authService, mock())).toThrow();
+			expect(() => new JsTaskRunnerProcess(logger, runnerConfig, authService, mock())).toThrow();
 
 			runnerConfig.mode = 'internal';
 		});
 
 		it('should register listener for `runner:failed-heartbeat-check` event', () => {
 			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
-			new TaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
+			new JsTaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
 
 			expect(runnerLifecycleEvents.on).toHaveBeenCalledWith(
 				'runner:failed-heartbeat-check',
@@ -55,7 +55,7 @@ describe('TaskRunnerProcess', () => {
 
 		it('should register listener for `runner:timed-out-during-task` event', () => {
 			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
-			new TaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
+			new JsTaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
 
 			expect(runnerLifecycleEvents.on).toHaveBeenCalledWith(
 				'runner:timed-out-during-task',
@@ -66,7 +66,7 @@ describe('TaskRunnerProcess', () => {
 
 	describe('start', () => {
 		beforeEach(() => {
-			taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
+			taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
 		});
 
 		test.each([
@@ -166,7 +166,7 @@ describe('TaskRunnerProcess', () => {
 		it('on insecure mode, should not use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 			runnerConfig.insecureMode = true;
-			const insecureTaskRunnerProcess = new TaskRunnerProcess(
+			const insecureTaskRunnerProcess = new JsTaskRunnerProcess(
 				logger,
 				runnerConfig,
 				authService,

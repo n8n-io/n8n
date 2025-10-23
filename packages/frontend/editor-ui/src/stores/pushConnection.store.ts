@@ -7,6 +7,9 @@ import { useSettingsStore } from './settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/push-connection/useWebSocketClient';
 import { useEventSourceClient } from '@/push-connection/useEventSourceClient';
+import { useLocalStorage } from '@vueuse/core';
+import { LOCAL_STORAGE_RUN_DATA_WORKER } from '@/constants';
+import { runDataWorker } from '@/workers/run-data/instance';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -16,6 +19,8 @@ export type OnPushMessageHandler = (event: PushMessage) => void;
 export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+
+	const isRunDataWorkerEnabled = useLocalStorage<boolean>(LOCAL_STORAGE_RUN_DATA_WORKER, false);
 
 	/**
 	 * Queue of messages to be sent to the server. Messages are queued if
@@ -39,13 +44,13 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		};
 	};
 
-	const useWebSockets = settingsStore.pushBackend === 'websocket';
+	const useWebSockets = computed(() => settingsStore.pushBackend === 'websocket');
 
 	const getConnectionUrl = () => {
 		const restUrl = rootStore.restUrl;
 		const url = `/push?pushRef=${rootStore.pushRef}`;
 
-		if (useWebSockets) {
+		if (useWebSockets.value) {
 			const { protocol, host } = window.location;
 			const baseUrl = restUrl.startsWith('http')
 				? restUrl.replace(/^http/, 'ws')
@@ -60,25 +65,38 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	 * Process a newly received message
 	 */
 	async function onMessage(data: unknown) {
-		let receivedData: PushMessage;
+		// The `nodeExecuteAfterData` message is sent as binary data
+		// to be handled by a web worker in the future.
+		if (data instanceof ArrayBuffer) {
+			if (isRunDataWorkerEnabled.value) {
+				await runDataWorker.onNodeExecuteAfterData(data);
+				return;
+			} else {
+				data = new TextDecoder('utf-8').decode(new Uint8Array(data));
+			}
+		}
+
+		let parsedData: PushMessage;
 		try {
-			receivedData = JSON.parse(data as string);
+			parsedData = JSON.parse(data as string);
 		} catch (error) {
 			return;
 		}
 
-		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
+		onMessageReceivedHandlers.value.forEach((handler) => handler(parsedData));
 	}
 
 	const url = getConnectionUrl();
 
-	const client = useWebSockets
-		? useWebSocketClient({ url, onMessage })
-		: useEventSourceClient({ url, onMessage });
+	const client = computed(() =>
+		useWebSockets.value
+			? useWebSocketClient({ url, onMessage })
+			: useEventSourceClient({ url, onMessage }),
+	);
 
 	function serializeAndSend(message: unknown) {
-		if (client.isConnected.value) {
-			client.sendMessage(JSON.stringify(message));
+		if (client.value.isConnected.value) {
+			client.value.sendMessage(JSON.stringify(message));
 		} else {
 			outgoingQueue.value.push(message);
 		}
@@ -86,34 +104,37 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	const pushConnect = () => {
 		isConnectionRequested.value = true;
-		client.connect();
+		client.value.connect();
 	};
 
 	const pushDisconnect = () => {
 		isConnectionRequested.value = false;
-		client.disconnect();
+		client.value.disconnect();
 	};
 
-	watch(client.isConnected, (didConnect) => {
-		if (!didConnect) {
-			return;
-		}
-
-		// Send any buffered messages
-		if (outgoingQueue.value.length) {
-			for (const message of outgoingQueue.value) {
-				serializeAndSend(message);
+	watch(
+		() => client.value.isConnected.value,
+		(didConnect) => {
+			if (!didConnect) {
+				return;
 			}
-			outgoingQueue.value = [];
-		}
-	});
+
+			// Send any buffered messages
+			if (outgoingQueue.value.length) {
+				for (const message of outgoingQueue.value) {
+					serializeAndSend(message);
+				}
+				outgoingQueue.value = [];
+			}
+		},
+	);
 
 	/** Removes all buffered messages from the sent queue */
 	const clearQueue = () => {
 		outgoingQueue.value = [];
 	};
 
-	const isConnected = computed(() => client.isConnected.value);
+	const isConnected = computed(() => client.value.isConnected.value);
 
 	return {
 		isConnected,

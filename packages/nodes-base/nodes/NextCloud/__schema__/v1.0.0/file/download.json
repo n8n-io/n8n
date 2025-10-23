@@ -1,39 +1,24 @@
 {
     "type": "object",
     "properties": {
-        "Day of month": {
+        "contentLength": {
             "type": "string"
         },
-        "Day of week": {
+        "contentType": {
             "type": "string"
         },
-        "Hour": {
+        "eTag": {
             "type": "string"
         },
-        "Minute": {
+        "lastModified": {
             "type": "string"
         },
-        "Month": {
+        "path": {
             "type": "string"
         },
-        "Readable date": {
-            "type": "string"
-        },
-        "Readable time": {
-            "type": "string"
-        },
-        "Second": {
-            "type": "string"
-        },
-        "timestamp": {
-            "type": "string"
-        },
-        "Timezone": {
-            "type": "string"
-        },
-        "Year": {
+        "type": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

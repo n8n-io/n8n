@@ -16,6 +16,7 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	HITL_SUBCATEGORY,
+	PRE_BUILT_AGENTS_COLLECTION,
 } from '@/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
@@ -28,6 +29,7 @@ import {
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
 	getRootSearchCallouts,
+	getActiveViewCallouts,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
 } from '../utils';
@@ -41,9 +43,8 @@ import { useI18n } from '@n8n/i18n';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 
 import { useActions } from '../composables/useActions';
-import { type INodeParameters } from 'n8n-workflow';
+import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
@@ -104,6 +105,17 @@ function getFilteredActions(
 }
 
 function onSelected(item: INodeCreateElement) {
+	if (item.key === PRE_BUILT_AGENTS_COLLECTION) {
+		void calloutHelpers.openPreBuiltAgentsCollection({
+			telemetry: {
+				source: 'nodeCreator',
+				section: activeViewStack.value.title,
+			},
+			resetStacks: false,
+		});
+		return;
+	}
+
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
@@ -223,9 +235,12 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'openTemplate') {
-		if (item.properties.key === 'rag-starter-template') {
-			void calloutHelpers.openRagStarterTemplate();
-		}
+		calloutHelpers.openSampleWorkflowTemplate(item.properties.templateId, {
+			telemetry: {
+				source: 'nodeCreator',
+				section: activeViewStack.value.title,
+			},
+		});
 	}
 }
 
@@ -265,11 +280,16 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 	return hasActions || !hasTriggerGroup;
 }
 
-const globalCallouts = computed<INodeCreateElement[]>(() =>
-	getRootSearchCallouts(activeViewStack.value.search ?? '', {
+const globalCallouts = computed<INodeCreateElement[]>(() => [
+	...getRootSearchCallouts(activeViewStack.value.search ?? '', {
 		isRagStarterCalloutVisible: calloutHelpers.isRagStarterCalloutVisible.value,
 	}),
-);
+	...getActiveViewCallouts(
+		activeViewStack.value.title,
+		calloutHelpers.isPreBuiltAgentsCalloutVisible.value,
+		calloutHelpers.getPreBuiltAgentNodeCreatorItems(),
+	),
+]);
 
 function arrowLeft() {
 	popViewStack();
@@ -349,6 +369,6 @@ registerKeyHook('MainViewArrowLeft', {
 
 <style lang="scss" module>
 .items {
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing--sm);
 }
 </style>

@@ -3,10 +3,7 @@
     "properties": {
         "time": {
             "type": "string"
-        },
-        "totalVolume": {
-            "type": "number"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { DEFAULT_EVALUATION_METRIC } from 'n8n-workflow';
 
 import {
 	CORRECTNESS_PROMPT,
@@ -8,12 +9,65 @@ import {
 } from './CannedMetricPrompts.ee';
 import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
 
+export const setInputsProperties: INodeProperties[] = [
+	{
+		displayName:
+			'For adding columns from your dataset to the evaluation results. Anything you add here will be displayed in the ‘evaluations’ tab, not on the Google Sheet or Data table.',
+		name: 'setInputsNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['setInputs'],
+			},
+		},
+	},
+	{
+		displayName: 'Inputs',
+		name: 'inputs',
+		placeholder: 'Add Input',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Input',
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Filter',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'inputName',
+						type: 'string',
+						default: '',
+						requiresDataPath: 'single',
+					},
+					{
+						displayName: 'Value',
+						name: 'inputValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['setInputs'],
+			},
+		},
+	},
+];
+
 export const setOutputProperties: INodeProperties[] = [
 	{
 		displayName: 'Credentials',
 		name: 'credentials',
 		type: 'credentials',
 		default: '',
+		displayOptions: { hide: { source: ['dataTable'] } },
 	},
 	{
 		...document,
@@ -22,6 +76,7 @@ export const setOutputProperties: INodeProperties[] = [
 			show: {
 				operation: ['setOutputs'],
 			},
+			hide: { source: ['dataTable'] },
 		},
 	},
 	{
@@ -31,6 +86,35 @@ export const setOutputProperties: INodeProperties[] = [
 			show: {
 				operation: ['setOutputs'],
 			},
+			hide: { source: ['dataTable'] },
+		},
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Data table',
+		name: 'dataTableId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'dataTableSearch',
+					searchable: true,
+					skipCredentialsCheckInRLC: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+			},
+		],
+		displayOptions: {
+			show: { source: ['dataTable'] },
 		},
 	},
 	{
@@ -53,6 +137,7 @@ export const setOutputProperties: INodeProperties[] = [
 						name: 'outputName',
 						type: 'string',
 						default: '',
+						requiresDataPath: 'single',
 					},
 					{
 						displayName: 'Value',
@@ -266,7 +351,7 @@ const toolsUsedFields: INodeProperties[] = [
 export const setMetricsProperties: INodeProperties[] = [
 	{
 		displayName:
-			'Metrics measure the quality of an execution. They will be displayed in the ‘evaluations’ tab, not the Google Sheet.',
+			'Metrics measure the quality of an execution. They will be displayed in the ‘evaluations’ tab, not on the Google Sheet or Data table.',
 		//			"Calculate the score(s) for the evaluation, then map them into this node. They will be displayed in the ‘evaluations’ tab, not the Google Sheet. <a href='https://docs.n8n.io/advanced-ai/evaluations/metric-based-evaluations/#2-calculate-metrics' target='_blank'>View metric examples</a>",
 		name: 'notice',
 		type: 'notice',
@@ -333,7 +418,7 @@ export const setMetricsProperties: INodeProperties[] = [
 				description: 'Define your own metric(s)',
 			},
 		],
-		default: 'correctness',
+		default: DEFAULT_EVALUATION_METRIC,
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
@@ -391,3 +476,24 @@ export const setMetricsProperties: INodeProperties[] = [
 	...optionsForMetricBasic('stringSimilarity', 'String similarity'),
 	...optionsForMetricBasic('toolsUsed', 'Tools Used'),
 ];
+
+export const sourcePicker: INodeProperties = {
+	displayName: 'Source',
+	name: 'source',
+	type: 'options',
+	options: [
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			name: 'Data table',
+			value: 'dataTable',
+			description: 'Load the test dataset from a local Data table',
+		},
+		{
+			name: 'Google Sheets',
+			value: 'googleSheets',
+			description: 'Load the test dataset from a Google Sheets document',
+		},
+	],
+	default: 'dataTable',
+	description: 'Where to get the test dataset from',
+};

@@ -25,12 +25,14 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@n8n/i18n';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
-import { N8nButton, N8nCallout, N8nNotice } from '@n8n/design-system';
 import isEqual from 'lodash/isEqual';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
+import { N8nButton, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	node: INode | null;
@@ -40,16 +42,19 @@ type Props = {
 	teleported?: boolean;
 	dependentParametersValues?: string | null;
 	isReadOnly?: boolean;
+	allowEmptyStrings?: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 	dependentParametersValues: null,
 	isReadOnly: false,
+	allowEmptyStrings: false,
 });
 
 const { onDocumentVisible } = useDocumentVisibility();
@@ -308,6 +313,7 @@ const createRequestParams = (methodName: string) => {
 		path: props.path,
 		methodName,
 		credentials: props.node.credentials,
+		projectId: projectsStore.currentProjectId,
 	};
 
 	return requestParams;
@@ -436,8 +442,8 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	let newValue = null;
 	if (
 		updateInfo.value !== undefined &&
-		updateInfo.value !== '' &&
 		updateInfo.value !== null &&
+		(props.allowEmptyStrings || updateInfo.value !== '') &&
 		isResourceMapperValue(updateInfo.value)
 	) {
 		newValue = updateInfo.value;
@@ -687,7 +693,7 @@ defineExpose({
 <style module lang="scss">
 .typeConversionOptions {
 	display: grid;
-	padding: var(--spacing-m);
-	gap: var(--spacing-2xs);
+	padding: var(--spacing--md);
+	gap: var(--spacing--2xs);
 }
 </style>

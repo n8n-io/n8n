@@ -1,11 +1,17 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { User, UserRepository } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, UserRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
+import type { UserManagementMailer } from '@/user-management/email';
+
+import type { RoleService } from '../role.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -17,12 +23,33 @@ describe('UserService', () => {
 		editorBaseUrl: '',
 	});
 	const urlService = new UrlService(globalConfig);
-	const userRepository = mockInstance(UserRepository);
-	const userService = new UserService(mock(), userRepository, mock(), urlService, mock(), mock());
+	const userRepository = mockInstance(UserRepository, {
+		manager: mock<EntityManager>({
+			transaction: async (cb) =>
+				typeof cb === 'function' ? await cb(mock<EntityManager>()) : await Promise.resolve(),
+		}),
+	});
+	const roleService = mock<RoleService>();
+	const mailer = mock<UserManagementMailer>();
+	const userService = new UserService(
+		mock(),
+		userRepository,
+		mailer,
+		urlService,
+		mock(),
+		mock(),
+		roleService,
+		globalConfig,
+	);
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
 		password: 'passwordHash',
+		role: GLOBAL_MEMBER_ROLE,
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	describe('toPublic', () => {
@@ -35,6 +62,7 @@ describe('UserService', () => {
 				mfaRecoveryCodes: ['test'],
 				updatedAt: new Date(),
 				authIdentities: [],
+				role: GLOBAL_MEMBER_ROLE,
 			});
 
 			type MaybeSensitiveProperties = Partial<
@@ -55,13 +83,17 @@ describe('UserService', () => {
 			const scoped = await userService.toPublic(commonMockUser, { withScopes: true });
 			const unscoped = await userService.toPublic(commonMockUser);
 
-			expect(scoped.globalScopes).toEqual([]);
+			expect(scoped.globalScopes).toEqual(GLOBAL_MEMBER_ROLE.scopes.map((s) => s.slug));
 			expect(unscoped.globalScopes).toBeUndefined();
 		});
 
 		it('should add invite URL if requested', async () => {
-			const firstUser = Object.assign(new User(), { id: uuid() });
-			const secondUser = Object.assign(new User(), { id: uuid(), isPending: true });
+			const firstUser = Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE });
+			const secondUser = Object.assign(new User(), {
+				id: uuid(),
+				role: GLOBAL_MEMBER_ROLE,
+				isPending: true,
+			});
 
 			const withoutUrl = await userService.toPublic(secondUser);
 			const withUrl = await userService.toPublic(secondUser, {
@@ -75,6 +107,157 @@ describe('UserService', () => {
 
 			expect(url.searchParams.get('inviterId')).toBe(firstUser.id);
 			expect(url.searchParams.get('inviteeId')).toBe(secondUser.id);
+		});
+	});
+
+	describe('inviteUrl visibility', () => {
+		describe('when inviteLinksEmailOnly = false', () => {
+			beforeEach(() => {
+				globalConfig.userManagement.inviteLinksEmailOnly = false;
+			});
+
+			describe('toPublic', () => {
+				it('should include inviteAcceptUrl if requested', async () => {
+					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const pendingUser = Object.assign(new User(), {
+						id: uuid(),
+						role: GLOBAL_MEMBER_ROLE,
+						isPending: true,
+					});
+
+					const result = await userService.toPublic(pendingUser, {
+						withInviteUrl: true,
+						inviterId: inviter.id,
+					});
+
+					expect(result.inviteAcceptUrl).toBeDefined();
+					const url = new URL(result.inviteAcceptUrl ?? '');
+					expect(url.searchParams.get('inviterId')).toBe(inviter.id);
+					expect(url.searchParams.get('inviteeId')).toBe(pendingUser.id);
+				});
+
+				it('should not include inviteAcceptUrl if not requested', async () => {
+					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const pendingUser = Object.assign(new User(), {
+						id: uuid(),
+						role: GLOBAL_MEMBER_ROLE,
+						isPending: true,
+					});
+
+					const result = await userService.toPublic(pendingUser, {
+						inviterId: inviter.id,
+					});
+
+					expect(result.inviteAcceptUrl).toBeUndefined();
+				});
+			});
+
+			describe('inviteUsers', () => {
+				it('should include inviteAcceptUrl if email was not sent', async () => {
+					const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const invitations = [{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug }];
+
+					roleService.checkRolesExist.mockResolvedValue();
+					userRepository.findManyByEmail.mockResolvedValue([]);
+					userRepository.createUserWithProject.mockImplementation(async (userData) => {
+						return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+					});
+					mailer.invite.mockResolvedValue({ emailSent: false });
+
+					const result = await userService.inviteUsers(owner, invitations);
+
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeDefined();
+				});
+
+				it('should not include inviteAcceptUrl if email was sent', async () => {
+					const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const invitations = [{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug }];
+
+					roleService.checkRolesExist.mockResolvedValue();
+					userRepository.findManyByEmail.mockResolvedValue([]);
+					userRepository.createUserWithProject.mockImplementation(async (userData) => {
+						return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+					});
+					mailer.invite.mockResolvedValue({ emailSent: true });
+
+					const result = await userService.inviteUsers(owner, invitations);
+
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeUndefined();
+				});
+			});
+		});
+
+		describe('when inviteLinksEmailOnly = true', () => {
+			beforeEach(() => {
+				globalConfig.userManagement.inviteLinksEmailOnly = true;
+			});
+
+			describe('toPublic', () => {
+				it('should not include inviteAcceptUrl if requested', async () => {
+					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const pendingUser = Object.assign(new User(), {
+						id: uuid(),
+						role: GLOBAL_MEMBER_ROLE,
+						isPending: true,
+					});
+
+					const result = await userService.toPublic(pendingUser, {
+						withInviteUrl: true,
+						inviterId: inviter.id,
+					});
+
+					expect(result.inviteAcceptUrl).toBeUndefined();
+				});
+
+				it('should not include inviteAcceptUrl if not requested', async () => {
+					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const pendingUser = Object.assign(new User(), {
+						id: uuid(),
+						role: GLOBAL_MEMBER_ROLE,
+						isPending: true,
+					});
+
+					const result = await userService.toPublic(pendingUser, {
+						inviterId: inviter.id,
+					});
+
+					expect(result.inviteAcceptUrl).toBeUndefined();
+				});
+			});
+
+			describe('inviteUsers', () => {
+				it('should not include inviteAcceptUrl if email was not sent', async () => {
+					const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const invitations = [{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug }];
+
+					roleService.checkRolesExist.mockResolvedValue();
+					userRepository.findManyByEmail.mockResolvedValue([]);
+					userRepository.createUserWithProject.mockImplementation(async (userData) => {
+						return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+					});
+					mailer.invite.mockResolvedValue({ emailSent: false });
+
+					const result = await userService.inviteUsers(owner, invitations);
+
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeUndefined();
+				});
+
+				it('should not include inviteAcceptUrl if email was sent', async () => {
+					const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const invitations = [{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug }];
+
+					roleService.checkRolesExist.mockResolvedValue();
+					userRepository.findManyByEmail.mockResolvedValue([]);
+					userRepository.createUserWithProject.mockImplementation(async (userData) => {
+						return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+					});
+					mailer.invite.mockResolvedValue({ emailSent: true });
+
+					const result = await userService.inviteUsers(owner, invitations);
+
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeUndefined();
+				});
+			});
 		});
 	});
 
@@ -99,6 +282,44 @@ describe('UserService', () => {
 
 			expect(userRepository.save).toHaveBeenCalledWith({ ...user, ...data }, { transaction: true });
 			expect(userRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('inviteUsers', () => {
+		it('should invite users', async () => {
+			const owner = Object.assign(new User(), { id: uuid() });
+			const invitations = [
+				{ email: 'test1@example.com', role: GLOBAL_ADMIN_ROLE.slug },
+				{ email: 'test2@example.com', role: GLOBAL_MEMBER_ROLE.slug },
+				{ email: 'test3@example.com', role: 'custom:role' },
+			];
+
+			roleService.checkRolesExist.mockResolvedValue();
+			userRepository.findManyByEmail.mockResolvedValue([]);
+			userRepository.createUserWithProject.mockImplementation(async (userData) => {
+				return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+			});
+
+			await userService.inviteUsers(owner, invitations);
+
+			expect(userRepository.createUserWithProject).toHaveBeenCalledTimes(3);
+		});
+
+		it('should fail if role do not exist', async () => {
+			const owner = Object.assign(new User(), { id: uuid() });
+			const invitations = [{ email: 'test1@example.com', role: 'nonexistent:role' }];
+
+			roleService.checkRolesExist.mockRejectedValue(
+				new BadRequestError('Role nonexistent:role does not exist'),
+			);
+			userRepository.findManyByEmail.mockResolvedValue([]);
+			userRepository.createUserWithProject.mockImplementation(async (userData) => {
+				return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+			});
+
+			await expect(userService.inviteUsers(owner, invitations)).rejects.toThrowError(
+				'Role nonexistent:role does not exist',
+			);
 		});
 	});
 });

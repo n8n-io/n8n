@@ -6,7 +6,11 @@ import type {
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
-import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+	MODULE_ENABLED_NODES,
+} from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@n8n/i18n';
@@ -22,7 +26,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useCredentialsStore } from './credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
@@ -83,6 +87,24 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 				return nodeVersions[Math.max(...versionNumbers)];
 			})
 			.filter(Boolean);
+	});
+
+	// Nodes defined with `hidden: true` that are still shown if their modules are enabled
+	const moduleEnabledNodeTypes = computed<INodeTypeDescription[]>(() => {
+		return MODULE_ENABLED_NODES.flatMap((node) => {
+			const nodeVersions = nodeTypes.value[node.nodeType] ?? {};
+			const versionNumbers = Object.keys(nodeVersions).map(Number);
+			const latest = nodeVersions[Math.max(...versionNumbers)];
+
+			if (latest?.hidden && settingsStore.isModuleActive(node.module)) {
+				return {
+					...latest,
+					hidden: undefined,
+				};
+			}
+
+			return [];
+		});
 	});
 
 	const getNodeType = computed(() => {
@@ -169,6 +191,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const visibleNodeTypes = computed(() => {
 		return allLatestNodeTypes.value
 			.concat(officialCommunityNodeTypes.value)
+			.concat(moduleEnabledNodeTypes.value)
 			.filter((nodeType) => !nodeType.hidden);
 	});
 
@@ -316,8 +339,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const getNodeTypes = async () => {
 		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
 
-		await fetchCommunityNodePreviews();
-
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}
@@ -366,7 +387,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
-		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
 			return;
 		}
 		try {
@@ -397,6 +418,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	const getIsNodeInstalled = computed(() => {
+		return (nodeTypeName: string) => {
+			return (
+				!!getNodeType.value(nodeTypeName) || !!communityNodeType.value(nodeTypeName)?.isInstalled
+			);
+		};
+	});
+
 	// #endregion
 
 	return {
@@ -417,6 +446,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		isConfigurableNode,
 		communityNodesAndActions,
 		communityNodeType,
+		fetchCommunityNodePreviews,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
@@ -430,5 +460,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		setNodeTypes,
 		removeNodeTypes,
 		getCommunityNodeAttributes,
+		getIsNodeInstalled,
 	};
 });

@@ -1,6 +1,7 @@
 import jp from 'jsonpath';
-import { useDataSchema, useFlattenSchema, type SchemaNode } from '@/composables/useDataSchema';
-import type { IExecutionResponse, INodeUi, Schema } from '@/Interface';
+import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
+import type { INodeUi, Schema } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import {
@@ -818,6 +819,7 @@ describe('useFlattenSchema', () => {
 				useFlattenSchema().flattenSchema({
 					schema,
 					isDataEmpty: false,
+					truncateLimit: 600,
 				}).length,
 			).toBe(3);
 		});
@@ -841,12 +843,14 @@ describe('useFlattenSchema', () => {
 				expressionPrefix: '$("First Node")',
 				depth: 1,
 				isDataEmpty: false,
+				truncateLimit: 600,
 			});
 			const node2Schema = flattenSchema({
 				schema,
 				expressionPrefix: '$("Second Node")',
 				depth: 1,
 				isDataEmpty: false,
+				truncateLimit: 600,
 			});
 
 			expect(node1Schema[0].id).not.toBe(node2Schema[0].id);
@@ -866,6 +870,7 @@ describe('useFlattenSchema', () => {
 					}),
 				],
 				vi.fn(),
+				600,
 			);
 			expect(result).toHaveLength(2);
 			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
@@ -886,6 +891,7 @@ describe('useFlattenSchema', () => {
 					}),
 				],
 				vi.fn(),
+				600,
 			);
 			expect(result).toHaveLength(2);
 			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
@@ -907,6 +913,7 @@ describe('useFlattenSchema', () => {
 					}),
 				],
 				vi.fn(),
+				600,
 			);
 			expect(result).toHaveLength(2);
 			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
@@ -928,6 +935,7 @@ describe('useFlattenSchema', () => {
 					}),
 				],
 				vi.fn(),
+				600,
 			);
 			expect(result).toHaveLength(2);
 			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
@@ -983,6 +991,7 @@ describe('useFlattenSchema', () => {
 					}),
 				],
 				vi.fn(),
+				600,
 			);
 			expect(result).toHaveLength(10);
 			expect(result.filter((item) => item.type === 'header')).toHaveLength(2);

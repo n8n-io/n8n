@@ -22,7 +22,7 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
-	async createTestRun(workflowId: string) {
+	async createTestRun(workflowId: string): Promise<TestRun> {
 		const testRun = this.create({
 			status: 'new',
 			workflow: {

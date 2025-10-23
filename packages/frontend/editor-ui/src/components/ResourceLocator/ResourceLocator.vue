@@ -8,8 +8,8 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { ndvEventBus } from '@/event-bus';
-import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/features/ndv/ndv.eventBus';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
@@ -53,9 +53,21 @@ import {
 	updateFromAIOverrideValues,
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
-import { N8nNotice } from '@n8n/design-system';
 import { completeExpressionSyntax } from '@/utils/expressions';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import FromAiOverrideButton from '@/components/ParameterInputOverrides/FromAiOverrideButton.vue';
+import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOverrideField.vue';
+import ParameterOverrideSelectableList from '@/components/ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 
+import {
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nNotice,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 /**
  * Regular expression to check if the error message contains credential-related phrases.
  */
@@ -144,6 +156,7 @@ const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 
 const appName = computed(() => {
 	if (!props.node) {
@@ -270,6 +283,7 @@ const currentRequestParams = computed(() => {
 		parameters: props.node?.parameters ?? {},
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
+		projectId: projectsStore.currentProjectId,
 	};
 });
 
@@ -364,10 +378,13 @@ const allowNewResources = computed(() => {
 	return {
 		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
 			interpolate: {
-				resourceName: searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+				resourceName: searchFilter.value
+					? searchFilter.value
+					: (addNewResourceOptions.defaultName ?? ''),
 			},
 		}),
 		method: addNewResourceOptions.method,
+		url: addNewResourceOptions.url,
 	};
 });
 
@@ -376,7 +393,23 @@ const handleAddResourceClick = async () => {
 		return;
 	}
 
-	const { method: addNewResourceMethodName } = allowNewResources.value;
+	const { method: addNewResourceMethodName, url: redirectUrl } = allowNewResources.value;
+
+	if (redirectUrl) {
+		let resolvedUrl = redirectUrl;
+
+		if (resolvedUrl.includes('{{$projectId}}')) {
+			resolvedUrl = resolvedUrl.replace(
+				/\{\{\$projectId\}\}/g,
+				projectsStore.currentProjectId ?? '',
+			);
+		}
+
+		hideResourceDropdown();
+		openResource(resolvedUrl);
+		return;
+	}
+
 	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
@@ -414,7 +447,9 @@ const handleAddResourceClick = async () => {
 };
 
 const onAddResourceClicked = computed(() =>
-	allowNewResources.value ? handleAddResourceClick : undefined,
+	allowNewResources.value && (allowNewResources.value.method || allowNewResources.value.url)
+		? handleAddResourceClick
+		: undefined,
 );
 
 watch(currentQueryError, (curr, prev) => {
@@ -596,6 +631,12 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 	emit('update:modelValue', params);
 }
 
+function onInputMouseDown(event: MouseEvent): void {
+	if (isListMode.value) {
+		event.preventDefault();
+	}
+}
+
 function onModeSelected(value: string): void {
 	if (typeof props.modelValue !== 'object') {
 		emit('update:modelValue', { __rl: true, value: props.modelValue, mode: value });
@@ -608,7 +649,8 @@ function onModeSelected(value: string): void {
 	} else if (value === 'id' && selectedMode.value === 'list' && props.modelValue?.value) {
 		emit('update:modelValue', { __rl: true, mode: value, value: props.modelValue.value });
 	} else {
-		emit('update:modelValue', { __rl: true, mode: value, value: '' });
+		const currentValue = props.modelValue?.value ?? '';
+		emit('update:modelValue', { __rl: true, mode: value, value: currentValue });
 	}
 
 	trackEvent('User changed resource locator mode', { mode: value });
@@ -721,6 +763,7 @@ async function loadResources() {
 			methodName: loadOptionsMethod,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
+			projectId: projectsStore.currentProjectId,
 		};
 
 		if (params.filter) {
@@ -907,7 +950,7 @@ function removeOverride() {
 	>
 		<ResourceLocatorDropdown
 			ref="dropdownRef"
-			:model-value="modelValue ? modelValue.value : ''"
+			:model-value="modelValue"
 			:show="resourceDropdownVisible"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
@@ -926,23 +969,23 @@ function removeOverride() {
 		>
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">
-					<n8n-text
+					<N8nText
 						v-if="credentialsRequiredAndNotSet || currentResponse.errorDetails"
 						color="text-dark"
 						align="center"
 						tag="div"
 					>
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
-					</n8n-text>
+					</N8nText>
 					<div v-if="currentResponse.errorDetails" :class="$style.errorDetails">
-						<n8n-text size="small">
+						<N8nText size="small">
 							<span v-if="currentResponse.errorDetails.httpCode" data-test-id="rlc-error-code">
 								{{ currentResponse.errorDetails.httpCode }} -
 							</span>
 							<span data-test-id="rlc-error-message">{{
 								currentResponse.errorDetails.message
 							}}</span>
-						</n8n-text>
+						</N8nText>
 						<N8nNotice
 							v-if="currentResponse.errorDetails.description"
 							theme="warning"
@@ -985,7 +1028,7 @@ function removeOverride() {
 					]"
 				></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
-					<n8n-select
+					<N8nSelect
 						:model-value="selectedMode"
 						:size="inputSize"
 						:disabled="isReadOnly"
@@ -993,7 +1036,7 @@ function removeOverride() {
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSelected"
 					>
-						<n8n-option
+						<N8nOption
 							v-for="mode in parameter.modes"
 							:key="mode.name"
 							:data-test-id="`mode-${mode.name}`"
@@ -1007,8 +1050,8 @@ function removeOverride() {
 							"
 						>
 							{{ getModeLabel(mode) }}
-						</n8n-option>
-					</n8n-select>
+						</N8nOption>
+					</N8nSelect>
 				</div>
 
 				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
@@ -1047,7 +1090,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@modal-opener-click="emit('modalOpenerClick')"
 								/>
-								<n8n-input
+								<N8nInput
 									v-else
 									ref="inputRef"
 									:class="[
@@ -1068,7 +1111,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
-									@mousedown.prevent
+									@mousedown="onInputMouseDown"
 								>
 									<template v-if="isListMode" #suffix>
 										<i
@@ -1080,7 +1123,7 @@ function removeOverride() {
 											}"
 										/>
 									</template>
-								</n8n-input>
+								</N8nInput>
 								<div v-if="showOverrideButton" :class="$style.overrideButtonInline">
 									<FromAiOverrideButton @click="applyOverride" />
 								</div>
@@ -1093,9 +1136,9 @@ function removeOverride() {
 						:class="$style['parameter-issues']"
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
-						<n8n-link theme="text" @click.stop="openResource(urlValue)">
-							<n8n-icon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
-						</n8n-link>
+						<N8nLink theme="text" @click.stop="openResource(urlValue)">
+							<N8nIcon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
+						</N8nLink>
 					</div>
 				</div>
 			</div>
@@ -1112,5 +1155,5 @@ function removeOverride() {
 </template>
 
 <style lang="scss" module>
-@import './resourceLocator.scss';
+@use './resourceLocator.scss';
 </style>

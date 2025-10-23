@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
+import { N8nButton } from '@n8n/design-system';
 defineProps<{
 	isReadOnly?: boolean;
 }>();
@@ -17,7 +18,7 @@ function onImportCurlClicked() {
 
 <template>
 	<div :class="$style.importSection">
-		<n8n-button
+		<N8nButton
 			type="secondary"
 			:label="i18n.baseText('importCurlParameter.label')"
 			:disabled="isReadOnly"
@@ -31,6 +32,6 @@ function onImportCurlClicked() {
 .importSection {
 	display: flex;
 	flex-direction: row-reverse;
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 }
 </style>

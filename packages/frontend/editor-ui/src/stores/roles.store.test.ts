@@ -17,8 +17,9 @@ describe('roles store', () => {
 			workflow: [],
 			project: [
 				{
-					name: 'Project Admin',
-					role: 'project:admin',
+					displayName: 'Project Admin',
+					slug: 'project:admin',
+					description: 'Project Admin',
 					scopes: [
 						'workflow:create',
 						'workflow:read',
@@ -39,10 +40,13 @@ describe('roles store', () => {
 						'project:delete',
 					],
 					licensed: true,
+					systemRole: true,
+					roleType: 'project',
 				},
 				{
-					name: 'Project Owner',
-					role: 'project:personalOwner',
+					displayName: 'Project Owner',
+					slug: 'project:personalOwner',
+					description: 'Project Owner',
 					scopes: [
 						'workflow:create',
 						'workflow:read',
@@ -63,10 +67,13 @@ describe('roles store', () => {
 						'project:read',
 					],
 					licensed: true,
+					roleType: 'project',
+					systemRole: true,
 				},
 				{
-					name: 'Project Editor',
-					role: 'project:editor',
+					displayName: 'Project Editor',
+					slug: 'project:editor',
+					description: 'Project Editor',
 					scopes: [
 						'workflow:create',
 						'workflow:read',
@@ -83,10 +90,13 @@ describe('roles store', () => {
 						'project:read',
 					],
 					licensed: true,
+					roleType: 'project',
+					systemRole: true,
 				},
 				{
-					name: 'Project Viewer',
-					role: 'project:viewer',
+					displayName: 'Project Viewer',
+					slug: 'project:viewer',
+					description: 'Project Viewer',
 					scopes: [
 						'credential:list',
 						'credential:read',
@@ -96,11 +106,13 @@ describe('roles store', () => {
 						'workflow:read',
 					],
 					licensed: true,
+					roleType: 'project',
+					systemRole: true,
 				},
 			],
 		});
 		await rolesStore.fetchRoles();
-		expect(rolesStore.processedProjectRoles.map(({ role }) => role)).toEqual([
+		expect(rolesStore.processedProjectRoles.map(({ slug }) => slug)).toEqual([
 			'project:viewer',
 			'project:editor',
 			'project:admin',

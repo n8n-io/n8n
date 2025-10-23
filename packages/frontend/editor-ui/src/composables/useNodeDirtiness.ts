@@ -8,9 +8,11 @@ import {
 	type Undoable,
 } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { CanvasNodeDirtiness, type CanvasNodeDirtinessType } from '@/types';
+import {
+	CanvasNodeDirtiness,
+	type CanvasNodeDirtinessType,
+} from '@/features/workflows/canvas/canvas.types';
 import type { INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -118,7 +120,6 @@ function findLoop(
 export function useNodeDirtiness() {
 	const historyStore = useHistoryStore();
 	const workflowsStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
 
 	function getParentSubNodes(nodeName: string) {
 		return Object.entries(workflowsStore.incomingConnectionsByNodeName(nodeName))
@@ -226,11 +227,6 @@ export function useNodeDirtiness() {
 	});
 
 	const dirtinessByName = computed(() => {
-		// Do not highlight dirtiness if new partial execution is not enabled
-		if (settingsStore.partialExecutionVersion === 1) {
-			return {};
-		}
-
 		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
 		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
 

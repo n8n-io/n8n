@@ -1,6 +1,6 @@
 import type { DeepMockProxy } from 'jest-mock-extended';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { constructExecutionMetaData, sandboxHtmlResponse } from 'n8n-core';
+import { constructExecutionMetaData } from 'n8n-core';
 import {
 	BINARY_ENCODING,
 	WAIT_NODE_TYPE,
@@ -8,6 +8,7 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type NodeTypeAndVersion,
+	CHAT_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
@@ -20,6 +21,78 @@ describe('RespondToWebhook Node', () => {
 		respondToWebhook = new RespondToWebhook();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>({
 			helpers: { constructExecutionMetaData },
+		});
+	});
+
+	describe('chatTrigger response', () => {
+		it('should handle chatTrigger correctly when enabled and responseBody is an object', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.4 }));
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({
+					type: CHAT_TRIGGER_NODE_TYPE,
+					disabled: false,
+					parameters: { options: { responseMode: 'responseNodes' } },
+				}),
+			]);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'json';
+				if (paramName === 'responseBody') return { message: 'Hello World' };
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.putExecutionToWait.mockResolvedValue();
+
+			const result = await respondToWebhook.execute.call(mockExecuteFunctions);
+			expect(result).toEqual([[{ json: {}, sendMessage: 'Hello World' }]]);
+		});
+
+		it('should handle chatTrigger correctly when enabled and responseBody is not an object', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({
+					type: CHAT_TRIGGER_NODE_TYPE,
+					disabled: false,
+					parameters: { options: { responseMode: 'responseNodes' } },
+				}),
+			]);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'text';
+				if (paramName === 'responseBody') return 'Just a string';
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.putExecutionToWait.mockResolvedValue();
+
+			const result = await respondToWebhook.execute.call(mockExecuteFunctions);
+			expect(result).toEqual([[{ json: {}, sendMessage: '' }]]);
+		});
+
+		it('should not handle chatTrigger when disabled', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({ type: CHAT_TRIGGER_NODE_TYPE, disabled: true }),
+			]);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'json';
+				if (paramName === 'responseBody') return { message: 'Hello World' };
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.sendResponse.mockReturnValue();
+
+			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
+			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalled();
+		});
+
+		it('should return input data onMessage call', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			const result = await respondToWebhook.onMessage(mockExecuteFunctions, {
+				json: { message: '' },
+			});
+			expect(result).toEqual([[{ json: { input: true } }]]);
 		});
 	});
 
@@ -163,7 +236,7 @@ describe('RespondToWebhook Node', () => {
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-				body: sandboxHtmlResponse('responseBody'),
+				body: 'responseBody',
 				headers: {},
 				statusCode: 200,
 			});
@@ -261,74 +334,6 @@ describe('RespondToWebhook Node', () => {
 				],
 			]);
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
-		});
-
-		describe('HTML content sandboxing', () => {
-			it('should sandbox HTML content for json response with HTML content-type', async () => {
-				const inputItems = [
-					{ json: { index: 0, input: true } },
-					{ json: { index: 1, input: true } },
-				];
-				mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
-				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
-				mockExecuteFunctions.getParentNodes.mockReturnValue([
-					mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
-				]);
-				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
-					if (paramName === 'respondWith') return 'allIncomingItems';
-					if (paramName === 'options')
-						return {
-							responseHeaders: {
-								entries: [{ name: 'content-type', value: 'application/xhtml+xml' }],
-							},
-						};
-				});
-				mockExecuteFunctions.sendResponse.mockReturnValue();
-
-				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
-				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: sandboxHtmlResponse(JSON.stringify(inputItems.map((item) => item.json))),
-					headers: { 'content-type': 'application/xhtml+xml' },
-					statusCode: 200,
-				});
-				expect(result).toHaveLength(1);
-				expect(result[0]).toHaveLength(2);
-				expect(result[0]).toEqual(inputItems);
-			});
-
-			it('should NOT sandbox HTML content for non-HTML content-type', async () => {
-				const inputItems = [
-					{ json: { index: 0, input: true } },
-					{ json: { index: 1, input: true } },
-				];
-				mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
-				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
-				mockExecuteFunctions.getParentNodes.mockReturnValue([
-					mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
-				]);
-				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
-					if (paramName === 'respondWith') return 'allIncomingItems';
-					if (paramName === 'options') return {};
-				});
-				mockExecuteFunctions.sendResponse.mockReturnValue();
-
-				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
-				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: inputItems.map((item) => item.json),
-					headers: {},
-					statusCode: 200,
-				});
-				expect(result).toHaveLength(1);
-				expect(result[0]).toHaveLength(2);
-				expect(result[0]).toEqual(inputItems);
-
-				await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
-				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: inputItems.map((item) => item.json),
-					headers: {},
-					statusCode: 200,
-				});
-			});
 		});
 
 		it('should have two outputs in version 1.3', async () => {

@@ -49,6 +49,18 @@ describe('nodeNameToToolName', () => {
 		expect(nodeNameToToolName(getNodeWithName('Test#+*()[]{}:;,<>/\\\'"%$Node'))).toBe('Test_Node');
 	});
 
+	it('should replace emojis with underscores', () => {
+		expect(nodeNameToToolName(getNodeWithName('Test 😀 Node'))).toBe('Test_Node');
+	});
+
+	it('should replace multiple emojis with underscores', () => {
+		expect(nodeNameToToolName(getNodeWithName('🚀 Test 📊 Node 🎉'))).toBe('_Test_Node_');
+	});
+
+	it('should handle complex emoji sequences', () => {
+		expect(nodeNameToToolName(getNodeWithName('Test 👨‍💻 Node 🔥'))).toBe('Test_Node_');
+	});
+
 	describe('when passed a string directly', () => {
 		it('should replace spaces with underscores', () => {
 			expect(nodeNameToToolName('Test Node')).toBe('Test_Node');

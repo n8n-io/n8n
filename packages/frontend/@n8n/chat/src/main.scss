@@ -1,5 +1,6 @@
-.n8n-chat {
-	@import 'highlight.js/styles/github';
-}
+@use 'sass:meta';
+@use 'css';
 
-@import 'css';
+.n8n-chat {
+	@include meta.load-css('highlight.js/styles/github');
+}

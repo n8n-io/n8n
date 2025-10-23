@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import { STORES } from './constants';
+import { getConfigFromMetaTag } from './metaTagConfig';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
@@ -36,10 +37,7 @@ export type RootStoreState = {
 export const useRootStore = defineStore(STORES.ROOT, () => {
 	const state = ref<RootStoreState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
-		restEndpoint:
-			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
-				? 'rest'
-				: window.REST_ENDPOINT,
+		restEndpoint: getConfigFromMetaTag('rest-endpoint') ?? 'rest',
 		defaultLocale: 'en',
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
@@ -157,6 +155,14 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.endpointWebhookWaiting = value;
 	};
 
+	const setEndpointMcp = (value: string) => {
+		state.value.endpointMcp = value;
+	};
+
+	const setEndpointMcpTest = (value: string) => {
+		state.value.endpointMcpTest = value;
+	};
+
 	const setTimezone = (value: string) => {
 		state.value.timezone = value;
 		setGlobalState({ defaultTimezone: value });
@@ -226,6 +232,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setEndpointWebhook,
 		setEndpointWebhookTest,
 		setEndpointWebhookWaiting,
+		setEndpointMcp,
+		setEndpointMcpTest,
 		setTimezone,
 		setExecutionTimeout,
 		setMaxExecutionTimeout,

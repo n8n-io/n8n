@@ -1,6 +1,6 @@
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ReloadNodeType } from '@n8n/api-types/push/hot-reload';
-import { isCommunityPackageName } from '../../../utils/nodeTypesUtils';
+import { isCommunityPackageName } from 'n8n-workflow';
 
 /**
  * Handles the 'reloadNodeType' event from the push connection, which indicates

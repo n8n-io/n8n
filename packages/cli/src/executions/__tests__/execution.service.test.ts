@@ -1,11 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { WorkflowOperationError } from 'n8n-workflow';
+import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import config from '@/config';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { ExecutionService } from '@/executions/execution.service';
@@ -20,9 +21,10 @@ describe('ExecutionService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const waitTracker = mock<WaitTracker>();
 	const concurrencyControl = mock<ConcurrencyControlService>();
+	const globalConfig = Container.get(GlobalConfig);
 
 	const executionService = new ExecutionService(
-		mock(),
+		globalConfig,
 		mock(),
 		activeExecutions,
 		mock(),
@@ -38,7 +40,7 @@ describe('ExecutionService', () => {
 	);
 
 	beforeEach(() => {
-		config.set('executions.mode', 'regular');
+		globalConfig.executions.mode = 'regular';
 		jest.clearAllMocks();
 	});
 
@@ -125,7 +127,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -152,7 +157,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -194,7 +202,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({
 						id: '123',
 						mode: 'manual',
@@ -221,7 +229,10 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(stopInRegularModeSpy).not.toHaveBeenCalled();
-					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+						execution.id,
+						expect.any(ManualExecutionCancelledError),
+					);
 					expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 
 					expect(concurrencyControl.remove).not.toHaveBeenCalled();
@@ -235,7 +246,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({ id: '123', status: 'running' });
 					executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(false);
@@ -264,7 +275,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({ id: '123', status: 'waiting' });
 					executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(true);
