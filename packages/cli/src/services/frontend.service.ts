@@ -459,10 +459,22 @@ export class FrontendService {
 	}
 
 	/**
+	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Minimal settings for unauthenticated users
 	 */
 	getMinimalSettings(): Partial<FrontendSettings> {
-		return {};
+		// Get full settings to ensure all required properties are initialized
+		this.getSettings();
+
+		return {
+			// Auth & SSO - required for login UI
+			userManagement: this.settings.userManagement,
+			sso: this.settings.sso,
+			mfa: this.settings.mfa,
+
+			// Basic settings - required for UI
+			versionCli: this.settings.versionCli,
+		};
 	}
 
 	getModuleSettings() {
