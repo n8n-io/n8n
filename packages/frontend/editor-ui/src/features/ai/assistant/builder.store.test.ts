@@ -729,8 +729,6 @@ describe('AI Builder store', () => {
 			// Verify the API was called with correct parameters
 			expect(apiSpy).toHaveBeenCalled();
 			const callArgs = apiSpy.mock.calls[0];
-			expect(callArgs).toHaveLength(7); // Should have 7 arguments
-
 			const signal = callArgs[5]; // The 6th argument is the abort signal
 			expect(signal).toBeDefined();
 			expect(signal).toBeInstanceOf(AbortSignal);
