@@ -8,6 +8,8 @@ import {
 	ChatHubChangeConversationTitleRequest,
 	ChatSessionId,
 	ChatMessageId,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -253,14 +255,8 @@ export class ChatHubController {
 	@GlobalScope('chatHubAgent:create')
 	async createAgent(
 		req: AuthenticatedRequest,
-		@Body payload: {
-			name: string;
-			description?: string;
-			systemPrompt: string;
-			provider?: string;
-			model?: string;
-			workflowId?: string;
-		},
+		_res: Response,
+		@Body payload: ChatHubCreateAgentRequest,
 	) {
 		return await this.chatAgentService.createAgent(req.user.id, payload);
 	}
@@ -269,15 +265,9 @@ export class ChatHubController {
 	@GlobalScope('chatHubAgent:update')
 	async updateAgent(
 		req: AuthenticatedRequest,
+		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: {
-			name?: string;
-			description?: string;
-			systemPrompt?: string;
-			provider?: string;
-			model?: string;
-			workflowId?: string;
-		},
+		@Body payload: ChatHubUpdateAgentRequest,
 	) {
 		return await this.chatAgentService.updateAgent(agentId, req.user.id, payload);
 	}
