@@ -6,8 +6,14 @@ import multer from 'multer';
 import { nanoid } from 'nanoid';
 import path from 'path';
 
-import { FileUploadError } from './errors/data-table-file-upload.error';
-import { MulterDestinationCallback, MulterFilenameCallback, UploadMiddleware } from './types';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
+import {
+	type AuthenticatedRequestWithFile,
+	type MulterDestinationCallback,
+	type MulterFilenameCallback,
+	type UploadMiddleware,
+} from './types';
 
 const UPLOADS_FOLDER_NAME = 'data-table-uploads';
 const ALLOWED_MIME_TYPES = ['text/csv'];
@@ -45,7 +51,7 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 			fileFilter: (_req, file, cb: multer.FileFilterCallback) => {
 				if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
 					cb(
-						new FileUploadError(
+						new BadRequestError(
 							`Only the following file types are allowed: ${ALLOWED_MIME_TYPES.join(', ')}`,
 						),
 					);
@@ -63,13 +69,10 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 	single(fieldName: string): RequestHandler {
 		return (req, res, next) => {
 			void this.upload.single(fieldName)(req, res, (error) => {
-				if (error instanceof multer.MulterError) {
-					next(new FileUploadError(error.message));
-				} else if (error) {
-					next(error);
-				} else {
-					next();
+				if (error) {
+					(req as AuthenticatedRequestWithFile).fileUploadError = error;
 				}
+				next();
 			});
 		};
 	}

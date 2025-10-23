@@ -14,5 +14,6 @@ export type AuthenticatedRequestWithFile<
 	RequestBody = {},
 	RequestQuery = {},
 > = AuthenticatedRequest<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	file: Express.Multer.File;
+	file?: Express.Multer.File;
+	fileUploadError?: Error;
 };

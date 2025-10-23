@@ -1,11 +1,11 @@
 import { Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import multer from 'multer';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { MulterUploadMiddleware } from './multer-upload-middleware';
 import { AuthenticatedRequestWithFile } from './types';
-import { FileUploadError } from './errors/data-table-file-upload.error';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const uploadMiddleware = Container.get(MulterUploadMiddleware);
 
@@ -16,16 +16,24 @@ export class DataTableUploadsController {
 		skipAuth: false,
 	})
 	uploadFile(req: AuthenticatedRequestWithFile, _res: Response) {
-		try {
-			return {
-				originalName: req.file.originalname,
-				id: req.file.filename,
-			};
-		} catch (e: unknown) {
-			if (e instanceof FileUploadError) {
-				throw new BadRequestError(e.message);
+		if (req.fileUploadError) {
+			const error = req.fileUploadError;
+			if (error instanceof multer.MulterError) {
+				throw new BadRequestError(`File upload error: ${error.message}`);
+			} else if (error instanceof BadRequestError) {
+				throw error;
+			} else {
+				throw new BadRequestError('File upload failed');
 			}
-			throw e;
 		}
+
+		if (!req.file) {
+			throw new BadRequestError('No file uploaded');
+		}
+
+		return {
+			originalName: req.file.originalname,
+			id: req.file.filename,
+		};
 	}
 }
