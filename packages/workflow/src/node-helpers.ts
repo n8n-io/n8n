@@ -429,10 +429,12 @@ export function displayParameterPath(
 	}
 
 	// Get the root parameter data
-	let nodeValuesRoot = nodeValues;
-	if (path && path.split('.').indexOf('parameters') === 0) {
-		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
+	let nodeValuesRoot = nodeValues ?? {};
+	if (path && path.split('.')[0] === 'parameters') {
+		nodeValuesRoot = (get(nodeValues, 'parameters') as INodeParameters) ?? {};
 	}
+
+	if (!parameter) return false;
 
 	return displayParameter(
 		resolvedNodeValues,
