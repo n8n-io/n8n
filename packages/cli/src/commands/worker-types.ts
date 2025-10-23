@@ -18,6 +18,13 @@ export interface PiscinaExecutionTask {
  */
 export interface PiscinaExecutionResult {
 	run: IRun;
+	/** Worker thread memory usage in bytes */
+	memoryUsage?: {
+		heapUsed: number;
+		heapTotal: number;
+		external: number;
+		rss: number;
+	};
 }
 
 /**

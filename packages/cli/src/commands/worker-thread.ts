@@ -69,7 +69,18 @@ export default async function executeWorkflow(
 		const run = workflowExecute.processRunExecutionData(workflow);
 		const result = await run;
 
-		return { run: result };
+		// Capture memory usage for benchmarking
+		const memoryUsage = process.memoryUsage();
+
+		return {
+			run: result,
+			memoryUsage: {
+				heapUsed: memoryUsage.heapUsed,
+				heapTotal: memoryUsage.heapTotal,
+				external: memoryUsage.external,
+				rss: memoryUsage.rss,
+			},
+		};
 	} catch (error) {
 		console.error(prefix, 'Execution failed for', task.executionId, error);
 		// throw error;

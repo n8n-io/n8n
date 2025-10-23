@@ -53,9 +53,34 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { EventService } from './events/event.service';
 
+interface BenchmarkMeasurement {
+	executionId: string;
+	timestamp: number;
+	// Timing
+	startTime: number;
+	endTime: number;
+	duration: number;
+	isColdStart: boolean;
+	// Memory (bytes)
+	mainMemoryBefore: number;
+	mainMemoryAfter: number;
+	workerMemoryPeak?: {
+		heapUsed: number;
+		heapTotal: number;
+		external: number;
+		rss: number;
+	};
+	// Process info
+	workerNumber: number;
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
+	// Track execution start times for benchmarking
+	private executionStartTimes = new Map<string, { startTime: number; memoryBefore: number }>();
+	// Track number of executions to approximate cold/warm starts
+	private executionCount = 0;
 
 	constructor(
 		private readonly logger: Logger,
@@ -389,6 +414,17 @@ export class WorkflowRunner {
 	private pool?: Piscina;
 
 	/**
+	 * Write benchmark measurement to JSONL file
+	 */
+	private async writeBenchmarkMeasurement(measurement: BenchmarkMeasurement): Promise<void> {
+		const fs = await import('fs/promises');
+		const path = await import('path');
+		const filePath = path.join(process.cwd(), 'benchmark-results-worker-threads.jsonl');
+		const line = JSON.stringify(measurement) + '\n';
+		await fs.appendFile(filePath, line, 'utf-8');
+	}
+
+	/**
 	 * Get or create the Piscina worker pool
 	 */
 	private getPool(): Piscina {
@@ -445,6 +481,17 @@ export class WorkflowRunner {
 
 		return new PCancelable(async (resolve, reject, _onCancel) => {
 			try {
+				// Record start time and memory before execution
+				const startTime = Date.now();
+				const memoryBefore = process.memoryUsage().heapUsed;
+				this.executionCount++;
+
+				// Store timing info for later
+				this.executionStartTimes.set(executionId, {
+					startTime,
+					memoryBefore,
+				});
+
 				// Prepare task for worker
 				const task: PiscinaExecutionTask = {
 					// Serialize workflow data
@@ -459,6 +506,34 @@ export class WorkflowRunner {
 				const result = await this.getPool().run(task, { transferList: [port2] });
 
 				this.logger.info(`Worker completed execution ${executionId}`, { executionId });
+
+				// Record benchmark measurement
+				const startInfo = this.executionStartTimes.get(executionId);
+				if (startInfo) {
+					const endTime = Date.now();
+					const memoryAfter = process.memoryUsage().heapUsed;
+					const pool = this.getPool();
+
+					// Consider first N executions as cold starts (Piscina spawns workers on-demand)
+					// Assuming maxThreads workers need to be spawned initially
+					const isColdStart = this.executionCount <= pool.options.maxThreads;
+
+					const measurement: BenchmarkMeasurement = {
+						executionId,
+						timestamp: endTime,
+						startTime: startInfo.startTime,
+						endTime,
+						duration: endTime - startInfo.startTime,
+						isColdStart,
+						mainMemoryBefore: startInfo.memoryBefore,
+						mainMemoryAfter: memoryAfter,
+						workerMemoryPeak: result.memoryUsage,
+						workerNumber: this.executionCount,
+					};
+
+					void this.writeBenchmarkMeasurement(measurement);
+					this.executionStartTimes.delete(executionId);
+				}
 
 				resolve(result.run);
 			} catch (error) {
