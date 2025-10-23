@@ -2,7 +2,7 @@ import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
 
-type Resolvers = 'enviroment' | 'podIdentity' | 'containerMetadata' | 'instanceMetadata';
+type Resolvers = 'environment' | 'podIdentity' | 'containerMetadata' | 'instanceMetadata';
 type RetrunData = {
 	accessKeyId: string;
 	secretAccessKey: string;
@@ -12,7 +12,7 @@ type RetrunData = {
 export const envGetter = (key: string): string | undefined => process.env[key];
 
 export const credentialsResolver: Record<Resolvers, () => Promise<RetrunData | null>> = {
-	enviroment: getEnvironmentCredentials,
+	environment: getEnvironmentCredentials,
 	instanceMetadata: getInstanceMetadataCredentials,
 	containerMetadata: getContainerMetadataCredentials,
 	podIdentity: getPodIdentityCredentials,
@@ -34,7 +34,7 @@ export async function getSystemCredentials() {
 	}
 
 	const resolveOrder: Resolvers[] = [
-		'enviroment',
+		'environment',
 		'podIdentity',
 		'containerMetadata',
 		'instanceMetadata',
@@ -43,7 +43,7 @@ export async function getSystemCredentials() {
 	for (const resolver of resolveOrder) {
 		try {
 			const credentials = await credentialsResolver[resolver]();
-			if (credentials) return credentials;
+			if (credentials) return { ...credentials, source: resolver };
 		} catch (error) {
 			// Ignore and continue to the next resolver
 		}
