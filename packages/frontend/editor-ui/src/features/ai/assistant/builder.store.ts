@@ -1,10 +1,5 @@
 import type { VIEWS } from '@/constants';
-import {
-	DEFAULT_NEW_WORKFLOW_NAME,
-	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
-	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -16,7 +11,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import { chatWithBuilder, getAiSessions, getBuilderCredits, getSessionsMetadata } from '@/api/ai';
@@ -57,7 +51,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
-	const posthogStore = usePostHog();
 
 	// Composables
 	const {
@@ -81,23 +74,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return firstUserMessage?.content;
 	});
 
-	const isAIBuilderEnabled = computed(() => {
-		// Check license first
-		if (!settings.isAiBuilderEnabled) {
-			return false;
-		}
-
-		const releaseExperimentVariant = posthogStore.getVariant(
-			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
-		);
-		if (releaseExperimentVariant === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant) {
-			return true;
-		}
-
-		return (
-			posthogStore.getVariant(WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name) ===
-			WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant
-		);
+	const isAIBuilderEnabled = computed((): boolean => {
+		return settings.isAiBuilderEnabled;
 	});
 
 	const toolMessages = computed(() => chatMessages.value.filter(isToolMessage));
@@ -305,12 +283,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			streamingAbortController.value.abort();
 		}
 
-		const useDeprecatedCredentials =
-			posthogStore.getVariant(WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) !==
-				WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant &&
-			posthogStore.getVariant(WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name) ===
-				WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
-
 		streamingAbortController.value = new AbortController();
 		try {
 			chatWithBuilder(
@@ -335,7 +307,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				() => stopStreaming(),
 				(e) => handleServiceError(e, messageId, retry),
 				streamingAbortController.value?.signal,
-				useDeprecatedCredentials,
 			);
 		} catch (e: unknown) {
 			handleServiceError(e, messageId, retry);
@@ -508,10 +479,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	async function fetchBuilderCredits() {
-		const releaseExperimentVariant = posthogStore.getVariant(
-			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
-		);
-		if (releaseExperimentVariant !== WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant) {
+		if (!isAIBuilderEnabled.value) {
 			return;
 		}
 
