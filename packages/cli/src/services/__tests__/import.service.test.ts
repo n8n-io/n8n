@@ -1,13 +1,15 @@
+/* eslint-disable import-x/extensions */
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
+import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
 import { ImportService } from '../import.service';
-import type { CredentialsRepository, TagRepository } from '@n8n/db';
+
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 // Mock fs/promises
 jest.mock('fs/promises');
@@ -38,6 +40,7 @@ describe('ImportService', () => {
 	let mockEntityManager: EntityManager;
 	let mockCipher: Cipher;
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockWorkflowIndexService: WorkflowIndexService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -49,6 +52,7 @@ describe('ImportService', () => {
 		mockEntityManager = mock<EntityManager>();
 		mockCipher = mock<Cipher>();
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+		mockWorkflowIndexService = mock<WorkflowIndexService>();
 
 		// Set up cipher mock
 		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
@@ -94,6 +98,7 @@ describe('ImportService', () => {
 			mockDataSource,
 			mockCipher,
 			mockActiveWorkflowManager,
+			mockWorkflowIndexService,
 		);
 	});
 

@@ -1,3 +1,4 @@
+/* eslint-disable import-x/extensions */
 import {
 	getPersonalProject,
 	createWorkflow,
@@ -19,10 +20,11 @@ import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { ImportService } from '@/services/import.service';
-
 import { createMember, createOwner } from './shared/db/users';
+
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { ImportService } from '@/services/import.service';
 
 describe('ImportService', () => {
 	let importService: ImportService;
@@ -30,6 +32,7 @@ describe('ImportService', () => {
 	let owner: User;
 	let ownerPersonalProject: Project;
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockWorkflowIndexService: WorkflowIndexService;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -43,6 +46,8 @@ describe('ImportService', () => {
 
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 
+		mockWorkflowIndexService = mock<WorkflowIndexService>();
+
 		importService = new ImportService(
 			mock(),
 			credentialsRepository,
@@ -50,6 +55,7 @@ describe('ImportService', () => {
 			mock(),
 			mock(),
 			mockActiveWorkflowManager,
+			mockWorkflowIndexService,
 		);
 	});
 
