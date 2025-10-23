@@ -106,7 +106,7 @@ export class ProvisioningService {
 	}
 
 	/**
-	 * @param projectIdToRole expected to be a JSON string with a string of arrays like this:
+	 * @param projectIdToRole expected to be an array of strings like this:
 	 * [
 	 *   "<projectUuid>:<projectRoleDisplayName>",
 	 *   "<projectUuid>:<projectRoleDisplayName>",
