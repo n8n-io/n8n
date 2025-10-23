@@ -18,7 +18,7 @@ export class ProcessEnvAccessRule extends AbstractBreakingChangeRule {
 	}
 
 	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
-		const result = this.createEmptyResult(this.getMetadata().id);
+		const result = this.createEmptyResult();
 
 		try {
 			const processEnvPattern = /process\.env/;

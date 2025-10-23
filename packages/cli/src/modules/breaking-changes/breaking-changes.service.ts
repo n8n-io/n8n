@@ -1,13 +1,13 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-
-import { N8N_VERSION } from '@/constants';
 
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { allRules, RuleInstances } from './rules';
 import type { DetectionReport, DetectionOptions, BreakingChangeVersion } from './types';
 import { BreakingChangeSeverity } from './types';
-import { WorkflowRepository } from '@n8n/db';
+
+import { N8N_VERSION } from '@/constants';
 
 @Service()
 export class BreakingChangeService {

@@ -24,7 +24,7 @@ export class RemovedNodesRule extends AbstractBreakingChangeRule {
 	}
 
 	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
-		const result = this.createEmptyResult(this.getMetadata().id);
+		const result = this.createEmptyResult();
 
 		try {
 			for (const workflow of workflows) {

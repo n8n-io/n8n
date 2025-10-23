@@ -20,9 +20,9 @@ export abstract class AbstractBreakingChangeRule implements IBreakingChangeRule 
 
 	abstract detect(input: CommonDetectionInput): Promise<DetectionResult>;
 
-	protected createEmptyResult(ruleId: string): DetectionResult {
+	protected createEmptyResult(): DetectionResult {
 		return {
-			ruleId,
+			ruleId: this.getMetadata().id,
 			isAffected: false,
 			affectedWorkflows: [],
 			instanceIssues: [],

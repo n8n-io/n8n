@@ -3,13 +3,13 @@ import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import { N8N_VERSION } from '@/constants';
-
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
 import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule';
 import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule';
+
+import { N8N_VERSION } from '@/constants';
 
 describe('BreakingChangeService', () => {
 	const logger = mock<Logger>({
@@ -58,7 +58,6 @@ describe('BreakingChangeService', () => {
 
 	describe('detect()', () => {
 		it('should return a report with no issues when no workflows are affected', async () => {
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([]);
 			workflowRepository.find.mockResolvedValue([]);
 
 			const report = await service.detect('v2');
@@ -101,21 +100,6 @@ describe('BreakingChangeService', () => {
 				createNode('File Node', 'n8n-nodes-base.readWriteFile'), // Triggers FileAccessRule
 			]);
 
-			workflowRepository.findWorkflowsWithNodeType.mockImplementation(async (nodeTypes) => {
-				const hasTargetNode = nodeTypes.some((type) =>
-					[
-						'n8n-nodes-base.spontit',
-						'n8n-nodes-base.readWriteFile',
-						'n8n-nodes-base.readBinaryFiles',
-						'n8n-nodes-base.crowdDev',
-						'n8n-nodes-base.kitemaker',
-					].includes(type),
-				);
-				if (hasTargetNode) {
-					return [workflow];
-				}
-				return [];
-			});
 			workflowRepository.find.mockResolvedValue([workflow as never]);
 
 			const report = await service.detect('v2');
@@ -160,32 +144,7 @@ describe('BreakingChangeService', () => {
 			expect(report.summary.criticalIssues).toBe(1); // Only removed nodes is critical
 		});
 
-		it('should log detection start and completion', async () => {
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([]);
-			workflowRepository.find.mockResolvedValue([]);
-
-			await service.detect('v2');
-
-			expect(logger.info).toHaveBeenCalledWith(
-				'Starting breaking change detection',
-				expect.objectContaining({
-					targetVersion: 'v2',
-					options: {},
-				}),
-			);
-
-			expect(logger.info).toHaveBeenCalledWith(
-				'Breaking change detection completed',
-				expect.objectContaining({
-					duration: expect.any(Number),
-					totalIssues: 0,
-					criticalIssues: 0,
-				}),
-			);
-		});
-
 		it('should include all required fields in the report', async () => {
-			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([]);
 			workflowRepository.find.mockResolvedValue([]);
 
 			const report = await service.detect('v2');

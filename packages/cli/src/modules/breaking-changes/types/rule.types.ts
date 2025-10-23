@@ -31,8 +31,6 @@ export interface BreakingChangeMetadata {
 	category: BreakingChangeCategory;
 	severity: BreakingChangeSeverity;
 	documentationUrl?: string;
-	linearTicket?: string;
-	deprecationDate?: Date;
 }
 
 export interface WorkflowIssue {

@@ -1,6 +1,7 @@
-import { Service } from '@n8n/di';
-import type { IBreakingChangeRule } from './types';
 import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
+
+import type { IBreakingChangeRule } from './types';
 
 @Service()
 export class RuleRegistry {
@@ -12,6 +13,9 @@ export class RuleRegistry {
 
 	register(rule: IBreakingChangeRule): void {
 		const metadata = rule.getMetadata();
+		if (this.rules.has(metadata.id)) {
+			this.logger.warn(`Rule with ID ${metadata.id} is already registered. Overwriting.`);
+		}
 		this.rules.set(metadata.id, rule);
 		this.logger.debug(`Registered rule: ${metadata.id}`);
 	}
