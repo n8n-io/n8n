@@ -33,7 +33,9 @@ export async function microsoftApiRequest(
 	// Handle resource path construction - avoid duplicating /me if resource already starts with it
 	let resourcePath = resource;
 	if (!resource.startsWith('/me') && !resource.startsWith('/users/')) {
-		resourcePath = `/me${resource}`;
+		// Ensure proper path separator between /me and resource
+		const separator = resource.startsWith('/') ? '' : '/';
+		resourcePath = `/me${separator}${resource}`;
 	}
 
 	const options: IRequestOptions = {
