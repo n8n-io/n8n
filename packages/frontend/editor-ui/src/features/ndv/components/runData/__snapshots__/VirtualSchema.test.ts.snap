@@ -72,30 +72,30 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-v-8209c6fd=""
           >
             
-            Usually outputs the following fields. Execute the node to see the actual ones. 
+            Usually outputs the following fields. 
             
-            <a
-              class="n8n-link"
+            <button
+              bold=""
               data-v-8209c6fd=""
-              href="https://docs.n8n.io/data/schema-preview/"
-              target="_blank"
+              size="small"
             >
               
-              <span
-                class="primary"
-              >
-                <span
-                  class="n8n-text size-small bold"
-                >
-                  
-                  
-                  Learn more
-                  
-                  
-                </span>
-              </span>
+              Execute the node
               
-            </a>
+            </button>
+            
+             to see the actual ones. 
+            
+            <button
+              bold=""
+              data-v-8209c6fd=""
+              size="small"
+              to="https://docs.n8n.io/data/schema-preview/"
+            >
+              
+              Learn more
+              
+            </button>
             
             
           </div>

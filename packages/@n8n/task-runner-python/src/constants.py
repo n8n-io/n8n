@@ -108,6 +108,11 @@ TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capac
 
 # Security
 BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals"
+BLOCKED_NAMES = {
+    "__loader__",
+    "__builtins__",
+    "__globals__",
+}
 BLOCKED_ATTRIBUTES = {
     # runtime attributes
     "__subclasses__",
@@ -159,6 +164,7 @@ BLOCKED_ATTRIBUTES = {
 ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."
 ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disallowed. Allowed stdlib modules: {allowed}"
 ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
+ERROR_DANGEROUS_NAME = "Access to name '{name}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."

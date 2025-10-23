@@ -50,13 +50,7 @@ describe('API: ai', () => {
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				{
-					...payload,
-					payload: {
-						...payload.payload,
-						useDeprecatedCredentials: false,
-					},
-				},
+				payload,
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
@@ -89,56 +83,12 @@ describe('API: ai', () => {
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				{
-					...payload,
-					payload: {
-						...payload.payload,
-						useDeprecatedCredentials: false,
-					},
-				},
-				mockOnMessageUpdated,
-				mockOnDone,
-				mockOnError,
-				undefined,
-				abortSignal,
-			);
-		});
-
-		it('should use deprecated credentials when flag is true', () => {
-			const payload: ChatRequest.RequestPayload = {
-				payload: {
-					role: 'user',
-					type: 'message',
-					text: 'Build me a workflow',
-				},
-				sessionId: 'session-456',
-			};
-
-			chatWithBuilder(
-				mockContext,
 				payload,
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
 				undefined,
-				true,
-			);
-
-			expect(streamRequestSpy).toHaveBeenCalledWith(
-				mockContext,
-				'/ai/build',
-				{
-					...payload,
-					payload: {
-						...payload.payload,
-						useDeprecatedCredentials: true,
-					},
-				},
-				mockOnMessageUpdated,
-				mockOnDone,
-				mockOnError,
-				undefined,
-				undefined,
+				abortSignal,
 			);
 		});
 
@@ -165,13 +115,7 @@ describe('API: ai', () => {
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				{
-					...payload,
-					payload: {
-						...payload.payload,
-						useDeprecatedCredentials: false,
-					},
-				},
+				payload,
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
@@ -195,13 +139,7 @@ describe('API: ai', () => {
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				{
-					...payload,
-					payload: {
-						...payload.payload,
-						useDeprecatedCredentials: false,
-					},
-				},
+				payload,
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
@@ -316,26 +254,12 @@ describe('API: ai', () => {
 				sessionId: 'session-complex',
 			};
 
-			chatWithBuilder(
-				mockContext,
-				payload,
-				mockOnMessageUpdated,
-				mockOnDone,
-				mockOnError,
-				undefined,
-				false,
-			);
+			chatWithBuilder(mockContext, payload, mockOnMessageUpdated, mockOnDone, mockOnError);
 
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				{
-					...payload,
-					payload: {
-						...payload.payload,
-						useDeprecatedCredentials: false,
-					},
-				},
+				payload,
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
@@ -358,13 +282,7 @@ describe('API: ai', () => {
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				{
-					...payload,
-					payload: {
-						...payload.payload,
-						useDeprecatedCredentials: false,
-					},
-				},
+				payload,
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,

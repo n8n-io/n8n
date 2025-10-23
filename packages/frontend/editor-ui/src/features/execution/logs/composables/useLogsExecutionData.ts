@@ -93,6 +93,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		state.value = undefined;
 		workflowState.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
+		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 
 	async function loadSubExecution(logEntry: LogEntry) {

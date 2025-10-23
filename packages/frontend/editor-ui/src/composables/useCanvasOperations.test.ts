@@ -3179,6 +3179,7 @@ describe('useCanvasOperations', () => {
 
 			workflowsStore.executionWaitingForWebhook = true;
 			workflowsStore.workflowId = 'workflow-id';
+			workflowsStore.lastSuccessfulExecution = {} as IExecutionResponse;
 			workflowsStore.currentWorkflowExecutions = [
 				{
 					id: '1',
@@ -3211,6 +3212,7 @@ describe('useCanvasOperations', () => {
 			expect(resetStateSpy).toHaveBeenCalled();
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
 			expect(setActiveExecutionId).toHaveBeenCalledWith(undefined);
+			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toBe(false);
 			expect(executionsStore.activeExecution).toBeNull();

@@ -1,10 +1,12 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ExecutionService } from '@/executions/execution.service';
 
 import { WorkflowsController } from '../workflows.controller';
 
@@ -67,6 +69,55 @@ describe('WorkflowsController', () => {
 				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(BadRequestError);
 				expect(axiosMock).toHaveBeenCalledWith(query.url);
 			});
+		});
+	});
+
+	describe('getLastSuccessfulExecution', () => {
+		it('should return the last successful execution', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-123';
+			const mockExecution = mock<IExecutionResponse>({
+				id: 'execution-456',
+				workflowId,
+				mode: 'trigger',
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+				stoppedAt: new Date('2025-01-15T10:05:00Z'),
+				status: 'success',
+			});
+			const executionService = mock<ExecutionService>();
+			executionService.getLastSuccessfulExecution.mockResolvedValue(mockExecution);
+			controller.executionService = executionService;
+
+			/**
+			 * Act
+			 */
+			const result = await controller.getLastSuccessfulExecution(req, res, workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toEqual(mockExecution);
+			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
+		});
+
+		it('should throw NotFoundError when no successful execution exists', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-no-success';
+			const executionService = mock<ExecutionService>();
+			executionService.getLastSuccessfulExecution.mockResolvedValue(undefined);
+			controller.executionService = executionService;
+
+			/**
+			 * Act & Assert
+			 */
+			await expect(controller.getLastSuccessfulExecution(req, res, workflowId)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
 		});
 	});
 });

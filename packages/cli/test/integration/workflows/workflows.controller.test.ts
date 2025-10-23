@@ -2828,3 +2828,34 @@ describe('DELETE /workflows/:workflowId', () => {
 		expect(sharedWorkflowsInDb).toHaveLength(0);
 	});
 });
+
+describe('GET /workflows/:workflowId/executions/last-successful', () => {
+	test('should return the last successful execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const { createSuccessfulExecution } = await import('../shared/db/executions');
+
+		// Create multiple executions with different statuses
+		await createSuccessfulExecution(workflow);
+		const lastExecution = await createSuccessfulExecution(workflow);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/executions/last-successful`)
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			id: lastExecution.id,
+			workflowId: workflow.id,
+		});
+	});
+
+	test('should return 404 when no successful execution exists', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/executions/last-successful`)
+			.expect(404);
+
+		expect(response.body.message).toBe('No successful execution found for the workflow');
+	});
+});

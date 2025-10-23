@@ -20,6 +20,7 @@ import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workfl
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type { INodeUi, IRunDataDisplayMode, ITab } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { NodePanelType } from '@/features/ndv/ndv.types';
 
 import {
@@ -35,12 +36,13 @@ import {
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	RUN_DATA_DEFAULT_PAGE_SIZE,
 } from '@/constants';
-import { SAMPLE_PIN_DATA } from '@/constants/samples';
+import { DUMMY_PIN_DATA } from '@/constants/samples';
 
 import BinaryDataDisplay from './BinaryDataDisplay.vue';
 import NodeErrorView from './error/NodeErrorView.vue';
 import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEditor.vue';
 
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import RunDataPinButton from './RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
@@ -64,7 +66,7 @@ import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
 import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
@@ -214,6 +216,7 @@ const outputIndex = ref(0);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
+const previousExecutionDataUsedInEditMode = ref<boolean>(false);
 
 const pinDataDiscoveryTooltipVisible = ref(false);
 const isControlledPinDataTooltip = ref(false);
@@ -236,6 +239,9 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const router = useRouter();
+
+const { runWorkflow } = useRunWorkflow({ router });
 
 const node = toRef(props, 'node');
 
@@ -914,7 +920,16 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		? inputData.length
 		: Object.keys(inputData ?? {}).length;
 
-	const data = inputDataLength > 0 ? inputData : SAMPLE_PIN_DATA;
+	const lastSuccessfulExecutionItems = getOutputtedNodeItems(
+		workflowsStore.lastSuccessfulExecution,
+		node.value,
+	);
+	previousExecutionDataUsedInEditMode.value =
+		inputDataLength === 0 && Boolean(lastSuccessfulExecutionItems.length);
+	const mockData = lastSuccessfulExecutionItems.length
+		? executionDataToJson(lastSuccessfulExecutionItems)
+		: DUMMY_PIN_DATA;
+	const data = inputDataLength > 0 ? inputData : mockData;
 
 	ndvStore.setOutputPanelEditModeEnabled(true);
 	ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
@@ -928,6 +943,24 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : props.displayMode,
 		is_data_pinned: pinnedData.hasData.value,
 	});
+}
+
+function getOutputtedNodeItems(
+	execution?: IExecutionResponse | null,
+	node?: INodeUi | null,
+	runIndex = 0,
+	outputIndex = 0,
+	connectionType = 'main',
+): INodeExecutionData[] {
+	if (!node) {
+		return [];
+	}
+
+	return (
+		execution?.data?.resultData.runData?.[node?.name]?.[runIndex]?.data?.[connectionType]?.[
+			outputIndex
+		] ?? []
+	);
 }
 
 function onClickCancelEdit() {
@@ -1363,6 +1396,13 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
+function executeNode(nodeName: string) {
+	void runWorkflow({
+		destinationNode: nodeName,
+		source: 'schema-preview',
+	});
+}
+
 defineExpose({ enterEditMode });
 </script>
 
@@ -1669,6 +1709,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
+				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small">{{
+					i18n.baseText('runData.pinData.insertedExecutionData')
+				}}</N8nText>
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
 						:model-value="editMode.value"
@@ -1705,7 +1748,13 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="!hasNodeRun && !(displaysMultipleNodes && (node?.disabled || hasPreviewSchema))"
+				v-else-if="
+					!hasNodeRun &&
+					!(
+						displaysMultipleNodes &&
+						(node?.disabled || hasPreviewSchema || workflowsStore.lastSuccessfulExecution)
+					)
+				"
 				:class="$style.center"
 			>
 				<slot name="node-not-run"></slot>
@@ -1900,7 +1949,14 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
+			<Suspense
+				v-else-if="
+					isSchemaView &&
+					((!hasNodeRun && workflowsStore.lastSuccessfulExecution) ||
+						hasNodeRun ||
+						hasPreviewSchema)
+				"
+			>
 				<LazyRunDataSchema
 					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"
@@ -1913,7 +1969,9 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
+					:preview-execution="workflowsStore.lastSuccessfulExecution"
 					@clear:search="onSearchClear"
+					@execute="executeNode"
 				/>
 			</Suspense>
 

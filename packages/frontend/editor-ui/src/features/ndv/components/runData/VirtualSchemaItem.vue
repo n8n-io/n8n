@@ -123,7 +123,7 @@ const emit = defineEmits<{
 		--schema-preview-dashed-border: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' viewBox='0 0 400 400' fill='none' rx='4' ry='4' stroke='%230000002A' stroke-width='2' stroke-dasharray='4%2c 4' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
 		--schema-preview-dashed-border-dark: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' viewBox='0 0 400 400' fill='none' rx='4' ry='4' stroke='%23FFFFFF2A' stroke-width='2' stroke-dasharray='4%2c 4' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
 		color: var(--color--text--tint-1);
-		background-color: var(--run-data--color--background);
+		background-color: var(--color--foreground--tint-1);
 		border: none;
 		max-width: calc(100% - var(--spacing--lg));
 		background-image: var(--schema-preview-dashed-border);

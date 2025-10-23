@@ -131,6 +131,26 @@ export class ExecutionService {
 		return execution;
 	}
 
+	async getLastSuccessfulExecution(workflowId: string): Promise<IExecutionResponse | undefined> {
+		const executions = await this.executionRepository.findMultipleExecutions(
+			{
+				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId'],
+				where: {
+					workflowId,
+					status: 'success',
+				},
+				order: { id: 'DESC' },
+				take: 1,
+			},
+			{
+				includeData: true,
+				unflattenData: true,
+			},
+		);
+
+		return executions[0];
+	}
+
 	async retry(
 		req: ExecutionRequest.Retry,
 		sharedWorkflowIds: string[],

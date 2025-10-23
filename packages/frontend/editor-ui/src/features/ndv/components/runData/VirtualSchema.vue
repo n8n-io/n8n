@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { INodeUi } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import Draggable from '@/components/Draggable.vue';
 import VirtualSchemaHeader from './VirtualSchemaHeader.vue';
 import VirtualSchemaItem from './VirtualSchemaItem.vue';
@@ -20,6 +21,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
+	type IRunExecutionData,
 	createResultError,
 	type NodeConnectionType,
 	NodeConnectionTypes,
@@ -59,6 +61,7 @@ type Props = {
 	search?: string;
 	compact?: boolean;
 	outputIndex?: number;
+	previewExecution?: IExecutionResponse | null;
 	truncateLimit?: number;
 };
 
@@ -73,6 +76,7 @@ const props = withDefaults(defineProps<Props>(), {
 	compact: false,
 	outputIndex: undefined,
 	truncateLimit: 600,
+	previewExecution: undefined,
 });
 
 const telemetry = useTelemetry();
@@ -92,6 +96,7 @@ const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted } = useNodeHe
 
 const emit = defineEmits<{
 	'clear:search': [];
+	execute: [nodeName: string];
 }>();
 
 const scroller = ref<RecycleScrollerInstance>();
@@ -114,11 +119,19 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	const hasPinnedData = pinData ? pinData.length > 0 : false;
 	const isNodeExecuted = hasPinnedData || hasNodeExecuted(connectedNode.name);
 
+	const previewExecutionData: IRunExecutionData | undefined =
+		!isNodeExecuted && props.previewExecution ? props.previewExecution.data : undefined;
+
 	const connectedOutputIndexes = connectedNode.indicies.length > 0 ? connectedNode.indicies : [0];
 	const connectedOutputsWithData = connectedOutputIndexes
 		.map((outputIndex) => ({
 			outputIndex,
-			runIndex: getLastRunIndexWithData(fullNode.name, outputIndex, props.connectionType),
+			runIndex: getLastRunIndexWithData(
+				fullNode.name,
+				outputIndex,
+				props.connectionType,
+				previewExecutionData,
+			),
 		}))
 		.filter(({ runIndex }) => runIndex !== -1);
 
@@ -142,18 +155,26 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	}
 
 	const nodeData = filteredOutputsWithData
-		.map(({ outputIndex, runIndex }) =>
-			getNodeInputData(fullNode, runIndex, outputIndex, props.paneType, props.connectionType),
-		)
+		.map(({ outputIndex, runIndex }) => {
+			return getNodeInputData(
+				fullNode,
+				runIndex,
+				outputIndex,
+				props.paneType,
+				props.connectionType,
+				previewExecutionData,
+			);
+		})
 		.flat();
 	const hasBinary = nodeData.some((data) => !isEmpty(data.binary));
 	const data = pinData ?? executionDataToJson(nodeData);
-	const isDataEmpty = data.length === 0;
+	const isDataEmpty = data.length === 0 || (data.length === 1 && Object.keys(data[0]).length === 0);
 
 	let schema = getSchemaForExecutionData(data);
-	let preview = false;
+	const lastSuccessfulPreview = !isDataEmpty && Boolean(previewExecutionData);
+	let preview = lastSuccessfulPreview;
 
-	if (data.length === 0) {
+	if (isDataEmpty && !preview) {
 		const previewSchema = await getSchemaPreview(fullNode);
 		if (previewSchema.ok) {
 			schema = getSchemaForJsonSchema(previewSchema.result);
@@ -164,9 +185,10 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	return {
 		schema,
 		connectedOutputIndexes,
-		itemsCount: data.length,
+		itemsCount: !isDataEmpty ? data.length : 0,
 		runIndex: connectedOutputsWithData[0]?.runIndex ?? 0,
 		preview,
+		lastSuccessfulPreview,
 		hasBinary,
 		isNodeExecuted,
 		isDataEmpty,
@@ -298,6 +320,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 			isNodeExecuted,
 			isDataEmpty,
 			runIndex,
+			lastSuccessfulPreview,
 		} = await getNodeSchema(fullNode, node);
 
 		const filteredSchema = filterSchema(schema, search);
@@ -316,6 +339,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 			isNodeExecuted,
 			isDataEmpty,
 			runIndex,
+			lastSuccessfulPreview,
 		});
 	}
 
@@ -489,6 +513,7 @@ const onDragEnd = (el: HTMLElement) => {
 							:collapsed="closedNodes.has(item.id)"
 							@click:toggle="toggleNode(item.id)"
 							@click="toggleNodeExclusiveAndScrollTop(item.id)"
+							@execute="(nodeName: string) => emit('execute', nodeName)"
 						/>
 						<VirtualSchemaItem
 							v-else-if="item.type === 'item'"
@@ -528,11 +553,10 @@ const onDragEnd = (el: HTMLElement) => {
 											v-if="ndvStore.activeNodeName"
 											:node-name="ndvStore.activeNodeName"
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-											text
 											telemetry-source="inputs"
-											hide-icon
 											size="small"
-											:class="$style.executeButton"
+											type="secondary"
+											hide-icon
 										/>
 									</template>
 								</I18nT>
@@ -550,12 +574,6 @@ const onDragEnd = (el: HTMLElement) => {
 		</Draggable>
 	</div>
 </template>
-
-<style lang="css" module>
-.executeButton {
-	padding: 0;
-}
-</style>
 
 <style lang="css" scoped>
 .full-height {

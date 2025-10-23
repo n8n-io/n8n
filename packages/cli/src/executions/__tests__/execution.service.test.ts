@@ -66,6 +66,67 @@ describe('ExecutionService', () => {
 		});
 	});
 
+	describe('getLastSuccessfulExecution', () => {
+		it('should return the last successful execution for a workflow', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-123';
+			const mockExecution = mock<IExecutionResponse>({
+				id: 'execution-456',
+				workflowId,
+				mode: 'trigger',
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+				stoppedAt: new Date('2025-01-15T10:05:00Z'),
+				status: 'success',
+			});
+			executionRepository.findMultipleExecutions.mockResolvedValue([mockExecution]);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getLastSuccessfulExecution(workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toEqual(mockExecution);
+			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
+				{
+					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId'],
+					where: {
+						workflowId,
+						status: 'success',
+					},
+					order: { id: 'DESC' },
+					take: 1,
+				},
+				{
+					includeData: true,
+					unflattenData: true,
+				},
+			);
+		});
+
+		it('should return undefined when no successful execution exists', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-with-no-success';
+			executionRepository.findMultipleExecutions.mockResolvedValue([]);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getLastSuccessfulExecution(workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBeUndefined();
+		});
+	});
+
 	describe('stop', () => {
 		it('should throw when stopping a missing execution', async () => {
 			/**

@@ -104,3 +104,14 @@ export async function getExecutionData(context: IRestApiContext, executionId: st
 		`/executions/${executionId}`,
 	);
 }
+
+export async function getLastSuccessfulExecution(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<IExecutionResponse | null> {
+	return await makeRestApiRequest<IExecutionResponse | null>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/executions/last-successful`,
+	);
+}

@@ -91,6 +91,8 @@ import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -123,6 +125,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const workflowObject = ref<Workflow>(
@@ -137,6 +140,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeWorkflows = ref<string[]>([]);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
+	const lastSuccessfulExecution = ref<IExecutionResponse | null>(null);
 	const workflowExecutionStartedData =
 		ref<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
 	const workflowExecutionResultDataLastUpdate = ref<number>();
@@ -565,6 +569,30 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/workflows/from-url', {
 			url,
 		});
+	}
+
+	async function fetchLastSuccessfulExecution() {
+		const workflowId = workflow.value.id;
+		const workflowPermissions = getResourcePermissions(workflow.value.scopes).workflow;
+
+		try {
+			if (
+				workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+				sourceControlStore.preferences.branchReadOnly ||
+				uiStore.isReadOnlyView ||
+				!workflowPermissions.update ||
+				workflow.value.isArchived
+			) {
+				return;
+			}
+
+			lastSuccessfulExecution.value = await workflowsApi.getLastSuccessfulExecution(
+				rootStore.restApiContext,
+				workflowId,
+			);
+		} catch (e: unknown) {
+			// no need to do anything if fails
+		}
 	}
 
 	async function getActivationError(id: string): Promise<string | undefined> {
@@ -1878,6 +1906,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPartialIdForNode,
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
+		fetchLastSuccessfulExecution,
+		lastSuccessfulExecution,
 		defaults,
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context

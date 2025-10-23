@@ -12,7 +12,6 @@ describe('AiBuilderChatRequestDto', () => {
 					connections: {},
 				},
 			},
-			useDeprecatedCredentials: false,
 		},
 	};
 
@@ -315,22 +314,6 @@ describe('AiBuilderChatRequestDto', () => {
 			const result = AiBuilderChatRequestDto.safeParse(invalidRequest);
 
 			expect(result.success).toBe(false);
-		});
-
-		it('should validate when useDeprecatedCredentials is explicitly set', () => {
-			const requestWithFlag = {
-				payload: {
-					...validBasePayload.payload,
-					useDeprecatedCredentials: true,
-				},
-			};
-
-			const result = AiBuilderChatRequestDto.safeParse(requestWithFlag);
-
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.payload.useDeprecatedCredentials).toBe(true);
-			}
 		});
 	});
 });
