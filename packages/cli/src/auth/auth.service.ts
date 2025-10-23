@@ -90,6 +90,7 @@ export class AuthService {
 				try {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 					if (isInvalid) throw new AuthError('Unauthorized');
+
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
@@ -123,6 +124,19 @@ export class AuthService {
 			if (req.user) next();
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
+		};
+	}
+
+	/**
+	 * Creates middleware that attempts to authenticate from cookie but does NOT reject on failure.
+	 * Populates req.user if valid auth cookie exists, otherwise leaves it undefined.
+	 * Always calls next() regardless of authentication status.
+	 *
+	 * Use for endpoints that should return different data for authenticated vs unauthenticated users.
+	 */
+	createOptionalAuthMiddleware() {
+		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			next();
 		};
 	}
 

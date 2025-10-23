@@ -458,6 +458,13 @@ export class FrontendService {
 		return this.settings;
 	}
 
+	/**
+	 * @returns Minimal settings for unauthenticated users
+	 */
+	getMinimalSettings(): Partial<FrontendSettings> {
+		return {};
+	}
+
 	getModuleSettings() {
 		return Object.fromEntries(this.moduleRegistry.settings);
 	}
