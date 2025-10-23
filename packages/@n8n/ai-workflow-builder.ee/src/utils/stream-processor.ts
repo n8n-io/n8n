@@ -147,13 +147,36 @@ export async function* createStreamProcessor(
 }
 
 /**
+ * Remove context tags from message content that are used for AI context
+ * but shouldn't be displayed to users
+ */
+function cleanContextTags(text: string): string {
+	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
+}
+
+/**
  * Format a HumanMessage into the expected output format
  */
 function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
+	// Handle array content (multi-part messages with text, images, etc.)
+	if (Array.isArray(msg.content)) {
+		const textParts = msg.content.filter(
+			(c): c is { type: string; text: string } =>
+				typeof c === 'object' && c !== null && 'type' in c && c.type === 'text' && 'text' in c,
+		);
+		const text = textParts.map((part) => cleanContextTags(part.text)).join('\n');
+		return {
+			role: 'user',
+			type: 'message',
+			text,
+		};
+	}
+
+	// Handle simple string content
 	return {
 		role: 'user',
 		type: 'message',
-		text: msg.content,
+		text: cleanContextTags(msg.content),
 	};
 }
 
