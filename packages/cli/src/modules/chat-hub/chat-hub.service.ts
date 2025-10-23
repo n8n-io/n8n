@@ -547,7 +547,13 @@ export class ChatHubService {
 		}
 
 		return {
-			workflowData: workflowEntity,
+			workflowData: {
+				...workflowEntity,
+				// Since this mechanism executes workflows as manual one-off executions
+				// we need to clear any pinData the WF might have.
+				// TODO: Implement a separate execution mode for chats to avoid such workarounds.
+				pinData: {},
+			},
 			triggerToStartFrom: {
 				name: chatTriggers[0].name,
 				data: {
@@ -797,11 +803,11 @@ export class ChatHubService {
 
 		// Capture the streaming response as it's being generated to save
 		// partial messages in the database when generation gets cancelled.
-		let message = '';
+		let partialMessage = '';
 		const onChunk = (chunk: string) => {
 			const data = jsonParse<StructuredChunk>(chunk);
 			if (data && data.type === 'item' && typeof data.content === 'string') {
-				message += data.content;
+				partialMessage += data.content;
 			}
 		};
 
@@ -828,7 +834,7 @@ export class ChatHubService {
 			sessionId,
 			executionId,
 			previousMessageId,
-			message,
+			message: partialMessage,
 			selectedModel,
 			retryOfMessageId,
 			status: 'running',
@@ -852,7 +858,7 @@ export class ChatHubService {
 
 					if (execution.status === 'canceled') {
 						await this.messageRepository.updateChatMessage(replyId, {
-							content: message || 'Generation cancelled.',
+							content: partialMessage || 'Generation cancelled.',
 							status: 'cancelled',
 						});
 						return;
@@ -877,13 +883,13 @@ export class ChatHubService {
 			// TODO: We should consider can we just save the output from the captured stream always instead
 			// of parsing it from execution data, which seems error prone, especially with custom workflows.
 			// That could make handling multiple agents, multiple runes, tool executions etc easier...?
-			const output = this.getAIOutput(execution, NODE_NAMES.REPLY_AGENT);
-			if (!output) {
-				throw new OperationalError('No response generated');
-			}
+			// const output = this.getAIOutput(execution, NODE_NAMES.REPLY_AGENT);
+			// if (!output) {
+			// 	throw new OperationalError('No response generated');
+			// }
 
 			await this.messageRepository.updateChatMessage(replyId, {
-				content: output,
+				content: partialMessage,
 				status: 'success',
 			});
 
