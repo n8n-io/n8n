@@ -254,13 +254,18 @@ export class ProvisioningService {
 
 		ProvisioningConfigDto.parse(updatedConfig);
 
-		await this.settingsRepository.update(
-			{ key: PROVISIONING_PREFERENCES_DB_KEY },
-			{ value: JSON.stringify(updatedConfig) },
+		await this.settingsRepository.upsert(
+			{
+				key: PROVISIONING_PREFERENCES_DB_KEY,
+				value: JSON.stringify(updatedConfig),
+				loadOnStartup: true,
+			},
+			{ conflictPaths: ['key'] },
 		);
 
-		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
 		this.provisioningConfig = await this.loadConfig();
+
+		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
 		return await this.getConfig();
 	}
 
