@@ -255,7 +255,6 @@ function onCancel() {
 
 .required {
 	color: var(--color--primary);
-	margin-left: var(--spacing--5xs);
 }
 
 .input {
