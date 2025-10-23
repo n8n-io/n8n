@@ -30,7 +30,7 @@ export class ChildProcessPool {
 	private readonly workerPath: string;
 
 	constructor(maxProcesses?: number) {
-		this.maxProcesses = 1; // maxProcesses ?? Math.max(1, cpus().length - 1);
+		this.maxProcesses = maxProcesses ?? Math.max(1, cpus().length - 1);
 		this.workerPath = resolve(__dirname, 'worker-thread.js');
 
 		// Start cleanup interval to kill idle processes

@@ -94,7 +94,12 @@ async function executeWorkflow(
  */
 process.on('message', async (msg: any) => {
 	if (msg.type === 'execute') {
+		console.log(prefix, `Received execute message for ${msg.task.executionId}`);
 		const result = await executeWorkflow(msg.task);
+		console.log(
+			prefix,
+			`Workflow execution completed for ${msg.task.executionId}, sending done message`,
+		);
 		// Send result back with executionId for routing in main thread
 		if (process.send) {
 			process.send({
@@ -102,6 +107,9 @@ process.on('message', async (msg: any) => {
 				executionId: msg.task.executionId,
 				run: result.run,
 			});
+			console.log(prefix, `Done message sent for ${msg.task.executionId}`);
+		} else {
+			console.error(prefix, `process.send is not available for ${msg.task.executionId}`);
 		}
 		// Don't exit - keep process alive for reuse
 	}

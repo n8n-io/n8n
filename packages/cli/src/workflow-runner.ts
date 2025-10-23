@@ -5,6 +5,7 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
+import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
@@ -66,6 +67,8 @@ export class WorkflowRunner {
 	private pool?: ChildProcessPool;
 	// Track execution callbacks and hook listeners by executionId
 	private executionCallbacks = new Map<string, ExecutionCallbacks>();
+	// Track which processes have had listeners attached to avoid duplicate listeners
+	private processesWithListeners = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -81,6 +84,17 @@ export class WorkflowRunner {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 	) {}
+
+	/**
+	 * Shutdown handler to clean up child process pool
+	 */
+	@OnShutdown()
+	async shutdown(): Promise<void> {
+		if (this.pool) {
+			this.logger.info('Shutting down child process pool');
+			this.pool.shutdown();
+		}
+	}
 
 	/** The process did error */
 	async processError(
@@ -414,7 +428,7 @@ export class WorkflowRunner {
 	 */
 	private getPool(): ChildProcessPool {
 		if (!this.pool) {
-			this.pool = new ChildProcessPool();
+			this.pool = new ChildProcessPool(1);
 		}
 		return this.pool;
 	}
@@ -476,28 +490,20 @@ export class WorkflowRunner {
 				// Get a process from the pool (or create new one if under limit)
 				const pooledProcess = await this.getPool().getProcess(executionId);
 
-				// Create hook listener for this execution
-				const hookListener = new MainHookListener(pooledProcess.child, fullData, executionId);
+				// Set up message and error listeners on FIRST use of this process
+				// We track this in a Set to avoid checking listenerCount (which MainHookListener affects)
+				const processId = pooledProcess.id;
+				if (!this.processesWithListeners.has(processId)) {
+					this.processesWithListeners.add(processId);
 
-				// Store callbacks for this execution
-				this.executionCallbacks.set(executionId, {
-					resolve,
-					reject,
-					hookListener,
-				});
-
-				// Set up message listener if not already set up for this process
-				// Check if this process already has a listener by checking if it has any listeners
-				const existingListeners = pooledProcess.child.listenerCount('message');
-				if (existingListeners === 0) {
-					// First time using this process, set up the message handler
+					// Set up the message handler for 'done' and 'hook' messages
 					pooledProcess.child.on('message', (msg: DoneMessage | HookMessage) => {
-						this.handleChildMessage(pooledProcess.id, msg);
+						this.handleChildMessage(processId, msg);
 					});
 
 					// Handle process errors
 					pooledProcess.child.on('error', (error) => {
-						this.logger.error(`Child process ${pooledProcess.id} error`, { error });
+						this.logger.error(`Child process ${processId} error`, { error });
 						// Fail any pending execution on this process
 						if (pooledProcess.currentExecutionId) {
 							const callbacks = this.executionCallbacks.get(pooledProcess.currentExecutionId);
@@ -507,9 +513,25 @@ export class WorkflowRunner {
 								callbacks.reject(error);
 							}
 						}
-						this.getPool().removeProcess(pooledProcess.id, error);
+						this.getPool().removeProcess(processId, error);
+						this.processesWithListeners.delete(processId);
+					});
+
+					// Handle process exit
+					pooledProcess.child.on('exit', () => {
+						this.processesWithListeners.delete(processId);
 					});
 				}
+
+				// Create hook listener for this execution (AFTER setting up our listener)
+				const hookListener = new MainHookListener(pooledProcess.child, fullData, executionId);
+
+				// Store callbacks for this execution
+				this.executionCallbacks.set(executionId, {
+					resolve,
+					reject,
+					hookListener,
+				});
 
 				// Prepare task for child process
 				const task: ChildProcessExecutionTask = {
@@ -659,8 +681,7 @@ export class WorkflowRunner {
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 	}
 }
-
-if (isMainThread) {
+if (!process.send) {
 	setInterval(() => reportMemory('[main]:'), 5000);
 }
 function reportMemory(msg: string = '') {
