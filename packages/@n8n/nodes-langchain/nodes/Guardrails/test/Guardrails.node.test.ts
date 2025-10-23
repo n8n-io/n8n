@@ -50,8 +50,8 @@ describe('Guardrails', () => {
 
 				const processSpy = jest.spyOn(ProcessActions, 'process');
 				processSpy.mockResolvedValue({
+					guardrailsInput: 'processed text',
 					passed: {
-						text: 'processed text',
 						checks: [{ name: 'test', triggered: false }],
 					},
 					failed: null,
@@ -63,7 +63,7 @@ describe('Guardrails', () => {
 				expect(result[0]).toHaveLength(1);
 				expect(result[0][0]).toEqual({
 					json: {
-						text: 'processed text',
+						guardrailsInput: 'processed text',
 						checks: [{ name: 'test', triggered: false }],
 					},
 					pairedItem: { item: 0 },
@@ -88,8 +88,8 @@ describe('Guardrails', () => {
 
 				const processSpy = jest.spyOn(ProcessActions, 'process');
 				processSpy.mockResolvedValue({
+					guardrailsInput: 'processed text',
 					passed: {
-						text: 'processed text',
 						checks: [{ name: 'test', triggered: false }],
 					},
 					failed: null,
@@ -101,7 +101,7 @@ describe('Guardrails', () => {
 				expect(result[0]).toHaveLength(1);
 				expect(result[0][0]).toEqual({
 					json: {
-						text: 'processed text',
+						guardrailsInput: 'processed text',
 						checks: [{ name: 'test', triggered: false }],
 					},
 					pairedItem: { item: 0 },
@@ -129,22 +129,22 @@ describe('Guardrails', () => {
 				const processSpy = jest.spyOn(ProcessActions, 'process');
 				processSpy
 					.mockResolvedValueOnce({
+						guardrailsInput: 'processed text 1',
 						passed: {
-							text: 'processed text 1',
 							checks: [{ name: 'test1', triggered: false }],
 						},
 						failed: null,
 					})
 					.mockResolvedValueOnce({
+						guardrailsInput: 'processed text 2',
 						passed: {
-							text: 'processed text 2',
 							checks: [{ name: 'test2', triggered: false }],
 						},
 						failed: null,
 					})
 					.mockResolvedValueOnce({
+						guardrailsInput: 'processed text 3',
 						passed: {
-							text: 'processed text 3',
 							checks: [{ name: 'test3', triggered: false }],
 						},
 						failed: null,
@@ -182,22 +182,22 @@ describe('Guardrails', () => {
 				const processSpy = jest.spyOn(ProcessActions, 'process');
 				processSpy
 					.mockResolvedValueOnce({
+						guardrailsInput: 'processed text 1',
 						passed: {
-							text: 'processed text 1',
 							checks: [{ name: 'test1', triggered: false }],
 						},
 						failed: null,
 					})
 					.mockResolvedValueOnce({
+						guardrailsInput: 'failed text 2',
 						passed: null,
 						failed: {
-							text: 'failed text 2',
 							checks: [{ name: 'test2', triggered: true }],
 						},
 					})
 					.mockResolvedValueOnce({
+						guardrailsInput: 'processed text 3',
 						passed: {
-							text: 'processed text 3',
 							checks: [{ name: 'test3', triggered: false }],
 						},
 						failed: null,
@@ -211,14 +211,14 @@ describe('Guardrails', () => {
 
 				expect(result[0][0]).toEqual({
 					json: {
-						text: 'processed text 1',
+						guardrailsInput: 'processed text 1',
 						checks: [{ name: 'test1', triggered: false }],
 					},
 					pairedItem: { item: 0 },
 				});
 				expect(result[0][1]).toEqual({
 					json: {
-						text: 'processed text 3',
+						guardrailsInput: 'processed text 3',
 						checks: [{ name: 'test3', triggered: false }],
 					},
 					pairedItem: { item: 2 },
@@ -226,7 +226,7 @@ describe('Guardrails', () => {
 
 				expect(result[1][0]).toEqual({
 					json: {
-						text: 'failed text 2',
+						guardrailsInput: 'failed text 2',
 						checks: [{ name: 'test2', triggered: true }],
 					},
 					pairedItem: { item: 1 },
@@ -284,7 +284,7 @@ describe('Guardrails', () => {
 				expect(result[0]).toHaveLength(0);
 				expect(result[1]).toHaveLength(1);
 				expect(result[1][0]).toEqual({
-					json: { error: 'Process failed' },
+					json: { error: 'Process failed', guardrailsInput: '' },
 					pairedItem: { item: 0 },
 				});
 			});
@@ -311,16 +311,16 @@ describe('Guardrails', () => {
 				const processSpy = jest.spyOn(ProcessActions, 'process');
 				processSpy
 					.mockResolvedValueOnce({
+						guardrailsInput: 'processed text 1',
 						passed: {
-							text: 'processed text 1',
 							checks: [{ name: 'test1', triggered: false }],
 						},
 						failed: null,
 					})
 					.mockRejectedValueOnce(new Error('Process failed for item 2'))
 					.mockResolvedValueOnce({
+						guardrailsInput: 'processed text 3',
 						passed: {
-							text: 'processed text 3',
 							checks: [{ name: 'test3', triggered: false }],
 						},
 						failed: null,
@@ -334,21 +334,21 @@ describe('Guardrails', () => {
 
 				expect(result[0][0]).toEqual({
 					json: {
-						text: 'processed text 1',
+						guardrailsInput: 'processed text 1',
 						checks: [{ name: 'test1', triggered: false }],
 					},
 					pairedItem: { item: 0 },
 				});
 				expect(result[0][1]).toEqual({
 					json: {
-						text: 'processed text 3',
+						guardrailsInput: 'processed text 3',
 						checks: [{ name: 'test3', triggered: false }],
 					},
 					pairedItem: { item: 2 },
 				});
 
 				expect(result[1][0]).toEqual({
-					json: { error: 'Process failed for item 2' },
+					json: { error: 'Process failed for item 2', guardrailsInput: '' },
 					pairedItem: { item: 1 },
 				});
 			});
@@ -371,8 +371,8 @@ describe('Guardrails', () => {
 
 				const processSpy = jest.spyOn(ProcessActions, 'process');
 				processSpy.mockResolvedValue({
+					guardrailsInput: 'processed text',
 					passed: {
-						text: 'processed text',
 						checks: [{ name: 'test', triggered: false }],
 					},
 					failed: null,
@@ -400,8 +400,8 @@ describe('Guardrails', () => {
 
 				const processSpy = jest.spyOn(ProcessActions, 'process');
 				processSpy.mockResolvedValue({
+					guardrailsInput: 'processed text',
 					passed: {
-						text: 'processed text',
 						checks: [{ name: 'test', triggered: false }],
 					},
 					failed: null,

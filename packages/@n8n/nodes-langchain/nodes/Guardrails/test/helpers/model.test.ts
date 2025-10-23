@@ -10,6 +10,11 @@ jest.mock('@langchain/core/prompts', () => ({
 	ChatPromptTemplate: {
 		fromMessages: jest.fn(() => ({
 			format: jest.fn(),
+			pipe: jest.fn().mockReturnValue({
+				pipe: jest.fn().mockReturnValue({
+					invoke: jest.fn(),
+				}),
+			}),
 		})),
 	},
 }));
@@ -23,10 +28,14 @@ jest.mock('langchain/agents', () => ({
 	})),
 }));
 
-jest.mock('langchain/tools', () => ({
-	DynamicStructuredTool: jest.fn().mockImplementation(({ func }) => ({
-		name: 'submitGuardrailResult',
-		func,
+jest.mock('@langchain/core/output_parsers', () => ({
+	StructuredOutputParser: jest.fn().mockImplementation(() => ({
+		invoke: jest.fn(),
+		getFormatInstructions: jest.fn().mockReturnValue('Format instructions'),
+	})),
+	OutputParserException: jest.fn().mockImplementation((message) => ({
+		message,
+		name: 'OutputParserException',
 	})),
 }));
 

@@ -19,9 +19,10 @@ import * as ModelHelpers from '../helpers/model';
 import * as PreflightHelpers from '../helpers/preflight';
 
 interface TestParams {
-	inputText: string;
+	text: string;
 	violationBehavior: string;
 	guardrails: GuardrailsOptions | undefined;
+	promptType: string;
 	[key: string]: unknown;
 }
 
@@ -51,14 +52,15 @@ describe('process', () => {
 
 	describe('successful execution', () => {
 		it('should process text with no guardrails configured', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {};
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -72,8 +74,8 @@ describe('process', () => {
 			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
 
 			expect(result).toEqual({
+				guardrailsInput: text,
 				passed: {
-					text: inputText,
 					checks: [],
 				},
 				failed: null,
@@ -82,7 +84,7 @@ describe('process', () => {
 		});
 
 		it('should process text with PII guardrail configured', async () => {
-			const inputText = 'My email is john@example.com';
+			const text = 'My email is john@example.com';
 			const guardrails: GuardrailsOptions = {
 				pii: {
 					value: {
@@ -95,9 +97,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -151,8 +154,8 @@ describe('process', () => {
 			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
 
 			expect(result).toEqual({
+				guardrailsInput: 'My email is <EMAIL>',
 				passed: {
-					text: 'My email is <EMAIL>',
 					checks: [
 						{
 							name: 'pii',
@@ -168,7 +171,7 @@ describe('process', () => {
 				entities: [],
 				customRegex: undefined,
 			});
-			expect(applyPreflightModificationsSpy).toHaveBeenCalledWith(inputText, [
+			expect(applyPreflightModificationsSpy).toHaveBeenCalledWith(text, [
 				{
 					guardrailName: 'pii',
 					tripwireTriggered: false,
@@ -179,7 +182,7 @@ describe('process', () => {
 		});
 
 		it('should process text with multiple guardrails configured', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				pii: {
 					value: {
@@ -191,7 +194,7 @@ describe('process', () => {
 				secretKeys: {
 					value: {
 						mode: 'block',
-						permisiveness: 'strict',
+						permissiveness: 'strict',
 					},
 				},
 				jailbreak: {
@@ -205,9 +208,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -257,7 +261,7 @@ describe('process', () => {
 		});
 
 		it('should process text with custom guardrails configured', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				custom: {
 					guardrail: [
@@ -272,9 +276,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -307,7 +312,7 @@ describe('process', () => {
 
 	describe('error handling', () => {
 		it('should throw error when preflight guardrails fail and violationBehavior is throwError', async () => {
-			const inputText = 'This contains sensitive data';
+			const text = 'This contains sensitive data';
 			const guardrails: GuardrailsOptions = {
 				pii: {
 					value: {
@@ -320,9 +325,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -349,7 +355,7 @@ describe('process', () => {
 		});
 
 		it('should return failed result when preflight guardrails fail and violationBehavior is routeToFailOutput', async () => {
-			const inputText = 'This contains sensitive data';
+			const text = 'This contains sensitive data';
 			const guardrails: GuardrailsOptions = {
 				pii: {
 					value: {
@@ -362,9 +368,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'routeToFailOutput',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -398,9 +405,9 @@ describe('process', () => {
 			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
 
 			expect(result).toEqual({
+				guardrailsInput: text,
 				passed: null,
 				failed: {
-					text: inputText,
 					checks: [
 						{
 							name: 'pii',
@@ -413,7 +420,7 @@ describe('process', () => {
 		});
 
 		it('should return failed result when preflight guardrails fail and continueOnFail is true', async () => {
-			const inputText = 'This contains sensitive data';
+			const text = 'This contains sensitive data';
 			const guardrails: GuardrailsOptions = {
 				pii: {
 					value: {
@@ -426,9 +433,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -468,7 +476,7 @@ describe('process', () => {
 		});
 
 		it('should throw error when input guardrails fail and violationBehavior is throwError', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				jailbreak: {
 					value: {
@@ -480,9 +488,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -514,7 +523,7 @@ describe('process', () => {
 		});
 
 		it('should handle execution failures in guardrails', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				pii: {
 					value: {
@@ -527,9 +536,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -557,7 +567,7 @@ describe('process', () => {
 		});
 
 		it('should handle rejected promises in guardrails', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				pii: {
 					value: {
@@ -570,9 +580,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -596,7 +607,7 @@ describe('process', () => {
 
 	describe('guardrail configuration', () => {
 		it('should configure URLs guardrail correctly', async () => {
-			const inputText = 'Check this URL: https://example.com';
+			const text = 'Check this URL: https://example.com';
 			const guardrails: GuardrailsOptions = {
 				urls: {
 					value: {
@@ -611,9 +622,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -644,7 +656,7 @@ describe('process', () => {
 		});
 
 		it('should configure NSFW guardrail correctly', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				nsfw: {
 					value: {
@@ -656,9 +668,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -687,7 +700,7 @@ describe('process', () => {
 		});
 
 		it('should configure prompt injection guardrail correctly', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				promptInjection: {
 					value: {
@@ -699,9 +712,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -733,7 +747,7 @@ describe('process', () => {
 		});
 
 		it('should configure topical alignment guardrail correctly', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				topicalAlignment: {
 					value: {
@@ -745,9 +759,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -781,14 +796,15 @@ describe('process', () => {
 
 	describe('edge cases', () => {
 		it('should handle empty input text', async () => {
-			const inputText = '';
+			const text = '';
 			const guardrails: GuardrailsOptions = {};
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -808,18 +824,19 @@ describe('process', () => {
 			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
 
 			expect(result.passed).toBeDefined();
-			expect(result.passed?.text).toBe('');
+			expect(result.guardrailsInput).toBe('');
 		});
 
 		it('should handle undefined guardrails configuration', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {};
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
@@ -834,7 +851,7 @@ describe('process', () => {
 				PreflightHelpers,
 				'applyPreflightModifications',
 			);
-			applyPreflightModificationsSpy.mockReturnValue(inputText);
+			applyPreflightModificationsSpy.mockReturnValue(text);
 
 			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
 
@@ -843,7 +860,7 @@ describe('process', () => {
 		});
 
 		it('should handle guardrails with empty values', async () => {
-			const inputText = 'This is a test message';
+			const text = 'This is a test message';
 			const guardrails: GuardrailsOptions = {
 				pii: { value: undefined },
 				secretKeys: { value: undefined },
@@ -858,9 +875,10 @@ describe('process', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: TestParams = {
-					inputText,
+					text,
 					violationBehavior: 'throwError',
 					guardrails,
+					promptType: 'define',
 				};
 				return params[paramName] as any;
 			});
