@@ -167,6 +167,7 @@ const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Role
 	try {
 		suppressNextSync.value = true;
 		await projectsStore.updateMemberRole(projectsStore.currentProject.id, userId, role);
+		void rolesStore.fetchRoles();
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('projects.settings.memberRole.updated.title'),
