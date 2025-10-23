@@ -16,6 +16,7 @@ import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
 import { ChatHubService } from './chat-hub.service';
+import { ChatHubAgentService } from './chat-agent.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -31,6 +32,7 @@ const JSONL_STREAM_HEADERS = {
 export class ChatHubController {
 	constructor(
 		private readonly chatService: ChatHubService,
+		private readonly chatAgentService: ChatHubAgentService,
 		private readonly logger: Logger,
 	) {}
 
@@ -231,6 +233,63 @@ export class ChatHubController {
 		@Param('sessionId') sessionId: ChatSessionId,
 	): Promise<void> {
 		await this.chatService.deleteSession(req.user.id, sessionId);
+
+		res.status(204).send();
+	}
+
+	@Get('/agents')
+	@GlobalScope('chatHubAgent:list')
+	async getAgents(req: AuthenticatedRequest) {
+		return await this.chatAgentService.getAgentsByUserId(req.user.id);
+	}
+
+	@Get('/agents/:agentId')
+	@GlobalScope('chatHubAgent:read')
+	async getAgent(req: AuthenticatedRequest, @Param('agentId') agentId: string) {
+		return await this.chatAgentService.getAgentById(agentId, req.user.id);
+	}
+
+	@Post('/agents')
+	@GlobalScope('chatHubAgent:create')
+	async createAgent(
+		req: AuthenticatedRequest,
+		@Body payload: {
+			name: string;
+			description?: string;
+			systemPrompt: string;
+			provider?: string;
+			model?: string;
+			workflowId?: string;
+		},
+	) {
+		return await this.chatAgentService.createAgent(req.user.id, payload);
+	}
+
+	@Post('/agents/:agentId')
+	@GlobalScope('chatHubAgent:update')
+	async updateAgent(
+		req: AuthenticatedRequest,
+		@Param('agentId') agentId: string,
+		@Body payload: {
+			name?: string;
+			description?: string;
+			systemPrompt?: string;
+			provider?: string;
+			model?: string;
+			workflowId?: string;
+		},
+	) {
+		return await this.chatAgentService.updateAgent(agentId, req.user.id, payload);
+	}
+
+	@Delete('/agents/:agentId')
+	@GlobalScope('chatHubAgent:delete')
+	async deleteAgent(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<void> {
+		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
 	}
