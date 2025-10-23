@@ -19,7 +19,7 @@ export class DataTableUploadsController {
 		try {
 			return {
 				originalName: req.file.originalname,
-				id: req.file.filename.split('-')[0],
+				id: req.file.filename,
 			};
 		} catch (e: unknown) {
 			if (e instanceof FileUploadError) {
