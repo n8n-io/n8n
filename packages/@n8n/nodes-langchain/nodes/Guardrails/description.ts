@@ -14,9 +14,13 @@ const THRESHOLD_OPTION: INodeProperties = {
 	type: 'number',
 	default: '',
 	description: 'Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)',
+	hint: 'Inputs scoring less than this will be treated as violations',
 };
 
-const getPromptOption: (defaultPrompt: string) => INodeProperties = (defaultPrompt: string) => ({
+const getPromptOption: (defaultPrompt: string, collapsed?: boolean) => INodeProperties = (
+	defaultPrompt: string,
+	collapsed = true,
+) => ({
 	displayName: 'Prompt',
 	name: 'prompt',
 	type: 'string',
@@ -24,7 +28,7 @@ const getPromptOption: (defaultPrompt: string) => INodeProperties = (defaultProm
 	description:
 		'The system prompt used by the guardrail. JSON output is enforced by the node automatically.',
 	typeOptions: {
-		rows: 6,
+		rows: collapsed ? 1 : 6,
 	},
 });
 
@@ -89,7 +93,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 		{
 			...textFromPreviousNode,
-			displayName: 'Input Text',
+			displayName: 'Text to check',
 			displayOptions: {
 				show: {
 					promptType: ['auto'],
@@ -98,22 +102,12 @@ export const versionDescription: INodeTypeDescription = {
 		},
 		{
 			...textInput,
-			displayName: 'Input Text',
+			displayName: 'Text to check',
 			displayOptions: {
 				show: {
 					promptType: ['define'],
 				},
 			},
-		},
-		{
-			displayName: 'On Violation',
-			name: 'violationBehavior',
-			type: 'options',
-			default: 'routeToFailOutput',
-			options: [
-				{ name: 'Route to Fail Output', value: 'routeToFailOutput' },
-				{ name: 'Throw Error', value: 'throwError' },
-			],
 		},
 		{
 			displayName: 'Guardrails',
@@ -293,7 +287,19 @@ export const versionDescription: INodeTypeDescription = {
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to stray from the business scope',
 					options: [
-						wrapValue([getPromptOption(TOPICAL_ALIGNMENT_SYSTEM_PROMPT), THRESHOLD_OPTION]),
+						wrapValue([
+							{
+								...getPromptOption(TOPICAL_ALIGNMENT_SYSTEM_PROMPT, false),
+								hint: 'Make sure you replace the placeholder.',
+							},
+							// {
+							// 	displayName: 'Make sure you replace the placeholder.',
+							// 	name: 'promptNotice',
+							// 	default: '',
+							// 	type: 'notice',
+							// },
+							THRESHOLD_OPTION,
+						]),
 					],
 				},
 				{
@@ -393,12 +399,22 @@ export const versionDescription: INodeTypeDescription = {
 									default: '',
 									description: 'Name of the custom guardrail',
 								},
-								getPromptOption(''),
+								getPromptOption('', false),
 								THRESHOLD_OPTION,
 							],
 						},
 					],
 				},
+			],
+		},
+		{
+			displayName: 'On Violation',
+			name: 'violationBehavior',
+			type: 'options',
+			default: 'routeToFailOutput',
+			options: [
+				{ name: "Route to 'Fail' Output", value: 'routeToFailOutput' },
+				{ name: 'Throw Error', value: 'throwError' },
 			],
 		},
 	],
