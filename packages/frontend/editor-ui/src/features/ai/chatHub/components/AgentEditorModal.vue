@@ -18,7 +18,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	save: [];
 	close: [];
-	configureCredentials: [provider: ChatHubProvider];
 }>();
 
 const chatStore = useChatStore();
@@ -99,7 +98,7 @@ function onModelChange(model: ChatHubConversationModel) {
 }
 
 function handleConfigureCredentials(provider: ChatHubProvider) {
-	emit('configureCredentials', provider);
+	// todo
 }
 
 async function onSave() {

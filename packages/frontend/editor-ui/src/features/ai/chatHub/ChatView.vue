@@ -385,11 +385,7 @@ function handleAgentEditorClose() {
 			@create-new="handleCreateNewCredential"
 		/>
 
-		<AgentEditorModal
-			:agent-id="editingAgentId"
-			@close="handleAgentEditorClose"
-			@configure-credentials="handleConfigureCredentials"
-		/>
+		<AgentEditorModal :agent-id="editingAgentId" @close="handleAgentEditorClose" />
 
 		<N8nScrollArea
 			v-if="isInitialized"
