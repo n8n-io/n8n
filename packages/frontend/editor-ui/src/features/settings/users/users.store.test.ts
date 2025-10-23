@@ -2,16 +2,18 @@ import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from './users.store';
 import { createPinia, setActivePinia } from 'pinia';
 
-const { loginCurrentUser, inviteUsers } = vi.hoisted(() => {
+const { loginCurrentUser, inviteUsers, login } = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
 		inviteUsers: vi.fn(),
+		login: vi.fn(),
 	};
 });
 
 vi.mock('@n8n/rest-api-client/api/users', () => ({
 	loginCurrentUser,
+	login,
 }));
 
 vi.mock('./invitation.api', () => ({
@@ -150,20 +152,58 @@ describe('users.store', () => {
 		});
 	});
 
-	// TODO: add tests for the logging hooks
 	describe('loggingHooks', () => {
-		it.todo('should run all registered loginHooks', () => {});
+		it('should run all registered loginHooks', async () => {
+			const usersStore = useUsersStore();
+			loginCurrentUser.mockResolvedValueOnce(mockUser);
 
-		it.todo('should run async login hooks', async () => {});
+			const hook1 = vi.fn(async () => {});
+			const hook2 = vi.fn(async () => {});
+			const hook3 = vi.fn(async () => {});
 
-		it.todo('should fail silently if a login hook fails', () => {});
+			usersStore.registerLoginHook(hook1);
+			usersStore.registerLoginHook(hook2);
+			usersStore.registerLoginHook(hook3);
+
+			await usersStore.loginWithCookie();
+
+			expect(hook1).toHaveBeenCalled();
+			expect(hook2).toHaveBeenCalled();
+			expect(hook3).toHaveBeenCalled();
+		});
+
+		it('should fail silently if a login hook fails', async () => {
+			const usersStore = useUsersStore();
+			login.mockResolvedValueOnce(mockUser);
+
+			const errorHook = vi.fn(() => {
+				throw new Error('Hook failed');
+			});
+			const errorAsyncHook = vi.fn(async () => {
+				throw new Error('Hook failed');
+			});
+			const successAsyncHook = vi.fn(async () => {});
+			const successHook = vi.fn();
+
+			usersStore.registerLoginHook(errorHook);
+			usersStore.registerLoginHook(errorAsyncHook);
+			usersStore.registerLoginHook(successAsyncHook);
+			usersStore.registerLoginHook(successHook);
+
+			await usersStore.loginWithCreds({
+				emailOrLdapLoginId: 'test@n8n.io',
+				password: 'test-password',
+			});
+
+			expect(errorHook).toHaveBeenCalled();
+			expect(errorAsyncHook).toHaveBeenCalled();
+			expect(successAsyncHook).toHaveBeenCalled();
+			expect(successHook).toHaveBeenCalled();
+		});
 	});
 
-	// TODO: add tests for the logout hooks
 	describe('logoutHooks', () => {
 		it.todo('should run all registered logoutHooks', () => {});
-
-		it.todo('should run async logout hooks', async () => {});
 
 		it.todo('should fail silently if a logout hook fails', () => {});
 	});
