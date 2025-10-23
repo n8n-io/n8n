@@ -7,7 +7,7 @@ import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import { WorkerProxyHooks } from './worker-proxy-hooks';
-import type { PiscinaExecutionTask, PiscinaExecutionResult } from './worker-types';
+import type { ChildProcessExecutionTask, ChildProcessExecutionResult } from './worker-types';
 
 let nodeTypes: NodeTypes;
 
@@ -29,18 +29,16 @@ async function initializeWorker() {
 }
 
 /**
- * Piscina worker function - executes workflow in worker thread
- * This is the main entry point called by Piscina for each task
+ * Execute workflow in child process
  */
-// eslint-disable-next-line import-x/no-default-export
-export default async function executeWorkflow(
-	task: PiscinaExecutionTask,
-): Promise<PiscinaExecutionResult> {
+async function executeWorkflow(
+	task: ChildProcessExecutionTask,
+): Promise<ChildProcessExecutionResult> {
 	try {
 		// Ensure worker is initialized
 		await initializeWorker();
 
-		const { workflow: workflowData, executionId, executionMode, executionData, hookPort } = task;
+		const { workflow: workflowData, executionId, executionMode, executionData } = task;
 
 		// Create workflow instance
 		const workflow = new Workflow({
@@ -58,8 +56,7 @@ export default async function executeWorkflow(
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({});
 
 		// Use proxy hooks that send events to main thread for DB operations
-		// Main thread has DB access and will handle persistence
-		const lifecycleHooks = new WorkerProxyHooks(executionMode, executionId, workflowData, hookPort);
+		const lifecycleHooks = new WorkerProxyHooks(executionMode, executionId, workflowData);
 		additionalData.hooks = lifecycleHooks;
 		additionalData.executionId = executionId;
 
@@ -72,7 +69,6 @@ export default async function executeWorkflow(
 		return { run: result };
 	} catch (error) {
 		console.error(prefix, 'Execution failed for', task.executionId, error);
-		// throw error;
 		return {
 			run: {
 				data: {
@@ -91,6 +87,17 @@ export default async function executeWorkflow(
 		};
 	}
 }
+
+/**
+ * IPC message handler for child process communication
+ */
+process.on('message', async (msg: any) => {
+	if (msg.type === 'execute') {
+		const result = await executeWorkflow(msg.task);
+		process.send!({ type: 'done', run: result.run });
+		process.exit(0);
+	}
+});
 
 setInterval(() => reportMemory(prefix), 5000);
 function reportMemory(msg: string = '') {

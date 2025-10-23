@@ -1,28 +1,28 @@
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import type { MessagePort } from 'worker_threads';
+import type { ChildProcess } from 'child_process';
 
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
 
 import type { HookMessage } from './worker-types';
 
 /**
- * Listens to hook events from worker thread via MessageChannel and invokes real lifecycle hooks with DB access.
- * Used in main thread to handle persistence while worker executes workflow.
+ * Listens to hook events from child process via IPC and invokes real lifecycle hooks with DB access.
+ * Used in main thread to handle persistence while child process executes workflow.
  */
 export class MainHookListener {
 	private readonly hooks: ExecutionLifecycleHooks;
 
 	constructor(
-		private readonly hookPort: MessagePort,
+		private readonly child: ChildProcess,
 		data: IWorkflowExecutionDataProcess,
 		executionId: string,
 	) {
 		// Create real hooks with DB access
 		this.hooks = getLifecycleHooksForRegularMain(data, executionId);
 
-		// Listen to MessagePort for hook events
-		this.hookPort.on('message', (msg: HookMessage) => {
+		// Listen to child process for hook events
+		this.child.on('message', (msg: HookMessage) => {
 			if (msg.type === 'hook') {
 				void this.handleHookEvent(msg.hookName, msg.params);
 			}
@@ -30,10 +30,10 @@ export class MainHookListener {
 	}
 
 	/**
-	 * Clean up the message port when done
+	 * Clean up when done
 	 */
 	close(): void {
-		this.hookPort.close();
+		// No need to close child process, it will exit on its own
 	}
 
 	/**

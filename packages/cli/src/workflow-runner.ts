@@ -28,13 +28,13 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-import { resolve } from 'path';
-import Piscina from 'piscina';
-import { isMainThread, MessageChannel } from 'worker_threads';
+import { resolve as pathResolve } from 'path';
+import { fork, type ChildProcess } from 'child_process';
+import { isMainThread } from 'worker_threads';
 
 import { ActiveExecutions } from '@/active-executions';
 import { MainHookListener } from '@/commands/main-hook-listener';
-import type { PiscinaExecutionTask } from '@/commands/worker-types';
+import type { ChildProcessExecutionTask } from '@/commands/worker-types';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import {
@@ -386,40 +386,6 @@ export class WorkflowRunner {
 		}
 	}
 
-	private pool?: Piscina;
-
-	/**
-	 * Get or create the Piscina worker pool
-	 */
-	private getPool(): Piscina {
-		if (!this.pool) {
-			const workerPath = resolve(__dirname, 'commands/worker-thread.js');
-			const maxThreads = 5; // Math.max(1, cpus().length - 1); // Leave one CPU for main thread
-
-			this.pool = new Piscina({
-				filename: workerPath,
-				minThreads: 0,
-				maxThreads,
-				idleTimeout: 10000, // 10 seconds
-				maxQueue: 'auto',
-				resourceLimits: {
-					maxOldGenerationSizeMb: 150,
-				},
-				execArgv: ['--enable-source-maps'],
-			});
-
-			console.log('Piscina worker pool created', {
-				workerPath,
-				minThreads: this.pool.minThreads,
-				maxThreads: this.pool.maxThreads,
-			});
-
-			this.pool.on('error', console.error);
-		}
-
-		return this.pool;
-	}
-
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	private dispatch(
 		options: {
@@ -434,43 +400,64 @@ export class WorkflowRunner {
 	): PCancelable<IRun> {
 		const executionId = options.executionId;
 
-		this.logger.info(`Starting execution ${executionId} in worker pool`, { executionId });
-
-		// Create MessageChannel for hook communication
-		const { port1, port2 } = new MessageChannel();
-
-		// Create hook listener to handle lifecycle hooks from worker
-		// port1 stays in main thread, port2 goes to worker
-		const hookListener = new MainHookListener(port1, fullData, executionId);
+		this.logger.info(`Starting execution ${executionId} in child process`, { executionId });
 
 		return new PCancelable(async (resolve, reject, _onCancel) => {
-			try {
-				// Prepare task for worker
-				const task: PiscinaExecutionTask = {
-					// Serialize workflow data
-					workflow: deepCopy(options.workflowData),
+			const workerPath = pathResolve(__dirname, 'commands/worker-thread.js');
+
+			// Fork a new child process
+			const child: ChildProcess = fork(workerPath, [], {
+				execArgv: ['--enable-source-maps'],
+			});
+
+			// Create hook listener to handle lifecycle hooks from child process
+			const hookListener = new MainHookListener(child, fullData, executionId);
+
+			let resolved = false;
+
+			// Listen for messages from child process
+			child.on('message', (msg: any) => {
+				if (msg.type === 'done') {
+					this.logger.info(`Child process completed execution ${executionId}`, { executionId });
+					resolved = true;
+					resolve(msg.run);
+				}
+			});
+
+			// Handle child process errors
+			child.on('error', (error) => {
+				this.logger.error(`Child process error for execution ${executionId}`, {
+					error,
 					executionId,
-					executionMode: options.executionMode,
-					executionData: options.executionData!,
-					hookPort: port2,
-				};
+				});
+				if (!resolved) {
+					reject(error);
+				}
+			});
 
-				// Run task in worker pool, transferring port2 ownership to worker
-				const result = await this.getPool().run(task, { transferList: [port2] });
-
-				this.logger.info(`Worker completed execution ${executionId}`, { executionId });
-
-				resolve(result.run);
-			} catch (error) {
-				console.log('CAUGHT', error);
-				// this.logger.error(`Worker error for execution ${executionId}`, { error, executionId });
-				// this.errorReporter.error(error as Error, { executionId });
-
-				reject(error);
-			} finally {
-				// Clean up hook listener
+			// Handle child process exit
+			child.on('exit', (code, signal) => {
+				if (!resolved) {
+					const error = new Error(`Child process exited with code ${code} and signal ${signal}`);
+					this.logger.error(`Child process exited unexpectedly for execution ${executionId}`, {
+						code,
+						signal,
+						executionId,
+					});
+					reject(error);
+				}
 				hookListener.close();
-			}
+			});
+
+			// Send execution task to child process
+			const task: ChildProcessExecutionTask = {
+				workflow: deepCopy(options.workflowData),
+				executionId,
+				executionMode: options.executionMode,
+				executionData: options.executionData!,
+			};
+
+			child.send({ type: 'execute', task });
 		});
 	}
 

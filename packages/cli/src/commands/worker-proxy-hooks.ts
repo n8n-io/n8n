@@ -9,19 +9,13 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowBase,
 } from 'n8n-workflow';
-import type { MessagePort } from 'worker_threads';
 
 /**
  * Proxy lifecycle hooks that send hook events to the main thread instead of executing them.
- * Used in worker threads to delegate DB operations to the main thread.
+ * Used in child processes to delegate DB operations to the main thread.
  */
 export class WorkerProxyHooks extends ExecutionLifecycleHooks {
-	constructor(
-		mode: WorkflowExecuteMode,
-		executionId: string,
-		workflowData: IWorkflowBase,
-		private readonly parentPort: MessagePort,
-	) {
+	constructor(mode: WorkflowExecuteMode, executionId: string, workflowData: IWorkflowBase) {
 		super(mode, executionId, workflowData);
 	}
 
@@ -40,10 +34,10 @@ export class WorkerProxyHooks extends ExecutionLifecycleHooks {
 	}
 
 	private sendHookToMainThread(hookName: string, parameters: unknown[]): void {
-		// Serialize the parameters for sending across thread boundary
+		// Serialize the parameters for sending across process boundary
 		const serializedParams = this.serializeParameters(hookName, parameters);
 
-		this.parentPort.postMessage({
+		process.send!({
 			type: 'hook',
 			hookName,
 			executionId: this.executionId,
