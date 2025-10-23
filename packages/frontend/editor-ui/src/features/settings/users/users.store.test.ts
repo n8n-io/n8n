@@ -2,18 +2,20 @@ import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from './users.store';
 import { createPinia, setActivePinia } from 'pinia';
 
-const { loginCurrentUser, inviteUsers, login } = vi.hoisted(() => {
+const { loginCurrentUser, inviteUsers, login, logout } = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
 		inviteUsers: vi.fn(),
 		login: vi.fn(),
+		logout: vi.fn(),
 	};
 });
 
 vi.mock('@n8n/rest-api-client/api/users', () => ({
 	loginCurrentUser,
 	login,
+	logout,
 }));
 
 vi.mock('./invitation.api', () => ({
@@ -203,8 +205,48 @@ describe('users.store', () => {
 	});
 
 	describe('logoutHooks', () => {
-		it.todo('should run all registered logoutHooks', () => {});
+		it('should run all registered logoutHooks', async () => {
+			const usersStore = useUsersStore();
 
-		it.todo('should fail silently if a logout hook fails', () => {});
+			const hook1 = vi.fn();
+			const hook2 = vi.fn(async () => {});
+			const hook3 = vi.fn(async () => {});
+
+			usersStore.registerLogoutHook(hook1);
+			usersStore.registerLogoutHook(hook2);
+			usersStore.registerLogoutHook(hook3);
+
+			await usersStore.logout();
+
+			expect(hook1).toHaveBeenCalled();
+			expect(hook2).toHaveBeenCalled();
+			expect(hook3).toHaveBeenCalled();
+		});
+
+		it('should fail silently if a logout hook fails', async () => {
+			const usersStore = useUsersStore();
+			logout.mockResolvedValueOnce(mockUser);
+
+			const errorHook = vi.fn(() => {
+				throw new Error('Hook failed');
+			});
+			const errorAsyncHook = vi.fn(async () => {
+				throw new Error('Hook failed');
+			});
+			const successAsyncHook = vi.fn(async () => {});
+			const successHook = vi.fn();
+
+			usersStore.registerLogoutHook(errorHook);
+			usersStore.registerLogoutHook(errorAsyncHook);
+			usersStore.registerLogoutHook(successAsyncHook);
+			usersStore.registerLogoutHook(successHook);
+
+			await usersStore.logout();
+
+			expect(errorHook).toHaveBeenCalled();
+			expect(errorAsyncHook).toHaveBeenCalled();
+			expect(successAsyncHook).toHaveBeenCalled();
+			expect(successHook).toHaveBeenCalled();
+		});
 	});
 });
