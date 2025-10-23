@@ -232,9 +232,32 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution.value = newValue;
 	};
 
+	const setMinimalSettings = (fetchedSettings: FrontendSettings) => {
+		const rootStore = useRootStore();
+		setSettings(fetchedSettings);
+
+		// CRITICAL SETUP
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
+		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
+		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+		rootStore.setInstanceId(fetchedSettings.instanceId);
+
+		if (fetchedSettings.telemetry.enabled) {
+			void eventsApi.sessionStarted(rootStore.restApiContext);
+		}
+	};
+
 	const getSettings = async () => {
 		const rootStore = useRootStore();
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
+
+		if (fetchedSettings.settingsMode === 'minimal') {
+			// minimal settings mode is typically used for unauthenticated users
+			// when minimal settings are returned only critical setup is needed
+			setMinimalSettings(fetchedSettings);
+			return;
+		}
+
 		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
 		settings.value.unverifiedCommunityNodesEnabled =

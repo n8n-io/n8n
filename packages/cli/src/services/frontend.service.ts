@@ -106,6 +106,7 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			settingsMode: 'authenticated',
 			inE2ETests,
 			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
@@ -468,6 +469,10 @@ export class FrontendService {
 		this.getSettings();
 
 		return {
+			// ...this.settings,
+
+			settingsMode: 'minimal',
+
 			// core identification
 			instanceId: this.settings.instanceId,
 			defaultLocale: this.settings.defaultLocale,
@@ -485,12 +490,32 @@ export class FrontendService {
 				oidc: this.settings.enterprise.oidc,
 				showNonProdBanner: this.settings.enterprise.showNonProdBanner,
 			},
+			authCookie: this.settings.authCookie,
+			oauthCallbackUrls: this.settings.oauthCallbackUrls, // TODO: check if this is critical
 
 			// banners
 			banners: this.settings.banners,
 
 			// preview mode
 			previewMode: this.settings.previewMode,
+
+			// FeatureFlags and Tracking
+			telemetry: this.settings.telemetry,
+
+			// Default Values to prevent Frontend UI from breaking
+			// TODO: review if these could be removed
+			templates: {
+				enabled: false,
+				host: '',
+			},
+			publicApi: {
+				enabled: false,
+				latestVersion: 0,
+				path: '/',
+				swaggerUi: {
+					enabled: false,
+				},
+			},
 		};
 	}
 

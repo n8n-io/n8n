@@ -32,6 +32,7 @@ export interface IUserManagementSettings {
 }
 
 export interface FrontendSettings {
+	settingsMode?: 'minimal' | 'authenticated';
 	inE2ETests: boolean;
 	isDocker: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
