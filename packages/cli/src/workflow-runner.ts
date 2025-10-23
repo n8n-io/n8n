@@ -53,15 +53,24 @@ interface BenchmarkMeasurement {
 	endTime: number;
 	duration: number;
 	// Memory (bytes)
-	mainMemoryBefore: number;
-	mainMemoryAfter: number;
+	mainMemoryBefore: {
+		heapUsed: number;
+		rss: number;
+	};
+	mainMemoryAfter: {
+		heapUsed: number;
+		rss: number;
+	};
 }
 
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
 	// Track execution start times for benchmarking
-	private executionStartTimes = new Map<string, { startTime: number; memoryBefore: number }>();
+	private executionStartTimes = new Map<
+		string,
+		{ startTime: number; memoryBefore: { heapUsed: number; rss: number } }
+	>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -310,10 +319,13 @@ export class WorkflowRunner {
 
 			// Record start time and memory before execution
 			const startTime = Date.now();
-			const memoryBefore = process.memoryUsage().heapUsed;
+			const memoryUsage = process.memoryUsage();
 			this.executionStartTimes.set(executionId, {
 				startTime,
-				memoryBefore,
+				memoryBefore: {
+					heapUsed: memoryUsage.heapUsed,
+					rss: memoryUsage.rss,
+				},
 			});
 
 			if (data.executionData !== undefined) {
@@ -374,7 +386,7 @@ export class WorkflowRunner {
 					const startInfo = this.executionStartTimes.get(executionId);
 					if (startInfo) {
 						const endTime = Date.now();
-						const memoryAfter = process.memoryUsage().heapUsed;
+						const memoryAfter = process.memoryUsage();
 
 						const measurement: BenchmarkMeasurement = {
 							executionId,
@@ -383,7 +395,10 @@ export class WorkflowRunner {
 							endTime,
 							duration: endTime - startInfo.startTime,
 							mainMemoryBefore: startInfo.memoryBefore,
-							mainMemoryAfter: memoryAfter,
+							mainMemoryAfter: {
+								heapUsed: memoryAfter.heapUsed,
+								rss: memoryAfter.rss,
+							},
 						};
 
 						void this.writeBenchmarkMeasurement(measurement);
@@ -546,4 +561,18 @@ export class WorkflowRunner {
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 	}
+}
+
+setInterval(() => reportMemory('[main]:'), 5000);
+function reportMemory(msg: string = '') {
+	const memoryUsage = process.memoryUsage();
+	console.log(msg, {
+		type: 'memoryReport',
+		memory: {
+			rss: memoryUsage.rss / 1024 / 1024, // Resident Set Size in MB
+			heapTotal: memoryUsage.heapTotal / 1024 / 1024, // Total heap size in MB
+			heapUsed: memoryUsage.heapUsed / 1024 / 1024, // Used heap size in MB
+			external: memoryUsage.external / 1024 / 1024, // External memory in MB
+		},
+	});
 }
