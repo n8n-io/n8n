@@ -10,7 +10,7 @@ import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
 
-type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
+type LicenseError = Error & { errorId?: keyof typeof LicenseErrors | string };
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',
@@ -110,11 +110,23 @@ export class LicenseService {
 		return this.license.getManagementJwt();
 	}
 
-	async activateLicense(activationKey: string) {
+	async activateLicense(activationKey: string, eulaUri?: string) {
 		try {
-			await this.license.activate(activationKey);
+			await this.license.activate(activationKey, eulaUri);
 		} catch (e) {
-			const message = this.mapErrorMessage(e as LicenseError, 'activate');
+			const error = e as LicenseError & { info?: { eula?: { uri?: string } } };
+
+			// Check if this is a EULA_REQUIRED error from license server
+			if (error.errorId === 'EULA_REQUIRED' && error.info?.eula?.uri) {
+				const { LicenseEulaRequiredError } = await import(
+					'@/errors/response-errors/license-eula-required.error'
+				);
+				throw new LicenseEulaRequiredError('License activation requires EULA acceptance', {
+					eulaUrl: error.info.eula.uri,
+				});
+			}
+
+			const message = this.mapErrorMessage(error, 'activate');
 			throw new BadRequestError(message);
 		}
 	}
@@ -135,7 +147,10 @@ export class LicenseService {
 	}
 
 	private mapErrorMessage(error: LicenseError, action: 'activate' | 'renew') {
-		let message = error.errorId && LicenseErrors[error.errorId];
+		let message =
+			error.errorId && error.errorId in LicenseErrors
+				? LicenseErrors[error.errorId as keyof typeof LicenseErrors]
+				: undefined;
 		if (!message) {
 			message = `Failed to ${action} license: ${error.message}`;
 			this.logger.error(message, { stack: error.stack ?? 'n/a' });
