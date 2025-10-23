@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { ChatHubAgent } from './chat-agent.entity';
-import { ChatHubAgentRepository } from './chat-agent.repository';
+import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 @Service()
 export class ChatHubAgentService {
