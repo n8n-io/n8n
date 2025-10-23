@@ -120,9 +120,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to jailbreak or bypass AI safety measures',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [wrapValue([getPromptOption(JAILBREAK_PROMPT), THRESHOLD_OPTION])],
 				},
 				{
@@ -131,9 +128,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to generate NSFW content',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [wrapValue([getPromptOption(NSFW_SYSTEM_PROMPT), THRESHOLD_OPTION])],
 				},
 				{
@@ -142,9 +136,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { mode: 'redact' } },
 					description: 'Detects attempts to generate PII content',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([
 							{
@@ -231,9 +222,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to inject prompt into the input text',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([getPromptOption(PROMPT_INJECTION_DETECTION_CHECK_PROMPT), THRESHOLD_OPTION]),
 					],
@@ -244,9 +232,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { mode: 'redact' } },
 					description: 'Detects attempts to use secret keys in the input text',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([
 							{
@@ -266,8 +251,8 @@ export const versionDescription: INodeTypeDescription = {
 								],
 							},
 							{
-								displayName: 'Permisiveness',
-								name: 'permisiveness',
+								displayName: 'Permissiveness',
+								name: 'permissiveness',
 								type: 'options',
 								default: 'strict',
 								options: [
@@ -291,9 +276,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to stray from the business scope',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([getPromptOption(TOPICAL_ALIGNMENT_SYSTEM_PROMPT), THRESHOLD_OPTION]),
 					],
@@ -304,9 +286,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { allowedSchemes: ['https'] } },
 					description: 'Blocks URLs that are not in the allowed list',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([
 							{

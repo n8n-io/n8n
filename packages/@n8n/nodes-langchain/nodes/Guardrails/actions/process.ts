@@ -59,16 +59,15 @@ export async function process(
 		}
 		if (violationBehavior === 'routeToFailOutput' || this.continueOnFail()) {
 			return results.failed.map(mapGuardrailResultToUserResult);
-		} else {
-			const failedGuardrails = results.failed
-				.filter((result) => result.status === 'fulfilled')
-				.map((result) => result.value.guardrailName);
-			throw new NodeOperationError(this.getNode(), 'Guardrail Violation', {
-				description: `Guardrail violation occurred in ${failedGuardrails.join(', ')} guardrails`,
-				itemIndex,
-			});
 		}
-		return [];
+
+		const failedGuardrails = results.failed
+			.filter((result) => result.status === 'fulfilled')
+			.map((result) => result.value.guardrailName);
+		throw new NodeOperationError(this.getNode(), 'Guardrail Violation', {
+			description: `Guardrail violation occurred in ${failedGuardrails.join(', ')} guardrails`,
+			itemIndex,
+		});
 	};
 
 	const stageGuardrails: StageGuardRails = {
@@ -89,10 +88,10 @@ export async function process(
 	}
 
 	if (guardrails.secretKeys?.value) {
-		const { mode, permisiveness } = guardrails.secretKeys.value;
+		const { mode, permissiveness } = guardrails.secretKeys.value;
 		stageGuardrails.preflight.push({
 			name: 'secretKeys',
-			check: createSecretKeysCheckFn({ block: mode === 'block', threshold: permisiveness }),
+			check: createSecretKeysCheckFn({ block: mode === 'block', threshold: permissiveness }),
 		});
 	}
 

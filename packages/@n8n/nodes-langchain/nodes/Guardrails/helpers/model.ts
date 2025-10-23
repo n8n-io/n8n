@@ -81,7 +81,7 @@ async function runLLM(
 			steps: [],
 			input: inputText,
 			system_message: fullPrompt,
-		} as any);
+		});
 
 		return { confidenceScore, flagged };
 	} catch (error) {

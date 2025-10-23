@@ -75,7 +75,7 @@ export interface GuardrailsOptions {
 	}>;
 	secretKeys?: Value<{
 		mode: 'redact' | 'block';
-		permisiveness: 'strict' | 'balanced' | 'permissive';
+		permissiveness: 'strict' | 'balanced' | 'permissive';
 	}>;
 	topicalAlignment?: Value<{
 		prompt: string;

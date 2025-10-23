@@ -1430,7 +1430,6 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
-	hideDeleteOption?: boolean; // Supported by: fixedCollection. Hides delete button for fixed collection parameters.
 	calloutAction?: CalloutAction; // Supported by: callout
 	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;
