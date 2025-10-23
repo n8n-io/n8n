@@ -102,6 +102,34 @@ const defaultNodes = [
 	{ name: 'Set2', indicies: [], depth: 2 },
 ];
 
+// Mock i18n keys used in the component
+const mockI18nKeys: Record<string, string> = {
+	'dataMapping.schemaView.emptyData':
+		'No fields - node executed, but no items were sent on this branch',
+	'dataMapping.schemaView.emptySchema': "No fields - item(s) exist, but they're empty",
+	'dataMapping.schemaView.emptySchemaWithBinary':
+		"Only binary data exists. View it using the 'Binary' tab",
+	'dataMapping.schemaView.executeSchema': '{link} to view input data',
+	'dataMapping.schemaView.variablesContextTitle': 'Variables and context',
+	'dataMapping.schemaView.variablesUpgrade':
+		'Set global variables and use them across workflows with the Pro or Enterprise plan. <a href="https://docs.n8n.io/code/variables/" target="_blank">Details</a>',
+	'dataMapping.schemaView.variablesEmpty':
+		'Create variables that can be used across workflows <a href="/variables" target="_blank">here</a>',
+	'dataMapping.schemaView.execution.resumeUrl': "The URL for resuming a 'Wait' node",
+	'dataMapping.schemaView.preview':
+		'Usually outputs the following fields. {execute} to see the actual ones. {link}',
+	'dataMapping.schemaView.previewLastExecution':
+		'The fields below come from the last successful execution. {execute} to refresh them.',
+	'dataMapping.schemaView.previewLastExecution.executePreviousNodes': 'Execute node',
+	'dataMapping.schemaView.preview.executeNode': 'Execute the node',
+	'node.disabled': 'Deactivated',
+	'ndv.input.noOutputData.executePrevious': 'Execute previous nodes',
+	'ndv.search.noNodeMatch.title': 'No matching nodes',
+	'ndv.search.noMatchSchema.description': 'Try different search terms or {link}',
+	'ndv.search.noMatchSchema.description.link': 'clear search',
+	'generic.learnMore': 'Learn more',
+};
+
 async function setupStore() {
 	const workflow = {
 		id: '123',
@@ -197,6 +225,11 @@ describe('VirtualSchema.vue', () => {
 		template: '<div v-bind="$attrs"><slot></slot></div>',
 	};
 
+	const N8nLinkStub = {
+		template:
+			'<button v-bind="$attrs" @click="(e) => { e.stopPropagation(); $emit(\'click\', e); }"><slot></slot></button>',
+	};
+
 	beforeEach(async () => {
 		cleanup();
 		vi.resetAllMocks();
@@ -209,10 +242,16 @@ describe('VirtualSchema.vue', () => {
 					DynamicScroller: DynamicScrollerStub,
 					DynamicScrollerItem: DynamicScrollerItemStub,
 					N8nIcon: true,
+					N8nLink: N8nLinkStub,
 					Notice: NoticeStub,
 					NodeIcon: {
 						template: '<node-icon-stub :node-type="nodeType.name" :size="size"></node-icon-stub>',
 						props: ['node-type', 'size'],
+					},
+				},
+				mocks: {
+					$locale: {
+						baseText: (key: string) => mockI18nKeys[key] || key,
 					},
 				},
 			},
@@ -236,15 +275,16 @@ describe('VirtualSchema.vue', () => {
 	it('renders schema for empty data with binary', async () => {
 		mockNodeOutputData(mockNode1.name, [{ json: {}, binary: { data: mock<IBinaryData>() } }]);
 
-		const { getByText } = renderComponent({
+		const { getAllByText } = renderComponent({
 			props: { nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }] },
 		});
 
-		await waitFor(() =>
-			expect(
-				getByText("Only binary data exists. View it using the 'Binary' tab"),
-			).toBeInTheDocument(),
-		);
+		// When there's empty JSON data with binary data, it should show the binary warning
+		await waitFor(() => {
+			expect(getAllByText("Only binary data exists. View it using the 'Binary' tab").length).toBe(
+				1,
+			);
+		});
 	});
 
 	it('renders schema for data', async () => {
@@ -856,6 +896,280 @@ describe('VirtualSchema.vue', () => {
 
 			// This is the key assertion: the SplitInBatches node shows "1 item" instead of "6 items"
 			// which proves that the outputIndex filtering is working correctly for the done branch
+		});
+	});
+
+	describe('previewExecution prop', () => {
+		it('should use preview execution data when node has not executed', async () => {
+			// Create a preview execution with proper structure
+			const previewExecutionData = {
+				id: 'preview-123',
+				finished: true,
+				mode: 'manual' as const,
+				status: 'success' as const,
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: { id: '1', name: 'Test', nodes: [], connections: {}, active: true },
+				data: {
+					resultData: {
+						runData: {
+							[mockNode1.name]: [
+								{
+									startTime: Date.now(),
+									executionTime: 100,
+									source: [],
+									data: {
+										main: [[{ json: { previewField: 'preview data from execution' } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
+				return {
+					...originalNodeHelpers,
+					getLastRunIndexWithData: vi.fn((nodeName, _outputIndex, _connectionType, previewData) => {
+						// When preview data is passed, return a valid run index
+						if (previewData && nodeName === mockNode1.name) {
+							return 0;
+						}
+						return -1;
+					}),
+					hasNodeExecuted: vi.fn(() => {
+						// Node hasn't executed in the main workflow
+						return false;
+					}),
+					getNodeInputData: vi.fn(
+						(node, _runIndex, _outputIndex, _paneType, _connectionType, previewData) => {
+							// When preview data is provided and we're asking for mockNode1, return preview data
+							if (previewData && node.name === mockNode1.name) {
+								return [{ json: { previewField: 'preview data from execution' } }];
+							}
+							return [];
+						},
+					),
+					getNodeTaskData: vi.fn(),
+				};
+			});
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+					previewExecution: previewExecutionData,
+				},
+			});
+
+			await waitFor(() => {
+				const headers = getAllByTestId('run-data-schema-header');
+				expect(headers.length).toBeGreaterThan(0);
+				expect(headers[0]).toHaveTextContent('Manual Trigger');
+				// The header shows either "1 item" or "Preview" depending on the state
+				// We just verify the header is rendered
+			});
+
+			// Verify that preview data fields are shown
+			await waitFor(() => {
+				const items = getAllByTestId('run-data-schema-item');
+				expect(items.length).toBeGreaterThan(0);
+				expect(items[0].textContent).toContain('previewField');
+			});
+		});
+
+		it('should show regular data when node has executed even with previewExecution prop', async () => {
+			const previewExecutionData = {
+				id: 'preview-123',
+				finished: true,
+				mode: 'manual' as const,
+				status: 'success' as const,
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: { id: '1', name: 'Test', nodes: [], connections: {}, active: true },
+				data: {
+					resultData: {
+						runData: {
+							[mockNode1.name]: [
+								{
+									startTime: Date.now(),
+									executionTime: 100,
+									source: [],
+									data: {
+										main: [[{ json: { previewField: 'preview data' } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			};
+
+			useWorkflowsStore().pinData({
+				node: mockNode1,
+				data: [{ json: { actualField: 'actual executed data' } }],
+			});
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+					previewExecution: previewExecutionData,
+				},
+			});
+
+			await waitFor(() => {
+				const items = getAllByTestId('run-data-schema-item');
+				expect(items.length).toBeGreaterThan(0);
+				expect(items[0]).toHaveTextContent('actualField');
+				expect(items[0]).not.toHaveTextContent('previewField');
+			});
+		});
+
+		it('should handle empty preview execution data gracefully', async () => {
+			const previewExecutionData = {
+				id: 'preview-123',
+				finished: true,
+				mode: 'manual' as const,
+				status: 'success' as const,
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: { id: '1', name: 'Test', nodes: [], connections: {}, active: true },
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			};
+
+			const { getAllByText } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+					previewExecution: previewExecutionData,
+				},
+			});
+
+			await waitFor(() => {
+				expect(getAllByText('Execute previous nodes').length).toBe(1);
+			});
+		});
+	});
+
+	describe('execute event emission', () => {
+		it('should emit execute event when schema preview execute link is clicked', async () => {
+			// Set up schema preview mode
+			useWorkflowsStore().pinData({
+				node: mockNode1,
+				data: [],
+			});
+
+			const posthogStore = usePostHog();
+			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
+
+			const schemaPreviewStore = useSchemaPreviewStore();
+			vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
+				createResultOk({
+					type: 'object',
+					properties: {
+						name: { type: 'string' },
+						age: { type: 'number' },
+					},
+				}),
+			);
+
+			const { emitted, getByText } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			// Wait for the preview execute link to appear
+			const executeLink = await waitFor(() => getByText('Execute the node'));
+			expect(executeLink).toBeInTheDocument();
+
+			// Click the execute link
+			fireEvent.click(executeLink);
+
+			// Verify the execute event was emitted with the node name
+			await waitFor(() => {
+				expect(emitted()).toHaveProperty('execute');
+				expect(emitted().execute[0]).toEqual([mockNode1.name]);
+			});
+		});
+	});
+
+	describe('empty data detection with preview', () => {
+		it('should detect single empty object as empty data', async () => {
+			useWorkflowsStore().pinData({
+				node: mockNode1,
+				data: [{ json: {} }],
+			});
+
+			const { getAllByText } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+					paneType: 'output',
+				},
+			});
+
+			await waitFor(() => {
+				expect(
+					getAllByText('No fields - node executed, but no items were sent on this branch').length,
+				).toBe(1);
+			});
+		});
+
+		it('should show pinData when available even with preview execution', async () => {
+			useWorkflowsStore().pinData({
+				node: mockNode1,
+				data: [{ json: { pinnedField: 'pinned data' } }],
+			});
+
+			const previewExecutionData = {
+				id: 'preview-123',
+				finished: true,
+				mode: 'manual' as const,
+				status: 'success' as const,
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: { id: '1', name: 'Test', nodes: [], connections: {}, active: true },
+				data: {
+					resultData: {
+						runData: {
+							[mockNode1.name]: [
+								{
+									startTime: Date.now(),
+									executionTime: 100,
+									source: [],
+									data: {
+										main: [[{ json: { name: 'Preview Data' } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getAllByTestId, queryAllByTestId } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+					previewExecution: previewExecutionData,
+					paneType: 'input',
+				},
+			});
+
+			await waitFor(() => {
+				// Should show pinned data, not preview data
+				const items = getAllByTestId('run-data-schema-item');
+				expect(items.length).toBeGreaterThan(0);
+				expect(items[0].textContent).toContain('pinnedField');
+			});
+
+			// Verify preview data is NOT shown
+			const allItems = queryAllByTestId('run-data-schema-item');
+			const hasPreviewData = allItems.some((item) => item.textContent?.includes('Preview Data'));
+			expect(hasPreviewData).toBe(false);
 		});
 	});
 });
