@@ -79,9 +79,14 @@ type Props = {
 	isNested?: boolean;
 	removeFirstParameterMargin?: boolean;
 	removeLastParameterMargin?: boolean;
+	newlyAddedParameters?: Set<string>;
 };
 
-const props = withDefaults(defineProps<Props>(), { path: '', hiddenIssuesInputs: () => [] });
+const props = withDefaults(defineProps<Props>(), {
+	path: '',
+	hiddenIssuesInputs: () => [],
+	newlyAddedParameters: () => new Set(),
+});
 const emit = defineEmits<{
 	activate: [];
 	valueChanged: [value: IUpdateInformation];
@@ -650,6 +655,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
 							:is-nested="isNested"
+							:is-newly-added="newlyAddedParameters.has(parameter.name)"
 							@value-changed="valueChanged"
 						/>
 					</template>

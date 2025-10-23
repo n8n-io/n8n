@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeMount } from 'vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -19,7 +19,6 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
-import { useCollectionCollapsedState } from '@/composables/useCollectionCollapsedState';
 
 import {
 	N8nButton,
@@ -61,6 +60,9 @@ const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
+
+const expandedItems = ref<Record<string, boolean>>({});
+const newlyAddedParameters = ref<Set<string>>(new Set());
 
 const getPlaceholderText = computed(() => {
 	return (
@@ -132,12 +134,6 @@ const getCollections = computed(() => {
 const sortable = computed(() => props.parameter.typeOptions?.sortable !== false);
 
 const mutableCollections = ref<INodePropertyCollection[]>([]);
-
-const { collapsedItems } = useCollectionCollapsedState({
-	items: getCollections,
-	keyGenerator: (collection) => collection.name,
-	defaultCollapsed: 'all',
-});
 
 const getFlattenedProperties = computed((): INodeProperties[] => {
 	// For old UI: if it's a collection, use its values; otherwise treat as property
@@ -278,6 +274,12 @@ function optionSelected(optionName: string) {
 
 	emit('valueChanged', { name, value });
 
+	// For new collections in overhaul mode, expand them by default
+	if (isCollectionOverhaulEnabled && isINodePropertyCollection(option)) {
+		expandedItems.value[option.name] = true;
+	}
+	newlyAddedParameters.value.add(option.name);
+
 	// Clear selection after emitting to allow adding another item
 	void nextTick(() => {
 		selectedOption.value = undefined;
@@ -303,13 +305,33 @@ async function onHeaderAddClick() {
 	}
 }
 
+const initExpandedState = () => {
+	const newState: Record<string, boolean> = {};
+
+	getCollections.value.forEach((collection) => {
+		const key = collection.name;
+		newState[key] = expandedItems.value[key] ?? false;
+	});
+
+	expandedItems.value = newState;
+};
+
 watch(
 	getCollections,
 	(newCollections) => {
 		mutableCollections.value = [...newCollections];
+		if (isCollectionOverhaulEnabled) {
+			initExpandedState();
+		}
 	},
 	{ immediate: true },
 );
+
+onBeforeMount(() => {
+	if (isCollectionOverhaulEnabled) {
+		initExpandedState();
+	}
+});
 
 const onDragChange = () => {
 	// Build new values object based on reordered collections
@@ -387,7 +409,7 @@ const onDragChange = () => {
 						<template #item="{ element: collection }">
 							<N8nCollapsiblePanel
 								:key="collection.name"
-								v-model="collapsedItems[collection.name]"
+								v-model="expandedItems[collection.name]"
 								:title="getPropertyDisplayName(collection)"
 								:actions="getPropertyActions(collection.name)"
 							>
@@ -398,6 +420,7 @@ const onDragChange = () => {
 										:path="`${path}.${collection.name}`"
 										:is-read-only="isReadOnly"
 										:is-nested="true"
+										:newly-added-parameters="newlyAddedParameters"
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
@@ -412,6 +435,7 @@ const onDragChange = () => {
 							:path="path"
 							:is-read-only="isReadOnly"
 							:is-nested="true"
+							:newly-added-parameters="newlyAddedParameters"
 							@value-changed="valueChanged"
 						/>
 					</Suspense>
@@ -425,6 +449,7 @@ const onDragChange = () => {
 						:hide-delete="hideDelete"
 						:indent="true"
 						:is-read-only="isReadOnly"
+						:newly-added-parameters="newlyAddedParameters"
 						@value-changed="valueChanged"
 					/>
 				</Suspense>

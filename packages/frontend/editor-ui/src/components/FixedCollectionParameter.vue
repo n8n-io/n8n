@@ -46,6 +46,7 @@ export type Props = {
 	values?: Record<string, INodeParameters[]>;
 	isReadOnly?: boolean;
 	isNested?: boolean;
+	isNewlyAdded?: boolean;
 };
 
 type ValueChangedEvent = {
@@ -57,6 +58,7 @@ type ValueChangedEvent = {
 const props = withDefaults(defineProps<Props>(), {
 	values: () => ({}),
 	isReadOnly: false,
+	isNewlyAdded: false,
 });
 
 const emit = defineEmits<{
@@ -71,7 +73,7 @@ const { activeNode } = storeToRefs(ndvStore);
 const mutableValues = ref({} as Record<string, INodeParameters[]>);
 const selectedOption = ref<string | null | undefined>(null);
 const expandedItems = ref<Record<string, boolean>>({});
-const isWrapperExpanded = ref(!props.isNested);
+const isWrapperExpanded = ref(!props.isNested || props.isNewlyAdded);
 
 const getOptionProperties = (optionName: string): INodePropertyCollection | undefined => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return undefined;
@@ -129,15 +131,6 @@ const renderVariant = computed((): FixedCollectionRenderVariant => {
 
 const showWrapper = computed(() => renderVariant.value === 'nested-multiple-wrapper');
 const showLegacyUI = computed(() => renderVariant.value.startsWith('legacy'));
-
-const getDefaultExpandedState = (index: number): boolean => {
-	const defaultCollapsed = props.parameter.typeOptions?.fixedCollection?.defaultCollapsed ?? 'all';
-
-	if (defaultCollapsed === 'all') return false;
-	if (defaultCollapsed === 'none') return true;
-	// 'first-expanded': first item is expanded, rest are collapsed
-	return index === 0;
-};
 
 const getItemTitle = (optionName: string, index: number): string => {
 	const property = getOptionProperties(optionName);
@@ -210,6 +203,7 @@ const getItemActions = (optionName: string, index: number) => {
 };
 
 const initExpandedState = () => {
+	// Always collapse individual items (wrapper expansion is handled separately)
 	expandedItems.value = Object.entries(mutableValues.value).reduce<Record<string, boolean>>(
 		(acc, [propertyName, items]) => {
 			const itemsArray = Array.isArray(items) ? items : [items];
@@ -218,29 +212,19 @@ const initExpandedState = () => {
 			// For single-value collections, use just propertyName
 			if (multipleValues.value) {
 				itemsArray
-					.map((_, index) => ({
-						index,
-						key: `${propertyName}-${index}`,
-					}))
-					.forEach(({ index, key }) => {
-						console.log('state', key, true);
-						acc[key] = getDefaultExpandedState(index);
+					.map((_, index) => `${propertyName}-${index}`)
+					.forEach((key) => {
+						acc[key] = false;
 					});
 			} else {
-				// Single value collection - use propertyName without index
-				acc[propertyName] = getDefaultExpandedState(0);
+				acc[propertyName] = false;
 			}
 
-			console.log(propertyName, itemsArray, acc);
 			return acc;
 		},
 		{},
 	);
 };
-
-watch(expandedItems, (newVal) => {
-	console.log('Expanded items changed:', newVal);
-});
 
 watch(
 	() => props.values,
@@ -329,6 +313,7 @@ const optionSelected = async (optionName: string) => {
 		: newParameterValue;
 
 	emit('valueChanged', { name, value: newValue });
+	expandedItems.value[`${option.name}-${existingValues.length}`] = true;
 	selectedOption.value = undefined;
 };
 
@@ -646,7 +631,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 			<N8nCollapsiblePanel
 				v-else-if="renderVariant === 'nested-single'"
-				v-model="expandedItems[property.name]"
+				v-model="isWrapperExpanded"
 				:title="property.displayName"
 				:actions="
 					!isReadOnly
