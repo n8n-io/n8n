@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import Modal from '@/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { ChatHubConversationModel } from '@n8n/api-types';
+import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useI18n } from '@n8n/i18n';
@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	save: [];
 	close: [];
+	configureCredentials: [provider: ChatHubProvider];
 }>();
 
 const chatStore = useChatStore();
@@ -95,6 +96,10 @@ watch(
 
 function onModelChange(model: ChatHubConversationModel) {
 	selectedModel.value = model;
+}
+
+function handleConfigureCredentials(provider: ChatHubProvider) {
+	emit('configureCredentials', provider);
 }
 
 async function onSave() {
@@ -235,6 +240,7 @@ async function onDelete() {
 						:selected-model="selectedModel"
 						:include-custom-agents="false"
 						@change="onModelChange"
+						@configure="handleConfigureCredentials"
 					/>
 				</div>
 			</div>
