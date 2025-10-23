@@ -77,6 +77,8 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport);
 	});
 
 	test('should make user owner of imported workflow', async () => {
