@@ -128,8 +128,6 @@ const scopes = {
 	projectVariable,
 } as const;
 
-const disabledScopes = ['project:read'];
-
 function toggleScope(scope: string) {
 	const index = form.value.scopes.indexOf(scope);
 	if (index !== -1) {
@@ -397,19 +395,15 @@ const displayNameValidationRules = [
 								placement="right"
 								:enterable="false"
 							>
-								<div>
-									{{ form.scopes.includes(scope) }} {{ disabledScopes.includes(scope) }}
-									<N8nFormInput
-										:data-test-id="`scope-checkbox-${scope}`"
-										:model-value="form.scopes.includes(scope)"
-										:label="i18n.baseText(`projectRoles.${scope}`)"
-										validate-on-blur
-										type="checkbox"
-										:class="$style.checkbox"
-										@update:model-value="() => toggleScope(scope)"
-										:disabled="disabledScopes.includes(scope)"
-									/>
-								</div>
+								<N8nFormInput
+									:data-test-id="`scope-checkbox-${scope}`"
+									:model-value="form.scopes.includes(scope)"
+									:label="i18n.baseText(`projectRoles.${scope}`)"
+									validate-on-blur
+									type="checkbox"
+									:class="$style.checkbox"
+									@update:model-value="() => toggleScope(scope)"
+								/>
 							</N8nTooltip>
 						</div>
 					</template>
