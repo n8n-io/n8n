@@ -150,12 +150,14 @@ export function getMappedSamlAttributesFromFlowResult(
 		const firstName = attributes[attributeMapping.firstName];
 		const lastName = attributes[attributeMapping.lastName];
 		const userPrincipalName = attributes[attributeMapping.userPrincipalName];
+		const n8nInstanceRole = attributes[attributeMapping.n8nInstanceRole];
 
 		result.attributes = {
 			email,
 			firstName,
 			lastName,
 			userPrincipalName,
+			n8nInstanceRole,
 		};
 		if (!email) result.missingAttributes.push(attributeMapping.email);
 		if (!userPrincipalName) result.missingAttributes.push(attributeMapping.userPrincipalName);
