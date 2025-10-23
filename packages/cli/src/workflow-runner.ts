@@ -29,9 +29,6 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-import { resolve as pathResolve } from 'path';
-import { fork, type ChildProcess } from 'child_process';
-import { isMainThread } from 'worker_threads';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ChildProcessPool } from '@/commands/child-process-pool';
@@ -427,9 +424,11 @@ export class WorkflowRunner {
 	 * Get or create the child process pool
 	 */
 	private getPool(): ChildProcessPool {
-		if (!this.pool) {
-			this.pool = new ChildProcessPool(1);
-		}
+		this.pool ??= new ChildProcessPool({
+			maxProcesses: 1,
+			idleTimeout: 10000, // 30 seconds (default)
+			maxOldGenerationSizeMb: 300, // Optional heap limit in MB
+		});
 		return this.pool;
 	}
 

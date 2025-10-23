@@ -1,7 +1,7 @@
 import { fork, type ChildProcess } from 'child_process';
+import { randomUUID } from 'crypto';
 import { cpus } from 'os';
 import { resolve } from 'path';
-import { randomUUID } from 'crypto';
 
 interface PooledProcess {
 	child: ChildProcess;
@@ -17,6 +17,15 @@ interface PendingRequest {
 	executionId: string;
 }
 
+export interface ChildProcessPoolOptions {
+	/** Maximum number of child processes. Defaults to CPU count - 1 */
+	maxProcesses?: number;
+	/** Idle timeout in milliseconds before killing unused processes. Defaults to 30000 (30s) */
+	idleTimeout?: number;
+	/** Max old generation heap size in MB for child processes. Optional - no limit if not set */
+	maxOldGenerationSizeMb?: number;
+}
+
 /**
  * Pool manager for reusable child processes
  * Handles spawning, reusing, and cleanup of child processes for workflow execution
@@ -25,12 +34,15 @@ export class ChildProcessPool {
 	private processes = new Map<string, PooledProcess>();
 	private pendingQueue: PendingRequest[] = [];
 	private readonly maxProcesses: number;
-	private readonly idleTimeout: number = 30000; // 30 seconds
+	private readonly idleTimeout: number;
+	private readonly maxOldGenerationSizeMb?: number;
 	private cleanupInterval?: NodeJS.Timeout;
 	private readonly workerPath: string;
 
-	constructor(maxProcesses?: number) {
-		this.maxProcesses = maxProcesses ?? Math.max(1, cpus().length - 1);
+	constructor(options?: ChildProcessPoolOptions) {
+		this.maxProcesses = options?.maxProcesses ?? Math.max(1, cpus().length - 1);
+		this.idleTimeout = options?.idleTimeout ?? 30000; // 30 seconds
+		this.maxOldGenerationSizeMb = options?.maxOldGenerationSizeMb;
 		this.workerPath = resolve(__dirname, 'worker-thread.js');
 
 		// Start cleanup interval to kill idle processes
@@ -38,7 +50,9 @@ export class ChildProcessPool {
 			this.cleanupIdleProcesses();
 		}, 10000); // Check every 10 seconds
 
-		console.log(`[ChildProcessPool] Initialized with max ${this.maxProcesses} processes`);
+		console.log(
+			`[ChildProcessPool] Initialized with max ${this.maxProcesses} processes, idleTimeout ${this.idleTimeout}ms${this.maxOldGenerationSizeMb ? `, heapLimit ${this.maxOldGenerationSizeMb}MB` : ''}`,
+		);
 	}
 
 	/**
@@ -74,7 +88,7 @@ export class ChildProcessPool {
 		console.log(
 			`[ChildProcessPool] All processes busy, queuing execution ${executionId} (queue size: ${this.pendingQueue.length + 1})`,
 		);
-		return new Promise<PooledProcess>((resolve, reject) => {
+		return await new Promise<PooledProcess>((resolve, reject) => {
 			this.pendingQueue.push({ resolve, reject, executionId });
 		});
 	}
@@ -112,7 +126,7 @@ export class ChildProcessPool {
 	 * Remove a process from the pool (e.g., when it crashes)
 	 * Rejects any pending execution that was using this process
 	 */
-	removeProcess(processId: string, error?: Error): void {
+	removeProcess(processId: string, _error?: Error): void {
 		const process = this.processes.get(processId);
 		if (!process) return;
 
@@ -209,9 +223,13 @@ export class ChildProcessPool {
 	private spawnProcess(): PooledProcess {
 		const id = randomUUID();
 
-		const child = fork(this.workerPath, [], {
-			execArgv: ['--enable-source-maps'],
-		});
+		// Build execArgv with optional heap limit
+		const execArgv = ['--enable-source-maps'];
+		if (this.maxOldGenerationSizeMb) {
+			execArgv.push(`--max-old-space-size=${this.maxOldGenerationSizeMb}`);
+		}
+
+		const child = fork(this.workerPath, [], { execArgv });
 
 		const pooledProcess: PooledProcess = {
 			child,
