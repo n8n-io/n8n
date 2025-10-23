@@ -557,6 +557,11 @@ export class ChatHubService {
 			);
 		}
 
+		const agents = workflowEntity.nodes.filter((node) => node.type === AGENT_LANGCHAIN_NODE_TYPE);
+		if (agents.length !== 1) {
+			throw new BadRequestError('Workflow must have exactly one AI Agent node');
+		}
+
 		return {
 			workflowData: {
 				...workflowEntity,
