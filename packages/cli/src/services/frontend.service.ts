@@ -501,17 +501,6 @@ export class FrontendService {
 
 			// FeatureFlags and Tracking
 			telemetry: this.settings.telemetry,
-
-			// Default Values to prevent Frontend UI from breaking
-			// TODO: review if these could be removed
-			publicApi: {
-				enabled: false,
-				latestVersion: 0,
-				path: '/',
-				swaggerUi: {
-					enabled: false,
-				},
-			},
 		};
 	}
 

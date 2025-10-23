@@ -190,7 +190,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			userManagement.value.showSetupOnFirstLoad =
 				!!settings.value.userManagement.showSetupOnFirstLoad;
 		}
-		api.value = settings.value.publicApi;
+
+		if (settings.value.publicApi) {
+			api.value = settings.value.publicApi;
+		}
+
 		mfa.value.enabled = settings.value.mfa?.enabled;
 		folders.value.enabled = settings.value.folders?.enabled;
 
