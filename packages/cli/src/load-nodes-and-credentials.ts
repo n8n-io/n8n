@@ -31,6 +31,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { isMainThread } from 'worker_threads';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -57,7 +58,15 @@ export class LoadNodesAndCredentials {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 		private readonly moduleRegistry: ModuleRegistry,
-	) {}
+	) {
+		// setInterval(() => {
+		// 	if (isMainThread) {
+		// 		console.log('[main]: loaded nodes', Object.keys(this.loadedNodes));
+		// 	} else {
+		// 		console.log('[worker]: loaded nodes', Object.keys(this.loadedNodes));
+		// 	}
+		// }, 5000);
+	}
 
 	async init() {
 		if (inTest) throw new UnexpectedError('Not available in tests');

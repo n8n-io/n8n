@@ -3,7 +3,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
@@ -21,20 +21,22 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 import {
+	deepCopy,
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	Workflow,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-import { Worker } from 'worker_threads';
 import { resolve } from 'path';
+import Piscina from 'piscina';
+import { isMainThread, MessageChannel } from 'worker_threads';
 
 import { ActiveExecutions } from '@/active-executions';
-import type { WorkerMessage, MainMessage } from '@/commands/worker-types';
+import { MainHookListener } from '@/commands/main-hook-listener';
+import type { PiscinaExecutionTask } from '@/commands/worker-types';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-// eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
@@ -68,7 +70,6 @@ export class WorkflowRunner {
 		private readonly executionDataService: ExecutionDataService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/** The process did error */
@@ -292,14 +293,19 @@ export class WorkflowRunner {
 
 			const useWorker = true;
 
+			const timeLabel = `execution:${executionId}`;
+			console.time(timeLabel);
 			if (useWorker) {
-				workflowExecution = this.dispatch({
-					executionId,
-					workflowData: data.workflowData,
-					additionalData,
-					executionMode: data.executionMode,
-					executionData: data.executionData,
-				});
+				workflowExecution = this.dispatch(
+					{
+						executionId,
+						workflowData: data.workflowData,
+						additionalData,
+						executionMode: data.executionMode,
+						executionData: data.executionData,
+					},
+					data,
+				);
 			} else if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
@@ -348,13 +354,12 @@ export class WorkflowRunner {
 
 			workflowExecution
 				.then((fullRunData) => {
-					console.log('after execution', fullRunData);
+					console.timeEnd(timeLabel);
 					clearTimeout(executionTimeout);
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
-					console.log('fullRunData.status', fullRunData.status);
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
@@ -381,120 +386,92 @@ export class WorkflowRunner {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	private dispatch(options: {
-		data?: IWorkflowExecutionDataProcess;
-		executionId: string;
-		workflowData: IWorkflowBase;
-		additionalData: IWorkflowExecuteAdditionalData;
-		executionMode: WorkflowExecuteMode;
-		executionData?: IRunExecutionData;
-	}): PCancelable<IRun> {
-		try {
-			console.log('m: dispatch');
-			// const execution = await this.executionRepository.findSingleExecution(executionId, {
-			// 	includeData: true,
-			// 	unflattenData: true,
-			// });
+	private pool?: Piscina;
 
-			// if (!execution) {
-			// 	throw new UnexpectedError(`Worker failed to find data for execution ${executionId}`);
-			// }
-
-			// const workflowId = execution.workflowData.id;
-
-			const executionId = options.executionId;
-
-			this.logger.info(`Worker started execution ${executionId}`, { executionId });
-
-			// const startedAt = await this.executionRepository.setRunning(executionId);
-
-			// TODO: handle static data
-
-			// const workflowSettings = execution.workflowData.settings ?? {};
-
-			// let workflowTimeout = workflowSettings.executionTimeout ?? this.globalConfig.executions.timeout;
-
-			// let executionTimeoutTimestamp: number | undefined;
-
-			// if (workflowTimeout > 0) {
-			// 	workflowTimeout = Math.min(workflowTimeout, this.globalConfig.executions.maxTimeout);
-			// 	executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
-			// }
-
-			// const workflow = new Workflow({
-			// 	id: workflowId,
-			// 	name: execution.workflowData.name,
-			// 	nodes: execution.workflowData.nodes,
-			// 	connections: execution.workflowData.connections,
-			// 	active: execution.workflowData.active,
-			// 	nodeTypes: this.nodeTypes,
-			// 	staticData: undefined,
-			// 	settings: execution.workflowData.settings,
-			// });
-
-			// Create worker thread for execution
+	/**
+	 * Get or create the Piscina worker pool
+	 */
+	private getPool(): Piscina {
+		if (!this.pool) {
 			const workerPath = resolve(__dirname, 'commands/worker-thread.js');
-			const worker = new Worker(workerPath);
+			const maxThreads = 5; // Math.max(1, cpus().length - 1); // Leave one CPU for main thread
 
-			// Handle worker messages
+			this.pool = new Piscina({
+				filename: workerPath,
+				minThreads: 0,
+				maxThreads,
+				idleTimeout: 10000, // 10 seconds
+				maxQueue: 'auto',
+				resourceLimits: {
+					maxOldGenerationSizeMb: 150,
+				},
+				execArgv: ['--enable-source-maps'],
+			});
 
-			// Handle worker errors
+			console.log('Piscina worker pool created', {
+				workerPath,
+				minThreads: this.pool.minThreads,
+				maxThreads: this.pool.maxThreads,
+			});
 
-			return new PCancelable((resolve, reject, onCancel) => {
-				worker.on('message', (msg: MainMessage) => {
-					this.logger.debug(`Worker message for execution ${executionId}`, { msg, executionId });
+			this.pool.on('error', console.error);
+		}
 
-					if (msg.type === 'done') {
-						this.logger.info(`Worker completed execution ${executionId}`, { executionId });
-						// void worker.terminate();
-						console.log(msg.run);
-						this.activeExecutions.setStatus(executionId, msg.run.status);
-						resolve(msg.run);
-					}
-				});
+		return this.pool;
+	}
 
-				worker.on('error', (error) => {
-					this.logger.error(`Worker error for execution ${executionId}`, { error, executionId });
-					console.log(error);
-					this.errorReporter.error(error, { executionId });
-					void worker.terminate();
-					reject(error);
-				});
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	private dispatch(
+		options: {
+			data?: IWorkflowExecutionDataProcess;
+			executionId: string;
+			workflowData: IWorkflowBase;
+			additionalData: IWorkflowExecuteAdditionalData;
+			executionMode: WorkflowExecuteMode;
+			executionData?: IRunExecutionData;
+		},
+		fullData: IWorkflowExecutionDataProcess,
+	): PCancelable<IRun> {
+		const executionId = options.executionId;
 
-				// Handle worker exit
-				worker.on('exit', (code) => {
-					if (code !== 0) {
-						this.logger.error(
-							`Worker stopped with exit code ${code} for execution ${executionId}`,
-							{
-								exitCode: code,
-								executionId,
-							},
-						);
-					} else {
-						this.logger.debug(`Worker exited successfully for execution ${executionId}`, {
-							executionId,
-						});
-					}
-				});
+		this.logger.info(`Starting execution ${executionId} in worker pool`, { executionId });
 
-				const clone = JSON.parse(JSON.stringify(options.workflowData));
+		// Create MessageChannel for hook communication
+		const { port1, port2 } = new MessageChannel();
 
-				const message: WorkerMessage = {
-					type: 'execute',
-					workflow: clone,
+		// Create hook listener to handle lifecycle hooks from worker
+		// port1 stays in main thread, port2 goes to worker
+		const hookListener = new MainHookListener(port1, fullData, executionId);
+
+		return new PCancelable(async (resolve, reject, _onCancel) => {
+			try {
+				// Prepare task for worker
+				const task: PiscinaExecutionTask = {
+					// Serialize workflow data
+					workflow: deepCopy(options.workflowData),
 					executionId,
 					executionMode: options.executionMode,
 					executionData: options.executionData!,
+					hookPort: port2,
 				};
 
-				worker.postMessage(message);
-			});
-		} catch (error) {
-			console.error(error);
-			throw error;
-		}
+				// Run task in worker pool, transferring port2 ownership to worker
+				const result = await this.getPool().run(task, { transferList: [port2] });
+
+				this.logger.info(`Worker completed execution ${executionId}`, { executionId });
+
+				resolve(result.run);
+			} catch (error) {
+				console.log('CAUGHT', error);
+				// this.logger.error(`Worker error for execution ${executionId}`, { error, executionId });
+				// this.errorReporter.error(error as Error, { executionId });
+
+				reject(error);
+			} finally {
+				// Clean up hook listener
+				hookListener.close();
+			}
+		});
 	}
 
 	private async enqueueExecution(
@@ -627,4 +604,20 @@ export class WorkflowRunner {
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 	}
+}
+
+if (isMainThread) {
+	setInterval(() => reportMemory('[main]:'), 5000);
+}
+function reportMemory(msg: string = '') {
+	const memoryUsage = process.memoryUsage();
+	console.log(msg, {
+		type: 'memoryReport',
+		memory: {
+			rss: memoryUsage.rss / 1024 / 1024, // Resident Set Size in MB
+			heapTotal: memoryUsage.heapTotal / 1024 / 1024, // Total heap size in MB
+			heapUsed: memoryUsage.heapUsed / 1024 / 1024, // Used heap size in MB
+			external: memoryUsage.external / 1024 / 1024, // External memory in MB
+		},
+	});
 }

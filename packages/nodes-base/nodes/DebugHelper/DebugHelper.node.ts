@@ -12,7 +12,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { generateGarbageMemory, runGarbageCollector } from './functions';
+import { generateGarbageMemory } from './functions';
 import {
 	generateCreditCard,
 	generateIPv4,
@@ -284,8 +284,8 @@ export class DebugHelper implements INodeType {
 						}
 					case 'oom':
 						const memorySizeValue = this.getNodeParameter('memorySizeValue', 0) as number;
-						runGarbageCollector();
-						const memUsed = generateGarbageMemory(memorySizeValue);
+						// runGarbageCollector();
+						const memUsed = await generateGarbageMemory(memorySizeValue);
 						items[i].json = memUsed;
 						returnData.push(items[i]);
 						break;
