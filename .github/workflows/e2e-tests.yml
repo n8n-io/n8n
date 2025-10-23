@@ -53,6 +53,8 @@ jobs:
   run-playwright-tests:
     name: Playwright
     uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      branch: ${{ github.event.inputs.branch || 'master' }}
     secrets: inherit
 
   calls-success-url-notify:

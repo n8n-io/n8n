@@ -2,7 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import ProjectTabs from './ProjectTabs.vue';
-import { usePostHog } from '@/stores/posthog.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
@@ -29,11 +28,9 @@ const renderComponent = createComponentRenderer(ProjectTabs, {
 
 describe('ProjectTabs', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
-	let postHogStore: MockedStore<typeof usePostHog>;
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		projectsStore = mockedStore(useProjectsStore);
-		postHogStore = mockedStore(usePostHog);
 		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue(null);
 	});
 
@@ -57,8 +54,12 @@ describe('ProjectTabs', () => {
 		expect(queryByText('Variables')).not.toBeInTheDocument();
 	});
 
+	it('should render overview project tabs with variables', () => {
+		const { getByText } = renderComponent({ props: { pageType: 'overview' } });
+		expect(getByText('Variables')).toBeInTheDocument();
+	});
+
 	it('should render team project tabs with variables', () => {
-		vi.spyOn(postHogStore, 'isVariantEnabled').mockReturnValue(true);
 		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue({
 			id: '1',
 			name: 'default',
