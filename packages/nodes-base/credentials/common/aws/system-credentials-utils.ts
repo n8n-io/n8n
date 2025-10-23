@@ -65,7 +65,6 @@ async function getEnvironmentCredentials() {
 		};
 	}
 
-	console.debug('Failed to get credentials from environment variables');
 	return null;
 }
 
@@ -145,7 +144,6 @@ async function getInstanceMetadataCredentials() {
 			sessionToken: credentialsData.Token,
 		};
 	} catch (error) {
-		console.debug('Failed to get credentials from instance metadata:', error);
 		return null;
 	}
 }
@@ -195,7 +193,6 @@ async function getContainerMetadataCredentials() {
 			sessionToken: credentialsData.Token,
 		};
 	} catch (error) {
-		console.debug('Failed to get credentials from container metadata:', error);
 		return null;
 	}
 }
@@ -245,7 +242,6 @@ async function getPodIdentityCredentials() {
 			sessionToken: credentialsData.Token,
 		};
 	} catch (error) {
-		console.debug('Failed to get credentials from EKS Pod Identity:', error);
 		return null;
 	}
 }

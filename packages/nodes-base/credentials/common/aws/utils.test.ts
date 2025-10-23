@@ -20,14 +20,20 @@ describe('assumeRole', () => {
 	let mockFetch: jest.MockedFunction<typeof fetch>;
 	let mockSign: jest.MockedFunction<typeof sign>;
 	let mockParseString: jest.MockedFunction<typeof parseString>;
+	let consoleErrorSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 		mockSign = sign as jest.MockedFunction<typeof sign>;
 		mockParseString = parseString as jest.MockedFunction<typeof parseString>;
+		consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
 		mockSign.mockImplementation((request: any) => request as any);
+	});
+
+	afterEach(() => {
+		consoleErrorSpy.mockRestore();
 	});
 
 	describe('with system credentials', () => {
@@ -44,6 +50,7 @@ describe('assumeRole', () => {
 				accessKeyId: 'system-access-key',
 				secretAccessKey: 'system-secret-key',
 				sessionToken: 'system-session-token',
+				source: 'environment' as const,
 			};
 
 			jest
@@ -135,6 +142,7 @@ describe('assumeRole', () => {
 			const mockSystemCredentials = {
 				accessKeyId: 'system-access-key',
 				secretAccessKey: 'system-secret-key',
+				source: 'environment' as const,
 			};
 
 			jest

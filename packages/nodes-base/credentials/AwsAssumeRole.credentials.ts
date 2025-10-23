@@ -33,11 +33,15 @@ export class AwsAssumeRole implements ICredentialType {
 				'Use system credentials (environment variables, container role, etc.) to call STS.AssumeRole. Access to AWS system credentials is disabled by default and must be explicitly enabled. See <a href="https://docs.n8n.io/integrations/credentials/awsassumerole/">documentation</a> for more information.',
 			type: 'boolean',
 			default: false,
+			displayOptions: {
+				hideOnCloud: true,
+			},
 		},
 		{
 			displayName: 'STS Access Key ID',
 			name: 'stsAccessKeyId',
 			description: 'Access Key ID to use for the STS.AssumeRole call',
+			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
 			type: 'string',
 			displayOptions: {
 				show: {
@@ -46,9 +50,6 @@ export class AwsAssumeRole implements ICredentialType {
 			},
 			required: true,
 			default: '',
-			typeOptions: {
-				password: true,
-			},
 		},
 		{
 			displayName: 'STS Access Key Secret',

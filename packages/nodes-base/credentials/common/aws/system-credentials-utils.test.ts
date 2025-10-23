@@ -78,6 +78,7 @@ describe('system-credentials-utils', () => {
 				accessKeyId: 'test-access-key',
 				secretAccessKey: 'test-secret-key',
 				sessionToken: 'test-session-token',
+				source: 'environment',
 			});
 		});
 
@@ -105,7 +106,7 @@ describe('system-credentials-utils', () => {
 				}
 			});
 
-			const result = await credentialsResolver.enviroment();
+			const result = await credentialsResolver.environment();
 			expect(result).toEqual({
 				accessKeyId: 'test-access-key',
 				secretAccessKey: 'test-secret-key',
@@ -131,7 +132,7 @@ describe('system-credentials-utils', () => {
 				}
 			});
 
-			const result = await credentialsResolver.enviroment();
+			const result = await credentialsResolver.environment();
 			expect(result).toEqual({
 				accessKeyId: 'test-access-key',
 				secretAccessKey: 'test-secret-key',
@@ -151,7 +152,7 @@ describe('system-credentials-utils', () => {
 				}
 			});
 
-			const result = await credentialsResolver.enviroment();
+			const result = await credentialsResolver.environment();
 			expect(result).toBeNull();
 		});
 
@@ -167,7 +168,7 @@ describe('system-credentials-utils', () => {
 				}
 			});
 
-			const result = await credentialsResolver.enviroment();
+			const result = await credentialsResolver.environment();
 			expect(result).toBeNull();
 		});
 
@@ -185,7 +186,7 @@ describe('system-credentials-utils', () => {
 				}
 			});
 
-			const result = await credentialsResolver.enviroment();
+			const result = await credentialsResolver.environment();
 			expect(result?.accessKeyId).toBe('test-access-key');
 			expect(result?.secretAccessKey).toBe('test-secret-key');
 			expect(result?.sessionToken).toBe('test-session-token');
