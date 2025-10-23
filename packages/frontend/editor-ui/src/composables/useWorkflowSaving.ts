@@ -28,6 +28,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { injectWorkflowState } from './useWorkflowState';
+import { getResourcePermissions } from '@n8n/permissions';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -56,7 +57,11 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
-		if (!uiStore.stateIsDirty || workflowsStore.workflow.isArchived) {
+		if (
+			!uiStore.stateIsDirty ||
+			workflowsStore.workflow.isArchived ||
+			!getResourcePermissions(workflowsStore.workflow.scopes).workflow.update
+		) {
 			next();
 			return;
 		}
