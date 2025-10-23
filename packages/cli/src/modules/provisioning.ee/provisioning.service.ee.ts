@@ -307,4 +307,22 @@ export class ProvisioningService {
 
 		return envProvidedConfig;
 	}
+
+	async isProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return (
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles
+		);
+	}
+
+	async isInstanceRoleProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProvisionInstanceRole;
+	}
+
+	async isProjectRolesProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProvisionProjectRoles;
+	}
 }
