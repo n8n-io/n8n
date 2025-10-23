@@ -50,9 +50,7 @@ class SecurityValidator(ast.NodeVisitor):
 
     def visit_Name(self, node: ast.Name) -> None:
         if node.id in BLOCKED_NAMES:
-            self._add_violation(
-                node.lineno, ERROR_DANGEROUS_NAME.format(name=node.id)
-            )
+            self._add_violation(node.lineno, ERROR_DANGEROUS_NAME.format(name=node.id))
 
         self.generic_visit(node)
 
