@@ -136,6 +136,36 @@ export class AuthService {
 	 */
 	createOptionalAuthMiddleware() {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			const token = req.cookies[AUTH_COOKIE_NAME];
+			if (!token) {
+				return next();
+			}
+
+			try {
+				const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+				if (isInvalid) {
+					throw new AuthError('Unauthorized');
+				}
+
+				const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
+
+				const mfaEnforced = this.mfaService.isMFAEnforced();
+				if (mfaEnforced && !usedMfa && user.mfaEnabled) {
+					this.clearCookie(res);
+					return next();
+				}
+
+				req.user = user;
+				req.authInfo = { usedMfa };
+			} catch (error) {
+				if (error instanceof JsonWebTokenError || error instanceof AuthError) {
+					this.clearCookie(res);
+				} else {
+					// other unexpected errors should be propagated
+					throw error;
+				}
+			}
+
 			next();
 		};
 	}

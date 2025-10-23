@@ -427,6 +427,27 @@ describe('AuthService', () => {
 			expect(next).toHaveBeenCalled();
 			expect(res.clearCookie).not.toHaveBeenCalled();
 		});
+
+		it('should clear the cookie if MFA is enforced and user has MFA but token was not created with MFA', async () => {
+			const userWithMfa = mock<User>({ ...userData, mfaEnabled: true, mfaSecret: 'secret' });
+
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
+
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(userWithMfa);
+			mfaService.isMFAEnforced.mockReturnValue(true);
+
+			const middleware = authService.createOptionalAuthMiddleware();
+
+			await middleware(req, res, next);
+
+			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+			expect(userRepository.findOne).toHaveBeenCalled();
+			expect(req.user).toBeUndefined();
+			expect(next).toHaveBeenCalled();
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+		});
 	});
 
 	describe('issueCookie', () => {
