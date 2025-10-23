@@ -1,7 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { OutputParserException } from '@langchain/core/output_parsers';
+import { OutputParserException, StructuredOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { StructuredOutputParser } from 'langchain/output_parsers';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
