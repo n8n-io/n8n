@@ -149,4 +149,22 @@ describe('users.store', () => {
 			});
 		});
 	});
+
+	// TODO: add tests for the logging hooks
+	describe('loggingHooks', () => {
+		it.todo('should run all registered loginHooks', () => {});
+
+		it.todo('should run async login hooks', async () => {});
+
+		it.todo('should fail silently if a login hook fails', () => {});
+	});
+
+	// TODO: add tests for the logout hooks
+	describe('logoutHooks', () => {
+		it.todo('should run all registered logoutHooks', () => {});
+
+		it.todo('should run async logout hooks', async () => {});
+
+		it.todo('should fail silently if a logout hook fails', () => {});
+	});
 });
