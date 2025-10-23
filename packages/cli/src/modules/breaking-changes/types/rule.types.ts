@@ -33,21 +33,28 @@ export interface BreakingChangeMetadata {
 	documentationUrl?: string;
 }
 
-export interface AffectedWorkflow {
-	id: string;
-	name: string;
-	active: boolean;
-	recentExecutionCount?: number;
+export interface WorkflowDetectionResult {
+	isAffected: boolean;
 	issues: DetectionIssue[]; // List of issues affecting this workflow
 }
 
+export interface InstanceDetectionResult {
+	isAffected: boolean;
+	instanceIssues: DetectionIssue[];
+	recommendations: Recommendation[];
+}
+
+export type AffectedWorkflow = Omit<WorkflowDetectionResult, 'isAffected'> & {
+	id: string;
+	name: string;
+	active: boolean;
+};
+
 export interface DetectionResult {
 	ruleId: string;
-	isAffected: boolean;
 	affectedWorkflows: AffectedWorkflow[];
 	instanceIssues: DetectionIssue[];
 	recommendations: Recommendation[];
-	details?: Record<string, unknown>;
 }
 
 export interface DetectionIssue {
@@ -62,11 +69,15 @@ export interface Recommendation {
 	documentationUrl?: string;
 }
 
-export interface CommonDetectionInput {
-	workflows: WorkflowEntity[];
+export interface IBreakingChangeInstanceRule {
+	getMetadata(): BreakingChangeMetadata;
+	detect(): Promise<InstanceDetectionResult>;
 }
 
-export interface IBreakingChangeRule {
+export interface IBreakingChangeWorkflowRule {
 	getMetadata(): BreakingChangeMetadata;
-	detect(input: CommonDetectionInput): Promise<DetectionResult>;
+	getRecommendations(workflowResults: AffectedWorkflow[]): Promise<Recommendation[]>;
+	detectWorkflow(workflow: WorkflowEntity): Promise<WorkflowDetectionResult>;
 }
+
+export type IBreakingChangeRule = IBreakingChangeInstanceRule | IBreakingChangeWorkflowRule;

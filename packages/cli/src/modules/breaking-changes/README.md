@@ -85,10 +85,9 @@ import { ErrorReporter } from 'n8n-core';
 
 import type { DetectionResult, BreakingChangeMetadata } from '../../types';
 import { BreakingChangeSeverity, BreakingChangeCategory } from '../../types';
-import { AbstractBreakingChangeRule } from '../abstract-rule';
 
 @Service()
-export class MyNewRule extends AbstractBreakingChangeRule {
+export class MyNewRule extends IBreakingChangeInstanceRule {
 	constructor(
 		protected readonly logger: Logger,
 		protected errorReporter: ErrorReporter,
@@ -108,7 +107,7 @@ export class MyNewRule extends AbstractBreakingChangeRule {
 		};
 	}
 
-	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
+	async detect(): Promise<DetectionResult> {
 		const result = this.createEmptyResult(this.getMetadata().id);
 
 		try {
@@ -119,20 +118,8 @@ export class MyNewRule extends AbstractBreakingChangeRule {
 				severity: BreakingChangeSeverity.HIGH,
 			});
 
-			// Workflow-level issues
-			for (const workflow of workflows) {
-				if (/* check condition */) {
-					result.affectedWorkflows.push({
-						id: workflow.id,
-						name: workflow.name,
-						active: workflow.active,
-						reason: 'Why this workflow is affected',
-					});
-				}
-			}
-
 			result.isAffected =
-				result.instanceIssues.length > 0 || result.affectedWorkflows.length > 0;
+				result.instanceIssues.length > 0;
 
 			if (result.isAffected) {
 				result.recommendations.push({

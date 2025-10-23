@@ -13,8 +13,3 @@ export interface DetectionReport {
 	};
 	results: DetectionResult[]; // Keep raw results for debugging
 }
-
-export interface DetectionOptions {
-	includeInactive?: boolean; // Include inactive workflows
-	ruleIds?: string[]; // Only run specific rules
-}

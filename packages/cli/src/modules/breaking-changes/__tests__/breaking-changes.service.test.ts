@@ -1,24 +1,20 @@
-import type { Logger } from '@n8n/backend-common';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
+import { N8N_VERSION } from '../../../constants';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
 import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule';
 import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule';
 
-import { N8N_VERSION } from '@/constants';
+import type { CacheService } from '@/services/cache/cache.service';
 
 describe('BreakingChangeService', () => {
-	const logger = mock<Logger>({
-		scoped: jest.fn().mockReturnThis(),
-		info: jest.fn(),
-		error: jest.fn(),
-		debug: jest.fn(),
-	});
+	const logger = mockLogger();
 
 	let workflowRepository: jest.Mocked<WorkflowRepository>;
 	let ruleRegistry: RuleRegistry;
@@ -50,14 +46,15 @@ describe('BreakingChangeService', () => {
 		service = new BreakingChangeService(
 			ruleRegistry,
 			workflowRepository,
+			mock<CacheService>(),
 			logger,
 			mock<ErrorReporter>(),
 		);
 
 		// Manually register rules with real instances (mocked WorkflowRepository)
-		const removedNodesRule = new RemovedNodesRule(logger);
-		const processEnvAccessRule = new ProcessEnvAccessRule(logger);
-		const fileAccessRule = new FileAccessRule(logger, mock<ErrorReporter>());
+		const removedNodesRule = new RemovedNodesRule();
+		const processEnvAccessRule = new ProcessEnvAccessRule();
+		const fileAccessRule = new FileAccessRule();
 
 		ruleRegistry.registerAll([removedNodesRule, processEnvAccessRule, fileAccessRule]);
 	});
@@ -75,23 +72,7 @@ describe('BreakingChangeService', () => {
 					totalIssues: 0,
 					criticalIssues: 0,
 				},
-				results: expect.arrayContaining([
-					expect.objectContaining({
-						ruleId: 'removed-nodes-v2',
-						isAffected: false,
-						affectedWorkflows: [],
-					}),
-					expect.objectContaining({
-						ruleId: 'process-env-access-v2',
-						isAffected: false,
-						affectedWorkflows: [],
-					}),
-					expect.objectContaining({
-						ruleId: 'file-access-restriction-v2',
-						isAffected: false,
-						affectedWorkflows: [],
-					}),
-				]),
+				results: [],
 			});
 			expect(report.generatedAt).toBeInstanceOf(Date);
 		});
@@ -107,6 +88,7 @@ describe('BreakingChangeService', () => {
 			]);
 
 			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.count.mockResolvedValue(1);
 
 			const report = await service.detect('v2');
 
@@ -121,17 +103,14 @@ describe('BreakingChangeService', () => {
 
 			// Verify each rule's result is in the report
 			const removedNodesResult = report.results.find((r) => r.ruleId === 'removed-nodes-v2');
-			expect(removedNodesResult?.isAffected).toBe(true);
 			expect(removedNodesResult?.affectedWorkflows).toHaveLength(1);
 
 			const processEnvResult = report.results.find((r) => r.ruleId === 'process-env-access-v2');
-			expect(processEnvResult?.isAffected).toBe(true);
 			expect(processEnvResult?.affectedWorkflows).toHaveLength(1);
 
 			const fileAccessResult = report.results.find(
 				(r) => r.ruleId === 'file-access-restriction-v2',
 			);
-			expect(fileAccessResult?.isAffected).toBe(true);
 			expect(fileAccessResult?.affectedWorkflows).toHaveLength(1);
 		});
 
@@ -143,6 +122,7 @@ describe('BreakingChangeService', () => {
 				createNode('File Node', 'n8n-nodes-base.readWriteFile'), // High severity (not critical)
 			]);
 			workflowRepository.find.mockResolvedValue([workflow1, workflow2]);
+			workflowRepository.count.mockResolvedValue(2);
 
 			const report = await service.detect('v2');
 
@@ -152,6 +132,7 @@ describe('BreakingChangeService', () => {
 
 		it('should include all required fields in the report', async () => {
 			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
 
 			const report = await service.detect('v2');
 

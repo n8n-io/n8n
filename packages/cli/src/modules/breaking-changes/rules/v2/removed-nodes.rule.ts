@@ -1,11 +1,16 @@
+import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { DetectionResult, BreakingChangeMetadata, CommonDetectionInput } from '../../types';
+import type {
+	BreakingChangeMetadata,
+	WorkflowDetectionResult,
+	Recommendation,
+	IBreakingChangeWorkflowRule,
+} from '../../types';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
-import { AbstractBreakingChangeRule } from '../abstract-rule';
 
 @Service()
-export class RemovedNodesRule extends AbstractBreakingChangeRule {
+export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 	private readonly REMOVED_NODES = [
 		'n8n-nodes-base.spontit',
 		'n8n-nodes-base.crowdDev',
@@ -23,34 +28,27 @@ export class RemovedNodesRule extends AbstractBreakingChangeRule {
 		};
 	}
 
-	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
-		const result = this.createEmptyResult();
-
-		for (const workflow of workflows) {
-			const removedNodes = workflow.nodes.filter((n) => this.REMOVED_NODES.includes(n.type));
-			if (removedNodes.length === 0) continue;
-
-			result.affectedWorkflows.push({
-				id: workflow.id,
-				name: workflow.name,
-				active: workflow.active,
-				issues: removedNodes.map((node) => ({
-					title: `Node '${node.type}' with name '${node.name}' has been removed`,
-					description: `The node type '${node.type}' is no longer available. Please replace it with an alternative.`,
-					level: IssueLevel.error,
-				})),
-			});
-		}
-
-		if (result.affectedWorkflows.length > 0) {
-			result.isAffected = true;
-			result.recommendations.push({
+	async getRecommendations(): Promise<Recommendation[]> {
+		return [
+			{
 				action: 'Update affected workflows',
 				description: 'Replace removed nodes with their updated versions or alternatives',
 				documentationUrl: this.getMetadata().documentationUrl,
-			});
-		}
+			},
+		];
+	}
 
-		return result;
+	async detectWorkflow(workflow: WorkflowEntity): Promise<WorkflowDetectionResult> {
+		const removedNodes = workflow.nodes.filter((n) => this.REMOVED_NODES.includes(n.type));
+		if (removedNodes.length === 0) return { isAffected: false, issues: [] };
+
+		return {
+			isAffected: true,
+			issues: removedNodes.map((node) => ({
+				title: `Node '${node.type}' with name '${node.name}' has been removed`,
+				description: `The node type '${node.type}' is no longer available. Please replace it with an alternative.`,
+				level: IssueLevel.error,
+			})),
+		};
 	}
 }

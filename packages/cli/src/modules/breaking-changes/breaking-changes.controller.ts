@@ -1,4 +1,4 @@
-import { Get, RestController, GlobalScope, Query } from '@n8n/decorators';
+import { Get, RestController, GlobalScope, Query, Post } from '@n8n/decorators';
 
 import { BreakingChangeService } from './breaking-changes.service';
 import { BreakingChangeVersion } from './types';
@@ -13,6 +13,12 @@ export class BreakingChangesController {
 	@Get('/')
 	@GlobalScope('breakingChanges:list')
 	async listRules(@Query query: { version?: BreakingChangeVersion }) {
-		return await this.service.detect(query.version ?? 'v2');
+		return await this.service.getDetectionResults(query.version ?? 'v2');
+	}
+
+	@Post('/refresh')
+	@GlobalScope('breakingChanges:list')
+	async refreshCache(@Query query: { version?: BreakingChangeVersion }) {
+		return await this.service.refreshDetectionResults(query.version ?? 'v2');
 	}
 }

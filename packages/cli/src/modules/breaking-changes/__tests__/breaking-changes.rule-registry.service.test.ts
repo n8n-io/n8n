@@ -2,7 +2,11 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
-import type { IBreakingChangeRule, BreakingChangeMetadata, DetectionResult } from '../types';
+import type {
+	IBreakingChangeRule,
+	BreakingChangeMetadata,
+	InstanceDetectionResult,
+} from '../types';
 import { BreakingChangeCategory, BreakingChangeSeverity } from '../types';
 
 describe('RuleRegistry', () => {
@@ -35,12 +39,10 @@ describe('RuleRegistry', () => {
 			getMetadata: jest.fn(() => metadata),
 			detect: jest.fn(async () => {
 				return await Promise.resolve({
-					ruleId: id,
 					isAffected: false,
-					affectedWorkflows: [],
 					instanceIssues: [],
 					recommendations: [],
-				} as DetectionResult);
+				} as InstanceDetectionResult);
 			}),
 		};
 
