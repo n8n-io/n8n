@@ -277,7 +277,21 @@ update_node_parameters({{
   ]
 }})
 
-Example 2 - Chat-based AI node:
+Example 2 - AI Agent Tool (sub-agent):
+update_node_parameters({{
+  nodeId: "subAgentTool",
+  instructions: [
+    "Set text to '=Process this input: {{ $fromAI(\\'input\\') }}'",
+    "Set system message to 'You are a specialized assistant. Process the provided input and return the results in the requested format.'"
+  ]
+}})
+
+CRITICAL: AI Agent Tools MUST have BOTH system message AND text field configured:
+- System message: Define the tool's role and capabilities
+- Text field: Pass the context/input using $fromAI() to receive parameters from the parent agent
+- Never leave text field empty - the tool needs to know what to process
+
+Example 3 - Chat-based AI node:
 update_node_parameters({{
   nodeId: "chatAssistant",
   instructions: [
@@ -286,7 +300,7 @@ update_node_parameters({{
   ]
 }})
 
-Example 3 - Data processing AI:
+Example 4 - Data processing AI:
 update_node_parameters({{
   nodeId: "analysisNode",
   instructions: [
