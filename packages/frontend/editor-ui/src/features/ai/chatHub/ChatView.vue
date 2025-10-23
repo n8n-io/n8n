@@ -334,9 +334,14 @@ function handleCreateNewCredential(provider: ChatHubProvider) {
 	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
-function handleEditAgent(agentId: string) {
-	editingAgentId.value = agentId;
-	uiStore.openModal('agentEditor');
+async function handleEditAgent(agentId: string) {
+	try {
+		await chatStore.fetchAgent(agentId);
+		editingAgentId.value = agentId;
+		uiStore.openModal('agentEditor');
+	} catch (error) {
+		toast.showError(error, 'Failed to load agent');
+	}
 }
 
 function handleCreateAgent() {

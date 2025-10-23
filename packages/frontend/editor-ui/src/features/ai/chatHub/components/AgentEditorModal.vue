@@ -25,7 +25,6 @@ const name = ref('');
 const description = ref('');
 const systemPrompt = ref('');
 const selectedModel = ref<ChatHubConversationModel | null>(null);
-const isLoading = ref(false);
 const isSaving = ref(false);
 
 const isEditMode = computed(() => !!props.agentId);
@@ -44,24 +43,21 @@ const isValid = computed(() => {
 	return name.value.trim().length > 0 && systemPrompt.value.trim().length > 0;
 });
 
-async function loadAgent(agentId: string) {
-	isLoading.value = true;
-	try {
-		const agent = await chatStore.fetchAgent(agentId);
-		name.value = agent.name;
-		description.value = agent.description ?? '';
-		systemPrompt.value = agent.systemPrompt;
-		if (agent.provider && agent.model) {
-			selectedModel.value = {
-				provider: agent.provider,
-				model: agent.model,
-				workflowId: agent.workflowId,
-			};
-		} else {
-			selectedModel.value = null;
-		}
-	} finally {
-		isLoading.value = false;
+function loadAgent() {
+	const agent = chatStore.currentEditingAgent;
+	if (!agent) return;
+
+	name.value = agent.name;
+	description.value = agent.description ?? '';
+	systemPrompt.value = agent.systemPrompt;
+	if (agent.provider && agent.model) {
+		selectedModel.value = {
+			provider: agent.provider,
+			model: agent.model,
+			workflowId: agent.workflowId,
+		};
+	} else {
+		selectedModel.value = null;
 	}
 }
 
@@ -76,7 +72,7 @@ watch(
 	() => props.agentId,
 	(newAgentId) => {
 		if (newAgentId) {
-			void loadAgent(newAgentId);
+			loadAgent();
 		} else {
 			resetForm();
 		}
@@ -136,10 +132,7 @@ function onCancel() {
 			</div>
 		</template>
 		<template #content>
-			<div v-if="isLoading" :class="$style.loading">
-				<N8nText>{{ i18n.baseText('chatHub.agent.editor.loading') }}</N8nText>
-			</div>
-			<div v-else :class="$style.content">
+			<div :class="$style.content">
 				<div :class="$style.field">
 					<N8nText tag="label" size="small" bold :class="$style.label">{{
 						i18n.baseText('chatHub.agent.editor.name.label')
@@ -222,13 +215,6 @@ function onCancel() {
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
-}
-
-.loading {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	padding: var(--spacing--xl) 0;
 }
 
 .field {

@@ -43,6 +43,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const streamingMessageId = ref<string>();
 	const sessions = ref<ChatHubSessionDto[]>([]);
 	const agents = ref<ChatHubAgentDto[]>([]);
+	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 
 	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
@@ -529,7 +530,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchAgent(agentId: string): Promise<ChatHubAgentDto> {
-		return await fetchAgentApi(rootStore.restApiContext, agentId);
+		const agent = await fetchAgentApi(rootStore.restApiContext, agentId);
+		currentEditingAgent.value = agent;
+		return agent;
 	}
 
 	async function createAgent(payload: ChatHubCreateAgentRequest): Promise<ChatHubAgentDto> {
@@ -556,6 +559,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		models,
 		sessions,
 		agents,
+		currentEditingAgent,
 		conversationsBySession,
 		loadingModels,
 		isResponding,
