@@ -18,7 +18,7 @@ import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
 import { ChatHubService } from './chat-hub.service';
-import { ChatHubAgentService } from './chat-agent.service';
+import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
 /* eslint-disable @typescript-eslint/naming-convention */
