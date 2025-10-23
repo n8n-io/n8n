@@ -6,6 +6,7 @@ import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -90,6 +91,7 @@ export class n8nPage {
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
 	readonly modal: BaseModal;
+	readonly resourceMoveModal: ResourceMoveModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -149,6 +151,7 @@ export class n8nPage {
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
+		this.resourceMoveModal = new ResourceMoveModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);
