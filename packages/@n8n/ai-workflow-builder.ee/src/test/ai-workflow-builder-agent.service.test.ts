@@ -548,7 +548,6 @@ describe('AiWorkflowBuilderService', () => {
 				workflowContext: {
 					currentWorkflow: { id: workflowId },
 				},
-				useDeprecatedCredentials: false,
 			};
 
 			// First, simulate a chat session
