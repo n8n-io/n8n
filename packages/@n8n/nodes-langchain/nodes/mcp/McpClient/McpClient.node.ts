@@ -9,6 +9,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as listSearch from './listSearch';
 import * as resourceMapping from './resourceMapping';
+import { authenticationProperties, credentials, transportSelect } from '../shared/descriptions';
 
 export class McpClient implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,46 +25,13 @@ export class McpClient implements INodeType {
 		defaults: {
 			name: 'MCP Client',
 		},
-		credentials: [
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
-				name: 'httpBearerAuth',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['bearerAuth'],
-					},
-				},
-			},
-			{
-				name: 'httpHeaderAuth',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['headerAuth'],
-					},
-				},
-			},
-		],
+		credentials,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
-			{
-				displayName: 'Server Transport',
-				name: 'serverTransport',
-				type: 'options',
-				options: [
-					{
-						name: 'HTTP Streamable',
-						value: 'httpStreamable',
-					},
-					{
-						name: 'SSE (Deprecated)',
-						value: 'sse',
-					},
-				],
-				default: 'httpStreamable',
-			},
+			transportSelect({
+				defaultOption: 'httpStreamable',
+			}),
 			{
 				displayName: 'MCP Endpoint URL',
 				name: 'endpointUrl',
@@ -73,38 +41,7 @@ export class McpClient implements INodeType {
 				required: true,
 				description: 'The URL of the MCP server to connect to',
 			},
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Bearer Auth',
-						value: 'bearerAuth',
-					},
-					{
-						name: 'Header Auth',
-						value: 'headerAuth',
-					},
-					{
-						name: 'None',
-						value: 'none',
-					},
-				],
-				default: 'none',
-				description: 'The way to authenticate with your SSE endpoint',
-			},
-			{
-				displayName: 'Credentials',
-				name: 'credentials',
-				type: 'credentials',
-				default: '',
-				displayOptions: {
-					show: {
-						authentication: ['headerAuth', 'bearerAuth'],
-					},
-				},
-			},
+			...authenticationProperties,
 			{
 				displayName: 'Tool',
 				name: 'tool',

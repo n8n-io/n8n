@@ -6,7 +6,12 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
-import { getAuthHeaders, connectMcpClient, getAllTools } from '../shared/utils';
+import {
+	getAuthHeaders,
+	connectMcpClient,
+	getAllTools,
+	tryRefreshOAuth2Token,
+} from '../shared/utils';
 
 export async function getToolParameters(
 	this: ILoadOptionsFunctions,
@@ -25,6 +30,7 @@ export async function getToolParameters(
 		headers,
 		name: node.type,
 		version: node.typeVersion,
+		onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
 	});
 
 	if (!client.ok) {

@@ -16,7 +16,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
 import { createCallTool, getSelectedTools, McpToolkit, mcpToolToDynamicTool } from './utils';
-import { transportSelect } from '../shared/descriptions';
+import { authenticationProperties, credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
 	connectMcpClient,
@@ -137,36 +137,7 @@ export class McpClientTool implements INodeType {
 		},
 		inputs: [],
 		outputs: [{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }],
-		credentials: [
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
-				name: 'httpBearerAuth',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['bearerAuth'],
-					},
-				},
-			},
-			{
-				name: 'httpHeaderAuth',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['headerAuth'],
-					},
-				},
-			},
-			{
-				name: 'mcpOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['mcpOAuth2Api'],
-					},
-				},
-			},
-		],
+		credentials,
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
@@ -213,42 +184,7 @@ export class McpClientTool implements INodeType {
 					},
 				},
 			}),
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'MCP OAuth2',
-						value: 'mcpOAuth2Api',
-					},
-					{
-						name: 'Bearer Auth',
-						value: 'bearerAuth',
-					},
-					{
-						name: 'Header Auth',
-						value: 'headerAuth',
-					},
-					{
-						name: 'None',
-						value: 'none',
-					},
-				],
-				default: 'none',
-				description: 'The way to authenticate with your endpoint',
-			},
-			{
-				displayName: 'Credentials',
-				name: 'credentials',
-				type: 'credentials',
-				default: '',
-				displayOptions: {
-					show: {
-						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api'],
-					},
-				},
-			},
+			...authenticationProperties,
 			{
 				displayName: 'Tools to Include',
 				name: 'include',
