@@ -9,6 +9,7 @@ import uniq from 'lodash/uniq';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
+import { DeepPartial } from 'ts-essentials';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
@@ -462,18 +463,34 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Minimal settings for unauthenticated users
 	 */
-	getMinimalSettings(): Partial<FrontendSettings> {
+	getMinimalSettings(): DeepPartial<FrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		this.getSettings();
 
 		return {
+			// core identification
+			instanceId: this.settings.instanceId,
+			defaultLocale: this.settings.defaultLocale,
+			versionCli: this.settings.versionCli,
+			releaseChannel: this.settings.releaseChannel,
+			versionNotifications: this.settings.versionNotifications,
+
 			// Auth & SSO - required for login UI
 			userManagement: this.settings.userManagement,
 			sso: this.settings.sso,
 			mfa: this.settings.mfa,
+			enterprise: {
+				saml: this.settings.enterprise.saml,
+				ldap: this.settings.enterprise.ldap,
+				oidc: this.settings.enterprise.oidc,
+				showNonProdBanner: this.settings.enterprise.showNonProdBanner,
+			},
 
-			// Basic settings - required for UI
-			versionCli: this.settings.versionCli,
+			// banners
+			banners: this.settings.banners,
+
+			// preview mode
+			previewMode: this.settings.previewMode,
 		};
 	}
 
