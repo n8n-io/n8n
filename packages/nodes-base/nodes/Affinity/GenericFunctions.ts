@@ -91,6 +91,6 @@ export function mapResource(key: string) {
 		list_entry: 'list-entries',
 		field: 'fields',
 		file: 'files',
-		field_value: "field-value"
+		field_value: 'field-values'
 	}[key];
 }
