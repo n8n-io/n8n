@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { WorkflowExecute } from 'n8n-core';
 import { Workflow } from 'n8n-workflow';
+import { threadId } from 'worker_threads';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
@@ -74,6 +75,7 @@ export default async function executeWorkflow(
 
 		return {
 			run: result,
+			threadId,
 			memoryUsage: {
 				heapUsed: memoryUsage.heapUsed,
 				heapTotal: memoryUsage.heapTotal,
@@ -99,6 +101,7 @@ export default async function executeWorkflow(
 				startedAt: new Date(),
 				status: 'error',
 			},
+			threadId,
 		};
 	}
 }

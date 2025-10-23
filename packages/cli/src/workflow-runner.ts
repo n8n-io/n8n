@@ -62,8 +62,14 @@ interface BenchmarkMeasurement {
 	duration: number;
 	isColdStart: boolean;
 	// Memory (bytes)
-	mainMemoryBefore: number;
-	mainMemoryAfter: number;
+	mainMemoryBefore: {
+		heapUsed: number;
+		rss: number;
+	};
+	mainMemoryAfter: {
+		heapUsed: number;
+		rss: number;
+	};
 	workerMemoryPeak?: {
 		heapUsed: number;
 		heapTotal: number;
@@ -78,9 +84,14 @@ interface BenchmarkMeasurement {
 export class WorkflowRunner {
 	private scalingService: ScalingService;
 	// Track execution start times for benchmarking
-	private executionStartTimes = new Map<string, { startTime: number; memoryBefore: number }>();
+	private executionStartTimes = new Map<
+		string,
+		{ startTime: number; memoryBefore: { heapUsed: number; rss: number } }
+	>();
 	// Track number of executions to approximate cold/warm starts
 	private executionCount = 0;
+	// Track which worker thread IDs we've seen (to detect new thread spawns)
+	private seenWorkerThreadIds = new Set<number>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -430,13 +441,13 @@ export class WorkflowRunner {
 	private getPool(): Piscina {
 		if (!this.pool) {
 			const workerPath = resolve(__dirname, 'commands/worker-thread.js');
-			const maxThreads = 5; // Math.max(1, cpus().length - 1); // Leave one CPU for main thread
+			const maxThreads = 1;
 
 			this.pool = new Piscina({
 				filename: workerPath,
 				minThreads: 0,
 				maxThreads,
-				idleTimeout: 10000, // 10 seconds
+				idleTimeout: 5000, // 10 seconds
 				maxQueue: 'auto',
 				resourceLimits: {
 					maxOldGenerationSizeMb: 150,
@@ -483,13 +494,16 @@ export class WorkflowRunner {
 			try {
 				// Record start time and memory before execution
 				const startTime = Date.now();
-				const memoryBefore = process.memoryUsage().heapUsed;
+				const memoryUsage = process.memoryUsage();
 				this.executionCount++;
 
 				// Store timing info for later
 				this.executionStartTimes.set(executionId, {
 					startTime,
-					memoryBefore,
+					memoryBefore: {
+						heapUsed: memoryUsage.heapUsed,
+						rss: memoryUsage.rss,
+					},
 				});
 
 				// Prepare task for worker
@@ -511,12 +525,15 @@ export class WorkflowRunner {
 				const startInfo = this.executionStartTimes.get(executionId);
 				if (startInfo) {
 					const endTime = Date.now();
-					const memoryAfter = process.memoryUsage().heapUsed;
-					const pool = this.getPool();
+					const memoryAfter = process.memoryUsage();
 
-					// Consider first N executions as cold starts (Piscina spawns workers on-demand)
-					// Assuming maxThreads workers need to be spawned initially
-					const isColdStart = this.executionCount <= pool.options.maxThreads;
+					// Detect cold start: first time we see this thread ID
+					const threadId = result.threadId;
+					console.log('threadId', threadId);
+					const isColdStart = !this.seenWorkerThreadIds.has(threadId);
+					if (isColdStart) {
+						this.seenWorkerThreadIds.add(threadId);
+					}
 
 					const measurement: BenchmarkMeasurement = {
 						executionId,
@@ -526,9 +543,12 @@ export class WorkflowRunner {
 						duration: endTime - startInfo.startTime,
 						isColdStart,
 						mainMemoryBefore: startInfo.memoryBefore,
-						mainMemoryAfter: memoryAfter,
+						mainMemoryAfter: {
+							heapUsed: memoryAfter.heapUsed,
+							rss: memoryAfter.rss,
+						},
 						workerMemoryPeak: result.memoryUsage,
-						workerNumber: this.executionCount,
+						workerNumber: threadId,
 					};
 
 					void this.writeBenchmarkMeasurement(measurement);

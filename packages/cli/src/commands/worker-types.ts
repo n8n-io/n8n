@@ -18,6 +18,8 @@ export interface PiscinaExecutionTask {
  */
 export interface PiscinaExecutionResult {
 	run: IRun;
+	/** Worker thread ID for tracking cold/warm starts */
+	threadId: number;
 	/** Worker thread memory usage in bytes */
 	memoryUsage?: {
 		heapUsed: number;
