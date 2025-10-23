@@ -55,6 +55,9 @@ describe('evaluateAgentPrompt', () => {
 					position: [0, 0],
 					parameters: {
 						text: 'This is a static prompt without expressions',
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 			],
@@ -67,7 +70,7 @@ describe('evaluateAgentPrompt', () => {
 		expect(result.violations[0]).toEqual({
 			type: 'minor',
 			description:
-				'Agent node "AI Agent" has no expression in its prompt field. This likely means it failed to use chatInput',
+				'Agent node "AI Agent" has no expression in its prompt field. This likely means it failed to use chatInput or dynamic context',
 			pointsDeducted: 15,
 		});
 	});
@@ -83,6 +86,9 @@ describe('evaluateAgentPrompt', () => {
 					position: [0, 0],
 					parameters: {
 						text: '=Process this request: {{ $json.chatInput }}',
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 			],
@@ -105,6 +111,9 @@ describe('evaluateAgentPrompt', () => {
 					position: [0, 0],
 					parameters: {
 						text: '=Process: {{ $json.input }}',
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 				{
@@ -115,6 +124,9 @@ describe('evaluateAgentPrompt', () => {
 					position: [100, 0],
 					parameters: {
 						text: "=Process: {{$('Chat Trigger'.params.chatInput)}}",
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 				{
@@ -125,6 +137,9 @@ describe('evaluateAgentPrompt', () => {
 					position: [200, 0],
 					parameters: {
 						text: '={{ $json.chatInput }}',
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 			],
@@ -171,6 +186,9 @@ describe('evaluateAgentPrompt', () => {
 					parameters: {
 						promptType: 'define',
 						text: 'Static text without expressions',
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 			],
@@ -200,8 +218,9 @@ describe('evaluateAgentPrompt', () => {
 
 		const result = evaluateAgentPrompt(workflow);
 
-		expect(result.violations).toHaveLength(1);
-		expect(result.violations[0].type).toBe('minor');
+		// Should have violations for: no expression + no systemMessage
+		expect(result.violations.length).toBeGreaterThanOrEqual(1);
+		expect(result.violations.some((v) => v.type === 'minor')).toBe(true);
 	});
 
 	it('should detect multiple agents with issues', () => {
@@ -215,6 +234,9 @@ describe('evaluateAgentPrompt', () => {
 					position: [0, 0],
 					parameters: {
 						text: 'No expression here',
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 				{
@@ -225,6 +247,9 @@ describe('evaluateAgentPrompt', () => {
 					position: [100, 0],
 					parameters: {
 						text: 'Also no expression',
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 				{
@@ -235,6 +260,9 @@ describe('evaluateAgentPrompt', () => {
 					position: [200, 0],
 					parameters: {
 						text: '=Has expression: {{ $json.input }}',
+						options: {
+							systemMessage: 'You are a helpful agent.',
+						},
 					},
 				},
 			],
@@ -246,5 +274,158 @@ describe('evaluateAgentPrompt', () => {
 		expect(result.violations).toHaveLength(2);
 		expect(result.violations[0].description).toContain('Agent 1');
 		expect(result.violations[1].description).toContain('Agent 2');
+	});
+
+	describe('System Message Separation', () => {
+		it('should flag agent with no systemMessage as major violation', () => {
+			const workflow = mock<SimpleWorkflow>({
+				nodes: [
+					{
+						id: '1',
+						name: 'Orchestrator Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							promptType: 'define',
+							text: '=You are an orchestrator agent that coordinates specialized agents. Your task is to: 1) Call Research Agent 2) Call Fact-Check Agent. The research topic is: {{ $json.researchTopic }}',
+						},
+					},
+				],
+				connections: {},
+			});
+
+			const result = evaluateAgentPrompt(workflow);
+
+			// Should have major violation for missing systemMessage
+			expect(result.violations.length).toBeGreaterThan(0);
+			const systemMessageViolation = result.violations.find((v) =>
+				v.description.includes('no system message'),
+			);
+			expect(systemMessageViolation).toBeDefined();
+			expect(systemMessageViolation?.type).toBe('major');
+			expect(systemMessageViolation?.pointsDeducted).toBe(25);
+		});
+
+		it('should not flag agent when it has proper systemMessage', () => {
+			const workflow = mock<SimpleWorkflow>({
+				nodes: [
+					{
+						id: '1',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							promptType: 'define',
+							text: '=You are an agent. Your task is to process: {{ $json.data }}',
+							options: {
+								systemMessage: 'You are a helpful agent.',
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			const result = evaluateAgentPrompt(workflow);
+
+			// Should not have any system message violations
+			const systemMessageViolations = result.violations.filter((v) =>
+				v.description.includes('system message'),
+			);
+			expect(systemMessageViolations).toHaveLength(0);
+		});
+
+		it('should pass for properly separated agent configuration', () => {
+			const workflow = mock<SimpleWorkflow>({
+				nodes: [
+					{
+						id: '1',
+						name: 'Orchestrator Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							promptType: 'define',
+							text: '=The research topic is: {{ $json.researchTopic }}',
+							options: {
+								systemMessage:
+									'You are an orchestrator agent that coordinates specialized agents.\n\nYour task is to:\n1. Call the Research Agent Tool\n2. Call the Fact-Check Agent Tool\n3. Generate a report',
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			const result = evaluateAgentPrompt(workflow);
+
+			// Should have no violations
+			expect(result.violations).toHaveLength(0);
+		});
+
+		it('should handle agents with expressions in text and proper systemMessage', () => {
+			const testCases = [
+				{ text: "=You're analyzing: {{ $json.input }}" }, // Contains "you're" but has systemMessage
+				{ text: '=Process this data: {{ $json.data }}' },
+				{ text: '=User question: {{ $json.chatInput }}' },
+				{ text: '=Analyze for topic: {{ $json.researchTopic }}' },
+			];
+
+			testCases.forEach(({ text }, index) => {
+				const workflow = mock<SimpleWorkflow>({
+					nodes: [
+						{
+							id: `test-${index}`,
+							name: `Test Agent ${index}`,
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [0, 0],
+							parameters: {
+								promptType: 'define',
+								text,
+								options: {
+									systemMessage: 'You are a helpful assistant.',
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				const result = evaluateAgentPrompt(workflow);
+				// Should have no violations since systemMessage is present
+				expect(result.violations).toHaveLength(0);
+			});
+		});
+
+		it('should flag major violation when agent has no systemMessage', () => {
+			const workflow = mock<SimpleWorkflow>({
+				nodes: [
+					{
+						id: '1',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							promptType: 'define',
+							text: '=Process: {{ $json.input }}',
+						},
+					},
+				],
+				connections: {},
+			});
+
+			const result = evaluateAgentPrompt(workflow);
+
+			const noSystemMessageViolation = result.violations.find((v) =>
+				v.description.includes('no system message'),
+			);
+			expect(noSystemMessageViolation).toBeDefined();
+			expect(noSystemMessageViolation?.type).toBe('major');
+			expect(noSystemMessageViolation?.pointsDeducted).toBe(25);
+		});
 	});
 });

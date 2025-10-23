@@ -231,6 +231,90 @@ Configure multiple nodes in parallel:
 - update_node_parameters({{ nodeId: "documentLoader1", instructions: ["Set dataType to 'binary' for processing PDF files", "Set loader to 'pdfLoader'", "Enable splitPages option"] }})
 
 Why: Unconfigured nodes WILL fail at runtime
+
+<system_message_configuration>
+CRITICAL: For AI nodes (AI Agent, LLM Chain, Anthropic, OpenAI, etc.), you MUST separate system-level instructions from user context.
+
+**System Message vs User Prompt:**
+- **System Message** = AI's ROLE, CAPABILITIES, TASK DESCRIPTION, and BEHAVIORAL INSTRUCTIONS
+- **User Message/Text** = DYNAMIC USER INPUT, CONTEXT VARIABLES, and DATA REFERENCES
+
+**Node-specific field names:**
+- AI Agent: system message goes in options.systemMessage, user context in text
+- LLM Chain: system message in messages.messageValues[] with system role, user context in text
+- Anthropic: system message in options.system, user context in messages.values[]
+- OpenAI: system message in messages.values[] with role "system", user in messages.values[] with role "user"
+
+**System Message** should contain:
+- AI identity and role ("You are a...")
+- Task description ("Your task is to...")
+- Step-by-step instructions
+- Behavioral guidelines
+- Expected output format
+- Coordination instructions
+
+**User Message/Text** should contain:
+- Dynamic data from workflow (expressions like {{ $json.field }})
+- User input references ({{ $json.chatInput }})
+- Context variables from previous nodes
+- Minimal instruction (just what varies per execution)
+
+**WRONG - Everything in text/user message field:**
+❌ text: "=You are an orchestrator that coordinates specialized AI tasks. Your task is to: 1) Call Research Tool 2) Call Fact-Check Tool 3) Return HTML. The research topic is: {{ $json.researchTopic }}"
+
+**RIGHT - Properly separated:**
+✅ text: "=The research topic is: {{ $json.researchTopic }}"
+✅ System message: "You are an orchestrator that coordinates specialized AI tasks.\n\nYour task is to:\n1. Call the Research Agent Tool to gather information\n2. Call the Fact-Check Agent Tool to verify findings\n3. Call the Report Writer Agent Tool to create a report\n4. Return ONLY the final result"
+
+**Configuration Examples:**
+
+Example 1 - AI Agent with orchestration:
+update_node_parameters({{
+  nodeId: "orchestratorAgent",
+  instructions: [
+    "Set text to '=The research topic is: {{ $json.researchTopic }}'",
+    "Set system message to 'You are an orchestrator coordinating AI tasks to research topics and generate reports.\\n\\nYour task is to:\\n1. Call the Research Agent Tool to gather information\\n2. Call the Fact-Check Agent Tool to verify findings (require 2+ sources)\\n3. Call the Report Writer Agent Tool to create a report under 1,000 words\\n4. Call the HTML Editor Agent Tool to format as HTML\\n5. Return ONLY the final HTML content'"
+  ]
+}})
+
+Example 2 - AI Agent Tool (sub-agent):
+update_node_parameters({{
+  nodeId: "subAgentTool",
+  instructions: [
+    "Set text to '=Process this input: {{ $fromAI(\\'input\\') }}'",
+    "Set system message to 'You are a specialized assistant. Process the provided input and return the results in the requested format.'"
+  ]
+}})
+
+CRITICAL: AI Agent Tools MUST have BOTH system message AND text field configured:
+- System message: Define the tool's role and capabilities
+- Text field: Pass the context/input using $fromAI() to receive parameters from the parent agent
+- Never leave text field empty - the tool needs to know what to process
+
+Example 3 - Chat-based AI node:
+update_node_parameters({{
+  nodeId: "chatAssistant",
+  instructions: [
+    "Set text to '=User question: {{ $json.chatInput }}'",
+    "Set system message to 'You are a helpful customer service assistant. Answer questions clearly and concisely. If you don\\'t know the answer, say so and offer to escalate to a human.'"
+  ]
+}})
+
+Example 4 - Data processing AI:
+update_node_parameters({{
+  nodeId: "analysisNode",
+  instructions: [
+    "Set text to '=Analyze this data: {{ $json.data }}'",
+    "Set system message to 'You are a data analysis assistant. Examine the provided data and:\\n1. Identify key patterns and trends\\n2. Calculate relevant statistics\\n3. Highlight anomalies or outliers\\n4. Provide actionable insights\\n\\nReturn your analysis in structured JSON format.'"
+  ]
+}})
+
+**Why this matters:**
+- Keeps AI behavior consistent (system message) while allowing dynamic context (user message)
+- Makes workflows more maintainable and reusable
+- Follows AI best practices for prompt engineering
+- Prevents mixing static instructions with dynamic data
+</system_message_configuration>
 </configuration_requirements>
 
 <data_parsing_strategy>
