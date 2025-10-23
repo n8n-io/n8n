@@ -1,9 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { z } from 'zod';
 
+import { promptCategorizationChain } from '@/chains/prompt-categorization';
+import { documentation } from '@/tools/best-practices';
+
 import { createEvaluatorChain } from './base';
-import { promptCategorizationChain } from '../../../src/chains/prompt-categorization';
-import { documentation } from '../../../src/tools/best-practices';
 import type { EvaluationInput } from '../../types/evaluation';
 
 // Schema for best practices evaluation result
@@ -11,7 +12,7 @@ const bestPracticesResultSchema = z.object({
 	score: z.number().min(0).max(1),
 	violations: z.array(
 		z.object({
-			type: z.enum(['critical', 'major', 'minor']),
+			type: z.enum(['major', 'minor']),
 			description: z.string(),
 			pointsDeducted: z.number().min(0),
 		}),
@@ -21,9 +22,6 @@ const bestPracticesResultSchema = z.object({
 		.describe(
 			'Workflow techniques identified for this evaluation (e.g., chatbot, content-generation)',
 		),
-	analysis: z
-		.string()
-		.describe('Brief analysis of adherence to best practices for the identified techniques'),
 });
 
 export type BestPracticesResult = z.infer<typeof bestPracticesResultSchema>;
@@ -44,27 +42,56 @@ Evaluate ONLY adherence to the provided best practices documentation. Focus on w
 
 ## Evaluation Criteria
 
-### Check for these violations:
+## Understanding Workflow Connections
 
-**Critical (-40 to -50 points):**
-ONLY mark as critical if the violation would BREAK THE USER'S SPECIFIC USE CASE:
-- Patterns that will cause the workflow to fail for what the user explicitly requested
-- Using nodes in ways that are explicitly warned against as "Critical" severity and that affect the requested functionality
-- Configuration mistakes that will break the core functionality the user asked for (e.g., wrong data types for required fields)
-- Missing essential features that the user specifically requested
+n8n workflows can have multiple triggers and execution paths. When evaluating whether components are "connected," understand that n8n supports multiple connection methods beyond direct node-to-node data flow.
 
-**Examples of what is NOT critical:**
-- Missing error handling when the user didn't ask for production-ready workflow
-- Missing rate limiting when the user didn't mention handling high volumes
-- Missing advanced features when the user requested a basic workflow
+**Valid Connection Methods:**
 
-**Major (-15 to -25 points):**
+1. **Direct Data Flow Connections**: Traditional node-to-node connections where data flows from source output to target input
+   - Example: HTTP Request → Set → Database
+
+2. **AI-Specific Connections**: Special connection types for AI nodes, denoted with brackets like [ai_memory], [ai_tool], [ai_embedding]
+   - Memory nodes connected to multiple agents via [ai_memory] - enables agents to share conversation history
+   - Tools connected to agents via [ai_tool] - provides capabilities to agents
+   - Vector stores use [ai_embedding] and [ai_document] - for AI-powered data retrieval
+
+3. **Shared Memory**: Multiple agents/workflows sharing the same memory node for context/data persistence
+   - Same Window Buffer Memory connected to both a scheduled agent AND a chat agent
+   - Both agents can access shared conversation history and context
+
+4. **Vector Store Sharing**: Multiple workflows accessing the same vector store for data storage/retrieval
+   - Scheduled workflow writes documents to Vector Store
+   - Chat workflow queries the same Vector Store for information
+   - Both workflows effectively share data through the vector store
+
+5. **Data Storage Sharing**: Multiple workflows reading/writing to the same persistent storage
+   - Database nodes (PostgreSQL, MongoDB, MySQL)
+   - Spreadsheet services (Google Sheets, Airtable)
+   - Data Tables (n8n's built-in storage)
+   - One workflow writes data, another workflow reads it
+
+6. **Tool-based Connections**: Agents connected through tool nodes
+   - Agent Tool nodes allow one agent to invoke another agent
+   - Tools provide indirect connections between workflow components
+
+Before assessing there is a missing connection as per best practices documentation (for example a chatbot
+should be connected to data from other triggered components of the workflow) make sure that there is no
+possible connection, check all possible connections, ESPECIALLY agent nodes (memory and tools could
+create the necessary connections).
+
+**Critical Evaluation Rule:**
+Before marking components as "disconnected," verify they have NO connection method - not just no direct data flow connection.
+
+### Violation Criteria
+
+**Major (-20 to -40 points):**
 - Not following recommended approaches that significantly impact reliability or performance FOR THE REQUESTED USE CASE
 - Using non-recommended nodes when better alternatives are documented and relevant
 - Missing important safeguards that the documentation warns about IF they're relevant to the user's request
 - Ignoring service-specific considerations that would impact the user's stated goals
 
-**Minor (-5 to -10 points):**
+**Minor (-5 to -20 points):**
 - Using less optimal patterns that are documented as pitfalls but don't break functionality
 - Missing optional best practices that would improve the workflow (like error handling when not requested)
 - Missing production-ready features when the user asked for a basic/simple workflow
@@ -85,7 +112,8 @@ ONLY mark as critical if the violation would BREAK THE USER'S SPECIFIC USE CASE:
 - Evaluate against common mistakes mentioned in the documentation
 - DO NOT penalize for missing best practices that aren't relevant to what the user asked for
 - DO NOT create arbitrary best practices - only evaluate against what's documented
-- DO NOT mark optional features as critical violations when they weren't requested`;
+- DO NOT mark optional features as critical violations when they weren't requested
+`;
 
 const humanTemplate = `Evaluate how well this workflow follows n8n best practices in the context of what the user requested.
 
