@@ -501,7 +501,7 @@ describe('ProvisioningService', () => {
 			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
 			expect(provisioningService.loadConfig).toHaveBeenCalledTimes(1);
 			expect(provisioningService.getConfig).toHaveBeenCalledTimes(2);
-			expect(settingsRepository.update).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.upsert).toHaveBeenCalledTimes(1);
 			expect(publisher.publishCommand).toHaveBeenCalledTimes(1);
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'reload-sso-provisioning-configuration',
