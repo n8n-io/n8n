@@ -29,6 +29,7 @@ export class RemovedNodesRule extends AbstractBreakingChangeRule {
 		try {
 			for (const workflow of workflows) {
 				const removedNodes = workflow.nodes.filter((n) => this.REMOVED_NODES.includes(n.type));
+				if (removedNodes.length === 0) continue;
 
 				result.affectedWorkflows.push({
 					id: workflow.id,

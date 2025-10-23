@@ -53,7 +53,10 @@ describe('RemovedNodesRule', () => {
 
 	describe('detect()', () => {
 		it('should return no issues when no removed nodes are found', async () => {
-			const result = await rule.detect({ workflows: [] });
+			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('NotDeleted', 'n8n-nodes-base.not-deleted'),
+			]);
+			const result = await rule.detect({ workflows: [workflow] });
 
 			expect(result).toEqual({
 				ruleId: 'removed-nodes-v2',

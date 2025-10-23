@@ -29,7 +29,8 @@ export class ProcessEnvAccessRule extends AbstractBreakingChangeRule {
 				workflow.nodes.forEach((node) => {
 					// Check in Code nodes
 					if (node.type === 'n8n-nodes-base.code') {
-						const code = node.parameters?.code as string;
+						const code =
+							typeof node.parameters?.code === 'string' ? node.parameters.code : undefined;
 						if (code && processEnvPattern.test(code)) {
 							affectedNodes.push(node.name);
 						}

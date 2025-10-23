@@ -79,8 +79,6 @@ If you're adding a new breaking change rule for an existing version (e.g., v2), 
 Create your rule file in the appropriate version directory (e.g., `rules/v2/my-new-rule.rule.ts`):
 
 ```typescript
-import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import type { DetectionResult, BreakingChangeMetadata } from '../../types';
@@ -89,17 +87,10 @@ import { AbstractBreakingChangeRule } from '../abstract-rule';
 
 @Service()
 export class MyNewRule extends AbstractBreakingChangeRule {
-	constructor(
-		protected readonly workflowRepository: WorkflowRepository,
-		protected readonly logger: Logger,
-	) {
-		super(logger);
-	}
-
 	getMetadata(): BreakingChangeMetadata {
 		return {
 			id: 'my-rule-v2',
-			version: 'v2.0.0',
+			version: 'v2',
 			title: 'My Breaking Change',
 			description: 'Description of what changed',
 			category: BreakingChangeCategory.WORKFLOW,
@@ -108,7 +99,7 @@ export class MyNewRule extends AbstractBreakingChangeRule {
 		};
 	}
 
-	async detect(): Promise<DetectionResult> {
+	async detect({ workflows }: CommonDetectionInput): Promise<DetectionResult> {
 		const result = this.createEmptyResult(this.getMetadata().id);
 
 		try {
@@ -120,10 +111,6 @@ export class MyNewRule extends AbstractBreakingChangeRule {
 			});
 
 			// Workflow-level issues
-			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'nodes'],
-			});
-
 			for (const workflow of workflows) {
 				if (/* check condition */) {
 					result.affectedWorkflows.push({
@@ -229,16 +216,6 @@ type RuleInstances = InstanceType<RuleConstructors>;
 export { allRules, type RuleInstances };
 ```
 
-#### Step 5: Update API Documentation
-
-Update the API endpoint documentation in this README to reflect the new version:
-
-```
-GET /breaking-changes?version=v3
-```
-
-That's it! The new version will now be available through the API.
-
 ## Rule Categories
 
 - **WORKFLOW**: Changes affecting workflow execution
@@ -254,86 +231,8 @@ That's it! The new version will now be available through the API.
 - **MEDIUM**: Should be addressed but not urgent
 - **LOW**: Optional improvements or deprecation notices
 
-## Using WorkflowRepository Helpers
-
-The `WorkflowRepository` provides a helper for finding workflows with specific node types:
-
-```typescript
-// Find workflows using specific node types
-const workflows = await this.workflowRepository.findWorkflowsWithNodeType(
-	['n8n-nodes-base.httpRequest', 'n8n-nodes-base.webhook'],
-	true, // includeNodes: set to true if you need the nodes array
-);
-```
-
 ## Permissions
 
 The `breakingChanges:list` scope is automatically granted to:
 - **Global Owners**
 - **Global Admins**
-
-## Testing
-
-Test each rule with:
-- Workflows with affected nodes
-- Workflows without affected nodes
-- Empty instances
-- Various configuration scenarios
-
-Example test structure:
-```typescript
-import { mock } from 'jest-mock-extended';
-import { RemovedNodesRule } from '../removed-nodes.rule';
-
-describe('RemovedNodesRule', () => {
-	it('should detect workflows with removed nodes', async () => {
-		const workflowRepository = mock<WorkflowRepository>();
-		const logger = mock<Logger>();
-
-		workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([
-			{
-				id: 'wf-1',
-				name: 'Test Workflow',
-				active: true,
-				nodes: [{ id: 'node-1', type: 'n8n-nodes-base.spontit' }],
-			},
-		]);
-
-		const rule = new RemovedNodesRule(workflowRepository, logger);
-		const result = await rule.detect();
-
-		expect(result.isAffected).toBe(true);
-		expect(result.affectedWorkflows).toHaveLength(1);
-	});
-});
-```
-
-## Quick Reference
-
-### Adding a Rule to an Existing Version
-1. Create rule file: `rules/v2/my-rule.rule.ts`
-2. Add to `rules/v2/index.ts`: import and add to array
-3. Write tests in `rules/v2/__tests__/my-rule.rule.test.ts`
-
-### Adding a New Version
-1. Create directory: `rules/v3/`
-2. Create version index: `rules/v3/index.ts`
-3. Export rules array: `export { v3Rules }`
-4. Update `rules/index.ts`: add to `allRules`
-5. Document in README
-
-### Key Files
-- **Rule base class**: `rules/abstract-rule.ts`
-- **Type definitions**: `types/rule.types.ts`, `types/detection.types.ts`
-- **Registry service**: `breaking-changes.rule-registry.service.ts`
-- **Detection service**: `breaking-changes.service.ts`
-- **API controller**: `breaking-changes.controller.ts`
-
-## Future Enhancements
-
-1. **Caching**: Cache detection results for better performance
-2. **Webhooks**: Notify admins when new issues detected
-3. **Auto-fix**: Implement automated fixes for certain rules
-4. **CLI Support**: Add CLI commands for offline detection
-5. **Scheduled Detection**: Run detection on a schedule
-6. **Detailed UI**: Build frontend UI to display results grouped by resource level
