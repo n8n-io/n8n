@@ -41,5 +41,8 @@
     "format:check": "biome ci .",
     "watch": "tsc -p tsconfig.build.json --watch"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "See LICENSE.md file in the root of the repository",
+  "dependencies": {
+    "unplugin-swc": "^1.5.8"
+  }
 }
