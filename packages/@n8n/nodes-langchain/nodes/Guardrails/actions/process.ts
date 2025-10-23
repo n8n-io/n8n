@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { getPromptInputByType } from '@utils/helpers';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -23,7 +24,6 @@ import type {
 } from './types';
 
 interface Result {
-	text: string;
 	checks: GuardrailUserResult[];
 }
 
@@ -32,10 +32,16 @@ export async function process(
 	itemIndex: number,
 	model: BaseChatModel,
 ): Promise<{
+	guardrailsInput: string;
 	passed: Result | null;
 	failed: Result | null;
 }> {
-	const inputText = this.getNodeParameter('inputText', itemIndex) as string;
+	const inputText = getPromptInputByType({
+		ctx: this,
+		i: itemIndex,
+		inputKey: 'text',
+		promptTypeKey: 'promptType',
+	});
 	const violationBehavior = this.getNodeParameter('violationBehavior', itemIndex) as string;
 	const guardrails = this.getNodeParameter('guardrails', itemIndex) as GuardrailsOptions;
 	const failedChecks: GuardrailUserResult[] = [];
@@ -164,9 +170,9 @@ export async function process(
 	if (preflightResults.failed.length > 0) {
 		failedChecks.push.apply(failedChecks, handleFailedResults(preflightResults));
 		return {
+			guardrailsInput: inputText,
 			passed: null,
 			failed: {
-				text: inputText,
 				checks: failedChecks,
 			},
 		};
@@ -186,9 +192,9 @@ export async function process(
 	if (inputResults.failed.length > 0) {
 		failedChecks.push.apply(failedChecks, handleFailedResults(inputResults));
 		return {
+			guardrailsInput: modifiedInputText,
 			passed: null,
 			failed: {
-				text: modifiedInputText,
 				checks: failedChecks,
 			},
 		};
@@ -197,8 +203,8 @@ export async function process(
 	}
 
 	return {
+		guardrailsInput: modifiedInputText,
 		passed: {
-			text: modifiedInputText,
 			checks: passedChecks,
 		},
 		failed: null,

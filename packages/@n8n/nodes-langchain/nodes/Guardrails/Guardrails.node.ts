@@ -17,14 +17,23 @@ export class Guardrails implements INodeType {
 			try {
 				const responseData = await process.call(this, i, model);
 				if (responseData.passed) {
-					passedItems.push({ json: { ...responseData.passed }, pairedItem: { item: i } });
+					passedItems.push({
+						json: { ...responseData.passed, guardrailsInput: responseData.guardrailsInput },
+						pairedItem: { item: i },
+					});
 				}
 				if (responseData.failed) {
-					failedItems.push({ json: { ...responseData.failed }, pairedItem: { item: i } });
+					failedItems.push({
+						json: { ...responseData.failed, guardrailsInput: responseData.guardrailsInput },
+						pairedItem: { item: i },
+					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					failedItems.push({ json: { error: error.message }, pairedItem: { item: i } });
+					failedItems.push({
+						json: { error: error.message, guardrailsInput: '' },
+						pairedItem: { item: i },
+					});
 				} else {
 					throw error;
 				}

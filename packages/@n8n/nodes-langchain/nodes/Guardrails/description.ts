@@ -6,6 +6,7 @@ import { NSFW_SYSTEM_PROMPT } from './actions/checks/nsfw';
 import { PII_NAME_MAP, PIIEntity } from './actions/checks/pii';
 import { PROMPT_INJECTION_DETECTION_CHECK_PROMPT } from './actions/checks/promptInjection';
 import { TOPICAL_ALIGNMENT_SYSTEM_PROMPT } from './actions/checks/topicalAlignment';
+import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
 const THRESHOLD_OPTION: INodeProperties = {
 	displayName: 'Threshold',
@@ -81,12 +82,27 @@ export const versionDescription: INodeTypeDescription = {
 		}}`,
 	properties: [
 		{
+			...promptTypeOptions,
+			options: promptTypeOptions.options!.filter(
+				(option) => 'value' in option && option.value !== 'guardrails',
+			),
+		},
+		{
+			...textFromPreviousNode,
 			displayName: 'Input Text',
-			name: 'inputText',
-			type: 'string',
-			default: '',
-			typeOptions: {
-				rows: 4,
+			displayOptions: {
+				show: {
+					promptType: ['auto'],
+				},
+			},
+		},
+		{
+			...textInput,
+			displayName: 'Input Text',
+			displayOptions: {
+				show: {
+					promptType: ['define'],
+				},
 			},
 		},
 		{
