@@ -345,6 +345,7 @@ async function handleEditAgent(agentId: string) {
 }
 
 function handleCreateAgent() {
+	chatStore.currentEditingAgent = null;
 	editingAgentId.value = undefined;
 	uiStore.openModal('agentEditor');
 }

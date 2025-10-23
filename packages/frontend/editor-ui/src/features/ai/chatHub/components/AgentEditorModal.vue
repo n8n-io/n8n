@@ -7,6 +7,7 @@ import type { ChatHubConversationModel } from '@n8n/api-types';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/stores/ui.store';
 
 const props = defineProps<{
 	agentId?: string;
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 }>();
 
 const chatStore = useChatStore();
+const uiStore = useUIStore();
 const i18n = useI18n();
 const modalBus = ref(createEventBus());
 
@@ -68,16 +70,18 @@ function resetForm() {
 	selectedModel.value = null;
 }
 
+// Watch for modal opening
 watch(
-	() => props.agentId,
-	(newAgentId) => {
-		if (newAgentId) {
-			loadAgent();
-		} else {
-			resetForm();
+	() => uiStore.isModalActiveById['agentEditor'],
+	(isOpen) => {
+		if (isOpen) {
+			if (props.agentId) {
+				loadAgent();
+			} else {
+				resetForm();
+			}
 		}
 	},
-	{ immediate: true },
 );
 
 function onModelChange(model: ChatHubConversationModel) {
