@@ -100,7 +100,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'400': 'Bad request - please check your parameters',
 	'401': 'Authorization failed - please check your credentials',
 	'402': 'Payment required - perhaps check your payment details?',
-	'403': 'Forbidden - The server refused this request due to permissions or a request content policy',
+	'403': 'Forbidden - This may be due to insufficient permissions or a request validation error (e.g., text length)',
 	'404': 'The resource you are requesting could not be found',
 	'405': 'Method not allowed - please check you are using the right HTTP method',
 	'429': 'The service is receiving too many requests from you',
