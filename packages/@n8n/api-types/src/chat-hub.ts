@@ -144,6 +144,7 @@ export interface ChatHubAgentDto {
 	description: string | null;
 	systemPrompt: string;
 	ownerId: string;
+	credentialId: string | null;
 	provider: ChatHubProvider | null;
 	model: string | null;
 	workflowId: string | null;
@@ -155,6 +156,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(256),
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1),
+	credentialId: z.string().optional(),
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
 	workflowId: z.string().uuid().optional(),
@@ -164,6 +166,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	name: z.string().min(1).max(256).optional(),
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1).optional(),
+	credentialId: z.string().optional(),
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
 	workflowId: z.string().uuid().optional(),

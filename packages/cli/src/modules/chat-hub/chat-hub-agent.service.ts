@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { ChatHubAgent } from './chat-agent.entity';
+import type { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 @Service()
@@ -32,6 +32,7 @@ export class ChatHubAgentService {
 			name: string;
 			description?: string;
 			systemPrompt: string;
+			credentialId?: string;
 			provider?: string;
 			model?: string;
 			workflowId?: string;
@@ -45,6 +46,7 @@ export class ChatHubAgentService {
 			description: data.description ?? null,
 			systemPrompt: data.systemPrompt,
 			ownerId: userId,
+			credentialId: data.credentialId ?? null,
 			provider: (data.provider as ChatHubAgent['provider']) ?? null,
 			model: data.model ?? null,
 			workflowId: data.workflowId ?? null,
@@ -61,6 +63,7 @@ export class ChatHubAgentService {
 			name?: string;
 			description?: string;
 			systemPrompt?: string;
+			credentialId?: string;
 			provider?: string;
 			model?: string;
 			workflowId?: string;
@@ -76,6 +79,7 @@ export class ChatHubAgentService {
 		if (updates.name !== undefined) updateData.name = updates.name;
 		if (updates.description !== undefined) updateData.description = updates.description ?? null;
 		if (updates.systemPrompt !== undefined) updateData.systemPrompt = updates.systemPrompt;
+		if (updates.credentialId !== undefined) updateData.credentialId = updates.credentialId ?? null;
 		if (updates.provider !== undefined)
 			updateData.provider = updates.provider as ChatHubAgent['provider'];
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;

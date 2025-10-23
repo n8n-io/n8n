@@ -151,6 +151,7 @@ describe('permissions', () => {
 			workflowTags: {},
 			role: {},
 			chatHub: {},
+			chatHubAgent: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

@@ -4,6 +4,7 @@ const table = {
 	agents: 'chat_hub_agents',
 	user: 'user',
 	workflows: 'workflow_entity',
+	credentials: 'credentials_entity',
 } as const;
 
 export class CreateChatHubAgentTable1760020000000 implements ReversibleMigration {
@@ -15,6 +16,7 @@ export class CreateChatHubAgentTable1760020000000 implements ReversibleMigration
 				column('description').varchar(512),
 				column('systemPrompt').text.notNull,
 				column('ownerId').uuid.notNull,
+				column('credentialId').varchar(36),
 				column('provider')
 					.varchar(16)
 					.comment('ChatHubProvider enum: "openai", "anthropic", "google", "n8n"'),
@@ -27,6 +29,11 @@ export class CreateChatHubAgentTable1760020000000 implements ReversibleMigration
 				tableName: table.user,
 				columnName: 'id',
 				onDelete: 'CASCADE',
+			})
+			.withForeignKey('credentialId', {
+				tableName: table.credentials,
+				columnName: 'id',
+				onDelete: 'SET NULL',
 			})
 			.withForeignKey('workflowId', {
 				tableName: table.workflows,
