@@ -17,7 +17,7 @@ export class WorkflowIndexService {
 	init() {
 		this.eventService.on('server-started', async () => {
 			this.logger.info('Building workflow dependency index...');
-			void this.buildIndex();
+			return this.buildIndex();
 		});
 		this.eventService.on('workflow-saved', async ({ workflow }) => {
 			await this.updateIndexFor(workflow);
