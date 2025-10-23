@@ -199,7 +199,7 @@ export class ChatHubService {
 			case 'google':
 				return await this.fetchGoogleModels(credentials, additionalData);
 			case 'n8n':
-				return await this.fetchCustomAgents(user);
+				return await this.fetchCustomAgentWorkflows(user);
 		}
 	}
 
@@ -307,7 +307,9 @@ export class ChatHubService {
 		};
 	}
 
-	private async fetchCustomAgents(user: User): Promise<ChatModelsResponse[ChatHubProvider]> {
+	private async fetchCustomAgentWorkflows(
+		user: User,
+	): Promise<ChatModelsResponse[ChatHubProvider]> {
 		const nodeTypes = [CHAT_TRIGGER_NODE_TYPE];
 		const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(user, nodeTypes);
 
@@ -536,11 +538,18 @@ export class ChatHubService {
 			throw new BadRequestError('Workflow not found');
 		}
 
-		// TODO: Find the start trigger node and set the trigger data accordingly
+		const chatTriggers = workflowEntity.nodes.filter(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+		);
+
+		if (chatTriggers.length !== 1) {
+			throw new BadRequestError('Workflow must have exactly one chat trigger');
+		}
+
 		return {
 			workflowData: workflowEntity,
 			triggerToStartFrom: {
-				name: NODE_NAMES.CHAT_TRIGGER,
+				name: chatTriggers[0].name,
 				data: {
 					startTime: Date.now(),
 					executionTime: 0,
