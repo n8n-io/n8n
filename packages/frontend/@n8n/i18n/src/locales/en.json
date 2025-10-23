@@ -1909,7 +1909,7 @@
 	"projectRoles.credential:create": "Create",
 	"projectRoles.credential:create.tooltip": "Create new credentials",
 	"projectRoles.credential:share": "Share",
-	"projectRoles.credential:share.tooltip": "Share credentials with other users",
+	"projectRoles.credential:share.tooltip": "Share credentials with other projects or users",
 	"projectRoles.credential:move": "Transfer",
 	"projectRoles.credential:move.tooltip": "Move credentials to another project",
 	"projectRoles.credential:delete": "Delete",
@@ -1944,6 +1944,8 @@
 	"projectRoles.type.workflow": "Workflows",
 	"projectRoles.type.credential": "Credentials",
 	"projectRoles.type.sourceControl": "Source control",
+	"projectRoles.type.dataTable": "Data tables",
+	"projectRoles.type.projectVariable": "Project variables",
 
 	"projectRoles.literal.system": "System",
 	"projectRoles.literal.custom": "Custom",

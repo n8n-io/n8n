@@ -32,16 +32,11 @@ const props = defineProps<{ roleSlug?: string }>();
 const defaultForm = () => ({
 	displayName: '',
 	description: '',
-	scopes: [
-		'project:read',
-		'project:list',
-		'folder:read',
-		'folder:list',
-		'workflow:read',
-		'workflow:list',
-		'credential:read',
-		'credential:list',
-	],
+	scopes: structuredClone(
+		toRaw(
+			rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes || [],
+		),
+	),
 });
 
 const initialState = ref<Role | undefined>();
@@ -105,7 +100,23 @@ const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as c
 );
 const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
 
-const scopeTypes = ['project', 'folder', 'workflow', 'credential', 'sourceControl'] as const;
+const dataTable = (
+	['read', 'update', 'create', 'delete', 'listProject', 'readRow', 'writeRow'] as const
+).map((action) => `dataTable:${action}` as const);
+
+const projectVariable = (['read', 'update', 'create', 'delete'] as const).map(
+	(action) => `projectVariable:${action}` as const,
+);
+
+const scopeTypes = [
+	'project',
+	'folder',
+	'workflow',
+	'credential',
+	'sourceControl',
+	'dataTable',
+	'projectVariable',
+] as const;
 
 const scopes = {
 	project,
@@ -113,7 +124,11 @@ const scopes = {
 	workflow,
 	credential,
 	sourceControl,
+	dataTable,
+	projectVariable,
 } as const;
+
+const disabledScopes = ['project:read'];
 
 function toggleScope(scope: string) {
 	const index = form.value.scopes.indexOf(scope);
@@ -123,7 +138,7 @@ function toggleScope(scope: string) {
 		form.value.scopes.push(scope);
 	}
 
-	if (scope.endsWith(':read')) {
+	if (scope.endsWith(':read') && !scope.startsWith('dataTable:')) {
 		toggleScope(scope.replace(':read', ':list'));
 	}
 
@@ -382,15 +397,19 @@ const displayNameValidationRules = [
 								placement="right"
 								:enterable="false"
 							>
-								<N8nFormInput
-									:data-test-id="`scope-checkbox-${scope}`"
-									:model-value="form.scopes.includes(scope)"
-									:label="i18n.baseText(`projectRoles.${scope}`)"
-									validate-on-blur
-									type="checkbox"
-									:class="$style.checkbox"
-									@update:model-value="() => toggleScope(scope)"
-								/>
+								<div>
+									{{ form.scopes.includes(scope) }} {{ disabledScopes.includes(scope) }}
+									<N8nFormInput
+										:data-test-id="`scope-checkbox-${scope}`"
+										:model-value="form.scopes.includes(scope)"
+										:label="i18n.baseText(`projectRoles.${scope}`)"
+										validate-on-blur
+										type="checkbox"
+										:class="$style.checkbox"
+										@update:model-value="() => toggleScope(scope)"
+										:disabled="disabledScopes.includes(scope)"
+									/>
+								</div>
 							</N8nTooltip>
 						</div>
 					</template>
@@ -432,7 +451,7 @@ const displayNameValidationRules = [
 .cardContainer {
 	padding: 8px 16px;
 	border-radius: 4px;
-	border: var(--border-base);
+	border: var(--border);
 	background-color: var(--color--background--light-3);
 	:global(.el-skeleton__p) {
 		margin-bottom: 8px;
@@ -445,7 +464,7 @@ const displayNameValidationRules = [
 }
 
 .card:not(:last-child) {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 .cardTitle {
