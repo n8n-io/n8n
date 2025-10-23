@@ -24,7 +24,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		if (dependencies.length === 0) {
 			return await this.manager.transaction(async (tx) => {
 				const deleteResult = await tx.delete(WorkflowDependency, { workflowId });
-				return deleteResult.affected !== undefined && deleteResult.affected > 0;
+				return (
+					deleteResult.affected !== undefined &&
+					deleteResult.affected !== null &&
+					deleteResult.affected > 0
+				);
 			});
 		}
 
