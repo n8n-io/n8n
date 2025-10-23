@@ -140,6 +140,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					nodes.length < 2 ? 'contextMenu.tidyUpWorkflow' : 'contextMenu.tidyUpSelection',
 				),
 				shortcut: { shiftKey: true, altKey: true, keys: ['T'] },
+				disabled: isReadOnly.value,
 			},
 		];
 
