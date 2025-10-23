@@ -270,5 +270,27 @@ describe('POST /data-tables/uploads', () => {
 			expect(response.body.data).toHaveProperty('originalName', 'large-valid.csv');
 			expect(response.body.data).toHaveProperty('id');
 		});
+
+		test('should handle CSV without headers (first row treated as header)', async () => {
+			// CSV with just data rows, no explicit header
+			const csvContent = '1,2,3\n4,5,6\n7,8,9';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(csvContent), 'no-headers.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('originalName', 'no-headers.csv');
+			expect(response.body.data).toHaveProperty('id');
+			// First row is treated as headers, so we have 2 data rows
+			expect(response.body.data).toHaveProperty('rowCount', 2);
+			expect(response.body.data).toHaveProperty('columnCount', 3);
+			// First row values become column names
+			expect(response.body.data.columns).toEqual([
+				{ name: '1', type: 'number' },
+				{ name: '2', type: 'number' },
+				{ name: '3', type: 'number' },
+			]);
+		});
 	});
 });
