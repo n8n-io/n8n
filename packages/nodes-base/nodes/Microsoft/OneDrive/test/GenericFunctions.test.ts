@@ -482,10 +482,6 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					return '';
 				});
 
-				// Test variables (not used in getPath call but kept for test context)
-				const body = { name: 'Test File.txt' };
-				const qs = { $select: 'id,name' };
-
 				await getPath.call(mockExecuteFunctions, '/drive/root/children');
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
@@ -493,8 +489,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					expect.objectContaining({
 						method: 'GET',
 						uri: 'https://graph.microsoft.us/v1.0/me/drive/root/children',
-						body,
-						qs,
+						body: {},
 						headers: expect.objectContaining({
 							'Content-Type': 'application/json',
 						}),
