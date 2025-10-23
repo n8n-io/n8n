@@ -113,29 +113,19 @@ export class ProvisioningService {
 	 *   ...
 	 * ]
 	 */
-	async provisionProjectRolesForUser(userId: string, projectIdToRole: unknown): Promise<void> {
-		if (typeof projectIdToRole !== 'string') {
+	async provisionProjectRolesForUser(userId: string, projectIdToRoles: unknown): Promise<void> {
+		if (!Array.isArray(projectIdToRoles)) {
 			this.logger.warn(
-				`Skipping project role provisioning. Invalid projectIdToRole type: expected string, received ${typeof projectIdToRole}`,
-				{ userId, projectIdToRole },
+				`Skipping project role provisioning. Invalid projectIdToRole type: expected array, received ${typeof projectIdToRoles}`,
+				{ userId, projectIdToRoles },
 			);
 			return;
 		}
 
 		let projectRoleMap: Record<string, string>;
 		try {
-			const parsedArray = JSON.parse(projectIdToRole);
-
-			if (!Array.isArray(parsedArray)) {
-				this.logger.warn(
-					'Skipping project role provisioning. Expected an array of project:role mappings.',
-					{ userId, projectIdToRole },
-				);
-				return;
-			}
-
 			projectRoleMap = {};
-			for (const entry of parsedArray) {
+			for (const entry of projectIdToRoles) {
 				if (typeof entry !== 'string') {
 					this.logger.warn(
 						`Skipping invalid project role mapping entry. Expected string, received ${typeof entry}.`,
@@ -144,8 +134,8 @@ export class ProvisioningService {
 					continue;
 				}
 
-				const [projectId, roleDisplayName] = entry.split(':');
-				if (!projectId || !roleDisplayName) {
+				const [projectId, roleSlugSuffix] = entry.split(':');
+				if (!projectId || !roleSlugSuffix) {
 					this.logger.warn(
 						`Skipping invalid project role mapping entry. Expected format "projectId:displayName", received "${entry}".`,
 						{ userId, entry },
@@ -155,18 +145,18 @@ export class ProvisioningService {
 
 				// This means that if the external SSO setup has two roles configured
 				// for the same projectId, we only provision the one we see last in the sent list.
-				projectRoleMap[projectId] = roleDisplayName;
+				projectRoleMap[projectId] = `project:${roleSlugSuffix}`;
 			}
 		} catch (error) {
 			this.logger.warn(
 				'Skipping project role provisioning. Failed to parse project to role mapping.',
-				{ userId, projectIdToRole },
+				{ userId, projectIdToRoles },
 			);
 			return;
 		}
 
 		const projectIds = Object.keys(projectRoleMap);
-		const roleDisplayNames = [...new Set(Object.values(projectRoleMap))];
+		const roleSlugs = [...new Set(Object.values(projectRoleMap))];
 
 		if (projectIds.length === 0) {
 			return;
@@ -179,7 +169,7 @@ export class ProvisioningService {
 			}),
 			this.roleRepository.find({
 				where: {
-					displayName: In(roleDisplayNames),
+					slug: In(roleSlugs),
 					roleType: 'project',
 				},
 				select: ['displayName', 'slug'],
@@ -190,19 +180,19 @@ export class ProvisioningService {
 		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
 
 		// populate validProjectToRoleMappings
-		for (const [projectId, roleDisplayName] of Object.entries(projectRoleMap)) {
+		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
 			if (!existingProjectIds.has(projectId)) {
 				this.logger.warn(
 					`Skipped provisioning project role for project with ID ${projectId}, because project does not exist or is a personal project.`,
-					{ userId, projectId, roleDisplayName },
+					{ userId, projectId, roleSlug },
 				);
 				continue;
 			}
-			const role = existingRoles.find((role) => role.displayName === roleDisplayName);
+			const role = existingRoles.find((role) => role.slug === roleSlug);
 			if (!role) {
 				this.logger.warn(
-					`Skipping project role provisioning for role with display name ${roleDisplayName}, because role does not exist or is not specific to projects.`,
-					{ userId, projectId, roleDisplayName },
+					`Skipping project role provisioning for role with slug ${roleSlug}, because role does not exist or is not specific to projects.`,
+					{ userId, projectId, roleSlug },
 				);
 				continue;
 			}
