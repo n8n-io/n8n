@@ -42,11 +42,18 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		});
 	}
 
-	async getManyBySessionId(sessionId: string) {
-		return await this.find({
-			where: { sessionId },
-			order: { createdAt: 'ASC', id: 'DESC' },
-		});
+	async getManyBySessionId(sessionId: string, trx?: EntityManager) {
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.find(ChatHubMessage, {
+					where: { sessionId },
+					order: { createdAt: 'ASC', id: 'DESC' },
+				});
+			},
+			false,
+		);
 	}
 
 	async getOneById(
@@ -55,11 +62,16 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		relations: string[] = [],
 		trx?: EntityManager,
 	) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.findOne(ChatHubMessage, {
-				where: { id, sessionId },
-				relations,
-			});
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.findOne(ChatHubMessage, {
+					where: { id, sessionId },
+					relations,
+				});
+			},
+			false,
+		);
 	}
 }

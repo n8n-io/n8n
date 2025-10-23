@@ -498,6 +498,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			workflowData.homeProject,
 			workflowData.sharedWithProjects,
 		);
+		void workflowsStore.fetchLastSuccessfulExecution();
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
 			return await router.replace({

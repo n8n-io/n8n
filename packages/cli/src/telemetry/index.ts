@@ -10,7 +10,7 @@ import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import axios from 'axios';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
@@ -60,6 +60,7 @@ export class Telemetry {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	async init() {
@@ -85,6 +86,9 @@ export class Telemetry {
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,
+				errorHandler: (error) => {
+					this.errorReporter.error(error);
+				},
 			});
 
 			this.startPulse();
