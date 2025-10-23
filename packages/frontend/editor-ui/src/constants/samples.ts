@@ -2,7 +2,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 
-export const SAMPLE_PIN_DATA = [
+export const DUMMY_PIN_DATA = [
 	{
 		name: 'First item',
 		code: 1,
