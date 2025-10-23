@@ -37,6 +37,13 @@ describe('POST /data-tables/uploads', () => {
 			expect(response.body.data).toHaveProperty('originalName', 'test.csv');
 			expect(response.body.data).toHaveProperty('id');
 			expect(response.body.data.id).toMatch(/^[a-zA-Z0-9_-]{10}$/); // nanoid with length 10
+			expect(response.body.data).toHaveProperty('rowCount', 2);
+			expect(response.body.data).toHaveProperty('columnCount', 2);
+			expect(response.body.data).toHaveProperty('columns');
+			expect(response.body.data.columns).toEqual([
+				{ name: 'name', type: 'string' },
+				{ name: 'email', type: 'string' },
+			]);
 		});
 
 		test('should accept CSV file from member user', async () => {
@@ -49,6 +56,8 @@ describe('POST /data-tables/uploads', () => {
 
 			expect(response.body.data).toHaveProperty('originalName', 'data.csv');
 			expect(response.body.data).toHaveProperty('id');
+			expect(response.body.data).toHaveProperty('rowCount', 1);
+			expect(response.body.data).toHaveProperty('columnCount', 2);
 		});
 
 		test('should handle CSV files with special characters in filename', async () => {
@@ -62,6 +71,13 @@ describe('POST /data-tables/uploads', () => {
 
 			expect(response.body.data).toHaveProperty('originalName', filename);
 			expect(response.body.data).toHaveProperty('id');
+			expect(response.body.data).toHaveProperty('rowCount', 1);
+			expect(response.body.data).toHaveProperty('columnCount', 3);
+			expect(response.body.data.columns).toEqual([
+				{ name: 'a', type: 'number' },
+				{ name: 'b', type: 'number' },
+				{ name: 'c', type: 'number' },
+			]);
 		});
 
 		test('should accept files within size limit', async () => {
@@ -77,7 +93,6 @@ describe('POST /data-tables/uploads', () => {
 		});
 
 		test('should accept empty CSV file', async () => {
-			// Empty files are technically valid uploads, content validation happens in parsing
 			const response = await authOwnerAgent
 				.post('/data-tables/uploads')
 				.attach('file', Buffer.from(''), 'empty.csv')
@@ -85,6 +100,29 @@ describe('POST /data-tables/uploads', () => {
 
 			expect(response.body.data).toHaveProperty('originalName', 'empty.csv');
 			expect(response.body.data).toHaveProperty('id');
+			expect(response.body.data).toHaveProperty('rowCount', 0);
+			expect(response.body.data).toHaveProperty('columnCount', 0);
+			expect(response.body.data.columns).toEqual([]);
+		});
+
+		test('should infer correct column types (string, number, boolean, date)', async () => {
+			const csvContent =
+				'name,age,isActive,createdDate\nJohn,30,true,2024-01-15\nJane,25,false,2024-02-20';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(csvContent), 'types.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('originalName', 'types.csv');
+			expect(response.body.data).toHaveProperty('rowCount', 2);
+			expect(response.body.data).toHaveProperty('columnCount', 4);
+			expect(response.body.data.columns).toEqual([
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'isActive', type: 'boolean' },
+				{ name: 'createdDate', type: 'date' },
+			]);
 		});
 	});
 
@@ -107,7 +145,7 @@ describe('POST /data-tables/uploads', () => {
 		test('should reject request with wrong field name', async () => {
 			const csvContent = 'a,b\n1,2';
 
-			const aja = await authOwnerAgent
+			await authOwnerAgent
 				.post('/data-tables/uploads')
 				.attach('wrongField', Buffer.from(csvContent), 'test.csv')
 				.expect(400);
@@ -169,6 +207,13 @@ describe('POST /data-tables/uploads', () => {
 
 			expect(response.body.data).toHaveProperty('originalName', 'headers-only.csv');
 			expect(response.body.data).toHaveProperty('id');
+			expect(response.body.data).toHaveProperty('rowCount', 0);
+			expect(response.body.data).toHaveProperty('columnCount', 3);
+			expect(response.body.data.columns).toEqual([
+				{ name: 'column1', type: 'string' },
+				{ name: 'column2', type: 'string' },
+				{ name: 'column3', type: 'string' },
+			]);
 		});
 
 		test('should handle CSV with Unicode content', async () => {
