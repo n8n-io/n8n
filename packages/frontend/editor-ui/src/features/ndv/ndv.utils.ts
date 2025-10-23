@@ -27,9 +27,9 @@ import set from 'lodash/set';
 import unset from 'lodash/unset';
 
 import { captureException } from '@sentry/vue';
-import { isPresent } from './typesUtils';
+import { isPresent } from '@/utils/typesUtils';
 import type { Ref } from 'vue';
-import { omitKey } from './objectUtils';
+import { omitKey } from '@/utils/objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 
 export function getNodeSettingsInitialValues(): INodeParameters {

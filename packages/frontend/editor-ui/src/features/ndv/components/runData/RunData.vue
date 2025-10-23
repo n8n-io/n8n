@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
-import NodeSettingsHint from '@/components/NodeSettingsHint.vue';
+import NodeSettingsHint from '@/features/ndv/components/settings/NodeSettingsHint.vue';
 import type {
 	IBinaryData,
 	IConnectedNode,
