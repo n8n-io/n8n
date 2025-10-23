@@ -504,10 +504,6 @@ export class FrontendService {
 
 			// Default Values to prevent Frontend UI from breaking
 			// TODO: review if these could be removed
-			templates: {
-				enabled: false,
-				host: '',
-			},
 			publicApi: {
 				enabled: false,
 				latestVersion: 0,

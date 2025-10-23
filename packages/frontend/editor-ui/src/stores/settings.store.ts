@@ -151,13 +151,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isHiringBannerEnabled = computed(() => settings.value.hiringBannerEnabled);
 
-	const isTemplatesEnabled = computed(() =>
-		Boolean(settings.value.templates && settings.value.templates.enabled),
-	);
+	const isTemplatesEnabled = computed(() => Boolean(settings.value.templates?.enabled));
 
 	const isTemplatesEndpointReachable = computed(() => templatesEndpointHealthy.value);
 
-	const templatesHost = computed(() => settings.value.templates.host);
+	const templatesHost = computed(() => settings.value.templates?.host ?? '');
 
 	const pushBackend = computed(() => settings.value.pushBackend);
 
