@@ -30,7 +30,7 @@ import { computed, ref } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import * as aiApi from '@/api/ai';
+import * as aiApi from '@/features/ai/assistant/assistant.api';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';

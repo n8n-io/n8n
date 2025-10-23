@@ -1,4 +1,4 @@
-import { chatWithBuilder, getBuilderCredits } from './ai';
+import { chatWithBuilder, getBuilderCredits } from './assistant.api';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
