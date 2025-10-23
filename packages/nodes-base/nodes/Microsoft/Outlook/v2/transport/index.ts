@@ -35,10 +35,21 @@ export async function microsoftApiRequest(
 	}
 
 	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
-	let apiUrl = `${baseUrl}/v1.0/me${resource}`;
+
+	// Handle resource path construction - avoid duplicating /me if resource already starts with it
+	let resourcePath = resource;
+	if (!resource.startsWith('/me') && !resource.startsWith('/users/')) {
+		resourcePath = `/me${resource}`;
+	}
+
+	let apiUrl = `${baseUrl}/v1.0${resourcePath}`;
 	// If accessing shared mailbox
 	if (credentials.useShared && credentials.userPrincipalName) {
-		apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
+		// For shared mailbox, replace /me with /users/{userPrincipalName} if present
+		if (resourcePath.startsWith('/me')) {
+			resourcePath = resourcePath.replace('/me', `/users/${credentials.userPrincipalName}`);
+		}
+		apiUrl = `${baseUrl}/v1.0${resourcePath}`;
 	}
 
 	const options: IRequestOptions = {

@@ -57,7 +57,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/messages',
+						uri: 'https://graph.microsoft.us/v1.0/me/messages',
 					}),
 				);
 			});
@@ -73,7 +73,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/messages',
+						uri: 'https://graph.microsoft.com/v1.0/me/messages',
 					}),
 				);
 			});
@@ -92,7 +92,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/messages',
+						uri: 'https://graph.microsoft.us/v1.0/me/messages',
 					}),
 				);
 			});
@@ -111,7 +111,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/messages',
+						uri: 'https://graph.microsoft.us/v1.0/me/messages',
 					}),
 				);
 			});
@@ -128,7 +128,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/messages', // falls back to default
+						uri: 'https://graph.microsoft.com/v1.0/me/messages', // falls back to default
 					}),
 				);
 			});
@@ -145,7 +145,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/messages', // falls back to default
+						uri: 'https://graph.microsoft.com/v1.0/me/messages', // falls back to default
 					}),
 				);
 			});
@@ -163,7 +163,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/messages', // falls back to default
+						uri: 'https://graph.microsoft.com/v1.0/me/messages', // falls back to default
 					}),
 				);
 			});
@@ -183,7 +183,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://dod-graph.microsoft.us/me/messages',
+						uri: 'https://dod-graph.microsoft.us/v1.0/me/messages',
 					}),
 				);
 			});
@@ -226,7 +226,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/users/shared@company.com/messages',
+						uri: 'https://graph.microsoft.us/v1.0/users/shared@company.com/messages',
 					}),
 				);
 			});
@@ -260,7 +260,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
 						method: 'POST',
-						uri: 'https://graph.microsoft.us/me/messages',
+						uri: 'https://graph.microsoft.us/v1.0/me/messages',
 						body,
 						qs,
 						headers: expect.objectContaining({
@@ -281,7 +281,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/me/messages',
+						uri: 'https://graph.microsoft.com/v1.0/me/messages',
 						body: {},
 						qs: {},
 						json: true,

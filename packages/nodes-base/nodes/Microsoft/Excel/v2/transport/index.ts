@@ -29,6 +29,13 @@ export async function microsoftApiRequest(
 	}
 
 	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+
+	// Handle resource path construction - avoid duplicating /me if resource already starts with it
+	let resourcePath = resource;
+	if (!resource.startsWith('/me') && !resource.startsWith('/users/')) {
+		resourcePath = `/me${resource}`;
+	}
+
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -36,7 +43,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `${baseUrl}/v1.0/me${resource}`,
+		uri: uri || `${baseUrl}/v1.0${resourcePath}`,
 		json: true,
 	};
 	try {

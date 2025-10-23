@@ -53,7 +53,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/drive/root/children',
+						uri: 'https://graph.microsoft.us/v1.0/me/drive/root/children',
 					}),
 				);
 			});
@@ -69,7 +69,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/drive/root/children',
+						uri: 'https://graph.microsoft.com/v1.0/me/drive/root/children',
 					}),
 				);
 			});
@@ -88,7 +88,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/drive/root/children',
+						uri: 'https://graph.microsoft.us/v1.0/me/drive/root/children',
 					}),
 				);
 			});
@@ -107,7 +107,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/drive/root/children',
+						uri: 'https://graph.microsoft.us/v1.0/me/drive/root/children',
 					}),
 				);
 			});
@@ -124,7 +124,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/drive/root/children', // falls back to default
+						uri: 'https://graph.microsoft.com/v1.0/me/drive/root/children', // falls back to default
 					}),
 				);
 			});
@@ -142,7 +142,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/drive/root/children', // falls back to default
+						uri: 'https://graph.microsoft.com/v1.0/me/drive/root/children', // falls back to default
 					}),
 				);
 			});
@@ -162,7 +162,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://dod-graph.microsoft.us/me/drive/root/children',
+						uri: 'https://dod-graph.microsoft.us/v1.0/me/drive/root/children',
 					}),
 				);
 			});
@@ -200,7 +200,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/drive/root',
+						uri: 'https://graph.microsoft.us/v1.0/me/drive/root',
 					}),
 				);
 			});
@@ -234,7 +234,7 @@ describe('Microsoft Excel V2 Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'POST',
-						uri: 'https://graph.microsoft.us/me/drive/root/children',
+						uri: 'https://graph.microsoft.us/v1.0/me/drive/root/children',
 						body,
 						qs,
 						headers: expect.objectContaining({
@@ -261,7 +261,7 @@ describe('Microsoft Excel V2 Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/me/drive/root/children',
+						uri: 'https://graph.microsoft.com/v1.0/me/drive/root/children',
 						body: {},
 						qs: {},
 						json: true,
