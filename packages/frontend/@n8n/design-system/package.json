@@ -50,6 +50,7 @@
     "@vue/test-utils": "catalog:frontend"
   },
   "dependencies": {
+    "@internationalized/date": "^3.9.0",
     "@n8n/composables": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@tanstack/vue-table": "^8.21.2",

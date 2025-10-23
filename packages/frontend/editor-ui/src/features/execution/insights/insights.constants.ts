@@ -67,15 +67,3 @@ export const GRANULARITY_DATE_FORMAT_MASK = {
 		return [dateformat(startDate, 'mmm d'), dateformat(endDate, endDateFormat)].join('-');
 	},
 };
-
-export const TELEMETRY_TIME_RANGE = {
-	day: 1,
-	week: 7,
-	'2weeks': 14,
-	month: 30,
-	quarter: 90,
-	'6months': 180,
-	year: 365,
-};
-
-export const UNLICENSED_TIME_RANGE = 'UNLICENSED_TIME_RANGE' as const;

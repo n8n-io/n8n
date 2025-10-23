@@ -207,10 +207,71 @@ let projectsStore: MockedStore<typeof useProjectsStore>;
 const personalProject = createProjectListItem('personal');
 const teamProjects = Array.from({ length: 2 }, () => createProjectListItem('team'));
 const projects = [personalProject, ...teamProjects];
+const date = new Date(2000, 11, 19);
+
+// Test helper constants
+const DEFAULT_DATE_RANGE = {
+	startDate: '2000-12-13T00:00:00.000Z',
+	endDate: '2000-12-19T00:00:00.000Z',
+};
+
+const SINGLE_DAY_RANGE = {
+	startDate: '2000-12-19T00:00:00.000Z',
+	endDate: '2000-12-19T00:00:00.000Z',
+};
+
+const DEFAULT_TABLE_PARAMS = {
+	skip: 0,
+	take: 25,
+};
+
+// Helper functions
+const expectStoreExecutions = (params: {
+	summary?: object;
+	charts?: object;
+	table?: object;
+}) => {
+	if (params.summary) {
+		expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, params.summary);
+	}
+	if (params.charts) {
+		expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, params.charts);
+	}
+	if (params.table) {
+		expect(insightsStore.table.execute).toHaveBeenCalledWith(0, params.table);
+	}
+};
+
+const openDatePicker = async (getByText: (text: string, options?: object) => HTMLElement) => {
+	const trigger = getByText('13 Dec - 19 Dec, 2000', { selector: 'button' });
+	expect(trigger).toBeInTheDocument();
+	await userEvent.click(trigger);
+
+	const controllingId = trigger.getAttribute('aria-controls');
+	expect(controllingId).toBeDefined();
+
+	const picker = document.getElementById(controllingId as string);
+	expect(picker).toBeInTheDocument();
+
+	return picker as HTMLElement;
+};
+
+const selectProject = async (projectName: string | null) => {
+	const projectSelect = screen.getByTestId('project-sharing-select');
+	await userEvent.click(projectSelect);
+
+	const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+	const teamProject = [...projectSelectDropdownItems].find(
+		(item) => item.querySelector('p')?.textContent?.trim() === projectName,
+	);
+	expect(teamProject).toBeDefined();
+	await userEvent.click(teamProject as Element);
+};
 
 describe('InsightsDashboard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.setSystemTime(date);
 
 		mockRoute.params.insightType = INSIGHT_TYPES.TOTAL;
 
@@ -326,68 +387,42 @@ describe('InsightsDashboard', () => {
 
 	describe('Date Range Selection', () => {
 		it('should update the selected time range', async () => {
-			renderComponent({
+			const { getByText } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			expect(screen.getByTestId('range-select')).toBeVisible();
-			const select = within(screen.getByTestId('range-select')).getByRole('combobox');
-			await userEvent.click(select);
-
-			const controllingId = select.getAttribute('aria-controls');
-			const actions = document.querySelector(`#${controllingId}`);
-			if (!actions) {
-				throw new Error('Actions menu not found');
-			}
-
-			await userEvent.click(actions.querySelectorAll('li')[0]);
-			expect((select as HTMLInputElement).value).toBe('Last 24 hours');
+			const picker = await openDatePicker(getByText);
+			const dayOption = within(picker).getByText('Last 24 hours');
+			await userEvent.click(dayOption);
 
 			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
-				range: 1,
+				end_date: SINGLE_DAY_RANGE.endDate,
+				start_date: SINGLE_DAY_RANGE.startDate,
+				range_length_days: 1,
+				type: 'preset',
 			});
 
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, { dateRange: 'day' });
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, { dateRange: 'day' });
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'total:desc',
-				dateRange: 'day',
+			expectStoreExecutions({
+				summary: SINGLE_DAY_RANGE,
+				charts: SINGLE_DAY_RANGE,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...SINGLE_DAY_RANGE,
+				},
 			});
 		});
 
 		it('should show upgrade modal when unlicensed time range selected ', async () => {
-			renderComponent({
+			const { getByText } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			expect(screen.getByTestId('range-select')).toBeVisible();
-			const select = within(screen.getByTestId('range-select')).getByRole('combobox');
-			await userEvent.click(select);
-
-			const controllingId = select.getAttribute('aria-controls');
-			const actions = document.querySelector(`#${controllingId}`);
-			if (!actions) {
-				throw new Error('Actions menu not found');
-			}
-
-			// Select a range that requires an enterprise plan
-			await userEvent.click(actions.querySelectorAll('li')[3]);
-
-			// Verify the select value is remained the original, default value, as unlicensed options should not change the selection
-			expect((select as HTMLInputElement).value).toBe('Last 7 days');
+			const picker = await openDatePicker(getByText);
+			const dayOption = within(picker).getByText('Last 90 days');
+			await userEvent.click(dayOption);
 
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'total:desc',
-				dateRange: 'week',
-			});
-
 			expect(
 				screen.getByText(/Viewing this time period requires an enterprise plan/),
 			).toBeVisible();
@@ -400,13 +435,14 @@ describe('InsightsDashboard', () => {
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'total:desc',
-				dateRange: 'week',
+			expectStoreExecutions({
+				summary: DEFAULT_DATE_RANGE,
+				charts: DEFAULT_DATE_RANGE,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...DEFAULT_DATE_RANGE,
+				},
 			});
 		});
 
@@ -416,16 +452,16 @@ describe('InsightsDashboard', () => {
 			});
 
 			vi.clearAllMocks();
-
 			await rerender({ insightType: INSIGHT_TYPES.FAILED });
 
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, { dateRange: 'week' });
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'failed:desc',
-				dateRange: 'week',
+			expectStoreExecutions({
+				summary: DEFAULT_DATE_RANGE,
+				charts: DEFAULT_DATE_RANGE,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'failed:desc',
+					...DEFAULT_DATE_RANGE,
+				},
 			});
 		});
 
@@ -436,11 +472,12 @@ describe('InsightsDashboard', () => {
 
 			await rerender({ insightType: INSIGHT_TYPES.TIME_SAVED });
 
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'timeSaved:desc',
-				dateRange: 'week',
+			expectStoreExecutions({
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'timeSaved:desc',
+					...DEFAULT_DATE_RANGE,
+				},
 			});
 		});
 	});
@@ -470,18 +507,19 @@ describe('InsightsDashboard', () => {
 
 			await waitAllPromises();
 
-			// Simulate pagination event
 			emitters.n8nDataTableServer.emit('update:options', {
 				page: 1,
 				itemsPerPage: 50,
 				sortBy: [{ id: 'total', desc: true }],
 			});
 
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 50,
-				take: 50,
-				sortBy: 'total:desc',
-				dateRange: 'week',
+			expectStoreExecutions({
+				table: {
+					skip: 50,
+					take: 50,
+					sortBy: 'total:desc',
+					...DEFAULT_DATE_RANGE,
+				},
 			});
 		});
 
@@ -492,18 +530,20 @@ describe('InsightsDashboard', () => {
 
 			await waitAllPromises();
 
-			// Simulate sort event
-			emitters.n8nDataTableServer.emit('update:options', {
-				page: 0,
-				itemsPerPage: 25,
-				sortBy: [{ id: 'failed', desc: false }],
+			await waitFor(() => {
+				emitters.n8nDataTableServer.emit('update:options', {
+					page: 0,
+					itemsPerPage: 25,
+					sortBy: [{ id: 'failed', desc: false }],
+				});
 			});
 
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'failed:asc',
-				dateRange: 'week',
+			expectStoreExecutions({
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'failed:asc',
+					...DEFAULT_DATE_RANGE,
+				},
 			});
 		});
 
@@ -514,18 +554,20 @@ describe('InsightsDashboard', () => {
 
 			await waitAllPromises();
 
-			// Simulate event with no sortBy
-			emitters.n8nDataTableServer.emit('update:options', {
-				page: 0,
-				itemsPerPage: 25,
-				sortBy: [],
+			await waitFor(() => {
+				emitters.n8nDataTableServer.emit('update:options', {
+					page: 0,
+					itemsPerPage: 25,
+					sortBy: [],
+				});
 			});
 
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: undefined,
-				dateRange: 'week',
+			expectStoreExecutions({
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: undefined,
+					...DEFAULT_DATE_RANGE,
+				},
 			});
 		});
 	});
@@ -550,86 +592,43 @@ describe('InsightsDashboard', () => {
 				expect(screen.getByTestId('project-sharing-select')).toBeInTheDocument();
 			});
 
-			const projectSelect = screen.getByTestId('project-sharing-select');
+			await selectProject(teamProjects[0].name);
 
-			// Click to open the dropdown
-			await userEvent.click(projectSelect);
-
-			// Get dropdown items
-			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
-			expect(projectSelectDropdownItems.length).toBeGreaterThan(0);
-
-			// Find and click the first team project
-			const teamProject = [...projectSelectDropdownItems].find(
-				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
-			);
-			expect(teamProject).toBeDefined();
-
-			await userEvent.click(teamProject as Element);
-
-			// Verify that all data fetching methods were called with the selected project ID
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'week',
-				projectId: teamProjects[0].id,
-			});
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'week',
-				projectId: teamProjects[0].id,
-			});
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'total:desc',
-				dateRange: 'week',
-				projectId: teamProjects[0].id,
+			const projectId = teamProjects[0].id;
+			expectStoreExecutions({
+				summary: { ...DEFAULT_DATE_RANGE, projectId },
+				charts: { ...DEFAULT_DATE_RANGE, projectId },
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...DEFAULT_DATE_RANGE,
+					projectId,
+				},
 			});
 		});
 
 		it('should combine project filter with date range changes', async () => {
-			renderComponent({
+			const { getByText } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			// Select a project first
-			const projectSelect = screen.getByTestId('project-sharing-select');
-			await userEvent.click(projectSelect);
-			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
-			const teamProject = [...projectSelectDropdownItems].find(
-				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
-			);
-			await userEvent.click(teamProject as Element);
-
-			// Clear previous calls
+			await selectProject(teamProjects[0].name);
 			vi.clearAllMocks();
 
-			// Now change the date range
-			const dateRangeSelect = within(screen.getByTestId('range-select')).getByRole('combobox');
-			await userEvent.click(dateRangeSelect);
+			const picker = await openDatePicker(getByText);
+			const dayOption = within(picker).getByText('Last 24 hours');
+			await userEvent.click(dayOption);
 
-			const controllingId = dateRangeSelect.getAttribute('aria-controls');
-			const actions = document.querySelector(`#${controllingId}`);
-			if (!actions) {
-				throw new Error('Actions menu not found');
-			}
-
-			// Select the first option (day range)
-			await userEvent.click(actions.querySelectorAll('li')[0]);
-
-			// Verify both project ID and new date range are passed
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'day',
-				projectId: teamProjects[0].id,
-			});
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'day',
-				projectId: teamProjects[0].id,
-			});
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'total:desc',
-				dateRange: 'day',
-				projectId: teamProjects[0].id,
+			const projectId = teamProjects[0].id;
+			expectStoreExecutions({
+				summary: { ...SINGLE_DAY_RANGE, projectId },
+				charts: { ...SINGLE_DAY_RANGE, projectId },
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...SINGLE_DAY_RANGE,
+					projectId,
+				},
 			});
 		});
 
@@ -638,36 +637,21 @@ describe('InsightsDashboard', () => {
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			// Select a project
-			const projectSelect = screen.getByTestId('project-sharing-select');
-			await userEvent.click(projectSelect);
-			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
-			const teamProject = [...projectSelectDropdownItems].find(
-				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
-			);
-			await userEvent.click(teamProject as Element);
-
-			// Clear previous calls
+			await selectProject(teamProjects[0].name);
 			vi.clearAllMocks();
 
-			// Change insight type
 			await rerender({ insightType: INSIGHT_TYPES.FAILED });
 
-			// Verify the project ID is still passed with the new insight type
-			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'week',
-				projectId: teamProjects[0].id,
-			});
-			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
-				dateRange: 'week',
-				projectId: teamProjects[0].id,
-			});
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 0,
-				take: 25,
-				sortBy: 'failed:desc',
-				dateRange: 'week',
-				projectId: teamProjects[0].id,
+			const projectId = teamProjects[0].id;
+			expectStoreExecutions({
+				summary: { ...DEFAULT_DATE_RANGE, projectId },
+				charts: { ...DEFAULT_DATE_RANGE, projectId },
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'failed:desc',
+					...DEFAULT_DATE_RANGE,
+					projectId,
+				},
 			});
 		});
 
@@ -676,35 +660,24 @@ describe('InsightsDashboard', () => {
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			// Select a project
-			const projectSelect = screen.getByTestId('project-sharing-select');
-			await userEvent.click(projectSelect);
-			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
-			const teamProject = [...projectSelectDropdownItems].find(
-				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
-			);
-			await userEvent.click(teamProject as Element);
-
+			await selectProject(teamProjects[0].name);
 			await waitAllPromises();
-
-			// Clear previous calls to focus on pagination event
 			vi.clearAllMocks();
 
-			// Simulate pagination event - note that the function uses the current selectedProject value
-			// not the projectId parameter when called from table events
 			emitters.n8nDataTableServer.emit('update:options', {
 				page: 1,
 				itemsPerPage: 50,
 				sortBy: [{ id: 'failed', desc: true }],
 			});
 
-			// The function should use the selectedProject.value?.id when projectId is not explicitly passed
-			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
-				skip: 50,
-				take: 50,
-				sortBy: 'failed:desc',
-				dateRange: 'week',
-				projectId: teamProjects[0].id,
+			expectStoreExecutions({
+				table: {
+					skip: 50,
+					take: 50,
+					sortBy: 'failed:desc',
+					...DEFAULT_DATE_RANGE,
+					projectId: teamProjects[0].id,
+				},
 			});
 		});
 	});
