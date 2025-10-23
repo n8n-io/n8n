@@ -35,6 +35,7 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
+import { nextTick } from 'process';
 const locale = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const { resolveExpression } = useWorkflowHelpers();
@@ -74,6 +75,7 @@ const mutableValues = ref({} as Record<string, INodeParameters[]>);
 const selectedOption = ref<string | null | undefined>(null);
 const expandedItems = ref<Record<string, boolean>>({});
 const isWrapperExpanded = ref(!props.isNested || props.isNewlyAdded);
+const isDragging = ref(false);
 
 const getOptionProperties = (optionName: string): INodePropertyCollection | undefined => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return undefined;
@@ -330,12 +332,23 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		trackWorkflowInputFieldTypeChange(parameterData);
 	}
 };
+
+const onDragStart = () => {
+	isDragging.value = true;
+};
+
+const onDragEnd = () => {
+	isDragging.value = false;
+};
+
 const onDragChange = (optionName: string) => {
 	const parameterData: ValueChangedEvent = {
 		name: getPropertyPath(optionName),
 		value: mutableValues.value[optionName],
 		type: 'optionsOrderChanged',
 	};
+
+	console.log(mutableValues.value, optionName);
 
 	emit('valueChanged', parameterData);
 };
@@ -460,6 +473,8 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 							drag-class="dragging"
 							ghost-class="ghost"
 							chosen-class="chosen"
+							@start="onDragStart(property.name)"
+							@end="onDragEnd(property.name)"
 							@change="onDragChange(property.name)"
 						>
 							<template #item="{ index }">
@@ -469,6 +484,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 									:title="getItemTitle(property.name, index)"
 									:actions="getItemActions(property.name, index)"
 									:data-item-key="`${property.name}-${index}`"
+									:disable-animation="isDragging"
 								>
 									<Suspense>
 										<ParameterInputList
@@ -549,6 +565,8 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 					drag-class="dragging"
 					ghost-class="ghost"
 					chosen-class="chosen"
+					@start="onDragStart(property.name)"
+					@end="onDragEnd(property.name)"
 					@change="onDragChange(property.name)"
 				>
 					<template #item="{ index }">
@@ -558,6 +576,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 							:title="getItemTitle(property.name, index)"
 							:actions="getItemActions(property.name, index)"
 							:data-item-key="`${property.name}-${index}`"
+							:disable-animation="isDragging"
 						>
 							<Suspense>
 								<ParameterInputList

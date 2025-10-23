@@ -38,6 +38,10 @@ export interface Props {
 	 * Whether the collapsible is disabled
 	 */
 	disabled?: boolean;
+	/**
+	 * Whether to disable animations (useful during drag operations)
+	 */
+	disableAnimation?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,6 +50,7 @@ const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
 	showActionsOnHover: true,
 	disabled: false,
+	disableAnimation: false,
 });
 
 const emit = defineEmits<{
@@ -102,7 +107,7 @@ const isOpen = computed({
 			</div>
 		</div>
 
-		<CollapsibleContent :class="$style.content">
+		<CollapsibleContent :class="[$style.content, { [$style.noAnimation]: disableAnimation }]">
 			<slot />
 		</CollapsibleContent>
 	</CollapsibleRoot>
@@ -242,6 +247,13 @@ const isOpen = computed({
 	// Reka UI will measure the full height including this padding
 	> :first-child {
 		padding: 0 var(--spacing--xs) var(--spacing--xs) var(--spacing--xs);
+	}
+}
+
+.noAnimation {
+	&[data-state='open'],
+	&[data-state='closed'] {
+		animation: none !important;
 	}
 }
 
