@@ -1,6 +1,5 @@
 const Piscina = require('piscina');
 const { resolve } = require('path');
-const FlatBuffers = require('flatbuffers');
 
 const piscina = new Piscina({
 	filename: resolve(__dirname, 'worker.js'),
@@ -13,71 +12,110 @@ const piscina = new Piscina({
 
 const kb = 1024;
 const mb = kb * kb;
-const gb = mb * kb;
 
-(async function () {
-	while (true) {
-		try {
-			const buffer = Buffer.alloc(200 * mb);
-
-			// Serialize using FlatBuffers
-			const builder = new FlatBuffers.Builder(buffer.length + 100);
-			const dataVector = builder.createByteVector(buffer);
-
-			const label = 'round trip';
-			console.time(label);
-
-			const option = 2;
-			if (option === 1) {
-				await piscina.run(buffer.toString('utf8'));
-			} else if (option === 2) {
-				console.time('create ArrayBuffer');
-				const payload = new ArrayBuffer(buffer);
-				console.timeEnd('create ArrayBuffer');
-				await piscina.run(payload);
-			} else if (option === 3) {
-				console.time('create ArrayBuffer');
-				const payload = new ArrayBuffer(buffer);
-				console.timeEnd('create ArrayBuffer');
-				await piscina.run(payload, { transferList: [payload] });
-			} else if (option === 4) {
-				builder.startObject(1);
-				builder.addFieldOffset(0, dataVector, 0);
-				const root = builder.endObject();
-				builder.finish(root);
-				const serialized = builder.asUint8Array();
-				await piscina.run(serialized);
-			} else if (option === 5) {
-				console.time('create flatbuffer');
-				builder.startObject(1);
-				builder.addFieldOffset(0, dataVector, 0);
-				const root = builder.endObject();
-				builder.finish(root);
-				const serialized = builder.asUint8Array();
-				console.timeEnd('create flatbuffer');
-				await piscina.run(serialized, { transferList: [serialized.buffer] });
-			}
-
-			console.timeEnd(label);
-		} catch (err) {
-			console.log('Worker error:', err);
-			if (err.code === 'ERR_WORKER_OUT_OF_MEMORY') {
-				console.log('Worker terminated due to resource limits');
-			}
-		}
+// Create 200MB string
+function create200MBString() {
+	const chunkSize = 10 * mb; // 10MB chunks to avoid allocation issues
+	let str = '';
+	const chunk = 'x'.repeat(chunkSize);
+	for (let i = 0; i < 20; i++) {
+		str += chunk;
 	}
-})();
-
-setInterval(() => reportMemory('[main]'), 1000);
-function reportMemory(msg = '') {
-	const memoryUsage = process.memoryUsage();
-	console.log(msg, {
-		type: 'memoryReport',
-		memory: {
-			rss: memoryUsage.rss / 1024 / 1024, // Resident Set Size in MB
-			heapTotal: memoryUsage.heapTotal / 1024 / 1024, // Total heap size in MB
-			heapUsed: memoryUsage.heapUsed / 1024 / 1024, // Used heap size in MB
-			external: memoryUsage.external / 1024 / 1024, // External memory in MB
-		},
-	});
+	return str;
 }
+
+// Create object that serializes to ~200MB JSON
+function create200MBObject() {
+	// Each object is roughly 100 bytes when stringified
+	// So we need about 2 million objects
+	const items = [];
+	for (let i = 0; i < 2000000; i++) {
+		items.push({
+			id: i,
+			name: `item-${i}`,
+			value: Math.random(),
+			timestamp: Date.now(),
+		});
+	}
+	return { items };
+}
+
+async function benchmarkIPC() {
+	const runs = 10;
+	const stringTimings = [];
+	const objectTimings = [];
+
+	console.log('Creating 200MB string...');
+	const testString = create200MBString();
+	console.log(`String size: ${(testString.length / mb).toFixed(2)} MB`);
+
+	console.log('\nCreating 200MB object...');
+	const testObject = create200MBObject();
+	const objectJson = JSON.stringify(testObject);
+	console.log(`Object JSON size: ${(objectJson.length / mb).toFixed(2)} MB`);
+
+	console.log(`\n=== Running ${runs} string transfer tests ===`);
+	for (let i = 0; i < runs; i++) {
+		const start = Date.now();
+		const result = await piscina.run({ type: 'string', data: testString });
+		const duration = Date.now() - start;
+		stringTimings.push(duration);
+		console.log(`Run ${i + 1}: ${duration}ms`);
+	}
+
+	console.log(`\n=== Running ${runs} object transfer tests ===`);
+	for (let i = 0; i < runs; i++) {
+		const start = Date.now();
+		const result = await piscina.run({ type: 'object', data: testObject });
+		const duration = Date.now() - start;
+		objectTimings.push(duration);
+		console.log(`Run ${i + 1}: ${duration}ms`);
+	}
+
+	// Calculate statistics
+	function stats(timings) {
+		const sorted = [...timings].sort((a, b) => a - b);
+		return {
+			min: sorted[0],
+			max: sorted[sorted.length - 1],
+			avg: Math.round(timings.reduce((a, b) => a + b, 0) / timings.length),
+			p50: sorted[Math.floor(sorted.length * 0.5)],
+			p95: sorted[Math.floor(sorted.length * 0.95)],
+			p99: sorted[Math.floor(sorted.length * 0.99)],
+		};
+	}
+
+	const stringStats = stats(stringTimings);
+	const objectStats = stats(objectTimings);
+
+	console.log('\n=== Results ===\n');
+	console.log('String Transfer (200MB):');
+	console.log(`  Min: ${stringStats.min}ms`);
+	console.log(`  Max: ${stringStats.max}ms`);
+	console.log(`  Avg: ${stringStats.avg}ms`);
+	console.log(`  p50: ${stringStats.p50}ms`);
+	console.log(`  p95: ${stringStats.p95}ms`);
+	console.log(`  p99: ${stringStats.p99}ms`);
+
+	console.log('\nObject Transfer (~200MB JSON):');
+	console.log(`  Min: ${objectStats.min}ms`);
+	console.log(`  Max: ${objectStats.max}ms`);
+	console.log(`  Avg: ${objectStats.avg}ms`);
+	console.log(`  p50: ${objectStats.p50}ms`);
+	console.log(`  p95: ${objectStats.p95}ms`);
+	console.log(`  p99: ${objectStats.p99}ms`);
+
+	console.log('\nOverhead (Object vs String):');
+	console.log(`  Avg overhead: ${objectStats.avg - stringStats.avg}ms`);
+	console.log(
+		`  Overhead %: ${(((objectStats.avg - stringStats.avg) / stringStats.avg) * 100).toFixed(1)}%`,
+	);
+
+	await piscina.destroy();
+	process.exit(0);
+}
+
+benchmarkIPC().catch((err) => {
+	console.error('Benchmark failed:', err);
+	process.exit(1);
+});
