@@ -511,4 +511,88 @@ describe('ProvisioningService', () => {
 			provisioningService.getConfig = originStateGetConfig;
 		});
 	});
+
+	describe('isProvisioningEnabled', () => {
+		it('should return true if the provisioning config is enabled', async () => {
+			const originStateGetConfig = provisioningService.getConfig;
+
+			const provisioningConfig = {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: true,
+				scopesProvisionProjectRoles: true,
+			};
+			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			const isProvisioningEnabled = await provisioningService.isProvisioningEnabled();
+			expect(isProvisioningEnabled).toBe(true);
+
+			provisioningService.getConfig = originStateGetConfig;
+		});
+
+		it('should return false if the provisioning config is not enabled', async () => {
+			const originStateGetConfig = provisioningService.getConfig;
+
+			const provisioningConfig = {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+			};
+			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			const isProvisioningEnabled = await provisioningService.isProvisioningEnabled();
+			expect(isProvisioningEnabled).toBe(false);
+
+			provisioningService.getConfig = originStateGetConfig;
+		});
+	});
+
+	describe('isInstanceRoleProvisioningEnabled', () => {
+		it('should return true if the instance role provisioning config is enabled', async () => {
+			const originStateGetConfig = provisioningService.getConfig;
+
+			const provisioningConfig = { ...provisioningConfigDto, scopesProvisionInstanceRole: true };
+			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			const isInstanceRoleProvisioningEnabled =
+				await provisioningService.isInstanceRoleProvisioningEnabled();
+			expect(isInstanceRoleProvisioningEnabled).toBe(true);
+
+			provisioningService.getConfig = originStateGetConfig;
+		});
+
+		it('should return false if the instance role provisioning config is not enabled', async () => {
+			const originStateGetConfig = provisioningService.getConfig;
+
+			const provisioningConfig = { ...provisioningConfigDto, scopesProvisionInstanceRole: false };
+			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			const isInstanceRoleProvisioningEnabled =
+				await provisioningService.isInstanceRoleProvisioningEnabled();
+			expect(isInstanceRoleProvisioningEnabled).toBe(false);
+
+			provisioningService.getConfig = originStateGetConfig;
+		});
+	});
+
+	describe('isProjectRolesProvisioningEnabled', () => {
+		it('should return true if the project roles provisioning config is enabled', async () => {
+			const originStateGetConfig = provisioningService.getConfig;
+
+			const provisioningConfig = { ...provisioningConfigDto, scopesProvisionProjectRoles: true };
+			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			const isProjectRolesProvisioningEnabled =
+				await provisioningService.isProjectRolesProvisioningEnabled();
+			expect(isProjectRolesProvisioningEnabled).toBe(true);
+
+			provisioningService.getConfig = originStateGetConfig;
+		});
+
+		it('should return false if the project roles provisioning config is not enabled', async () => {
+			const originStateGetConfig = provisioningService.getConfig;
+
+			const provisioningConfig = { ...provisioningConfigDto, scopesProvisionProjectRoles: false };
+			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			const isProjectRolesProvisioningEnabled =
+				await provisioningService.isProjectRolesProvisioningEnabled();
+			expect(isProjectRolesProvisioningEnabled).toBe(false);
+
+			provisioningService.getConfig = originStateGetConfig;
+		});
+	});
 });
