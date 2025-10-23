@@ -119,9 +119,9 @@ export class ImportService {
 			}
 		});
 		// Update the workflow dependency index for each imported workflow.
-		workflows.forEach(async (workflow) => {
+		for (const workflow of workflows) {
 			await this.workflowIndexService.updateIndexFor(workflow);
-		});
+		}
 	}
 
 	async replaceInvalidCreds(workflow: IWorkflowBase) {
