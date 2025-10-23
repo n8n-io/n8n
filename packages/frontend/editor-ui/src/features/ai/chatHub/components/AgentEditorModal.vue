@@ -9,6 +9,7 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 
 const props = defineProps<{
 	agentId?: string;
@@ -23,6 +24,7 @@ const chatStore = useChatStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
 const toast = useToast();
+const message = useMessage();
 const modalBus = ref(createEventBus());
 
 const name = ref('');
@@ -30,6 +32,7 @@ const description = ref('');
 const systemPrompt = ref('');
 const selectedModel = ref<ChatHubConversationModel | null>(null);
 const isSaving = ref(false);
+const isDeleting = ref(false);
 
 const isEditMode = computed(() => !!props.agentId);
 const title = computed(() =>
@@ -125,17 +128,43 @@ async function onSave() {
 		emit('save');
 		modalBus.value.emit('close');
 	} catch (error) {
-		const errorMessage =
-			error instanceof Error ? error.message : i18n.baseText('chatHub.agent.editor.error.save');
-		toast.showError(error, errorMessage);
+		const errorMessage = error instanceof Error ? error.message : '';
+		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.save'), errorMessage);
 	} finally {
 		isSaving.value = false;
 	}
 }
 
-function onCancel() {
-	emit('close');
-	modalBus.value.emit('close');
+async function onDelete() {
+	if (!isEditMode.value || !props.agentId || isDeleting.value) return;
+
+	const confirmed = await message.confirm(
+		i18n.baseText('chatHub.agent.editor.delete.confirm.message'),
+		i18n.baseText('chatHub.agent.editor.delete.confirm.title'),
+		{
+			confirmButtonText: i18n.baseText('chatHub.agent.editor.delete.confirm.button'),
+			cancelButtonText: i18n.baseText('chatHub.agent.editor.delete.cancel.button'),
+			type: 'warning',
+		},
+	);
+
+	if (confirmed !== 'confirm') return;
+
+	isDeleting.value = true;
+	try {
+		await chatStore.deleteAgent(props.agentId);
+		toast.showMessage({
+			title: i18n.baseText('chatHub.agent.editor.success.delete'),
+			type: 'success',
+		});
+		emit('close');
+		modalBus.value.emit('close');
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : '';
+		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.delete'), errorMessage);
+	} finally {
+		isDeleting.value = false;
+	}
 }
 </script>
 
@@ -212,12 +241,19 @@ function onCancel() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="tertiary" @click="onCancel">
-					{{ i18n.baseText('chatHub.agent.editor.cancel') }}
-				</N8nButton>
-				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
-					{{ saveButtonLabel }}
-				</N8nButton>
+				<div :class="$style.footerRight">
+					<N8nButton
+						v-if="isEditMode"
+						type="secondary"
+						icon="trash-2"
+						:disabled="isDeleting"
+						:loading="isDeleting"
+						@click="onDelete"
+					/>
+					<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+						{{ saveButtonLabel }}
+					</N8nButton>
+				</div>
 			</div>
 		</template>
 	</Modal>
@@ -265,7 +301,11 @@ function onCancel() {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-	gap: var(--spacing--2xs);
 	width: 100%;
+}
+
+.footerRight {
+	display: flex;
+	gap: var(--spacing--2xs);
 }
 </style>
