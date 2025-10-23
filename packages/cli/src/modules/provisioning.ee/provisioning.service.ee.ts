@@ -132,7 +132,11 @@ export class ProvisioningService {
 		ProvisioningConfigDto.parse(updatedConfig);
 
 		await this.settingsRepository.upsert(
-			{ key: PROVISIONING_PREFERENCES_DB_KEY, value: JSON.stringify(updatedConfig) },
+			{
+				key: PROVISIONING_PREFERENCES_DB_KEY,
+				value: JSON.stringify(updatedConfig),
+				loadOnStartup: true,
+			},
 			{ conflictPaths: ['key'] },
 		);
 
