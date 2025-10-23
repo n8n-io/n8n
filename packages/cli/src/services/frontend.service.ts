@@ -470,7 +470,6 @@ export class FrontendService {
 
 		return {
 			// ...this.settings,
-
 			settingsMode: 'minimal',
 
 			// core identification
@@ -480,7 +479,7 @@ export class FrontendService {
 			releaseChannel: this.settings.releaseChannel,
 			versionNotifications: this.settings.versionNotifications,
 
-			// Auth & SSO - required for login UI
+			// Auth required for login UI
 			userManagement: this.settings.userManagement,
 			sso: this.settings.sso,
 			mfa: this.settings.mfa,

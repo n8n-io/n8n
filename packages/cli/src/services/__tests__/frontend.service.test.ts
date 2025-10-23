@@ -1,8 +1,8 @@
-import type { Logger, LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings, BinaryDataConfig } from 'n8n-core';
+import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -180,6 +180,41 @@ describe('FrontendService', () => {
 
 	afterEach(() => {
 		process.env = originalEnv;
+	});
+
+	describe('getSettings', () => {
+		it('should return frontend settings', () => {
+			const { service } = createMockService();
+			const settings = service.getSettings();
+
+			expect(settings).toEqual(
+				expect.objectContaining({
+					settingsMode: 'authenticated',
+				}),
+			);
+		});
+	});
+
+	describe('getMinimalSettings', () => {
+		it('should include minimal settings', () => {
+			const { service } = createMockService();
+			const settings = service.getMinimalSettings();
+
+			expect(settings).toEqual(
+				expect.objectContaining({
+					settingsMode: 'minimal',
+				}),
+			);
+		});
+
+		it('should not include non-critical settings', () => {
+			const { service } = createMockService();
+			const settings = service.getMinimalSettings();
+
+			// IMPROVE: test the result against the schema
+			// and make sure that only the defined settings are included
+			expect(settings).not.toHaveProperty('inE2ETests');
+		});
 	});
 
 	describe('envFeatureFlags functionality', () => {
