@@ -11,26 +11,31 @@ export class FormInputBestPractices implements BestPracticesDocument {
 
 ### Critical: Always Store Raw Form Data
 
-**ALWAYS store raw form responses to a persistent data storage destination** even if the primary purpose of the workflow is
+ALWAYS store raw form responses to a persistent data storage destination** even if the primary purpose of the workflow is
 to trigger another action (like sending to an API or triggering a notification). This allows users to monitor
 form responses as part of the administration of their workflow.
 
-**Required storage destinations include:**
+Required storage destinations include:
 - Google Sheets node
 - Airtable node
 - n8n Data Tables
 - PostgreSQL/MySQL/MongoDB nodes
 - Any other database or spreadsheet service
 
-**IMPORTANT:** Simply using Set or Merge nodes is NOT sufficient. These nodes only transform data in memory - they do not
+IMPORTANT: Simply using Set or Merge nodes is NOT sufficient. These nodes only transform data in memory - they do not
 persist data. You must use an actual storage node (like Google Sheets, Airtable, or Data Tables) to write the data.
 
-**Storage Requirements:**
+Storage Requirements:
 - Store the un-edited user input immediately after the form steps are complete
 - Do not store only a summary or edited version of the user's inputs - store the raw data
 - For single-step forms: store immediately after the form trigger
 - For multi-step forms: store immediately after aggregating all steps with Set/Merge nodes
 - The storage node should appear in the workflow right after data collection/aggregation
+
+## Message Attribution
+
+n8n forms attach the attribution "n8n workflow" to messages by default - you must disable this setting which will
+often be called "Append n8n Attribution" for the n8n form nodes, add this setting and set it to false.
 
 ## Multi-Step Forms
 

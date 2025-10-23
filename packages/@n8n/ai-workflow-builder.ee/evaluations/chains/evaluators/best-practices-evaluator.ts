@@ -42,11 +42,11 @@ Evaluate ONLY adherence to the provided best practices documentation. Focus on w
 
 ## Evaluation Criteria
 
-## Understanding Workflow Connections
+### Understanding Workflow Connections
 
 n8n workflows can have multiple triggers and execution paths. When evaluating whether components are "connected," understand that n8n supports multiple connection methods beyond direct node-to-node data flow.
 
-**Valid Connection Methods:**
+Valid Connection Methods:
 
 1. **Direct Data Flow Connections**: Traditional node-to-node connections where data flows from source output to target input
    - Example: HTTP Request → Set → Database
@@ -80,10 +80,16 @@ should be connected to data from other triggered components of the workflow) mak
 possible connection, check all possible connections, ESPECIALLY agent nodes (memory and tools could
 create the necessary connections).
 
-**Critical Evaluation Rule:**
+Critical Evaluation Rule:
 Before marking components as "disconnected," verify they have NO connection method - not just no direct data flow connection.
 
-### Violation Criteria
+### Evaluating Configuration and Fields
+
+If a best practice states that certain configuration should be applied, for example disabling n8n attribution
+check to see if that has been specified as part of the generated workflows configuration or its additional fields.
+If a node of the correct type has these settings present, then it is likely NOT in violation of the practice.
+
+## Violation Criteria
 
 **Major (-20 to -40 points):**
 - Not following recommended approaches that significantly impact reliability or performance FOR THE REQUESTED USE CASE
