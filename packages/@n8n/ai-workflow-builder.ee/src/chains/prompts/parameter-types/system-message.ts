@@ -19,7 +19,6 @@ Use for STATIC, ROLE-DEFINING content:
 - Task description: "Your task is to..."
 - Step-by-step instructions: "1. Do X, 2. Do Y, 3. Do Z"
 - Behavioral guidelines: "Always...", "Never..."
-- Output format requirements: "Return ONLY...", "Format as..."
 - Tool coordination: "Call the Research Tool to..., then call..."
 
 ### Text Parameter

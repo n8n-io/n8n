@@ -1,4 +1,4 @@
-import type { INodeTypeDescription, INodeProperties } from 'n8n-workflow';
+import type { INodeTypeDescription, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
 
 import { COMMON_PATTERNS } from './base/common-patterns';
 import { CORE_INSTRUCTIONS } from './base/core-instructions';
@@ -92,14 +92,10 @@ export class ParameterUpdatePromptBuilder {
 		const hasSystemMessageParam = nodeDefinition.properties.some((prop) => {
 			// Pattern 1 & 2: options.systemMessage (AI Agent) or options.system (Anthropic)
 			if (prop.name === 'options' && prop.type === 'collection') {
-				// Type-safe check for options
-				interface CollectionProperty {
-					options?: INodeProperties[];
-				}
-				const collectionProp = prop as INodeProperties & CollectionProperty;
+				const collectionProp = prop;
 				if (Array.isArray(collectionProp.options)) {
 					return collectionProp.options.some(
-						(opt: INodeProperties) => opt.name === 'systemMessage' || opt.name === 'system',
+						(opt) => opt.name === 'systemMessage' || opt.name === 'system',
 					);
 				}
 			}
