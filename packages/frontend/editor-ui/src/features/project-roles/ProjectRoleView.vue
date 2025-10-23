@@ -412,7 +412,7 @@ const displayNameValidationRules = [
 		</div>
 
 		<div v-if="roleSlug && !initialState?.systemRole" class="mt-xl">
-			<N8nHeading tag="h2" class="mb-2xs">
+			<N8nHeading tag="h2" class="mb-2xs" size="large">
 				{{ i18n.baseText('projectRoles.dangerZone') }}
 			</N8nHeading>
 			<N8nText tag="p" class="mb-s">
