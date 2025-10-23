@@ -192,6 +192,7 @@ export class Server extends AbstractServer {
 		}
 	}
 
+	// eslint-disable-next-line complexity
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
@@ -287,6 +288,14 @@ export class Server extends AbstractServer {
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
+
+		// ----------------------------------------
+		// Workflow Indexing Setup
+		// ----------------------------------------
+		const { WorkflowIndexService } = await import(
+			'@/modules/workflow-index/workflow-index.service'
+		);
+		Container.get(WorkflowIndexService).init();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
