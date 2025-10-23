@@ -15,9 +15,12 @@ Most chatbots run through external platforms like Slack, Telegram, or WhatsApp r
 requests a service like this don't use the built in chat interface nodes. If the user mentions chatting but does not mention a service
 then use the built in n8n chat node.
 
-The user may ask to be able to chat to a workflow as well as trigger it via some other method, for example scheduling information
+CRITICAL: The user may ask to be able to chat to a workflow as well as trigger it via some other method, for example scheduling information
 gathering but also being able to chat with the agent - in scenarios like this the two separate workflows MUST be connected - through
 shared memory or a data store.
+
+For the chatbot always use the same chat node type as used for response. If Telegram has been requested trigger the chatbot via telegram AND
+respond via telegram - do not mix chatbot interfaces.
 
 ## Context & Memory Management
 
@@ -26,6 +29,10 @@ Memory nodes enable the bot to handle follow-up questions by maintaining short-t
 
 Include information with the user prompt such as timestamp, user ID, or session metadata. This enriches context without relying solely on memory and user prompt.
 
+If there are other agents involved in the workflow you should share memory between the chatbot and those other agents where it makes sense,
+always make sure that the chatbot has access to the relevant information within the workflow to be useful - the chatbot must be connected
+to the rest of the workflow.
+
 ## Context Engineering & AI Agent Output
 
 It can be beneficial to respond to the user as a tool of the chatbot agent rather than using the agent output - this allows the agent to loop/carry out multiple responses if necessary.
@@ -33,7 +40,8 @@ This will require adding a note to the system prompt for the agent to tell it to
 
 ## Message Attribution
 
-n8n chatbots often attach the attribution "n8n workflow" to messages by default. You should disable this attribution in production chatbots to maintain brand identity and avoid confusion.
+n8n chatbots often attach the attribution "n8n workflow" to messages by default - you must disable this setting which will
+often be called "Append n8n Attribution" for nodes that support it, add this setting and set it to false.
 
 ## Recommended Nodes
 
@@ -72,6 +80,14 @@ Purpose: Conditional logic and error handling for routing messages or managing c
 ### Integration Nodes (Slack, Telegram, WhatsApp, Discord)
 
 Purpose: Multi-channel support for deploying chatbots on popular messaging platforms
+
+## Common Pitfalls to Avoid
+
+### Leaving Chatbot disconnected
+
+It is imperative that the chatbot is connected to the rest of the workflow if there are multiple triggers - the
+user likely wants the ability to interact with data collected as part of the rest of the workflow. it is CRITICAL
+that you connect the chatbot to the rest of the workflow through shared memory with another agent, data storage, etc.
 `;
 
 	getDocumentation(): string {

@@ -32,25 +32,28 @@ The system's operations processor ensures state consistency across all parallel 
 <workflow_creation_sequence>
 Follow this proven sequence for creating robust workflows:
 
-1. **Discovery Phase** (parallel execution)
+1. **Categorization Phase** - MANDATORY
    - Categorize the prompt and search for best practices documentation based on the techniques found
-   - Search for all required node types simultaneously
-   - Why: Ensures you work with actual available nodes, not assumptions and best practices will help decision making
+   - Why: Best practices help to inform which nodes to search for and use to build the workflow plus mistakes to avoid
 
-2. **Analysis Phase** (parallel execution)
+2. **Discovery Phase** (parallel execution)
+   - Search for all required node types simultaneously
+   - Why: Ensures you work with actual available nodes, not assumptions
+
+3. **Analysis Phase** (parallel execution)
    - Get details for ALL nodes before proceeding
    - Why: Understanding inputs/outputs prevents connection errors and ensures proper parameter configuration
 
-3. **Creation Phase** (parallel execution)
+4. **Creation Phase** (parallel execution)
    - Add nodes individually by calling add_nodes for each node
    - Execute multiple add_nodes calls in parallel for efficiency
    - Why: Each node addition is independent, parallel execution is faster, and the operations processor ensures consistency
 
-4. **Connection Phase** (parallel execution)
+5. **Connection Phase** (parallel execution)
    - Connect all nodes based on discovered input/output structure
    - Why: Parallel connections are safe and faster
 
-5. **Configuration Phase** (parallel execution) - MANDATORY
+6. **Configuration Phase** (parallel execution) - MANDATORY
    - ALWAYS configure nodes using update_node_parameters
    - Even for "simple" nodes like HTTP Request, Set, etc.
    - Configure all nodes in parallel for efficiency
@@ -83,6 +86,7 @@ Always determine connectionParametersReasoning before setting connectionParamete
 - Does this node have dynamic inputs/outputs?
 - Which parameters affect the connection structure?
 - What mode or operation changes the available connections?
+- Are there best practices which provide recommendations for connections?
 </reasoning_first>
 
 <parameter_examples>
@@ -342,6 +346,7 @@ When modifying existing nodes:
 <handling_uncertainty>
 When unsure about specific values:
 - Add nodes and connections confidently
+- investigate best practices to see if there are recommendations on how to proceed
 - For uncertain parameters, use update_node_parameters with placeholders formatted exactly as "<__PLACEHOLDER_VALUE__VALUE_LABEL__>"
 - Make VALUE_LABEL descriptive (e.g., "API endpoint URL", "Auth token header") so users know what to supply
 - For tool nodes with dynamic values, use $fromAI expressions instead of placeholders

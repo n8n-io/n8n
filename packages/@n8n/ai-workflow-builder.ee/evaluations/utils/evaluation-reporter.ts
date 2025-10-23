@@ -79,7 +79,7 @@ export function generateMarkdownReport(
 `;
 
 	results.forEach((result) => {
-		const techniques = result.evaluationResult.bestPractices.techniques;
+		const techniques = result.evaluationResult.bestPractices.techniques ?? [];
 		const techniquesDisplay = techniques.length > 0 ? techniques.join(', ') : 'None identified';
 
 		report += `### ${result.testCase.name} (${result.testCase.id})
@@ -88,6 +88,7 @@ export function generateMarkdownReport(
 - **Nodes Generated**: ${result.generatedWorkflow.nodes.length}
 - **Techniques**: ${techniquesDisplay}
 - **Summary**: ${result.evaluationResult.summary}
+
 `;
 
 		// Add cache stats for this test if available
@@ -95,10 +96,9 @@ export function generateMarkdownReport(
 			const formatted = formatCacheStats(result.cacheStats);
 			report += `- **Cache Hit Rate**: ${formatted.cacheHitRate}
 - **Cost Savings**: ${formatted.costSavings}
+
 `;
 		}
-
-		report += '\n';
 
 		if (
 			result.evaluationResult.criticalIssues &&
@@ -176,9 +176,22 @@ export function displayTestResults(
 			);
 
 			// Display techniques if available
-			if (!result.error && result.evaluationResult.bestPractices.techniques.length > 0) {
+			if (
+				!result.error &&
+				result.evaluationResult.bestPractices.techniques &&
+				result.evaluationResult.bestPractices.techniques.length > 0
+			) {
 				const techniques = result.evaluationResult.bestPractices.techniques.join(', ');
 				console.log(`     ${pc.dim('Techniques:')} ${pc.cyan(techniques)}`);
+			}
+
+			// Display best practices score
+			if (!result.error) {
+				const bpScore = formatColoredScore(result.evaluationResult.bestPractices.score);
+				const bpViolations = result.evaluationResult.bestPractices.violations.length;
+				console.log(
+					`     ${pc.dim('Best Practices:')} ${bpScore} ${pc.dim(`(${bpViolations} violations)`)}`,
+				);
 			}
 
 			if (result.error) {

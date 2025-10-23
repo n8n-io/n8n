@@ -9,9 +9,28 @@ export class FormInputBestPractices implements BestPracticesDocument {
 
 ## Workflow Design
 
-Always store form responses somewhere (e.g. Googlesheets, data table) even if the purpose of the workflow is
-to trigger some other action, like take a form response and send to an API. This allows users to monitor
+### Critical: Always Store Raw Form Data
+
+**ALWAYS store raw form responses to a persistent data storage destination** even if the primary purpose of the workflow is
+to trigger another action (like sending to an API or triggering a notification). This allows users to monitor
 form responses as part of the administration of their workflow.
+
+**Required storage destinations include:**
+- Google Sheets node
+- Airtable node
+- n8n Data Tables
+- PostgreSQL/MySQL/MongoDB nodes
+- Any other database or spreadsheet service
+
+**IMPORTANT:** Simply using Set or Merge nodes is NOT sufficient. These nodes only transform data in memory - they do not
+persist data. You must use an actual storage node (like Google Sheets, Airtable, or Data Tables) to write the data.
+
+**Storage Requirements:**
+- Store the un-edited user input immediately after the form steps are complete
+- Do not store only a summary or edited version of the user's inputs - store the raw data
+- For single-step forms: store immediately after the form trigger
+- For multi-step forms: store immediately after aggregating all steps with Set/Merge nodes
+- The storage node should appear in the workflow right after data collection/aggregation
 
 ## Multi-Step Forms
 
@@ -61,22 +80,39 @@ Pitfalls:
 - You can define forms using JSON for dynamic or conditional fields
 - Generate form fields dynamically using a Code node if needed for complex scenarios
 
+### Storage Nodes
+
+Purpose: Persist raw form data to a storage destination
+
+Required nodes (use at least one):
+- Google Sheets: Best for simple spreadsheet storage
+- Airtable: Best for structured database with relationships
+- Data Tables: Built-in n8n storage for quick setup
+- PostgreSQL/MySQL/MongoDB: For production database storage
+
+Pitfalls:
+
+- Every form workflow MUST include a storage node that actually writes data to a destination
+- Set and Merge nodes alone are NOT sufficient - they only transform data in memory
+- The storage node should be placed immediately after the form trigger (single-step) or after data aggregation (multi-step)
+
 ### Code
 
 Purpose: Processes form data, generates dynamic form definitions, or implements custom validation logic
 
 ### Set
 
-Purpose: Aggregates and transforms form data between steps
+Purpose: Aggregates and transforms form data between steps (NOT for storage - use a storage node)
 
 ### Merge
 
-Purpose: Combines data from multiple form steps into a single dataset
+Purpose: Combines data from multiple form steps into a single dataset (NOT for storage - use a storage node)
 
 Pitfalls:
 
 - Ensure data from all form steps is properly merged before writing to destination
 - Use appropriate merge modes (append, merge by key, etc.) for your use case
+- Remember: Merge prepares data but does not store it - add a storage node after Merge
 
 ### IF
 
@@ -93,19 +129,34 @@ Pitfalls:
 
 ## Common Pitfalls to Avoid
 
-Data Loss: Aggregate all form step data before writing to your destination. Failing to merge data from multiple steps
-can result in incomplete form submissions being stored.
+### Missing Raw Form Response Storage
 
-Poor User Experience: Use the Form Ending page type to show a completion message or redirect users after submission.
+When building n8n forms it is recommended to always store the raw form response to some form of data storage (Googlesheets, Airtable, etc)
+for administration later. It is CRITICAL if you create a n8n form node that you store the raw output with a storage node.
+
+### Data Loss in Multi-Step Forms
+
+Aggregate all form step data using Set/Merge nodes before writing to your destination. Failing to merge data from multiple steps
+can result in incomplete form submissions being stored. After merging, ensure you write the complete dataset to a storage node.
+
+### Poor User Experience
+
+Use the Form Ending page type to show a completion message or redirect users after submission.
 Without a proper ending, users may be confused about whether their submission was successful.
 
-Invalid Data: Implement validation between form steps to catch errors early. Without validation, invalid data can
+### Invalid Data
+
+Implement validation between form steps to catch errors early. Without validation, invalid data can
 propagate through your workflow and corrupt your destination data.
 
-Complex Field Generation: When generating dynamic form fields, ensure the JSON structure exactly matches what the Form
+### Complex Field Generation
+
+When generating dynamic form fields, ensure the JSON structure exactly matches what the Form
 node expects. Test thoroughly with the Test URL before going live.
 
-Mapping Errors: When writing to Google Sheets or other destinations, ensure field names match exactly. Mismatched names
+### Mapping Errors
+
+When writing to Google Sheets or other destinations, ensure field names match exactly. Mismatched names
 will cause data to be written to wrong columns or fail entirely.
 `;
 
