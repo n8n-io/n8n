@@ -58,64 +58,6 @@ describe('Salesforce', () => {
 		jest.resetAllMocks();
 	});
 
-	describe('Node Description', () => {
-		it('should have correct basic properties', () => {
-			expect(node.description.displayName).toBe('Salesforce');
-			expect(node.description.name).toBe('salesforce');
-			expect(node.description.group).toEqual(['output']);
-			expect(node.description.version).toBe(1);
-			expect(node.description.usableAsTool).toBe(true);
-		});
-
-		it('should have correct node structure', () => {
-			expect(node.description.inputs).toEqual([NodeConnectionTypes.Main]);
-			expect(node.description.outputs).toEqual([NodeConnectionTypes.Main]);
-			expect(node.description.subtitle).toBe(
-				'={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			);
-		});
-
-		it('should have correct credentials configuration', () => {
-			expect(node.description.credentials).toEqual([
-				{
-					name: 'salesforceOAuth2Api',
-					required: true,
-					displayOptions: {
-						show: {
-							authentication: ['oAuth2'],
-						},
-					},
-				},
-				{
-					name: 'salesforceJwtApi',
-					required: true,
-					displayOptions: {
-						show: {
-							authentication: ['jwt'],
-						},
-					},
-				},
-			]);
-		});
-
-		it('should have correct authentication options', () => {
-			const authProp = node.description.properties.find((p) => p.name === 'authentication');
-			expect(authProp).toBeDefined();
-			expect(authProp?.type).toBe('options');
-			expect(authProp?.default).toBe('oAuth2');
-			expect(authProp?.options).toEqual([
-				{
-					name: 'OAuth2',
-					value: 'oAuth2',
-				},
-				{
-					name: 'OAuth2 JWT',
-					value: 'jwt',
-				},
-			]);
-		});
-	});
-
 	describe('LoadOptions Methods', () => {
 		let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
 

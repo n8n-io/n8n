@@ -70,7 +70,7 @@ describe('SlackV2', () => {
 		jest.resetAllMocks();
 	});
 
-	describe('Channel Operations - Kick and Join (lines 452-490)', () => {
+	describe('Channel Operations - Kick and Join', () => {
 		beforeEach(() => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
