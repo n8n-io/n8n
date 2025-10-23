@@ -273,7 +273,7 @@ describe('HttpRequestV3', () => {
 			});
 
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
-				'URL parameter must be a string, got object',
+				'URL parameter must be a string, got null',
 			);
 		});
 

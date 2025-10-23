@@ -188,9 +188,10 @@ export class HttpRequestV3 implements INodeType {
 				const url = this.getNodeParameter('url', itemIndex);
 
 				if (typeof url !== 'string') {
+					const actualType = url === null ? 'null' : typeof url;
 					throw new NodeOperationError(
 						this.getNode(),
-						`URL parameter must be a string, got ${typeof url}`,
+						`URL parameter must be a string, got ${actualType}`,
 					);
 				}
 
