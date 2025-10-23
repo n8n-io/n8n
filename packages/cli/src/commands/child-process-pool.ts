@@ -52,7 +52,7 @@ export class ChildProcessPool {
 		// Start cleanup interval to kill idle processes
 		this.cleanupInterval = setInterval(() => {
 			this.cleanupIdleProcesses();
-		}, 10000); // Check every 10 seconds
+		}, 1000); // Check every 1 seconds
 
 		console.log(
 			`[ChildProcessPool] Initialized with max ${this.maxProcesses} processes, idleTimeout ${this.idleTimeout}ms${this.maxOldGenerationSizeMb ? `, heapLimit ${this.maxOldGenerationSizeMb}MB` : ''}`,

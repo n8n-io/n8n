@@ -67,8 +67,14 @@ interface BenchmarkMeasurement {
 	duration: number;
 	isColdStart: boolean;
 	// Memory (bytes)
-	mainMemoryBefore: number;
-	mainMemoryAfter: number;
+	mainMemoryBefore: {
+		heapUsed: number;
+		rss: number;
+	};
+	mainMemoryAfter: {
+		heapUsed: number;
+		rss: number;
+	};
 	childMemoryPeak?: {
 		heapUsed: number;
 		heapTotal: number;
@@ -93,7 +99,7 @@ export class WorkflowRunner {
 		string,
 		{
 			startTime: number;
-			memoryBefore: number;
+			memoryBefore: { heapUsed: number; rss: number };
 			isColdStart: boolean;
 			processId: string;
 			reuseCount: number;
@@ -459,7 +465,7 @@ export class WorkflowRunner {
 	private getPool(): ChildProcessPool {
 		this.pool ??= new ChildProcessPool({
 			maxProcesses: 1,
-			idleTimeout: 10000, // 30 seconds (default)
+			idleTimeout: 5000, // 30 seconds (default)
 			maxOldGenerationSizeMb: 300, // Optional heap limit in MB
 		});
 		return this.pool;
@@ -499,7 +505,7 @@ export class WorkflowRunner {
 			const startInfo = this.executionStartTimes.get(msg.executionId);
 			if (startInfo) {
 				const endTime = Date.now();
-				const memoryAfter = process.memoryUsage().heapUsed;
+				const memoryAfter = process.memoryUsage();
 
 				const measurement: BenchmarkMeasurement = {
 					executionId: msg.executionId,
@@ -509,7 +515,10 @@ export class WorkflowRunner {
 					duration: endTime - startInfo.startTime,
 					isColdStart: startInfo.isColdStart,
 					mainMemoryBefore: startInfo.memoryBefore,
-					mainMemoryAfter: memoryAfter,
+					mainMemoryAfter: {
+						heapUsed: memoryAfter.heapUsed,
+						rss: memoryAfter.rss,
+					},
 					childMemoryPeak: msg.memoryUsage,
 					processId: startInfo.processId,
 					reuseCount: startInfo.reuseCount,
@@ -556,7 +565,7 @@ export class WorkflowRunner {
 			try {
 				// Record start time and memory before getting process
 				const startTime = Date.now();
-				const memoryBefore = process.memoryUsage().heapUsed;
+				const memoryUsage = process.memoryUsage();
 
 				// Get a process from the pool (or create new one if under limit)
 				const pooledProcess = await this.getPool().getProcess(executionId);
@@ -565,7 +574,10 @@ export class WorkflowRunner {
 				// Store timing info for later
 				this.executionStartTimes.set(executionId, {
 					startTime,
-					memoryBefore,
+					memoryBefore: {
+						heapUsed: memoryUsage.heapUsed,
+						rss: memoryUsage.rss,
+					},
 					isColdStart,
 					processId: pooledProcess.id,
 					reuseCount: pooledProcess.reuseCount,
