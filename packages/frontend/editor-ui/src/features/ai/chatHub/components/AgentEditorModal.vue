@@ -42,7 +42,11 @@ const saveButtonLabel = computed(() =>
 );
 
 const isValid = computed(() => {
-	return name.value.trim().length > 0 && systemPrompt.value.trim().length > 0;
+	return (
+		name.value.trim().length > 0 &&
+		systemPrompt.value.trim().length > 0 &&
+		selectedModel.value !== null
+	);
 });
 
 function loadAgent() {
