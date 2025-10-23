@@ -247,7 +247,7 @@ export class ChatHubController {
 
 	@Get('/agents/:agentId')
 	@GlobalScope('chatHubAgent:read')
-	async getAgent(req: AuthenticatedRequest, @Param('agentId') agentId: string) {
+	async getAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
 		return await this.chatAgentService.getAgentById(agentId, req.user.id);
 	}
 

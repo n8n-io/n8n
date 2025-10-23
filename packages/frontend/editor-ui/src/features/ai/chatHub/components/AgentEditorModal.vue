@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import Modal from '@/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -44,26 +44,45 @@ const isValid = computed(() => {
 	return name.value.trim().length > 0 && systemPrompt.value.trim().length > 0;
 });
 
-onMounted(async () => {
-	if (props.agentId) {
-		isLoading.value = true;
-		try {
-			const agent = await chatStore.fetchAgent(props.agentId);
-			name.value = agent.name;
-			description.value = agent.description ?? '';
-			systemPrompt.value = agent.systemPrompt;
-			if (agent.provider && agent.model) {
-				selectedModel.value = {
-					provider: agent.provider,
-					model: agent.model,
-					workflowId: agent.workflowId,
-				};
-			}
-		} finally {
-			isLoading.value = false;
+async function loadAgent(agentId: string) {
+	isLoading.value = true;
+	try {
+		const agent = await chatStore.fetchAgent(agentId);
+		name.value = agent.name;
+		description.value = agent.description ?? '';
+		systemPrompt.value = agent.systemPrompt;
+		if (agent.provider && agent.model) {
+			selectedModel.value = {
+				provider: agent.provider,
+				model: agent.model,
+				workflowId: agent.workflowId,
+			};
+		} else {
+			selectedModel.value = null;
 		}
+	} finally {
+		isLoading.value = false;
 	}
-});
+}
+
+function resetForm() {
+	name.value = '';
+	description.value = '';
+	systemPrompt.value = '';
+	selectedModel.value = null;
+}
+
+watch(
+	() => props.agentId,
+	(newAgentId) => {
+		if (newAgentId) {
+			void loadAgent(newAgentId);
+		} else {
+			resetForm();
+		}
+	},
+	{ immediate: true },
+);
 
 function onModelChange(model: ChatHubConversationModel) {
 	selectedModel.value = model;
