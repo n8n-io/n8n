@@ -337,7 +337,7 @@ export class SourceControlService {
 		const variablesChanges = filterByType(filesToPush, 'variables')[0];
 		if (variablesChanges) {
 			filesToBePushed.add(variablesChanges.file);
-			await this.sourceControlExportService.exportVariablesToWorkFolder();
+			await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
 		}
 
 		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
