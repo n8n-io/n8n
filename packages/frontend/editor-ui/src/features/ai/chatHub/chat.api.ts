@@ -10,6 +10,9 @@ import type {
 	ChatHubEditMessageRequest,
 	ChatSessionId,
 	ChatMessageId,
+	ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
 } from '@n8n/api-types';
 import type { StructuredChunk } from 'n8n-workflow';
 
@@ -123,4 +126,39 @@ export const fetchSingleConversationApi = async (
 ): Promise<ChatHubConversationResponse> => {
 	const apiEndpoint = `/chat/conversations/${sessionId}`;
 	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);
+};
+
+export const fetchAgentsApi = async (context: IRestApiContext): Promise<ChatHubAgentDto[]> => {
+	const apiEndpoint = '/chat/agents';
+	return await makeRestApiRequest<ChatHubAgentDto[]>(context, 'GET', apiEndpoint);
+};
+
+export const fetchAgentApi = async (
+	context: IRestApiContext,
+	agentId: string,
+): Promise<ChatHubAgentDto> => {
+	const apiEndpoint = `/chat/agents/${agentId}`;
+	return await makeRestApiRequest<ChatHubAgentDto>(context, 'GET', apiEndpoint);
+};
+
+export const createAgentApi = async (
+	context: IRestApiContext,
+	payload: ChatHubCreateAgentRequest,
+): Promise<ChatHubAgentDto> => {
+	const apiEndpoint = '/chat/agents';
+	return await makeRestApiRequest<ChatHubAgentDto>(context, 'POST', apiEndpoint, payload);
+};
+
+export const updateAgentApi = async (
+	context: IRestApiContext,
+	agentId: string,
+	payload: ChatHubUpdateAgentRequest,
+): Promise<ChatHubAgentDto> => {
+	const apiEndpoint = `/chat/agents/${agentId}`;
+	return await makeRestApiRequest<ChatHubAgentDto>(context, 'POST', apiEndpoint, payload);
+};
+
+export const deleteAgentApi = async (context: IRestApiContext, agentId: string): Promise<void> => {
+	const apiEndpoint = `/chat/agents/${agentId}`;
+	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
 };

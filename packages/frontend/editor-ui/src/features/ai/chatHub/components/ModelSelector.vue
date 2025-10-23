@@ -12,22 +12,53 @@ import {
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { onClickOutside } from '@vueuse/core';
+import { useI18n } from '@n8n/i18n';
+
+import type { ChatHubAgentDto } from '@n8n/api-types';
 
 const props = defineProps<{
 	models: ChatModelsResponse | null;
 	selectedModel: ChatHubConversationModel | null;
 	credentialsName?: string;
+	agents?: ChatHubAgentDto[];
 }>();
 
 const emit = defineEmits<{
 	change: [ChatHubConversationModel];
 	configure: [ChatHubProvider];
+	editAgent: [agentId: string];
+	createAgent: [];
 }>();
 
+const i18n = useI18n();
 const dropdownRef = useTemplateRef('dropdownRef');
 
-const menu = computed(() =>
-	chatHubProviderSchema.options.map((provider) => {
+const menu = computed(() => {
+	const agentOptions = (props.agents ?? []).map<
+		ComponentProps<typeof N8nNavigationDropdown>['menu'][number]
+	>((agent) => ({
+		id: `agent::${agent.id}`,
+		title: agent.name,
+		disabled: false,
+	}));
+
+	const agentMenu: ComponentProps<typeof N8nNavigationDropdown>['menu'][number] = {
+		id: 'my-agents',
+		title: i18n.baseText('chatHub.agent.myAgents'),
+		icon: 'user',
+		submenu: [
+			...agentOptions,
+			...(agentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
+			{
+				id: 'agent::new',
+				icon: 'plus',
+				title: i18n.baseText('chatHub.agent.newAgent'),
+				disabled: false,
+			},
+		],
+	};
+
+	const providerMenus = chatHubProviderSchema.options.map((provider) => {
 		const models = props.models?.[provider].models ?? [];
 		const error = props.models?.[provider].error;
 
@@ -55,8 +86,10 @@ const menu = computed(() =>
 				},
 			]),
 		};
-	}),
-);
+	});
+
+	return [agentMenu, ...providerMenus];
+});
 
 const selectedLabel = computed(() => {
 	if (!props.selectedModel) return 'Select model';
@@ -64,20 +97,30 @@ const selectedLabel = computed(() => {
 });
 
 function onSelect(id: string) {
-	// Format is "provider::model"
-	const [provider, model] = id.split('::');
-	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
+	// Format is "provider::model" or "agent::id"
+	const [type, value] = id.split('::');
+
+	if (type === 'agent') {
+		if (value === 'new') {
+			emit('createAgent');
+		} else {
+			emit('editAgent', value);
+		}
+		return;
+	}
+
+	const parsedProvider = chatHubProviderSchema.safeParse(type).data;
 
 	if (!parsedProvider) {
 		return;
 	}
 
-	if (model === 'configure') {
+	if (value === 'configure') {
 		emit('configure', parsedProvider);
 		return;
 	}
 
-	emit('change', { provider: parsedProvider, model, workflowId: null });
+	emit('change', { provider: parsedProvider, model: value, workflowId: null });
 }
 
 onClickOutside(

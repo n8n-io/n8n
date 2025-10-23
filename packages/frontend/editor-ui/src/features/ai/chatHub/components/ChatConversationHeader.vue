@@ -23,6 +23,8 @@ const emit = defineEmits<{
 	selectModel: [ChatHubConversationModel];
 	setCredentials: [provider: ChatHubProvider];
 	renameConversation: [id: ChatSessionId, title: string];
+	editAgent: [agentId: string];
+	createAgent: [];
 }>();
 
 const sidebar = useChatHubSidebarState();
@@ -77,8 +79,11 @@ defineExpose({
 			:models="chatStore.models ?? null"
 			:selected-model="selectedModel"
 			:credentials-name="credentialsName"
+			:agents="chatStore.agents"
 			@change="onModelChange"
 			@configure="emit('setCredentials', $event)"
+			@edit-agent="emit('editAgent', $event)"
+			@create-agent="emit('createAgent')"
 		/>
 	</div>
 </template>

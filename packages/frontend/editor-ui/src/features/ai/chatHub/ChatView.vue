@@ -9,6 +9,7 @@ import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConvers
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/ai/chatHub/components/ChatStarter.vue';
+import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
@@ -129,6 +130,7 @@ const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 const initialization = ref({ credentialsFetched: false, modelsFetched: false });
 const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
+const editingAgentId = ref<string | undefined>(undefined);
 const isInitialized = computed(
 	() => initialization.value.credentialsFetched && initialization.value.modelsFetched,
 );
@@ -219,6 +221,7 @@ onMounted(async () => {
 	await Promise.all([
 		credentialsStore.fetchCredentialTypes(false),
 		credentialsStore.fetchAllCredentials(),
+		chatStore.fetchAgents(),
 	]);
 	initialization.value.credentialsFetched = true;
 });
@@ -330,6 +333,20 @@ function handleConfigureModel() {
 function handleCreateNewCredential(provider: ChatHubProvider) {
 	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
+
+function handleEditAgent(agentId: string) {
+	editingAgentId.value = agentId;
+	uiStore.openModal('agentEditor');
+}
+
+function handleCreateAgent() {
+	editingAgentId.value = undefined;
+	uiStore.openModal('agentEditor');
+}
+
+function handleAgentEditorClose() {
+	editingAgentId.value = undefined;
+}
 </script>
 
 <template>
@@ -349,6 +366,8 @@ function handleCreateNewCredential(provider: ChatHubProvider) {
 			:credentials="mergedCredentials"
 			@select-model="handleSelectModel"
 			@set-credentials="handleConfigureCredentials"
+			@edit-agent="handleEditAgent"
+			@create-agent="handleCreateAgent"
 		/>
 
 		<CredentialSelectorModal
@@ -359,6 +378,8 @@ function handleCreateNewCredential(provider: ChatHubProvider) {
 			@select="handleSelectCredentials"
 			@create-new="handleCreateNewCredential"
 		/>
+
+		<AgentEditorModal :agent-id="editingAgentId" @close="handleAgentEditorClose" />
 
 		<N8nScrollArea
 			v-if="isInitialized"

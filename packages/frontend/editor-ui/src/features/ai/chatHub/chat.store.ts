@@ -13,6 +13,11 @@ import {
 	deleteConversationApi,
 	stopGenerationApi,
 	fetchSingleConversationApi,
+	fetchAgentsApi,
+	fetchAgentApi,
+	createAgentApi,
+	updateAgentApi,
+	deleteAgentApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -23,6 +28,9 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 	ChatHubMessageDto,
+	ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
 } from '@n8n/api-types';
 import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
 import type { StructuredChunk } from 'n8n-workflow';
@@ -34,6 +42,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const streamingMessageId = ref<string>();
 	const sessions = ref<ChatHubSessionDto[]>([]);
+	const agents = ref<ChatHubAgentDto[]>([]);
 
 	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
@@ -515,9 +524,38 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
+	async function fetchAgents() {
+		agents.value = await fetchAgentsApi(rootStore.restApiContext);
+	}
+
+	async function fetchAgent(agentId: string): Promise<ChatHubAgentDto> {
+		return await fetchAgentApi(rootStore.restApiContext, agentId);
+	}
+
+	async function createAgent(payload: ChatHubCreateAgentRequest): Promise<ChatHubAgentDto> {
+		const agent = await createAgentApi(rootStore.restApiContext, payload);
+		agents.value.push(agent);
+		return agent;
+	}
+
+	async function updateAgent(
+		agentId: string,
+		payload: ChatHubUpdateAgentRequest,
+	): Promise<ChatHubAgentDto> {
+		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+		agents.value = agents.value.map((a) => (a.id === agentId ? agent : a));
+		return agent;
+	}
+
+	async function deleteAgent(agentId: string) {
+		await deleteAgentApi(rootStore.restApiContext, agentId);
+		agents.value = agents.value.filter((a) => a.id !== agentId);
+	}
+
 	return {
 		models,
 		sessions,
+		agents,
 		conversationsBySession,
 		loadingModels,
 		isResponding,
@@ -534,5 +572,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		getConversation,
 		getActiveMessages,
 		switchAlternative,
+		fetchAgents,
+		fetchAgent,
+		createAgent,
+		updateAgent,
+		deleteAgent,
 	};
 });

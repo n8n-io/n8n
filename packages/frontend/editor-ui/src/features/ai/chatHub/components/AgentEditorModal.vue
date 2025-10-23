@@ -1,0 +1,236 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import Modal from '@/components/Modal.vue';
+import { createEventBus } from '@n8n/utils/event-bus';
+import type { ChatHubConversationModel } from '@n8n/api-types';
+import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useI18n } from '@n8n/i18n';
+
+const props = defineProps<{
+	agentId?: string;
+}>();
+
+const emit = defineEmits<{
+	save: [];
+	close: [];
+}>();
+
+const chatStore = useChatStore();
+const i18n = useI18n();
+const modalBus = ref(createEventBus());
+
+const name = ref('');
+const description = ref('');
+const systemPrompt = ref('');
+const selectedModel = ref<ChatHubConversationModel | null>(null);
+const isLoading = ref(false);
+const isSaving = ref(false);
+
+const isEditMode = computed(() => !!props.agentId);
+const title = computed(() =>
+	isEditMode.value
+		? i18n.baseText('chatHub.agent.editor.title.edit')
+		: i18n.baseText('chatHub.agent.editor.title.new'),
+);
+const saveButtonLabel = computed(() =>
+	isSaving.value
+		? i18n.baseText('chatHub.agent.editor.saving')
+		: i18n.baseText('chatHub.agent.editor.save'),
+);
+
+const isValid = computed(() => {
+	return name.value.trim().length > 0 && systemPrompt.value.trim().length > 0;
+});
+
+onMounted(async () => {
+	if (props.agentId) {
+		isLoading.value = true;
+		try {
+			const agent = await chatStore.fetchAgent(props.agentId);
+			name.value = agent.name;
+			description.value = agent.description ?? '';
+			systemPrompt.value = agent.systemPrompt;
+			if (agent.provider && agent.model) {
+				selectedModel.value = {
+					provider: agent.provider,
+					model: agent.model,
+					workflowId: agent.workflowId,
+				};
+			}
+		} finally {
+			isLoading.value = false;
+		}
+	}
+});
+
+function onModelChange(model: ChatHubConversationModel) {
+	selectedModel.value = model;
+}
+
+async function onSave() {
+	if (!isValid.value || isSaving.value) return;
+
+	isSaving.value = true;
+	try {
+		const payload = {
+			name: name.value.trim(),
+			description: description.value.trim() || undefined,
+			systemPrompt: systemPrompt.value.trim(),
+			provider: selectedModel.value?.provider,
+			model: selectedModel.value?.model,
+			workflowId: selectedModel.value?.workflowId ?? undefined,
+		};
+
+		if (isEditMode.value && props.agentId) {
+			await chatStore.updateAgent(props.agentId, payload);
+		} else {
+			await chatStore.createAgent(payload);
+		}
+
+		emit('save');
+		modalBus.value.emit('close');
+	} finally {
+		isSaving.value = false;
+	}
+}
+
+function onCancel() {
+	emit('close');
+	modalBus.value.emit('close');
+}
+</script>
+
+<template>
+	<Modal
+		name="agentEditor"
+		:event-bus="modalBus"
+		width="600px"
+		:center="true"
+		max-width="90%"
+		min-height="400px"
+	>
+		<template #header>
+			<div :class="$style.header">
+				<h2 :class="$style.title">{{ title }}</h2>
+			</div>
+		</template>
+		<template #content>
+			<div v-if="isLoading" :class="$style.loading">
+				<N8nText>{{ i18n.baseText('chatHub.agent.editor.loading') }}</N8nText>
+			</div>
+			<div v-else :class="$style.content">
+				<div :class="$style.field">
+					<N8nText tag="label" size="small" bold :class="$style.label">{{
+						i18n.baseText('chatHub.agent.editor.name.label')
+					}}</N8nText>
+					<N8nInput
+						v-model="name"
+						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
+						:maxlength="256"
+						:class="$style.input"
+					/>
+				</div>
+
+				<div :class="$style.field">
+					<N8nText tag="label" size="small" bold :class="$style.label">{{
+						i18n.baseText('chatHub.agent.editor.description.label')
+					}}</N8nText>
+					<N8nInput
+						v-model="description"
+						type="textarea"
+						:placeholder="i18n.baseText('chatHub.agent.editor.description.placeholder')"
+						:maxlength="512"
+						:rows="3"
+						:class="$style.input"
+					/>
+				</div>
+
+				<div :class="$style.field">
+					<N8nText tag="label" size="small" bold :class="$style.label">{{
+						i18n.baseText('chatHub.agent.editor.systemPrompt.label')
+					}}</N8nText>
+					<N8nInput
+						v-model="systemPrompt"
+						type="textarea"
+						:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
+						:rows="6"
+						:class="$style.input"
+					/>
+				</div>
+
+				<div :class="$style.field">
+					<N8nText tag="label" size="small" bold :class="$style.label">{{
+						i18n.baseText('chatHub.agent.editor.model.label')
+					}}</N8nText>
+					<ModelSelector
+						:models="chatStore.models ?? null"
+						:selected-model="selectedModel"
+						@change="onModelChange"
+					/>
+				</div>
+			</div>
+		</template>
+		<template #footer>
+			<div :class="$style.footer">
+				<N8nButton type="tertiary" @click="onCancel">
+					{{ i18n.baseText('chatHub.agent.editor.cancel') }}
+				</N8nButton>
+				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+					{{ saveButtonLabel }}
+				</N8nButton>
+			</div>
+		</template>
+	</Modal>
+</template>
+
+<style lang="scss" module>
+.title {
+	font-size: var(--font-size--lg);
+	line-height: var(--line-height--md);
+	margin: 0;
+}
+
+.header {
+	display: flex;
+	gap: var(--spacing--2xs);
+	align-items: center;
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+	padding: var(--spacing--sm) 0;
+}
+
+.loading {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: var(--spacing--xl) 0;
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.label {
+	display: block;
+}
+
+.input {
+	width: 100%;
+}
+
+.footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+</style>

@@ -137,3 +137,34 @@ export interface ChatHubConversationResponse {
 	session: ChatHubSessionDto;
 	conversation: ChatHubConversationDto;
 }
+
+export interface ChatHubAgentDto {
+	id: string;
+	name: string;
+	description: string | null;
+	systemPrompt: string;
+	ownerId: string;
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export class ChatHubCreateAgentRequest extends Z.class({
+	name: z.string().min(1).max(256),
+	description: z.string().max(512).optional(),
+	systemPrompt: z.string().min(1),
+	provider: chatHubProviderSchema.optional(),
+	model: z.string().max(64).optional(),
+	workflowId: z.string().uuid().optional(),
+}) {}
+
+export class ChatHubUpdateAgentRequest extends Z.class({
+	name: z.string().min(1).max(256).optional(),
+	description: z.string().max(512).optional(),
+	systemPrompt: z.string().min(1).optional(),
+	provider: chatHubProviderSchema.optional(),
+	model: z.string().max(64).optional(),
+	workflowId: z.string().uuid().optional(),
+}) {}
