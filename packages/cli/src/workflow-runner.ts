@@ -45,9 +45,23 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { EventService } from './events/event.service';
 
+interface BenchmarkMeasurement {
+	executionId: string;
+	timestamp: number;
+	// Timing
+	startTime: number;
+	endTime: number;
+	duration: number;
+	// Memory (bytes)
+	mainMemoryBefore: number;
+	mainMemoryAfter: number;
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
+	// Track execution start times for benchmarking
+	private executionStartTimes = new Map<string, { startTime: number; memoryBefore: number }>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -63,6 +77,17 @@ export class WorkflowRunner {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 	) {}
+
+	/**
+	 * Write benchmark measurement to JSONL file
+	 */
+	private async writeBenchmarkMeasurement(measurement: BenchmarkMeasurement): Promise<void> {
+		const fs = await import('fs/promises');
+		const path = await import('path');
+		const filePath = path.join(process.cwd(), 'benchmark-results-synchronous.jsonl');
+		const line = JSON.stringify(measurement) + '\n';
+		await fs.appendFile(filePath, line, 'utf-8');
+	}
 
 	/** The process did error */
 	async processError(
@@ -283,6 +308,14 @@ export class WorkflowRunner {
 				pushRef: data.pushRef,
 			});
 
+			// Record start time and memory before execution
+			const startTime = Date.now();
+			const memoryBefore = process.memoryUsage().heapUsed;
+			this.executionStartTimes.set(executionId, {
+				startTime,
+				memoryBefore,
+			});
+
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
@@ -336,6 +369,27 @@ export class WorkflowRunner {
 						fullRunData.finished = false;
 					}
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
+
+					// Record benchmark measurement
+					const startInfo = this.executionStartTimes.get(executionId);
+					if (startInfo) {
+						const endTime = Date.now();
+						const memoryAfter = process.memoryUsage().heapUsed;
+
+						const measurement: BenchmarkMeasurement = {
+							executionId,
+							timestamp: endTime,
+							startTime: startInfo.startTime,
+							endTime,
+							duration: endTime - startInfo.startTime,
+							mainMemoryBefore: startInfo.memoryBefore,
+							mainMemoryAfter: memoryAfter,
+						};
+
+						void this.writeBenchmarkMeasurement(measurement);
+						this.executionStartTimes.delete(executionId);
+					}
+
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
