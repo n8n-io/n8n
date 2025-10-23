@@ -482,18 +482,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					return '';
 				});
 
+				// Test variables (not used in getPath call but kept for test context)
 				const body = { name: 'Test File.txt' };
 				const qs = { $select: 'id,name' };
-				const headers = { 'Content-Type': 'application/json' };
 
-				await getPath.call(
-					mockExecuteFunctions,
-					'/drive/root/children',
-					body,
-					qs,
-					undefined,
-					headers,
-				);
+				await getPath.call(mockExecuteFunctions, '/drive/root/children');
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
@@ -514,7 +507,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				const mockResponse = { data: 'test data' };
 				mockRequestOAuth2.mockResolvedValue(mockResponse);
 
-				await getPath.call(mockExecuteFunctions, '/drive/root/children', {}, {});
+				await getPath.call(mockExecuteFunctions, '/drive/root/children');
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
