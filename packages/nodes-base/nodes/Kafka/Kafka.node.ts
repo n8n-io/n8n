@@ -16,6 +16,8 @@ import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-w
 
 import { generatePairedItemData } from '../../utils/utilities';
 
+import { mskIamAuthProvider } from './mskIamAuthProvider';
+
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka',
@@ -227,17 +229,36 @@ export class Kafka implements INodeType {
 						brokers,
 						ssl,
 					};
-					if (credentials.authentication === true) {
-						if (!(credentials.username && credentials.password)) {
-							throw new ApplicationError('Username and password are required for authentication', {
-								level: 'warning',
-							});
-						}
-						config.sasl = {
-							username: credentials.username as string,
-							password: credentials.password as string,
-							mechanism: credentials.saslMechanism as string,
-						} as SASLOptions;
+
+					switch (credentials.authMode) {
+						case 'userpass':
+							if (!(credentials.username && credentials.password)) {
+								throw new ApplicationError(
+									'Username and password are required for authentication',
+									{
+										level: 'warning',
+									},
+								);
+							}
+							config.sasl = {
+								username: credentials.username as string,
+								password: credentials.password as string,
+								mechanism: credentials.saslMechanism as string,
+							} as SASLOptions;
+							break;
+
+						case 'awsIam':
+							// AWS IAM MSK Auth configuration
+							config.ssl = true; // required for IAM
+							config.sasl = {
+								mechanism: 'aws',
+								authenticationProvider: mskIamAuthProvider(),
+							} as unknown as SASLOptions;
+							break;
+
+						default:
+							// no auth
+							break;
 					}
 
 					const kafka = new apacheKafka(config);
@@ -298,18 +319,33 @@ export class Kafka implements INodeType {
 				ssl,
 			};
 
-			if (credentials.authentication === true) {
-				if (!(credentials.username && credentials.password)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Username and password are required for authentication',
-					);
-				}
-				config.sasl = {
-					username: credentials.username as string,
-					password: credentials.password as string,
-					mechanism: credentials.saslMechanism as string,
-				} as SASLOptions;
+			switch (credentials.authMode) {
+				case 'userpass':
+					if (!(credentials.username && credentials.password)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Username and password are required for authentication',
+						);
+					}
+					config.sasl = {
+						username: credentials.username as string,
+						password: credentials.password as string,
+						mechanism: credentials.saslMechanism as string,
+					} as SASLOptions;
+					break;
+
+				case 'awsIam':
+					// AWS IAM MSK Auth configuration
+					config.ssl = true; // required for IAM
+					config.sasl = {
+						mechanism: 'aws',
+						authenticationProvider: mskIamAuthProvider(),
+					} as unknown as SASLOptions;
+					break;
+
+				default:
+					// no auth
+					break;
 			}
 
 			const kafka = new apacheKafka(config);
