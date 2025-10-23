@@ -245,11 +245,6 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
-		const provisioningConfig = await this.provisioningService.getConfig();
-		const provisioningEnabled =
-			provisioningConfig.scopesProvisionInstanceRole ||
-			provisioningConfig.scopesProvisionProjectRoles;
-
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: {
@@ -260,12 +255,7 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			if (provisioningEnabled) {
-				await this.provisioningService.provisionInstanceRoleForUser(
-					openidUser.user,
-					claims.n8n_instance_role,
-				);
-			}
+			await this.applySsoProvisioning(openidUser.user, claims);
 
 			return openidUser.user;
 		}
@@ -312,12 +302,26 @@ export class OidcService {
 				}),
 			);
 
-			if (provisioningEnabled) {
-				await this.provisioningService.provisionInstanceRoleForUser(user, claims.n8n_instance_role);
-			}
+			await this.applySsoProvisioning(user, claims);
 
 			return user;
 		});
+	}
+
+	private async applySsoProvisioning(user: User, claims: any) {
+		const provisioningConfig = await this.provisioningService.getConfig();
+		if (await this.provisioningService.isInstanceRoleProvisioningEnabled()) {
+			await this.provisioningService.provisionInstanceRoleForUser(
+				user,
+				claims[provisioningConfig.scopesInstanceRoleClaimName],
+			);
+		}
+		if (await this.provisioningService.isProjectRolesProvisioningEnabled()) {
+			await this.provisioningService.provisionProjectRolesForUser(
+				user.id,
+				claims[provisioningConfig.scopesProjectsRolesClaimName],
+			);
+		}
 	}
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
