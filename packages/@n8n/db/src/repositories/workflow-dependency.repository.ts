@@ -20,6 +20,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		workflowId: string,
 		dependencies: WorkflowDependency[],
 	): Promise<boolean> {
+		// Handle empty dependencies (cleanup scenario)
+		if (dependencies.length === 0) {
+			return await this.manager.transaction(async (tx) => {
+				const deleteResult = await tx.delete(WorkflowDependency, { workflowId });
+				return deleteResult.affected !== undefined && deleteResult.affected > 0;
+			});
+		}
+
 		const incomingVersionId = this.validateDependencies(dependencies);
 		return await this.manager.transaction(async (tx) => {
 			// Delete only dependencies with older versions
