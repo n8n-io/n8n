@@ -28,7 +28,7 @@ export function evaluateAgentPrompt(workflow: SimpleWorkflow): SingleEvaluatorRe
 
 			// Only check when promptType is 'define' or undefined (default)
 			// 'auto' mode means it uses text from previous node
-			if (promptType !== 'auto') {
+			if (promptType !== 'auto' && promptType !== 'guardrails') {
 				if (!textParam || !containsExpression(textParam)) {
 					violations.push({
 						type: 'minor',

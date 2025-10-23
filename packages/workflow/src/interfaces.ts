@@ -1014,8 +1014,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 					inputData: INodeExecutionData[],
 					options: { itemData: IPairedItemData | IPairedItemData[] },
 				): NodeExecutionWithMetadata[];
-				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
-				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+				assertBinaryData(itemIndex: number, parameterData: string | IBinaryData): IBinaryData;
+				getBinaryDataBuffer(
+					itemIndex: number,
+					parameterData: string | IBinaryData,
+				): Promise<Buffer>;
 				detectBinaryEncoding(buffer: Buffer): string;
 				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
@@ -1355,6 +1358,7 @@ export type SQLDialect =
 	| 'StandardSQL'
 	| 'PostgreSQL'
 	| 'MySQL'
+	| 'OracleDB'
 	| 'MariaSQL'
 	| 'MSSQL'
 	| 'SQLite'
@@ -1426,7 +1430,6 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
-	hideDeleteOption?: boolean; // Supported by: fixedCollection. Hides delete button for fixed collection parameters.
 	calloutAction?: CalloutAction; // Supported by: callout
 	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;

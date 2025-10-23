@@ -16,7 +16,7 @@ import { useI18n } from '@n8n/i18n';
 import ParameterInputList from './ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 
@@ -82,9 +82,6 @@ const getProperties = computed(() => {
 });
 const multipleValues = computed(() => {
 	return !!props.parameter.typeOptions?.multipleValues;
-});
-const hideDeleteOption = computed(() => {
-	return !!props.parameter.typeOptions?.hideDeleteOption;
 });
 const parameterOptions = computed(() => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return [];
@@ -323,7 +320,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div v-if="!isReadOnly && !hideDeleteOption" class="icon-button">
+					<div v-if="!isReadOnly" class="icon-button">
 						<N8nIconButton
 							type="tertiary"
 							text

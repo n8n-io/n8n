@@ -6,6 +6,7 @@ import { NSFW_SYSTEM_PROMPT } from './actions/checks/nsfw';
 import { PII_NAME_MAP, PIIEntity } from './actions/checks/pii';
 import { PROMPT_INJECTION_DETECTION_CHECK_PROMPT } from './actions/checks/promptInjection';
 import { TOPICAL_ALIGNMENT_SYSTEM_PROMPT } from './actions/checks/topicalAlignment';
+import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
 const THRESHOLD_OPTION: INodeProperties = {
 	displayName: 'Threshold',
@@ -13,9 +14,13 @@ const THRESHOLD_OPTION: INodeProperties = {
 	type: 'number',
 	default: '',
 	description: 'Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)',
+	hint: 'Inputs scoring less than this will be treated as violations',
 };
 
-const getPromptOption: (defaultPrompt: string) => INodeProperties = (defaultPrompt: string) => ({
+const getPromptOption: (defaultPrompt: string, collapsed?: boolean) => INodeProperties = (
+	defaultPrompt: string,
+	collapsed = true,
+) => ({
 	displayName: 'Prompt',
 	name: 'prompt',
 	type: 'string',
@@ -23,7 +28,7 @@ const getPromptOption: (defaultPrompt: string) => INodeProperties = (defaultProm
 	description:
 		'The system prompt used by the guardrail. JSON output is enforced by the node automatically.',
 	typeOptions: {
-		rows: 6,
+		rows: collapsed ? 1 : 6,
 	},
 });
 
@@ -81,23 +86,28 @@ export const versionDescription: INodeTypeDescription = {
 		}}`,
 	properties: [
 		{
-			displayName: 'Input Text',
-			name: 'inputText',
-			type: 'string',
-			default: '',
-			typeOptions: {
-				rows: 4,
+			...promptTypeOptions,
+			options: promptTypeOptions.options!.filter(
+				(option) => 'value' in option && option.value !== 'guardrails',
+			),
+		},
+		{
+			...textFromPreviousNode,
+			displayName: 'Text to check',
+			displayOptions: {
+				show: {
+					promptType: ['auto'],
+				},
 			},
 		},
 		{
-			displayName: 'On Violation',
-			name: 'violationBehavior',
-			type: 'options',
-			default: 'routeToFailOutput',
-			options: [
-				{ name: 'Route to Fail Output', value: 'routeToFailOutput' },
-				{ name: 'Throw Error', value: 'throwError' },
-			],
+			...textInput,
+			displayName: 'Text to check',
+			displayOptions: {
+				show: {
+					promptType: ['define'],
+				},
+			},
 		},
 		{
 			displayName: 'Guardrails',
@@ -120,9 +130,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to jailbreak or bypass AI safety measures',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [wrapValue([getPromptOption(JAILBREAK_PROMPT), THRESHOLD_OPTION])],
 				},
 				{
@@ -131,9 +138,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to generate NSFW content',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [wrapValue([getPromptOption(NSFW_SYSTEM_PROMPT), THRESHOLD_OPTION])],
 				},
 				{
@@ -142,9 +146,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { mode: 'redact' } },
 					description: 'Detects attempts to generate PII content',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([
 							{
@@ -231,9 +232,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to inject prompt into the input text',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([getPromptOption(PROMPT_INJECTION_DETECTION_CHECK_PROMPT), THRESHOLD_OPTION]),
 					],
@@ -244,9 +242,6 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { mode: 'redact' } },
 					description: 'Detects attempts to use secret keys in the input text',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([
 							{
@@ -266,8 +261,8 @@ export const versionDescription: INodeTypeDescription = {
 								],
 							},
 							{
-								displayName: 'Permisiveness',
-								name: 'permisiveness',
+								displayName: 'Permissiveness',
+								name: 'permissiveness',
 								type: 'options',
 								default: 'strict',
 								options: [
@@ -291,22 +286,28 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to stray from the business scope',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
-						wrapValue([getPromptOption(TOPICAL_ALIGNMENT_SYSTEM_PROMPT), THRESHOLD_OPTION]),
+						wrapValue([
+							{
+								...getPromptOption(TOPICAL_ALIGNMENT_SYSTEM_PROMPT, false),
+								hint: 'Make sure you replace the placeholder.',
+							},
+							// {
+							// 	displayName: 'Make sure you replace the placeholder.',
+							// 	name: 'promptNotice',
+							// 	default: '',
+							// 	type: 'notice',
+							// },
+							THRESHOLD_OPTION,
+						]),
 					],
 				},
 				{
 					displayName: 'URLs',
 					name: 'urls',
 					type: 'fixedCollection',
-					default: { value: { allowedSchemes: 'https' } },
+					default: { value: { allowedSchemes: ['https'] } },
 					description: 'Blocks URLs that are not in the allowed list',
-					typeOptions: {
-						hideOptionDelete: true,
-					},
 					options: [
 						wrapValue([
 							{
@@ -398,12 +399,22 @@ export const versionDescription: INodeTypeDescription = {
 									default: '',
 									description: 'Name of the custom guardrail',
 								},
-								getPromptOption(''),
+								getPromptOption('', false),
 								THRESHOLD_OPTION,
 							],
 						},
 					],
 				},
+			],
+		},
+		{
+			displayName: 'On Violation',
+			name: 'violationBehavior',
+			type: 'options',
+			default: 'routeToFailOutput',
+			options: [
+				{ name: "Route to 'Fail' Output", value: 'routeToFailOutput' },
+				{ name: 'Throw Error', value: 'throwError' },
 			],
 		},
 	],
