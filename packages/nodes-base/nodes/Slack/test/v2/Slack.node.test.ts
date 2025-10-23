@@ -151,7 +151,7 @@ describe('SlackV2', () => {
 		});
 	});
 
-	describe('Channel Operations - History, Invite, Leave, Members, etc. (lines 559-808)', () => {
+	describe('Channel Operations - History, Invite, Leave, Members, etc.', () => {
 		it('should get channel history with pagination', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
@@ -612,7 +612,7 @@ describe('SlackV2', () => {
 		});
 	});
 
-	describe('Message Operations - Ephemeral Messages (lines 828-843)', () => {
+	describe('Message Operations - Ephemeral Messages', () => {
 		beforeEach(() => {
 			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
 			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
@@ -739,7 +739,7 @@ describe('SlackV2', () => {
 		});
 	});
 
-	describe('Reaction and Star Operations (lines 970-1065)', () => {
+	describe('Reaction and Star Operations', () => {
 		describe('Reaction Operations', () => {
 			it('should add reaction to message', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
@@ -1024,7 +1024,7 @@ describe('SlackV2', () => {
 		});
 	});
 
-	describe('File Upload Operations - Setup (lines 1076-1081)', () => {
+	describe('File Upload Operations - Setup', () => {
 		it('should set up file upload options correctly', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
@@ -1050,7 +1050,7 @@ describe('SlackV2', () => {
 		});
 	});
 
-	describe('File Upload Operations - Binary Data Handling (lines 1094-1275)', () => {
+	describe('File Upload Operations - Binary Data Handling', () => {
 		beforeEach(() => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
@@ -1379,7 +1379,7 @@ describe('SlackV2', () => {
 		});
 	});
 
-	describe('Error Handling with continueOnFail (lines 1420-1426)', () => {
+	describe('Error Handling with continueOnFail', () => {
 		it('should continue execution on API error when continueOnFail is true', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
