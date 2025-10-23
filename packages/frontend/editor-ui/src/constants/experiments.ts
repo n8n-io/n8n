@@ -87,12 +87,6 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 	variant: 'variant',
 };
 
-export const PROJECT_VARIABLES_EXPERIMENT = {
-	name: '046_project_variables',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
@@ -102,5 +96,4 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
-	PROJECT_VARIABLES_EXPERIMENT.name,
 ];
