@@ -231,6 +231,7 @@ function registerAuthenticationHooks() {
 		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
+		void settingsStore.getSettings();
 		void settingsStore.getModuleSettings();
 	});
 
