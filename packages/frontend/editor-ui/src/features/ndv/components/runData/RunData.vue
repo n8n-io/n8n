@@ -35,8 +35,8 @@ import {
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	RUN_DATA_DEFAULT_PAGE_SIZE,
-	DUMMY_PIN_DATA,
 } from '@/constants';
+import { DUMMY_PIN_DATA } from '@/constants/samples';
 
 import BinaryDataDisplay from './BinaryDataDisplay.vue';
 import NodeErrorView from './error/NodeErrorView.vue';
