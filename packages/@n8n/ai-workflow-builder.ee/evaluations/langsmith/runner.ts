@@ -12,6 +12,7 @@ import {
 	safeExtractUsage,
 	isWorkflowStateValues,
 	extractMessageContent,
+	generateExperimentName,
 } from '../types/langsmith';
 import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluation-helpers';
 
@@ -128,12 +129,15 @@ export async function runLangsmithEvaluation(repetitions: number = 1): Promise<v
 		// Create evaluator with both LLM-based and programmatic evaluation
 		const evaluator = createLangsmithEvaluator(llm, parsedNodeTypes);
 
+		// Generate experiment name with date, model, and UUID
+		const experimentPrefix = generateExperimentName(llm);
+
 		// Run Langsmith evaluation
 		const results = await evaluate(generateWorkflow, {
 			data: datasetName,
 			evaluators: [evaluator],
 			maxConcurrency: 7,
-			experimentPrefix: 'workflow-builder-evaluation',
+			experimentPrefix,
 			numRepetitions: repetitions,
 			metadata: {
 				evaluationType: 'llm-based',
@@ -146,9 +150,7 @@ export async function runLangsmithEvaluation(repetitions: number = 1): Promise<v
 
 		// Display results information
 		console.log('\nView detailed results in Langsmith dashboard');
-		console.log(
-			`Experiment name: workflow-builder-evaluation-${new Date().toISOString().split('T')[0]}`,
-		);
+		console.log(`Experiment name: ${experimentPrefix}`);
 
 		// Log summary of results if available
 		if (results) {

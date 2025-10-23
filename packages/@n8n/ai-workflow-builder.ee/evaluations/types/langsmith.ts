@@ -110,6 +110,44 @@ export function generateRunId(): string {
 	return `eval-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
+/**
+ * Extract model name from LLM instance
+ * @param llm - The LLM instance used by the workflow builder
+ * @returns The model name string
+ */
+export function extractModelName(llm: unknown): string {
+	const llmObj = llm as { model?: string; modelName?: string };
+	return llmObj.model ?? llmObj.modelName ?? 'unknown';
+}
+
+/**
+ * Format model name to short identifier
+ * @param modelName - Full model name (e.g., "claude-sonnet-4-5", "gpt-4.1-mini-2025-04-14")
+ * @returns Shortened model identifier (e.g., "sonnet_4_5", "gpt_4_1_mini-2025-04-14")
+ */
+export function formatModelName(modelName: string): string {
+	// Replace dots and dashes with underscores
+	return modelName.replace(/[.-]/g, '_').toLowerCase();
+}
+
+/**
+ * Generate experiment name with date, model name, and UUID
+ * @param llm - The LLM instance used by the workflow builder
+ * @returns Formatted experiment name (e.g., "23_10_2025_sonnet_4_5_b32x0")
+ */
+export function generateExperimentName(llm: unknown): string {
+	const now = new Date();
+	const day = String(now.getDate()).padStart(2, '0');
+	const month = String(now.getMonth() + 1).padStart(2, '0');
+	const year = now.getFullYear();
+	const date = `${day}_${month}_${year}`;
+
+	const modelName = extractModelName(llm);
+	const formattedModel = formatModelName(modelName);
+
+	return `${formattedModel}_${date}`;
+}
+
 // Validate and extract message content
 export function extractMessageContent(message: BaseMessage | undefined): string {
 	if (!message) {
