@@ -20,8 +20,26 @@ export class WorkflowIndexService {
 			// eslint-disable-next-line @typescript-eslint/return-await
 			return this.buildIndex();
 		});
+		this.eventService.on('workflow-created', async ({ workflow }) => {
+			await this.updateIndexFor(workflow);
+		});
 		this.eventService.on('workflow-saved', async ({ workflow }) => {
 			await this.updateIndexFor(workflow);
+		});
+		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
+			// Updating with an empty list effectively removes the existing dependencies.
+			await this.dependencyRepository.updateDependenciesForWorkflow(workflowId, []);
+		});
+		this.eventService.on('workflow-archived', async ({ workflowId }) => {
+			// Updating with an empty list effectively removes the existing dependencies.
+			await this.dependencyRepository.updateDependenciesForWorkflow(workflowId, []);
+		});
+		this.eventService.on('workflow-unarchived', async ({ workflowId }) => {
+			await this.workflowRepository.findOneBy({ id: workflowId }).then(async (workflow) => {
+				if (workflow) {
+					await this.updateIndexFor(workflow);
+				}
+			});
 		});
 	}
 
@@ -34,7 +52,15 @@ export class WorkflowIndexService {
 		}
 	}
 
-	private async updateIndexFor(workflow: IWorkflowBase) {
+	/**
+	 * Update the dependency index for a given workflow.
+	 *
+	 * NOTE: this should generally be handled via events, rather than called directly.
+	 * The exception is during workflow imports where it's simpler to call directly.
+	 *
+	 * @param workflow
+	 */
+	async updateIndexFor(workflow: IWorkflowBase) {
 		// TODO: input validation.
 		// Generate the dependency updates for the given workflow.
 		const dependencyUpdates: WorkflowDependency[] = [];

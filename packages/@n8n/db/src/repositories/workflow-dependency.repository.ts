@@ -56,10 +56,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * @throws Error if validation fails
 	 */
 	private validateDependencies(dependencies: WorkflowDependency[]): number {
-		if (dependencies.length === 0) {
-			throw new Error('Dependencies array must not be empty');
-		}
-
 		const versionId = dependencies[0].workflowVersionId;
 
 		const allSameVersion = dependencies.every((dep) => dep.workflowVersionId === versionId);
