@@ -8,6 +8,7 @@ import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
 	agentId?: string;
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 const chatStore = useChatStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
+const toast = useToast();
 const modalBus = ref(createEventBus());
 
 const name = ref('');
@@ -108,12 +110,24 @@ async function onSave() {
 
 		if (isEditMode.value && props.agentId) {
 			await chatStore.updateAgent(props.agentId, payload);
+			toast.showMessage({
+				title: i18n.baseText('chatHub.agent.editor.success.update'),
+				type: 'success',
+			});
 		} else {
 			await chatStore.createAgent(payload);
+			toast.showMessage({
+				title: i18n.baseText('chatHub.agent.editor.success.create'),
+				type: 'success',
+			});
 		}
 
 		emit('save');
 		modalBus.value.emit('close');
+	} catch (error) {
+		const errorMessage =
+			error instanceof Error ? error.message : i18n.baseText('chatHub.agent.editor.error.save');
+		toast.showError(error, errorMessage);
 	} finally {
 		isSaving.value = false;
 	}
@@ -187,6 +201,7 @@ function onCancel() {
 					<ModelSelector
 						:models="chatStore.models ?? null"
 						:selected-model="selectedModel"
+						:include-custom-agents="false"
 						@change="onModelChange"
 					/>
 				</div>

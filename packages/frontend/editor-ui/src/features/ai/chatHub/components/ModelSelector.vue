@@ -16,12 +16,18 @@ import { useI18n } from '@n8n/i18n';
 
 import type { ChatHubAgentDto } from '@n8n/api-types';
 
-const props = defineProps<{
-	models: ChatModelsResponse | null;
-	selectedModel: ChatHubConversationModel | null;
-	credentialsName?: string;
-	agents?: ChatHubAgentDto[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		models: ChatModelsResponse | null;
+		selectedModel: ChatHubConversationModel | null;
+		credentialsName?: string;
+		agents?: ChatHubAgentDto[];
+		includeCustomAgents?: boolean;
+	}>(),
+	{
+		includeCustomAgents: true,
+	},
+);
 
 const emit = defineEmits<{
 	change: [ChatHubConversationModel];
@@ -88,7 +94,7 @@ const menu = computed(() => {
 		};
 	});
 
-	return [agentMenu, ...providerMenus];
+	return props.includeCustomAgents ? [agentMenu, ...providerMenus] : providerMenus;
 });
 
 const selectedLabel = computed(() => {
