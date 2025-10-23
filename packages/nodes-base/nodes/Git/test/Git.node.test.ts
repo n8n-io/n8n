@@ -25,6 +25,7 @@ const mockGit = {
 	listConfig: jest.fn(),
 	status: jest.fn(),
 	addTag: jest.fn(),
+	raw: jest.fn(),
 	env: jest.fn().mockReturnThis(),
 } as unknown as jest.Mocked<SimpleGit>;
 
@@ -599,6 +600,115 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.addTag).toHaveBeenCalledWith('v1.0.0');
+		});
+
+		it('should handle reflog operation with default HEAD reference', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({}) // options - no custom reference
+				.mockReturnValueOnce(false) // returnAll
+				.mockReturnValueOnce(10); // limit
+
+			const mockReflogOutput = `abc123 HEAD@{0}: commit: Update README
+def456 HEAD@{1}: pull: Fast-forward
+789xyz HEAD@{2}: checkout: moving from main to feature`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.raw).toHaveBeenCalledWith(['reflog', 'HEAD']);
+			expect(result[0]).toHaveLength(3);
+			expect(result[0][0]).toEqual({
+				json: {
+					hash: 'abc123',
+					ref: 'HEAD@{0}',
+					action: 'commit',
+					message: 'Update README',
+					raw: 'abc123 HEAD@{0}: commit: Update README',
+				},
+				pairedItem: { item: 0 },
+			});
+		});
+
+		it('should handle reflog operation with custom reference', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ reference: 'main' }) // custom reference
+				.mockReturnValueOnce(false) // returnAll
+				.mockReturnValueOnce(10); // limit
+
+			const mockReflogOutput = `abc123 main@{0}: commit: Feature complete
+def456 main@{1}: commit: Initial commit`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.raw).toHaveBeenCalledWith(['reflog', 'main']);
+			expect(result[0]).toHaveLength(2);
+		});
+
+		it('should handle reflog operation with limit', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce(false) // returnAll = false
+				.mockReturnValueOnce(2); // limit = 2
+
+			const mockReflogOutput = `abc123 HEAD@{0}: commit: First
+def456 HEAD@{1}: commit: Second
+789xyz HEAD@{2}: commit: Third
+012abc HEAD@{3}: commit: Fourth`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(2); // Should only return 2 entries
+			expect(result[0][0].json.hash).toBe('abc123');
+			expect(result[0][1].json.hash).toBe('def456');
+		});
+
+		it('should handle reflog operation with returnAll option', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce(true); // returnAll = true
+
+			const mockReflogOutput = `abc123 HEAD@{0}: commit: First
+def456 HEAD@{1}: commit: Second
+789xyz HEAD@{2}: commit: Third
+012abc HEAD@{3}: commit: Fourth`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(4); // Should return all entries
+		});
+
+		it('should handle reflog with unparseable lines', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce(true); // returnAll
+
+			const mockReflogOutput = `abc123 HEAD@{0}: commit: Valid entry
+invalid line without proper format`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(2);
+			expect(result[0][0].json).toHaveProperty('hash');
+			expect(result[0][1].json).toEqual({ raw: 'invalid line without proper format' });
 		});
 	});
 
