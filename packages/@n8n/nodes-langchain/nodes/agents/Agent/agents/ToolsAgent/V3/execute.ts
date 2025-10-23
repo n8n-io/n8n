@@ -481,7 +481,7 @@ export async function toolsAgentExecute(
 					const currentIteration = (response?.metadata?.iterationCount ?? 0) + 1;
 
 					// Check if we've exceeded maxIterations
-					if (options.maxIterations && currentIteration >= options.maxIterations) {
+					if (options.maxIterations && currentIteration > options.maxIterations) {
 						throw new NodeOperationError(this.getNode(), 'Maximum iterations reached');
 					}
 
