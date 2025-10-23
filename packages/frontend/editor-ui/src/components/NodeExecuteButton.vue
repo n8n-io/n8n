@@ -15,7 +15,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';

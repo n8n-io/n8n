@@ -16,6 +16,7 @@ import { OIDC_PREFERENCES_DB_KEY } from '../constants';
 import { OidcService } from '../oidc.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { OidcConfigDto } from '@n8n/api-types';
+import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 describe('OidcService', () => {
 	let oidcService: OidcService;
@@ -25,6 +26,7 @@ describe('OidcService', () => {
 	let cipher: Cipher;
 	let logger: Logger;
 	let jwtService: JwtService;
+	let provisioningService: ProvisioningService;
 
 	const mockOidcConfig = {
 		clientId: 'test-client-id',
@@ -56,6 +58,7 @@ describe('OidcService', () => {
 		cipher = mock<Cipher>();
 		logger = mockLogger();
 		jwtService = mock<JwtService>();
+		provisioningService = mock<ProvisioningService>();
 
 		jest
 			.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod')
@@ -71,6 +74,7 @@ describe('OidcService', () => {
 			logger,
 			jwtService,
 			instanceSettings,
+			provisioningService,
 		);
 
 		await oidcService.init();

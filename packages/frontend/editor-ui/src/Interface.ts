@@ -1,7 +1,5 @@
-import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
-	BannerName,
 	FrontendSettings,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
@@ -856,7 +854,8 @@ export type CloudUpdateLinkSourceType =
 	| 'insights'
 	| 'evaluations'
 	| 'ai-builder-sidebar'
-	| 'ai-builder-canvas';
+	| 'ai-builder-canvas'
+	| 'custom-roles';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -882,14 +881,8 @@ export type UTMCampaign =
 	| 'upgrade-debug'
 	| 'upgrade-insights'
 	| 'upgrade-evaluations'
-	| 'upgrade-builder';
-
-export type N8nBanners = {
-	[key in BannerName]: {
-		priority: number;
-		component: Component;
-	};
-};
+	| 'upgrade-builder'
+	| 'upgrade-custom-roles';
 
 export type AddedNode = {
 	type: string;
@@ -935,7 +928,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkerView'
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'
-	| 'EnforceMFA';
+	| 'EnforceMFA'
+	| 'Provisioning';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 
