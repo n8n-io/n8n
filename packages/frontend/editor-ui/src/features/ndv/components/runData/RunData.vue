@@ -34,8 +34,8 @@ import {
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	RUN_DATA_DEFAULT_PAGE_SIZE,
-	TEST_PIN_DATA,
 } from '@/constants';
+import { SAMPLE_PIN_DATA } from '@/constants/samples';
 
 import BinaryDataDisplay from './BinaryDataDisplay.vue';
 import NodeErrorView from './error/NodeErrorView.vue';
@@ -914,7 +914,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		? inputData.length
 		: Object.keys(inputData ?? {}).length;
 
-	const data = inputDataLength > 0 ? inputData : TEST_PIN_DATA;
+	const data = inputDataLength > 0 ? inputData : SAMPLE_PIN_DATA;
 
 	ndvStore.setOutputPanelEditModeEnabled(true);
 	ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
