@@ -1,0 +1,74 @@
+{
+	"name": "Memory node with disconnected agent tool",
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "chat-trigger-node",
+			"name": "Chat Trigger",
+			"type": "n8n-nodes-base.chatTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "parent-agent-node",
+			"name": "Parent Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.8,
+			"position": [280, 0]
+		},
+		{
+			"parameters": {},
+			"id": "memory-node",
+			"name": "Memory Node",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [280, 200]
+		},
+		{
+			"parameters": {},
+			"id": "disconnected-tool-node",
+			"name": "Disconnected Tool",
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"typeVersion": 1,
+			"position": [500, 200]
+		}
+	],
+	"connections": {
+		"Chat Trigger": {
+			"main": [
+				[
+					{
+						"node": "Parent Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Memory Node": {
+			"ai_memory": [
+				[
+					{
+						"node": "Parent Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			],
+			"ai_tool": [
+				[
+					{
+						"node": "Disconnected Tool",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

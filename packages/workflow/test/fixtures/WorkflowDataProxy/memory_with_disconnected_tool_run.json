@@ -1,0 +1,47 @@
+{
+	"data": {
+		"resultData": {
+			"runData": {
+				"Chat Trigger": [
+					{
+						"startTime": 1234567890000,
+						"executionTime": 0,
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"sessionId": "test-session-123",
+											"chatInput": "Hello"
+										}
+									}
+								]
+							]
+						},
+						"source": []
+					}
+				],
+				"Memory Node": [
+					{
+						"startTime": 1234567890001,
+						"executionTime": 0,
+						"data": {
+							"main": [
+								[
+									{
+										"json": {}
+									}
+								]
+							]
+						},
+						"source": [
+							{
+								"previousNode": "Chat Trigger"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

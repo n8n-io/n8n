@@ -954,6 +954,27 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('memory node with disconnected tool', () => {
+		const fixture = loadFixture('memory_with_disconnected_tool');
+
+		test('should resolve expressions referencing nodes connected via non-main connections', () => {
+			// This tests the fix for AI-1396: Memory node connected to both a parent agent
+			// (via AiMemory) and an agent tool (via AiTool) where the tool is NOT connected
+			// to the parent agent. The memory node should still be able to resolve expressions
+			// that reference the Chat Trigger node.
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Memory Node');
+
+			// This should not throw "No path back to node" error
+			expect(() => proxy.$('Chat Trigger').first().json.sessionId).not.toThrow();
+			expect(proxy.$('Chat Trigger').first().json.sessionId).toEqual('test-session-123');
+		});
+
+		test('should access chatInput from Chat Trigger', () => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Memory Node');
+			expect(proxy.$('Chat Trigger').first().json.chatInput).toEqual('Hello');
+		});
+	});
+
 	describe('multiple inputs', () => {
 		const fixture = loadFixture('multiple_inputs');
 
