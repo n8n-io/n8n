@@ -194,4 +194,37 @@ export = {
 			}
 		},
 	],
+	stopExecution: [
+		apiKeyHasScope('execution:delete'),
+		async (req: ExecutionRequest.Stop, res: express.Response): Promise<express.Response> => {
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
+
+			// user does not have workflows hence no executions
+			// or the execution they are trying to access belongs to a workflow they do not own
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const { id } = req.params;
+
+			// look for the execution on the workflow the user owns
+			const execution = await Container.get(
+				ExecutionRepository,
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
+
+			if (!execution) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			if (execution.status !== 'running') {
+				return res.status(400).json({
+					message: 'Cannot stop not running execution',
+				});
+			}
+
+			const result = await Container.get(ExecutionService).stop(id, sharedWorkflowsIds);
+
+			return res.json({ result });
+		},
+	],
 };
