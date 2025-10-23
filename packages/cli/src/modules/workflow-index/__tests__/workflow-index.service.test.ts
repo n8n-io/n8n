@@ -1,9 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
-import { WorkflowDependency, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
-import type { IWorkflowBase } from 'n8n-workflow';
+import {
+	type WorkflowDependency,
+	WorkflowDependencyRepository,
+	WorkflowRepository,
+	WorkflowEntity,
+} from '@n8n/db';
+import { v4 as uuid } from 'uuid';
 
-import { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service';
 import { WorkflowIndexService } from '../workflow-index.service';
 
 describe('WorkflowIndexService', () => {
@@ -12,8 +17,34 @@ describe('WorkflowIndexService', () => {
 	const logger = mockInstance(Logger);
 
 	// Create a mock EventService that captures event callbacks
-	let eventCallbacks: Map<string, Array<(...args: unknown[]) => void>>;
+	let eventCallbacks: Map<string, Array<(...args: unknown[]) => Promise<void>>>;
 	let eventService: EventService;
+
+	// Helper to create mock workflows with all required WorkflowEntity properties
+	const createMockWorkflow = (
+		partial: Partial<WorkflowEntity> & { id: string },
+	): WorkflowEntity => {
+		const workflow = new WorkflowEntity();
+		Object.assign(workflow, {
+			name: 'Test Workflow',
+			active: false,
+			versionCounter: 1,
+			connections: {},
+			nodes: [],
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			versionId: uuid(),
+			triggerCount: 0,
+			tagMappings: [],
+			shared: [],
+			statistics: [],
+			parentFolder: null,
+			testRuns: [],
+			...partial,
+		});
+		return workflow;
+	};
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -23,7 +54,7 @@ describe('WorkflowIndexService', () => {
 
 		// Create a mock EventService that captures callbacks
 		eventService = {
-			on: jest.fn((event: string, callback: (...args: unknown[]) => void) => {
+			on: jest.fn((event: string, callback: (...args: unknown[]) => Promise<void>) => {
 				if (!eventCallbacks.has(event)) {
 					eventCallbacks.set(event, []);
 				}
@@ -42,12 +73,8 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflow: IWorkflowBase = {
+			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
-				name: 'Test Workflow',
-				active: false,
-				versionCounter: 1,
-				connections: {},
 				nodes: [
 					{
 						id: 'node-1',
@@ -58,7 +85,7 @@ describe('WorkflowIndexService', () => {
 						parameters: {},
 					},
 				],
-			};
+			});
 
 			workflowRepository.find.mockResolvedValue([mockWorkflow]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
@@ -101,13 +128,11 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflows: IWorkflowBase[] = [
-				{
+			const mockWorkflows = [
+				createMockWorkflow({
 					id: 'workflow-1',
 					name: 'Workflow 1',
-					active: false,
 					versionCounter: 1,
-					connections: {},
 					nodes: [
 						{
 							id: 'node-1',
@@ -118,13 +143,11 @@ describe('WorkflowIndexService', () => {
 							parameters: {},
 						},
 					],
-				},
-				{
+				}),
+				createMockWorkflow({
 					id: 'workflow-2',
 					name: 'Workflow 2',
-					active: false,
 					versionCounter: 2,
-					connections: {},
 					nodes: [
 						{
 							id: 'node-2',
@@ -135,7 +158,7 @@ describe('WorkflowIndexService', () => {
 							parameters: {},
 						},
 					],
-				},
+				}),
 			];
 
 			workflowRepository.find.mockResolvedValue(mockWorkflows);
@@ -170,14 +193,11 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflow: IWorkflowBase = {
+			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
 				name: 'Empty Workflow',
-				active: false,
-				versionCounter: 1,
-				connections: {},
 				nodes: [],
-			};
+			});
 
 			workflowRepository.find.mockResolvedValue([mockWorkflow]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
@@ -208,12 +228,10 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflow: IWorkflowBase = {
+			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-456',
 				name: 'Updated Workflow',
-				active: false,
 				versionCounter: 2,
-				connections: {},
 				nodes: [
 					{
 						id: 'node-1',
@@ -224,7 +242,7 @@ describe('WorkflowIndexService', () => {
 						parameters: {},
 					},
 				],
-			};
+			});
 
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
@@ -265,12 +283,8 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflow: IWorkflowBase = {
+			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
-				name: 'Test Workflow',
-				active: false,
-				versionCounter: 1,
-				connections: {},
 				nodes: [
 					{
 						id: 'node-1',
@@ -289,7 +303,7 @@ describe('WorkflowIndexService', () => {
 						parameters: {},
 					},
 				],
-			};
+			});
 
 			workflowRepository.find.mockResolvedValue([mockWorkflow]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
@@ -326,12 +340,8 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflow: IWorkflowBase = {
+			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
-				name: 'Test Workflow',
-				active: false,
-				versionCounter: 1,
-				connections: {},
 				nodes: [
 					{
 						id: 'node-1',
@@ -348,7 +358,7 @@ describe('WorkflowIndexService', () => {
 						},
 					},
 				],
-			};
+			});
 
 			workflowRepository.find.mockResolvedValue([mockWorkflow]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
@@ -385,12 +395,9 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflow: IWorkflowBase = {
+			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
 				name: 'Parent Workflow',
-				active: false,
-				versionCounter: 1,
-				connections: {},
 				nodes: [
 					{
 						id: 'node-1',
@@ -403,7 +410,7 @@ describe('WorkflowIndexService', () => {
 						},
 					},
 				],
-			};
+			});
 
 			workflowRepository.find.mockResolvedValue([mockWorkflow]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
@@ -436,12 +443,9 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflow: IWorkflowBase = {
+			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
 				name: 'Webhook Workflow',
-				active: false,
-				versionCounter: 1,
-				connections: {},
 				nodes: [
 					{
 						id: 'node-1',
@@ -454,7 +458,7 @@ describe('WorkflowIndexService', () => {
 						},
 					},
 				],
-			};
+			});
 
 			workflowRepository.find.mockResolvedValue([mockWorkflow]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
@@ -487,12 +491,9 @@ describe('WorkflowIndexService', () => {
 				logger,
 			);
 
-			const mockWorkflow: IWorkflowBase = {
+			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-complex',
 				name: 'Complex Workflow',
-				active: false,
-				versionCounter: 1,
-				connections: {},
 				nodes: [
 					{
 						id: 'node-1',
@@ -529,7 +530,7 @@ describe('WorkflowIndexService', () => {
 						},
 					},
 				],
-			};
+			});
 
 			workflowRepository.find.mockResolvedValue([mockWorkflow]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);

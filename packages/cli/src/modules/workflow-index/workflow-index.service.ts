@@ -17,6 +17,7 @@ export class WorkflowIndexService {
 	init() {
 		this.eventService.on('server-started', async () => {
 			this.logger.info('Building workflow dependency index...');
+			// eslint-disable-next-line @typescript-eslint/return-await
 			return this.buildIndex();
 		});
 		this.eventService.on('workflow-saved', async ({ workflow }) => {
