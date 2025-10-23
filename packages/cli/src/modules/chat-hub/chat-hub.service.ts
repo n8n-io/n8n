@@ -1,7 +1,7 @@
 import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubProvider,
-	type LLMProvider,
+	type ChatHubLLMProvider,
 	type ChatModelsResponse,
 	type ChatHubConversationsResponse,
 	type ChatHubConversationResponse,
@@ -45,18 +45,6 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionService } from '@/executions/execution.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { CONVERSATION_TITLE_GENERATION_PROMPT } from './chat-hub.constants';
 import type {
@@ -71,7 +59,19 @@ import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
 import { captureResponseWrites } from './stream-capturer';
 
-const providerNodeTypeMapping: Record<LLMProvider, INodeTypeNameVersion> = {
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+
+const providerNodeTypeMapping: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {
 		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 		version: 1.2,
@@ -96,6 +96,15 @@ const NODE_NAMES = {
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
 } as const;
 
+/* eslint-disable @typescript-eslint/naming-convention */
+const JSONL_STREAM_HEADERS = {
+	'Content-Type': 'application/json-lines; charset=utf-8',
+	'Transfer-Encoding': 'chunked',
+	'Cache-Control': 'no-cache',
+	Connection: 'keep-alive',
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
 @Service()
 export class ChatHubService {
 	constructor(
@@ -116,7 +125,7 @@ export class ChatHubService {
 
 	async getModels(
 		user: User,
-		credentialIds: Record<LLMProvider, string | null>,
+		credentialIds: Record<ChatHubLLMProvider, string | null>,
 	): Promise<ChatModelsResponse> {
 		const additionalData = await getBase({ userId: user.id });
 		const providers = chatHubProviderSchema.options;
@@ -209,9 +218,9 @@ export class ChatHubService {
 
 		return {
 			models: resourceLocatorResults.results.map((result) => ({
+				provider: 'openai',
 				name: String(result.value),
 				model: String(result.value),
-				workflowId: null,
 			})),
 		};
 	}
@@ -231,9 +240,9 @@ export class ChatHubService {
 
 		return {
 			models: resourceLocatorResults.results.map((result) => ({
+				provider: 'anthropic',
 				name: String(result.value),
 				model: String(result.value),
-				workflowId: null,
 			})),
 		};
 	}
@@ -291,9 +300,9 @@ export class ChatHubService {
 
 		return {
 			models: results.map((result) => ({
+				provider: 'google',
 				name: String(result.value),
 				model: String(result.value),
-				workflowId: null,
 			})),
 		};
 	}
@@ -303,11 +312,13 @@ export class ChatHubService {
 		const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(user, nodeTypes);
 
 		return {
-			models: workflows.map((workflow) => ({
-				name: workflow.name ?? 'Unnamed workflow',
-				model: null,
-				workflowId: workflow.id,
-			})),
+			models: workflows
+				.filter((workflow) => workflow.active)
+				.map((workflow) => ({
+					provider: 'n8n',
+					name: workflow.name ?? 'Unnamed workflow',
+					workflowId: workflow.id,
+				})),
 		};
 	}
 
@@ -434,37 +445,17 @@ export class ChatHubService {
 
 	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
 		const { sessionId, messageId, replyId, message } = payload;
+		const provider = payload.model.provider;
 
 		const selectedModel: ModelWithCredentials = {
 			...payload.model,
 			credentialId:
-				payload.model.provider !== 'n8n'
-					? this.pickCredentialId(payload.model.provider, payload.credentials)
-					: null,
+				provider !== 'n8n' ? this.pickCredentialId(provider, payload.credentials) : null,
 		};
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
-			const credential = await this.ensureCredentials(
-				user,
-				payload.model,
-				payload.credentials,
-				trx,
-			);
 			const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
-
-			// Ensure that the previous message exists in the session
-			if (payload.previousMessageId) {
-				const previousMessage = await this.messageRepository.getOneById(
-					payload.previousMessageId,
-					sessionId,
-					[],
-					trx,
-				);
-				if (!previousMessage) {
-					throw new BadRequestError('The previous message does not exist in the session');
-				}
-			}
-
+			await this.ensurePreviousMessage(payload.previousMessageId, sessionId, trx);
 			const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 			const history = this.buildMessageHistory(messages, payload.previousMessageId);
 
@@ -477,56 +468,15 @@ export class ChatHubService {
 				trx,
 			);
 
-			if (payload.model.provider === 'n8n') {
-				const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
-					payload.model.workflowId,
-					user,
-					['workflow:read'],
-					{ includeTags: false, includeParentFolder: false },
-				);
-
-				if (!workflowEntity) {
-					throw new BadRequestError('Workflow not found');
-				}
-
-				// TODO: Find the start trigger node and set the trigger data accordingly
-				return {
-					workflowData: workflowEntity,
-					triggerToStartFrom: {
-						name: NODE_NAMES.CHAT_TRIGGER,
-						data: {
-							startTime: Date.now(),
-							executionTime: 0,
-							executionIndex: 0,
-							executionStatus: 'success',
-							data: {
-								main: [
-									[
-										{
-											json: {
-												sessionId,
-												action: 'sendMessage',
-												chatInput: 'hello world',
-											},
-										},
-									],
-								],
-							},
-							source: [null],
-						} satisfies ITaskData,
-					},
-				};
+			if (provider !== 'n8n') {
+				return await this.prepareBaseChatWorkflow(user, payload, sessionId, history, message, trx);
 			}
 
-			return await this.createChatWorkflow(
-				session.id,
-				credential.projectId,
-				history,
+			return await this.prepareCustomAgentWorkflow(
+				user,
+				sessionId,
+				payload.model.workflowId,
 				message,
-				payload.credentials,
-				payload.model,
-				payload.previousMessageId === null, // generate title on receiving the first human message only
-				trx,
 			);
 		});
 
@@ -541,7 +491,97 @@ export class ChatHubService {
 				selectedModel,
 			);
 		} finally {
-			await this.deleteChatWorkflow(workflow.workflowData.id);
+			if (provider !== 'n8n') {
+				await this.deleteChatWorkflow(workflow.workflowData.id);
+			}
+		}
+	}
+
+	private async prepareBaseChatWorkflow(
+		user: User,
+		payload: HumanMessagePayload,
+		sessionId: ChatSessionId,
+		history: ChatHubMessage[],
+		message: string,
+		trx: EntityManager,
+	) {
+		const credential = await this.ensureCredentials(user, payload.model, payload.credentials, trx);
+
+		return await this.createChatWorkflow(
+			sessionId,
+			credential.projectId,
+			history,
+			message,
+			payload.credentials,
+			payload.model,
+			payload.previousMessageId === null, // generate title on receiving the first human message only
+			trx,
+		);
+	}
+
+	private async prepareCustomAgentWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		workflowId: string,
+		message: string,
+	) {
+		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:read'],
+			{ includeTags: false, includeParentFolder: false },
+		);
+
+		if (!workflowEntity) {
+			throw new BadRequestError('Workflow not found');
+		}
+
+		// TODO: Find the start trigger node and set the trigger data accordingly
+		return {
+			workflowData: workflowEntity,
+			triggerToStartFrom: {
+				name: NODE_NAMES.CHAT_TRIGGER,
+				data: {
+					startTime: Date.now(),
+					executionTime: 0,
+					executionIndex: 0,
+					executionStatus: 'success',
+					data: {
+						main: [
+							[
+								{
+									json: {
+										sessionId,
+										action: 'sendMessage',
+										chatInput: message,
+									},
+								},
+							],
+						],
+					},
+					source: [null],
+				} satisfies ITaskData,
+			},
+		};
+	}
+
+	private async ensurePreviousMessage(
+		previousMessageId: ChatMessageId | null,
+		sessionId: string,
+		trx?: EntityManager,
+	) {
+		if (!previousMessageId) {
+			return;
+		}
+
+		const previousMessage = await this.messageRepository.getOneById(
+			previousMessageId,
+			sessionId,
+			[],
+			trx,
+		);
+		if (!previousMessage) {
+			throw new BadRequestError('The previous message does not exist in the session');
 		}
 	}
 
@@ -757,6 +797,8 @@ export class ChatHubService {
 		};
 
 		const stream = captureResponseWrites(res, onChunk);
+		stream.writeHead(200, JSONL_STREAM_HEADERS);
+		stream.flushHeaders();
 
 		const { executionId } = await this.workflowExecutionService.executeManually(
 			{

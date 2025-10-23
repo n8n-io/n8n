@@ -4,16 +4,16 @@ import { Z } from 'zod-class';
 /**
  * Supported AI model providers
  */
-export const llmProviderSchema = z.enum(['openai', 'anthropic', 'google']);
-export type LLMProvider = z.infer<typeof llmProviderSchema>;
+export const chatHubLLMProviderSchema = z.enum(['openai', 'anthropic', 'google']);
+export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
-export const chatHubProviderSchema = z.enum([...llmProviderSchema.options, 'n8n'] as const);
+export const chatHubProviderSchema = z.enum([...chatHubLLMProviderSchema.options, 'n8n'] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
 /**
  * Map of providers to their credential types
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<LLMProvider, string> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
@@ -24,21 +24,25 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<LLMProvider, string> = {
  */
 const openAIModelSchema = z.object({
 	provider: z.literal('openai'),
+	name: z.string(),
 	model: z.string(),
 });
 
 const anthropicModelSchema = z.object({
 	provider: z.literal('anthropic'),
+	name: z.string(),
 	model: z.string(),
 });
 
 const googleModelSchema = z.object({
 	provider: z.literal('google'),
+	name: z.string(),
 	model: z.string(),
 });
 
 const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
+	name: z.string(),
 	workflowId: z.string(),
 });
 
@@ -67,7 +71,7 @@ export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 export type ChatModelsResponse = Record<
 	ChatHubProvider,
 	{
-		models: Array<{ name: string; model: string | null; workflowId: string | null }>;
+		models: ChatHubConversationModel[];
 		error?: string;
 	}
 >;
