@@ -17,7 +17,7 @@ import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
-import { computed, ref } from 'vue';
+import { computed, ref, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 
 const rolesStore = useRolesStore();
@@ -232,7 +232,7 @@ function setPreset(slug: string) {
 		return;
 	}
 
-	form.value.scopes = structuredClone(preset.scopes);
+	form.value.scopes = structuredClone(toRaw(preset.scopes));
 }
 
 async function deleteRole() {
