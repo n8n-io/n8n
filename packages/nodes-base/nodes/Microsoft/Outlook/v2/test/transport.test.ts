@@ -202,7 +202,7 @@ describe('Microsoft Outlook V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOutlookOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://microsoftgraph.chinacloudapi.cn/me/messages',
+						uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/me/messages',
 					}),
 				);
 			});

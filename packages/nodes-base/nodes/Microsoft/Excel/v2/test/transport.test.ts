@@ -181,7 +181,7 @@ describe('Microsoft Excel V2 Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://microsoftgraph.chinacloudapi.cn/me/drive/root/children',
+						uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/me/drive/root/children',
 					}),
 				);
 			});

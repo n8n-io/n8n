@@ -53,7 +53,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/todo/lists',
+						uri: 'https://graph.microsoft.us/v1.0/me/todo/lists',
 					}),
 				);
 			});
@@ -69,7 +69,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/todo/lists',
+						uri: 'https://graph.microsoft.com/v1.0/me/todo/lists',
 					}),
 				);
 			});
@@ -88,7 +88,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/todo/lists',
+						uri: 'https://graph.microsoft.us/v1.0/me/todo/lists',
 					}),
 				);
 			});
@@ -107,7 +107,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/todo/lists',
+						uri: 'https://graph.microsoft.us/v1.0/me/todo/lists',
 					}),
 				);
 			});
@@ -124,7 +124,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/todo/lists', // falls back to default
+						uri: 'https://graph.microsoft.com/v1.0/me/todo/lists', // falls back to default
 					}),
 				);
 			});
@@ -142,7 +142,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/me/todo/lists', // falls back to default
+						uri: 'https://graph.microsoft.com/v1.0/me/todo/lists', // falls back to default
 					}),
 				);
 			});
@@ -162,7 +162,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://dod-graph.microsoft.us/me/todo/lists',
+						uri: 'https://dod-graph.microsoft.us/v1.0/me/todo/lists',
 					}),
 				);
 			});
@@ -181,7 +181,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://microsoftgraph.chinacloudapi.cn/me/todo/lists',
+						uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/me/todo/lists',
 					}),
 				);
 			});
@@ -200,7 +200,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/me/todo/lists/123/tasks',
+						uri: 'https://graph.microsoft.us/v1.0/me/todo/lists/123/tasks',
 					}),
 				);
 			});
@@ -234,7 +234,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
 						method: 'POST',
-						uri: 'https://graph.microsoft.us/me/todo/lists',
+						uri: 'https://graph.microsoft.us/v1.0/me/todo/lists',
 						body,
 						qs,
 						headers: expect.objectContaining({
@@ -255,7 +255,7 @@ describe('Microsoft ToDo GenericFunctions', () => {
 					'microsoftToDoOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/me/todo/lists',
+						uri: 'https://graph.microsoft.com/v1.0/me/todo/lists',
 						body: {},
 						qs: {},
 						json: true,
