@@ -9,6 +9,10 @@ interface PooledProcess {
 	busy: boolean;
 	lastUsed: Date;
 	currentExecutionId?: string;
+	/** Number of times this process has been reused */
+	reuseCount: number;
+	/** Timestamp when this process was spawned */
+	spawnedAt: Date;
 }
 
 interface PendingRequest {
@@ -66,8 +70,9 @@ export class ChildProcessPool {
 			idleProcess.busy = true;
 			idleProcess.currentExecutionId = executionId;
 			idleProcess.lastUsed = new Date();
+			idleProcess.reuseCount++;
 			console.log(
-				`[ChildProcessPool] Reusing process ${idleProcess.id} for execution ${executionId}`,
+				`[ChildProcessPool] Reusing process ${idleProcess.id} for execution ${executionId} (reuse count: ${idleProcess.reuseCount})`,
 			);
 			return idleProcess;
 		}
@@ -222,6 +227,7 @@ export class ChildProcessPool {
 	 */
 	private spawnProcess(): PooledProcess {
 		const id = randomUUID();
+		const now = new Date();
 
 		// Build execArgv with optional heap limit
 		const execArgv = ['--enable-source-maps'];
@@ -235,7 +241,9 @@ export class ChildProcessPool {
 			child,
 			id,
 			busy: false,
-			lastUsed: new Date(),
+			lastUsed: now,
+			reuseCount: 0,
+			spawnedAt: now,
 		};
 
 		this.processes.set(id, pooledProcess);

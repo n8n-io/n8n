@@ -102,10 +102,17 @@ process.on('message', async (msg: any) => {
 		);
 		// Send result back with executionId for routing in main thread
 		if (process.send) {
+			const memoryUsage = process.memoryUsage();
 			process.send({
 				type: 'done',
 				executionId: msg.task.executionId,
 				run: result.run,
+				memoryUsage: {
+					heapUsed: memoryUsage.heapUsed,
+					heapTotal: memoryUsage.heapTotal,
+					external: memoryUsage.external,
+					rss: memoryUsage.rss,
+				},
 			});
 			console.log(prefix, `Done message sent for ${msg.task.executionId}`);
 		} else {

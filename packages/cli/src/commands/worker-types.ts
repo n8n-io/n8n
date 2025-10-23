@@ -49,6 +49,13 @@ export interface DoneMessage {
 	type: 'done';
 	executionId: string;
 	run: IRun;
+	/** Child process memory usage in bytes */
+	memoryUsage?: {
+		heapUsed: number;
+		heapTotal: number;
+		external: number;
+		rss: number;
+	};
 }
 
 export type MainMessage = { type: 'pong' } | DoneMessage | HookMessage;

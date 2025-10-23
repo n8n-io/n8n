@@ -58,6 +58,28 @@ interface ExecutionCallbacks {
 	hookListener: MainHookListener;
 }
 
+interface BenchmarkMeasurement {
+	executionId: string;
+	timestamp: number;
+	// Timing
+	startTime: number;
+	endTime: number;
+	duration: number;
+	isColdStart: boolean;
+	// Memory (bytes)
+	mainMemoryBefore: number;
+	mainMemoryAfter: number;
+	childMemoryPeak?: {
+		heapUsed: number;
+		heapTotal: number;
+		external: number;
+		rss: number;
+	};
+	// Process info
+	processId: string;
+	reuseCount: number;
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -66,6 +88,17 @@ export class WorkflowRunner {
 	private executionCallbacks = new Map<string, ExecutionCallbacks>();
 	// Track which processes have had listeners attached to avoid duplicate listeners
 	private processesWithListeners = new Set<string>();
+	// Track execution start times for benchmarking
+	private executionStartTimes = new Map<
+		string,
+		{
+			startTime: number;
+			memoryBefore: number;
+			isColdStart: boolean;
+			processId: string;
+			reuseCount: number;
+		}
+	>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -433,6 +466,17 @@ export class WorkflowRunner {
 	}
 
 	/**
+	 * Write benchmark measurement to JSONL file
+	 */
+	private async writeBenchmarkMeasurement(measurement: BenchmarkMeasurement): Promise<void> {
+		const fs = await import('fs/promises');
+		const path = await import('path');
+		const filePath = path.join(process.cwd(), 'benchmark-results-child-process.jsonl');
+		const line = JSON.stringify(measurement) + '\n';
+		await fs.appendFile(filePath, line, 'utf-8');
+	}
+
+	/**
 	 * Handle a message from a child process and route to correct execution
 	 */
 	private handleChildMessage(processId: string, msg: DoneMessage | HookMessage): void {
@@ -450,6 +494,30 @@ export class WorkflowRunner {
 
 			// Reconstruct Date objects that were serialized during IPC
 			const run = this.reconstructRunDates(msg.run);
+
+			// Record benchmark measurement
+			const startInfo = this.executionStartTimes.get(msg.executionId);
+			if (startInfo) {
+				const endTime = Date.now();
+				const memoryAfter = process.memoryUsage().heapUsed;
+
+				const measurement: BenchmarkMeasurement = {
+					executionId: msg.executionId,
+					timestamp: endTime,
+					startTime: startInfo.startTime,
+					endTime,
+					duration: endTime - startInfo.startTime,
+					isColdStart: startInfo.isColdStart,
+					mainMemoryBefore: startInfo.memoryBefore,
+					mainMemoryAfter: memoryAfter,
+					childMemoryPeak: msg.memoryUsage,
+					processId: startInfo.processId,
+					reuseCount: startInfo.reuseCount,
+				};
+
+				void this.writeBenchmarkMeasurement(measurement);
+				this.executionStartTimes.delete(msg.executionId);
+			}
 
 			// Clean up
 			this.executionCallbacks.delete(msg.executionId);
@@ -486,8 +554,22 @@ export class WorkflowRunner {
 
 		return new PCancelable(async (resolve, reject, _onCancel) => {
 			try {
+				// Record start time and memory before getting process
+				const startTime = Date.now();
+				const memoryBefore = process.memoryUsage().heapUsed;
+
 				// Get a process from the pool (or create new one if under limit)
 				const pooledProcess = await this.getPool().getProcess(executionId);
+				const isColdStart = pooledProcess.reuseCount === 0;
+
+				// Store timing info for later
+				this.executionStartTimes.set(executionId, {
+					startTime,
+					memoryBefore,
+					isColdStart,
+					processId: pooledProcess.id,
+					reuseCount: pooledProcess.reuseCount,
+				});
 
 				// Set up message and error listeners on FIRST use of this process
 				// We track this in a Set to avoid checking listenerCount (which MainHookListener affects)
