@@ -1,13 +1,13 @@
-import { InstanceSettingsConfig } from '@n8n/config';
+import { InstanceSettingsConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
-import { existsSync, mkdirSync } from 'fs';
+import { mkdir } from 'fs/promises';
 import multer from 'multer';
 import { nanoid } from 'nanoid';
 import path from 'path';
 
+import { FileUploadError } from './errors/data-table-file-upload.error';
 import { MulterDestinationCallback, MulterFilenameCallback, UploadMiddleware } from './types';
-import { FileUploadError } from '../errors/data-table-file-upload.error';
 
 const UPLOADS_FOLDER_NAME = 'data-table-uploads';
 const ALLOWED_MIME_TYPES = ['text/csv'];
@@ -16,21 +16,23 @@ const ALLOWED_MIME_TYPES = ['text/csv'];
 export class MulterUploadMiddleware implements UploadMiddleware {
 	private upload: multer.Multer;
 
-	constructor(private readonly instanceSettingsConfig: InstanceSettingsConfig) {
+	private readonly uploadDir: string;
+
+	constructor(
+		private readonly instanceSettingsConfig: InstanceSettingsConfig,
+		private readonly globalConfig: GlobalConfig,
+	) {
+		this.uploadDir = path.join(this.instanceSettingsConfig.n8nFolder, UPLOADS_FOLDER_NAME);
+
+		// Create the upload directory asynchronously during initialization
+		void this.ensureUploadDirExists();
+
 		const storage = multer.diskStorage({
 			destination: (_req: Request, _file: Express.Multer.File, cb: MulterDestinationCallback) => {
-				const uploadDir = path.join(this.instanceSettingsConfig.n8nFolder, UPLOADS_FOLDER_NAME);
-
-				if (!existsSync(uploadDir)) {
-					mkdirSync(uploadDir, { recursive: true });
-				}
-
-				cb(null, uploadDir);
+				cb(null, this.uploadDir);
 			},
 			filename: (_req: Request, _file: Express.Multer.File, cb: MulterFilenameCallback) => {
-				const timestamp = Date.now();
-				const uniqueId = nanoid(10);
-				const filename = `${uniqueId}-${timestamp}`;
+				const filename = nanoid(10);
 				cb(null, filename);
 			},
 		});
@@ -38,7 +40,7 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 		this.upload = multer({
 			storage,
 			limits: {
-				fileSize: 5 * 1024 * 1024, // 5MB
+				fileSize: this.globalConfig.dataTable.uploadMaxFileSize,
 			},
 			fileFilter: (_req, file, cb: multer.FileFilterCallback) => {
 				if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
@@ -52,6 +54,10 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 				cb(null, true);
 			},
 		});
+	}
+
+	private async ensureUploadDirExists() {
+		await mkdir(this.uploadDir, { recursive: true });
 	}
 
 	single(fieldName: string): RequestHandler {

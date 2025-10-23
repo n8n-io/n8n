@@ -20,4 +20,11 @@ export class DataTableConfig {
 	 */
 	@Env('N8N_DATA_TABLES_SIZE_CHECK_CACHE_DURATION_MS')
 	sizeCheckCacheDuration: number = 60 * 1000;
+
+	/**
+	 * The maximum allowed file size (in bytes) for CSV uploads to data tables.
+	 * Defaults to 5MB if not explicitly set via environment variable.
+	 */
+	@Env('N8N_DATA_TABLES_UPLOAD_MAX_FILE_SIZE_BYTES')
+	uploadMaxFileSize: number = 5 * 1024 * 1024;
 }

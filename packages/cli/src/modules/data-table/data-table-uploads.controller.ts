@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 
 import { MulterUploadMiddleware } from './multer-upload-middleware';
 import { AuthenticatedRequestWithFile } from './types';
-import { FileUploadError } from '../errors/data-table-file-upload.error';
+import { FileUploadError } from './errors/data-table-file-upload.error';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -13,12 +13,13 @@ const uploadMiddleware = Container.get(MulterUploadMiddleware);
 export class DataTableUploadsController {
 	@Post('/', {
 		middlewares: [uploadMiddleware.single('file')],
-		skipAuth: true,
+		skipAuth: false,
 	})
-	async uploadFile(req: AuthenticatedRequestWithFile, _res: Response) {
+	uploadFile(req: AuthenticatedRequestWithFile, _res: Response) {
 		try {
 			return {
-				...req.file,
+				originalName: req.file.originalname,
+				id: req.file.filename.split('-')[0],
 			};
 		} catch (e: unknown) {
 			if (e instanceof FileUploadError) {
