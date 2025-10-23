@@ -1066,7 +1066,7 @@ describe('max iterations', () => {
 			if (param === 'options')
 				return {
 					systemMessage: 'You are a helpful assistant',
-					maxIterations: 2, // Set to 2 to allow first iteration, stop on second
+					maxIterations: 1,
 					returnIntermediateSteps: false,
 					passthroughBinaryImages: true,
 					enableStreaming: true,
