@@ -22,18 +22,6 @@ export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = {
-	name: '043_workflow_builder_release',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT = {
-	name: '036_workflow_builder_agent',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
 	name: '034_extra_template_links',
 	control: 'control',
@@ -88,8 +76,6 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
-	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,
