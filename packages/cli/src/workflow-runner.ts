@@ -386,6 +386,19 @@ export class WorkflowRunner {
 		}
 	}
 
+	/**
+	 * Reconstruct Date objects in IRun that were serialized during IPC
+	 */
+	private reconstructRunDates(run: IRun): IRun {
+		if (run.startedAt && typeof run.startedAt === 'string') {
+			run.startedAt = new Date(run.startedAt);
+		}
+		if (run.stoppedAt && typeof run.stoppedAt === 'string') {
+			run.stoppedAt = new Date(run.stoppedAt);
+		}
+		return run;
+	}
+
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	private dispatch(
 		options: {
@@ -420,7 +433,9 @@ export class WorkflowRunner {
 				if (msg.type === 'done') {
 					this.logger.info(`Child process completed execution ${executionId}`, { executionId });
 					resolved = true;
-					resolve(msg.run);
+					// Reconstruct Date objects that were serialized during IPC
+					const run = this.reconstructRunDates(msg.run);
+					resolve(run);
 				}
 			});
 

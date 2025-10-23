@@ -74,6 +74,19 @@ export class MainHookListener {
 				return params;
 
 			case 'workflowExecuteAfter':
+				// parameters: [data: IRun, newStaticData: IDataObject]
+				// Reconstruct Date objects in IRun
+				if (params[0] && typeof params[0] === 'object') {
+					const runData = params[0] as any;
+					if (runData.startedAt && typeof runData.startedAt === 'string') {
+						runData.startedAt = new Date(runData.startedAt);
+					}
+					if (runData.stoppedAt && typeof runData.stoppedAt === 'string') {
+						runData.stoppedAt = new Date(runData.stoppedAt);
+					}
+				}
+				return params;
+
 			case 'nodeExecuteBefore':
 			case 'nodeExecuteAfter':
 				// These are already serializable, pass through
