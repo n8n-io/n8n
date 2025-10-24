@@ -37,7 +37,7 @@ async function main(): Promise<void> {
 		await runLangsmithEvaluation(repetitions);
 	} else {
 		const csvTestCases = promptsCsvPath ? loadTestCasesFromCsv(promptsCsvPath) : undefined;
-		await runCliEvaluation(testCaseId, { testCases: csvTestCases });
+		await runCliEvaluation({ testCases: csvTestCases, testCaseFilter: testCaseId, repetitions });
 	}
 }
 

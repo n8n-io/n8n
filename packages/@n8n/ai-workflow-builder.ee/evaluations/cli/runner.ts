@@ -21,20 +21,18 @@ import {
 import { formatHeader, saveEvaluationResults } from '../utils/evaluation-helpers.js';
 import { generateMarkdownReport } from '../utils/evaluation-reporter.js';
 
+type CliEvaluationOptions = {
+	testCaseFilter?: string; // Optional test case ID to run only a specific test
+	testCases?: TestCase[]; // Optional array of test cases to run (if not provided, uses defaults and generation)
+	repetitions?: number; // Number of times to run each test (e.g. for cache warming analysis)
+};
+
 /**
  * Main CLI evaluation runner that executes all test cases in parallel
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
  */
-type CliEvaluationOptions = {
-	testCases?: TestCase[];
-	repetitions?: number;
-};
-
-export async function runCliEvaluation(
-	testCaseFilter?: string,
-	options: CliEvaluationOptions = {},
-): Promise<void> {
-	const repetitions = options?.repetitions ?? 1;
+export async function runCliEvaluation(options: CliEvaluationOptions = {}): Promise<void> {
+	const { repetitions = 1, testCaseFilter } = options;
 
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
 	if (repetitions > 1) {
