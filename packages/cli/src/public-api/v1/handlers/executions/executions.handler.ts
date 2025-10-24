@@ -16,6 +16,7 @@ import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.mid
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { WorkflowOperationError } from 'n8n-workflow/src';
 
 export = {
 	deleteExecution: [
@@ -196,7 +197,7 @@ export = {
 		},
 	],
 	stopExecution: [
-		apiKeyHasScope('execution:read'),
+		apiKeyHasScope('execution:retry'),
 		async (req: ExecutionRequest.Stop, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
 
@@ -234,10 +235,7 @@ export = {
 
 				return res.json(replaceCircularReferences(updatedExecution));
 			} catch (error) {
-				if (
-					error instanceof QueuedExecutionRetryError ||
-					error instanceof AbortedExecutionRetryError
-				) {
+				if (error instanceof WorkflowOperationError) {
 					return res.status(409).json({ message: error.message });
 				} else if (error instanceof MissingExecutionStopError) {
 					return res.status(404).json({ message: error.message });
