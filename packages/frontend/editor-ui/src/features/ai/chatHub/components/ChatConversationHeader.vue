@@ -4,10 +4,9 @@ import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import type { ChatHubConversationModel, ChatHubLLMProvider, ChatSessionId } from '@n8n/api-types';
+import type { ChatHubConversationModel, ChatHubProvider, ChatSessionId } from '@n8n/api-types';
 import { N8nIconButton } from '@n8n/design-system';
-import { computed, useTemplateRef } from 'vue';
+import { useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { selectedModel, credentials } = defineProps<{
@@ -17,23 +16,16 @@ const { selectedModel, credentials } = defineProps<{
 
 const emit = defineEmits<{
 	selectModel: [ChatHubConversationModel];
-	setCredentials: [provider: ChatHubLLMProvider];
 	renameConversation: [id: ChatSessionId, title: string];
 	editAgent: [agentId: string];
 	createAgent: [];
+	selectCredential: [provider: ChatHubProvider, credentialId: string];
 }>();
 
 const sidebar = useChatHubSidebarState();
 const chatStore = useChatStore();
-const credentialsStore = useCredentialsStore();
 const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
-
-const credentialsName = computed(() =>
-	selectedModel
-		? credentialsStore.getCredentialById(credentials[selectedModel.provider] ?? '')?.name
-		: undefined,
-);
 
 function onModelChange(selection: ChatHubConversationModel) {
 	emit('selectModel', selection);
@@ -74,13 +66,14 @@ defineExpose({
 			ref="modelSelectorRef"
 			:models="chatStore.models ?? null"
 			:selected-model="selectedModel"
-			:credentials-name="credentialsName"
 			:agents="chatStore.agents"
-			:include-custom-agents="false"
+			:credentials="credentials"
 			@change="onModelChange"
-			@configure="emit('setCredentials', $event)"
 			@edit-agent="emit('editAgent', $event)"
 			@create-agent="emit('createAgent')"
+			@select-credential="
+				(provider, credentialId) => emit('selectCredential', provider, credentialId)
+			"
 		/>
 	</div>
 </template>

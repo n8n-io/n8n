@@ -11,8 +11,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { assert } from '@n8n/utils/assert';
+import type { CredentialsMap } from '../chat.types';
 
 const props = defineProps<{
+	credentials: CredentialsMap;
 	agentId?: string;
 }>();
 
@@ -35,6 +37,8 @@ const selectedModel = ref<ChatHubConversationModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
 
+const agentSelectedCredentials = ref<CredentialsMap>({});
+
 const isEditMode = computed(() => !!props.agentId);
 const title = computed(() =>
 	isEditMode.value
@@ -55,6 +59,13 @@ const isValid = computed(() => {
 	);
 });
 
+const agentMergedCredentials = computed((): CredentialsMap => {
+	return {
+		...props.credentials,
+		...agentSelectedCredentials.value,
+	};
+});
+
 function loadAgent() {
 	const agent = chatStore.currentEditingAgent;
 	if (!agent) return;
@@ -69,6 +80,10 @@ function loadAgent() {
 			name: agent.model,
 			workflowId: undefined,
 		} as ChatHubConversationModel;
+
+		if (agent.credentialId) {
+			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
+		}
 	} else {
 		selectedModel.value = null;
 	}
@@ -79,11 +94,12 @@ function resetForm() {
 	description.value = '';
 	systemPrompt.value = '';
 	selectedModel.value = null;
+	agentSelectedCredentials.value = {};
 }
 
 // Watch for modal opening
 watch(
-	() => uiStore.isModalActiveById['agentEditor'],
+	() => uiStore.isModalActiveById.agentEditor,
 	(isOpen) => {
 		if (isOpen) {
 			if (props.agentId) {
@@ -95,12 +111,15 @@ watch(
 	},
 );
 
-function onModelChange(model: ChatHubConversationModel) {
-	selectedModel.value = model;
+function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
+	agentSelectedCredentials.value = {
+		...agentSelectedCredentials.value,
+		[provider]: credentialId,
+	};
 }
 
-function handleConfigureCredentials(_provider: ChatHubProvider) {
-	// todo
+function onModelChange(model: ChatHubConversationModel) {
+	selectedModel.value = model;
 }
 
 async function onSave() {
@@ -112,12 +131,17 @@ async function onSave() {
 		const model = 'model' in selectedModel.value ? selectedModel.value.model : undefined;
 		assert(model);
 
+		const provider = selectedModel.value.provider;
+		const credentialId = agentMergedCredentials.value[provider];
+		assert(credentialId);
+
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
-			provider: selectedModel.value?.provider,
+			provider,
 			model,
+			credentialId,
 		};
 
 		if (isEditMode.value && props.agentId) {
@@ -243,8 +267,9 @@ async function onDelete() {
 						:models="chatStore.models ?? null"
 						:selected-model="selectedModel"
 						:include-custom-agents="false"
+						:credentials="agentMergedCredentials"
 						@change="onModelChange"
-						@configure="handleConfigureCredentials"
+						@select-credential="onCredentialSelected"
 					/>
 				</div>
 			</div>

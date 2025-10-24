@@ -1,28 +1,32 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
-import {
-	chatHubProviderSchema,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
-	type ChatHubConversationModel,
-	type ChatModelsResponse,
-	type ChatHubLLMProvider,
+import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubProviderSchema } from '@n8n/api-types';
+import type {
+	ChatHubAgentDto,
+	ChatHubProvider,
+	ChatHubConversationModel,
+	ChatModelsResponse,
+	ChatHubLLMProvider,
 } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 
-import type { ChatHubAgentDto } from '@n8n/api-types';
+import type { CredentialsMap } from '../chat.types';
+import CredentialSelectorModal from './CredentialSelectorModal.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const props = withDefaults(
 	defineProps<{
 		models: ChatModelsResponse | null;
 		selectedModel: ChatHubConversationModel | null;
-		credentialsName?: string;
 		agents?: ChatHubAgentDto[];
 		includeCustomAgents?: boolean;
+		credentials: CredentialsMap;
 	}>(),
 	{
 		includeCustomAgents: true,
@@ -33,11 +37,25 @@ const emit = defineEmits<{
 	change: [ChatHubConversationModel];
 	editAgent: [agentId: string];
 	createAgent: [];
-	configure: [ChatHubLLMProvider];
+	selectCredential: [provider: ChatHubProvider, credentialId: string];
 }>();
+
+function handleSelectCredentials(provider: ChatHubProvider, id: string) {
+	emit('selectCredential', provider, id);
+}
 
 const i18n = useI18n();
 const dropdownRef = useTemplateRef('dropdownRef');
+const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
+const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+
+const credentialsName = computed(() =>
+	props.selectedModel
+		? credentialsStore.getCredentialById(props.credentials[props.selectedModel.provider] ?? '')
+				?.name
+		: undefined,
+);
 
 const menu = computed(() => {
 	const agentOptions = (props.agents ?? []).map<
@@ -117,6 +135,19 @@ const selectedLabel = computed(() => {
 	return props.selectedModel.name;
 });
 
+function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+	if (existingCredentials.length === 0) {
+		uiStore.openNewCredential(credentialType);
+		return;
+	}
+
+	credentialSelectorProvider.value = provider;
+	uiStore.openModal('chatCredentialSelector');
+}
+
 function onSelect(id: string) {
 	// Format is "provider::model" or "agent::id"
 	const [type, value] = id.split('::');
@@ -139,7 +170,7 @@ function onSelect(id: string) {
 	}
 
 	if (identifier === 'configure' && parsedProvider !== 'n8n') {
-		emit('configure', parsedProvider);
+		openCredentialsSelectorOrCreate(parsedProvider);
 		return;
 	}
 
@@ -154,6 +185,10 @@ function onSelect(id: string) {
 	}
 
 	emit('change', selected);
+}
+
+function handleCreateNewCredential(provider: ChatHubLLMProvider) {
+	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
 onClickOutside(
@@ -178,6 +213,15 @@ defineExpose({
 		</template>
 
 		<N8nButton :class="$style.dropdownButton" type="secondary" text>
+			<CredentialSelectorModal
+				v-if="credentialSelectorProvider && credentialSelectorProvider !== 'n8n'"
+				:key="credentialSelectorProvider"
+				:provider="credentialSelectorProvider"
+				:initial-value="credentials[credentialSelectorProvider] ?? null"
+				@select="handleSelectCredentials"
+				@create-new="handleCreateNewCredential"
+			/>
+
 			<CredentialIcon
 				v-if="selectedModel && selectedModel.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
 				:credential-type-name="

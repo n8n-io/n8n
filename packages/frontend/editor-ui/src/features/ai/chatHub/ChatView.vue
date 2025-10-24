@@ -36,7 +36,6 @@ import { useChatStore } from './chat.store';
 import { credentialsMapSchema, type CredentialsMap } from './chat.types';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useUIStore } from '@/stores/ui.store';
-import CredentialSelectorModal from '@/features/ai/chatHub/components/CredentialSelectorModal.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -161,12 +160,9 @@ const isMissingSelectedCredential = computed(() => {
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
-const initialization = ref({ credentialsFetched: false, modelsFetched: false });
-const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
+const credentialsFetched = ref<boolean>(false);
+const modelsFetched = ref<boolean>(false);
 const editingAgentId = ref<string | undefined>(undefined);
-const isInitialized = computed(
-	() => initialization.value.credentialsFetched && initialization.value.modelsFetched,
-);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -212,11 +208,6 @@ watch(
 	mergedCredentials,
 	async (credentials) => {
 		const models = await chatStore.fetchChatModels(credentials);
-		if (!models) {
-			toast.showError(undefined, 'Could not load models with updated credentials');
-			return;
-		}
-		initialization.value.modelsFetched = true;
 
 		const selected = selectedModel.value;
 		if (selected === null) {
@@ -225,6 +216,14 @@ watch(
 			if (model) {
 				await handleSelectModel(model);
 			}
+		}
+
+		const currentProvider = selectedModel.value?.provider;
+		if (currentProvider && currentProvider !== 'n8n') {
+			const providerModels = models[currentProvider].models;
+			modelsFetched.value = !models[currentProvider].error && providerModels.length > 0;
+		} else {
+			modelsFetched.value = true;
 		}
 	},
 	{ immediate: true },
@@ -263,7 +262,7 @@ onMounted(async () => {
 		credentialsStore.fetchAllCredentials(),
 		chatStore.fetchAgents(),
 	]);
-	initialization.value.credentialsFetched = true;
+	credentialsFetched.value = true;
 });
 
 function onSubmit(message: string) {
@@ -386,25 +385,12 @@ function handleSwitchAlternative(messageId: string) {
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
-function handleConfigureCredentials(provider: ChatHubLLMProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-
-	if (existingCredentials.length === 0) {
-		uiStore.openNewCredential(credentialType);
-		return;
-	}
-
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
+function handleConfigureCredentials(_provider: ChatHubLLMProvider) {
+	// todo call model selector to open model
 }
 
 function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
-}
-
-function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
 async function handleEditAgent(agentId: string) {
@@ -439,29 +425,22 @@ function handleAgentEditorClose() {
 		]"
 	>
 		<ChatConversationHeader
-			v-if="isInitialized"
 			ref="headerRef"
 			:selected-model="selectedModel"
 			:credentials="mergedCredentials"
 			@select-model="handleSelectModel"
-			@set-credentials="handleConfigureCredentials"
 			@edit-agent="handleEditAgent"
 			@create-agent="handleCreateAgent"
+			@select-credential="handleSelectCredentials"
 		/>
 
-		<CredentialSelectorModal
-			v-if="credentialSelectorProvider && credentialSelectorProvider !== 'n8n'"
-			:key="credentialSelectorProvider"
-			:provider="credentialSelectorProvider"
-			:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
-			@select="handleSelectCredentials"
-			@create-new="handleCreateNewCredential"
+		<AgentEditorModal
+			:agent-id="editingAgentId"
+			:credentials="mergedCredentials"
+			@close="handleAgentEditorClose"
 		/>
-
-		<AgentEditorModal :agent-id="editingAgentId" @close="handleAgentEditorClose" />
 
 		<N8nScrollArea
-			v-if="isInitialized"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
@@ -506,7 +485,6 @@ function handleAgentEditorClose() {
 					/>
 
 					<ChatPrompt
-						v-if="isInitialized"
 						ref="inputRef"
 						:class="$style.prompt"
 						:is-responding="chatStore.isResponding"
