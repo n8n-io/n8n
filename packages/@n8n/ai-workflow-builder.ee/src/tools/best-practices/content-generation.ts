@@ -15,9 +15,6 @@ Break complex tasks into sequential steps (e.g., generate text, create image, co
 
 For text generation, validate and sanitize input/output to avoid malformed data. When generating images, prefer binary data over URLs for uploads to avoid media type errors.
 
-For audio and video files, especially large ones, warn the user they need to set N8N_DEFAULT_BINARY_DATA_MODE=filesystem to avoid memory issues and enable disk-based storage.
-This prevents workflows from crashing due to memory constraints when processing large media files.
-
 ## Recommended Nodes
 
 ### OpenAI

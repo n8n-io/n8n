@@ -177,7 +177,7 @@ async function loadRelevantBestPractices(
 			return {
 				documentation:
 					'No specific best practices documentation available for this workflow type. Evaluate based on general n8n workflow principles.',
-				techniques: [],
+				techniques: categorization.techniques,
 			};
 		}
 

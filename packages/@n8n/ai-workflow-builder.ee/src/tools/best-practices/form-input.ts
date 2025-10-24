@@ -11,7 +11,7 @@ export class FormInputBestPractices implements BestPracticesDocument {
 
 ### Critical: Always Store Raw Form Data
 
-ALWAYS store raw form responses to a persistent data storage destination** even if the primary purpose of the workflow is
+ALWAYS store raw form responses to a persistent data storage destination even if the primary purpose of the workflow is
 to trigger another action (like sending to an API or triggering a notification). This allows users to monitor
 form responses as part of the administration of their workflow.
 

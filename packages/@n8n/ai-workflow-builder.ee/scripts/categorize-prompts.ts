@@ -27,7 +27,10 @@ interface CategorizationResult {
 
 async function categorizeAllPrompts() {
 	// Get concurrency from environment or default to 10
-	const concurrency = process.env.CONCURRENCY ? parseInt(process.env.CONCURRENCY, 10) : 10;
+	const DEFAULT_CONCURRENCY = 10;
+	const parsedConcurrency = parseInt(process.env.CONCURRENCY || '', 10);
+	const concurrency =
+		!isNaN(parsedConcurrency) && parsedConcurrency >= 1 ? parsedConcurrency : DEFAULT_CONCURRENCY;
 
 	console.log(pc.blue(`\n🚀 Starting categorization of ${userPrompts.length} prompts...`));
 	console.log(pc.dim(`   Processing with concurrency=${concurrency}\n`));
@@ -105,6 +108,11 @@ async function categorizeAllPrompts() {
 	const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
 	const outputDir = join(__dirname);
 
+	// Type guard to check if a string is a valid technique key
+	const isValidTechnique = (technique: string): technique is keyof typeof TechniqueDescription => {
+		return technique in TechniqueDescription;
+	};
+
 	// Save technique frequency summary
 	const summaryPath = join(outputDir, `categorization-summary-${timestamp}.md`);
 	const summaryLines = [
@@ -122,7 +130,9 @@ async function categorizeAllPrompts() {
 		'| Rank | Technique | Used in | Description |',
 		'|------|-----------|---------|-------------|',
 		...sortedFrequency.map(([technique, count], index) => {
-			const description = TechniqueDescription[technique as keyof typeof TechniqueDescription];
+			const description = isValidTechnique(technique)
+				? TechniqueDescription[technique]
+				: 'Unknown technique';
 			return `| ${index + 1} | \`${technique}\` | ${count} | ${description} |`;
 		}),
 		'',
