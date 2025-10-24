@@ -223,7 +223,7 @@ describe('SaveButton.vue', () => {
 	describe('Click prevention on saved state', () => {
 		it('should prevent click propagation when showing saved text', async () => {
 			const user = userEvent.setup();
-			const { getByText } = renderComponent({
+			const { getByText, emitted } = renderComponent({
 				props: {
 					saved: true,
 				},
@@ -233,9 +233,10 @@ describe('SaveButton.vue', () => {
 			const savedText = getByText('saveButton.saved');
 			await user.click(savedText);
 
-			// The click should be prevented by @click.stop.prevent
-			// Testing that the element is still in the document after click
 			expect(savedText).toBeInTheDocument();
+
+			// The click should be prevented by @click.stop.prevent
+			expect(emitted()).not.toHaveProperty('click');
 		});
 	});
 });
