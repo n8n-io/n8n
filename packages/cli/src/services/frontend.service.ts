@@ -1,4 +1,9 @@
-import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
+import type {
+	FrontendSettings,
+	IEnterpriseSettings,
+	ITelemetrySettings,
+	N8nEnvFeatFlags,
+} from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -32,14 +37,12 @@ import {
 
 import { UrlService } from './url.service';
 
-import type { IEnterpriseSettings } from '@n8n/api-types';
-
-type PublicEnterpriseSettings = Pick<
+export type PublicEnterpriseSettings = Pick<
 	IEnterpriseSettings,
 	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
 >;
 
-type PublicFrontendSettings = Pick<
+export type PublicFrontendSettings = Pick<
 	FrontendSettings,
 	| 'settingsMode'
 	| 'instanceId'
