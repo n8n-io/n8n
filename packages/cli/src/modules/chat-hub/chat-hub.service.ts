@@ -5,7 +5,6 @@ import {
 	type ChatModelsResponse,
 	type ChatHubConversationsResponse,
 	type ChatHubConversationResponse,
-	chatHubProviderSchema,
 	ChatHubMessageDto,
 	type ChatMessageId,
 	type ChatSessionId,
@@ -46,6 +45,18 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { CONVERSATION_TITLE_GENERATION_PROMPT } from './chat-hub.constants';
 import type {
@@ -59,18 +70,6 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
 import { captureResponseWrites } from './stream-capturer';
-
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionService } from '@/executions/execution.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 
 const providerNodeTypeMapping: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -129,7 +128,9 @@ export class ChatHubService {
 		credentialIds: Record<ChatHubLLMProvider, string | null>,
 	): Promise<ChatModelsResponse> {
 		const additionalData = await getBase({ userId: user.id });
-		const providers = chatHubProviderSchema.options;
+		// The n8n provider is disabled for now.
+		// const providers = chatHubProviderSchema.options;
+		const providers = ['openai', 'anthropic', 'google'] as ChatHubLLMProvider[];
 
 		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
