@@ -26,6 +26,7 @@ export { default as N8nFormBox } from './N8nFormBox';
 export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
+export { default as N8nHeaderAction } from './N8nHeaderAction';
 export { default as N8nIcon } from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';

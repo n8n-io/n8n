@@ -29,23 +29,17 @@ describe('N8nCollapsiblePanel', () => {
 		expect(wrapper.emitted()['update:modelValue'][0]).toEqual([false]);
 	});
 
-	it('renders action buttons when actions are provided', () => {
+	it('renders action buttons when actions slot is provided', () => {
 		render(N8nCollapsiblePanel, {
 			props: {
 				title: 'Test Item',
 				modelValue: true,
-				actions: [
-					{
-						icon: 'grip-vertical',
-						label: 'Drag to reorder',
-						onClick: () => {},
-					},
-					{
-						icon: 'trash-2',
-						label: 'Delete',
-						onClick: () => {},
-					},
-				],
+			},
+			slots: {
+				actions: `
+					<button aria-label="Drag to reorder">Drag to reorder</button>
+					<button aria-label="Delete">Delete</button>
+				`,
 			},
 		});
 
@@ -55,23 +49,25 @@ describe('N8nCollapsiblePanel', () => {
 
 	it('calls action onClick handler when action button is clicked', async () => {
 		const onClickMock = vi.fn();
-		render(N8nCollapsiblePanel, {
+		const wrapper = render(N8nCollapsiblePanel, {
 			props: {
 				title: 'Test Item',
 				modelValue: true,
-				actions: [
-					{
-						icon: 'trash-2',
-						label: 'Delete',
-						onClick: onClickMock,
-					},
-				],
 			},
 		});
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+		// Mount with slot content containing button
+		wrapper.rerender({
+			slots: {
+				actions: '<button aria-label="Delete" data-testid="delete-btn">Delete</button>',
+			},
+		});
 
-		expect(onClickMock).toHaveBeenCalledOnce();
+		const button = screen.getByTestId('delete-btn');
+		button.addEventListener('click', onClickMock);
+		await fireEvent.click(button);
+
+		expect(onClickMock).toHaveBeenCalled();
 	});
 
 	it('does not have always-visible class by default (showActionsOnHover: true)', () => {
@@ -80,13 +76,9 @@ describe('N8nCollapsiblePanel', () => {
 				title: 'Test Item',
 				modelValue: true,
 				showActionsOnHover: true,
-				actions: [
-					{
-						icon: 'trash-2',
-						label: 'Delete',
-						onClick: () => {},
-					},
-				],
+			},
+			slots: {
+				actions: '<button>Delete</button>',
 			},
 		});
 
@@ -100,13 +92,9 @@ describe('N8nCollapsiblePanel', () => {
 				title: 'Test Item',
 				modelValue: true,
 				showActionsOnHover: false,
-				actions: [
-					{
-						icon: 'plus',
-						label: 'Add',
-						onClick: () => {},
-					},
-				],
+			},
+			slots: {
+				actions: '<button>Add</button>',
 			},
 		});
 

@@ -2,19 +2,7 @@
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
 import { computed } from 'vue';
 
-import { TOOLTIP_DELAY_MS } from '../../constants';
 import N8nIcon from '../N8nIcon';
-import type { IconName } from '../N8nIcon/icons';
-import N8nIconButton from '../N8nIconButton/IconButton.vue';
-import N8nTooltip from '../N8nTooltip/Tooltip.vue';
-
-export interface CollapsiblePanelAction {
-	icon: IconName;
-	label: string;
-	onClick: () => void;
-	danger?: boolean;
-	tooltip?: string;
-}
 
 export interface Props {
 	/**
@@ -25,10 +13,6 @@ export interface Props {
 	 * Whether the panel is expanded or collapsed
 	 */
 	modelValue?: boolean;
-	/**
-	 * Action buttons to display
-	 */
-	actions?: CollapsiblePanelAction[];
 	/**
 	 * Whether to show actions only on hover (true) or always visible (false)
 	 * When false, actions are shown with lighter color and darken on hover
@@ -47,7 +31,6 @@ export interface Props {
 const props = withDefaults(defineProps<Props>(), {
 	title: '',
 	modelValue: true,
-	actions: () => [],
 	showActionsOnHover: true,
 	disabled: false,
 	disableAnimation: false,
@@ -78,32 +61,10 @@ const isOpen = computed({
 			</CollapsibleTrigger>
 
 			<div
-				v-if="actions.length > 0 || $slots.actions"
+				v-if="$slots.actions"
 				:class="[$style.actions, { [$style.actionsAlwaysVisible]: !showActionsOnHover }]"
 			>
-				<slot name="actions">
-					<N8nTooltip
-						v-for="(action, index) in actions"
-						:key="index"
-						:disabled="!action.tooltip"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<template #content>{{ action.tooltip || action.label }}</template>
-						<N8nIconButton
-							type="secondary"
-							text
-							size="small"
-							icon-size="large"
-							:icon="action.icon"
-							:aria-label="action.label"
-							:class="[
-								{ 'drag-handle': action.icon === 'grip-vertical' },
-								{ [$style.dangerAction]: action.danger },
-							]"
-							@click.stop="action.onClick"
-						/>
-					</N8nTooltip>
-				</slot>
+				<slot name="actions" />
 			</div>
 		</div>
 
@@ -189,7 +150,7 @@ const isOpen = computed({
 	opacity: 0;
 	transition: opacity var(--animation--duration--spring) var(--animation--easing--spring);
 
-	:global(.button) {
+	button {
 		--button--color--text: var(--color--text--shade-1);
 	}
 }
@@ -203,14 +164,12 @@ const isOpen = computed({
 	}
 }
 
-// Danger action button (e.g., delete)
 .dangerAction {
 	&:hover {
 		--button--color--text--hover: var(--color--danger);
 	}
 }
 
-// Show actions and darken title/chevron/always-visible-actions when hovering the header
 .header:hover {
 	.actions {
 		opacity: 1;
@@ -236,24 +195,22 @@ const isOpen = computed({
 	}
 
 	&[data-state='open'] {
-		animation: slideDown var(--collapsible-animation-duration, var(--animation--duration--spring))
+		animation: slideDown var(--animation--duration--collapse, var(--animation--duration--spring))
 			var(--animation--easing--spring);
 	}
 
 	&[data-state='closed'] {
-		animation: slideUp var(--collapsible-animation-duration, var(--animation--duration--spring))
+		animation: slideUp var(--animation--duration--collapse, var(--animation--duration--spring))
 			var(--animation--easing--spring);
 	}
 
-	// Add padding to the content, inside the animated container
-	// Reka UI will measure the full height including this padding
 	> :first-child {
 		padding: 0 var(--spacing--xs) var(--spacing--xs) var(--spacing--xs);
 	}
 }
 
 .noAnimation {
-	--collapsible-animation-duration: 0s;
+	--animation--duration--collapse: 0s;
 }
 
 @keyframes slideDown {

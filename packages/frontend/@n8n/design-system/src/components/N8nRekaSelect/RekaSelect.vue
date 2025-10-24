@@ -64,11 +64,6 @@ const selectedValue = computed({
 const isOpen = ref(false);
 const rootRef = useTemplateRef<HTMLElement>('rootRef');
 
-const selectedLabel = computed(() => {
-	const selected = props.options.find((opt) => opt.value === props.modelValue);
-	return selected?.label ?? props.placeholder;
-});
-
 const open = () => {
 	if (!props.disabled) {
 		isOpen.value = true;
@@ -98,25 +93,21 @@ defineExpose({
 			:open="isOpen"
 			@update:open="isOpen = $event"
 		>
-			<SelectTrigger as-child>
-				<slot name="trigger">
-					<button
-						:class="[$style.defaultTrigger, $style[size], { [$style.disabled]: disabled }]"
-						:aria-label="placeholder"
-						:data-test-id="`dropdown-trigger-${modelValue || 'empty'}`"
-					>
-						<span :class="$style.triggerText">
-							<SelectValue :placeholder="placeholder">
-								{{ selectedLabel }}
-							</SelectValue>
-						</span>
-						<N8nIcon
-							icon="chevron-down"
-							:class="[$style.triggerIcon, { [$style.open]: isOpen }]"
-							size="xsmall"
-						/>
-					</button>
-				</slot>
+			<SelectTrigger
+				v-if="!$slots.trigger"
+				:class="[$style.defaultTrigger, $style[size]]"
+				:aria-label="placeholder"
+				:data-test-id="`dropdown-trigger-${modelValue || 'empty'}`"
+			>
+				<SelectValue :placeholder="placeholder" :class="$style.triggerText" />
+				<N8nIcon
+					icon="chevron-down"
+					:class="[$style.triggerIcon, { [$style.open]: isOpen }]"
+					size="large"
+				/>
+			</SelectTrigger>
+			<SelectTrigger v-else as-child>
+				<slot name="trigger" />
 			</SelectTrigger>
 
 			<SelectPortal>
@@ -128,7 +119,7 @@ defineExpose({
 					:avoid-collisions="true"
 				>
 					<SelectScrollUpButton :class="$style.scrollButton">
-						<N8nIcon icon="chevron-up" size="xsmall" />
+						<N8nIcon icon="chevron-up" size="large" />
 					</SelectScrollUpButton>
 
 					<SelectViewport :class="$style.viewport">
@@ -137,20 +128,20 @@ defineExpose({
 							:key="option.value"
 							:value="option.value"
 							:disabled="option.disabled"
-							:class="[$style.item, { [$style.itemDisabled]: option.disabled }]"
+							:class="$style.item"
 							:data-test-id="`dropdown-option-${option.value}`"
 						>
 							<SelectItemText :class="$style.itemText">
 								{{ option.label }}
 							</SelectItemText>
 							<SelectItemIndicator :class="$style.itemIndicator">
-								<N8nIcon icon="check" size="xsmall" />
+								<N8nIcon icon="check" size="large" />
 							</SelectItemIndicator>
 						</SelectItem>
 					</SelectViewport>
 
 					<SelectScrollDownButton :class="$style.scrollButton">
-						<N8nIcon icon="chevron-down" size="xsmall" />
+						<N8nIcon icon="chevron-down" size="large" />
 					</SelectScrollDownButton>
 				</SelectContent>
 			</SelectPortal>
@@ -159,56 +150,53 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
-// Trigger button styles
 .defaultTrigger {
-	all: unset;
-	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing--3xs);
-	padding: 0;
-	background: transparent;
+	width: 100%;
+	padding: 0 var(--spacing--2xs);
+	background-color: var(--color--foreground--tint-2);
+	border: var(--border);
+	border-radius: var(--radius);
 	color: var(--color--text);
-	font-size: var(--font-size--xs);
 	font-family: var(--font-family);
 	line-height: var(--line-height--md);
-	cursor: pointer;
-	min-width: 80px;
-	transition: color 0.15s ease;
+	gap: var(--spacing--3xs);
 
-	&:hover:not(.disabled) {
-		color: var(--color--text--shade-1);
+	&:hover {
+		border-color: var(--color--foreground--shade-1);
 	}
 
-	&:focus-visible {
-		outline: 2px solid var(--color--primary);
-		outline-offset: 2px;
+	&:focus {
+		outline: none;
+		border-color: var(--color--secondary);
 	}
 
-	&.disabled {
+	&[data-placeholder] {
+		color: var(--color--text--tint-1);
+	}
+
+	&[data-disabled] {
 		cursor: not-allowed;
-		opacity: 0.5;
-		color: var(--color--text--tint-2);
+		background-color: var(--color--background--shade-1);
+		opacity: 0.6;
 	}
 
-	// Size variants
 	&.small {
+		height: 30px;
 		font-size: var(--font-size--2xs);
-		min-width: 60px;
-		gap: var(--spacing--4xs);
+		padding: 0 var(--spacing--3xs);
 	}
 
 	&.medium {
+		height: 36px;
 		font-size: var(--font-size--xs);
-		min-width: 80px;
-		gap: var(--spacing--3xs);
 	}
 
 	&.large {
-		font-size: var(--font-size--s);
-		min-width: 100px;
-		gap: var(--spacing--2xs);
+		height: 42px;
+		font-size: var(--font-size--sm);
 	}
 }
 
@@ -218,31 +206,29 @@ defineExpose({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-weight: var(--font-weight--regular);
 }
 
 .triggerIcon {
-	flex-shrink: 0;
-	transition: transform var(--animation--duration--spring--snappy) var(--animation--easing--spring);
-	color: currentColor;
+	color: var(--color--text--tint-1);
+	transition: transform var(--animation--duration--spring) var(--animation--easing--spring);
 
 	&.open {
 		transform: rotate(180deg);
 	}
 }
 
-// Dropdown content
 .content {
 	min-width: max(var(--reka-select-trigger-width), 200px);
 	max-width: 400px;
 	max-height: 320px;
 	background-color: var(--color--foreground--tint-2);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border: var(--border);
 	border-radius: var(--radius--lg);
 	box-shadow: var(--shadow--light);
 	z-index: 9999;
 	overflow: hidden;
 
-	// When opening downwards (default)
 	&[data-side='bottom'] {
 		transform-origin: top center;
 
@@ -256,7 +242,6 @@ defineExpose({
 		}
 	}
 
-	// When opening upwards
 	&[data-side='top'] {
 		transform-origin: bottom center;
 
@@ -274,7 +259,6 @@ defineExpose({
 	padding: var(--spacing--3xs);
 }
 
-// Scroll buttons
 .scrollButton {
 	display: flex;
 	align-items: center;
@@ -290,59 +274,33 @@ defineExpose({
 	}
 }
 
-// Dropdown items
 .item {
-	all: unset;
-	box-sizing: border-box;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding: var(--select--option--padding, 0 var(--spacing--2xs));
+	padding: 0 var(--spacing--2xs);
 	border-radius: var(--radius);
 	cursor: pointer;
 	user-select: none;
 	font-size: var(--font-size--2xs);
 	min-height: 28px;
-	line-height: var(--select--option--line-height, 28px);
+	line-height: 28px;
 	color: var(--color--text);
-	background-color: transparent;
 	transition:
 		background-color var(--animation--duration--spring) var(--animation--easing--spring),
 		color var(--animation--duration--spring) var(--animation--easing--spring);
-	position: relative;
 
-	&:hover:not(.itemDisabled),
-	&[data-highlighted]:not(.itemDisabled) {
-		background-color: var(--color--background);
-		color: var(--color--text--shade-1);
-	}
-
-	&:focus-visible {
+	&[data-highlighted]:not([data-disabled]) {
 		background-color: var(--color--background);
 		color: var(--color--text--shade-1);
 		outline: none;
 	}
 
-	&[data-state='checked'] {
-		color: var(--color--text);
-		font-weight: var(--font-weight--bold);
-		background-color: transparent;
-
-		&:hover,
-		&[data-highlighted] {
-			background-color: var(--color--background);
-		}
-	}
-
-	&.itemDisabled {
+	&[data-disabled] {
 		cursor: not-allowed;
 		color: var(--color--text--tint-2);
-
-		&:hover {
-			background-color: transparent;
-			color: var(--color--text--tint-2);
-		}
+		pointer-events: none;
 	}
 }
 
@@ -357,11 +315,10 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color--text);
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
-// Animations
 @keyframes slideDown {
 	from {
 		opacity: 0;

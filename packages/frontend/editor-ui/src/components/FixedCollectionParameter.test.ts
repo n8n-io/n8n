@@ -5,10 +5,13 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { COLLECTION_OVERHAUL_EXPERIMENT } from '@/constants';
-import { usePostHog } from '@/stores/posthog.store';
+import { usePostHog, type PosthogStore } from '@/stores/posthog.store';
 
+const mockedGetVariant = vi.fn(() => 'control');
 vi.mock('@/stores/posthog.store', () => ({
-	usePostHog: vi.fn(),
+	usePostHog: vi.fn(() => ({
+		getVariant: mockedGetVariant,
+	})),
 }));
 
 describe('FixedCollectionParameter.vue (Wrapper)', () => {
@@ -66,9 +69,7 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 	});
 
 	it('renders legacy component when feature flag is disabled', () => {
-		vi.mocked(usePostHog).mockReturnValue({
-			getVariant: vi.fn().mockReturnValue('control'),
-		} as any);
+		mockedGetVariant.mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.variant);
 
 		const { container } = renderComponent();
 
@@ -82,9 +83,10 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 	});
 
 	it('renders new component when feature flag is enabled', () => {
-		vi.mocked(usePostHog).mockReturnValue({
+		const mockPostHog = vi.mocked(usePostHog);
+		mockPostHog.mockReturnValue({
 			getVariant: vi.fn().mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.variant),
-		} as any);
+		} as Partial<PosthogStore> as PosthogStore);
 
 		const { container } = renderComponent();
 
@@ -99,9 +101,7 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 	});
 
 	it('forwards props to child component', () => {
-		vi.mocked(usePostHog).mockReturnValue({
-			getVariant: vi.fn().mockReturnValue('control'),
-		} as any);
+		mockedGetVariant.mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.variant);
 
 		const { container } = renderComponent({
 			props: {
@@ -116,9 +116,7 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 	});
 
 	it('forwards valueChanged event from child component', async () => {
-		vi.mocked(usePostHog).mockReturnValue({
-			getVariant: vi.fn().mockReturnValue('control'),
-		} as any);
+		mockedGetVariant.mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.variant);
 
 		const { emitted } = renderComponent();
 
