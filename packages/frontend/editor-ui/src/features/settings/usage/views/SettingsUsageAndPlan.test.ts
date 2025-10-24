@@ -70,6 +70,7 @@ describe('SettingsUsageAndPlan', () => {
 
 		usageStore.viewPlansUrl = 'https://subscription.n8n.io';
 		usageStore.managePlanUrl = 'https://subscription.n8n.io';
+		usageStore.isLoading = false;
 		usageStore.setLoading = vi.fn();
 		usageStore.getLicenseInfo = vi.fn();
 		usageStore.activateLicense = vi.fn();
@@ -85,6 +86,7 @@ describe('SettingsUsageAndPlan', () => {
 	});
 
 	it('should render the title only while loading', async () => {
+		usageStore.isLoading = true;
 		const { getByRole } = renderComponent();
 		expect(getByRole('heading', { level: 2 })).toBeInTheDocument();
 		expect(getByRole('heading').nextElementSibling).toBeNull();
@@ -318,7 +320,7 @@ describe('SettingsUsageAndPlan', () => {
 
 			await waitFor(
 				() => {
-					expect(mockToast.showError).toHaveBeenCalledWith(error);
+					expect(mockToast.showError).toHaveBeenCalledWith(error, 'Activation failed');
 				},
 				{ timeout: 2000 },
 			);
