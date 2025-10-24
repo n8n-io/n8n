@@ -64,7 +64,7 @@ function extractUsageMetadata(usage: unknown): Partial<UsageMetadata> {
 	const usageFieldMap: Record<string, keyof UsageMetadata> = {
 		input_tokens: 'input_tokens',
 		output_tokens: 'output_tokens',
-		cache_create_input_tokens: 'cache_creation_input_tokens',
+		cache_creation_input_tokens: 'cache_creation_input_tokens',
 		cache_read_input_tokens: 'cache_read_input_tokens',
 	};
 
@@ -97,6 +97,7 @@ export function createLangsmithEvaluator(
 	llm: BaseChatModel,
 	parsedNodeTypes: INodeTypeDescription[],
 ): (rootRun: Run, example?: Example) => Promise<LangsmithEvaluationResult[]> {
+	// eslint-disable-next-line complexity
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		// Validate and extract outputs
 		const validation = validateRunOutputs(rootRun.outputs);
@@ -181,6 +182,37 @@ export function createLangsmithEvaluator(
 					// Langsmith has a limitation on large scores (>99999) so we track in thousands
 					results.push({ key: metric.key, score: metric.value / 1000 });
 				}
+			}
+
+			// Add total prompt tokens for clarity (sum of all input token types)
+			const totalPromptTokens =
+				(validation.usage?.input_tokens ?? 0) +
+				(validation.usage?.cache_creation_input_tokens ?? 0) +
+				(validation.usage?.cache_read_input_tokens ?? 0);
+
+			if (totalPromptTokens > 0) {
+				results.push({
+					key: 'totalPromptTokens',
+					score: totalPromptTokens / 1000,
+					comment: 'Total prompt size (fresh + cached + cache creation)',
+				});
+			}
+
+			// Calculate and add cache hit rate if cache data is available
+			if (validation.usage?.cache_read_input_tokens !== undefined) {
+				const inputTokens = validation.usage.input_tokens ?? 0;
+				const cacheCreationTokens = validation.usage.cache_creation_input_tokens ?? 0;
+				const cacheReadTokens = validation.usage.cache_read_input_tokens ?? 0;
+
+				const totalInputTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+				const cacheHitRate = totalInputTokens > 0 ? cacheReadTokens / totalInputTokens : 0;
+
+				// Store as percentage (0-1 scale)
+				results.push({
+					key: 'cacheHitRate',
+					score: cacheHitRate,
+					comment: `${(cacheHitRate * 100).toFixed(1)}% of input tokens served from cache`,
+				});
 			}
 
 			// Add structural similarity if applicable

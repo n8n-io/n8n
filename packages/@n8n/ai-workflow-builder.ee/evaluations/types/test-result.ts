@@ -17,7 +17,6 @@ export interface CacheStatistics {
 	cacheCreationTokens: number;
 	cacheReadTokens: number;
 	cacheHitRate: number;
-	estimatedCostSavings: number;
 }
 
 /**

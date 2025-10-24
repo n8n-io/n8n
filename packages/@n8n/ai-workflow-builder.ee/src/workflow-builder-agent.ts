@@ -66,12 +66,6 @@ export interface ChatPayload {
 		executionData?: IRunExecutionData['resultData'];
 		expressionValues?: Record<string, ExpressionValue[]>;
 	};
-	/**
-	 * Calls AI Assistant Service using deprecated credentials and endpoints
-	 * These credentials/endpoints will soon be removed
-	 * As new implementation is rolled out and builder experiment is released
-	 */
-	useDeprecatedCredentials?: boolean;
 }
 
 export class WorkflowBuilderAgent {
