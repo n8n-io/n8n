@@ -122,10 +122,10 @@ describe('settings.store', () => {
 		});
 
 		describe('settingsMode', () => {
-			it('should set minimal settings mode if settingsMode is "minimal"', async () => {
+			it('should only set public settings if settingsMode is "public"', async () => {
 				getSettings.mockResolvedValueOnce({
 					...mockSettings,
-					settingsMode: 'minimal',
+					settingsMode: 'public',
 					telemetry: {
 						enabled: true,
 						config: {
