@@ -24,13 +24,18 @@ import { generateMarkdownReport } from '../utils/evaluation-reporter.js';
 /**
  * Main CLI evaluation runner that executes all test cases in parallel
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
- * @param testCaseFilter - Optional test case ID to run only a specific test
- * @param repetitions - Number of times to run each test (for cache warming analysis)
  */
+type CliEvaluationOptions = {
+	testCases?: TestCase[];
+	repetitions?: number;
+};
+
 export async function runCliEvaluation(
 	testCaseFilter?: string,
-	repetitions: number = 1,
+	options: CliEvaluationOptions = {},
 ): Promise<void> {
+	const repetitions = options?.repetitions ?? 1;
+
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
 	if (repetitions > 1) {
 		console.log(pc.yellow(`➔ Each test will be run ${repetitions} times for cache analysis`));
@@ -41,7 +46,14 @@ export async function runCliEvaluation(
 		const { parsedNodeTypes, llm, tracer } = await setupTestEnvironment();
 
 		// Determine test cases to run
-		let testCases: TestCase[] = basicTestCases;
+		const providedTestCases =
+			options.testCases && options.testCases.length > 0 ? options.testCases : undefined;
+
+		let testCases: TestCase[] = providedTestCases ?? basicTestCases;
+
+		if (providedTestCases) {
+			console.log(pc.blue(`➔ Loaded ${providedTestCases.length} test cases from CSV`));
+		}
 
 		// Filter to single test case if specified
 		if (testCaseFilter) {
@@ -56,7 +68,7 @@ export async function runCliEvaluation(
 			}
 		} else {
 			// Optionally generate additional test cases
-			if (shouldGenerateTestCases()) {
+			if (!providedTestCases && shouldGenerateTestCases()) {
 				console.log(pc.blue('➔ Generating additional test cases...'));
 				const generatedCases = await generateTestCases(llm, howManyTestCasesToGenerate());
 				testCases = [...testCases, ...generatedCases];
