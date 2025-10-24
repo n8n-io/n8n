@@ -489,15 +489,11 @@ export class FrontendService {
 				showNonProdBanner: this.settings.enterprise.showNonProdBanner,
 			},
 			authCookie: this.settings.authCookie,
-			oauthCallbackUrls: this.settings.oauthCallbackUrls, // TODO: check if this is critical
+			oauthCallbackUrls: this.settings.oauthCallbackUrls,
 
-			// banners
+			// other settings
 			banners: this.settings.banners,
-
-			// preview mode
 			previewMode: this.settings.previewMode,
-
-			// FeatureFlags and Tracking
 			telemetry: this.settings.telemetry,
 		};
 	}
