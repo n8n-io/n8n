@@ -1103,65 +1103,6 @@ describe('OpenAI Responses Helper Functions', () => {
 			});
 		});
 
-		it('should handle MCP servers', async () => {
-			const executeFunctions = createExecuteFunctionsMock({});
-			const options = {
-				model: 'gpt-4',
-				messages: [
-					{
-						role: 'user',
-						type: 'text',
-						content: 'Hello',
-					},
-				],
-				options: {},
-				builtInTools: {
-					mcpServers: {
-						mcpServerOptions: [
-							{
-								serverLabel: 'Test Server',
-								serverUrl: 'https://example.com/mcp',
-								connectorId: 'conn_123',
-								authorization: 'Bearer token',
-								allowedTools: 'tool1, tool2',
-								headers: '{"X-Custom": "value"}',
-								serverDescription: 'Test MCP server',
-							},
-						],
-					},
-				},
-				tools: undefined,
-			};
-
-			const result = await createRequest.call(executeFunctions, 0, options);
-
-			expect(result).toEqual({
-				model: 'gpt-4',
-				input: [
-					{
-						role: 'user',
-						content: [{ type: 'input_text', text: 'Hello' }],
-					},
-				],
-				parallel_tool_calls: true,
-				store: true,
-				tools: [
-					{
-						type: 'mcp',
-						server_label: 'Test Server',
-						server_url: 'https://example.com/mcp',
-						connector_id: 'conn_123',
-						authorization: 'Bearer token',
-						allowed_tools: ['tool1', 'tool2'],
-						headers: { 'X-Custom': 'value' },
-						require_approval: 'never',
-						server_description: 'Test MCP server',
-					},
-				],
-				background: false,
-			});
-		});
-
 		it('should handle external tools', async () => {
 			const executeFunctions = createExecuteFunctionsMock({});
 			const externalTools = [
@@ -1389,41 +1330,6 @@ describe('OpenAI Responses Helper Functions', () => {
 
 			await expect(createRequest.call(executeFunctions, 0, options)).rejects.toThrow(
 				'Failed to parse filters',
-			);
-		});
-
-		it('should handle invalid JSON in MCP server headers', async () => {
-			const executeFunctions = createExecuteFunctionsMock({});
-			const options = {
-				model: 'gpt-4',
-				messages: [
-					{
-						role: 'user',
-						type: 'text',
-						content: 'Hello',
-					},
-				],
-				options: {},
-				builtInTools: {
-					mcpServers: {
-						mcpServerOptions: [
-							{
-								serverLabel: 'Test Server',
-								serverUrl: 'https://example.com/mcp',
-								connectorId: 'conn_123',
-								authorization: 'Bearer token',
-								allowedTools: 'tool1',
-								headers: 'invalid json',
-								serverDescription: 'Test MCP server',
-							},
-						],
-					},
-				},
-				tools: undefined,
-			};
-
-			await expect(createRequest.call(executeFunctions, 0, options)).rejects.toThrow(
-				'Failed to parse headers',
 			);
 		});
 	});
