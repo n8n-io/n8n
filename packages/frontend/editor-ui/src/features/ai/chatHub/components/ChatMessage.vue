@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nInput, N8nButton, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nButton, N8nTooltip, N8nAvatar } from '@n8n/design-system';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
@@ -53,6 +53,8 @@ const credentialTypeName = computed(() => {
 	}
 	return PROVIDER_CREDENTIAL_TYPE_MAP[message.provider] ?? null;
 });
+
+const isCustomAgent = computed(() => message.type === 'ai' && message.provider === 'custom-agent');
 
 async function handleCopy() {
 	const text = message.content;
@@ -140,6 +142,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
+			<N8nAvatar v-else-if="isCustomAgent" :first-name="message.model" size="xsmall" />
 			<N8nTooltip
 				v-else-if="message.type === 'ai' && credentialTypeName"
 				:show-after="100"
