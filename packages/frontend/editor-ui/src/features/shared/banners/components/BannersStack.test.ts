@@ -76,7 +76,7 @@ describe('BannerStack', () => {
 		const closeTrialBannerButton = getByTestId('banner-V1-close');
 		expect(closeTrialBannerButton).toBeInTheDocument();
 		await userEvent.click(closeTrialBannerButton);
-		expect(dismissBannerSpy).toHaveBeenCalledWith('V1');
+		expect(dismissBannerSpy).toHaveBeenCalledWith('V1', 'temporary');
 	});
 
 	it('should permanently dismiss banner on click', async () => {
