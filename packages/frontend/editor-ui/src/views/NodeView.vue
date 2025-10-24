@@ -498,6 +498,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			workflowData.homeProject,
 			workflowData.sharedWithProjects,
 		);
+		void workflowsStore.fetchLastSuccessfulExecution();
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
 			return await router.replace({
@@ -1450,6 +1451,7 @@ async function onSourceControlPull() {
 			environmentsStore.fetchAllVariables(),
 			tagsStore.fetchAll(),
 			loadCredentials(),
+			projectsStore.getAvailableProjects(),
 		]);
 
 		if (workflowId.value && !uiStore.stateIsDirty) {

@@ -540,7 +540,15 @@ describe('toolsAgentExecute V3', () => {
 						actionType: 'ExecutionNodeAction',
 						type: 'ai_tool',
 					},
-					data: [{ json: { result: 'tool result' } }] as any,
+					data: {
+						data: {
+							ai_tool: [[{ json: { result: 'tool result' } }]],
+						},
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 0,
+						source: [],
+					},
 				},
 			],
 			metadata: { itemIndex: 999, previousRequests: [] }, // Different itemIndex so it doesn't skip
@@ -557,7 +565,7 @@ describe('toolsAgentExecute V3', () => {
 		expect(invokeCall.steps).toBeDefined();
 		expect(invokeCall.steps).toHaveLength(1);
 		expect(invokeCall.steps[0].action.tool).toBe('TestTool');
-		expect(invokeCall.steps[0].observation).toBe('[{"json":{"result":"tool result"}}]');
+		expect(invokeCall.steps[0].observation).toBe('{"result":"tool result"}');
 	});
 
 	it('should handle memory save with tool call context', async () => {
@@ -619,7 +627,15 @@ describe('toolsAgentExecute V3', () => {
 						actionType: 'ExecutionNodeAction' as const,
 						type: 'ai_tool' as const,
 					},
-					data: [{ json: { result: 'tool result' } }] as any,
+					data: {
+						data: {
+							ai_tool: [[{ json: { result: 'tool result' } }]],
+						},
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 0,
+						source: [],
+					},
 				},
 			],
 			metadata: { itemIndex: 999, previousRequests: [] }, // Different itemIndex so it doesn't skip
@@ -631,7 +647,7 @@ describe('toolsAgentExecute V3', () => {
 			{ input: 'test input' },
 			{
 				output:
-					'[Used tools: Tool: TestTool, Input: "test data", Result: [{"json":{"result":"tool result"}}]] success',
+					'[Used tools: Tool: TestTool, Input: "test data", Result: {"result":"tool result"}] success',
 			},
 		);
 	});
