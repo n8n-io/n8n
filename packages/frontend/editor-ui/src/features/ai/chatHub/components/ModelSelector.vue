@@ -66,47 +66,48 @@ const menu = computed(() => {
 		],
 	};
 
-	const providerMenus = chatHubProviderSchema.options.map((provider) => {
-		const models = props.models?.[provider].models ?? [];
-		const error = props.models?.[provider].error;
+	const providerMenus = chatHubProviderSchema.options
+		.filter((provider) => provider !== 'n8n') // Hide n8n provider for now
+		.map((provider) => {
+			const models = props.models?.[provider].models ?? [];
+			const error = props.models?.[provider].error;
 
-		const modelOptions =
-			models.length > 0
-				? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => {
-						const identifier = model.provider === 'n8n' ? model.workflowId : model.model;
+			const modelOptions =
+				models.length > 0
+					? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => {
+							const identifier = model.provider === 'n8n' ? model.workflowId : model.model;
 
-						return {
-							id: `${provider}::${identifier}`,
-							title: model.name,
-							disabled: false,
-						};
-					})
-				: error
-					? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
-					: [];
+							return {
+								id: `${provider}::${identifier}`,
+								title: model.name,
+								disabled: false,
+							};
+						})
+					: error
+						? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
+						: [];
 
-		const submenu = modelOptions.concat([
-			...(provider !== 'n8n' && modelOptions.length > 0
-				? [{ isDivider: true as const, id: 'divider' }]
-				: []),
-		]);
+			const submenu = modelOptions.concat([
+				...(provider !== 'n8n' && modelOptions.length > 0
+					? [{ isDivider: true as const, id: 'divider' }]
+					: []),
+			]);
 
-		if (provider !== 'n8n') {
-			submenu.push({
-				id: `${provider}::configure`,
-				icon: 'settings',
-				title: 'Configure credentials...',
-				disabled: false,
-			});
-		}
+			if (provider !== 'n8n') {
+				submenu.push({
+					id: `${provider}::configure`,
+					icon: 'settings',
+					title: 'Configure credentials...',
+					disabled: false,
+				});
+			}
 
-		return {
-			id: provider,
-			hidden: true,
-			title: providerDisplayNames[provider],
-			submenu,
-		};
-	});
+			return {
+				id: provider,
+				title: providerDisplayNames[provider],
+				submenu,
+			};
+		});
 
 	return props.includeCustomAgents ? [agentMenu, ...providerMenus] : providerMenus;
 });
