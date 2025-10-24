@@ -21,6 +21,7 @@ import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 @Service()
 export class ImportService {
@@ -52,6 +53,7 @@ export class ImportService {
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {}
 
 	async initRecords() {
@@ -116,6 +118,10 @@ export class ImportService {
 				}
 			}
 		});
+		// Update the workflow dependency index for each imported workflow.
+		for (const workflow of workflows) {
+			await this.workflowIndexService.updateIndexFor(workflow);
+		}
 	}
 
 	async replaceInvalidCreds(workflow: IWorkflowBase) {

@@ -1,5 +1,5 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { SecurityConfig } from '@n8n/config';
+import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -192,6 +192,7 @@ export class Server extends AbstractServer {
 		}
 	}
 
+	// eslint-disable-next-line complexity
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
@@ -287,6 +288,16 @@ export class Server extends AbstractServer {
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
+
+		// ----------------------------------------
+		// Workflow Indexing Setup
+		// ----------------------------------------
+		if (Container.get(WorkflowsConfig).indexingEnabled) {
+			const { WorkflowIndexService } = await import(
+				'@/modules/workflow-index/workflow-index.service'
+			);
+			Container.get(WorkflowIndexService).init();
+		}
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
