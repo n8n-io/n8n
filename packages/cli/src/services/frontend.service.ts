@@ -495,29 +495,39 @@ export class FrontendService {
 	 */
 	getPublicSettings(): PublicFrontendSettings {
 		// Get full settings to ensure all required properties are initialized
-		const fullSettings = this.getSettings();
+		const {
+			instanceId,
+			defaultLocale,
+			versionCli,
+			releaseChannel,
+			versionNotifications,
+			userManagement,
+			sso,
+			mfa,
+			authCookie,
+			oauthCallbackUrls,
+			banners,
+			previewMode,
+			telemetry,
+			enterprise: { saml, ldap, oidc, showNonProdBanner },
+		} = this.getSettings();
 
 		return {
 			settingsMode: 'public',
-			instanceId: fullSettings.instanceId,
-			defaultLocale: fullSettings.defaultLocale,
-			versionCli: fullSettings.versionCli,
-			releaseChannel: fullSettings.releaseChannel,
-			versionNotifications: fullSettings.versionNotifications,
-			userManagement: fullSettings.userManagement,
-			sso: fullSettings.sso,
-			mfa: fullSettings.mfa,
-			authCookie: fullSettings.authCookie,
-			oauthCallbackUrls: fullSettings.oauthCallbackUrls,
-			banners: fullSettings.banners,
-			previewMode: fullSettings.previewMode,
-			telemetry: fullSettings.telemetry,
-			enterprise: {
-				saml: fullSettings.enterprise.saml,
-				ldap: fullSettings.enterprise.ldap,
-				oidc: fullSettings.enterprise.oidc,
-				showNonProdBanner: fullSettings.enterprise.showNonProdBanner,
-			},
+			instanceId,
+			defaultLocale,
+			versionCli,
+			releaseChannel,
+			versionNotifications,
+			userManagement,
+			sso,
+			mfa,
+			authCookie,
+			oauthCallbackUrls,
+			banners,
+			previewMode,
+			telemetry,
+			enterprise: { saml, ldap, oidc, showNonProdBanner },
 		};
 	}
 
