@@ -3,17 +3,31 @@
 
 @mixin theme {
 	// Action primary
-	// --action-primary--color: var(--some-color);
-	// --action--color--hover: var(--some-color);
-	// --action--color--active: var(--some-color);
-	// --action--color--disabled: var(--some-color);
+	--color--action--primary: black;
+	--color--action--primary--hover: black;
+	--color--action--primary--active: black;
+	--color--action--primary--focus: black;
+	--color--action--primary--disabled: black;
 
 	// Action secondary
+	--color--action--secondary: black;
+	--color--action--secondary--hover: black;
+	--color--action--secondary--active: black;
+	--color--action--secondary--focus: black;
+	--color--action--secondary--disabled: black;
 
-	// Surface max 5
-	// J - Using 2 bgs for the Chat Hub project
-	// G - Limit the number + have semantic naming
-	// --surface-base....
+	// Surface 1
+	--color--surface--1: black;
+	--color--surface--1--hover: black;
+	--color--surface--1--active: black;
+	--color--surface--1--focus: black;
+	--color--surface--1--disabled: black;
+
+	// Surface 2
+	// ...
+
+	// Surface 2
+	// ...
 
 	// Border max 5
 	// --border--color: var(); <- ?
