@@ -4,6 +4,7 @@ import { WithTimestampsAndStringId } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
+import type { Variables } from './variables';
 
 @Entity()
 export class Project extends WithTimestampsAndStringId {
@@ -27,4 +28,7 @@ export class Project extends WithTimestampsAndStringId {
 
 	@OneToMany('SharedWorkflow', 'project')
 	sharedWorkflows: SharedWorkflow[];
+
+	@OneToMany('Variables', 'project')
+	variables: Variables[];
 }

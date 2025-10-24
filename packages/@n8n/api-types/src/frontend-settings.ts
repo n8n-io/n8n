@@ -136,6 +136,7 @@ export interface FrontendSettings {
 	};
 	aiBuilder: {
 		enabled: boolean;
+		setup: boolean;
 	};
 	deployment: {
 		type: string;
@@ -164,11 +165,13 @@ export interface FrontendSettings {
 		advancedPermissions: boolean;
 		apiKeyScopes: boolean;
 		workflowDiffs: boolean;
+		provisioning: boolean;
 		projects: {
 			team: {
 				limit: number;
 			};
 		};
+		customRoles: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

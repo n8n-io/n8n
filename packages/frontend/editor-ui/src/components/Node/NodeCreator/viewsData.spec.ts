@@ -11,7 +11,7 @@ import { START_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import { AIView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
-import { useTemplatesStore } from '@/features/templates/templates.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
 
 let posthogStore: ReturnType<typeof usePostHog>;

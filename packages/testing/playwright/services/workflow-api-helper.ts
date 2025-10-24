@@ -24,7 +24,7 @@ type WorkflowImportResult = {
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: IWorkflowBase) {
+	async createWorkflow(workflow: Partial<IWorkflowBase>) {
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
 		if (!response.ok()) {
@@ -94,7 +94,7 @@ export class WorkflowApiHelper {
 	 * This ensures no conflicts when importing workflows for testing.
 	 */
 	private makeWorkflowUnique(
-		workflow: IWorkflowBase,
+		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number },
 	) {
 		const idLength = options?.idLength ?? 12;
@@ -115,12 +115,14 @@ export class WorkflowApiHelper {
 		let webhookId: string | undefined;
 		let webhookPath: string | undefined;
 
-		for (const node of workflow.nodes) {
-			if (node.type === 'n8n-nodes-base.webhook') {
-				webhookId = nanoid(idLength);
-				webhookPath = `${webhookPrefix}-${webhookId}`;
-				node.webhookId = webhookId;
-				node.parameters.path = webhookPath;
+		if (workflow.nodes) {
+			for (const node of workflow.nodes) {
+				if (node.type === 'n8n-nodes-base.webhook') {
+					webhookId = nanoid(idLength);
+					webhookPath = `${webhookPrefix}-${webhookId}`;
+					node.webhookId = webhookId;
+					node.parameters.path = webhookPath;
+				}
 			}
 		}
 
@@ -132,7 +134,7 @@ export class WorkflowApiHelper {
 	 * Returns detailed information about what was created.
 	 */
 	async createWorkflowFromDefinition(
-		workflow: IWorkflowBase,
+		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		const { makeUnique = true, ...rest } = options ?? {};
@@ -167,7 +169,7 @@ export class WorkflowApiHelper {
 	}
 
 	async importWorkflowFromDefinition(
-		workflowDefinition: IWorkflowBase,
+		workflowDefinition: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);

@@ -2,7 +2,7 @@
  * Maximum length of user prompt message in characters.
  * Prevents excessively long messages that could consume too many tokens.
  */
-export const MAX_AI_BUILDER_PROMPT_LENGTH = 1000; // characters
+export const MAX_AI_BUILDER_PROMPT_LENGTH = 5000; // characters
 
 /**
  * Token limits for the LLM context window.

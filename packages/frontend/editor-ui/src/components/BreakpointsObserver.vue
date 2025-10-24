@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/constants';
+import {
+	BREAKPOINT_SM,
+	BREAKPOINT_MD,
+	BREAKPOINT_LG,
+	BREAKPOINT_XL,
+} from '@/constants/breakpoints';
 import { useUIStore } from '@/stores/ui.store';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
 import { useDebounce } from '@/composables/useDebounce';

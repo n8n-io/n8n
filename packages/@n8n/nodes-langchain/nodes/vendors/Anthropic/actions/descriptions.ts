@@ -20,7 +20,7 @@ export const modelRLC: INodeProperties = {
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			placeholder: 'e.g. claude-3-5-sonnet-20241022',
+			placeholder: 'e.g. claude-sonnet-4-5-20250929',
 		},
 	],
 };

@@ -6,9 +6,9 @@ import { defaultSettings } from '@/__tests__/defaults';
 import MainSidebar from '@/components/MainSidebar.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useVersionsStore } from '@/stores/versions.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 
 vi.mock('vue-router', () => ({

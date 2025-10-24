@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { useRouter } from 'vue-router';
 import type { FrontendSettings } from '@n8n/api-types';
-import { createProjectListItem } from '@/features/projects/__tests__/utils';
+import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, getDropdownItems } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -13,7 +13,7 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@/stores/roles.store';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 

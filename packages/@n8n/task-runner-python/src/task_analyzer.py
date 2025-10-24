@@ -1,6 +1,5 @@
 import ast
 import hashlib
-from typing import Set, Tuple
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
@@ -9,12 +8,14 @@ from src.config.security_config import SecurityConfig
 from src.constants import (
     MAX_VALIDATION_CACHE_SIZE,
     ERROR_RELATIVE_IMPORT,
+    ERROR_DANGEROUS_NAME,
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
     BLOCKED_ATTRIBUTES,
+    BLOCKED_NAMES,
 )
 
-CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
+CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
@@ -23,7 +24,7 @@ class SecurityValidator(ast.NodeVisitor):
     """AST visitor that enforces import allowlists and blocks dangerous attribute access."""
 
     def __init__(self, security_config: SecurityConfig):
-        self.checked_modules: Set[str] = set()
+        self.checked_modules: set[str] = set()
         self.violations: list[str] = []
         self.security_config = security_config
 
@@ -44,6 +45,12 @@ class SecurityValidator(ast.NodeVisitor):
             self._add_violation(node.lineno, ERROR_RELATIVE_IMPORT)
         elif node.module:
             self._validate_import(node.module, node.lineno)
+
+        self.generic_visit(node)
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id in BLOCKED_NAMES:
+            self._add_violation(node.lineno, ERROR_DANGEROUS_NAME.format(name=node.id))
 
         self.generic_visit(node)
 
@@ -87,22 +94,32 @@ class SecurityValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Subscript(self, node: ast.Subscript) -> None:
-        """Detect dict access to blocked attributes, e.g. __builtins__['__spec__']"""  
-        
+        """Detect dict access to blocked attributes, e.g. __builtins__['__spec__']"""
+
         is_builtins_access = (
             # __builtins__['__spec__']
-            (isinstance(node.value, ast.Name) and node.value.id in {"__builtins__", "builtins"})
+            (
+                isinstance(node.value, ast.Name)
+                and node.value.id in {"__builtins__", "builtins"}
+            )
             # obj.__builtins__['__spec__']
-            or (isinstance(node.value, ast.Attribute) and node.value.attr in {"__builtins__", "builtins"})
+            or (
+                isinstance(node.value, ast.Attribute)
+                and node.value.attr in {"__builtins__", "builtins"}
+            )
         )
-        
-        if is_builtins_access and isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+
+        if (
+            is_builtins_access
+            and isinstance(node.slice, ast.Constant)
+            and isinstance(node.slice.value, str)
+        ):
             key = node.slice.value
             if key in BLOCKED_ATTRIBUTES:
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=key)
                 )
-        
+
         self.generic_visit(node)
 
     # ========== Validation ==========
@@ -160,8 +177,7 @@ class TaskAnalyzer:
             if len(cached_violations) == 0:
                 return
 
-            if len(cached_violations) > 0:
-                self._raise_security_error(cached_violations)
+            self._raise_security_error(cached_violations)
 
         tree = ast.parse(code)
 

@@ -11,7 +11,8 @@ export class Column {
 		| 'timestamp'
 		| 'uuid'
 		| 'double'
-		| 'bigint';
+		| 'bigint'
+		| 'smallint';
 
 	private isGenerated = false;
 
@@ -43,6 +44,11 @@ export class Column {
 
 	get bigint() {
 		this.type = 'bigint';
+		return this;
+	}
+
+	get smallint() {
+		this.type = 'smallint';
 		return this;
 	}
 

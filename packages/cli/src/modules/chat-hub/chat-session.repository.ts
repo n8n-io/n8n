@@ -12,10 +12,9 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 
 	async createChatSession(session: Partial<ChatHubSession>, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			const chatHubSession = em.create(ChatHubSession, session);
-			const saved = await em.save(chatHubSession);
+			await em.insert(ChatHubSession, session);
 			return await em.findOneOrFail(ChatHubSession, {
-				where: { id: saved.id },
+				where: { id: session.id },
 				relations: ['messages'],
 			});
 		});
@@ -54,11 +53,18 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		});
 	}
 
-	async getOneById(id: string, userId: string) {
-		return await this.findOne({
-			where: { id, ownerId: userId },
-			relations: ['messages'],
-		});
+	async getOneById(id: string, userId: string, trx?: EntityManager) {
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.findOne(ChatHubSession, {
+					where: { id, ownerId: userId },
+					relations: ['messages'],
+				});
+			},
+			false,
+		);
 	}
 
 	async deleteAll(trx?: EntityManager) {

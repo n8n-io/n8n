@@ -4,7 +4,7 @@ import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
-} from '@/features/sourceControl.ee/sourceControl.constants';
+} from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 
 // Mock vue-router
 const mockRoute = ref({

@@ -1,5 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 
+import { cleanContextTags } from '@/utils/stream-processor';
+
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { AIMessageWithUsageMetadata } from '../../src/utils/token-usage';
 
@@ -121,7 +123,7 @@ export function extractMessageContent(message: BaseMessage | undefined): string 
 	const content = message.content ?? message.kwargs?.content;
 
 	if (typeof content === 'string') {
-		return content;
+		return cleanContextTags(content);
 	}
 
 	if (Array.isArray(content)) {
@@ -129,6 +131,7 @@ export function extractMessageContent(message: BaseMessage | undefined): string 
 		const textContent = content
 			.filter((item) => item?.type === 'text')
 			.map((item) => (item as { text: string }).text)
+			.map(cleanContextTags)
 			.join('\n');
 
 		if (textContent) {

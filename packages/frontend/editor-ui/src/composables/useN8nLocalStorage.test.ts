@@ -8,7 +8,7 @@ const mockOverview = {
 // Create a shared storage object that persists between calls
 let mockLocalStorageValue: Record<string, unknown> = {};
 
-vi.mock('@/features/projects/composables/useProjectPages', () => ({
+vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn(() => mockOverview),
 }));
 

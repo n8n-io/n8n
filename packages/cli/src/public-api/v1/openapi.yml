@@ -44,6 +44,8 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
   /credentials/schema/{credentialTypeName}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
+  /credentials/{id}/transfer:
+    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
   /executions:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:
@@ -64,8 +66,6 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
   /workflows/{id}/transfer:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /credentials/{id}/transfer:
-    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
   /workflows/{id}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /users:

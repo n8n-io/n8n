@@ -312,6 +312,7 @@ describe('GlobalConfig', () => {
 			disableBareRepos: false,
 		},
 		executions: {
+			mode: 'regular',
 			timeout: -1,
 			maxTimeout: 3600,
 			pruneData: true,
@@ -346,6 +347,9 @@ describe('GlobalConfig', () => {
 		},
 		aiAssistant: {
 			baseUrl: '',
+		},
+		aiBuilder: {
+			apiKey: '',
 		},
 		tags: {
 			disabled: false,

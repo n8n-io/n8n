@@ -41,6 +41,7 @@ export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+export const RESPOND_TO_CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
