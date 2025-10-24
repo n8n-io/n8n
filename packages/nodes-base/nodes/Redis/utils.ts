@@ -243,3 +243,43 @@ export async function setValue(
 	}
 	return;
 }
+
+/**
+ * Get keys matching a pattern, with proper support for cluster mode.
+ * In cluster mode, KEYS only hits one shard, so we need to iterate all master nodes.
+ */
+export async function getKeys(
+	client: RedisClientType,
+	pattern: string,
+	isClusterMode: boolean,
+): Promise<string[]> {
+	const anyClient = client as any;
+
+	// In standalone mode, use the regular KEYS command
+	if (!isClusterMode) {
+		return await anyClient.keys(pattern);
+	}
+
+	// In cluster mode, iterate over all master nodes to get keys from all shards
+	const allKeys: string[] = [];
+	const masters = anyClient.masters;
+
+	if (!masters || masters.length === 0) {
+		throw new Error('Cluster mode is enabled but no master nodes were found');
+	}
+
+	// Collect keys from each master node
+	for (const master of masters) {
+		try {
+			const keys = await master.keys(pattern);
+			allKeys.push(...keys);
+		} catch (error) {
+			// If a master is unavailable, continue with other masters
+			// This allows partial results in degraded cluster scenarios
+			console.warn(`Failed to get keys from master node: ${error.message}`);
+		}
+	}
+
+	// Remove duplicates (shouldn't happen in a properly configured cluster, but be safe)
+	return [...new Set(allKeys)];
+}

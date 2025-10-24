@@ -14,6 +14,7 @@ import {
 	convertInfoToObject,
 	getValue,
 	setValue,
+	getKeys,
 } from './utils';
 
 export class Redis implements INodeType {
@@ -574,7 +575,8 @@ export class Redis implements INodeType {
 							const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
 							const getValues = this.getNodeParameter('getValues', itemIndex, true) as boolean;
 
-							const keys = await anyClient.keys(keyPattern);
+							// Use getKeys helper which properly handles cluster mode
+							const keys = await getKeys(client, keyPattern, credentials.clusterMode === true);
 
 							if (!getValues) {
 								returnItems.push({ json: { keys } });
