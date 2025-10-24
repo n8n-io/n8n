@@ -160,11 +160,9 @@ const isMissingSelectedCredential = computed(() => {
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
-const initialization = ref({ credentialsFetched: false, modelsFetched: false });
+const credentialsFetched = ref<boolean>(false);
+const modelsFetched = ref<boolean>(false);
 const editingAgentId = ref<string | undefined>(undefined);
-const isInitialized = computed(
-	() => initialization.value.credentialsFetched && initialization.value.modelsFetched,
-);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -210,11 +208,6 @@ watch(
 	mergedCredentials,
 	async (credentials) => {
 		const models = await chatStore.fetchChatModels(credentials);
-		if (!models) {
-			toast.showError(undefined, 'Could not load models with updated credentials');
-			return;
-		}
-		initialization.value.modelsFetched = true;
 
 		const selected = selectedModel.value;
 		if (selected === null) {
@@ -223,6 +216,14 @@ watch(
 			if (model) {
 				await handleSelectModel(model);
 			}
+		}
+
+		const currentProvider = selectedModel.value?.provider;
+		if (currentProvider && currentProvider !== 'n8n') {
+			const providerModels = models[currentProvider].models;
+			modelsFetched.value = !models[currentProvider].error && providerModels.length > 0;
+		} else {
+			modelsFetched.value = true;
 		}
 	},
 	{ immediate: true },
@@ -261,7 +262,7 @@ onMounted(async () => {
 		credentialsStore.fetchAllCredentials(),
 		chatStore.fetchAgents(),
 	]);
-	initialization.value.credentialsFetched = true;
+	credentialsFetched.value = true;
 });
 
 function onSubmit(message: string) {
@@ -424,7 +425,6 @@ function handleAgentEditorClose() {
 		]"
 	>
 		<ChatConversationHeader
-			v-if="isInitialized"
 			ref="headerRef"
 			:selected-model="selectedModel"
 			:credentials="mergedCredentials"
@@ -434,10 +434,13 @@ function handleAgentEditorClose() {
 			@select-credential="handleSelectCredentials"
 		/>
 
-		<AgentEditorModal :agent-id="editingAgentId" @close="handleAgentEditorClose" />
+		<AgentEditorModal
+			:agent-id="editingAgentId"
+			:credentials="mergedCredentials"
+			@close="handleAgentEditorClose"
+		/>
 
 		<N8nScrollArea
-			v-if="isInitialized"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
@@ -482,7 +485,6 @@ function handleAgentEditorClose() {
 					/>
 
 					<ChatPrompt
-						v-if="isInitialized"
 						ref="inputRef"
 						:class="$style.prompt"
 						:is-responding="chatStore.isResponding"
