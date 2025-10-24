@@ -6,6 +6,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
+import { ChatModelsResponse } from '@n8n/api-types';
 
 @Service()
 export class ChatHubAgentService {
@@ -13,6 +14,18 @@ export class ChatHubAgentService {
 		private readonly logger: Logger,
 		private readonly chatAgentRepository: ChatHubAgentRepository,
 	) {}
+
+	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelsResponse['custom-agent']> {
+		const agents = await this.getAgentsByUserId(userId);
+
+		return {
+			models: agents.map((agent) => ({
+				provider: 'custom-agent',
+				name: agent.name,
+				agentId: agent.id,
+			})),
+		};
+	}
 
 	async getAgentsByUserId(userId: string): Promise<ChatHubAgent[]> {
 		return await this.chatAgentRepository.getManyByUserId(userId);

@@ -7,7 +7,11 @@ import { Z } from 'zod-class';
 export const chatHubLLMProviderSchema = z.enum(['openai', 'anthropic', 'google']);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
-export const chatHubProviderSchema = z.enum([...chatHubLLMProviderSchema.options, 'n8n'] as const);
+export const chatHubProviderSchema = z.enum([
+	...chatHubLLMProviderSchema.options,
+	'n8n',
+	'custom-agent',
+] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
 /**
@@ -46,11 +50,18 @@ const n8nModelSchema = z.object({
 	workflowId: z.string(),
 });
 
+const chatAgentSchema = z.object({
+	provider: z.literal('custom-agent'),
+	name: z.string(),
+	agentId: z.string(),
+});
+
 export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	openAIModelSchema,
 	anthropicModelSchema,
 	googleModelSchema,
 	n8nModelSchema,
+	chatAgentSchema,
 ]);
 
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;

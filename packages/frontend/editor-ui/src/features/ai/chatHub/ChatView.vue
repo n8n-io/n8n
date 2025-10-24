@@ -117,7 +117,7 @@ const selectedCredentials = useLocalStorage<CredentialsMap>(
 const autoSelectCredentials = computed<CredentialsMap>(() =>
 	Object.fromEntries(
 		chatHubProviderSchema.options.map((provider) => {
-			if (provider === 'n8n') {
+			if (provider === 'n8n' || provider === 'custom-agent') {
 				return [provider, null];
 			}
 
@@ -260,7 +260,6 @@ onMounted(async () => {
 	await Promise.all([
 		credentialsStore.fetchCredentialTypes(false),
 		credentialsStore.fetchAllCredentials(),
-		chatStore.fetchAgents(),
 	]);
 	credentialsFetched.value = true;
 });
@@ -278,7 +277,11 @@ function onSubmit(message: string) {
 	didSubmitInCurrentSession.value = true;
 
 	const credentials = {};
-	if (selectedModel.value.provider !== 'n8n' && credentialsId.value) {
+	if (
+		selectedModel.value.provider !== 'n8n' &&
+		selectedModel.value.provider !== 'custom-agent' &&
+		credentialsId.value
+	) {
 		Object.assign(credentials, {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 				id: credentialsId.value,
@@ -326,7 +329,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 		messageToEdit,
 		message.content,
 		selectedModel.value,
-		selectedModel.value.provider === 'n8n'
+		selectedModel.value.provider === 'n8n' || selectedModel.value.provider === 'custom-agent'
 			? {}
 			: {
 					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
@@ -354,7 +357,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		sessionId.value,
 		messageToRetry,
 		selectedModel.value,
-		selectedModel.value.provider === 'n8n'
+		selectedModel.value.provider === 'n8n' || selectedModel.value.provider === 'custom-agent'
 			? {}
 			: {
 					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {

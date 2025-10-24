@@ -4,7 +4,6 @@ import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-
 import { type ComponentProps } from 'vue-component-type-helpers';
 import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubProviderSchema } from '@n8n/api-types';
 import type {
-	ChatHubAgentDto,
 	ChatHubProvider,
 	ChatHubConversationModel,
 	ChatModelsResponse,
@@ -24,7 +23,6 @@ const props = withDefaults(
 	defineProps<{
 		models: ChatModelsResponse | null;
 		selectedModel: ChatHubConversationModel | null;
-		agents?: ChatHubAgentDto[];
 		includeCustomAgents?: boolean;
 		credentials: CredentialsMap;
 	}>(),
@@ -46,7 +44,9 @@ function handleSelectCredentials(provider: ChatHubProvider, id: string) {
 
 const i18n = useI18n();
 const dropdownRef = useTemplateRef('dropdownRef');
-const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
+const credentialSelectorProvider = ref<Exclude<ChatHubProvider, 'n8n' | 'custom-agent'> | null>(
+	null,
+);
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 
@@ -58,13 +58,14 @@ const credentialsName = computed(() =>
 );
 
 const menu = computed(() => {
-	const agentOptions = (props.agents ?? []).map<
-		ComponentProps<typeof N8nNavigationDropdown>['menu'][number]
-	>((agent) => ({
-		id: `agent::${agent.id}`,
-		title: agent.name,
-		disabled: false,
-	}));
+	const agents = props.models?.['custom-agent'].models;
+	const agentOptions = (agents ?? [])
+		.filter((model) => 'agentId' in model)
+		.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
+			id: `agent::${agent.agentId}`,
+			title: agent.name,
+			disabled: false,
+		}));
 
 	const agentMenu: ComponentProps<typeof N8nNavigationDropdown>['menu'][number] = {
 		id: 'custom-agents',
@@ -85,22 +86,27 @@ const menu = computed(() => {
 	};
 
 	const providerMenus = chatHubProviderSchema.options
-		.filter((provider) => (!props.includeCustomAgents ? provider !== 'n8n' : true)) // hide n8n agent for now
+		.filter(
+			(provider) =>
+				provider !== 'custom-agent' && (!props.includeCustomAgents ? provider !== 'n8n' : true),
+		) // hide n8n agent for now
 		.map((provider) => {
 			const models = props.models?.[provider].models ?? [];
 			const error = props.models?.[provider].error;
 
 			const modelOptions =
 				models.length > 0
-					? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => {
-							const identifier = model.provider === 'n8n' ? model.workflowId : model.model;
+					? models
+							.filter((model) => model.provider !== 'custom-agent')
+							.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => {
+								const identifier = model.provider === 'n8n' ? model.workflowId : model.model;
 
-							return {
-								id: `${provider}::${identifier}`,
-								title: model.name,
-								disabled: false,
-							};
-						})
+								return {
+									id: `${provider}::${identifier}`,
+									title: model.name,
+									disabled: false,
+								};
+							})
 					: error
 						? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
 						: [];
@@ -156,7 +162,12 @@ function onSelect(id: string) {
 		if (value === 'new') {
 			emit('createAgent');
 		} else {
-			emit('editAgent', value);
+			const agents = props.models?.['custom-agent'].models;
+			const selected = agents?.find((agent) => 'agentId' in agent && agent.agentId === value);
+
+			if (selected) {
+				emit('change', selected);
+			}
 		}
 		return;
 	}
@@ -169,16 +180,16 @@ function onSelect(id: string) {
 		return;
 	}
 
-	if (identifier === 'configure' && parsedProvider !== 'n8n') {
+	if (identifier === 'configure' && parsedProvider !== 'n8n' && parsedProvider !== 'custom-agent') {
 		openCredentialsSelectorOrCreate(parsedProvider);
 		return;
 	}
 
 	const model = parsedProvider === 'n8n' ? null : identifier;
 	const workflowId = parsedProvider === 'n8n' ? identifier : null;
-	const selected = props.models?.[parsedProvider].models.find((m) =>
-		m.provider === 'n8n' ? m.workflowId === workflowId : m.model === model,
-	);
+	const selected = props.models?.[parsedProvider].models
+		.filter((m) => m.provider !== 'custom-agent')
+		.find((m) => (m.provider === 'n8n' ? m.workflowId === workflowId : m.model === model));
 
 	if (!selected) {
 		return;
@@ -214,7 +225,7 @@ defineExpose({
 
 		<N8nButton :class="$style.dropdownButton" type="secondary" text>
 			<CredentialSelectorModal
-				v-if="credentialSelectorProvider && credentialSelectorProvider !== 'n8n'"
+				v-if="credentialSelectorProvider"
 				:key="credentialSelectorProvider"
 				:provider="credentialSelectorProvider"
 				:initial-value="credentials[credentialSelectorProvider] ?? null"

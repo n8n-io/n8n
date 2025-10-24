@@ -66,7 +66,6 @@ defineExpose({
 			ref="modelSelectorRef"
 			:models="chatStore.models ?? null"
 			:selected-model="selectedModel"
-			:agents="chatStore.agents"
 			:credentials="credentials"
 			@change="onModelChange"
 			@edit-agent="emit('editAgent', $event)"

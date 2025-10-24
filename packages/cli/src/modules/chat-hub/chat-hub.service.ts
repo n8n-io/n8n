@@ -10,6 +10,7 @@ import {
 	type ChatSessionId,
 	ChatHubConversationModel,
 	ChatHubMessageStatus,
+	chatHubProviderSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -70,6 +71,7 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
 import { captureResponseWrites } from './stream-capturer';
+import { ChatHubAgentService } from './chat-hub-agent.service';
 
 const providerNodeTypeMapping: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -121,6 +123,7 @@ export class ChatHubService {
 		private readonly sessionRepository: ChatHubSessionRepository,
 		private readonly messageRepository: ChatHubMessageRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly chatHubAgentService: ChatHubAgentService,
 	) {}
 
 	async getModels(
@@ -128,9 +131,7 @@ export class ChatHubService {
 		credentialIds: Record<ChatHubLLMProvider, string | null>,
 	): Promise<ChatModelsResponse> {
 		const additionalData = await getBase({ userId: user.id });
-		// The n8n provider is disabled for now.
-		// const providers = chatHubProviderSchema.options;
-		const providers = ['openai', 'anthropic', 'google'] as ChatHubLLMProvider[];
+		const providers = chatHubProviderSchema.options.filter((provider) => provider !== 'n8n');
 
 		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
@@ -141,7 +142,7 @@ export class ChatHubService {
 				async (provider: ChatHubProvider) => {
 					const credentials: INodeCredentials = {};
 
-					if (provider !== 'n8n') {
+					if (provider !== 'n8n' && provider !== 'custom-agent') {
 						const credentialId = credentialIds[provider];
 						if (!credentialId) {
 							return [provider, { models: [] }];
@@ -183,6 +184,7 @@ export class ChatHubService {
 				anthropic: { models: [] },
 				google: { models: [] },
 				n8n: { models: [] },
+				'custom-agent': { models: [] },
 			},
 		);
 	}
@@ -202,6 +204,8 @@ export class ChatHubService {
 				return await this.fetchGoogleModels(credentials, additionalData);
 			case 'n8n':
 				return await this.fetchCustomAgentWorkflows(user);
+			case 'custom-agent':
+				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
 		}
 	}
 
@@ -440,7 +444,7 @@ export class ChatHubService {
 		provider: ChatHubProvider,
 		credentials: INodeCredentials,
 	): string | null {
-		if (provider === 'n8n') {
+		if (provider === 'n8n' || provider === 'custom-agent') {
 			return null;
 		}
 
@@ -959,7 +963,7 @@ export class ChatHubService {
 					options: {
 						enableStreaming: true,
 						maxTokensFromMemory:
-							model.provider !== 'n8n'
+							model.provider !== 'n8n' && model.provider !== 'custom-agent'
 								? getMaxContextWindowTokens(model.provider, model.model)
 								: undefined,
 					},
@@ -1218,7 +1222,7 @@ export class ChatHubService {
 		credentials: INodeCredentials,
 		conversationModel: ChatHubConversationModel,
 	): INode {
-		if (conversationModel.provider === 'n8n') {
+		if (conversationModel.provider === 'n8n' || conversationModel.provider === 'custom-agent') {
 			throw new OperationalError('Custom agent workflows do not require a model node');
 		}
 
