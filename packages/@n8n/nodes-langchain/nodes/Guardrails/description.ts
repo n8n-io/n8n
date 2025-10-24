@@ -96,9 +96,9 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Classify Text',
+					name: 'Check Text for Violations',
 					value: 'classify',
-					action: 'Classify text',
+					action: 'Check text for violations',
 					description: 'Validate text against a set of policies (e.g. NSFW, prompt injection)',
 				},
 				{
