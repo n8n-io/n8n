@@ -117,7 +117,13 @@ const onLicenseActivation = async (eulaUri?: string) => {
 			eulaModal.value = true;
 			return;
 		}
-		showActivationError(error as Error);
+
+		// Use type guard instead of type casting
+		if (error instanceof Error) {
+			showActivationError(error);
+		} else {
+			showActivationError(new Error(String(error)));
+		}
 	}
 };
 
