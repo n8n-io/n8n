@@ -300,5 +300,55 @@ describe('useFixedCollectionItemState', () => {
 			expect(state1.getExpandedState('property1', 0)).toBe(true);
 			expect(state2.getExpandedState('property1', 0)).toBe(false);
 		});
+
+		it('should persist expanded state after reordering and remounting', () => {
+			// Initial setup: create 4 items
+			const state1 = useFixedCollectionItemState('test-node-persist');
+
+			state1.getItemId('property1', 0); // Item 1
+			state1.getItemId('property1', 1); // Item 2
+			state1.getItemId('property1', 2); // Item 3
+			state1.getItemId('property1', 3); // Item 4
+
+			// Expand item at index 2 (Item 3)
+			state1.setExpandedState('property1', 2, true);
+			expect(state1.getExpandedState('property1', 2)).toBe(true);
+
+			// Reorder: move item from index 2 to index 1 (between items 1 and 2)
+			// New order should be: Item 1, Item 3 (expanded), Item 2, Item 4
+			state1.reorderItems('property1', 2, 1);
+
+			// Verify expanded state moved with the item
+			expect(state1.getExpandedState('property1', 1)).toBe(true); // Item 3 is now at index 1
+			expect(state1.getExpandedState('property1', 2)).toBe(false); // Item 2 is now at index 2
+
+			// Simulate remount by creating a new instance with same key
+			const state2 = useFixedCollectionItemState('test-node-persist');
+
+			// Re-initialize items in the new reordered positions
+			state2.getItemId('property1', 0); // Item 1
+			state2.getItemId('property1', 1); // Item 3 (should restore as expanded)
+			state2.getItemId('property1', 2); // Item 2
+			state2.getItemId('property1', 3); // Item 4
+
+			const stable0 = state2.getItemStableIndex('property1', 0);
+			const stable1 = state2.getItemStableIndex('property1', 1);
+			const stable2 = state2.getItemStableIndex('property1', 2);
+			const stable3 = state2.getItemStableIndex('property1', 3);
+
+			// After reorder, the stable indexes should be: [0, 2, 1, 3]
+			// because Item 3 (stable index 2) was moved to position 1
+			expect(stable0).toBe(0);
+			expect(stable1).toBe(2); // This is the key: position 1 should have stable index 2 (Item 3)
+			expect(stable2).toBe(1);
+			expect(stable3).toBe(3);
+
+			// Verify that Item 3 (now at index 1) is still expanded after remount
+			// Since stable index 2 is at position 1, and "property1:2" is in expandedStableIndexes
+			expect(state2.getExpandedState('property1', 1)).toBe(true);
+			expect(state2.getExpandedState('property1', 0)).toBe(false);
+			expect(state2.getExpandedState('property1', 2)).toBe(false);
+			expect(state2.getExpandedState('property1', 3)).toBe(false);
+		});
 	});
 });

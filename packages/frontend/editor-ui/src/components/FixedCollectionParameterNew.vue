@@ -70,7 +70,6 @@ const { activeNode } = storeToRefs(ndvStore);
 
 const mutableValues = ref({} as Record<string, INodeParameters[]>);
 const selectedOption = ref<string | undefined>(undefined);
-const isWrapperExpanded = ref(!props.isNested || props.isNewlyAdded);
 const isDragging = ref(false);
 
 // Set a debounce delay to avoid panel animating shortly after drag end
@@ -93,7 +92,7 @@ const getPropertyPath = (name: string, index?: number): string => {
 };
 
 const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleValues);
-const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
+const sortable = computed(() => true);
 
 const getPlaceholderText = computed(() => {
 	const placeholder = locale
@@ -135,6 +134,21 @@ const isNestedMultipleWrapper = computed(() => props.isNested && multipleValues.
 const isNestedSingle = computed(() => props.isNested && !multipleValues.value);
 
 const showWrapper = computed(() => isNestedMultipleWrapper.value);
+
+// Computed property for wrapper expanded state with proper type
+const isWrapperExpanded = computed({
+	get: () => {
+		const value = itemState.wrapperExpanded.value;
+		// If not set yet, use default based on props
+		if (value === null) {
+			return !props.isNested || props.isNewlyAdded;
+		}
+		return value;
+	},
+	set: (value: boolean) => {
+		itemState.setWrapperExpanded(value);
+	},
+});
 
 const initExpandedState = () => {
 	Object.entries(mutableValues.value).forEach(([propertyName, items]) => {

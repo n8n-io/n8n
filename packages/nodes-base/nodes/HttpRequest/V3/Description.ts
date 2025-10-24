@@ -1018,7 +1018,7 @@ export const mainProperties: INodeProperties[] = [
 									noExpression: true,
 									fixedCollection: {
 										itemTitle:
-											'={{ $collection.item.properties.find(p => p.name === "type").options.find(o => o.value === $collection.item.value.type).name }}: {{ $collection.item.value.name }}',
+											'={{ (() => { const name = $collection.item.value.name; if (!name) return ""; const typeName = $collection.item.properties.find(p => p.name === "type").options.find(o => o.value === $collection.item.value.type).name; return typeName + ": " + name; })() }}',
 									},
 								},
 								placeholder: 'Add Parameter',

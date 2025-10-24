@@ -635,7 +635,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nTooltip>
 					</template>
 				</N8nInputLabel>
-				<Suspense v-if="!asyncLoadingError">
+				<Suspense v-if="!asyncLoadingError && !isCollectionOverhaulEnabled">
 					<template #default>
 						<LazyCollectionParameter
 							v-if="parameter.type === 'collection'"
@@ -666,6 +666,29 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nText>
 					</template>
 				</Suspense>
+				<template v-else-if="!asyncLoadingError && isCollectionOverhaulEnabled">
+					<LazyCollectionParameter
+						v-if="parameter.type === 'collection'"
+						:parameter="parameter"
+						:values="getParameterValue(parameter.name)"
+						:node-values="nodeValues"
+						:path="getPath(parameter.name)"
+						:is-read-only="isReadOnly"
+						:is-nested="isNested"
+						@value-changed="valueChanged"
+					/>
+					<LazyFixedCollectionParameter
+						v-else-if="parameter.type === 'fixedCollection'"
+						:parameter="parameter"
+						:values="getParameterValue(parameter.name)"
+						:node-values="nodeValues"
+						:path="getPath(parameter.name)"
+						:is-read-only="isReadOnly"
+						:is-nested="isNested"
+						:is-newly-added="newlyAddedParameters.has(parameter.name)"
+						@value-changed="valueChanged"
+					/>
+				</template>
 				<N8nText v-else size="small" color="danger" class="async-notice">
 					<N8nIcon icon="triangle-alert" size="xsmall" />
 					{{ i18n.baseText('parameterInputList.loadingError') }}

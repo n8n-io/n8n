@@ -47,7 +47,12 @@ const isOpen = computed({
 </script>
 
 <template>
-	<CollapsibleRoot v-model:open="isOpen" :disabled="disabled" :class="$style.collapsiblePanel">
+	<CollapsibleRoot
+		v-model:open="isOpen"
+		:disabled="disabled"
+		:unmount-on-hide="false"
+		:class="$style.collapsiblePanel"
+	>
 		<div :class="$style.header">
 			<CollapsibleTrigger :class="$style.trigger">
 				<N8nIcon
