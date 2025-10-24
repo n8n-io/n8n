@@ -1,14 +1,13 @@
 import type { IRunExecutionData } from 'n8n-workflow';
-import { describe, expect, it } from 'vitest';
 
 import { compressExecutionData, decompressExecutionData } from '../compression.utils';
 
 describe('Compression Utils', () => {
 	const sampleExecutionData: IRunExecutionData = {
-		startData: { source: 'test' },
+		startData: {},
 		resultData: {
 			runData: {
-				'Test Node': [
+				testNode: [
 					{
 						json: { test: 'data' },
 						binary: {},
@@ -18,8 +17,8 @@ describe('Compression Utils', () => {
 			},
 		},
 		executionData: {
-			contextData: { test: 'context' },
-			metadata: { test: 'metadata' },
+			contextData: {},
+			metadata: {},
 			nodeExecutionStack: [],
 			waitingExecution: {},
 			waitingExecutionSource: {},

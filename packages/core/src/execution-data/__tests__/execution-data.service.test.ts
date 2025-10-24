@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+import { mock } from 'jest-mock-extended';
 import type { IRunExecutionData } from 'n8n-workflow';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import type { ObjectStoreService } from '../../binary-data/object-store/object-store.service.ee';
+import * as compressionUtils from '../compression.utils';
 import type { ExecutionDataConfig } from '../execution-data.config';
 import { ExecutionDataService } from '../execution-data.service';
 
@@ -13,20 +14,20 @@ describe('ExecutionDataService', () => {
 	let mockLogger: Logger;
 
 	beforeEach(() => {
-		mockConfig = {
+		mockConfig = mock<ExecutionDataConfig>({
 			mode: 's3',
-		} as ExecutionDataConfig;
+		});
 
-		mockObjectStoreService = {
-			put: vi.fn(),
-			get: vi.fn(),
-			deleteOne: vi.fn(),
-		} as any;
+		mockObjectStoreService = mock<ObjectStoreService>({
+			put: jest.fn(),
+			get: jest.fn(),
+			deleteOne: jest.fn(),
+		});
 
-		mockLogger = {
-			debug: vi.fn(),
-			error: vi.fn(),
-		} as any;
+		mockLogger = mock<Logger>({
+			debug: jest.fn(),
+			error: jest.fn(),
+		});
 
 		service = new ExecutionDataService(mockConfig, mockObjectStoreService, mockLogger);
 	});
@@ -58,8 +59,8 @@ describe('ExecutionDataService', () => {
 			};
 
 			const mockBuffer = Buffer.from('compressed-data');
-			vi.spyOn(service as any, 'compressExecutionData').mockResolvedValue(mockBuffer);
-			vi.spyOn(mockObjectStoreService, 'put').mockResolvedValue({} as any);
+			jest.spyOn(compressionUtils, 'compressExecutionData').mockResolvedValue(mockBuffer);
+			jest.spyOn(mockObjectStoreService, 'put').mockResolvedValue({} as any);
 
 			const result = await service.store(executionId, executionData);
 
@@ -92,8 +93,8 @@ describe('ExecutionDataService', () => {
 				},
 			};
 
-			vi.spyOn(mockObjectStoreService, 'get').mockResolvedValue(mockBuffer);
-			vi.spyOn(service as any, 'decompressExecutionData').mockResolvedValue(expectedData);
+			jest.spyOn(mockObjectStoreService, 'get').mockResolvedValue(mockBuffer);
+			jest.spyOn(compressionUtils, 'decompressExecutionData').mockResolvedValue(expectedData);
 
 			const result = await service.retrieve(executionId, s3Key);
 
