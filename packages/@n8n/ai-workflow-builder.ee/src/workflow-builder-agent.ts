@@ -68,11 +68,13 @@ export function shouldModifyState(
 		return 'delete_messages';
 	}
 
-	// If the workflow name is using the default pattern (e.g., "My workflow" or "My workflow 1"),
-	// we consider it initial generation request and auto-generate a name for the workflow.
+	// If the workflow is empty (no nodes) and the name is using the default pattern
+	// (e.g., "My workflow" or "My workflow 1"), we consider it initial generation request
+	// and auto-generate a name for the workflow.
 	const workflowName = workflowContext?.currentWorkflow?.name;
+	const nodesLength = workflowContext?.currentWorkflow?.nodes?.length ?? 0;
 	const isDefaultName = !workflowName || /^My workflow( \d+)?$/.test(workflowName);
-	if (isDefaultName && messages.length === 1) {
+	if (isDefaultName && nodesLength === 0 && messages.length === 1) {
 		return 'create_workflow_name';
 	}
 

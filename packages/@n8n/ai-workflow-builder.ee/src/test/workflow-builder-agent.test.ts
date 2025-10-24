@@ -257,6 +257,7 @@ describe('WorkflowBuilderAgent', () => {
 			messageContent: string,
 			workflowName?: string,
 			messageCount: number = 1,
+			nodesCount: number = 0,
 		): typeof WorkflowState.State => {
 			const messages = [];
 			for (let i = 0; i < messageCount; i++) {
@@ -265,6 +266,15 @@ describe('WorkflowBuilderAgent', () => {
 				);
 			}
 
+			const nodes = Array.from({ length: nodesCount }, (_, i) => ({
+				id: `node-${i}`,
+				name: `Node ${i}`,
+				type: 'n8n-nodes-base.testNode',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			}));
+
 			return {
 				messages,
 				workflowJSON: { nodes: [], connections: {}, name: '' },
@@ -272,6 +282,7 @@ describe('WorkflowBuilderAgent', () => {
 				workflowContext: {
 					currentWorkflow: {
 						name: workflowName,
+						nodes,
 					},
 				},
 				workflowValidation: null,
@@ -292,38 +303,48 @@ describe('WorkflowBuilderAgent', () => {
 		});
 
 		describe('workflow name generation', () => {
-			it('should return "create_workflow_name" when workflow name is undefined on first message', () => {
-				const state = createMockState('Create a workflow', undefined, 1);
+			it('should return "create_workflow_name" when workflow name is undefined and empty workflow', () => {
+				const state = createMockState('Create a workflow', undefined, 1, 0);
 				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
 			});
 
-			it('should return "create_workflow_name" when workflow name is "My workflow"', () => {
-				const state = createMockState('Create a workflow', 'My workflow', 1);
+			it('should return "create_workflow_name" when workflow name is "My workflow" and empty workflow', () => {
+				const state = createMockState('Create a workflow', 'My workflow', 1, 0);
 				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
 			});
 
-			it('should return "create_workflow_name" when workflow name is "My workflow 1"', () => {
-				const state = createMockState('Create a workflow', 'My workflow 1', 1);
+			it('should return "create_workflow_name" when workflow name is "My workflow 1" and empty workflow', () => {
+				const state = createMockState('Create a workflow', 'My workflow 1', 1, 0);
 				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
 			});
 
-			it('should return "create_workflow_name" when workflow name is "My workflow 123"', () => {
-				const state = createMockState('Create a workflow', 'My workflow 123', 1);
+			it('should return "create_workflow_name" when workflow name is "My workflow 123" and empty workflow', () => {
+				const state = createMockState('Create a workflow', 'My workflow 123', 1, 0);
 				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
 			});
 
-			it('should return "agent" when workflow name is a custom name on first message', () => {
-				const state = createMockState('Create a workflow', 'Custom Workflow Name', 1);
+			it('should return "agent" when workflow name is a custom name', () => {
+				const state = createMockState('Create a workflow', 'Custom Workflow Name', 1, 0);
 				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
 			});
 
 			it('should return "agent" when workflow name is "My workflow edited"', () => {
-				const state = createMockState('Create a workflow', 'My workflow edited', 1);
+				const state = createMockState('Create a workflow', 'My workflow edited', 1, 0);
 				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
 			});
 
 			it('should return "agent" when workflow has default name but multiple messages exist', () => {
-				const state = createMockState('Continue workflow', 'My workflow', 2);
+				const state = createMockState('Continue workflow', 'My workflow', 2, 0);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
+
+			it('should return "agent" when workflow has default name but workflow has nodes', () => {
+				const state = createMockState('Create a workflow', 'My workflow', 1, 3);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
+
+			it('should return "agent" when workflow name is undefined but workflow has nodes', () => {
+				const state = createMockState('Create a workflow', undefined, 1, 2);
 				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
 			});
 		});
