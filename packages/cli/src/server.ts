@@ -480,7 +480,7 @@ export class Server extends AbstractServer {
 			// Returns the current settings for the UI
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
-				authService.createOptionalAuthMiddleware(),
+				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
 					return req.user ? frontendService.getSettings() : frontendService.getPublicSettings();
 				}),
