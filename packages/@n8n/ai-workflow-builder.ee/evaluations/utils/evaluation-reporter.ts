@@ -68,7 +68,6 @@ export function generateMarkdownReport(
 - Cache Creation Tokens: ${formatted.cacheCreationTokens}
 - Cache Read Tokens: ${formatted.cacheReadTokens}
 - Cache Hit Rate: ${formatted.cacheHitRate}
-- Estimated Cost Savings: ${formatted.costSavings}
 
 `;
 	}
@@ -89,7 +88,6 @@ export function generateMarkdownReport(
 		if (result.cacheStats) {
 			const formatted = formatCacheStats(result.cacheStats);
 			report += `- **Cache Hit Rate**: ${formatted.cacheHitRate}
-- **Cost Savings**: ${formatted.costSavings}
 `;
 		}
 
@@ -174,21 +172,17 @@ export function displayTestResults(
 
 /**
  * Displays the evaluation summary table
- * @param results - Array of test results
  * @param metrics - Calculated metrics
  */
-export function displaySummaryTable(
-	results: TestResult[],
-	metrics: {
-		totalTests: number;
-		successfulTests: number;
-		averageScore: number;
-		categoryAverages: Record<string, number>;
-		violationCounts: { critical: number; major: number; minor: number };
-		programmaticAverages?: Record<string, number>;
-		programmaticViolationCounts?: { critical: number; major: number; minor: number };
-	},
-): void {
+export function displaySummaryTable(metrics: {
+	totalTests: number;
+	successfulTests: number;
+	averageScore: number;
+	categoryAverages: Record<string, number>;
+	violationCounts: { critical: number; major: number; minor: number };
+	programmaticAverages?: Record<string, number>;
+	programmaticViolationCounts?: { critical: number; major: number; minor: number };
+}): void {
 	const {
 		totalTests,
 		successfulTests,
@@ -256,9 +250,6 @@ export function displaySummaryTable(
 	console.log();
 	console.log(formatHeader('Summary', 70));
 	console.log(summaryTable.toString());
-
-	// Display cache statistics if available
-	displayCacheStatistics(results);
 }
 
 /**
@@ -266,63 +257,60 @@ export function displaySummaryTable(
  * @param results - Array of test results
  */
 export function displayCacheStatistics(results: TestResult[]): void {
-	const cacheStats = results
-		.map((r) => r.cacheStats)
-		.filter((r): r is CacheStatistics => r !== undefined);
+	const resultsWithCache = results.filter((r) => r.cacheStats !== undefined);
 
-	if (cacheStats.length === 0) return;
+	if (resultsWithCache.length === 0) return;
 
+	const cacheStats = resultsWithCache.map((r) => r.cacheStats!);
 	const aggregateCache = aggregateCacheStats(cacheStats);
 	const formatted = formatCacheStats(aggregateCache);
 
-	const cacheTable = new Table({
-		head: ['Cache Metric', 'Value'],
+	console.log();
+	console.log(formatHeader('Prompt Caching Statistics', 70));
+
+	// Determine cache quality color function
+	const hitRateColor = (rate: number) => (rate > 0.6 ? pc.green : rate > 0.3 ? pc.yellow : pc.red);
+
+	// Aggregate statistics table
+	const aggregateTable = new Table({
+		head: ['Aggregate Metric', 'Value'],
 		style: { head: ['cyan'] },
 	});
 
-	// Determine cache quality color
-	const hitRateColor =
-		aggregateCache.cacheHitRate > 0.6
-			? pc.green
-			: aggregateCache.cacheHitRate > 0.3
-				? pc.yellow
-				: pc.red;
-
-	const savingsColor =
-		aggregateCache.estimatedCostSavings > 0.01
-			? pc.green
-			: aggregateCache.estimatedCostSavings > 0.001
-				? pc.yellow
-				: pc.dim;
-
-	cacheTable.push(
+	aggregateTable.push(
 		['Input Tokens', formatted.inputTokens],
 		['Output Tokens', formatted.outputTokens],
 		['Cache Creation', formatted.cacheCreationTokens],
 		['Cache Read', formatted.cacheReadTokens],
-		[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
-		['Cache Hit Rate', hitRateColor(formatted.cacheHitRate)],
-		['Cost Savings', savingsColor(formatted.costSavings)],
+		[pc.dim('─'.repeat(25)), pc.dim('─'.repeat(25))],
+		['Cache Hit Rate', hitRateColor(aggregateCache.cacheHitRate)(formatted.cacheHitRate)],
 	);
 
-	console.log();
-	console.log(formatHeader('Prompt Caching Statistics', 70));
-	console.log(cacheTable.toString());
+	console.log(aggregateTable.toString());
 
-	// Add interpretation
-	if (aggregateCache.cacheHitRate > 0.6) {
-		console.log(
-			pc.green('\n  ✓ Excellent cache performance! High hit rate indicates effective caching.'),
-		);
-	} else if (aggregateCache.cacheHitRate > 0.3) {
-		console.log(
-			pc.yellow('\n  ⚠ Moderate cache performance. Consider optimizing cache control markers.'),
-		);
-	} else if (aggregateCache.cacheHitRate > 0) {
-		console.log(
-			pc.red('\n  ✗ Low cache hit rate. Review cache control configuration and prompt structure.'),
-		);
-	}
+	// Per-test breakdown table
+	console.log();
+	console.log(pc.cyan('Per-Test Breakdown:'));
+
+	const perTestTable = new Table({
+		head: ['Test Name', 'Hit Rate', 'Cache Reads'],
+		style: { head: ['cyan'] },
+	});
+
+	resultsWithCache.forEach((result) => {
+		const stats = result.cacheStats!;
+		const testName =
+			result.testCase.name.length > 30
+				? result.testCase.name.substring(0, 27) + '...'
+				: result.testCase.name;
+		const hitRate = (stats.cacheHitRate * 100).toFixed(1) + '%';
+		const hitRateColored = hitRateColor(stats.cacheHitRate)(hitRate);
+		const cacheReads = stats.cacheReadTokens.toLocaleString();
+
+		perTestTable.push([testName, hitRateColored, cacheReads]);
+	});
+
+	console.log(perTestTable.toString());
 }
 
 /**
