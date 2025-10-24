@@ -195,10 +195,10 @@ describe('FrontendService', () => {
 		});
 	});
 
-	describe('getMinimalSettings', () => {
-		it('should include minimal settings', () => {
+	describe('getPublicSettings', () => {
+		it('should include public settings', () => {
 			const { service } = createMockService();
-			const settings = service.getMinimalSettings();
+			const settings = service.getPublicSettings();
 
 			expect(settings).toEqual(
 				expect.objectContaining({
@@ -209,7 +209,7 @@ describe('FrontendService', () => {
 
 		it('should not include non-critical settings', () => {
 			const { service } = createMockService();
-			const settings = service.getMinimalSettings();
+			const settings = service.getPublicSettings();
 
 			// IMPROVE: test the result against the schema
 			// and make sure that only the defined settings are included

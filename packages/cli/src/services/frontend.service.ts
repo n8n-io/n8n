@@ -9,7 +9,6 @@ import uniq from 'lodash/uniq';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
-import { DeepPartial } from 'ts-essentials';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
@@ -491,12 +490,12 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	getMinimalSettings(): PublicFrontendSettings {
+	getPublicSettings(): PublicFrontendSettings {
 		// Get full settings to ensure all required properties are initialized
 		this.getSettings();
 
 		return {
-			settingsMode: 'minimal',
+			settingsMode: 'public',
 
 			// core identification
 			instanceId: this.settings.instanceId,

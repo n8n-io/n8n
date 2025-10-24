@@ -61,7 +61,7 @@ export interface IEnterpriseSettings {
 }
 
 export interface FrontendSettings {
-	settingsMode?: 'minimal' | 'authenticated';
+	settingsMode?: 'public' | 'authenticated';
 	inE2ETests: boolean;
 	isDocker: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';

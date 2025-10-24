@@ -234,7 +234,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution.value = newValue;
 	};
 
-	const setMinimalSettings = (fetchedSettings: FrontendSettings) => {
+	const setPublicSettings = (fetchedSettings: FrontendSettings) => {
 		const rootStore = useRootStore();
 		setSettings(fetchedSettings);
 
@@ -253,10 +253,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const rootStore = useRootStore();
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 
-		if (fetchedSettings.settingsMode === 'minimal') {
-			// minimal settings mode is typically used for unauthenticated users
-			// when minimal settings are returned only critical setup is needed
-			setMinimalSettings(fetchedSettings);
+		if (fetchedSettings.settingsMode === 'public') {
+			// public settings mode is typically used for unauthenticated users
+			// when public settings are returned only critical setup is needed
+			setPublicSettings(fetchedSettings);
 			return;
 		}
 

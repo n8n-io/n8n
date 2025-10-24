@@ -482,7 +482,7 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				authService.createOptionalAuthMiddleware(),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
-					return req.user ? frontendService.getSettings() : frontendService.getMinimalSettings();
+					return req.user ? frontendService.getSettings() : frontendService.getPublicSettings();
 				}),
 			);
 		}
