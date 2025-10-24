@@ -3,7 +3,7 @@ import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { ExecutionData } from '../entities';
+import { ExecutionData, type ExecutionDataStorageMode } from '../entities';
 
 @Service()
 export class ExecutionDataRepository extends Repository<ExecutionData> {
@@ -25,5 +25,17 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 				executionId: In(executionIds),
 			},
 		}).then((executionData) => executionData.map(({ workflowData }) => workflowData));
+	}
+
+	async findStorageMode(executionId: string): Promise<ExecutionDataStorageMode | null> {
+		const result = await this.findOne({
+			select: ['storageMode'],
+			where: { executionId },
+		});
+		return result?.storageMode ?? null;
+	}
+
+	async updateWithS3Key(executionId: string, s3Key: string): Promise<void> {
+		await this.update({ executionId }, { s3Key, storageMode: 's3', data: null });
 	}
 }

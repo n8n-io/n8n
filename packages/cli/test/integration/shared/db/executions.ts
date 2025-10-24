@@ -72,6 +72,8 @@ export async function createExecution(
 		data: data ?? '[]',
 		workflowData: workflow ?? {},
 		executionId: execution.id,
+		storageMode: 'database',
+		s3Key: null,
 	});
 
 	return execution;
@@ -133,4 +135,58 @@ export async function getAllExecutions() {
 export async function createAnnotationTags(annotationTags: string[]) {
 	const tagRepository = Container.get(AnnotationTagRepository);
 	return await tagRepository.save(annotationTags.map((name) => tagRepository.create({ name })));
+}
+
+export async function createExecutionWithS3Storage(
+	attributes: Partial<
+		Omit<ExecutionEntity, 'metadata'> &
+			ExecutionData & { metadata: Array<{ key: string; value: string }> }
+	>,
+	workflow: IWorkflowBase,
+	s3Key: string,
+) {
+	const {
+		data,
+		finished,
+		mode,
+		startedAt,
+		stoppedAt,
+		waitTill,
+		status,
+		deletedAt,
+		metadata,
+		createdAt,
+	} = attributes;
+
+	const execution = await Container.get(ExecutionRepository).save({
+		finished: finished ?? true,
+		mode: mode ?? 'manual',
+		createdAt: createdAt ?? new Date(),
+		startedAt: startedAt === undefined ? new Date() : startedAt,
+		...(workflow !== undefined && { workflowId: workflow.id }),
+		stoppedAt: stoppedAt ?? new Date(),
+		waitTill: waitTill ?? null,
+		status: status ?? 'success',
+		deletedAt,
+	});
+
+	if (metadata?.length) {
+		const metadataToSave = metadata.map(({ key, value }) => ({
+			key,
+			value,
+			execution: { id: execution.id },
+		}));
+
+		await Container.get(ExecutionMetadataRepository).save(metadataToSave);
+	}
+
+	await Container.get(ExecutionDataRepository).save({
+		data: null,
+		workflowData: workflow ?? {},
+		executionId: execution.id,
+		storageMode: 's3',
+		s3Key,
+	});
+
+	return execution;
 }

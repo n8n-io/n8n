@@ -6,7 +6,7 @@ import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { CredentialsEntity } from './credentials-entity';
 import { EventDestinations } from './event-destinations';
 import { ExecutionAnnotation } from './execution-annotation.ee';
-import { ExecutionData } from './execution-data';
+import { ExecutionData, type ExecutionDataStorageMode } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
@@ -59,6 +59,7 @@ export {
 	AuthProviderSyncHistory,
 	WorkflowHistory,
 	ExecutionData,
+	type ExecutionDataStorageMode,
 	ExecutionMetadata,
 	AnnotationTagEntity,
 	ExecutionAnnotation,
