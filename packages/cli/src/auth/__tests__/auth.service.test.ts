@@ -429,7 +429,7 @@ describe('AuthService', () => {
 				expect(res.clearCookie).not.toHaveBeenCalled();
 			});
 
-			it('should clear the cookie if MFA is enforced and user has MFA but token was not created with MFA', async () => {
+			it('should clear cookie if MFA required and not used', async () => {
 				const userWithMfa = mock<User>({ ...userData, mfaEnabled: true, mfaSecret: 'secret' });
 
 				const req = mockReq();
@@ -451,6 +451,58 @@ describe('AuthService', () => {
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
 				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should skip user when MFA enforced and user has no MFA', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
+
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user); // user has mfaEnabled: false
+				mfaService.isMFAEnforced.mockReturnValue(true);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
+			});
+
+			it('should work correctly when both allowUnauthenticated and allowSkipPreviewAuth are true in preview mode', async () => {
+				const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+				process.env.N8N_PREVIEW_MODE = 'true';
+
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+
+				// Restore original value
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
 			});
 		});
 	});
