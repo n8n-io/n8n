@@ -7,16 +7,16 @@ import { ErrorReporter } from 'n8n-core';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import {
-	USER_CONNECTED_TO_MCP_EVENT,
-	USER_CALLED_MCP_TOOL_EVENT,
-	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
+	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
+	USER_CALLED_MCP_TOOL_EVENT,
+	USER_CONNECTED_TO_MCP_EVENT,
 } from './mcp.constants';
 import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
-import type { UserConnectedToMCPEventPayload, UserCalledMCPToolEventPayload } from './mcp.types';
-import { getClientInfo, getToolName, getToolArguments } from './mcp.utils';
+import type { UserCalledMCPToolEventPayload, UserConnectedToMCPEventPayload } from './mcp.types';
+import { getClientInfo, getToolArguments, getToolName } from './mcp.utils';
 
 import { Telemetry } from '@/telemetry';
 

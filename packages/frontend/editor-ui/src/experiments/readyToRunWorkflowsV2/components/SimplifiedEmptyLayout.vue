@@ -91,7 +91,7 @@ const emit = defineEmits<{
 					{{
 						currentUser.firstName
 							? i18n.baseText('workflows.empty.heading', {
-									interpolate: { name: currentUser.firstName },
+									interpolate: { name: 'firstname' },
 								})
 							: i18n.baseText('workflows.empty.heading.userNotSetup')
 					}}

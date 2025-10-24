@@ -5,22 +5,22 @@ import type {
 	IExecutionsStopData,
 } from '@/features/execution/executions/executions.types';
 
+import { retry } from '@n8n/utils/retry';
 import type {
+	IDataObject,
+	INode,
+	IPinData,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
-	IPinData,
-	Workflow,
-	StartNodeData,
-	INode,
-	IDataObject,
 	IWorkflowBase,
+	StartNodeData,
+	Workflow,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
-import { retry } from '@n8n/utils/retry';
 
-import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
 
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -28,26 +28,26 @@ import {
 	SINGLE_WEBHOOK_TRIGGERS,
 } from '@/constants';
 
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import type { useRouter } from 'vue-router';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
+import { displayForm } from '@/features/execution/executions/executions.utils';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
-import get from 'lodash/get';
-import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useTelemetry } from './useTelemetry';
-import { useSettingsStore } from '@/stores/settings.store';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
-import { useWorkflowSaving } from './useWorkflowSaving';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import get from 'lodash/get';
 import { computed } from 'vue';
-import { injectWorkflowState } from './useWorkflowState';
+import type { useRouter } from 'vue-router';
+import { useCanvasOperations } from './useCanvasOperations';
 import { useDocumentTitle } from './useDocumentTitle';
+import { useTelemetry } from './useTelemetry';
+import { useWorkflowSaving } from './useWorkflowSaving';
+import { injectWorkflowState } from './useWorkflowState';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;

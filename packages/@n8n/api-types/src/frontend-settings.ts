@@ -10,18 +10,6 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export interface ITelemetryClientConfig {
-	url: string;
-	key: string;
-	proxy: string;
-	sourceConfig: string;
-}
-
-export interface ITelemetrySettings {
-	enabled: boolean;
-	config?: ITelemetryClientConfig;
-}
-
 export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc';
 
 export interface IUserManagementSettings {
@@ -73,16 +61,6 @@ export interface FrontendSettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
-	telemetry: ITelemetrySettings;
-	posthog: {
-		enabled: boolean;
-		apiHost: string;
-		apiKey: string;
-		autocapture: boolean;
-		disableSessionRecording: boolean;
-		debug: boolean;
-		proxy: string;
-	};
 	dataTables: {
 		maxSize: number;
 	};

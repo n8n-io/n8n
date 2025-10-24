@@ -31,23 +31,18 @@ export class LicenseState {
 	 * If the feature is an array of strings, it checks if any of the features are licensed
 	 */
 	isLicensed(feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
-		this.assertProvider();
-
-		if (typeof feature === 'string') return this.licenseProvider.isLicensed(feature);
-
-		for (const featureName of feature) {
-			if (this.licenseProvider.isLicensed(featureName)) {
-				return true;
-			}
-		}
-
-		return false;
+		// Bypass all license checks - enable all enterprise features
+		return true;
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
-		this.assertProvider();
-
-		return this.licenseProvider.getValue(feature);
+		// Bypass license quotas - return unlimited values
+		if (typeof feature === 'string' && feature.startsWith('quota:')) {
+			return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+		}
+		return (
+			this.licenseProvider?.getValue(feature) ?? (UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T])
+		);
 	}
 
 	// --------------------

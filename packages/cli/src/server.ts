@@ -31,11 +31,13 @@ import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 
 import '@/controllers/active-workflows.controller';
+import '@/controllers/ai.controller';
 import '@/controllers/annotation-tags.controller.ee';
+import '@/controllers/api-keys.controller';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
-import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
+import '@/controllers/folder.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -48,20 +50,18 @@ import '@/controllers/project.controller';
 import '@/controllers/role.controller';
 import '@/controllers/tags.controller';
 import '@/controllers/translation.controller';
-import '@/controllers/folder.controller';
-import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
+import '@/controllers/users.controller';
 import '@/controllers/workflow-statistics.controller';
-import '@/controllers/api-keys.controller';
 import '@/credentials/credentials.controller';
+import '@/evaluation.ee/test-runs.controller.ee';
 import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
-import '@/evaluation.ee/test-runs.controller.ee';
+import '@/webhooks/webhooks.controller';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
-import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
@@ -149,11 +149,6 @@ export class Server extends AbstractServer {
 			await import('@/sso.ee/saml/routes/saml.controller.ee');
 		} catch (error) {
 			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
-		}
-
-		if (this.globalConfig.diagnostics.enabled) {
-			await import('@/controllers/telemetry.controller');
-			await import('@/controllers/posthog.controller');
 		}
 
 		// ----------------------------------------

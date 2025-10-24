@@ -1,22 +1,21 @@
-import { computed, ref } from 'vue';
-import Bowser from 'bowser';
 import type {
-	IUserManagementSettings,
-	FrontendSettings,
 	FrontendModuleSettings,
+	FrontendSettings,
+	IUserManagementSettings,
 } from '@n8n/api-types';
+import Bowser from 'bowser';
+import { computed, ref } from 'vue';
 
-import * as eventsApi from '@n8n/rest-api-client/api/events';
-import * as settingsApi from '@n8n/rest-api-client/api/settings';
-import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
-import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import { INSECURE_CONNECTION_WARNING } from '@/constants';
-import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
+import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
+import * as settingsApi from '@n8n/rest-api-client/api/settings';
+import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
+import { STORES } from '@n8n/stores';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const initialized = ref(false);
@@ -265,10 +264,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
-
-		if (fetchedSettings.telemetry.enabled) {
-			void eventsApi.sessionStarted(rootStore.restApiContext);
-		}
 	};
 
 	const initialize = async () => {

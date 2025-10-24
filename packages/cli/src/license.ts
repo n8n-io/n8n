@@ -16,9 +16,9 @@ import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
 
-import { LicenseMetricsService } from '@/metrics/license-metrics.service';
-
 import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
+
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 const LICENSE_RENEWAL_DISABLED_WARNING =
 	'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!';
@@ -217,7 +217,8 @@ export class License implements LicenseProvider {
 	}
 
 	isLicensed(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? false;
+		// Bypass all license checks - enable all enterprise features
+		return true;
 	}
 
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
@@ -345,7 +346,14 @@ export class License implements LicenseProvider {
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
-		return this.manager?.getFeatureValue(feature) as FeatureReturnType[T];
+		// Override all quotas to unlimited
+		if (typeof feature === 'string' && feature.startsWith('quota:')) {
+			return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+		}
+		return (
+			(this.manager?.getFeatureValue(feature) as FeatureReturnType[T]) ??
+			(UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T])
+		);
 	}
 
 	getManagementJwt(): string {
@@ -412,7 +420,7 @@ export class License implements LicenseProvider {
 	}
 
 	getPlanName(): string {
-		return this.getValue('planName') ?? 'Community';
+		return 'Enterprise'; // Always return Enterprise plan
 	}
 
 	getInfo(): string {

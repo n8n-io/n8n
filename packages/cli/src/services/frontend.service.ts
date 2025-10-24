@@ -1,4 +1,4 @@
-import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
+import type { FrontendSettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -86,24 +86,6 @@ export class FrontendService {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
-		const telemetrySettings: ITelemetrySettings = {
-			enabled: this.globalConfig.diagnostics.enabled,
-		};
-
-		if (telemetrySettings.enabled) {
-			const conf = this.globalConfig.diagnostics.frontendConfig;
-			const [key, url] = conf.split(';');
-			const proxy = `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`;
-			const sourceConfig = `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`;
-
-			if (!key || !url) {
-				this.logger.warn('Diagnostics frontend config is invalid');
-				telemetrySettings.enabled = false;
-			}
-
-			telemetrySettings.config = { key, url, proxy, sourceConfig };
-		}
-
 		this.settings = {
 			inE2ETests,
 			isDocker: this.instanceSettings.isDocker,
@@ -151,16 +133,6 @@ export class FrontendService {
 				infoUrl: this.globalConfig.versionNotifications.infoUrl,
 			},
 			instanceId: this.instanceSettings.instanceId,
-			telemetry: telemetrySettings,
-			posthog: {
-				enabled: this.globalConfig.diagnostics.enabled,
-				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
-				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
-				autocapture: false,
-				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
-				proxy: `${instanceBaseUrl}/${restEndpoint}/posthog`,
-				debug: this.globalConfig.logging.level === 'debug',
-			},
 			personalizationSurveyEnabled:
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
@@ -356,29 +328,28 @@ export class FrontendService {
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
 
-		// refresh enterprise status
+		// refresh enterprise status - ALL FEATURES ENABLED
 		Object.assign(this.settings.enterprise, {
-			sharing: this.license.isSharingEnabled(),
-			logStreaming: this.license.isLogStreamingEnabled(),
-			ldap: this.license.isLdapEnabled(),
-			saml: this.license.isSamlEnabled(),
-			oidc: this.licenseState.isOidcLicensed(),
-			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
-			provisioning: false, // temporarily disabled until this feature is ready for release
-			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
-			variables: this.license.isVariablesEnabled(),
-			sourceControl: this.license.isSourceControlLicensed(),
-			externalSecrets: this.license.isExternalSecretsEnabled(),
-			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
-			debugInEditor: this.license.isDebugInEditorLicensed(),
-			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
-			workflowHistory:
-				this.license.isWorkflowHistoryLicensed() && this.globalConfig.workflowHistory.enabled,
-			workerView: this.license.isWorkerViewLicensed(),
-			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
-			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
-			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
-			customRoles: this.licenseState.isCustomRolesLicensed(),
+			sharing: true,
+			logStreaming: true,
+			ldap: true,
+			saml: true,
+			oidc: true,
+			mfaEnforcement: true,
+			provisioning: true, // enable provisioning
+			advancedExecutionFilters: true,
+			variables: true,
+			sourceControl: true,
+			externalSecrets: true,
+			showNonProdBanner: true,
+			debugInEditor: true,
+			binaryDataS3: isS3Available && isS3Selected,
+			workflowHistory: this.globalConfig.workflowHistory.enabled,
+			workerView: true,
+			advancedPermissions: true,
+			apiKeyScopes: true,
+			workflowDiffs: true,
+			customRoles: true,
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -401,9 +372,8 @@ export class FrontendService {
 			});
 		}
 
-		if (this.license.isVariablesEnabled()) {
-			this.settings.variables.limit = this.license.getVariablesLimit();
-		}
+		// Override variables limit to unlimited
+		this.settings.variables.limit = -1; // Unlimited
 
 		if (this.globalConfig.workflowHistory.enabled && this.license.isWorkflowHistoryLicensed()) {
 			Object.assign(this.settings.workflowHistory, {

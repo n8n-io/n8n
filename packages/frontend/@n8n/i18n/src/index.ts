@@ -4,12 +4,12 @@ import { ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import englishBaseText from './locales/en.json';
-import type { BaseTextKey, LocaleMessages, INodeTranslationHeaders } from './types';
+import type { BaseTextKey, INodeTranslationHeaders, LocaleMessages } from './types';
 import {
 	deriveMiddleKey,
+	insertOptionsAndValues,
 	isNestedInCollectionLike,
 	normalize,
-	insertOptionsAndValues,
 } from './utils';
 
 export type * from './types';

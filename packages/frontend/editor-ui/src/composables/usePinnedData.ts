@@ -1,24 +1,24 @@
+import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeType } from '@/composables/useNodeType';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
-import type { INodeExecutionData, IPinData, Workflow } from 'n8n-workflow';
-import { jsonParse, jsonStringify, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
 	MAX_PINNED_DATA_SIZE,
 	MAX_WORKFLOW_SIZE,
 	PIN_DATA_NODE_TYPES_DENYLIST,
 } from '@/constants';
-import { stringSizeInBytes, toMegaBytes } from '@/utils/typesUtils';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { stringSizeInBytes, toMegaBytes } from '@/utils/typesUtils';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import type { INodeExecutionData, IPinData, Workflow } from 'n8n-workflow';
+import { jsonParse, jsonStringify, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNodeType } from '@/composables/useNodeType';
 import { useDataSchema } from './useDataSchema';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export type PinDataSource =
 	| 'pin-icon-click'

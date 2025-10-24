@@ -1809,8 +1809,8 @@ const onNameSubmit = async (name: string) => {
 	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
-		ref="resourcesListLayout"
 		v-else
+		ref="resourcesListLayout"
 		v-model:filters="filters"
 		resource-key="workflows"
 		type="list-paginated"
@@ -2127,7 +2127,7 @@ const onNameSubmit = async (name: string) => {
 						{{
 							currentUser.firstName
 								? i18n.baseText('workflows.empty.heading', {
-										interpolate: { name: currentUser.firstName },
+										interpolate: { name: 'firstname' },
 									})
 								: i18n.baseText('workflows.empty.heading.userNotSetup')
 						}}
