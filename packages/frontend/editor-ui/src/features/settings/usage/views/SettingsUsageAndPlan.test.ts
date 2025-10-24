@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useUsageStore } from '../usage.store';
 import SettingsUsageAndPlan from './SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -71,7 +71,9 @@ describe('SettingsUsageAndPlan', () => {
 		usageStore.viewPlansUrl = 'https://subscription.n8n.io';
 		usageStore.managePlanUrl = 'https://subscription.n8n.io';
 		usageStore.isLoading = false;
-		usageStore.setLoading = vi.fn();
+		usageStore.setLoading = vi.fn((value: boolean) => {
+			usageStore.isLoading = value;
+		});
 		usageStore.getLicenseInfo = vi.fn();
 		usageStore.activateLicense = vi.fn();
 		usageStore.refreshLicenseManagementToken = vi.fn();
@@ -334,9 +336,13 @@ describe('SettingsUsageAndPlan', () => {
 			} as IUser;
 			// Reset mocks to avoid interference from previous tests
 			Object.assign(mockRouteQuery, {});
-			usageStore.refreshLicenseManagementToken.mockResolvedValueOnce(undefined);
+			usageStore.refreshLicenseManagementToken.mockClear();
+			usageStore.refreshLicenseManagementToken.mockResolvedValue(undefined);
 
 			renderComponent();
+
+			// Give time for onMounted to run
+			await waitAllPromises();
 
 			await waitFor(
 				() => {
@@ -359,9 +365,14 @@ describe('SettingsUsageAndPlan', () => {
 			} as IUser;
 			// Reset query params
 			Object.assign(mockRouteQuery, {});
-			usageStore.getLicenseInfo.mockResolvedValueOnce(undefined);
+			usageStore.getLicenseInfo.mockClear();
+			usageStore.refreshLicenseManagementToken.mockClear();
+			usageStore.getLicenseInfo.mockResolvedValue(undefined);
 
 			renderComponent();
+
+			// Give time for onMounted to run
+			await waitAllPromises();
 
 			await waitFor(
 				() => {
@@ -379,8 +390,16 @@ describe('SettingsUsageAndPlan', () => {
 			usersStore.currentUser = {
 				globalScopes: ['license:manage'],
 			} as IUser;
+			Object.assign(mockRouteQuery, {});
+			usageStore.refreshLicenseManagementToken.mockClear();
+			usageStore.refreshLicenseManagementToken.mockResolvedValue(undefined);
 
 			const { getByRole } = renderComponent();
+
+			// Wait for component to mount and complete async operations
+			await waitFor(() => {
+				expect(usageStore.refreshLicenseManagementToken).toHaveBeenCalled();
+			});
 
 			await userEvent.click(getByRole('button', { name: /activation/i }));
 
@@ -398,8 +417,16 @@ describe('SettingsUsageAndPlan', () => {
 			usersStore.currentUser = {
 				globalScopes: ['license:manage'],
 			} as IUser;
+			Object.assign(mockRouteQuery, {});
+			usageStore.refreshLicenseManagementToken.mockClear();
+			usageStore.refreshLicenseManagementToken.mockResolvedValue(undefined);
 
 			const { getByRole } = renderComponent();
+
+			// Wait for component to mount and complete async operations
+			await waitFor(() => {
+				expect(usageStore.refreshLicenseManagementToken).toHaveBeenCalled();
+			});
 
 			await userEvent.click(getByRole('button', { name: /activation/i }));
 
