@@ -97,6 +97,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'mcpApiKey:rotate',
 	'chatHub:manage',
 	'chatHub:message',
+	'breakingChanges:list',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
