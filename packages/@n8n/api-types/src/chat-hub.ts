@@ -16,8 +16,12 @@ export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
 /**
  * Map of providers to their credential types
+ * Only LLM providers (openai, anthropic, google) have credentials
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
+	Exclude<ChatHubProvider, 'n8n' | 'custom-agent'>,
+	string
+> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',

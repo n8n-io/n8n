@@ -553,6 +553,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function createAgent(payload: ChatHubCreateAgentRequest): Promise<ChatHubAgentDto> {
 		const agent = await createAgentApi(rootStore.restApiContext, payload);
 		agents.value.push(agent);
+		models.value?.['custom-agent'].models.push({
+			provider: 'custom-agent',
+			agentId: agent.id,
+			name: agent.name,
+		});
+
 		return agent;
 	}
 
@@ -562,12 +568,27 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	): Promise<ChatHubAgentDto> {
 		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
 		agents.value = agents.value.map((a) => (a.id === agentId ? agent : a));
+
+		// Update the agent in models as well
+		if (models.value?.['custom-agent']) {
+			models.value['custom-agent'].models = models.value['custom-agent'].models.map((model) =>
+				'agentId' in model && model.agentId === agentId ? { ...model, name: agent.name } : model,
+			);
+		}
+
 		return agent;
 	}
 
 	async function deleteAgent(agentId: string) {
 		await deleteAgentApi(rootStore.restApiContext, agentId);
 		agents.value = agents.value.filter((a) => a.id !== agentId);
+
+		// Remove the agent from models as well
+		if (models.value?.['custom-agent']) {
+			models.value['custom-agent'].models = models.value['custom-agent'].models.filter(
+				(model) => !('agentId' in model) || model.agentId !== agentId,
+			);
+		}
 	}
 
 	return {

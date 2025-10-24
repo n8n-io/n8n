@@ -95,16 +95,20 @@ const selectedModel = computed<ChatHubConversationModel | null>(() => {
 		model = defaultModel.value;
 	}
 
-	console.log('hmm', model);
 	if (model?.provider === 'custom-agent') {
 		const agent = chatStore.models?.['custom-agent'].models.find(
 			(agent) => 'agentId' in agent && agent.agentId === model.agentId,
 		);
 
-		console.log('yo', agent);
 		// if agent got deleted
 		if (!agent) {
 			return null;
+		} else {
+			return {
+				...model,
+				// use updated name if user edited agent name
+				name: agent.name,
+			};
 		}
 	}
 
@@ -137,9 +141,14 @@ const autoSelectCredentials = computed<CredentialsMap>(() =>
 				return [provider, null];
 			}
 
+			const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+			if (!credentialType) {
+				return [provider, null];
+			}
+
 			const lastCreatedCredential =
 				credentialsStore
-					.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])
+					.getCredentialsByType(credentialType)
 					.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
 
 			return [provider, lastCreatedCredential];
