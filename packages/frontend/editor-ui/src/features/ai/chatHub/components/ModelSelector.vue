@@ -33,7 +33,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	change: [ChatHubConversationModel];
-	editAgent: [agentId: string];
 	createAgent: [];
 	selectCredential: [provider: ChatHubProvider, credentialId: string];
 }>();

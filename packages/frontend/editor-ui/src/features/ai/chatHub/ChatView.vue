@@ -84,15 +84,31 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 );
 
 const selectedModel = computed<ChatHubConversationModel | null>(() => {
+	let model: ChatHubConversationModel | null = null;
 	if (currentConversation.value?.model && currentConversation.value?.provider) {
-		return {
+		model = {
 			provider: currentConversation.value.provider,
 			model: currentConversation.value.model,
 			name: currentConversation.value.model,
 		} as ChatHubConversationModel;
+	} else {
+		model = defaultModel.value;
 	}
 
-	return defaultModel.value;
+	console.log('hmm', model);
+	if (model?.provider === 'custom-agent') {
+		const agent = chatStore.models?.['custom-agent'].models.find(
+			(agent) => 'agentId' in agent && agent.agentId === model.agentId,
+		);
+
+		console.log('yo', agent);
+		// if agent got deleted
+		if (!agent) {
+			return null;
+		}
+	}
+
+	return model;
 });
 
 const selectedCredentials = useLocalStorage<CredentialsMap>(
