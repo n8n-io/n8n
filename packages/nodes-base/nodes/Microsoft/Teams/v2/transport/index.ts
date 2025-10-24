@@ -20,6 +20,19 @@ export async function microsoftApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
+	// Only try to get node parameter in IExecuteFunctions context
+	let nodeBaseParam = '';
+	try {
+		// Check if this is an IExecuteFunctions context by checking for getNodeParameter method
+		if ('getNodeParameter' in this && typeof this.getNodeParameter === 'function') {
+			nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
+		}
+	} catch (error) {
+		// Silently fallback to default if getNodeParameter fails (e.g., in ILoadOptionsFunctions/IHookFunctions)
+		nodeBaseParam = '';
+	}
+
+	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -27,7 +40,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com${resource}`,
+		uri: uri || `${baseUrl}${resource}`,
 		json: true,
 	};
 	try {

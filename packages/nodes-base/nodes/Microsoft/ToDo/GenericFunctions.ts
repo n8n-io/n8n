@@ -18,6 +18,27 @@ export async function microsoftApiRequest(
 	_headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ) {
+	// Only try to get node parameter in IExecuteFunctions context
+	let nodeBaseParam = '';
+	try {
+		if ('getNodeParameter' in this && typeof this.getNodeParameter === 'function') {
+			nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
+		}
+	} catch (error) {
+		// Silently fallback to default if getNodeParameter fails (e.g., in ILoadOptionsFunctions)
+		nodeBaseParam = '';
+	}
+
+	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+
+	// Handle resource path construction - avoid duplicating /me if resource already starts with it
+	let resourcePath = resource;
+	if (!resource.startsWith('/me') && !resource.startsWith('/users/')) {
+		// Ensure proper path separator between /me and resource
+		const separator = resource.startsWith('/') ? '' : '/';
+		resourcePath = `/me${separator}${resource}`;
+	}
+
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -25,7 +46,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
+		uri: uri || `${baseUrl}/v1.0${resourcePath}`,
 	};
 	try {
 		Object.assign(options, option);

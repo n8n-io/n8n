@@ -517,6 +517,181 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 		});
 	});
 
+	describe('base URL handling', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: {
+					access_token: 'test-access-token',
+				},
+			});
+		});
+
+		it('should use graphApiBaseUrl parameter when provided', async () => {
+			const mockResponse = { data: 'test data' };
+			mockRequest.mockResolvedValue(mockResponse);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'graphApiBaseUrl') return 'https://graph.microsoft.us';
+				return '';
+			});
+
+			await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					Authorization: 'Bearer test-access-token',
+				},
+				method: 'GET',
+				uri: 'https://graph.microsoft.us/v1.0/security/alerts',
+				json: true,
+			});
+		});
+
+		it('should fall back to default when graphApiBaseUrl is not set', async () => {
+			const mockResponse = { data: 'test data' };
+			mockRequest.mockResolvedValue(mockResponse);
+
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('');
+
+			await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					Authorization: 'Bearer test-access-token',
+				},
+				method: 'GET',
+				uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+				json: true,
+			});
+		});
+
+		it('should strip trailing slashes from base URL', async () => {
+			const mockResponse = { data: 'test data' };
+			mockRequest.mockResolvedValue(mockResponse);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'graphApiBaseUrl') return 'https://graph.microsoft.us//';
+				return '';
+			});
+
+			await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					Authorization: 'Bearer test-access-token',
+				},
+				method: 'GET',
+				uri: 'https://graph.microsoft.us/v1.0/security/alerts',
+				json: true,
+			});
+		});
+
+		it('should handle multiple trailing slashes', async () => {
+			const mockResponse = { data: 'test data' };
+			mockRequest.mockResolvedValue(mockResponse);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'graphApiBaseUrl') return 'https://graph.microsoft.us///';
+				return '';
+			});
+
+			await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					Authorization: 'Bearer test-access-token',
+				},
+				method: 'GET',
+				uri: 'https://graph.microsoft.us/v1.0/security/alerts',
+				json: true,
+			});
+		});
+
+		it('should handle getNodeParameter throwing an error', async () => {
+			const mockResponse = { data: 'test data' };
+			mockRequest.mockResolvedValue(mockResponse);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation(() => {
+				throw new Error('Parameter not available');
+			});
+
+			await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					Authorization: 'Bearer test-access-token',
+				},
+				method: 'GET',
+				uri: 'https://graph.microsoft.com/v1.0/security/alerts', // falls back to default
+				json: true,
+			});
+		});
+
+		it('should handle different cloud environments', async () => {
+			const mockResponse = { data: 'test data' };
+			mockRequest.mockResolvedValue(mockResponse);
+
+			// Test US Government DOD
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'graphApiBaseUrl') return 'https://dod-graph.microsoft.us';
+				return '';
+			});
+
+			await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					Authorization: 'Bearer test-access-token',
+				},
+				method: 'GET',
+				uri: 'https://dod-graph.microsoft.us/v1.0/security/alerts',
+				json: true,
+			});
+		});
+
+		it('should handle China cloud environment', async () => {
+			const mockResponse = { data: 'test data' };
+			mockRequest.mockResolvedValue(mockResponse);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'graphApiBaseUrl') return 'https://microsoftgraph.chinacloudapi.cn';
+				return '';
+			});
+
+			await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					Authorization: 'Bearer test-access-token',
+				},
+				method: 'GET',
+				uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/security/alerts',
+				json: true,
+			});
+		});
+
+		it('should construct correct URI with different endpoints', async () => {
+			const mockResponse = { data: 'test data' };
+			mockRequest.mockResolvedValue(mockResponse);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'graphApiBaseUrl') return 'https://graph.microsoft.us';
+				return '';
+			});
+
+			await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/secureScores');
+
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					Authorization: 'Bearer test-access-token',
+				},
+				method: 'GET',
+				uri: 'https://graph.microsoft.us/v1.0/security/secureScores',
+				json: true,
+			});
+		});
+	});
+
 	describe('Edge Cases and Integration', () => {
 		beforeEach(() => {
 			mockExecuteFunctions.getCredentials.mockResolvedValue({

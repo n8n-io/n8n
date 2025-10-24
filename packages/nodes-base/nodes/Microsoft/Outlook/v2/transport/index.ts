@@ -23,10 +23,35 @@ export async function microsoftApiRequest(
 ) {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
-	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
+	// Only try to get node parameter in IExecuteFunctions context
+	let nodeBaseParam = '';
+	try {
+		if ('getNodeParameter' in this && typeof this.getNodeParameter === 'function') {
+			nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
+		}
+	} catch (error) {
+		// Silently fallback to default if getNodeParameter fails (e.g., in ILoadOptionsFunctions/IPollFunctions)
+		nodeBaseParam = '';
+	}
+
+	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+
+	// Handle resource path construction - avoid duplicating /me if resource already starts with it
+	let resourcePath = resource;
+	if (!resource.startsWith('/me') && !resource.startsWith('/users/')) {
+		// Ensure proper path separator between /me and resource
+		const separator = resource.startsWith('/') ? '' : '/';
+		resourcePath = `/me${separator}${resource}`;
+	}
+
+	let apiUrl = `${baseUrl}/v1.0${resourcePath}`;
 	// If accessing shared mailbox
 	if (credentials.useShared && credentials.userPrincipalName) {
-		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+		// For shared mailbox, replace /me with /users/{userPrincipalName} if present
+		if (resourcePath.startsWith('/me')) {
+			resourcePath = resourcePath.replace('/me', `/users/${credentials.userPrincipalName}`);
+		}
+		apiUrl = `${baseUrl}/v1.0${resourcePath}`;
 	}
 
 	const options: IRequestOptions = {
