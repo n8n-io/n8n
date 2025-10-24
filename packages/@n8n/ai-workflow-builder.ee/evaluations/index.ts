@@ -19,16 +19,16 @@ async function main(): Promise<void> {
 		? process.argv[process.argv.indexOf('--test-case') + 1]
 		: undefined;
 
-	if (useLangsmith) {
-		// Parse command line arguments for a number of repetitions
-		const repetitionsArg = process.argv.includes('--repetitions')
-			? parseInt(process.argv[process.argv.indexOf('--repetitions') + 1], 10)
-			: 1;
-		const repetitions = Number.isNaN(repetitionsArg) ? 1 : repetitionsArg;
+	// Parse command line arguments for a number of repetitions (applies to both modes)
+	const repetitionsArg = process.argv.includes('--repetitions')
+		? parseInt(process.argv[process.argv.indexOf('--repetitions') + 1], 10)
+		: 1;
+	const repetitions = Number.isNaN(repetitionsArg) ? 1 : repetitionsArg;
 
+	if (useLangsmith) {
 		await runLangsmithEvaluation(repetitions);
 	} else {
-		await runCliEvaluation(testCaseId);
+		await runCliEvaluation(testCaseId, repetitions);
 	}
 }
 
