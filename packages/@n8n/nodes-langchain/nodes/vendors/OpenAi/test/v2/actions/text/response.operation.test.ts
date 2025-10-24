@@ -522,6 +522,108 @@ describe('OpenAI Response Operation', () => {
 
 			expect(mockTool.invoke).toHaveBeenCalledWith('test input');
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
+			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', '/responses', {
+				body: {
+					model: 'gpt-4o',
+					input: [
+						{
+							type: 'reasoning',
+							content: 'I need to use the test tool to get information',
+						},
+						{
+							type: 'function_call',
+							call_id: 'call_123',
+							name: 'test_tool',
+							arguments: JSON.stringify({ input: 'test input' }),
+						},
+						{
+							call_id: 'call_123',
+							output: 'Tool response',
+							type: 'function_call_output',
+						},
+					],
+					tools: [{ name: 'test_tool', type: 'function', parameters: {}, strict: false }],
+				},
+			});
+			expect(result).toEqual([
+				{
+					json: finalResponse,
+					pairedItem: { item: 0 },
+				},
+			]);
+		});
+
+		it('should not include function_call or reasoning items in the request if there is a conversation', async () => {
+			const mockTool = {
+				name: 'test_tool',
+				invoke: jest.fn().mockResolvedValue('Tool response'),
+				schema: {
+					typeName: 'ZodObject',
+					_def: { typeName: 'ZodObject', shape: () => ({}) },
+					parse: jest.fn(),
+					safeParse: jest.fn(),
+				},
+				call: jest.fn(),
+				description: 'Test tool',
+				returnDirect: false,
+			} as any;
+
+			const initialResponse = {
+				id: 'resp_123',
+				status: 'completed',
+				output: [
+					{
+						type: 'reasoning',
+						content: 'I need to use the test tool to get information',
+					},
+					{
+						type: 'function_call',
+						call_id: 'call_123',
+						name: 'test_tool',
+						arguments: JSON.stringify({ input: 'test input' }),
+					},
+				],
+			};
+
+			const finalResponse = {
+				id: 'resp_123',
+				status: 'completed',
+				output: [
+					{
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: 'Final response' }],
+					},
+				],
+			};
+
+			mockGetConnectedTools.mockResolvedValue([mockTool]);
+			mockCreateRequest.mockResolvedValue({
+				model: 'gpt-4o',
+				input: [],
+				tools: [{ name: 'test_tool', type: 'function', parameters: {}, strict: false }],
+				conversation: 'conv_123',
+			});
+			mockApiRequest.mockResolvedValueOnce(initialResponse).mockResolvedValueOnce(finalResponse);
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockTool.invoke).toHaveBeenCalledWith('test input');
+			expect(mockApiRequest).toHaveBeenCalledTimes(2);
+			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', '/responses', {
+				body: {
+					model: 'gpt-4o',
+					input: [
+						{
+							call_id: 'call_123',
+							output: 'Tool response',
+							type: 'function_call_output',
+						},
+					],
+					tools: [{ name: 'test_tool', type: 'function', parameters: {}, strict: false }],
+					conversation: 'conv_123',
+				},
+			});
 			expect(result).toEqual([
 				{
 					json: finalResponse,

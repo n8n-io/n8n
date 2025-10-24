@@ -3,11 +3,12 @@ import { computed, useTemplateRef } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import {
-	type ChatHubConversationModel,
-	type ChatHubProvider,
 	chatHubProviderSchema,
-	type ChatModelsResponse,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubConversationModel,
+	type ChatModelsResponse,
+	type ChatHubLLMProvider,
+	type ChatHubProvider,
 } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -21,63 +22,87 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	change: [ChatHubConversationModel];
-	configure: [ChatHubProvider];
+	configure: [ChatHubLLMProvider];
 }>();
 
 const dropdownRef = useTemplateRef('dropdownRef');
 
 const menu = computed(() =>
-	chatHubProviderSchema.options.map((provider) => {
-		const models = props.models?.[provider].models ?? [];
-		const error = props.models?.[provider].error;
+	chatHubProviderSchema.options
+		.filter((provider) => provider !== 'n8n') // Hide n8n provider for now
+		.map((provider: ChatHubProvider) => {
+			const models = props.models?.[provider].models ?? [];
+			const error = props.models?.[provider].error;
 
-		const modelOptions =
-			models.length > 0
-				? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => ({
-						id: `${provider}::${model.name}`,
-						title: model.name,
-						disabled: false,
-					}))
-				: error
-					? [{ id: `${provider}::error`, disabled: true, title: error }]
-					: [];
+			const modelOptions =
+				models.length > 0
+					? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => {
+							const identifier = model.provider === 'n8n' ? model.workflowId : model.model;
 
-		return {
-			id: provider,
-			title: providerDisplayNames[provider],
-			submenu: modelOptions.concat([
-				...(modelOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
-				{
+							return {
+								id: `${provider}::${identifier}`,
+								title: model.name,
+								disabled: false,
+							};
+						})
+					: error
+						? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
+						: [];
+
+			const submenu = modelOptions.concat([
+				...(provider !== 'n8n' && modelOptions.length > 0
+					? [{ isDivider: true as const, id: 'divider' }]
+					: []),
+			]);
+
+			if (provider !== 'n8n') {
+				submenu.push({
 					id: `${provider}::configure`,
 					icon: 'settings',
 					title: 'Configure credentials...',
 					disabled: false,
-				},
-			]),
-		};
-	}),
+				});
+			}
+
+			return {
+				id: provider,
+				hidden: true,
+				title: providerDisplayNames[provider],
+				submenu,
+			};
+		}),
 );
 
 const selectedLabel = computed(() => {
 	if (!props.selectedModel) return 'Select model';
-	return props.selectedModel.model;
+	return props.selectedModel.name;
 });
 
 function onSelect(id: string) {
-	// Format is "provider::model"
-	const [provider, model] = id.split('::');
+	// Format is "provider::identifier", where identifier is either "configure", model name, or workflow ID for n8n
+	const [provider, identifier] = id.split('::');
 	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
 
 	if (!parsedProvider) {
 		return;
 	}
 
-	if (model === 'configure') {
+	if (identifier === 'configure' && parsedProvider !== 'n8n') {
 		emit('configure', parsedProvider);
 		return;
 	}
 
-	emit('change', { provider: parsedProvider, model, workflowId: null });
+	const model = parsedProvider === 'n8n' ? null : identifier;
+	const workflowId = parsedProvider === 'n8n' ? identifier : null;
+	const selected = props.models?.[parsedProvider].models.find((m) =>
+		m.provider === 'n8n' ? m.workflowId === workflowId : m.model === model,
+	);
+
+	if (!selected) {
+		return;
+	}
+
+	emit('change', selected);
 }
 
 onClickOutside(
@@ -95,7 +120,7 @@ defineExpose({
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
-				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.id as ChatHubProvider]"
+				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.id as ChatHubLLMProvider]"
 				:size="16"
 				:class="$style.menuIcon"
 			/>
@@ -103,8 +128,10 @@ defineExpose({
 
 		<N8nButton :class="$style.dropdownButton" type="secondary" text>
 			<CredentialIcon
-				v-if="selectedModel"
-				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider]"
+				v-if="selectedModel && selectedModel.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
+				:credential-type-name="
+					PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider as ChatHubLLMProvider]
+				"
 				:size="credentialsName ? 20 : 16"
 				:class="$style.icon"
 			/>

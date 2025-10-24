@@ -19,13 +19,17 @@ import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow'
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
-const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = vi.hoisted(() => ({
-	trackOpeningRelatedExecution: vi.fn(),
-	resolveRelatedExecutionUrl: vi.fn(),
-}));
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl, runWorkflow } = vi.hoisted(
+	() => ({
+		trackOpeningRelatedExecution: vi.fn(),
+		resolveRelatedExecutionUrl: vi.fn(),
+		runWorkflow: vi.fn(),
+	}),
+);
 
 vi.mock('vue-router', () => {
 	return {
@@ -51,10 +55,17 @@ vi.mock('@/composables/useWorkflowHelpers', async (importOriginal) => {
 	return { ...actual, resolveParameter: vi.fn(() => 123) };
 });
 
+vi.mock('@/composables/useRunWorkflow', () => ({
+	useRunWorkflow: () => ({
+		runWorkflow,
+	}),
+}));
+
 describe('RunData', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let schemaPreviewStore: MockedStore<typeof useSchemaPreviewStore>;
+	let ndvStore: MockedStore<typeof useNDVStore>;
 
 	beforeAll(() => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
@@ -611,6 +622,268 @@ describe('RunData', () => {
 		expect(getByTestId('ndv-items-count')).toBeInTheDocument();
 	});
 
+	describe('enterEditMode with previous execution data', () => {
+		beforeEach(() => {
+			// Reset mocks before each test
+			vi.clearAllMocks();
+		});
+
+		it('should use previous execution data when no input data exists', async () => {
+			const lastSuccessfulExecution = {
+				id: '456',
+				finished: true,
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				data: {
+					resultData: {
+						runData: {
+							'Test Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: {
+										main: [[{ json: { previousData: 'test value' } }]],
+									},
+									source: [null],
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getByTitle } = render({
+				defaultRunItems: [],
+				displayMode: 'table',
+				lastSuccessfulExecution,
+				paneType: 'output',
+			});
+
+			// Find the edit button by its title
+			const editButton = getByTitle('Edit Output');
+			expect(editButton).toBeInTheDocument();
+
+			// Click the edit button to trigger enterEditMode
+			await userEvent.click(editButton);
+
+			await waitFor(() => {
+				// Verify that the ndvStore was called with edit mode enabled
+				expect(ndvStore.setOutputPanelEditModeEnabled).toHaveBeenCalledWith(true);
+				expect(ndvStore.setOutputPanelEditModeValue).toHaveBeenCalled();
+
+				// Get the actual data that was set
+				const mockCalls = (ndvStore.setOutputPanelEditModeValue as ReturnType<typeof vi.fn>).mock
+					.calls;
+				expect(mockCalls.length).toBeGreaterThan(0);
+				const setValueCall = mockCalls[0][0];
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, n8n-local-rules/no-uncaught-json-parse
+				const parsedData = JSON.parse(setValueCall);
+
+				// Verify it contains the previous execution data
+				expect(parsedData).toEqual([{ previousData: 'test value' }]);
+			});
+		});
+
+		it('should not use previous execution data when input data exists', async () => {
+			const lastSuccessfulExecution = {
+				id: '456',
+				finished: true,
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				data: {
+					resultData: {
+						runData: {
+							'Test Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: {
+										main: [[{ json: { previousData: 'should not be used' } }]],
+									},
+									source: [null],
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getByTitle } = render({
+				defaultRunItems: [{ json: { currentData: 'should be used' } }],
+				displayMode: 'table',
+				lastSuccessfulExecution,
+				paneType: 'output',
+			});
+
+			// Find the edit button by its title
+			const editButton = getByTitle('Edit Output');
+
+			// Click the edit button
+			await userEvent.click(editButton);
+
+			await waitFor(() => {
+				// Verify that the current data is used, not the previous execution data
+				const mockCalls = (ndvStore.setOutputPanelEditModeValue as ReturnType<typeof vi.fn>).mock
+					.calls;
+				expect(mockCalls.length).toBeGreaterThan(0);
+				const setValueCall = mockCalls[0][0];
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, n8n-local-rules/no-uncaught-json-parse
+				const parsedData = JSON.parse(setValueCall);
+
+				// Should use current data, not previous
+				expect(parsedData).toEqual([{ currentData: 'should be used' }]);
+				expect(parsedData).not.toEqual([{ previousData: 'should not be used' }]);
+			});
+		});
+
+		it('should use DUMMY_PIN_DATA when no input data and no previous execution', async () => {
+			const { getByTitle } = render({
+				defaultRunItems: [],
+				displayMode: 'table',
+				paneType: 'output',
+			});
+
+			// Find the edit button by its title
+			const editButton = getByTitle('Edit Output');
+
+			// Click the edit button
+			await userEvent.click(editButton);
+
+			await waitFor(() => {
+				// Verify that DUMMY_PIN_DATA is used
+				expect(ndvStore.setOutputPanelEditModeEnabled).toHaveBeenCalledWith(true);
+				expect(ndvStore.setOutputPanelEditModeValue).toHaveBeenCalled();
+
+				const mockCalls = (ndvStore.setOutputPanelEditModeValue as ReturnType<typeof vi.fn>).mock
+					.calls;
+				expect(mockCalls.length).toBeGreaterThan(0);
+				const setValueCall = mockCalls[0][0];
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, n8n-local-rules/no-uncaught-json-parse
+				const parsedData = JSON.parse(setValueCall);
+
+				// Should contain DUMMY_PIN_DATA structure (array with sample object)
+				expect(Array.isArray(parsedData)).toBe(true);
+				expect(parsedData.length).toBeGreaterThan(0);
+			});
+		});
+	});
+
+	describe('schema view with lastSuccessfulExecution', () => {
+		beforeEach(() => {
+			// Reset mocks before each test
+			vi.clearAllMocks();
+		});
+
+		it('should pass preview-execution prop with lastSuccessfulExecution to schema component', async () => {
+			const lastSuccessfulExecution = {
+				id: '456',
+				finished: true,
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				data: {
+					resultData: {
+						runData: {
+							'Test Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: {
+										main: [[{ json: { schemaData: 'from previous execution' } }]],
+									},
+									source: [null],
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				runs: [],
+				lastSuccessfulExecution,
+				paneType: 'input',
+			});
+
+			// Wait for the schema component to be rendered
+			await waitFor(() => {
+				// Find the schema component by its data-test-id
+				const schemaComponent = getByTestId('run-data-schema-node');
+				expect(schemaComponent).toBeInTheDocument();
+
+				// The stub component receives the preview-execution prop and binds it as an attribute
+				// Verify it's present (the value would be '[object Object]' in the DOM)
+				expect(schemaComponent.getAttribute('preview-execution')).toBeTruthy();
+			});
+		});
+
+		it('should pass preview-execution prop when both current data and lastSuccessfulExecution exist', async () => {
+			const lastSuccessfulExecution = {
+				id: '456',
+				finished: true,
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				data: {
+					resultData: {
+						runData: {
+							'Test Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: {
+										main: [[{ json: { previewData: 'value from last execution' } }]],
+									},
+									source: [null],
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getByTestId } = render({
+				defaultRunItems: [{ json: { currentData: 'current execution data' } }],
+				displayMode: 'schema',
+				lastSuccessfulExecution,
+				paneType: 'input',
+			});
+
+			// Wait for the schema component to be rendered
+			await waitFor(() => {
+				const schemaComponent = getByTestId('run-data-schema-node');
+				expect(schemaComponent).toBeInTheDocument();
+
+				// Verify the preview-execution prop is passed even when current data exists
+				expect(schemaComponent.getAttribute('preview-execution')).toBeTruthy();
+			});
+		});
+
+		it('should not pass preview-execution prop when lastSuccessfulExecution is not provided', async () => {
+			const { getByTestId } = render({
+				defaultRunItems: [{ json: { currentData: 'data from current run' } }],
+				displayMode: 'schema',
+				paneType: 'input',
+			});
+
+			// Wait for the schema component to be rendered
+			await waitFor(() => {
+				const schemaComponent = getByTestId('run-data-schema-node');
+				expect(schemaComponent).toBeInTheDocument();
+
+				// When there's no lastSuccessfulExecution, the prop should not be set or be null/undefined
+				// The attribute will either not exist or be an empty/null value
+				const previewExecution = schemaComponent.getAttribute('preview-execution');
+				expect(
+					previewExecution === null || previewExecution === '' || previewExecution === 'null',
+				).toBe(true);
+			});
+		});
+	});
+
 	describe('computed properties for branch handling', () => {
 		it('no run selector when no run data exists', () => {
 			const { container } = render({
@@ -755,6 +1028,7 @@ describe('RunData', () => {
 		metadata,
 		runs,
 		overrideOutputs,
+		lastSuccessfulExecution,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -765,6 +1039,17 @@ describe('RunData', () => {
 		metadata?: ITaskMetadata;
 		runs?: ITaskData[];
 		overrideOutputs?: number[];
+		lastSuccessfulExecution?: {
+			id: string;
+			finished: boolean;
+			mode: 'manual' | 'trigger';
+			startedAt: Date;
+			data: {
+				resultData: {
+					runData: Record<string, ITaskData[]>;
+				};
+			};
+		};
 	}) => {
 		const defaultRun: ITaskData = {
 			startTime: Date.now(),
@@ -811,6 +1096,7 @@ describe('RunData', () => {
 							},
 						},
 					},
+					lastSuccessfulExecution: lastSuccessfulExecution ?? null,
 				},
 			},
 		});
@@ -820,9 +1106,14 @@ describe('RunData', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
+		ndvStore = mockedStore(useNDVStore);
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 		workflowsStore.getNodeByName.mockReturnValue(workflowNodes[0]);
+
+		// Mock ndvStore methods
+		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
+		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
 		if (pinnedData) {
 			workflowsStore.pinDataByNodeName.mockReturnValue(pinnedData);
@@ -844,6 +1135,32 @@ describe('RunData', () => {
 			global: {
 				stubs: {
 					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
+					VirtualSchema: {
+						template: `
+							<div data-test-id="run-data-schema-node" :preview-execution="previewExecution">
+								<div v-for="(item, index) in mockItems" :key="index" data-test-id="run-data-schema-item">
+									{{ item }}
+								</div>
+							</div>
+						`,
+						props: [
+							'previewExecution',
+							'nodes',
+							'mappingEnabled',
+							'node',
+							'search',
+							'distanceFromActive',
+							'runIndex',
+							'totalRuns',
+							'compact',
+							'truncateLimit',
+						],
+						data() {
+							return {
+								mockItems: ['Test 1', 'Json data 1'],
+							};
+						},
+					},
 				},
 			},
 		})({
