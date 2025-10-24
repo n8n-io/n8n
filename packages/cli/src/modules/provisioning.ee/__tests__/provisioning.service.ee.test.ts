@@ -18,6 +18,7 @@ import { type ProvisioningConfigDto } from '@n8n/api-types';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { type ProjectService } from '@/services/project.service.ee';
 import type { EntityManager } from '@n8n/typeorm';
+import { type InstanceSettings } from 'n8n-core';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
@@ -29,6 +30,7 @@ const projectService = mock<ProjectService>();
 const logger = mock<Logger>();
 const publisher = mock<Publisher>();
 const roleRepository = mock<RoleRepository>();
+const instanceSettings = mock<InstanceSettings>();
 
 const provisioningService = new ProvisioningService(
 	globalConfig,
@@ -39,6 +41,7 @@ const provisioningService = new ProvisioningService(
 	userRepository,
 	logger,
 	publisher,
+	instanceSettings,
 );
 
 describe('ProvisioningService', () => {
@@ -473,7 +476,8 @@ describe('ProvisioningService', () => {
 	});
 
 	describe('patchConfig', () => {
-		it('should patch the provisioning config, sending out pubsub updates for other nodes to reload', async () => {
+		it('should patch the provisioning config, sending out pubsub updates for other nodes to reload in multi-main setup', async () => {
+			(instanceSettings as any).isMultiMain = true;
 			const originStateLoadConfig = provisioningService.loadConfig;
 			const originStateGetConfig = provisioningService.getConfig;
 
