@@ -19,6 +19,7 @@ import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
 import { ProjectService } from '@/services/project.service.ee';
+import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class ProvisioningService {
@@ -33,6 +34,7 @@ export class ProvisioningService {
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async init() {
@@ -282,7 +284,10 @@ export class ProvisioningService {
 
 		this.provisioningConfig = await this.loadConfig();
 
-		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
+		if (this.instanceSettings.isMultiMain) {
+			await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
+		}
+
 		return await this.getConfig();
 	}
 
