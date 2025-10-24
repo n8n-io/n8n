@@ -18,7 +18,7 @@ import { type ProvisioningConfigDto } from '@n8n/api-types';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { type ProjectService } from '@/services/project.service.ee';
 import type { EntityManager } from '@n8n/typeorm';
-import { InstanceSettings } from 'n8n-core';
+import { type InstanceSettings } from 'n8n-core';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
