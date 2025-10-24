@@ -377,7 +377,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: model.provider === 'n8n' ? null : model.model,
+			model: model.provider === 'n8n' || model.provider === 'custom-agent' ? null : model.model,
 			workflowId: null,
 			executionId: null,
 			status: 'success',
