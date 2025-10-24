@@ -85,16 +85,18 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(workflowId: WorkflowId) {
+export async function setWorkflowAsActive(workflowId: WorkflowId, activeVersionId: string) {
 	await Container.get(WorkflowRepository).update(workflowId, {
 		active: true,
 		updatedAt: new Date(),
+		activeVersionId,
 	});
 }
 
 export async function setWorkflowAsInactive(workflowId: WorkflowId) {
 	return await Container.get(WorkflowRepository).update(workflowId, {
 		active: false,
+		activeVersionId: null,
 		updatedAt: new Date(),
 	});
 }

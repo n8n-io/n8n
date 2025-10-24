@@ -724,6 +724,7 @@ export class SourceControlImportService {
 		}
 	}
 
+	// TODO: understand the logic
 	private async activateImportedWorkflow({
 		existingWorkflow,
 		importedWorkflow,
@@ -733,20 +734,26 @@ export class SourceControlImportService {
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 			await this.activeWorkflowManager.remove(existingWorkflow.id);
 
+			// update the versionId of the workflow to match the imported workflow
+			const updatePayload: { versionId: string; activeVersionId?: string | null } = {
+				versionId: importedWorkflow.versionId,
+			};
+
+			if (importedWorkflow.active) {
+				// Set activeVersionId before activating
+				updatePayload.activeVersionId = importedWorkflow.versionId;
+			}
+
+			await this.workflowRepository.update({ id: existingWorkflow.id }, updatePayload);
+
 			if (importedWorkflow.active) {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate', existingWorkflow);
 			}
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
-		} finally {
-			// update the versionId of the workflow to match the imported workflow
-			await this.workflowRepository.update(
-				{ id: existingWorkflow.id },
-				{ versionId: importedWorkflow.versionId },
-			);
 		}
 	}
 

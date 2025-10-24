@@ -7,6 +7,18 @@ post:
   description: Active a workflow.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
+  requestBody:
+    description: Optional version ID to activate
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            versionId:
+              type: string
+              description: Version ID from workflow history to activate. If not provided, the current version will be activated.
+              example: '550e8400-e29b-41d4-a716-446655440000'
   responses:
     '200':
       description: Workflow object

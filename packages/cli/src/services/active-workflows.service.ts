@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { IWorkflowBase } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -14,6 +15,7 @@ export class ActiveWorkflowsService {
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowHistoryRepository: WorkflowRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
@@ -52,5 +54,38 @@ export class ActiveWorkflowsService {
 		}
 
 		return await this.activationErrorsService.get(workflowId);
+	}
+
+	/**
+	 * Gets the active version of a workflow
+	 * Falls back to current version if active version not found
+	 */
+	async getActiveVersion(workflow: IWorkflowBase): Promise<IWorkflowBase> {
+		if (!workflow.activeVersionId) {
+			return workflow;
+		}
+
+		if (workflow.activeVersionId === workflow.versionId) {
+			return workflow;
+		}
+
+		try {
+			const activeVersion = await this.workflowHistoryRepository.findOne({
+				where: { versionId: workflow.activeVersionId },
+				select: ['nodes', 'connections'],
+			});
+
+			if (activeVersion) {
+				return {
+					...workflow,
+					nodes: activeVersion.nodes,
+					connections: activeVersion.connections,
+				};
+			}
+		} catch (error) {
+			// Fall through to use current
+		}
+
+		return workflow;
 	}
 }

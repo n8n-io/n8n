@@ -8,6 +8,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -53,6 +54,7 @@ export class WorkflowService {
 		private readonly ownershipService: OwnershipService,
 		private readonly tagService: TagService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly roleService: RoleService,
@@ -376,16 +378,30 @@ export class WorkflowService {
 			});
 		}
 
+		// TODO: Once autosave is introduced, all the activation logic should be removed.
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
 				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await this.activeWorkflowManager.add(workflowId, workflow.active ? 'update' : 'activate');
+
+				// If activating for the first time, set activeVersionId in DB
+				if (isNowActive && !wasActive) {
+					await this.workflowRepository.update(workflowId, {
+						activeVersionId: updatedWorkflow.versionId,
+					});
+				}
+
+				await this.activeWorkflowManager.add(
+					workflowId,
+					workflow.active ? 'update' : 'activate',
+					updatedWorkflow,
+				);
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
 				// and revert the versionId change so UI remains consistent
 				await this.workflowRepository.update(workflowId, {
 					active: false,
+					activeVersionId: null,
 					versionId: workflow.versionId,
 				});
 
