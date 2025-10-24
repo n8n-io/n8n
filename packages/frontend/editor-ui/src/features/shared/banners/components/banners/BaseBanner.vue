@@ -12,6 +12,7 @@ interface Props {
 	theme?: CalloutTheme;
 	customIcon?: IconName;
 	dismissible?: boolean;
+	dismissPermanently?: boolean;
 }
 
 const i18n = useI18n();
@@ -23,6 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
 	theme: 'info',
 	dismissible: true,
 	customIcon: undefined,
+	dismissPermanently: false,
 });
 
 const emit = defineEmits<{
@@ -34,7 +36,7 @@ const hasTrailingContent = computed(() => {
 });
 
 async function onCloseClick() {
-	await uiStore.dismissBanner(props.name);
+	await uiStore.dismissBanner(props.name, props.dismissPermanently ? 'permanent' : 'temporary');
 	emit('close');
 }
 </script>

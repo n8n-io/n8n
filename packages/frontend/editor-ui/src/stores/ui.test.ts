@@ -1,9 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useDynamicBannersStore } from '@/stores/dynamic-banners.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
 
 describe('UI store', () => {
 	let mockedCloudStore;
@@ -13,6 +16,18 @@ describe('UI store', () => {
 		uiStore = useUIStore();
 
 		cloudPlanStore = useCloudPlanStore();
+		settingsStore = useSettingsStore();
+
+		// Set up settings store with required configuration
+		settingsStore.settings = {
+			dynamicBanners: {
+				endpoint: 'https://test.endpoint.com',
+				enabled: false,
+			},
+			banners: {
+				dismissed: [],
+			},
+		} as unknown as typeof settingsStore.settings;
 
 		mockedCloudStore = vi.spyOn(cloudPlanStore, 'getAutoLoginCode');
 		mockedCloudStore.mockImplementationOnce(async () => ({
@@ -51,5 +66,61 @@ describe('UI store', () => {
 		});
 
 		expect(uiStore.bannerStack).not.toContain('V1');
+	});
+
+	it('should not add dismissed dynamic banners to stack', async () => {
+		setActivePinia(createPinia());
+
+		const freshDynamicBannersStore = useDynamicBannersStore();
+		const mockDynamicBanners = [
+			{
+				id: 'dynamic-banner-1',
+				content: 'Test banner 1',
+				isDismissible: true,
+				theme: 'info' as const,
+				priority: 1,
+			},
+			{
+				id: 'dynamic-banner-2',
+				content: 'Test banner 2',
+				isDismissible: true,
+				theme: 'warning' as const,
+				priority: 2,
+			},
+			{
+				id: 'dynamic-banner-3',
+				content: 'Test banner 3',
+				isDismissible: true,
+				theme: 'danger' as const,
+				priority: 3,
+			},
+		];
+		vi.spyOn(freshDynamicBannersStore, 'fetch').mockResolvedValue(mockDynamicBanners);
+
+		const freshSettingsStore = useSettingsStore();
+		freshSettingsStore.settings = {
+			dynamicBanners: {
+				endpoint: 'https://test.endpoint.com',
+				enabled: true,
+			},
+			banners: {
+				dismissed: ['dynamic-banner-2'],
+			},
+		} as unknown as typeof freshSettingsStore.settings;
+
+		const freshUiStore = useUIStore();
+
+		freshUiStore.initialize({
+			banners: [],
+		});
+
+		await vi.waitFor(() => {
+			expect(freshUiStore.bannerStack.length).toBeGreaterThan(0);
+		});
+
+		expect(freshUiStore.bannerStack).toContain('dynamic-banner-1');
+		expect(freshUiStore.bannerStack).toContain('dynamic-banner-3');
+
+		expect(freshUiStore.bannerStack).not.toContain('dynamic-banner-2');
 	});
 });

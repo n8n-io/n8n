@@ -632,7 +632,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const initialize = (options: { banners: BannerName[] }) => {
 		options.banners.forEach(pushBannerToStack);
 		void fetchDynamicBanners().then((banners) => {
-			banners?.forEach((banner) => pushBannerToStack(banner.id));
+			banners
+				?.filter((banner) => !settingsStore.permanentlyDismissedBanners.includes(banner.id))
+				.forEach((banner) => pushBannerToStack(banner.id));
 		});
 	};
 

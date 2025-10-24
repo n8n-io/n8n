@@ -13,7 +13,12 @@ const props = defineProps<Props>();
 </script>
 
 <template>
-	<BaseBanner :name="props.name" :theme="props.theme" :dismissible="props.isDismissible">
+	<BaseBanner
+		:name="props.name"
+		:theme="props.theme"
+		:dismissible="props.isDismissible"
+		:dismiss-permanently="true"
+	>
 		<template #mainContent>
 			<N8nMarkdown :content="props.content" :class="$style.markdown" />
 		</template>
