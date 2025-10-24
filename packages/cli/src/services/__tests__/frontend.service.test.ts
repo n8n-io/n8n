@@ -284,6 +284,7 @@ describe('FrontendService', () => {
 
 			expect(service.settings.aiBuilder).toEqual({
 				enabled: false,
+				setup: false,
 			});
 		});
 

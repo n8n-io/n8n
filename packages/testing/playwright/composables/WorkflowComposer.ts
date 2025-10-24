@@ -140,4 +140,57 @@ export class WorkflowComposer {
 		await expect(saveButton).toBeVisible();
 		await saveButton.click();
 	}
+
+	/**
+	 * Moves a workflow to a different project or user.
+	 * @param workflowName - The name of the workflow to move
+	 * @param projectNameOrEmail - The destination project name or user email
+	 * @param folder - The folder name (e.g., 'My Folder') or 'No folder (project root)' to place the workflow at project root level.
+	 *   Pass null when moving to another user's personal project, as users cannot create folders in other users' personal spaces,
+	 *   so the folder dropdown will not be shown. Defaults to 'No folder (project root)' which places the workflow at the root level.
+	 */
+	async moveToProject(
+		workflowName: string,
+		projectNameOrEmail: string,
+		folder: string | null = 'No folder (project root)',
+	): Promise<void> {
+		const workflowCard = this.n8n.workflows.cards.getWorkflow(workflowName);
+		await this.n8n.workflows.cards.openCardActions(workflowCard);
+		await this.n8n.workflows.cards.getCardAction('moveToFolder').click();
+		await this.selectProjectInMoveModal(projectNameOrEmail);
+
+		if (folder !== null) {
+			// Wait for folder dropdown to appear after project selection
+			await this.n8n.resourceMoveModal.getFolderSelect().waitFor({ state: 'visible' });
+			await this.selectFolderInMoveModal(folder);
+		}
+
+		await this.n8n.resourceMoveModal.clickConfirmMoveButton();
+	}
+
+	private async selectProjectInMoveModal(projectNameOrEmail: string): Promise<void> {
+		const workflowSelect = this.n8n.resourceMoveModal.getProjectSelect();
+		const input = workflowSelect.locator('input');
+		await input.click();
+		await input.waitFor({ state: 'visible' });
+		await this.n8n.page.keyboard.press('ControlOrMeta+a');
+		await this.n8n.page.keyboard.press('Backspace');
+		await this.n8n.page.keyboard.type(projectNameOrEmail, { delay: 50 });
+
+		const projectOption = this.n8n.page
+			.getByTestId('project-sharing-info')
+			.getByText(projectNameOrEmail)
+			.first();
+		await projectOption.waitFor({ state: 'visible' });
+		await projectOption.click();
+	}
+
+	private async selectFolderInMoveModal(folderName: string): Promise<void> {
+		await this.n8n.resourceMoveModal.getFolderSelect().locator('input').click();
+		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
+
+		const folderOption = this.n8n.page.getByTestId('move-to-folder-option').getByText(folderName);
+		await folderOption.waitFor({ state: 'visible' });
+		await folderOption.click();
+	}
 }

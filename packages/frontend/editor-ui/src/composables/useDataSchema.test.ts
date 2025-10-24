@@ -1,6 +1,7 @@
 import jp from 'jsonpath';
-import { useDataSchema, useFlattenSchema, type SchemaNode } from '@/composables/useDataSchema';
-import type { IExecutionResponse, INodeUi, Schema } from '@/Interface';
+import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
+import type { INodeUi, Schema } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import {
@@ -865,6 +866,7 @@ describe('useFlattenSchema', () => {
 					mock<SchemaNode>({
 						node: { name: 'Test Node' },
 						isDataEmpty: true,
+						hasBinary: false,
 						schema: { type: 'object', value: [] },
 					}),
 				],
@@ -979,6 +981,7 @@ describe('useFlattenSchema', () => {
 						isDataEmpty: false,
 						hasBinary: false,
 						preview: false,
+						lastSuccessfulPreview: false,
 						schema,
 					}),
 					mock<SchemaNode>({
@@ -986,6 +989,7 @@ describe('useFlattenSchema', () => {
 						isDataEmpty: false,
 						hasBinary: false,
 						preview: false,
+						lastSuccessfulPreview: false,
 						schema,
 					}),
 				],

@@ -904,6 +904,42 @@ describe('JsTaskRunner', () => {
 					}),
 				).rejects.toThrow('Error message');
 			});
+
+			it('should not duplicate binary data in json property when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } } }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
+			});
+
+			it('should not include metadata properties in json when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } }, pairedItem: 1 }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
+			});
 		});
 
 		describe('chunked execution', () => {

@@ -8,6 +8,7 @@ export const sampleConfig: SamlPreferences = {
 		firstName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
 		lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
 		userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+		n8nInstanceRole: 'n8n_instance_role',
 	},
 	metadata: sampleMetadata,
 	metadataUrl: '',

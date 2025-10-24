@@ -52,19 +52,20 @@ export interface WorkflowBuilderAgentConfig {
 	onGenerationSuccess?: () => Promise<void>;
 }
 
+export interface ExpressionValue {
+	expression: string;
+	resolvedValue: unknown;
+	nodeType?: string;
+}
+
 export interface ChatPayload {
 	message: string;
 	workflowContext?: {
 		executionSchema?: NodeExecutionSchema[];
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
+		expressionValues?: Record<string, ExpressionValue[]>;
 	};
-	/**
-	 * Calls AI Assistant Service using deprecated credentials and endpoints
-	 * These credentials/endpoints will soon be removed
-	 * As new implementation is rolled out and builder experiment is released
-	 */
-	useDeprecatedCredentials?: boolean;
 }
 
 export class WorkflowBuilderAgent {
@@ -120,15 +121,19 @@ export class WorkflowBuilderAgent {
 			}
 
 			const hasPreviousSummary = state.previousSummary && state.previousSummary !== 'EMPTY';
-
-			const prompt = await mainAgentPrompt.invoke({
-				...state,
-				instanceUrl: this.instanceUrl,
-				previousSummary: hasPreviousSummary ? state.previousSummary : '',
-			});
 			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 			const executionData = state.workflowContext?.executionData ?? {};
 			const executionSchema = state.workflowContext?.executionSchema ?? [];
+
+			const prompt = await mainAgentPrompt.invoke({
+				...state,
+				workflowJSON: trimWorkflowJSON(state.workflowJSON),
+				executionData: state.workflowContext?.executionData ?? {},
+				executionSchema: state.workflowContext?.executionSchema ?? [],
+				resolvedExpressions: state.workflowContext?.expressionValues,
+				instanceUrl: this.instanceUrl,
+				previousSummary: hasPreviousSummary ? state.previousSummary : '',
+			});
 
 			const workflowContext = [
 				'',

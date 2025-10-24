@@ -20,7 +20,6 @@ import type {
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
-import config from '@/config';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -206,7 +205,7 @@ export class WorkflowExecutionService {
 		 * so we persist all details to give workers full access to them.
 		 */
 		if (
-			config.getEnv('executions.mode') === 'queue' &&
+			this.globalConfig.executions.mode === 'queue' &&
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
 		) {
 			data.executionData = {

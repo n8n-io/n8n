@@ -15,7 +15,7 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useStorage } from '@/composables/useStorage';
 import { jsonParse } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';

@@ -114,7 +114,7 @@ async def test_per_item_with_explicit_json_and_binary(broker, manager):
         {
             "json": {"custom": "data"},
             "binary": {"file": "data"},
-            "pairedItem": {"item": 0}
+            "pairedItem": {"item": 0},
         }
     ]
 
@@ -130,11 +130,7 @@ async def test_per_item_with_binary_only(broker, manager):
     result = await wait_for_task_done(broker, task_id)
 
     assert result["data"]["result"] == [
-        {
-            "json": {},
-            "binary": {"file": "data"},
-            "pairedItem": {"item": 0}
-        }
+        {"json": {}, "binary": {"file": "data"}, "pairedItem": {"item": 0}}
     ]
 
 
@@ -305,7 +301,9 @@ async def test_cannot_bypass_import_restrictions_via_builtins_dict(broker, manag
 
 
 @pytest.mark.asyncio
-async def test_cannot_bypass_import_restrictions_via_builtins_spec_loader(broker, manager):
+async def test_cannot_bypass_import_restrictions_via_builtins_spec_loader(
+    broker, manager
+):
     task_id = nanoid()
     code = textwrap.dedent("""
         sys = __builtins__['__spec__'].loader.load_module('sys')
@@ -320,8 +318,11 @@ async def test_cannot_bypass_import_restrictions_via_builtins_spec_loader(broker
     assert error_msg["taskId"] == task_id
     assert "error" in error_msg
 
+
 @pytest.mark.asyncio
-async def test_cannot_bypass_import_restrictions_via_sys_builtins_spec_leader(broker, manager_with_stdlib_wildcard):
+async def test_cannot_bypass_import_restrictions_via_sys_builtins_spec_leader(
+    broker, manager_with_stdlib_wildcard
+):
     task_id = nanoid()
     code = textwrap.dedent("""
         import sys
@@ -331,6 +332,6 @@ async def test_cannot_bypass_import_restrictions_via_sys_builtins_spec_leader(br
     task_settings = create_task_settings(code=code, node_mode="all_items")
     await broker.send_task(task_id=task_id, task_settings=task_settings)
     error_msg = await wait_for_task_error(broker, task_id)
-    
+
     assert error_msg["taskId"] == task_id
     assert "error" in error_msg

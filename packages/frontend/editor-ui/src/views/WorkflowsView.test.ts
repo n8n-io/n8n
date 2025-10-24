@@ -1,18 +1,18 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import * as usersApi from '@n8n/rest-api-client/api/users';
-import { useProjectPages } from '@/features/projects/composables/useProjectPages';
+import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { VIEWS } from '@/constants';
 import type { WorkflowListResource } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { useFoldersStore } from '@/features/folders/folders.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { Project } from '@/features/projects/projects.types';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import { TemplateClickSource } from '@/utils/experiments';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
@@ -21,15 +21,15 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
-vi.mock('@/features/projects/projects.api');
+vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
-vi.mock('@/features/sourceControl.ee/sourceControl.api');
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.api');
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
 	}),
 }));
-vi.mock('@/features/projects/composables/useProjectPages', () => ({
+vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
 		isSharedSubPage: false,

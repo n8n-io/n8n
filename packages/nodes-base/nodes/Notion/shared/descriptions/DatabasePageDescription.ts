@@ -30,7 +30,7 @@ export const databasePageOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a pages in a database',
+				description: 'Create a page in a database',
 				action: 'Create a database page',
 			},
 			{

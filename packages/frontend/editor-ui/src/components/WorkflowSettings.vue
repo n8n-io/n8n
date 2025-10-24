@@ -18,14 +18,14 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import { ProjectTypes } from '@/features/projects/projects.types';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
-import { useMcp } from '@/features/mcpAccess/composables/useMcp';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
@@ -35,7 +35,7 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
-const { isEligibleForMcpAccess } = useMcp();
+const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow } = useMcp();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -392,6 +392,10 @@ const saveSettings = async () => {
 		time_saved: workflowSettings.value.timeSavedPerExecution ?? '',
 		error_workflow: workflowSettings.value.errorWorkflow ?? '',
 	});
+
+	if (isMCPEnabled.value && workflowSettings.value.availableInMCP) {
+		trackMcpAccessEnabledForWorkflow(workflowId.value);
+	}
 };
 
 const toggleTimeout = () => {

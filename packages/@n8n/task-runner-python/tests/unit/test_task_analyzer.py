@@ -3,7 +3,7 @@ import pytest
 from src.errors.security_violation_error import SecurityViolationError
 from src.task_analyzer import TaskAnalyzer
 from src.config.security_config import SecurityConfig
-from src.constants import BLOCKED_ATTRIBUTES
+from src.constants import BLOCKED_ATTRIBUTES, BLOCKED_NAMES
 
 
 class TestTaskAnalyzer:
@@ -76,6 +76,25 @@ class TestAttributeAccessValidation(TestTaskAnalyzer):
             with pytest.raises(SecurityViolationError) as exc_info:
                 analyzer.validate(code)
             assert attr in exc_info.value.description.lower()
+
+    def test_all_blocked_names_are_blocked(self, analyzer: TaskAnalyzer) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"{name}"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_loader_access_attempts_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            "__loader__.load_module('posix')",
+            "posix = __loader__.load_module('posix'); posix.system('echo')",
+            "module = __loader__.load_module('os')",
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "__loader__" in exc_info.value.description
 
     def test_allowed_attribute_access(self, analyzer: TaskAnalyzer) -> None:
         allowed_attributes = [

@@ -1,7 +1,7 @@
 import { useTelemetry } from '@/composables/useTelemetry';
 import { BATCH_11AUG_EXPERIMENT } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useFoldersStore } from '@/features/folders/folders.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';

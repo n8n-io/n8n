@@ -7,7 +7,7 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/projects/projects.constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import type { IWorkflowDb } from '@/Interface';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
@@ -18,8 +18,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type { Project } from '@/features/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports

@@ -29,7 +29,7 @@ const INFINITE_CREDITS = -1;
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
-	maxLength: 1000,
+	maxLength: 5000,
 	maxLinesBeforeScroll: 6,
 	minLines: 1,
 	streaming: false,
@@ -242,7 +242,8 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
 	const atMaxLength = characterCount.value >= props.maxLength;
-	const isSubmitKey = event.key === 'Enter' && (event.ctrlKey || event.metaKey || event.shiftKey);
+	const isSubmitKey = event.key === 'Enter' && !event.shiftKey;
+	const isNewlineKey = event.key === 'Enter' && event.shiftKey;
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
 	if (atMaxLength && isPrintableChar && !isDeletionKey) {
@@ -250,11 +251,25 @@ async function handleKeyDown(event: KeyboardEvent) {
 		return;
 	}
 
-	// Submit on Ctrl/Cmd+Enter. If send disabled, don't submit.
+	// Submit on plain Enter - if send disabled, don't submit
 	if (isSubmitKey) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
 			await handleSubmit();
+		}
+	}
+
+	// Insert newline on Shift+Enter
+	if (isNewlineKey) {
+		event.preventDefault();
+		const textarea = event.target as HTMLTextAreaElement;
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		textValue.value = textValue.value.substring(0, start) + '\n' + textValue.value.substring(end);
+		// Set cursor position after the newline
+		await nextTick();
+		if (textareaRef.value) {
+			textareaRef.value.selectionStart = textareaRef.value.selectionEnd = start + 1;
 		}
 	}
 }

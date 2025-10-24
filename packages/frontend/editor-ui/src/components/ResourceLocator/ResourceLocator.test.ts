@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';

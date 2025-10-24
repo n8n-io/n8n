@@ -15,7 +15,7 @@ import {
 	OPEN_AI_NODE_TYPE,
 } from '@/constants';
 
-import { useUsersStore } from '@/features/users/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { useActions } from '../composables/useActions';
@@ -31,8 +31,8 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
 import { getActiveViewCallouts, isNodePreviewKey } from '../utils';
 
-import CommunityNodeInfo from '@/features/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
-import CommunityNodeFooter from '@/features/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
+import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
+import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';

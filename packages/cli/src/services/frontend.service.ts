@@ -207,7 +207,7 @@ export class FrontendService {
 				enabled: this.globalConfig.templates.enabled,
 				host: this.globalConfig.templates.host,
 			},
-			executionMode: config.getEnv('executions.mode'),
+			executionMode: this.globalConfig.executions.mode,
 			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
 
@@ -242,11 +242,13 @@ export class FrontendService {
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
+				provisioning: false,
 				projects: {
 					team: {
 						limit: 0,
 					},
 				},
+				customRoles: false,
 			},
 			mfa: {
 				enabled: false,
@@ -268,6 +270,7 @@ export class FrontendService {
 			},
 			aiBuilder: {
 				enabled: false,
+				setup: false,
 			},
 			aiCredits: {
 				enabled: false,
@@ -361,6 +364,7 @@ export class FrontendService {
 			saml: this.license.isSamlEnabled(),
 			oidc: this.licenseState.isOidcLicensed(),
 			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
+			provisioning: false, // temporarily disabled until this feature is ready for release
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
 			variables: this.license.isVariablesEnabled(),
 			sourceControl: this.license.isSourceControlLicensed(),
@@ -374,6 +378,7 @@ export class FrontendService {
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
+			customRoles: this.licenseState.isCustomRolesLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -425,14 +430,18 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
-		this.settings.aiBuilder.enabled = isAiBuilderEnabled;
+		if (isAiBuilderEnabled) {
+			this.settings.aiBuilder.enabled = isAiBuilderEnabled;
+			this.settings.aiBuilder.setup =
+				!!this.globalConfig.aiAssistant.baseUrl || !!this.globalConfig.aiBuilder.apiKey;
+		}
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		// TODO: read from settings
 		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
 
-		this.settings.executionMode = config.getEnv('executions.mode');
+		this.settings.executionMode = this.globalConfig.executions.mode;
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 

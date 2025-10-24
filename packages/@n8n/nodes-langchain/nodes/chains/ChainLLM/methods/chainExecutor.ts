@@ -77,6 +77,11 @@ export function getOutputParserForLLM(
 		return new NaiveJsonOutputParser();
 	}
 
+	// For example Mistral's Magistral models (LmChatMistralCloud node)
+	if (llm.metadata?.output_format === 'json') {
+		return new NaiveJsonOutputParser();
+	}
+
 	return new StringOutputParser();
 }
 

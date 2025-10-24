@@ -26,7 +26,6 @@ import {
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 // eslint-disable-next-line import-x/no-cycle
@@ -50,8 +49,6 @@ import { EventService } from './events/event.service';
 export class WorkflowRunner {
 	private scalingService: ScalingService;
 
-	private executionsMode = config.getEnv('executions.mode');
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -66,10 +63,6 @@ export class WorkflowRunner {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 	) {}
-
-	setExecutionMode(mode: 'regular' | 'queue') {
-		this.executionsMode = mode;
-	}
 
 	/** The process did error */
 	async processError(
@@ -95,7 +88,7 @@ export class WorkflowRunner {
 		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 		this.errorReporter.error(error, { executionId });
 
-		const isQueueMode = config.getEnv('executions.mode') === 'queue';
+		const isQueueMode = this.executionsConfig.mode === 'queue';
 
 		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
@@ -173,8 +166,8 @@ export class WorkflowRunner {
 		// @TODO: Reduce to true branch once feature is stable
 		const shouldEnqueue =
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsMode === 'queue'
-				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
+				? this.executionsConfig.mode === 'queue'
+				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
 		if (shouldEnqueue) {
 			await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
@@ -185,7 +178,7 @@ export class WorkflowRunner {
 		// only run these when not in queue mode or when the execution is manual,
 		// since these calls are now done by the worker directly
 		if (
-			this.executionsMode !== 'queue' ||
+			this.executionsConfig.mode !== 'queue' ||
 			this.instanceSettings.instanceType === 'worker' ||
 			data.executionMode === 'manual'
 		) {

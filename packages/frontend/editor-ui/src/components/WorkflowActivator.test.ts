@@ -8,7 +8,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE } from '@/constants';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useToast } from '@/composables/useToast';
 
 const renderComponent = createComponentRenderer(WorkflowActivator);

@@ -4,10 +4,10 @@ import { useRoute } from 'vue-router';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useProjectPages } from '@/features/projects/composables/useProjectPages';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import { useFoldersStore } from '@/features/folders/folders.store';
+import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useToast } from '@/composables/useToast';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
 

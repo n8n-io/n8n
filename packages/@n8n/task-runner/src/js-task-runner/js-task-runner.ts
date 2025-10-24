@@ -367,12 +367,7 @@ export class JsTaskRunner extends TaskRunner {
 				}
 
 				if (result) {
-					let jsonData;
-					if (isObject(result) && 'json' in result) {
-						jsonData = result.json;
-					} else {
-						jsonData = result;
-					}
+					const jsonData = this.extractJsonData(result);
 
 					returnData.push(
 						result.binary
@@ -438,6 +433,19 @@ export class JsTaskRunner extends TaskRunner {
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
 		).getDataProxy({ throwOnMissingExecutionData: false });
+	}
+
+	private extractJsonData(result: INodeExecutionData) {
+		if (!isObject(result)) return result;
+
+		if ('json' in result) return result.json;
+
+		if ('binary' in result) {
+			// Pick only json property to prevent metadata duplication
+			return (result as INodeExecutionData).json ?? {};
+		}
+
+		return result;
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDebounce } from '@/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import type {
 	AssignmentCollectionValue,
 	AssignmentValue,
@@ -16,9 +16,9 @@ import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
-import ExperimentalEmbeddedNdvMapper from '@/features/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
-import { useExperimentalNdvStore } from '@/features/canvas/experimental/experimentalNdv.store';
+import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';
 interface Props {

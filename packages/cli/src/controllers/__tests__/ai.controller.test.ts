@@ -124,7 +124,6 @@ describe('AiController', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'workflow123' },
 				},
-				useDeprecatedCredentials: false,
 			},
 		};
 
@@ -153,7 +152,6 @@ describe('AiController', () => {
 						executionData: undefined,
 						executionSchema: undefined,
 					},
-					useDeprecatedCredentials: false,
 				},
 				request.user,
 				expect.any(AbortSignal),

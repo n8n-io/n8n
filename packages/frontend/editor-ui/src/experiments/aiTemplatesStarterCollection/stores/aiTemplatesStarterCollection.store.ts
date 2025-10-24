@@ -1,4 +1,4 @@
-import { useFoldersStore } from '@/features/folders/folders.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';

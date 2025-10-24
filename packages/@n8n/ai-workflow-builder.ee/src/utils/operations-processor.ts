@@ -328,5 +328,6 @@ export function processOperations(state: typeof WorkflowState.State) {
 	return {
 		workflowJSON: newWorkflow,
 		workflowOperations: null, // Clear processed operations
+		workflowValidation: null,
 	};
 }

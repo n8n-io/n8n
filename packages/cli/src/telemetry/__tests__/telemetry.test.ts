@@ -4,7 +4,6 @@ import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
@@ -32,7 +31,7 @@ describe('Telemetry', () => {
 
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
-		config.set('deployment.type', 'n8n-testing');
+		globalConfig.deployment.type = 'n8n-testing';
 	});
 
 	afterAll(async () => {
@@ -48,7 +47,15 @@ describe('Telemetry', () => {
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock(), globalConfig);
+		telemetry = new Telemetry(
+			mock(),
+			postHog,
+			mock(),
+			instanceSettings,
+			mock(),
+			globalConfig,
+			mock(),
+		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});

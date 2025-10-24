@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Set
 
 from src.env import read_int_env, read_str_env
 from src.errors import ConfigurationError
@@ -24,7 +23,7 @@ from src.constants import (
 )
 
 
-def parse_allowlist(allowlist_str: str, list_name: str) -> Set[str]:
+def parse_allowlist(allowlist_str: str, list_name: str) -> set[str]:
     if not allowlist_str:
         return set()
 
@@ -52,9 +51,9 @@ class TaskRunnerConfig:
     task_timeout: int
     auto_shutdown_timeout: int
     graceful_shutdown_timeout: int
-    stdlib_allow: Set[str]
-    external_allow: Set[str]
-    builtins_deny: Set[str]
+    stdlib_allow: set[str]
+    external_allow: set[str]
+    builtins_deny: set[str]
 
     @property
     def is_auto_shutdown_enabled(self) -> bool:

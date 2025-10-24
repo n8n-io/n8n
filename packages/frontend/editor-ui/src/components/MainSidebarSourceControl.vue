@@ -3,8 +3,8 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRoute, useRouter } from 'vue-router';
 
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';

@@ -10,6 +10,7 @@ import {
 	SOURCE_CONTROL_GIT_FOLDER,
 } from '@/environments.ee/source-control/constants';
 import {
+	hasOwnerChanged,
 	generateSshKeyPair,
 	getRepoType,
 	getTrackingInformationFromPostPushResult,
@@ -311,6 +312,142 @@ describe('isWorkflowModified', () => {
 		const remote = createWorkflowVersion({ parentFolderId: null });
 
 		expect(isWorkflowModified(local, remote)).toBe(false);
+	});
+
+	it('should detect modifications when owner changes', () => {
+		const local = createWorkflowVersion({
+			owner: {
+				type: 'personal',
+				projectId: 'project1',
+				projectName: 'Project 1',
+			},
+		});
+		const remote = createWorkflowVersion({
+			owner: {
+				type: 'team',
+				projectId: 'team1',
+				projectName: 'Team 1',
+			},
+		});
+
+		expect(isWorkflowModified(local, remote)).toBe(true);
+	});
+});
+
+describe('hasOwnerChanged', () => {
+	describe('team project comparisons', () => {
+		it('should return true when team projects have different IDs', () => {
+			const owner1 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+			const owner2 = {
+				type: 'team' as const,
+				projectId: 'team2',
+				projectName: 'Team 2',
+			};
+
+			expect(hasOwnerChanged(owner1, owner2)).toBe(true);
+		});
+
+		it('should return false when team projects have the same ID', () => {
+			const owner = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+
+			expect(hasOwnerChanged(owner, { ...owner })).toBe(false);
+		});
+
+		it('should return true when personal project changes to team project', () => {
+			const owner1 = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+			const owner2 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+
+			expect(hasOwnerChanged(owner1, owner2)).toBe(true);
+		});
+
+		it('should return true when team project changes to personal project', () => {
+			const owner1 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+			const owner2 = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+
+			expect(hasOwnerChanged(owner1, owner2)).toBe(true);
+		});
+	});
+
+	describe('personal project comparisons (always ignored)', () => {
+		it('should return false when both are personal projects with different IDs', () => {
+			const owner1 = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+			const owner2 = {
+				type: 'personal' as const,
+				projectId: 'personal2',
+				projectName: 'Personal 2',
+			};
+
+			// Personal projects are not synced via source control
+			expect(hasOwnerChanged(owner1, owner2)).toBe(false);
+		});
+
+		it('should return false when both are personal projects with same ID', () => {
+			const owner = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+
+			expect(hasOwnerChanged(owner, { ...owner })).toBe(false);
+		});
+
+		it('should return false when both owners are undefined', () => {
+			expect(hasOwnerChanged(undefined, undefined)).toBe(false);
+		});
+
+		it('should return false when personal owner compared to undefined', () => {
+			const owner = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+
+			// Personal projects are local-only, so undefined vs personal is not a real change
+			expect(hasOwnerChanged(undefined, owner)).toBe(false);
+			expect(hasOwnerChanged(owner, undefined)).toBe(false);
+		});
+	});
+
+	describe('team project with undefined', () => {
+		it('should return true when team owner compared to undefined', () => {
+			const teamOwner = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+
+			// Team projects are synced, so undefined vs team is a real change
+			expect(hasOwnerChanged(undefined, teamOwner)).toBe(true);
+			expect(hasOwnerChanged(teamOwner, undefined)).toBe(true);
+		});
 	});
 });
 

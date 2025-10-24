@@ -4,13 +4,15 @@ import {
 	WorkflowStateKey,
 } from '@/constants';
 import type {
-	IExecutionResponse,
-	IExecutionsStopData,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/execution/executions/executions.types';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
@@ -26,9 +28,9 @@ import { inject } from 'vue';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/utils/typesUtils';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
-import { clearPopupWindowState } from '@/utils/executionUtils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/stores/workflowState.store';
 import { isObject } from '@/utils/objectUtils';

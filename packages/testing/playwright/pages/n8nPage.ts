@@ -6,6 +6,7 @@ import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -19,6 +20,7 @@ import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
@@ -83,6 +85,7 @@ export class n8nPage {
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
+	readonly settingsEnvironment: SettingsEnvironmentPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
@@ -90,6 +93,7 @@ export class n8nPage {
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
 	readonly modal: BaseModal;
+	readonly resourceMoveModal: ResourceMoveModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -141,6 +145,7 @@ export class n8nPage {
 		this.workflowSharingModal = new WorkflowSharingModal(page);
 		this.dataTable = new DataTableView(page);
 		this.dataTableDetails = new DataTableDetails(page);
+		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
 		// Modals
@@ -149,6 +154,7 @@ export class n8nPage {
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
+		this.resourceMoveModal = new ResourceMoveModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);

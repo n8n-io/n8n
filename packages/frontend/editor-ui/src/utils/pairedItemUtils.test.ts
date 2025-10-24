@@ -1,4 +1,5 @@
-import type { IExecutionResponse, TargetItem } from '@/Interface';
+import type { TargetItem } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import {
 	getPairedItemId,
 	getSourceItems,

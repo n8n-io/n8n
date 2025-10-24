@@ -8,7 +8,6 @@ import type { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
-import config from '@/config';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
 
@@ -57,6 +56,9 @@ describe('PrometheusMetricsService', () => {
 				webhook: 'webhook',
 				webhookTest: 'webhook-test',
 				webhookWaiting: 'webhook-waiting',
+			},
+			executions: {
+				mode: 'regular',
 			},
 		});
 
@@ -202,7 +204,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up queue metrics if enabled', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
@@ -233,7 +235,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should not set up queue metrics if enabled but not on scaling mode', async () => {
-			config.set('executions.mode', 'regular');
+			globalConfig.executions.mode = 'regular';
 			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
@@ -244,7 +246,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			prometheusMetricsService.enableMetric('queue');
 			// @ts-expect-error private field
 			instanceSettings.instanceType = 'worker';

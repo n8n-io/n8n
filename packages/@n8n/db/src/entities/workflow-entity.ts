@@ -100,6 +100,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ length: 36 })
 	versionId: string;
 
+	@Column({ default: 1 })
+	versionCounter: number;
+
 	@Column({ default: 0 })
 	triggerCount: number;
 
