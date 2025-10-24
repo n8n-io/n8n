@@ -9,7 +9,6 @@ import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/composables/useToast';
-import { useSettingsStore } from '@/stores/settings.store';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/composables/useToast', () => ({
