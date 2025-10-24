@@ -492,35 +492,29 @@ export class FrontendService {
 	 */
 	getPublicSettings(): PublicFrontendSettings {
 		// Get full settings to ensure all required properties are initialized
-		this.getSettings();
+		const fullSettings = this.getSettings();
 
 		return {
 			settingsMode: 'public',
-
-			// core identification
-			instanceId: this.settings.instanceId,
-			defaultLocale: this.settings.defaultLocale,
-			versionCli: this.settings.versionCli,
-			releaseChannel: this.settings.releaseChannel,
-			versionNotifications: this.settings.versionNotifications,
-
-			// Auth required for login UI
-			userManagement: this.settings.userManagement,
-			sso: this.settings.sso,
-			mfa: this.settings.mfa,
+			instanceId: fullSettings.instanceId,
+			defaultLocale: fullSettings.defaultLocale,
+			versionCli: fullSettings.versionCli,
+			releaseChannel: fullSettings.releaseChannel,
+			versionNotifications: fullSettings.versionNotifications,
+			userManagement: fullSettings.userManagement,
+			sso: fullSettings.sso,
+			mfa: fullSettings.mfa,
+			authCookie: fullSettings.authCookie,
+			oauthCallbackUrls: fullSettings.oauthCallbackUrls,
+			banners: fullSettings.banners,
+			previewMode: fullSettings.previewMode,
+			telemetry: fullSettings.telemetry,
 			enterprise: {
-				saml: this.settings.enterprise.saml,
-				ldap: this.settings.enterprise.ldap,
-				oidc: this.settings.enterprise.oidc,
-				showNonProdBanner: this.settings.enterprise.showNonProdBanner,
+				saml: fullSettings.enterprise.saml,
+				ldap: fullSettings.enterprise.ldap,
+				oidc: fullSettings.enterprise.oidc,
+				showNonProdBanner: fullSettings.enterprise.showNonProdBanner,
 			},
-			authCookie: this.settings.authCookie,
-			oauthCallbackUrls: this.settings.oauthCallbackUrls,
-
-			// other settings
-			banners: this.settings.banners,
-			previewMode: this.settings.previewMode,
-			telemetry: this.settings.telemetry,
 		};
 	}
 

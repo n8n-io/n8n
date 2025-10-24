@@ -202,7 +202,7 @@ describe('FrontendService', () => {
 
 			expect(settings).toEqual(
 				expect.objectContaining({
-					settingsMode: 'minimal',
+					settingsMode: 'public',
 				}),
 			);
 		});
