@@ -155,8 +155,6 @@ describe('evaluateTrigger', () => {
 			});
 
 			const result = evaluateTrigger(workflow, mockNodeTypes);
-
-			// Should still find the valid trigger
 			expect(result.violations).toEqual([]);
 		});
 
