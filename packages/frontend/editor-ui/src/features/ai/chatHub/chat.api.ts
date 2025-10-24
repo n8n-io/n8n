@@ -104,7 +104,13 @@ export const fetchConversationsApi = async (
 export const updateConversationApi = async (
 	context: IRestApiContext,
 	sessionId: ChatSessionId,
-	updates: { title?: string },
+	updates: {
+		title?: string;
+		credentialId?: string;
+		provider?: string;
+		model?: string;
+		workflowId?: string;
+	},
 ): Promise<ChatHubConversationResponse> => {
 	const apiEndpoint = `/chat/conversations/${sessionId}`;
 	return await makeRestApiRequest<ChatHubConversationResponse>(

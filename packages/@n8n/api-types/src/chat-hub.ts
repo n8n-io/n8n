@@ -117,6 +117,10 @@ export class ChatHubEditMessageRequest extends Z.class({
 
 export class ChatHubUpdateConversationRequest extends Z.class({
 	title: z.string().optional(),
+	credentialId: z.string().optional(),
+	provider: chatHubProviderSchema.optional(),
+	model: z.string().max(64).optional(),
+	workflowId: z.string().uuid().optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';

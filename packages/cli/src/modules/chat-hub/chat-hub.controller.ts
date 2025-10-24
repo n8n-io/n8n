@@ -10,6 +10,7 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	type ChatHubProvider,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -225,8 +226,32 @@ export class ChatHubController {
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Body payload: ChatHubUpdateConversationRequest,
 	): Promise<ChatHubConversationResponse> {
+		const updates: {
+			title?: string;
+			credentialId?: string;
+			provider?: ChatHubProvider;
+			model?: string;
+			workflowId?: string;
+		} = {};
+
 		if (payload.title !== undefined) {
-			await this.chatService.updateSessionTitle(req.user.id, sessionId, payload.title);
+			updates.title = payload.title;
+		}
+		if (payload.credentialId !== undefined) {
+			updates.credentialId = payload.credentialId;
+		}
+		if (payload.provider !== undefined) {
+			updates.provider = payload.provider;
+		}
+		if (payload.model !== undefined) {
+			updates.model = payload.model;
+		}
+		if (payload.workflowId !== undefined) {
+			updates.workflowId = payload.workflowId;
+		}
+
+		if (Object.keys(updates).length > 0) {
+			await this.chatService.updateSession(req.user.id, sessionId, updates);
 		}
 
 		return await this.chatService.getConversation(req.user.id, sessionId);

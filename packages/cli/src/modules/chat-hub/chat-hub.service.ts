@@ -1378,6 +1378,29 @@ export class ChatHubService {
 	}
 
 	/**
+	 * Updates a session with the provided fields
+	 */
+	async updateSession(
+		userId: string,
+		sessionId: ChatSessionId,
+		updates: {
+			title?: string;
+			credentialId?: string;
+			provider?: ChatHubProvider;
+			model?: string;
+			workflowId?: string;
+		},
+	) {
+		const session = await this.sessionRepository.getOneById(sessionId, userId);
+
+		if (!session) {
+			throw new NotFoundError('Session not found');
+		}
+
+		return await this.sessionRepository.updateChatSession(sessionId, updates);
+	}
+
+	/**
 	 * Deletes a session
 	 */
 	async deleteSession(userId: string, sessionId: ChatSessionId) {
