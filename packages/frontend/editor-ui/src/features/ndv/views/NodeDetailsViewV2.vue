@@ -7,7 +7,7 @@ import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import NDVHeader from '../components/panel/NDVHeader.vue';
-import NodeSettings from '@/components/NodeSettings.vue';
+import NodeSettings from '@/features/ndv/components/settings/NodeSettings.vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useKeybindings } from '@/composables/useKeybindings';

@@ -81,7 +81,7 @@ export const INSTANCE_MEMBER_CREDENTIALS: UserCredentials[] = [
 		lastName: randLastName(),
 	},
 	{
-		email: 'member-two@n8n.io',
+		email: 'member2@n8n.io',
 		password: DEFAULT_USER_PASSWORD,
 		firstName: randFirstName(),
 		lastName: randLastName(),

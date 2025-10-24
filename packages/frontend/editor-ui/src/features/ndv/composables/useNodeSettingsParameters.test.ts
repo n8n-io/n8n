@@ -6,7 +6,7 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeSettingsParameters } from './useNodeSettingsParameters';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
-import * as nodeSettingsUtils from '@/utils/nodeSettingsUtils';
+import * as nodeSettingsUtils from '@/features/ndv/ndv.utils';
 import * as nodeTypesUtils from '@/utils/nodeTypesUtils';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
