@@ -9,7 +9,7 @@ import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useNDVStore } from '@/features/ndv/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
-import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { getParameterTypeOption } from '@/features/ndv/ndv.utils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
