@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import type {
-	FieldType,
 	INodeIssues,
 	INodeParameters,
 	INodeProperties,
@@ -14,7 +13,7 @@ import ParameterIssues from '@/components//ParameterIssues.vue';
 import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale, useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import {
 	fieldCannotBeDeleted,
 	isMatchingField,
@@ -51,7 +50,6 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	isDataStale: false,
 });
-const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
 const {
 	resourceMapperTypeOptions,
@@ -254,10 +252,15 @@ function getFieldIssues(field: INodeProperties): string[] {
 }
 
 function getParamType(field: ResourceMapperField): NodePropertyTypes {
-	if (field.type && !FORCE_TEXT_INPUT_FOR_TYPES.includes(field.type)) {
-		return field.type as NodePropertyTypes;
+	switch (field.type) {
+		case 'object':
+		case 'array':
+			return 'json';
+		case 'time':
+			return 'string';
+		default:
+			return (field.type as NodePropertyTypes) ?? 'string';
 	}
-	return 'string';
 }
 
 function getParsedFieldName(fullName: string): string {

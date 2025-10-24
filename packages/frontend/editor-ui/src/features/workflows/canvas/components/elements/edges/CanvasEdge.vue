@@ -181,8 +181,10 @@ function onEdgeLabelMouseLeave() {
 	transition:
 		stroke 0.3s ease,
 		fill 0.3s ease;
-	stroke: var(--canvas-edge-color, v-bind(edgeStroke));
-	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1));
+	// @bugfix cat-1639-connection-colors-not-rendering-correctly
+	// Using !important here to override BaseEdge styles after Rolldown Vite migration
+	stroke: var(--canvas-edge-color, v-bind(edgeStroke)) !important;
+	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1)) !important;
 	stroke-linecap: square;
 }
 

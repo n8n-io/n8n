@@ -5,7 +5,7 @@ import type {
 	RouteLocationRaw,
 	RouteLocationNormalized,
 } from 'vue-router';
-import { createRouter, createWebHistory, isNavigationFailure } from 'vue-router';
+import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -21,6 +21,7 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from './composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
+import { useEnvFeatureFlag } from './features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -588,6 +589,48 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'users',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'project-roles',
+				components: {
+					settingsView: RouterView,
+				},
+				children: [
+					{
+						path: '',
+						name: VIEWS.PROJECT_ROLES_SETTINGS,
+						component: async () => await import('@/features/project-roles/ProjectRolesView.vue'),
+					},
+					{
+						path: 'new',
+						name: VIEWS.PROJECT_NEW_ROLE,
+						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+					},
+					{
+						path: 'edit/:roleSlug',
+						name: VIEWS.PROJECT_ROLE_SETTINGS,
+						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['role:manage'],
+						},
+						custom: () => {
+							return useEnvFeatureFlag().check.value('CUSTOM_ROLES');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'project-roles',
 							};
 						},
 					},
