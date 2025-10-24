@@ -167,11 +167,6 @@ export interface ChatHubConversationDto {
 	messages: Record<ChatMessageId, ChatHubMessageDto>;
 }
 
-export interface ChatHubConversationResponse {
-	session: ChatHubSessionDto;
-	conversation: ChatHubConversationDto;
-}
-
 export interface ChatHubAgentDto {
 	id: string;
 	name: string;

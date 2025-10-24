@@ -22,10 +22,7 @@ export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
 	async updateAgent(
 		id: string,
 		updates: Partial<
-			Pick<
-				ChatHubAgent,
-				'name' | 'description' | 'systemPrompt' | 'provider' | 'model' | 'workflowId'
-			>
+			Pick<ChatHubAgent, 'name' | 'description' | 'systemPrompt' | 'provider' | 'model'>
 		>,
 		trx?: EntityManager,
 	) {

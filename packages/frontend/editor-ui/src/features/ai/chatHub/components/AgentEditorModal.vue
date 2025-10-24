@@ -78,7 +78,6 @@ function loadAgent() {
 			provider: agent.provider,
 			model: agent.model,
 			name: agent.model,
-			workflowId: undefined,
 		} as ChatHubConversationModel;
 
 		if (agent.credentialId) {

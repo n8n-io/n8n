@@ -10,7 +10,6 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
-	type ChatHubProvider,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -222,39 +221,13 @@ export class ChatHubController {
 	@GlobalScope('chatHub:message')
 	async updateConversation(
 		req: AuthenticatedRequest,
-		_res: Response,
+		res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Body payload: ChatHubUpdateConversationRequest,
-	): Promise<ChatHubConversationResponse> {
-		const updates: {
-			title?: string;
-			credentialId?: string;
-			provider?: ChatHubProvider;
-			model?: string;
-			workflowId?: string;
-		} = {};
+	): Promise<void> {
+		await this.chatService.updateSession(req.user.id, sessionId, payload);
 
-		if (payload.title !== undefined) {
-			updates.title = payload.title;
-		}
-		if (payload.credentialId !== undefined) {
-			updates.credentialId = payload.credentialId;
-		}
-		if (payload.provider !== undefined) {
-			updates.provider = payload.provider;
-		}
-		if (payload.model !== undefined) {
-			updates.model = payload.model;
-		}
-		if (payload.workflowId !== undefined) {
-			updates.workflowId = payload.workflowId;
-		}
-
-		if (Object.keys(updates).length > 0) {
-			await this.chatService.updateSession(req.user.id, sessionId, updates);
-		}
-
-		return await this.chatService.getConversation(req.user.id, sessionId);
+		res.status(204).send();
 	}
 
 	@Delete('/conversations/:sessionId')

@@ -35,7 +35,6 @@ export class ChatHubAgentService {
 			credentialId?: string;
 			provider?: string;
 			model?: string;
-			workflowId?: string;
 		},
 	): Promise<ChatHubAgent> {
 		const id = uuidv4();
@@ -49,7 +48,6 @@ export class ChatHubAgentService {
 			credentialId: data.credentialId ?? null,
 			provider: (data.provider as ChatHubAgent['provider']) ?? null,
 			model: data.model ?? null,
-			workflowId: data.workflowId ?? null,
 		});
 
 		this.logger.info(`Chat agent created: ${id} by user ${userId}`);
@@ -66,7 +64,6 @@ export class ChatHubAgentService {
 			credentialId?: string;
 			provider?: string;
 			model?: string;
-			workflowId?: string;
 		},
 	): Promise<ChatHubAgent> {
 		// First check if the agent exists and belongs to the user
@@ -83,7 +80,6 @@ export class ChatHubAgentService {
 		if (updates.provider !== undefined)
 			updateData.provider = updates.provider as ChatHubAgent['provider'];
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
-		if (updates.workflowId !== undefined) updateData.workflowId = updates.workflowId ?? null;
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
