@@ -1,4 +1,7 @@
-import { bannerNameSchema, staticBannerNameSchema, dynamicBannerNameSchema } from '../../../schemas/banner-name.schema';
+import {
+	staticBannerNameSchema,
+	dynamicBannerNameSchema,
+} from '../../../schemas/banner-name.schema';
 import { DismissBannerRequestDto } from '../dismiss-banner-request.dto';
 
 describe('DismissBannerRequestDto', () => {
@@ -18,13 +21,10 @@ describe('DismissBannerRequestDto', () => {
 			},
 		];
 
-		test.each([...staticBanners, ...dynamicBanners])(
-			'should validate $name',
-			({ request }) => {
-				const result = DismissBannerRequestDto.safeParse(request);
-				expect(result.success).toBe(true);
-			},
-		);
+		test.each([...staticBanners, ...dynamicBanners])('should validate $name', ({ request }) => {
+			const result = DismissBannerRequestDto.safeParse(request);
+			expect(result.success).toBe(true);
+		});
 	});
 
 	describe('Invalid requests', () => {
