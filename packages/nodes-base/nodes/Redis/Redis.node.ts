@@ -515,17 +515,18 @@ export class Redis implements INodeType {
 		const credentials = await this.getCredentials<RedisCredential>('redis');
 
 		const client = setupRedisClient(credentials);
+		const anyClient = client as any;
 
 		try {
+			// Connect to Redis (works for both standalone and cluster)
 			await client.connect();
-			await client.ping();
 
 			const operation = this.getNodeParameter('operation', 0);
 			const returnItems: INodeExecutionData[] = [];
 
 			if (operation === 'info') {
 				try {
-					const result = await client.info();
+					const result = await anyClient.info();
 					returnItems.push({ json: convertInfoToObject(result) });
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -551,7 +552,7 @@ export class Redis implements INodeType {
 						if (operation === 'delete') {
 							const keyDelete = this.getNodeParameter('key', itemIndex) as string;
 
-							await client.del(keyDelete);
+							await anyClient.del(keyDelete);
 							returnItems.push(items[itemIndex]);
 						} else if (operation === 'get') {
 							const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
@@ -573,7 +574,7 @@ export class Redis implements INodeType {
 							const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
 							const getValues = this.getNodeParameter('getValues', itemIndex, true) as boolean;
 
-							const keys = await client.keys(keyPattern);
+							const keys = await anyClient.keys(keyPattern);
 
 							if (!getValues) {
 								returnItems.push({ json: { keys } });
@@ -598,21 +599,21 @@ export class Redis implements INodeType {
 							const keyIncr = this.getNodeParameter('key', itemIndex) as string;
 							const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
 							const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
-							const incrementVal = await client.incr(keyIncr);
+							const incrementVal = await anyClient.incr(keyIncr);
 							if (expire && ttl > 0) {
-								await client.expire(keyIncr, ttl);
+								await anyClient.expire(keyIncr, ttl);
 							}
 							returnItems.push({ json: { [keyIncr]: incrementVal } });
 						} else if (operation === 'publish') {
 							const channel = this.getNodeParameter('channel', itemIndex) as string;
 							const messageData = this.getNodeParameter('messageData', itemIndex) as string;
-							await client.publish(channel, messageData);
+							await anyClient.publish(channel, messageData);
 							returnItems.push(items[itemIndex]);
 						} else if (operation === 'push') {
 							const redisList = this.getNodeParameter('list', itemIndex) as string;
 							const messageData = this.getNodeParameter('messageData', itemIndex) as string;
 							const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-							await client[tail ? 'rPush' : 'lPush'](redisList, messageData);
+							await anyClient[tail ? 'rPush' : 'lPush'](redisList, messageData);
 							returnItems.push(items[itemIndex]);
 						} else if (operation === 'pop') {
 							const redisList = this.getNodeParameter('list', itemIndex) as string;
@@ -623,7 +624,7 @@ export class Redis implements INodeType {
 								'propertyName',
 							) as string;
 
-							const value = await client[tail ? 'rPop' : 'lPop'](redisList);
+							const value = await anyClient[tail ? 'rPop' : 'lPop'](redisList);
 
 							let outputValue;
 							try {

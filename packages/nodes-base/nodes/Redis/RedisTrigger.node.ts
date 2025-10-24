@@ -85,8 +85,10 @@ export class RedisTrigger implements INodeType {
 		}
 
 		const client = setupRedisClient(credentials);
+		const anyClient = client as any;
+
+		// Connect to Redis (works for both standalone and cluster)
 		await client.connect();
-		await client.ping();
 
 		const onMessage = (message: string, channel: string) => {
 			if (options.jsonParseBody) {
@@ -101,18 +103,18 @@ export class RedisTrigger implements INodeType {
 
 		const manualTriggerFunction = async () =>
 			await new Promise<void>(async (resolve) => {
-				await client.pSubscribe(channels, (message, channel) => {
+				await anyClient.pSubscribe(channels, (message: string, channel: string) => {
 					onMessage(message, channel);
 					resolve();
 				});
 			});
 
 		if (this.getMode() === 'trigger') {
-			await client.pSubscribe(channels, onMessage);
+			await anyClient.pSubscribe(channels, onMessage);
 		}
 
 		async function closeFunction() {
-			await client.pUnsubscribe();
+			await anyClient.pUnsubscribe();
 			await client.quit();
 		}
 

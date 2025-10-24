@@ -6,11 +6,44 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { createClient } from 'redis';
+import { createClient, createCluster } from 'redis';
 
-import type { RedisCredential, RedisClient } from './types';
+import type { RedisCredential, RedisClientType } from './types';
 
-export function setupRedisClient(credentials: RedisCredential, isTest = false): RedisClient {
+export function setupRedisClient(credentials: RedisCredential, isTest = false): RedisClientType {
+	// Check if cluster mode is enabled
+	if (credentials.clusterMode === true) {
+		// For cluster mode, provide the initial node and let Redis discover the rest
+		const rootNode = {
+			socket: {
+				host: credentials.host,
+				port: credentials.port,
+				tls: credentials.ssl === true,
+				...(credentials.ssl === true &&
+					credentials.disableTlsVerification === true && {
+						rejectUnauthorized: false,
+					}),
+			},
+		};
+
+		return createCluster({
+			rootNodes: [rootNode],
+			defaults: {
+				username: credentials.user ?? undefined,
+				password: credentials.password ?? undefined,
+				socket: {
+					connectTimeout: 10000,
+					// Disable reconnection for tests to prevent hanging
+					reconnectStrategy: isTest ? false : undefined,
+				},
+			},
+			...(isTest && {
+				useReplicas: true,
+			}),
+		});
+	}
+
+	// Standalone mode (original implementation)
 	const socketConfig: any = {
 		host: credentials.host,
 		port: credentials.port,
@@ -43,29 +76,15 @@ export async function redisConnectionTest(
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
 	const credentials = credential.data as RedisCredential;
-	let client: RedisClient | undefined;
+	let client: RedisClientType | undefined;
 
 	try {
 		client = setupRedisClient(credentials, true);
 
-		// Add error event handler to catch connection errors
-		const errorPromise = new Promise<never>((_, reject) => {
-			client!.on('error', (err) => {
-				reject(err);
-			});
-		});
+		// Connect to Redis (works for both standalone and cluster)
+		// If connect() succeeds, the connection is established
+		await client.connect();
 
-		// Create a timeout promise
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			setTimeout(() => {
-				reject(new Error('Connection timeout: Unable to connect to Redis server'));
-			}, 10000); // 10 seconds timeout
-		});
-
-		// Race between connecting and error/timeout
-		await Promise.race([client.connect(), errorPromise, timeoutPromise]);
-
-		await client.ping();
 		return {
 			status: 'OK',
 			message: 'Connection successful!',
@@ -143,26 +162,26 @@ export function convertInfoToObject(stringData: string): IDataObject {
 	return returnData;
 }
 
-export async function getValue(client: RedisClient, keyName: string, type?: string) {
+export async function getValue(client: RedisClientType, keyName: string, type?: string) {
 	if (type === undefined || type === 'automatic') {
 		// Request the type first
-		type = await client.type(keyName);
+		type = await (client as any).type(keyName);
 	}
 
 	if (type === 'string') {
-		return await client.get(keyName);
+		return await (client as any).get(keyName);
 	} else if (type === 'hash') {
-		return await client.hGetAll(keyName);
+		return await (client as any).hGetAll(keyName);
 	} else if (type === 'list') {
-		return await client.lRange(keyName, 0, -1);
+		return await (client as any).lRange(keyName, 0, -1);
 	} else if (type === 'sets') {
-		return await client.sMembers(keyName);
+		return await (client as any).sMembers(keyName);
 	}
 }
 
 export async function setValue(
 	this: IExecuteFunctions,
-	client: RedisClient,
+	client: RedisClientType,
 	keyName: string,
 	value: string | number | object | string[] | number[],
 	expire: boolean,
@@ -186,8 +205,10 @@ export async function setValue(
 		}
 	}
 
+	const anyClient = client as any;
+
 	if (type === 'string') {
-		await client.set(keyName, value.toString());
+		await anyClient.set(keyName, value.toString());
 	} else if (type === 'hash') {
 		if (valueIsJSON) {
 			let values: unknown;
@@ -202,23 +223,23 @@ export async function setValue(
 				values = value;
 			}
 			for (const key of Object.keys(values as object)) {
-				await client.hSet(keyName, key, (values as IDataObject)[key]!.toString());
+				await anyClient.hSet(keyName, key, (values as IDataObject)[key]!.toString());
 			}
 		} else {
 			const values = value.toString().split(' ');
-			await client.hSet(keyName, values);
+			await anyClient.hSet(keyName, values);
 		}
 	} else if (type === 'list') {
 		for (let index = 0; index < (value as string[]).length; index++) {
-			await client.lSet(keyName, index, (value as IDataObject)[index]!.toString());
+			await anyClient.lSet(keyName, index, (value as IDataObject)[index]!.toString());
 		}
 	} else if (type === 'sets') {
 		//@ts-ignore
-		await client.sAdd(keyName, value);
+		await anyClient.sAdd(keyName, value);
 	}
 
 	if (expire) {
-		await client.expire(keyName, ttl);
+		await anyClient.expire(keyName, ttl);
 	}
 	return;
 }
