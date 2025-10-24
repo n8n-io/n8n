@@ -18,6 +18,7 @@ import {
 	createAgentApi,
 	updateAgentApi,
 	deleteAgentApi,
+	updateConversationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -516,8 +517,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		updateSession(sessionId, updated.session);
 	}
 
-	function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
-		// todo call api
+	async function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
+		await updateConversationApi(rootStore.restApiContext, sessionId, model);
 		updateSession(sessionId, model);
 	}
 
