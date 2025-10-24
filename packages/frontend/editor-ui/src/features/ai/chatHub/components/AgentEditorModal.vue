@@ -10,6 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
+import { assert } from '@n8n/utils/assert';
 
 const props = defineProps<{
 	agentId?: string;
@@ -65,8 +66,9 @@ function loadAgent() {
 		selectedModel.value = {
 			provider: agent.provider,
 			model: agent.model,
-			workflowId: agent.workflowId,
-		};
+			name: agent.model,
+			workflowId: undefined,
+		} as ChatHubConversationModel;
 	} else {
 		selectedModel.value = null;
 	}
@@ -106,13 +108,16 @@ async function onSave() {
 
 	isSaving.value = true;
 	try {
+		assert(selectedModel.value);
+		const model = 'model' in selectedModel.value ? selectedModel.value.model : undefined;
+		assert(model);
+
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
 			provider: selectedModel.value?.provider,
-			model: selectedModel.value?.model,
-			workflowId: selectedModel.value?.workflowId ?? undefined,
+			model,
 		};
 
 		if (isEditMode.value && props.agentId) {

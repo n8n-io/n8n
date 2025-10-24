@@ -67,7 +67,7 @@ const menu = computed(() => {
 	};
 
 	const providerMenus = chatHubProviderSchema.options
-		.filter((provider) => provider !== 'n8n') // Hide n8n provider for now
+		.filter((provider) => (!props.includeCustomAgents ? provider !== 'n8n' : true)) // hide n8n agent for now
 		.map((provider) => {
 			const models = props.models?.[provider].models ?? [];
 			const error = props.models?.[provider].error;

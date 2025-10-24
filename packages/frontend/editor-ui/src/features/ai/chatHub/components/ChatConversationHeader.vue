@@ -76,6 +76,7 @@ defineExpose({
 			:selected-model="selectedModel"
 			:credentials-name="credentialsName"
 			:agents="chatStore.agents"
+			:include-custom-agents="false"
 			@change="onModelChange"
 			@configure="emit('setCredentials', $event)"
 			@edit-agent="emit('editAgent', $event)"
