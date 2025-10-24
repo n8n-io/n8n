@@ -307,6 +307,11 @@ export class CanvasPage extends BasePage {
 		await responsePromise;
 	}
 
+	async openShareModal(): Promise<void> {
+		await this.clickByTestId('workflow-share-button');
+		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
+	}
+
 	async clickZoomToFitButton(): Promise<void> {
 		await this.clickByTestId('zoom-to-fit');
 	}
@@ -517,8 +522,16 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-action-item');
 	}
 
+	nodeCreatorCategoryItem(categoryName: string): Locator {
+		return this.page.getByTestId('node-creator-category-item').getByText(categoryName);
+	}
+
 	nodeCreatorCategoryItems(): Locator {
 		return this.page.getByTestId('node-creator-category-item');
+	}
+
+	getFirstAction(): Locator {
+		return this.page.locator('[data-keyboard-nav-type="action"]').first();
 	}
 
 	selectedNodes(): Locator {
