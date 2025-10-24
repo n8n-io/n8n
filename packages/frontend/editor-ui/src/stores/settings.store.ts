@@ -151,13 +151,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isHiringBannerEnabled = computed(() => settings.value.hiringBannerEnabled);
 
-	const isTemplatesEnabled = computed(() =>
-		Boolean(settings.value.templates && settings.value.templates.enabled),
-	);
+	const isTemplatesEnabled = computed(() => Boolean(settings.value.templates?.enabled));
 
 	const isTemplatesEndpointReachable = computed(() => templatesEndpointHealthy.value);
 
-	const templatesHost = computed(() => settings.value.templates.host);
+	const templatesHost = computed(() => settings.value.templates?.host ?? '');
 
 	const pushBackend = computed(() => settings.value.pushBackend);
 
@@ -192,7 +190,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			userManagement.value.showSetupOnFirstLoad =
 				!!settings.value.userManagement.showSetupOnFirstLoad;
 		}
-		api.value = settings.value.publicApi;
+
+		if (settings.value.publicApi) {
+			api.value = settings.value.publicApi;
+		}
+
 		mfa.value.enabled = settings.value.mfa?.enabled;
 		folders.value.enabled = settings.value.folders?.enabled;
 
@@ -232,9 +234,32 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution.value = newValue;
 	};
 
+	const setPublicSettings = (fetchedSettings: FrontendSettings) => {
+		const rootStore = useRootStore();
+		setSettings(fetchedSettings);
+
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
+
+		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
+		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+		rootStore.setInstanceId(fetchedSettings.instanceId);
+
+		if (fetchedSettings.telemetry.enabled) {
+			void eventsApi.sessionStarted(rootStore.restApiContext);
+		}
+	};
+
 	const getSettings = async () => {
 		const rootStore = useRootStore();
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
+
+		if (fetchedSettings.settingsMode === 'public') {
+			// public settings mode is typically used for unauthenticated users
+			// when public settings are returned only critical setup is needed
+			setPublicSettings(fetchedSettings);
+			return;
+		}
+
 		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
 		settings.value.unverifiedCommunityNodesEnabled =

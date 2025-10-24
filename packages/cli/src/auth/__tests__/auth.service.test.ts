@@ -99,7 +99,7 @@ describe('AuthService', () => {
 		});
 	});
 
-	describe('authMiddleware', () => {
+	describe('createAuthMiddleware', () => {
 		const mockReq = () =>
 			mock<AuthenticatedRequest>({
 				cookies: {},
@@ -329,6 +329,180 @@ describe('AuthService', () => {
 				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
 				expect(next).toHaveBeenCalled(); // Should still call next() due to preview mode skip
 				expect(res.status).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('allowUnauthenticated', () => {
+			it('should populate the user info if the token is valid', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBe(user);
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
+			});
+
+			it('should clear the cookie if the token is expired', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should clear the cookie if the token has been invalidated', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should not populate the user info if the token is invalid', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = 'invalid-token';
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should not populate the user info if the token is not set', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
+			});
+
+			it('should clear cookie if MFA required and not used', async () => {
+				const userWithMfa = mock<User>({ ...userData, mfaEnabled: true, mfaSecret: 'secret' });
+
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
+
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(userWithMfa);
+				mfaService.isMFAEnforced.mockReturnValue(true);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should skip user when MFA enforced and user has no MFA', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
+
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user); // user has mfaEnabled: false
+				mfaService.isMFAEnforced.mockReturnValue(true);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
+			});
+
+			it('should work correctly when both allowUnauthenticated and allowSkipPreviewAuth are true in preview mode', async () => {
+				const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+				process.env.N8N_PREVIEW_MODE = 'true';
+
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+
+				// Restore original value
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
 			});
 		});
 	});
