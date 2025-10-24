@@ -102,6 +102,7 @@ const menu = computed(() => {
 
 		return {
 			id: provider,
+			hidden: true,
 			title: providerDisplayNames[provider],
 			submenu,
 		};
