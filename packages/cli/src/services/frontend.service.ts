@@ -469,7 +469,6 @@ export class FrontendService {
 		this.getSettings();
 
 		return {
-			// ...this.settings,
 			settingsMode: 'minimal',
 
 			// core identification
