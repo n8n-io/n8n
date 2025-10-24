@@ -11,6 +11,8 @@ export interface ModelWithCredentials {
 	model?: string;
 	workflowId?: string;
 	credentialId: string | null;
+	agentId?: string;
+	agentName?: string;
 }
 
 export interface BaseMessagePayload {

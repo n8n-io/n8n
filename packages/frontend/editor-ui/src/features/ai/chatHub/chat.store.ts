@@ -334,6 +334,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
+	function getAgentById(agentId: string) {
+		return models.value?.['custom-agent'].models.find(
+			(model) => 'agentId' in model && model.agentId === agentId,
+		);
+	}
+
 	async function onStreamDone(sessionId: string) {
 		streamingMessageId.value = undefined;
 
@@ -370,6 +376,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
 
+		const agent = model.provider === 'custom-agent' ? getAgentById(model.agentId) : null;
+
 		addMessage(sessionId, {
 			id: messageId,
 			sessionId,
@@ -380,6 +388,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model: model.provider === 'n8n' || model.provider === 'custom-agent' ? null : model.model,
 			workflowId: null,
 			executionId: null,
+			agentId: null,
+			agentName: null,
 			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
@@ -432,6 +442,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model: null,
 				workflowId: null,
 				executionId: null,
+				agentId: null,
+				agentName: null,
 				status: 'success',
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),

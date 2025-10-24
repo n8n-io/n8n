@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
-import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
+import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubProviderSchema } from '@n8n/api-types';
 import type {
@@ -55,6 +55,8 @@ const credentialsName = computed(() =>
 				?.name
 		: undefined,
 );
+
+const isCustomAgent = computed(() => props.selectedModel?.provider === 'custom-agent');
 
 const menu = computed(() => {
 	const agents = props.models?.['custom-agent'].models;
@@ -232,8 +234,14 @@ defineExpose({
 				@create-new="handleCreateNewCredential"
 			/>
 
+			<N8nAvatar
+				v-if="isCustomAgent"
+				:first-name="selectedModel?.name"
+				size="xsmall"
+				:class="$style.icon"
+			/>
 			<CredentialIcon
-				v-if="selectedModel && selectedModel.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
+				v-else-if="selectedModel && selectedModel.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
 				:credential-type-name="
 					PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider as ChatHubLLMProvider]
 				"

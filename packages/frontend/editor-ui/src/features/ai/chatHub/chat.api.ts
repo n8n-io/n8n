@@ -13,6 +13,7 @@ import type {
 	ChatHubAgentDto,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	ChatHubUpdateConversationRequest,
 } from '@n8n/api-types';
 import type { StructuredChunk } from 'n8n-workflow';
 
@@ -104,13 +105,7 @@ export const fetchConversationsApi = async (
 export const updateConversationApi = async (
 	context: IRestApiContext,
 	sessionId: ChatSessionId,
-	updates: {
-		title?: string;
-		credentialId?: string;
-		provider?: string;
-		model?: string;
-		workflowId?: string;
-	},
+	updates: ChatHubUpdateConversationRequest,
 ): Promise<ChatHubConversationResponse> => {
 	const apiEndpoint = `/chat/conversations/${sessionId}`;
 	return await makeRestApiRequest<ChatHubConversationResponse>(

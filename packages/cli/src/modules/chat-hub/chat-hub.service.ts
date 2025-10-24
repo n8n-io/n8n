@@ -1359,6 +1359,8 @@ export class ChatHubService {
 			provider: session.provider,
 			model: session.model,
 			workflowId: session.workflowId,
+			agentId: session.agentId,
+			agentName: session.agentName,
 			createdAt: session.createdAt.toISOString(),
 			updatedAt: session.updatedAt.toISOString(),
 		}));
@@ -1385,6 +1387,8 @@ export class ChatHubService {
 				provider: session.provider,
 				model: session.model,
 				workflowId: session.workflowId,
+				agentId: session.agentId,
+				agentName: session.agentName,
 				createdAt: session.createdAt.toISOString(),
 				updatedAt: session.updatedAt.toISOString(),
 			},
@@ -1404,6 +1408,8 @@ export class ChatHubService {
 			provider: message.provider,
 			model: message.model,
 			workflowId: message.workflowId,
+			agentId: message.agentId,
+			agentName: message.agentName,
 			executionId: message.executionId,
 			status: message.status,
 			createdAt: message.createdAt.toISOString(),
@@ -1469,6 +1475,8 @@ export class ChatHubService {
 			provider?: ChatHubProvider;
 			model?: string;
 			workflowId?: string;
+			agentId?: string;
+			agentName?: string;
 		},
 	) {
 		const session = await this.sessionRepository.getOneById(sessionId, userId);

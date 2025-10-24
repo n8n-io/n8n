@@ -136,6 +136,8 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
 	workflowId: z.string().uuid().optional(),
+	agentId: z.string().uuid().optional(),
+	agentName: z.string().max(256).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -153,6 +155,8 @@ export interface ChatHubSessionDto {
 	provider: ChatHubProvider | null;
 	model: string | null;
 	workflowId: string | null;
+	agentId: string | null;
+	agentName: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -166,6 +170,8 @@ export interface ChatHubMessageDto {
 	provider: ChatHubProvider | null;
 	model: string | null;
 	workflowId: string | null;
+	agentId: string | null;
+	agentName: string | null;
 	executionId: number | null;
 	status: ChatHubMessageStatus;
 	createdAt: string;
