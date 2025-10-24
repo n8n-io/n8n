@@ -150,6 +150,12 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "chatHub:manage",
   "chatHub:message",
   "chatHub:*",
+  "chatHubAgent:create",
+  "chatHubAgent:read",
+  "chatHubAgent:update",
+  "chatHubAgent:delete",
+  "chatHubAgent:list",
+  "chatHubAgent:*",
   "*",
 ]
 `;
