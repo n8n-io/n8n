@@ -40,6 +40,7 @@ describe('permissions', () => {
 			mcpApiKey: {},
 			role: {},
 			chatHub: {},
+			chatHubAgent: {},
 		});
 	});
 	it('getResourcePermissions', () => {
