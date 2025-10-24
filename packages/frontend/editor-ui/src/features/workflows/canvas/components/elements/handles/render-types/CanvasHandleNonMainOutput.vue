@@ -45,9 +45,4 @@ const classes = computed(() => ({
 	content: '*';
 	color: var(--color--danger);
 }
-
-:global(.vue-flow__handle:not(.connectionindicator)) .plus {
-	display: none;
-	position: absolute;
-}
 </style>
