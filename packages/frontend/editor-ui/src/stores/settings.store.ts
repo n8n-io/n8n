@@ -238,8 +238,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const rootStore = useRootStore();
 		setSettings(fetchedSettings);
 
-		// CRITICAL SETUP
 		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
+
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
