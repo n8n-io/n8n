@@ -373,7 +373,7 @@ export class SlackV2 implements INodeType {
 				'/chat.postMessage',
 				createSendAndWaitMessageBody(this),
 			);
-			this.runExecutionData.metadata = { slackMessage }
+			this.runExecutionData.metadata = { ...(this.runExecutionData.metadata || {}), slackMessage }
 			
 			const waitTill = configureWaitTillDate(this);
 
