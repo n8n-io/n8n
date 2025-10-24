@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
-import type { IExecutionResponse } from '@/features/executions/executions.types';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
@@ -26,7 +26,7 @@ import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { mock } from 'vitest-mock-extended';
 import * as apiUtils from '@n8n/rest-api-client';
 import {
@@ -38,8 +38,9 @@ import {
 } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useWorkflowState } from '@/composables/useWorkflowState';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-vi.mock('@/stores/ndv.store', () => ({
+vi.mock('@/features/ndv/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
 		activeNode: null,
 	})),
@@ -49,6 +50,7 @@ vi.mock('@/api/workflows', () => ({
 	getWorkflows: vi.fn(),
 	getWorkflow: vi.fn(),
 	getNewWorkflow: vi.fn(),
+	getLastSuccessfulExecution: vi.fn(),
 }));
 
 const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription> | null => ({
@@ -75,6 +77,23 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }),
 	};
 });
+
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
+	useSourceControlStore: vi.fn(() => ({
+		preferences: {
+			branchReadOnly: false,
+		},
+	})),
+}));
+
+vi.mock('@n8n/permissions', () => ({
+	getResourcePermissions: vi.fn((scopes: string[] = []) => ({
+		workflow: {
+			update: scopes.includes('workflow:update'),
+			read: scopes.includes('workflow:read') || scopes.includes('workflow:update'),
+		},
+	})),
+}));
 
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -1737,6 +1756,163 @@ describe('useWorkflowsStore', () => {
 			});
 
 			expect(result).toBe(0); // No nodes to update (only current node exists)
+		});
+	});
+
+	describe('fetchLastSuccessfulExecution', () => {
+		beforeEach(() => {
+			// Ensure currentView is set to a non-readonly view (VIEWS.WORKFLOW = 'NodeViewExisting')
+			uiStore.currentView = 'NodeViewExisting';
+
+			// Reset sourceControlStore mock to default
+			vi.mocked(useSourceControlStore).mockReturnValue({
+				preferences: {
+					branchReadOnly: false,
+				},
+			} as ReturnType<typeof useSourceControlStore>);
+
+			// Reset the API mock
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockReset();
+		});
+
+		it('should fetch and store the last successful execution', async () => {
+			const mockExecution = createTestWorkflowExecutionResponse({
+				id: 'execution-456',
+				status: 'success',
+			});
+
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			// Verify the mock is set up correctly
+			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
+			expect(workflowsStore.workflow.id).toBe('workflow-123');
+			expect(workflowsStore.workflow.isArchived).toBe(false);
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(mockExecution);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
+			);
+			expect(workflowsStore.lastSuccessfulExecution).toEqual(mockExecution);
+		});
+
+		it('should handle null response from API', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
+			);
+			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
+		});
+
+		it('should not throw error when API call fails', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			const error = new Error('API Error');
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
+
+			// Should not throw
+			await expect(workflowsStore.fetchLastSuccessfulExecution()).resolves.toBeUndefined();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
+			);
+		});
+
+		it('should not fetch when workflow is placeholder empty workflow', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+				scopes: ['workflow:update'],
+			});
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when workflow is read-only', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+			// Set currentView to a read-only view (not WORKFLOW, NEW_WORKFLOW, or EXECUTION_DEBUG)
+			uiStore.currentView = 'execution';
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when workflow is archived', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+				isArchived: true,
+			});
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when user does not have update permissions', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:read'],
+			});
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when branch is read-only in source control', async () => {
+			// Mock the source control store BEFORE reinitializing workflows store
+			vi.mocked(useSourceControlStore).mockReturnValue({
+				preferences: {
+					branchReadOnly: true,
+				},
+			} as ReturnType<typeof useSourceControlStore>);
+
+			// Create a fresh Pinia instance and reinitialize the workflows store to pick up the new mock
+			setActivePinia(createPinia());
+			workflowsStore = useWorkflowsStore();
+
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,13 +1,11 @@
-import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
-	BannerName,
 	FrontendSettings,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
 } from '@n8n/api-types';
-import type { ILogInStatus } from '@/features/users/users.types';
+import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -56,13 +54,13 @@ import type {
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type {
 	BaseFolderItem,
 	FolderListItem,
 	ResourceParentFolder,
-} from '@/features/folders/folders.types';
+} from '@/features/core/folders/folders.types';
 
 export * from '@n8n/design-system/types';
 
@@ -641,7 +639,6 @@ export interface NewCredentialsModal extends ModalState {
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
-export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
 	nodeName: string;
@@ -857,7 +854,8 @@ export type CloudUpdateLinkSourceType =
 	| 'insights'
 	| 'evaluations'
 	| 'ai-builder-sidebar'
-	| 'ai-builder-canvas';
+	| 'ai-builder-canvas'
+	| 'custom-roles';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -883,14 +881,8 @@ export type UTMCampaign =
 	| 'upgrade-debug'
 	| 'upgrade-insights'
 	| 'upgrade-evaluations'
-	| 'upgrade-builder';
-
-export type N8nBanners = {
-	[key in BannerName]: {
-		priority: number;
-		component: Component;
-	};
-};
+	| 'upgrade-builder'
+	| 'upgrade-custom-roles';
 
 export type AddedNode = {
 	type: string;
@@ -936,30 +928,10 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkerView'
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'
-	| 'EnforceMFA';
+	| 'EnforceMFA'
+	| 'Provisioning';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
-
-export type InputPanel = {
-	nodeName?: string;
-	run?: number;
-	branch?: number;
-	data: {
-		isEmpty: boolean;
-	};
-};
-
-export type OutputPanel = {
-	run?: number;
-	branch?: number;
-	data: {
-		isEmpty: boolean;
-	};
-	editMode: {
-		enabled: boolean;
-		value: string;
-	};
-};
 
 export type Draggable = {
 	isDragging: boolean;
@@ -968,17 +940,6 @@ export type Draggable = {
 	dimensions: DOMRect | null;
 	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 };
-
-export type MainPanelType = 'regular' | 'dragless' | 'inputless' | 'unknown' | 'wide';
-
-export type MainPanelDimensions = Record<
-	MainPanelType,
-	{
-		relativeLeft: number;
-		relativeRight: number;
-		relativeWidth: number;
-	}
->;
 
 export interface LlmTokenUsageData {
 	completionTokens: number;
