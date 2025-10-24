@@ -33,6 +33,33 @@ import {
 
 import { UrlService } from './url.service';
 
+import type { IEnterpriseSettings } from '@n8n/api-types';
+
+type PublicEnterpriseSettings = Pick<
+	IEnterpriseSettings,
+	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
+>;
+
+type PublicFrontendSettings = Pick<
+	FrontendSettings,
+	| 'settingsMode'
+	| 'instanceId'
+	| 'defaultLocale'
+	| 'versionCli'
+	| 'releaseChannel'
+	| 'versionNotifications'
+	| 'userManagement'
+	| 'sso'
+	| 'mfa'
+	| 'authCookie'
+	| 'oauthCallbackUrls'
+	| 'banners'
+	| 'previewMode'
+	| 'telemetry'
+> & {
+	enterprise: PublicEnterpriseSettings;
+};
+
 @Service()
 export class FrontendService {
 	settings: FrontendSettings;
@@ -462,9 +489,9 @@ export class FrontendService {
 
 	/**
 	 * Only add settings that are absolutely necessary for non-authenticated pages
-	 * @returns Minimal settings for unauthenticated users
+	 * @returns Public settings for unauthenticated users
 	 */
-	getMinimalSettings(): DeepPartial<FrontendSettings> {
+	getMinimalSettings(): PublicFrontendSettings {
 		// Get full settings to ensure all required properties are initialized
 		this.getSettings();
 
