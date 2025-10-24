@@ -5,11 +5,11 @@ import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
 // These tests won't be run against local
 const CONTAINER_ONLY_TAGS = [
 	'proxy',
-	'multi-node',
 	'postgres',
 	'queue',
 	'multi-main',
 	'task-runner',
+	'source-control',
 ];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 
@@ -19,10 +19,10 @@ const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')}
 const SERIAL_EXECUTION = /@db:reset/;
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
-	{ name: 'standard', config: { proxyServerEnabled: true, taskRunner: true } },
-	{ name: 'postgres', config: { proxyServerEnabled: true, postgres: true } },
-	{ name: 'queue', config: { proxyServerEnabled: true, queueMode: true } },
-	{ name: 'multi-main', config: { proxyServerEnabled: true, queueMode: { mains: 2, workers: 1 } } },
+	{ name: 'standard', config: {} },
+	{ name: 'postgres', config: { postgres: true } },
+	{ name: 'queue', config: { queueMode: true } },
+	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
 export function getProjects(): Project[] {
