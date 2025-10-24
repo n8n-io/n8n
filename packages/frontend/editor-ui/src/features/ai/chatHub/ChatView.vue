@@ -213,20 +213,19 @@ watch(
 	async (credentials) => {
 		const models = await chatStore.fetchChatModels(credentials);
 		if (!models) {
-			useToast().showError(undefined, 'Could not load models with updated credentials');
+			toast.showError(undefined, 'Could not load models with updated credentials');
 			return;
 		}
+		initialization.value.modelsFetched = true;
 
 		const selected = selectedModel.value;
 		if (selected === null) {
 			const model = findOneFromModelsResponse(models) ?? null;
 
 			if (model) {
-				handleSelectModel(model);
+				await handleSelectModel(model);
 			}
 		}
-
-		initialization.value.modelsFetched = true;
 	},
 	{ immediate: true },
 );
@@ -367,9 +366,13 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	);
 }
 
-function handleSelectModel(selection: ChatHubConversationModel) {
+async function handleSelectModel(selection: ChatHubConversationModel) {
 	if (currentConversation.value) {
-		chatStore.updateSessionModel(sessionId.value, selection);
+		try {
+			await chatStore.updateSessionModel(sessionId.value, selection);
+		} catch (error) {
+			toast.showError(error, 'Could not update selected model');
+		}
 	} else {
 		defaultModel.value = selection;
 	}
