@@ -24,7 +24,7 @@ export async function getTools(
 	});
 
 	if (!client.ok) {
-		throw new NodeOperationError(this.getNode(), 'Could not connect to your MCP server');
+		throw new NodeOperationError(node, 'Could not connect to your MCP server');
 	}
 
 	const result = await client.result.listTools({ cursor: paginationToken });
