@@ -19,6 +19,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import {
 	chatHubConversationModelSchema,
 	type ChatHubProvider,
+	type ChatHubLLMProvider,
 	chatHubProviderSchema,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
@@ -104,6 +105,10 @@ const selectedCredentials = useLocalStorage<CredentialsMap>(
 const autoSelectCredentials = computed<CredentialsMap>(() =>
 	Object.fromEntries(
 		chatHubProviderSchema.options.map((provider) => {
+			if (provider === 'n8n') {
+				return [provider, null];
+			}
+
 			const lastCreatedCredential =
 				credentialsStore
 					.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])
@@ -124,6 +129,22 @@ const isNewChat = computed(() => route.name === CHAT_VIEW);
 const credentialsId = computed(() =>
 	selectedModel.value ? mergedCredentials.value[selectedModel.value.provider] : undefined,
 );
+
+const modelRequiresCredentials = computed(() => {
+	if (!selectedModel.value) return false;
+
+	return selectedModel.value?.provider !== 'n8n';
+});
+
+const isMissingSelectedCredential = computed(() => {
+	if (!selectedModel.value) return false;
+
+	if (!modelRequiresCredentials.value) {
+		return false;
+	}
+
+	return !credentialsId.value;
+});
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
@@ -224,18 +245,28 @@ onMounted(async () => {
 });
 
 function onSubmit(message: string) {
-	if (!message.trim() || chatStore.isResponding || !selectedModel.value || !credentialsId.value) {
+	if (
+		!message.trim() ||
+		chatStore.isResponding ||
+		!selectedModel.value ||
+		isMissingSelectedCredential.value
+	) {
 		return;
 	}
 
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.sendMessage(sessionId.value, message, selectedModel.value, {
-		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId.value,
-			name: '',
-		},
-	});
+	const credentials = {};
+	if (selectedModel.value.provider !== 'n8n' && credentialsId.value) {
+		Object.assign(credentials, {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+				id: credentialsId.value,
+				name: '',
+			},
+		});
+	}
+
+	chatStore.sendMessage(sessionId.value, message, selectedModel.value, credentials);
 
 	inputRef.value?.setText('');
 
@@ -269,12 +300,20 @@ function handleEditMessage(message: ChatHubMessageDto) {
 
 	const messageToEdit = message.revisionOfMessageId ?? message.id;
 
-	chatStore.editMessage(sessionId.value, messageToEdit, message.content, selectedModel.value, {
-		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId.value,
-			name: '',
-		},
-	});
+	chatStore.editMessage(
+		sessionId.value,
+		messageToEdit,
+		message.content,
+		selectedModel.value,
+		selectedModel.value.provider === 'n8n'
+			? {}
+			: {
+					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+						id: credentialsId.value,
+						name: '',
+					},
+				},
+	);
 	editingMessageId.value = undefined;
 }
 
@@ -290,27 +329,34 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 	const messageToRetry = message.retryOfMessageId ?? message.id;
 
-	chatStore.regenerateMessage(sessionId.value, messageToRetry, selectedModel.value, {
-		[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-			id: credentialsId.value,
-			name: '',
-		},
-	});
+	chatStore.regenerateMessage(
+		sessionId.value,
+		messageToRetry,
+		selectedModel.value,
+		selectedModel.value.provider === 'n8n'
+			? {}
+			: {
+					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+						id: credentialsId.value,
+						name: '',
+					},
+				},
+	);
 }
 
 function handleSelectModel(selection: ChatHubConversationModel) {
 	selectedModel.value = selection;
 }
 
-function handleSelectCredentials(provider: ChatHubProvider, credentialsId: string) {
-	selectedCredentials.value = { ...selectedCredentials.value, [provider]: credentialsId };
+function handleSelectCredentials(provider: ChatHubProvider, id: string) {
+	selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
 }
 
 function handleSwitchAlternative(messageId: string) {
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
-function handleConfigureCredentials(provider: ChatHubProvider) {
+function handleConfigureCredentials(provider: ChatHubLLMProvider) {
 	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
 	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
 
@@ -327,7 +373,7 @@ function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
-function handleCreateNewCredential(provider: ChatHubProvider) {
+function handleCreateNewCredential(provider: ChatHubLLMProvider) {
 	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 </script>
@@ -352,7 +398,7 @@ function handleCreateNewCredential(provider: ChatHubProvider) {
 		/>
 
 		<CredentialSelectorModal
-			v-if="credentialSelectorProvider"
+			v-if="credentialSelectorProvider && credentialSelectorProvider !== 'n8n'"
 			:key="credentialSelectorProvider"
 			:provider="credentialSelectorProvider"
 			:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
@@ -411,7 +457,7 @@ function handleCreateNewCredential(provider: ChatHubProvider) {
 						:class="$style.prompt"
 						:is-responding="chatStore.isResponding"
 						:selected-model="selectedModel"
-						:is-credentials-selected="!!credentialsId"
+						:is-missing-credentials="isMissingSelectedCredential"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
