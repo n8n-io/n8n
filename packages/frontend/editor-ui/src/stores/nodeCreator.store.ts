@@ -18,32 +18,35 @@ import type {
 	INodeCreateElement,
 } from '@/Interface';
 
-import { computed, ref } from 'vue';
-import { transformNodeType } from '@/components/Node/NodeCreator/utils';
+import { computed, nextTick, ref } from 'vue';
+import {
+	prepareCommunityNodeDetailsViewStack,
+	transformNodeType,
+} from '@/components/Node/NodeCreator/utils';
 import type {
 	IDataObject,
 	INodeInputConfiguration,
 	NodeConnectionType,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, isCommunityPackageName } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	createCanvasConnectionHandleString,
 	parseCanvasConnectionHandleString,
-} from '@/utils/canvasUtils';
+} from '@/features/workflows/canvas/canvas.utils';
 import type { Connection } from '@vue-flow/core';
-import { CanvasConnectionMode } from '@/types';
+import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { TelemetryNdvType } from '@/types/telemetry';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { getNodeIconSource } from '@/utils/nodeIcon';
 import get from 'lodash/get';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
@@ -216,6 +219,38 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		}
 	}
 
+	async function openNodeCreatorWithNode(nodeName: string) {
+		const nodeData = nodeName ? workflowsStore.getNodeByName(nodeName) : null;
+		if (!nodeData) {
+			return;
+		}
+		ndvStore.unsetActiveNodeName();
+		const nodeType =
+			nodeTypesStore.getNodeType(nodeData?.type) ??
+			nodeTypesStore.communityNodeType(nodeData?.type)?.nodeDescription;
+		if (!nodeType) {
+			return;
+		}
+		setNodeCreatorState({
+			createNodeActive: true,
+		});
+		// wait for the node creator state to be set
+		await nextTick();
+		const nodeActions = actions.value[nodeType.name];
+		const viewStack = prepareCommunityNodeDetailsViewStack(
+			{
+				key: nodeType.name,
+				properties: nodeType,
+				type: 'node',
+				subcategory: '*',
+			},
+			getNodeIconSource(nodeType.name),
+			'Regular',
+			nodeActions ?? [],
+		);
+		useViewStacks().pushViewStack(viewStack, { resetStacks: true });
+	}
+
 	function openNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
 		ndvStore.unsetActiveNodeName();
 		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
@@ -224,6 +259,17 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			source,
 			createNodeActive: true,
 			nodeCreatorView: TRIGGER_NODE_CREATOR_VIEW,
+		});
+	}
+
+	function openNodeCreatorForRegularNodes(source: NodeCreatorOpenSource) {
+		ndvStore.unsetActiveNodeName();
+		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+		setShowScrim(true);
+		setNodeCreatorState({
+			source,
+			createNodeActive: true,
+			nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
 		});
 	}
 
@@ -271,7 +317,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		const workflowNode = workflowObject.value.getNode(nodeName);
 		if (!workflowNode) return { nodes: [] };
 
-		const nodeType = nodeTypesStore.getNodeType(workflowNode?.type, workflowNode.typeVersion);
+		const nodeType =
+			nodeTypesStore.getNodeType(workflowNode?.type, workflowNode.typeVersion) ??
+			nodeTypesStore.communityNodeType(workflowNode?.type)?.nodeDescription;
 		if (nodeType) {
 			const inputs = NodeHelpers.getNodeInputs(workflowObject.value, workflowNode, nodeType);
 
@@ -449,6 +497,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,
+		openNodeCreatorForRegularNodes,
 		openNodeCreatorForActions,
 		onCreatorOpened,
 		onNodeFilterChanged,
@@ -457,5 +506,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		onViewActions,
 		onSubcategorySelected,
 		onNodeAddedToCanvas,
+		openNodeCreatorWithNode,
 	};
 });

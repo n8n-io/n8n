@@ -16,7 +16,7 @@ import { useI18n } from '@n8n/i18n';
 import ParameterInputList from './ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 
@@ -377,7 +377,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 <style scoped lang="scss">
 .fixed-collection-parameter {
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing--sm);
 
 	.icon-button {
 		display: flex;
@@ -387,21 +387,21 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 	.controls {
 		:deep(.button) {
 			font-weight: var(--font-weight-normal);
-			--button-font-color: var(--color-text-dark);
-			--button-border-color: var(--color-foreground-base);
-			--button-background-color: var(--color-background-base);
+			--button--color--text: var(--color--text--shade-1);
+			--button--border-color: var(--color--foreground);
+			--button--color--background: var(--color--background);
 
-			--button-hover-font-color: var(--color-text-dark);
-			--button-hover-border-color: var(--color-foreground-base);
-			--button-hover-background-color: var(--color-background-base);
+			--button--color--text--hover: var(--color--text--shade-1);
+			--button--border-color--hover: var(--color--foreground);
+			--button--color--background--hover: var(--color--background);
 
-			--button-active-font-color: var(--color-text-dark);
-			--button-active-border-color: var(--color-foreground-base);
-			--button-active-background-color: var(--color-background-base);
+			--button--color--text--active: var(--color--text--shade-1);
+			--button--border-color--active: var(--color--foreground);
+			--button--color--background--active: var(--color--background);
 
-			--button-focus-font-color: var(--color-text-dark);
-			--button-focus-border-color: var(--color-foreground-base);
-			--button-focus-background-color: var(--color-background-base);
+			--button--color--text--focus: var(--color--text--shade-1);
+			--button--border-color--focus: var(--color--foreground);
+			--button--color--background--focus: var(--color--background);
 
 			&:active,
 			&.active,
@@ -413,7 +413,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 }
 
 .fixed-collection-parameter-property {
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 	margin-bottom: 0;
 }
 
@@ -423,15 +423,15 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 .parameter-item {
 	position: relative;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
 			.default-top-padding {
-				top: calc(1.2 * var(--spacing-s));
+				top: calc(1.2 * var(--spacing--sm));
 			}
 			.extra-top-padding {
-				top: calc(2.2 * var(--spacing-s));
+				top: calc(2.2 * var(--spacing--sm));
 			}
 		}
 	}
@@ -440,10 +440,10 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 .parameter-item:first-of-type {
 	.parameter-item-wrapper {
 		.default-top-padding {
-			top: var(--spacing-3xs);
+			top: var(--spacing--3xs);
 		}
 		.extra-top-padding {
-			top: var(--spacing-l);
+			top: var(--spacing--lg);
 		}
 	}
 }
@@ -453,19 +453,19 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 }
 
 .no-items-exist {
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 }
 .ghost,
 .dragging {
-	border-radius: var(--border-radius-base);
-	padding-right: var(--spacing-xs);
+	border-radius: var(--radius);
+	padding-right: var(--spacing--xs);
 }
 .ghost {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	opacity: 0.5;
 }
 .dragging {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	.parameter-item-wrapper {
 		border: none;
 	}

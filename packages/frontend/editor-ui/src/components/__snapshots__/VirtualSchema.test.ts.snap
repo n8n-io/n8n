@@ -45,28 +45,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 spin="false"
               />
             </div>
-            <div
-              class="n8n-node-icon nodeIcon icon nodeIcon icon"
+            <node-icon-stub
+              class="icon"
               data-v-882a318e=""
-            >
-              <div
-                class="nodeIconWrapper"
-                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
-              >
-                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
-                <div
-                  class="icon"
-                >
-                  <img
-                    class="nodeIconImage"
-                    src="/nodes/test-node/icon.svg"
-                  />
-                  <!--v-if-->
-                </div>
-                
-              </div>
-            </div>
+              node-type="n8n-nodes-base.set"
+              size="12"
+            />
             <div
               class="title"
               data-v-882a318e=""
@@ -88,30 +72,30 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-v-882a318e=""
           >
             
-            Usually outputs the following fields. Execute the node to see the actual ones. 
+            Usually outputs the following fields. 
             
-            <a
-              class="n8n-link"
+            <button
+              bold=""
               data-v-882a318e=""
-              href="https://docs.n8n.io/data/schema-preview/"
-              target="_blank"
+              size="small"
             >
               
-              <span
-                class="primary"
-              >
-                <span
-                  class="n8n-text size-small bold"
-                >
-                  
-                  
-                  Learn more
-                  
-                  
-                </span>
-              </span>
+              Execute the node
               
-            </a>
+            </button>
+            
+             to see the actual ones. 
+            
+            <button
+              bold=""
+              data-v-882a318e=""
+              size="small"
+              to="https://docs.n8n.io/data/schema-preview/"
+            >
+              
+              Learn more
+              
+            </button>
             
             
           </div>
@@ -333,28 +317,12 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
       spin="false"
     />
   </div>
-  <div
-    class="n8n-node-icon nodeIcon icon nodeIcon icon"
+  <node-icon-stub
+    class="icon"
     data-v-882a318e=""
-  >
-    <div
-      class="nodeIconWrapper"
-      style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
-    >
-      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-      
-      <div
-        class="icon"
-      >
-        <img
-          class="nodeIconImage"
-          src="/nodes/test-node/icon.svg"
-        />
-        <!--v-if-->
-      </div>
-      
-    </div>
-  </div>
+    node-type="n8n-nodes-base.if"
+    size="12"
+  />
   <div
     class="title"
     data-v-882a318e=""
@@ -418,28 +386,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 spin="false"
               />
             </div>
-            <div
-              class="n8n-node-icon nodeIcon icon icon-trigger nodeIcon icon icon-trigger"
+            <node-icon-stub
+              class="icon icon-trigger"
               data-v-882a318e=""
-            >
-              <div
-                class="nodeIconWrapper"
-                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
-              >
-                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
-                <div
-                  class="icon"
-                >
-                  <img
-                    class="nodeIconImage"
-                    src="/nodes/test-node/icon.svg"
-                  />
-                  <!--v-if-->
-                </div>
-                
-              </div>
-            </div>
+              node-type="n8n-nodes-base.manualTrigger"
+              size="12"
+            />
             <div
               class="title"
               data-v-882a318e=""
@@ -1309,28 +1261,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 spin="false"
               />
             </div>
-            <div
-              class="n8n-node-icon nodeIcon icon icon-trigger nodeIcon icon icon-trigger"
+            <node-icon-stub
+              class="icon icon-trigger"
               data-v-882a318e=""
-            >
-              <div
-                class="nodeIconWrapper"
-                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
-              >
-                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
-                <div
-                  class="icon"
-                >
-                  <img
-                    class="nodeIconImage"
-                    src="/nodes/test-node/icon.svg"
-                  />
-                  <!--v-if-->
-                </div>
-                
-              </div>
-            </div>
+              node-type="n8n-nodes-base.manualTrigger"
+              size="12"
+            />
             <div
               class="title"
               data-v-882a318e=""
@@ -1713,28 +1649,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 spin="false"
               />
             </div>
-            <div
-              class="n8n-node-icon nodeIcon icon nodeIcon icon"
+            <node-icon-stub
+              class="icon"
               data-v-882a318e=""
-            >
-              <div
-                class="nodeIconWrapper"
-                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
-              >
-                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
-                <div
-                  class="icon"
-                >
-                  <img
-                    class="nodeIconImage"
-                    src="/nodes/test-node/icon.svg"
-                  />
-                  <!--v-if-->
-                </div>
-                
-              </div>
-            </div>
+              node-type="n8n-nodes-base.set"
+              size="12"
+            />
             <div
               class="title"
               data-v-882a318e=""
@@ -1845,28 +1765,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 spin="false"
               />
             </div>
-            <div
-              class="n8n-node-icon nodeIcon icon icon-trigger nodeIcon icon icon-trigger"
+            <node-icon-stub
+              class="icon icon-trigger"
               data-v-882a318e=""
-            >
-              <div
-                class="nodeIconWrapper"
-                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
-              >
-                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
-                <div
-                  class="icon"
-                >
-                  <img
-                    class="nodeIconImage"
-                    src="/nodes/test-node/icon.svg"
-                  />
-                  <!--v-if-->
-                </div>
-                
-              </div>
-            </div>
+              node-type="n8n-nodes-base.manualTrigger"
+              size="12"
+            />
             <div
               class="title"
               data-v-882a318e=""
@@ -2669,28 +2573,12 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 spin="false"
               />
             </div>
-            <div
-              class="n8n-node-icon nodeIcon icon icon-trigger nodeIcon icon icon-trigger"
+            <node-icon-stub
+              class="icon icon-trigger"
               data-v-882a318e=""
-            >
-              <div
-                class="nodeIconWrapper"
-                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
-              >
-                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
-                <div
-                  class="icon"
-                >
-                  <img
-                    class="nodeIconImage"
-                    src="/nodes/test-node/icon.svg"
-                  />
-                  <!--v-if-->
-                </div>
-                
-              </div>
-            </div>
+              node-type="n8n-nodes-base.manualTrigger"
+              size="12"
+            />
             <div
               class="title"
               data-v-882a318e=""
@@ -2808,28 +2696,12 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 spin="false"
               />
             </div>
-            <div
-              class="n8n-node-icon nodeIcon icon nodeIcon icon"
+            <node-icon-stub
+              class="icon"
               data-v-882a318e=""
-            >
-              <div
-                class="nodeIconWrapper"
-                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
-              >
-                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
-                <div
-                  class="icon"
-                >
-                  <img
-                    class="nodeIconImage"
-                    src="/nodes/test-node/icon.svg"
-                  />
-                  <!--v-if-->
-                </div>
-                
-              </div>
-            </div>
+              node-type="n8n-nodes-base.set"
+              size="12"
+            />
             <div
               class="title"
               data-v-882a318e=""

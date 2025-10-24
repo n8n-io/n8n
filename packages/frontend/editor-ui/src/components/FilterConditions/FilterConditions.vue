@@ -12,7 +12,7 @@ import {
 	type FilterOptionsValue,
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import {
 	DEFAULT_FILTER_OPTIONS,
 	DEFAULT_MAX_CONDITIONS,
@@ -237,25 +237,25 @@ function getIssues(index: number): string[] {
 .filter {
 	display: flex;
 	flex-direction: column;
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 }
 
 .conditions {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 }
 .combinator {
 	position: relative;
 	z-index: 1;
-	margin-top: var(--spacing-2xs);
-	margin-bottom: calc(var(--spacing-2xs) * -1);
-	margin-left: var(--spacing-l);
+	margin-top: var(--spacing--2xs);
+	margin-bottom: calc(var(--spacing--2xs) * -1);
+	margin-left: var(--spacing--lg);
 }
 
 .condition {
-	padding-left: var(--spacing-l);
-	padding-bottom: var(--spacing-xs);
+	padding-left: var(--spacing--lg);
+	padding-bottom: var(--spacing--xs);
 }
 
 .single {
@@ -264,33 +264,33 @@ function getIssues(index: number): string[] {
 	}
 
 	.content {
-		margin-top: calc(var(--spacing-xs) * -1);
+		margin-top: calc(var(--spacing--xs) * -1);
 	}
 }
 
 .addConditionWrapper {
-	margin-top: var(--spacing-l);
-	margin-left: var(--spacing-l);
+	margin-top: var(--spacing--lg);
+	margin-left: var(--spacing--lg);
 }
 
 .addCondition {
 	// Styling to match collection button (should move to standard button in future)
 	font-weight: var(--font-weight-normal);
-	--button-font-color: var(--color-text-dark);
-	--button-border-color: var(--color-foreground-base);
-	--button-background-color: var(--color-background-base);
+	--button--color--text: var(--color--text--shade-1);
+	--button--border-color: var(--color--foreground);
+	--button--color--background: var(--color--background);
 
-	--button-hover-font-color: var(--color-text-dark);
-	--button-hover-border-color: var(--color-foreground-base);
-	--button-hover-background-color: var(--color-background-base);
+	--button--color--text--hover: var(--color--text--shade-1);
+	--button--border-color--hover: var(--color--foreground);
+	--button--color--background--hover: var(--color--background);
 
-	--button-active-font-color: var(--color-text-dark);
-	--button-active-border-color: var(--color-foreground-base);
-	--button-active-background-color: var(--color-background-base);
+	--button--color--text--active: var(--color--text--shade-1);
+	--button--border-color--active: var(--color--foreground);
+	--button--color--background--active: var(--color--background);
 
-	--button-focus-font-color: var(--color-text-dark);
-	--button-focus-border-color: var(--color-foreground-base);
-	--button-focus-background-color: var(--color-background-base);
+	--button--color--text--focus: var(--color--text--shade-1);
+	--button--border-color--focus: var(--color--foreground);
+	--button--color--background--focus: var(--color--background);
 
 	&:hover,
 	&:focus,
@@ -300,15 +300,15 @@ function getIssues(index: number): string[] {
 }
 .ghost,
 .dragging {
-	border-radius: var(--border-radius-base);
-	padding-right: var(--spacing-xs);
+	border-radius: var(--radius);
+	padding-right: var(--spacing--xs);
 }
 .ghost {
-	background-color: var(--color-background-base);
+	background-color: var(--color--background);
 	opacity: 0.5;
 }
 .dragging {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color--background--light-3);
 	opacity: 0.7;
 }
 .dragging > .combinator {

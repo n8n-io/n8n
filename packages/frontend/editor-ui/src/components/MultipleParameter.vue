@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { storeToRefs } from 'pinia';
 
 import { N8nButton, N8nIcon, N8nInputLabel, N8nText } from '@n8n/design-system';
@@ -197,8 +197,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 <style scoped lang="scss">
 .duplicate-parameter {
 	:deep(.button) {
-		--button-background-color: var(--color-background-base);
-		--button-border-color: var(--color-foreground-base);
+		--button--color--background: var(--color--background);
+		--button--border-color: var(--color--foreground);
 	}
 
 	:deep(.duplicate-parameter-item) {
@@ -216,14 +216,14 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 	:deep(.duplicate-parameter-item + .duplicate-parameter-item) {
 		.collection-parameter-wrapper {
 			border-top: 1px dashed #999;
-			margin-top: var(--spacing-xs);
+			margin-top: var(--spacing--xs);
 		}
 	}
 }
 
 .duplicate-parameter-item {
 	~ .add-item-wrapper {
-		margin-top: var(--spacing-xs);
+		margin-top: var(--spacing--xs);
 	}
 }
 
@@ -235,7 +235,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 	z-index: 999;
 	color: #f56c6c;
 	width: 15px;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 
 	:hover {
 		color: #f00;
@@ -243,7 +243,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 }
 
 .no-items-exist {
-	margin: var(--spacing-xs) 0;
+	margin: var(--spacing--xs) 0;
 }
 </style>
 

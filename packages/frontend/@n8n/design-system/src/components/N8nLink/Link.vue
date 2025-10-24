@@ -50,7 +50,7 @@ withDefaults(defineProps<LinkProps>(), {
 }
 
 .text {
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	&:hover {
 		color: var.$link-color;
@@ -62,18 +62,18 @@ withDefaults(defineProps<LinkProps>(), {
 }
 
 .danger {
-	color: var(--color-danger);
+	color: var(--color--danger);
 
 	&:active {
-		color: var(--color-danger-shade-1);
+		color: var(--color--danger--shade-1);
 	}
 }
 
 .secondary {
-	color: var(--color-secondary-link);
+	color: var(--link--color--secondary);
 
 	&:active {
-		color: var(--color-secondary-link-hover);
+		color: var(--link--color--secondary--hover);
 	}
 }
 

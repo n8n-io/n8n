@@ -6,6 +6,30 @@ export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
+export {
+	chatHubConversationModelSchema,
+	type ChatHubConversationModel,
+	chatHubProviderSchema,
+	type ChatHubProvider,
+	type ChatHubLLMProvider,
+	type ChatHubMessageType,
+	type ChatHubMessageStatus,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	chatModelsRequestSchema,
+	type ChatModelsRequest,
+	type ChatModelsResponse,
+	ChatHubSendMessageRequest,
+	ChatHubRegenerateMessageRequest,
+	ChatHubEditMessageRequest,
+	ChatHubChangeConversationTitleRequest,
+	type ChatMessageId,
+	type ChatSessionId,
+	type ChatHubMessageDto,
+	type ChatHubSessionDto,
+	type ChatHubConversationDto,
+	type ChatHubConversationResponse,
+	type ChatHubConversationsResponse,
+} from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';

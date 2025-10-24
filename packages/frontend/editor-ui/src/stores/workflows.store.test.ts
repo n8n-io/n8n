@@ -9,7 +9,8 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
@@ -25,7 +26,7 @@ import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { mock } from 'vitest-mock-extended';
 import * as apiUtils from '@n8n/rest-api-client';
 import {
@@ -37,8 +38,9 @@ import {
 } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useWorkflowState } from '@/composables/useWorkflowState';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-vi.mock('@/stores/ndv.store', () => ({
+vi.mock('@/features/ndv/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
 		activeNode: null,
 	})),
@@ -48,6 +50,7 @@ vi.mock('@/api/workflows', () => ({
 	getWorkflows: vi.fn(),
 	getWorkflow: vi.fn(),
 	getNewWorkflow: vi.fn(),
+	getLastSuccessfulExecution: vi.fn(),
 }));
 
 const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription> | null => ({
@@ -74,6 +77,23 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }),
 	};
 });
+
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
+	useSourceControlStore: vi.fn(() => ({
+		preferences: {
+			branchReadOnly: false,
+		},
+	})),
+}));
+
+vi.mock('@n8n/permissions', () => ({
+	getResourcePermissions: vi.fn((scopes: string[] = []) => ({
+		workflow: {
+			update: scopes.includes('workflow:update'),
+			read: scopes.includes('workflow:read') || scopes.includes('workflow:update'),
+		},
+	})),
+}));
 
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -1030,51 +1050,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('setNodeValue()', () => {
-		it('should update a node', () => {
-			const nodeName = 'Edit Fields';
-			workflowsStore.addNode({
-				parameters: {},
-				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
-				name: nodeName,
-				type: 'n8n-nodes-base.set',
-				position: [680, 180],
-				typeVersion: 3.4,
-			});
-
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
-
-			workflowsStore.setNodeValue({ name: 'Edit Fields', key: 'executeOnce', value: true });
-
-			expect(workflowsStore.workflow.nodes[0].executeOnce).toBe(true);
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
-				expect.any(Number),
-			);
-		});
-	});
-
-	describe('setNodePositionById()', () => {
-		it('should NOT update parametersLastUpdatedAt', () => {
-			const nodeName = 'Edit Fields';
-			const nodeId = '554c7ff4-7ee2-407c-8931-e34234c5056a';
-			workflowsStore.addNode({
-				parameters: {},
-				id: nodeId,
-				name: nodeName,
-				type: 'n8n-nodes-base.set',
-				position: [680, 180],
-				typeVersion: 3.4,
-			});
-
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
-
-			workflowsStore.setNodePositionById(nodeId, [0, 0]);
-
-			expect(workflowsStore.workflow.nodes[0].position).toStrictEqual([0, 0]);
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
-		});
-	});
-
 	describe('setNodes()', () => {
 		it('should transform credential-only nodes', () => {
 			const setNodeId = '1';
@@ -1100,55 +1075,6 @@ describe('useWorkflowsStore', () => {
 				'AlienVault Request': { pristine: true },
 				'Edit Fields': { pristine: true },
 			});
-		});
-	});
-
-	describe('updateNodeAtIndex', () => {
-		it.each([
-			{
-				description: 'should update node at given index with provided data',
-				nodeIndex: 0,
-				nodeData: { name: 'Updated Node' },
-				initialNodes: [{ name: 'Original Node' }],
-				expectedNodes: [{ name: 'Updated Node' }],
-				expectedResult: true,
-			},
-			{
-				description: 'should not update node if index is invalid',
-				nodeIndex: -1,
-				nodeData: { name: 'Updated Node' },
-				initialNodes: [{ name: 'Original Node' }],
-				expectedNodes: [{ name: 'Original Node' }],
-				expectedResult: false,
-			},
-			{
-				description: 'should return false if node data is unchanged',
-				nodeIndex: 0,
-				nodeData: { name: 'Original Node' },
-				initialNodes: [{ name: 'Original Node' }],
-				expectedNodes: [{ name: 'Original Node' }],
-				expectedResult: false,
-			},
-			{
-				description: 'should update multiple properties of a node',
-				nodeIndex: 0,
-				nodeData: { name: 'Updated Node', type: 'newType' },
-				initialNodes: [{ name: 'Original Node', type: 'oldType' }],
-				expectedNodes: [{ name: 'Updated Node', type: 'newType' }],
-				expectedResult: true,
-			},
-		])('$description', ({ nodeIndex, nodeData, initialNodes, expectedNodes, expectedResult }) => {
-			workflowsStore.workflow.nodes = initialNodes as unknown as IWorkflowDb['nodes'];
-
-			const result = workflowsStore.updateNodeAtIndex(nodeIndex, nodeData);
-
-			expect(result).toBe(expectedResult);
-			expect(workflowsStore.workflow.nodes).toEqual(expectedNodes);
-		});
-
-		it('should throw error if out of bounds', () => {
-			workflowsStore.workflow.nodes = [];
-			expect(() => workflowsStore.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
 		});
 	});
 
@@ -1265,38 +1191,6 @@ describe('useWorkflowsStore', () => {
 				'POST',
 				`/workflows/${workflowId}/unarchive`,
 			);
-		});
-	});
-
-	describe('setNodeParameters', () => {
-		beforeEach(() => {
-			workflowsStore.setNodes([createTestNode({ name: 'a', parameters: { p: 1, q: true } })]);
-		});
-
-		it('should set node parameters', () => {
-			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: true });
-
-			workflowsStore.setNodeParameters({ name: 'a', value: { q: false, r: 's' } });
-
-			expect(workflowsStore.nodesByName.a.parameters).toEqual({ q: false, r: 's' });
-		});
-
-		it('should set node parameters preserving existing ones if append=true', () => {
-			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: true });
-
-			workflowsStore.setNodeParameters({ name: 'a', value: { q: false, r: 's' } }, true);
-
-			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: false, r: 's' });
-		});
-
-		it('should not update last parameter update time if parameters are set to the same value', () => {
-			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
-
-			console.log(workflowsStore.workflow.nodes, workflowsStore.workflowObject.nodes);
-
-			workflowsStore.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
-
-			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
 		});
 	});
 
@@ -1628,70 +1522,397 @@ describe('useWorkflowsStore', () => {
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
 			workflowsStore.removeNode(n0);
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
-			workflowsStore.setNodeValue({ name: 'n1', key: 'disabled', value: true });
+			useWorkflowState().setNodeValue({ name: 'n1', key: 'disabled', value: true });
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
 		});
 	});
 
-	describe('markExecutionAsStopped', () => {
+	describe('assignCredentialToMatchingNodes', () => {
 		beforeEach(() => {
-			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
-				status: 'running',
-				startedAt: new Date('2023-01-01T09:00:00Z'),
-				stoppedAt: undefined,
-				data: {
-					resultData: {
-						runData: {
-							node1: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'error' }),
-								createTestTaskData({ executionStatus: 'running' }),
-							],
-							node2: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'waiting' }),
-							],
-						},
+			// Reset mock
+			getNodeType.mockReset();
+		});
+
+		it("should assign credential to nodes that support it but don't have it set", () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			// Set up nodes with different scenarios
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Slack Node 1',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Slack Node 2',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+			]);
+
+			// Mock getNodeType to return node type with credential support
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			// Simulate setting credential on the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(2); // Should update 2 nodes (excluding current node)
+			expect(workflowsStore.workflow.nodes[1].credentials).toEqual({
+				slackApi: credential,
+			});
+			expect(workflowsStore.workflow.nodes[2].credentials).toEqual({
+				slackApi: credential,
+			});
+		});
+
+		it('should not overwrite existing credentials of the same type', () => {
+			const newCredential = { id: 'cred-new', name: 'New Credential' };
+			const existingCredential = { id: 'cred-old', name: 'Existing Credential' };
+			const credentialType = 'slackApi';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Node With Existing Cred',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					credentials: {
+						slackApi: existingCredential,
 					},
+				}),
+				createTestNode({
+					name: 'Node Without Cred',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+			]);
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			// Simulate assigning new credential to the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: newCredential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(1); // Only 1 node updated (the one without credentials)
+			expect(workflowsStore.workflow.nodes[1].credentials?.slackApi).toEqual(existingCredential); // Unchanged
+			expect(workflowsStore.workflow.nodes[2].credentials?.slackApi).toEqual(newCredential); // Updated
+		});
+
+		it("should not affect nodes that don't support the credential type", () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Slack Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'HTTP Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				}),
+			]);
+
+			// Mock getNodeType to return different credentials for different node types
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.slack') {
+					return {
+						credentials: [{ name: 'slackApi', required: true }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				return {
+					credentials: [{ name: 'httpBasicAuth', required: false }],
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [],
+				};
+			});
+
+			// Simulate assigning credential to the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(1); // Only the Slack node updated
+			expect(workflowsStore.workflow.nodes[1].credentials?.slackApi).toEqual(credential);
+			expect(workflowsStore.workflow.nodes[2].credentials).toBeUndefined(); // HTTP node unchanged
+		});
+
+		it('should handle nodes with no credential support', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Node Without Creds Support',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+				}),
+			]);
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.slack') {
+					return {
+						credentials: [{ name: 'slackApi', required: true }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				// Return node type without credentials field
+				return {
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [],
+				};
+			});
+
+			// Simulate assigning credential to the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(0); // No nodes updated
+			expect(workflowsStore.workflow.nodes[1].credentials).toBeUndefined();
+		});
+
+		it('should return 0 when there are no matching nodes', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'Current Node',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+			]);
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			// Simulate assigning credential to the first node
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(0); // No nodes to update (only current node exists)
+		});
+	});
+
+	describe('fetchLastSuccessfulExecution', () => {
+		beforeEach(() => {
+			// Ensure currentView is set to a non-readonly view (VIEWS.WORKFLOW = 'NodeViewExisting')
+			uiStore.currentView = 'NodeViewExisting';
+
+			// Reset sourceControlStore mock to default
+			vi.mocked(useSourceControlStore).mockReturnValue({
+				preferences: {
+					branchReadOnly: false,
 				},
-			});
+			} as ReturnType<typeof useSourceControlStore>);
+
+			// Reset the API mock
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockReset();
 		});
 
-		it('should remove non successful node runs', () => {
-			workflowsStore.markExecutionAsStopped();
-
-			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
-			expect(runData?.node1).toHaveLength(1);
-			expect(runData?.node1[0].executionStatus).toBe('success');
-			expect(runData?.node2).toHaveLength(1);
-			expect(runData?.node2[0].executionStatus).toBe('success');
-		});
-
-		it('should update execution status, startedAt and stoppedAt when data is provided', () => {
-			workflowsStore.markExecutionAsStopped({
-				status: 'canceled',
-				startedAt: new Date('2023-01-01T10:00:00Z'),
-				stoppedAt: new Date('2023-01-01T10:05:00Z'),
-				mode: 'manual',
+		it('should fetch and store the last successful execution', async () => {
+			const mockExecution = createTestWorkflowExecutionResponse({
+				id: 'execution-456',
+				status: 'success',
 			});
 
-			expect(workflowsStore.workflowExecutionData?.status).toBe('canceled');
-			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
-				new Date('2023-01-01T10:00:00Z'),
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			// Verify the mock is set up correctly
+			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
+			expect(workflowsStore.workflow.id).toBe('workflow-123');
+			expect(workflowsStore.workflow.isArchived).toBe(false);
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(mockExecution);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
 			);
-			expect(workflowsStore.workflowExecutionData?.stoppedAt).toEqual(
-				new Date('2023-01-01T10:05:00Z'),
+			expect(workflowsStore.lastSuccessfulExecution).toEqual(mockExecution);
+		});
+
+		it('should handle null response from API', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
+			);
+			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
+		});
+
+		it('should not throw error when API call fails', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			const error = new Error('API Error');
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
+
+			// Should not throw
+			await expect(workflowsStore.fetchLastSuccessfulExecution()).resolves.toBeUndefined();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
 			);
 		});
 
-		it('should not update execution data when stopData is not provided', () => {
-			workflowsStore.markExecutionAsStopped();
+		it('should not fetch when workflow is placeholder empty workflow', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+				scopes: ['workflow:update'],
+			});
 
-			expect(workflowsStore.workflowExecutionData?.status).toBe('running');
-			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
-				new Date('2023-01-01T09:00:00Z'),
-			);
-			expect(workflowsStore.workflowExecutionData?.stoppedAt).toBeUndefined();
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when workflow is read-only', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+			// Set currentView to a read-only view (not WORKFLOW, NEW_WORKFLOW, or EXECUTION_DEBUG)
+			uiStore.currentView = 'execution';
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when workflow is archived', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+				isArchived: true,
+			});
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when user does not have update permissions', async () => {
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:read'],
+			});
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when branch is read-only in source control', async () => {
+			// Mock the source control store BEFORE reinitializing workflows store
+			vi.mocked(useSourceControlStore).mockReturnValue({
+				preferences: {
+					branchReadOnly: true,
+				},
+			} as ReturnType<typeof useSourceControlStore>);
+
+			// Create a fresh Pinia instance and reinitialize the workflows store to pick up the new mock
+			setActivePinia(createPinia());
+			workflowsStore = useWorkflowsStore();
+
+			workflowsStore.workflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
 		});
 	});
 });

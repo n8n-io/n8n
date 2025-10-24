@@ -44,6 +44,7 @@ import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-M
 import { CreateFolderTable1738709609940 } from './1738709609940-CreateFolderTable';
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopesColumnToApiKeys';
+import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -94,9 +95,14 @@ import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
+import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
+import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import type { Migration } from '../migration-types';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
+import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
+import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
+import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -197,6 +203,12 @@ const sqliteMigrations: Migration[] = [
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
 	AddProjectIdToVariableTable1758794506893,
 	AddAudienceColumnToApiKeys1758731786132,
+	ChangeValueTypesForInsights1759399811000,
+	CreateChatHubTables1760019379982,
+	UniqueRoleNames1760020838000,
+	CreateWorkflowDependencyTable1760314000000,
+	DropUnusedChatHubColumns1760965142113,
+	AddWorkflowVersionColumn1761047826451,
 ];
 
 export { sqliteMigrations };

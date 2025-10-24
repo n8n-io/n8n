@@ -91,7 +91,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
 
-	const isAiBuilderEnabled = computed(() => settings.value.aiBuilder?.enabled);
+	const isAiBuilderEnabled = computed(
+		() => settings.value.aiBuilder?.enabled && settings.value.aiBuilder?.setup,
+	);
+
+	const isAiAssistantOrBuilderEnabled = computed(
+		() => isAiAssistantEnabled.value || isAiBuilderEnabled.value,
+	);
 
 	const showSetupPage = computed(() => userManagement.value.showSetupOnFirstLoad);
 
@@ -132,6 +138,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
+
+	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
+
+	const isCustomRolesFeatureEnabled = computed(
+		() => settings.value.enterprise?.customRoles ?? false,
+	);
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
@@ -339,6 +351,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMfaFeatureEnabled,
 		isFoldersFeatureEnabled,
 		isAiAssistantEnabled,
+		isCustomRolesFeatureEnabled,
 		areTagsEnabled,
 		isHiringBannerEnabled,
 		isTemplatesEnabled,
@@ -360,6 +373,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isCommunityPlan,
 		isAskAiEnabled,
 		isAiBuilderEnabled,
+		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		reset,
@@ -377,5 +391,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		isModuleActive,
 		isDataTableFeatureEnabled,
+		isChatFeatureEnabled,
 	};
 });
