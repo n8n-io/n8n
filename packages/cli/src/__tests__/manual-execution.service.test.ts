@@ -507,7 +507,7 @@ describe('ManualExecutionService', () => {
 			const executionId = 'test-exec-id-v2-empty-start';
 
 			const mockRunPartialWorkflow2 = jest.fn().mockReturnValue('mockPartial2Return-v2-empty');
-			(core.WorkflowExecute as jest.Mock).mockImplementationOnce(() => ({
+			(core.WorkflowExecute as unknown as jest.Mock).mockImplementationOnce(() => ({
 				runPartialWorkflow2: mockRunPartialWorkflow2,
 				processRunExecutionData: jest.fn(),
 				run: jest.fn(),
