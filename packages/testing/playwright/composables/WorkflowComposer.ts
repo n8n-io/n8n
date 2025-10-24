@@ -173,7 +173,7 @@ export class WorkflowComposer {
 		const input = workflowSelect.locator('input');
 		await input.click();
 		await input.waitFor({ state: 'visible' });
-		await this.n8n.page.keyboard.press('Control+a');
+		await this.n8n.page.keyboard.press('ControlOrMeta+a');
 		await this.n8n.page.keyboard.press('Backspace');
 		await this.n8n.page.keyboard.type(projectNameOrEmail, { delay: 50 });
 

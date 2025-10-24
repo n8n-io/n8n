@@ -87,7 +87,7 @@ test.describe('Project Settings - Member Management', () => {
 		// Verify owner cannot change their own role
 		const ownerRow = memberRows.first();
 		const roleDropdown = ownerRow.getByTestId('project-member-role-dropdown');
-		await expect(roleDropdown).toBeHidden();
+		await expect(roleDropdown).toHaveCount(0);
 	});
 
 	test('should display role dropdown for members but not for current user @auth:owner', async ({
@@ -103,7 +103,7 @@ test.describe('Project Settings - Member Management', () => {
 
 		// Current user (owner) should not have a role dropdown
 		const currentUserRow = n8n.page.locator('tbody tr').first();
-		await expect(currentUserRow.getByTestId('project-member-role-dropdown')).toBeHidden();
+		await expect(currentUserRow.getByTestId('project-member-role-dropdown')).toHaveCount(0);
 
 		// The role should be displayed as static text for the current user
 		await expect(currentUserRow.getByText('Admin')).toBeVisible();
