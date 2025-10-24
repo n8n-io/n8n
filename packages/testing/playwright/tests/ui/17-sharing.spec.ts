@@ -11,6 +11,14 @@ const TEST_ACCESS_TOKEN = '1234567890';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Sharing - Workflow and Credential Sharing (Sequential)', () => {
+	test.beforeAll(async ({ api }) => {
+		await api.resetDatabase();
+		await api.enableFeature('sharing');
+		await api.enableFeature('advancedPermissions');
+		await api.enableFeature('projectRole:admin');
+		await api.enableFeature('projectRole:editor');
+	});
+
 	test('should create C1, W1, W2, share W1 with U3, as U2', async ({ n8n }) => {
 		await n8n.api.signin('member', 0);
 
