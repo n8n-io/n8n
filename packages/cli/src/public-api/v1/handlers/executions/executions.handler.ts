@@ -196,9 +196,9 @@ export = {
 		},
 	],
 	stopExecution: [
-		apiKeyHasScope('execution:delete'),
+		apiKeyHasScope('execution:read'),
 		async (req: ExecutionRequest.Stop, res: express.Response): Promise<express.Response> => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
