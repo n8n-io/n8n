@@ -1145,15 +1145,16 @@ export class WorkflowDataProxy {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
 									contextNode = parentMainInputNode?.name ?? contextNode;
 								}
-								// Check parent nodes via ALL connection types to handle cases where nodes
-								// are connected via non-main connections (e.g., AiTool, AiMemory)
+								// Check if the node has any children and check parents for them instead of the activeNodeName
 								const children = that.workflow.getChildNodes(that.activeNodeName, 'ALL_NON_MAIN');
 								if (children.length === 0) {
-									const parents = that.workflow.getParentNodes(that.activeNodeName, 'ALL');
+									// Node has no children, check parent of context node
+									const parents = that.workflow.getParentNodes(contextNode);
 									if (!parents.includes(nodeName)) {
 										throw createNoConnectionError(nodeName);
 									}
 								} else {
+									// Node has children, check parent of children
 									const parents = children.flatMap((child) =>
 										that.workflow.getParentNodes(child, 'ALL'),
 									);
