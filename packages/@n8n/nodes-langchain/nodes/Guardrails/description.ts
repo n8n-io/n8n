@@ -372,12 +372,12 @@ export const versionDescription: INodeTypeDescription = {
 								},
 							},
 							{
-								displayName: 'Mask Userinfo',
+								displayName: 'Sanitize Userinfo',
 								name: 'blockUserinfo',
 								type: 'boolean',
 								default: true,
 								description:
-									'Whether to mask URLs with userinfo (user:pass@domain) to prevent credential injection',
+									'Whether to sanitize URLs with userinfo (user:pass@domain) to prevent credential injection',
 								displayOptions: {
 									show: {
 										'/operation': ['sanitize'],
