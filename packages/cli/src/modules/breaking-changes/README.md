@@ -129,8 +129,7 @@ export class MyNewRule extends IBreakingChangeInstanceRule {
 				});
 			}
 		} catch (error) {
-			this.errorReporter.error(error);
-			this.logger.error('Detection failed', { error });
+			this.errorReporter.error(error, { shouldBeLogged: true});
 		}
 
 		return result;

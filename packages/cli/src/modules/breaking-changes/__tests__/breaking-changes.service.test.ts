@@ -18,6 +18,7 @@ describe('BreakingChangeService', () => {
 
 	let workflowRepository: jest.Mocked<WorkflowRepository>;
 	let ruleRegistry: RuleRegistry;
+	let cacheService: jest.Mocked<CacheService>;
 	let service: BreakingChangeService;
 
 	const createWorkflow = (id: string, name: string, nodes: INode[], active = true) =>
@@ -42,16 +43,28 @@ describe('BreakingChangeService', () => {
 
 		workflowRepository = mock<WorkflowRepository>();
 		ruleRegistry = new RuleRegistry(logger);
+		cacheService = mock<CacheService>();
+
+		// Mock getHashValue to call refreshFn directly (bypass caching for tests)
+		cacheService.getHashValue.mockImplementation(async (_key, _hashKey, options) => {
+			if (options?.refreshFn) {
+				return await options.refreshFn(_key);
+			}
+			return undefined;
+		});
+
+		// Spy on registerRules to prevent automatic registration in constructor
+		jest.spyOn(BreakingChangeService.prototype, 'registerRules').mockImplementation(() => {});
 
 		service = new BreakingChangeService(
 			ruleRegistry,
 			workflowRepository,
-			mock<CacheService>(),
+			cacheService,
 			logger,
 			mock<ErrorReporter>(),
 		);
 
-		// Manually register rules with real instances (mocked WorkflowRepository)
+		// Manually register only the rules we want to test with
 		const removedNodesRule = new RemovedNodesRule();
 		const processEnvAccessRule = new ProcessEnvAccessRule();
 		const fileAccessRule = new FileAccessRule();
@@ -144,6 +157,46 @@ describe('BreakingChangeService', () => {
 			expect(report.summary).toHaveProperty('criticalIssues');
 			expect(report).toHaveProperty('results');
 			expect(Array.isArray(report.results)).toBe(true);
+		});
+	});
+
+	describe('getDetectionResults()', () => {
+		it('should protect against concurrent detection operations', async () => {
+			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
+
+			// Create a spy on the detect method to track how many times it's called
+			const detectSpy = jest.spyOn(service, 'detect');
+
+			// Simulate multiple concurrent requests for the same version
+			const promise1 = service.getDetectionResults('v2');
+			const promise2 = service.getDetectionResults('v2');
+			const promise3 = service.getDetectionResults('v2');
+
+			// Wait for all promises to resolve
+			const [result1, result2, result3] = await Promise.all([promise1, promise2, promise3]);
+
+			// Verify that detect was only called once (not three times)
+			expect(detectSpy).toHaveBeenCalledTimes(1);
+
+			// Verify all three requests received the same result
+			expect(result1).toEqual(result2);
+			expect(result2).toEqual(result3);
+		});
+
+		it('should clean up ongoing detection promise after completion', async () => {
+			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
+
+			const detectSpy = jest.spyOn(service, 'detect');
+
+			// First detection
+			await service.getDetectionResults('v2');
+			expect(detectSpy).toHaveBeenCalledTimes(1);
+
+			// Second detection after the first completes should trigger a new detect call
+			await service.getDetectionResults('v2');
+			expect(detectSpy).toHaveBeenCalledTimes(2);
 		});
 	});
 });

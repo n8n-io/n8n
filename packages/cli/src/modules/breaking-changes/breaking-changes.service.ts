@@ -13,6 +13,7 @@ import type {
 	IBreakingChangeRule,
 	AffectedWorkflow,
 	IBreakingChangeWorkflowRule,
+	IBreakingChangeInstanceRule,
 } from './types';
 import { BreakingChangeSeverity } from './types';
 import { N8N_VERSION } from '../../constants';
@@ -23,6 +24,7 @@ import { CacheService } from '@/services/cache/cache.service';
 export class BreakingChangeService {
 	private readonly batchSize = 100;
 	private static readonly CACHE_KEY_PREFIX = 'breaking-changes:results:';
+	private readonly ongoingDetections = new Map<BreakingChangeVersion, Promise<DetectionReport>>();
 
 	constructor(
 		private readonly ruleRegistry: RuleRegistry,
@@ -42,11 +44,33 @@ export class BreakingChangeService {
 		this.ruleRegistry.registerAll(rulesServices);
 	}
 
+	async getAllInstanceRulesResults(
+		instanceLevelRules: IBreakingChangeInstanceRule[],
+	): Promise<DetectionResult[]> {
+		const instanceLevelResults: DetectionResult[] = [];
+		for (const rule of instanceLevelRules) {
+			try {
+				const ruleResult = await rule.detect();
+				if (ruleResult.isAffected) {
+					instanceLevelResults.push({
+						ruleId: rule.getMetadata().id,
+						affectedWorkflows: [],
+						instanceIssues: ruleResult.instanceIssues,
+						recommendations: ruleResult.recommendations,
+					});
+				}
+			} catch (error) {
+				this.errorReporter.error(error, { shouldBeLogged: true });
+			}
+		}
+		return instanceLevelResults;
+	}
+
 	private async getAllWorkflowRulesResults(
 		workflowLevelRules: IBreakingChangeWorkflowRule[],
 	): Promise<DetectionResult[]> {
 		const totalWorkflows = await this.workflowRepository.count();
-		const allAffectedWorkflows: Map<string, AffectedWorkflow[]> = new Map();
+		const allAffectedWorkflowsByRule: Map<string, AffectedWorkflow[]> = new Map();
 		const allResults: DetectionResult[] = [];
 
 		this.logger.info('Processing workflows in batches', {
@@ -79,26 +103,22 @@ export class BreakingChangeService {
 								active: workflow.active,
 								issues: workflowDetectionResult.issues,
 							};
-							if (!allAffectedWorkflows.has(ruleId)) {
-								allAffectedWorkflows.set(ruleId, [affectedWorkflow]);
+							if (!allAffectedWorkflowsByRule.has(ruleId)) {
+								allAffectedWorkflowsByRule.set(ruleId, [affectedWorkflow]);
 							} else {
-								allAffectedWorkflows.get(ruleId)!.push(affectedWorkflow);
+								allAffectedWorkflowsByRule.get(ruleId)!.push(affectedWorkflow);
 							}
 						}
 					}
 				} catch (error) {
-					this.errorReporter.error(error);
-					this.logger.error('Rule detection failed', {
-						ruleId: rule.getMetadata().id,
-						error,
-					});
+					this.errorReporter.error(error, { shouldBeLogged: true });
 				}
 			}
 		}
 
 		// Aggregate results
 		for (const rule of workflowLevelRules) {
-			const workflowResults = allAffectedWorkflows.get(rule.getMetadata().id) || [];
+			const workflowResults = allAffectedWorkflowsByRule.get(rule.getMetadata().id) || [];
 			const isAffected = workflowResults.some((wr) => wr.issues.length > 0);
 
 			if (isAffected) {
@@ -128,7 +148,23 @@ export class BreakingChangeService {
 			targetVersion,
 			{
 				refreshFn: async () => {
-					return await this.detect(targetVersion);
+					// Check if there's already an ongoing detection for this version
+					const existingDetection = this.ongoingDetections.get(targetVersion);
+					if (existingDetection) {
+						this.logger.debug('Reusing ongoing detection', { targetVersion });
+						return await existingDetection;
+					}
+
+					// Start a new detection and store the promise
+					const detectionPromise = this.detect(targetVersion);
+					this.ongoingDetections.set(targetVersion, detectionPromise);
+
+					try {
+						return await detectionPromise;
+					} finally {
+						// Clean up the promise after completion (success or failure)
+						this.ongoingDetections.delete(targetVersion);
+					}
 				},
 			},
 		);
@@ -143,30 +179,10 @@ export class BreakingChangeService {
 		const workflowLevelRules = rules.filter((rule) => 'detectWorkflow' in rule);
 		const instanceLevelRules = rules.filter((rule) => 'detect' in rule);
 
-		// Get all workflow-level rules results
-		const workflowLevelResults = await this.getAllWorkflowRulesResults(workflowLevelRules);
-
-		// Run instance-level rules
-		const instanceLevelResults: DetectionResult[] = [];
-		for (const rule of instanceLevelRules) {
-			try {
-				const ruleResult = await rule.detect();
-				if (ruleResult.isAffected) {
-					instanceLevelResults.push({
-						ruleId: rule.getMetadata().id,
-						affectedWorkflows: [],
-						instanceIssues: ruleResult.instanceIssues,
-						recommendations: ruleResult.recommendations,
-					});
-				}
-			} catch (error) {
-				this.errorReporter.error(error);
-				this.logger.error('Rule detection failed', {
-					ruleId: rule.getMetadata().id,
-					error,
-				});
-			}
-		}
+		const [instanceLevelResults, workflowLevelResults] = await Promise.all([
+			this.getAllInstanceRulesResults(instanceLevelRules),
+			this.getAllWorkflowRulesResults(workflowLevelRules),
+		]);
 
 		const report = this.createDetectionReport(
 			targetVersion,
