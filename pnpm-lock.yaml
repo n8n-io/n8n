@@ -1691,8 +1691,8 @@ importers:
         specifier: 'catalog:'
         version: 3.3.8
       nodemailer:
-        specifier: 6.9.9
-        version: 6.9.9
+        specifier: 7.0.7
+        version: 7.0.7
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -3072,8 +3072,8 @@ importers:
         specifier: 13.2.0
         version: 13.2.0
       nodemailer:
-        specifier: 6.9.9
-        version: 6.9.9
+        specifier: 7.0.7
+        version: 7.0.7
       oracledb:
         specifier: 6.9.0
         version: 6.9.0
@@ -14361,6 +14361,10 @@ packages:
 
   nodemailer@6.9.9:
     resolution: {integrity: sha512-dexTll8zqQoVJEZPwQAKzxxtFn0qTnjdQTchoU6Re9BUUGBJiOy3YMn/0ShTW6J5M0dfQ1NeDeRTTl4oIWgQMA==}
+    engines: {node: '>=6.0.0'}
+
+  nodemailer@7.0.7:
+    resolution: {integrity: sha512-jGOaRznodf62TVzdyhKt/f1Q/c3kYynk8629sgJHpRzGZj01ezbgMMWJSAjHADcwTKxco3B68/R+KHJY2T5BaA==}
     engines: {node: '>=6.0.0'}
 
   nodemon@3.0.1:
@@ -27622,7 +27626,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.16.1
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -27646,7 +27650,7 @@ snapshots:
 
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.3)(eslint@9.29.0(jiti@2.6.1)):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
       eslint: 9.29.0(jiti@2.6.1)
@@ -27691,7 +27695,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.6
       array.prototype.flat: 1.3.3
       array.prototype.flatmap: 1.3.3
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 9.29.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
@@ -28703,7 +28707,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -30710,7 +30714,7 @@ snapshots:
   license-checker@25.0.1:
     dependencies:
       chalk: 2.4.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       mkdirp: 0.5.6
       nopt: 4.0.3
       read-installed: 4.0.3
@@ -31974,6 +31978,8 @@ snapshots:
 
   nodemailer@6.9.9: {}
 
+  nodemailer@7.0.7: {}
+
   nodemon@3.0.1:
     dependencies:
       chokidar: 4.0.3
@@ -32510,7 +32516,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
