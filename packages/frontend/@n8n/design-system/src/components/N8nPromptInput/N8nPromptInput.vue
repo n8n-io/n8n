@@ -168,16 +168,13 @@ function adjustHeight() {
 		return;
 	}
 
-	if (
-		!textareaRef.value ||
-		(wasMultiline && textareaRef.value.scrollHeight <= textareaRef.value.clientHeight + 2)
-	) {
-		return;
-	}
+	if (!textareaRef.value) return;
 
-	// Save scroll position before height changes
+	// Save scroll position BEFORE any measurements or height changes
+	// Only save if we're in multiline mode and have a scroll area
 	let viewportEl: HTMLElement | null = null;
 	let savedScrollTop = 0;
+
 	if (wasMultiline && scrollAreaRef.value) {
 		const scrollAreaElement = scrollAreaRef.value.$el as HTMLElement | undefined;
 		viewportEl = scrollAreaElement?.querySelector(
@@ -188,9 +185,11 @@ function adjustHeight() {
 		}
 	}
 
-	// Capture the height for updating back to this
-	textareaRef.value.style.height = '0';
+	// Measure required height using 'auto' instead of '0' to minimize visual disruption
+	const currentHeight = textareaRef.value.style.height;
+	textareaRef.value.style.height = 'auto';
 	const scrollHeight = textareaRef.value.scrollHeight;
+	textareaRef.value.style.height = currentHeight; // Restore immediately to minimize flash
 
 	// Check if we need multiline mode
 	const shouldBeMultiline =
@@ -206,17 +205,12 @@ function adjustHeight() {
 		textareaRef.value.style.height = `${singleLineHeight}px`;
 	} else {
 		textareaRef.value.style.height = `${newHeight}px`;
-	}
 
-	// Restore scroll position asynchronously after DOM updates
-	if (viewportEl && wasMultiline && savedScrollTop > 0) {
-		void Promise.resolve().then(() => {
-			requestAnimationFrame(() => {
-				if (viewportEl) {
-					viewportEl.scrollTop = savedScrollTop;
-				}
-			});
-		});
+		// Restore scroll position immediately after setting height
+		// This needs to happen before browser recalculates layout
+		if (viewportEl && wasMultiline && savedScrollTop > 0) {
+			viewportEl.scrollTop = savedScrollTop;
+		}
 	}
 
 	// Restore focus if mode changed or if scrollbar appeared/disappeared
