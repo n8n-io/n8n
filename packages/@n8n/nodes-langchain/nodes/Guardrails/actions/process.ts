@@ -5,7 +5,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { runStageGuardrails } from '../helpers/base';
 import { splitByComma } from '../helpers/common';
-import { mapGuardrailResultToUserResult } from '../helpers/mappers';
+import { mapGuardrailErrorsToMessage, mapGuardrailResultToUserResult } from '../helpers/mappers';
 import { createLLMCheckFn } from '../helpers/model';
 import { applyPreflightModifications } from '../helpers/preflight';
 import { createJailbreakCheckFn } from './checks/jailbreak';
@@ -30,7 +30,7 @@ interface Result {
 export async function process(
 	this: IExecuteFunctions,
 	itemIndex: number,
-	model: BaseChatModel,
+	model: BaseChatModel | null,
 ): Promise<{
 	guardrailsInput: string;
 	passed: Result | null;
@@ -42,7 +42,7 @@ export async function process(
 		inputKey: 'text',
 		promptTypeKey: 'promptType',
 	});
-	const violationBehavior = this.getNodeParameter('violationBehavior', itemIndex) as string;
+	const operation = this.getNodeParameter('operation', 0) as 'classify' | 'sanitize';
 	const guardrails = this.getNodeParameter('guardrails', itemIndex) as GuardrailsOptions;
 	const failedChecks: GuardrailUserResult[] = [];
 	const passedChecks: GuardrailUserResult[] = [];
@@ -53,6 +53,13 @@ export async function process(
 				result.status === 'rejected' ||
 				(result.status === 'fulfilled' && result.value.executionFailed),
 		);
+
+		if (results.failed.length && operation === 'sanitize') {
+			throw new NodeOperationError(this.getNode(), 'Failed to sanitize text', {
+				description: mapGuardrailErrorsToMessage(results.failed),
+				itemIndex,
+			});
+		}
 		if (unexpectedError && !this.continueOnFail()) {
 			const error =
 				unexpectedError.status === 'rejected'
@@ -63,17 +70,7 @@ export async function process(
 				itemIndex,
 			});
 		}
-		if (violationBehavior === 'routeToFailOutput' || this.continueOnFail()) {
-			return results.failed.map(mapGuardrailResultToUserResult);
-		}
-
-		const failedGuardrails = results.failed
-			.filter((result) => result.status === 'fulfilled')
-			.map((result) => result.value.guardrailName);
-		throw new NodeOperationError(this.getNode(), 'Guardrail Violation', {
-			description: `Guardrail violation occurred in ${failedGuardrails.join(', ')} guardrails`,
-			itemIndex,
-		});
+		return results.failed.map(mapGuardrailResultToUserResult);
 	};
 
 	const stageGuardrails: StageGuardRails = {
@@ -81,8 +78,10 @@ export async function process(
 		input: [],
 	};
 
+	const mode = operation === 'classify' ? 'block' : 'redact';
+
 	if (guardrails.pii?.value) {
-		const { mode, entities, customRegex } = guardrails.pii.value;
+		const { entities, customRegex } = guardrails.pii.value;
 		stageGuardrails.preflight.push({
 			name: 'pii',
 			check: createPiiCheckFn({
@@ -94,7 +93,7 @@ export async function process(
 	}
 
 	if (guardrails.secretKeys?.value) {
-		const { mode, permissiveness } = guardrails.secretKeys.value;
+		const { permissiveness } = guardrails.secretKeys.value;
 		stageGuardrails.preflight.push({
 			name: 'secretKeys',
 			check: createSecretKeysCheckFn({ block: mode === 'block', threshold: permissiveness }),
@@ -102,8 +101,7 @@ export async function process(
 	}
 
 	if (guardrails.urls?.value) {
-		const { allowedUrls, allowedSchemes, blockUserinfo, allowSubdomains, mode } =
-			guardrails.urls.value;
+		const { allowedUrls, allowedSchemes, blockUserinfo, allowSubdomains } = guardrails.urls.value;
 		stageGuardrails.preflight.push({
 			name: 'urls',
 			check: createUrlsCheckFn({
@@ -116,52 +114,58 @@ export async function process(
 		});
 	}
 
-	if (guardrails.jailbreak?.value) {
-		const { prompt, threshold } = guardrails.jailbreak.value;
-		stageGuardrails.input.push({
-			name: 'jailbreak',
-			check: createJailbreakCheckFn({ model, prompt, threshold }),
-		});
-	}
+	if (operation === 'classify') {
+		if (!model) {
+			throw new NodeOperationError(this.getNode(), 'Chat Model is required for classify operation');
+		}
 
-	if (guardrails.nsfw?.value) {
-		const { prompt, threshold } = guardrails.nsfw.value;
-		stageGuardrails.input.push({
-			name: 'nsfw',
-			check: createNSFWCheckFn({ model, prompt, threshold }),
-		});
-	}
-
-	if (guardrails.promptInjection?.value) {
-		const { prompt, threshold } = guardrails.promptInjection.value;
-		stageGuardrails.input.push({
-			name: 'promptInjection',
-			check: createPromptInjectionCheckFn({ model, prompt, threshold }),
-		});
-	}
-
-	if (guardrails.topicalAlignment?.value) {
-		const { prompt, threshold } = guardrails.topicalAlignment.value;
-		stageGuardrails.input.push({
-			name: 'topicalAlignment',
-			check: createTopicalAlignmentCheckFn({ model, prompt, threshold }),
-		});
-	}
-
-	if (guardrails.keywords) {
-		stageGuardrails.input.push({
-			name: 'keywords',
-			check: createKeywordsCheckFn({ keywords: splitByComma(guardrails.keywords) }),
-		});
-	}
-
-	if (guardrails.custom?.guardrail) {
-		for (const customGuardrail of guardrails.custom.guardrail) {
-			const { prompt, threshold, name } = customGuardrail;
+		if (guardrails.keywords) {
 			stageGuardrails.input.push({
-				name,
-				check: createLLMCheckFn(name, { model, prompt, threshold }),
+				name: 'keywords',
+				check: createKeywordsCheckFn({ keywords: splitByComma(guardrails.keywords) }),
 			});
+		}
+
+		if (guardrails.jailbreak?.value) {
+			const { prompt, threshold } = guardrails.jailbreak.value;
+			stageGuardrails.input.push({
+				name: 'jailbreak',
+				check: createJailbreakCheckFn({ model, prompt, threshold }),
+			});
+		}
+
+		if (guardrails.nsfw?.value) {
+			const { prompt, threshold } = guardrails.nsfw.value;
+			stageGuardrails.input.push({
+				name: 'nsfw',
+				check: createNSFWCheckFn({ model, prompt, threshold }),
+			});
+		}
+
+		if (guardrails.promptInjection?.value) {
+			const { prompt, threshold } = guardrails.promptInjection.value;
+			stageGuardrails.input.push({
+				name: 'promptInjection',
+				check: createPromptInjectionCheckFn({ model, prompt, threshold }),
+			});
+		}
+
+		if (guardrails.topicalAlignment?.value) {
+			const { prompt, threshold } = guardrails.topicalAlignment.value;
+			stageGuardrails.input.push({
+				name: 'topicalAlignment',
+				check: createTopicalAlignmentCheckFn({ model, prompt, threshold }),
+			});
+		}
+
+		if (guardrails.custom?.guardrail) {
+			for (const customGuardrail of guardrails.custom.guardrail) {
+				const { prompt, threshold, name } = customGuardrail;
+				stageGuardrails.input.push({
+					name,
+					check: createLLMCheckFn(name, { model, prompt, threshold }),
+				});
+			}
 		}
 	}
 

@@ -53,6 +53,25 @@ export const mapGuardrailResultToUserResult = (
 	};
 };
 
+export const mapGuardrailErrorsToMessage = (
+	results: Array<PromiseSettledResult<GuardrailResult>>,
+) => {
+	const failedChecks = results
+		.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && r.value.executionFailed))
+		.map((result) => {
+			const originalException =
+				result.status === 'rejected' ? result.reason : result.value.originalException;
+			const message = originalException?.message ?? 'Unknown exception occurred';
+			const guardrailName =
+				result.status === 'rejected'
+					? (originalException?.guardrailName ?? 'Unknown Guardrail')
+					: result.value.guardrailName;
+			return `${guardrailName} - ${message}`;
+		})
+		.join(',\n');
+	return `Failed checks:\n${failedChecks}`;
+};
+
 export const wrapResultsToNodeExecutionData = (
 	checks: GuardrailUserResult[],
 	itemIndex: number,

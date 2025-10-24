@@ -59,7 +59,6 @@ export interface GuardrailsOptions {
 		threshold: number;
 	}>;
 	pii?: Value<{
-		mode: 'redact' | 'block';
 		type: 'all' | 'selected';
 		entities?: PIIEntity[];
 		customRegex?: {
@@ -67,14 +66,12 @@ export interface GuardrailsOptions {
 		};
 	}>;
 	urls?: Value<{
-		mode: 'redact' | 'block';
 		allowedUrls: string;
 		allowedSchemes: string[];
 		blockUserinfo: boolean;
 		allowSubdomains: boolean;
 	}>;
 	secretKeys?: Value<{
-		mode: 'redact' | 'block';
 		permissiveness: 'strict' | 'balanced' | 'permissive';
 	}>;
 	topicalAlignment?: Value<{
