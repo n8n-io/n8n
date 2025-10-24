@@ -17,8 +17,10 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 
 	async createChatMessage(message: Partial<ChatHubMessage>, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			const chatMessage = em.create(ChatHubMessage, message);
-			const saved = await em.save(chatMessage);
+			await em.insert(ChatHubMessage, message);
+			const saved = await em.findOneOrFail(ChatHubMessage, {
+				where: { id: message.id },
+			});
 			await this.chatSessionRepository.updateLastMessageAt(saved.sessionId, saved.createdAt, em);
 			return saved;
 		});
@@ -40,17 +42,36 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		});
 	}
 
-	async getManyBySessionId(sessionId: string) {
-		return await this.find({
-			where: { sessionId },
-			order: { createdAt: 'ASC', id: 'DESC' },
-		});
+	async getManyBySessionId(sessionId: string, trx?: EntityManager) {
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.find(ChatHubMessage, {
+					where: { sessionId },
+					order: { createdAt: 'ASC', id: 'DESC' },
+				});
+			},
+			false,
+		);
 	}
 
-	async getOneById(id: ChatMessageId, sessionId: ChatSessionId, relations: string[] = []) {
-		return await this.findOne({
-			where: { id, sessionId },
-			relations,
-		});
+	async getOneById(
+		id: ChatMessageId,
+		sessionId: ChatSessionId,
+		relations: string[] = [],
+		trx?: EntityManager,
+	) {
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.findOne(ChatHubMessage, {
+					where: { id, sessionId },
+					relations,
+				});
+			},
+			false,
+		);
 	}
 }
