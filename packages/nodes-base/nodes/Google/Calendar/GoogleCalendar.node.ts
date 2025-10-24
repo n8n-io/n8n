@@ -598,7 +598,7 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = encodeURIComponentOnce(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						let eventId = this.getNodeParameter('eventId', i) as string;
+						let eventId = this.getNodeParameter('eventId', i, '', { extractValue: true }) as string;
 
 						if (nodeVersion >= 1.3) {
 							const modifyTarget = this.getNodeParameter('modifyTarget', i, 'instance') as string;

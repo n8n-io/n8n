@@ -47,6 +47,15 @@ const props = withDefaults(defineProps<Props>(), {
 	additionalExpressionData: () => ({}),
 	eventBus: () => createEventBus(),
 });
+const safeValue = (value: unknown) => {
+	if (value == null || value === undefined) return '';
+	if (typeof value === 'string') return value;
+	try {
+		return String(value);
+	} catch {
+		return '';
+	}
+};
 
 const emit = defineEmits<{
 	'modal-opener-click': [];
@@ -105,7 +114,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 
 		const telemetryPayload = createExpressionTelemetryPayload(
 			segments.value,
-			props.modelValue,
+			safeValue(props.modelValue),
 			workflowsStore.workflowId,
 			ndvStore.pushRef,
 			ndvStore.activeNode?.type ?? '',
@@ -116,10 +125,10 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 }
 
 function onValueChange({ value, segments: newSegments }: { value: string; segments: Segment[] }) {
-	segments.value = newSegments;
+	segments.value = Array.isArray(newSegments) ? newSegments : [];
 
 	if (isDragging.value) return;
-	if (value === '=' + props.modelValue) return; // prevent report on change of target item
+	if (value === '=' + safeValue(props.modelValue)) return; // prevent report on change of target item
 
 	emit('update:model-value', value);
 }
@@ -204,7 +213,7 @@ defineExpose({ focus, select });
 				<template #default="{ activeDrop, droppable }">
 					<InlineExpressionEditorInput
 						ref="inlineInput"
-						:model-value="modelValue"
+						:model-value="safeValue(props.modelValue)"
 						:path="path"
 						:is-read-only="isReadOnly"
 						:rows="rows"
@@ -233,7 +242,7 @@ defineExpose({ focus, select });
 		<InlineExpressionEditorOutput
 			ref="outputPopover"
 			:visible="isOutputPopoverVisible"
-			:unresolved-expression="modelValue"
+			:unresolved-expression="safeValue(props.modelValue)"
 			:selection="selection"
 			:editor-state="editorState"
 			:segments="segments"

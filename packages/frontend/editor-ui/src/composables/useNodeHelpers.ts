@@ -171,6 +171,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		const nodeTypeDescription = node?.type
 			? nodeTypesStore.getNodeType(node.type, node.typeVersion)
 			: null;
+		if (!parameter) return false;
 		return NodeHelpers.displayParameterPath(
 			nodeValues,
 			parameter,

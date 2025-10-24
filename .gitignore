@@ -1,4 +1,5 @@
 node_modules
+.history/
 .DS_Store
 .tmp
 tmp
