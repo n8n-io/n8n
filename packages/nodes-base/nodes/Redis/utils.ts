@@ -35,6 +35,12 @@ export function setupRedisClient(credentials: RedisCredential, isTest = false): 
 					connectTimeout: 10000,
 					// Disable reconnection for tests to prevent hanging
 					reconnectStrategy: isTest ? false : undefined,
+					// TLS settings must be in defaults.socket to apply to all discovered nodes
+					tls: credentials.ssl === true,
+					...(credentials.ssl === true &&
+						credentials.disableTlsVerification === true && {
+							rejectUnauthorized: false,
+						}),
 				},
 			},
 			...(isTest && {
