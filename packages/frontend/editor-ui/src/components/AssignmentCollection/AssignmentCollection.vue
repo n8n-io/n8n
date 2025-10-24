@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useDebounce } from '@/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import type {
 	AssignmentCollectionValue,
 	AssignmentValue,

@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
