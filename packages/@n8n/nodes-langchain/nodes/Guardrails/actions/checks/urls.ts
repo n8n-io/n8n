@@ -7,7 +7,6 @@ export type UrlsConfig = {
 	allowedSchemes: string[];
 	blockUserinfo: boolean;
 	allowSubdomains: boolean;
-	block: boolean;
 };
 
 /**
@@ -320,21 +319,15 @@ export const urls = (data: string, config: UrlsConfig): GuardrailResult => {
 
 	return {
 		guardrailName: 'urls',
-		tripwireTriggered: config.block && tripwireTriggered,
+		tripwireTriggered,
 		info: {
 			maskEntities: {
 				URL: blocked,
 			},
-			config: {
-				allowed_schemes: config.allowedSchemes,
-				block_userinfo: config.blockUserinfo,
-				allow_subdomains: config.allowSubdomains,
-				url_allow_list: config.allowedUrls,
-			},
 			detected: detectedUrls,
 			allowed,
 			blocked,
-			blocked_reasons: blockedReasons,
+			blockedReasons,
 		},
 	};
 };

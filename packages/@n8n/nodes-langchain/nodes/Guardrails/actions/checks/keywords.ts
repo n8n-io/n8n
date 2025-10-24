@@ -29,10 +29,6 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 			tripwireTriggered: false,
 			info: {
 				matchedKeywords: [],
-				originalKeywords: keywords,
-				sanitizedKeywords,
-				totalKeywords: keywords.length,
-				textLength: text.length,
 			},
 		};
 	}
@@ -65,10 +61,6 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 		tripwireTriggered,
 		info: {
 			matchedKeywords: matches,
-			originalKeywords: keywords,
-			sanitizedKeywords,
-			totalKeywords: keywords.length,
-			textLength: text.length,
 		},
 	};
 };

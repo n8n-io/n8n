@@ -19,13 +19,13 @@ export class Guardrails implements INodeType {
 				const responseData = await process.call(this, i, model);
 				if (responseData.passed) {
 					passedItems.push({
-						json: { ...responseData.passed, guardrailsInput: responseData.guardrailsInput },
+						json: { guardrailsInput: responseData.guardrailsInput, ...responseData.passed },
 						pairedItem: { item: i },
 					});
 				}
 				if (responseData.failed) {
 					failedItems.push({
-						json: { ...responseData.failed, guardrailsInput: responseData.guardrailsInput },
+						json: { guardrailsInput: responseData.guardrailsInput, ...responseData.failed },
 						pairedItem: { item: i },
 					});
 				}

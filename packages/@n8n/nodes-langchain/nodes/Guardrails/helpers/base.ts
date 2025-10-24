@@ -5,6 +5,13 @@ import {
 	type StageGuardRails,
 } from '../actions/types';
 
+type RunStageGuardrailsOptions = {
+	stageGuardrails: StageGuardRails;
+	stage: keyof StageGuardRails;
+	inputText: string;
+	failOnlyOnErrors?: boolean;
+};
+
 // eslint-disable-next-line @typescript-eslint/promise-function-async
 const wrapInGuardrailError = (guardrailName: string, promise: Promise<GuardrailResult>) => {
 	return promise.catch((error) => {
@@ -16,11 +23,12 @@ const wrapInGuardrailError = (guardrailName: string, promise: Promise<GuardrailR
 	});
 };
 
-export async function runStageGuardrails(
-	stageGuardrails: StageGuardRails,
-	stage: keyof StageGuardRails,
-	inputText: string,
-): Promise<GroupedGuardrailResults> {
+export async function runStageGuardrails({
+	stageGuardrails,
+	stage,
+	inputText,
+	failOnlyOnErrors,
+}: RunStageGuardrailsOptions): Promise<GroupedGuardrailResults> {
 	const guardrailPromises: Array<Promise<GuardrailResult>> = [];
 	for (const guardrail of stageGuardrails[stage]) {
 		guardrailPromises.push(
@@ -35,7 +43,10 @@ export async function runStageGuardrails(
 	const passed: Array<PromiseFulfilledResult<GuardrailResult>> = [];
 	const failed: Array<PromiseRejectedResult | PromiseFulfilledResult<GuardrailResult>> = [];
 	for (const result of results) {
-		if (result.status === 'fulfilled' && !result.value.tripwireTriggered) {
+		const checkFailed = failOnlyOnErrors
+			? result.status === 'rejected' || !!result.value.executionFailed
+			: result.status === 'rejected' || !!result.value.tripwireTriggered;
+		if (result.status === 'fulfilled' && !checkFailed) {
 			passed.push(result);
 		} else {
 			failed.push(result);

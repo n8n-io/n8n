@@ -82,7 +82,6 @@ const allEntities = Object.values(PIIEntity);
 
 export type PIIConfig = {
 	entities?: PIIEntity[];
-	block: boolean;
 	customRegex?: CustomRegex[];
 };
 
@@ -99,9 +98,7 @@ interface PiiDetectionResult {
  */
 interface PiiAnalyzerResult {
 	entityType: string;
-	start: number;
-	end: number;
-	score: number;
+	text: string;
 }
 
 export const PII_NAME_MAP: Record<PIIEntity, string> = {
@@ -232,7 +229,6 @@ function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 			const entityType = name;
 			const start = match.index;
 			const end = match.index + match[0].length;
-			const score = 0.9; // High confidence for regex matches
 
 			if (!grouped[entityType]) {
 				grouped[entityType] = [];
@@ -241,9 +237,7 @@ function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 
 			analyzerResults.push({
 				entityType,
-				start,
-				end,
-				score,
+				text: text.substring(start, end),
 			});
 		}
 	};
@@ -274,7 +268,7 @@ export const createPiiCheckFn: CreateCheckFn<PIIConfig> = (config) => {
 		const piiFound = detection.mapping && Object.keys(detection.mapping).length > 0;
 		return {
 			guardrailName: 'pii',
-			tripwireTriggered: config.block && piiFound,
+			tripwireTriggered: piiFound,
 			info: {
 				maskEntities: detection.mapping,
 				analyzerResults: detection.analyzerResults,

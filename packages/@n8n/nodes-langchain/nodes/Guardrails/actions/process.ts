@@ -78,14 +78,11 @@ export async function process(
 		input: [],
 	};
 
-	const mode = operation === 'classify' ? 'block' : 'redact';
-
 	if (guardrails.pii?.value) {
 		const { entities, customRegex } = guardrails.pii.value;
 		stageGuardrails.preflight.push({
 			name: 'pii',
 			check: createPiiCheckFn({
-				block: mode === 'block',
 				entities,
 				customRegex: customRegex?.regex,
 			}),
@@ -96,7 +93,7 @@ export async function process(
 		const { permissiveness } = guardrails.secretKeys.value;
 		stageGuardrails.preflight.push({
 			name: 'secretKeys',
-			check: createSecretKeysCheckFn({ block: mode === 'block', threshold: permissiveness }),
+			check: createSecretKeysCheckFn({ threshold: permissiveness }),
 		});
 	}
 
@@ -109,7 +106,6 @@ export async function process(
 				allowedSchemes,
 				blockUserinfo,
 				allowSubdomains,
-				block: mode === 'block',
 			}),
 		});
 	}
@@ -169,7 +165,12 @@ export async function process(
 		}
 	}
 
-	const preflightResults = await runStageGuardrails(stageGuardrails, 'preflight', inputText);
+	const preflightResults = await runStageGuardrails({
+		inputText,
+		stageGuardrails,
+		stage: 'preflight',
+		failOnlyOnErrors: operation === 'sanitize',
+	});
 
 	if (preflightResults.failed.length > 0) {
 		failedChecks.push.apply(failedChecks, handleFailedResults(preflightResults));
@@ -192,7 +193,12 @@ export async function process(
 		preflightResults.passed.map((result) => result.value),
 	);
 
-	const inputResults = await runStageGuardrails(stageGuardrails, 'input', modifiedInputText);
+	const inputResults = await runStageGuardrails({
+		inputText: modifiedInputText,
+		stageGuardrails,
+		stage: 'input',
+		failOnlyOnErrors: operation === 'sanitize',
+	});
 	if (inputResults.failed.length > 0) {
 		failedChecks.push.apply(failedChecks, handleFailedResults(inputResults));
 		return {

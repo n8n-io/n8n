@@ -9,7 +9,6 @@
 import type { CreateCheckFn, GuardrailResult } from '../types';
 
 export type SecretKeysConfig = {
-	block: boolean;
 	threshold: 'strict' | 'balanced' | 'permissive';
 	customRegex?: string[];
 };
@@ -239,7 +238,7 @@ function detectSecretKeys(
 
 	return {
 		guardrailName: 'secretKeys',
-		tripwireTriggered: config.block && secrets.length > 0,
+		tripwireTriggered: secrets.length > 0,
 		info: {
 			maskEntities: { SECRET: secrets },
 			detectedSecrets: secrets,

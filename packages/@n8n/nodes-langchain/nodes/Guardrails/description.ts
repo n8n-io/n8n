@@ -84,7 +84,7 @@ export const versionDescription: INodeTypeDescription = {
 	properties: [
 		{
 			displayName:
-				'Use guardrails to validate text agains a set of policies (e.g. NSFW, prompt injection) or to sanitize it (e.g. PII, secret keys)',
+				'Use guardrails to validate text against a set of policies (e.g. NSFW, prompt injection) or to sanitize it (e.g. PII, secret keys)',
 			name: 'guardrailsUsage',
 			type: 'notice',
 			default: '',
