@@ -8,7 +8,7 @@ describe('formatBuiltInTools', () => {
 		expect(formatBuiltInTools({} as unknown as IDataObject)).toEqual([]);
 	});
 
-	it('formats web_search_preview with allowed domains and user location', () => {
+	it('formats web_search with allowed domains and user location', () => {
 		const tools = formatBuiltInTools({
 			webSearch: {
 				searchContextSize: 'high',
@@ -21,7 +21,7 @@ describe('formatBuiltInTools', () => {
 
 		expect(tools).toEqual([
 			{
-				type: 'web_search_preview',
+				type: 'web_search',
 				search_context_size: 'high',
 				user_location: {
 					type: 'approximate',
@@ -55,7 +55,7 @@ describe('formatBuiltInTools', () => {
 			true,
 		],
 	])(
-		'formats web_search_preview with allowed domains and %s user location',
+		'formats web_search with allowed domains and %s user location',
 		(userLocation, hasUserLocation) => {
 			const tools = formatBuiltInTools({
 				webSearch: {
@@ -66,7 +66,7 @@ describe('formatBuiltInTools', () => {
 			} as unknown as IDataObject);
 
 			const commonData = {
-				type: 'web_search_preview',
+				type: 'web_search',
 				search_context_size: 'high',
 				filters: { allowed_domains: ['example.com', 'sub.domain.org', 'another.net'] },
 			};
@@ -81,38 +81,6 @@ describe('formatBuiltInTools', () => {
 			}
 		},
 	);
-
-	it('formats mcp servers array with allowed tools and headers JSON', () => {
-		const tools = formatBuiltInTools({
-			mcpServers: {
-				mcpServerOptions: [
-					{
-						serverLabel: 'S1',
-						serverUrl: 'https://mcp.example/api',
-						connectorId: 'conn-1',
-						authorization: 'Bearer x',
-						allowedTools: 'a,b , c',
-						headers: '{"x-test":"1"}',
-						serverDescription: 'desc',
-					},
-				],
-			},
-		} as unknown as IDataObject);
-
-		expect(tools).toEqual([
-			{
-				type: 'mcp',
-				server_label: 'S1',
-				server_url: 'https://mcp.example/api',
-				connector_id: 'conn-1',
-				authorization: 'Bearer x',
-				allowed_tools: ['a', 'b', 'c'],
-				headers: { 'x-test': '1' },
-				require_approval: 'never',
-				server_description: 'desc',
-			},
-		]);
-	});
 
 	it('adds code_interpreter tool when enabled', () => {
 		const tools = formatBuiltInTools({ codeInterpreter: true } as unknown as IDataObject);

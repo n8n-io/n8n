@@ -480,6 +480,7 @@ describe('LmChatOpenAi', () => {
 			};
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'responsesApiEnabled') return true;
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -508,19 +509,6 @@ describe('LmChatOpenAi', () => {
 
 			const builtInTools: IDataObject = {
 				webSearch: { searchContextSize: 'high', allowedDomains: 'google.com, wikipedia.org' },
-				mcpServers: {
-					mcpServerOptions: [
-						{
-							serverLabel: 'db',
-							connectionType: 'url',
-							serverUrl: 'https://mcp.example.com',
-							authorization: 'Bearer token',
-							headers: '{"X-Test":"1"}',
-							serverDescription: 'desc',
-							allowedTools: 'tool1,tool2',
-						},
-					],
-				},
 				fileSearch: { vectorStoreIds: '["vs_1"]', filters: '{}', maxResults: 2 },
 				codeInterpreter: true,
 			};
@@ -532,6 +520,7 @@ describe('LmChatOpenAi', () => {
 			];
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'responsesApiEnabled') return true;
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				if (paramName === 'builtInTools') return builtInTools;
