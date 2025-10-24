@@ -140,40 +140,58 @@ describe('ProcessEnvAccessRule', () => {
 			expect(result.issues[0].description).not.toContain('Set');
 		});
 
-		it('should not duplicate node names in the same workflow', async () => {
+		it('should not detect false positives', async () => {
 			const workflow = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
-					url: '{{ process.env.API_URL }}',
-					headers: { authorization: '{{ process.env.TOKEN }}' },
+				// Variable named 'process' but not process.env
+				createNode('Code1', 'n8n-nodes-base.code', {
+					code: 'const process = { data: "test" }; return process;',
+				}),
+				// String containing 'process.environment' as text (not process.env)
+				createNode('Code2', 'n8n-nodes-base.code', {
+					code: 'const message = "This string mentions process.environment but not the actual object";',
+				}),
+				// process without env
+				createNode('Code3', 'n8n-nodes-base.code', {
+					code: 'const pid = process.pid;',
 				}),
 			]);
 
 			const result = await rule.detectWorkflow(workflow);
 
-			const description = result.issues[0].description;
-			const httpCount = (description.match(/HTTP/g) || []).length;
-			expect(httpCount).toBe(1);
+			// None of these should be detected as they don't access process.env
+			expect(result.isAffected).toBe(false);
+			expect(result.issues).toHaveLength(0);
 		});
 
-		it('should handle various process.env patterns', async () => {
+		it.each([
+			['standard property access', 'const x = process.env.VAR;'],
+			['bracket notation with double quotes', 'const x = process.env["VAR"];'],
+			['bracket notation with single quotes', "const x = process.env['VAR'];"],
+			['multiple spaces between process and .env', 'const x = process   .env.VAR;'],
+			['tab characters', 'const x = process\t.env.VAR;'],
+			['newline between process and .env', 'const x = process\n.env.VAR;'],
+			['block comment between process and .env', 'const x = process/* comment */.env.VAR;'],
+			['block comment with newlines', 'const x = process/*\n multiline\n comment\n*/.env.VAR;'],
+			['multiple spaces and newlines', 'const x = process  \n  .env.VAR;'],
+			['mixed whitespace, tabs, and spaces', 'const x = process \t \n .env.VAR;'],
+			['comment and whitespace combination', 'const x = process /* test */ \n .env.VAR;'],
+			['Windows-style line endings (CRLF)', 'const x = process\r\n.env.VAR;'],
+			['multiple property accesses', 'const x = process.env.VAR1; const y = process.env.VAR2;'],
+			['in template literal', 'const x = `$' + '{process.env.VAR}`;'],
+			['destructuring', 'const { VAR } = process.env;'],
+			['in function call', 'console.log(process.env.VAR);'],
+			['optional chaining (process?.env)', 'const x = process?.env?.VAR;'],
+			['multiple spaces with optional chaining', 'const x = process  ?.env.VAR;'],
+		])('should detect process.env with %s', async (_description, code) => {
 			const workflow = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Code1', 'n8n-nodes-base.code', {
-					code: 'const x = process.env.VAR;',
-				}),
-				createNode('Code2', 'n8n-nodes-base.code', {
-					code: 'const x = process.env["VAR"];',
-				}),
-				createNode('Code3', 'n8n-nodes-base.code', {
-					code: "const x = process.env['VAR'];",
-				}),
+				createNode('Code', 'n8n-nodes-base.code', { code }),
 			]);
 
 			const result = await rule.detectWorkflow(workflow);
 
 			expect(result.isAffected).toBe(true);
-			expect(result.issues[0].description).toContain('Code1');
-			expect(result.issues[0].description).toContain('Code2');
-			expect(result.issues[0].description).toContain('Code3');
+			expect(result.issues).toHaveLength(1);
+			expect(result.issues[0].description).toContain('Code');
 		});
 	});
 });

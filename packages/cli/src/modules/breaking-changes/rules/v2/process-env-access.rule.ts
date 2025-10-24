@@ -23,7 +23,10 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 	}
 
 	async detectWorkflow(workflow: WorkflowEntity): Promise<WorkflowDetectionResult> {
-		const processEnvPattern = /process\.env/;
+		// Match process.env with optional whitespace, newlines, comments between 'process' and '.env'
+		// This covers: process.env, process  .env, process/* comment */.env, process\n.env, etc.
+		// Also matches optional chaining: process?.env
+		const processEnvPattern = /process\s*(?:\/\*[\s\S]*?\*\/)?\s*\??\.?\s*env\b/;
 
 		const affectedNodes: string[] = [];
 
