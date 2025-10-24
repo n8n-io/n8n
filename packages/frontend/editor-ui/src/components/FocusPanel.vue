@@ -17,10 +17,10 @@ import {
 	getParameterTypeOption,
 	isValidParameterOption,
 	parseFromExpression,
-} from '@/utils/nodeSettingsUtils';
+} from '@/features/ndv/ndv.utils';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { useNodeSettingsParameters } from '@/features/ndv/composables/useNodeSettingsParameters';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import {

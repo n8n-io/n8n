@@ -18,21 +18,21 @@ import { BASE_NODE_SURVEY_URL, VIEWS } from '@/constants';
 
 import NDVSubConnections from '@/features/ndv/components/panel/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
-import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
-import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
-import NodeWebhooks from '@/components/NodeWebhooks.vue';
+import NodeSettingsHeader from './NodeSettingsHeader.vue';
+import NodeSettingsTabs from './NodeSettingsTabs.vue';
+import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import NodeActionsList from '@/components/NodeActionsList.vue';
-import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
+import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { useNodeSettingsParameters } from '@/features/ndv/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus } from '@/event-bus';
 import { ndvEventBus } from '@/features/ndv/ndv.eventBus';
@@ -53,13 +53,13 @@ import {
 	createCommonNodeSettings,
 	getNodeSettingsInitialValues,
 	nameIsParameter,
-} from '@/utils/nodeSettingsUtils';
+} from '../../ndv.utils';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
-import NodeExecuteButton from './NodeExecuteButton.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';

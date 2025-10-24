@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
+import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import { ref } from 'vue';
 import type { ExtendedPublicInstalledPackage } from '@/features/settings/communityNodes/communityNodes.utils';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';

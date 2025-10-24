@@ -2,7 +2,7 @@
 import type { IUpdateInformation } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
-import NodeExecuteButton from './NodeExecuteButton.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
 
 type Props = {

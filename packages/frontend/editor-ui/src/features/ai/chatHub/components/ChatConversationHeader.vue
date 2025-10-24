@@ -5,11 +5,7 @@ import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import {
-	type ChatHubConversationModel,
-	type ChatHubProvider,
-	type ChatSessionId,
-} from '@n8n/api-types';
+import type { ChatHubConversationModel, ChatHubLLMProvider, ChatSessionId } from '@n8n/api-types';
 import { N8nIconButton } from '@n8n/design-system';
 import { computed, useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
@@ -21,7 +17,7 @@ const { selectedModel, credentials } = defineProps<{
 
 const emit = defineEmits<{
 	selectModel: [ChatHubConversationModel];
-	setCredentials: [provider: ChatHubProvider];
+	setCredentials: [provider: ChatHubLLMProvider];
 	renameConversation: [id: ChatSessionId, title: string];
 }>();
 

@@ -9,18 +9,18 @@ import {
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
-import { useTelemetry } from './useTelemetry';
-import { useNodeHelpers } from './useNodeHelpers';
-import { useWorkflowHelpers } from './useWorkflowHelpers';
-import { useCanvasOperations } from './useCanvasOperations';
-import { useExternalHooks } from './useExternalHooks';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import {
 	mustHideDuringCustomApiCall,
 	setValue,
 	updateDynamicConnections,
 	updateParameterByPath,
-} from '@/utils/nodeSettingsUtils';
+} from '@/features/ndv/ndv.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNDVStore } from '@/features/ndv/ndv.store';
@@ -31,7 +31,7 @@ import {
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
-import { injectWorkflowState } from './useWorkflowState';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();

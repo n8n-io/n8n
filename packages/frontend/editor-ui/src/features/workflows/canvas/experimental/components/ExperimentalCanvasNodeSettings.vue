@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import NodeSettings from '@/components/NodeSettings.vue';
+import NodeSettings from '@/features/ndv/components/settings/NodeSettings.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { type IUpdateInformation } from '@/Interface';

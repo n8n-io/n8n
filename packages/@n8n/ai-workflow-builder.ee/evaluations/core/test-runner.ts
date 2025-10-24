@@ -8,8 +8,6 @@ import type { EvaluationInput, TestCase } from '../types/evaluation';
 import { isWorkflowStateValues, safeExtractUsage } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
 import { calculateCacheStats } from '../utils/cache-analyzer';
-import type { CacheLogger } from '../utils/cache-logger';
-import { extractPerMessageCacheStats } from '../utils/cache-logger';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 /**
@@ -70,7 +68,6 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
  * @param llm - Language model for evaluation
  * @param testCase - Test case to execute
  * @param userId - User ID for the session
- * @param cacheLogger - Optional logger for detailed per-message cache statistics
  * @returns Test result with generated workflow and evaluation
  */
 export async function runSingleTest(
@@ -79,7 +76,6 @@ export async function runSingleTest(
 	testCase: TestCase,
 	nodeTypes: INodeTypeDescription[],
 	userId: string = 'test-user',
-	cacheLogger?: CacheLogger,
 ): Promise<TestResult> {
 	try {
 		// Generate workflow
@@ -100,14 +96,6 @@ export async function runSingleTest(
 		// Extract cache statistics from messages
 		const usage = safeExtractUsage(state.values.messages);
 		const cacheStats = calculateCacheStats(usage);
-
-		// Log per-message cache statistics if logger provided
-		if (cacheLogger && state.values.messages) {
-			const perMessageStats = extractPerMessageCacheStats(state.values.messages);
-			for (const msgStats of perMessageStats) {
-				cacheLogger.logMessage(msgStats);
-			}
-		}
 
 		// Evaluate
 		const evaluationInput: EvaluationInput = {

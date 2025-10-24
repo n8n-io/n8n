@@ -17,7 +17,7 @@ import {
 	parseFromExpression,
 	setValue,
 	shouldSkipParamValidation,
-} from './nodeSettingsUtils';
+} from './ndv.utils';
 import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { type Ref, ref } from 'vue';

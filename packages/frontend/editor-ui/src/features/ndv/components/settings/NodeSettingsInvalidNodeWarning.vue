@@ -15,7 +15,7 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
-import { removePreviewToken } from './Node/NodeCreator/utils';
+import { removePreviewToken } from '@/components/Node/NodeCreator/utils';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 

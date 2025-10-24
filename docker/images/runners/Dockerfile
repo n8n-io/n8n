@@ -1,5 +1,5 @@
 ARG NODE_VERSION=22.21.0
-ARG PYTHON_VERSION=3.14
+ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI

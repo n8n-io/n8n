@@ -17,6 +17,8 @@ import { OidcService } from '../oidc.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { OidcConfigDto } from '@n8n/api-types';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 describe('OidcService', () => {
 	let oidcService: OidcService;
@@ -27,6 +29,8 @@ describe('OidcService', () => {
 	let logger: Logger;
 	let jwtService: JwtService;
 	let provisioningService: ProvisioningService;
+	let userRepository: UserRepository;
+	let authIdentityRepository: AuthIdentityRepository;
 
 	const mockOidcConfig = {
 		clientId: 'test-client-id',
@@ -59,17 +63,18 @@ describe('OidcService', () => {
 		logger = mockLogger();
 		jwtService = mock<JwtService>();
 		provisioningService = mock<ProvisioningService>();
-
+		userRepository = mock<UserRepository>();
+		authIdentityRepository = mock<AuthIdentityRepository>();
 		jest
 			.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod')
 			.mockImplementation(async () => await Promise.resolve());
 
 		oidcService = new OidcService(
 			settingsRepository,
-			mock<AuthIdentityRepository>(),
+			authIdentityRepository,
 			mock<UrlService>(),
 			globalConfig,
-			mock<UserRepository>(),
+			userRepository,
 			cipher,
 			logger,
 			jwtService,
@@ -308,6 +313,228 @@ describe('OidcService', () => {
 
 			// Should not attempt to import Publisher in single main setup
 			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('loginUser', () => {
+		it('throws an error if authorizationCodeGrant throws an error', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			jest
+				.spyOn(client, 'authorizationCodeGrant')
+				.mockRejectedValue(new Error('Authorization code grant failed'));
+
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				new BadRequestError('Invalid authorization code'),
+			);
+		});
+
+		it('throws an error if claims() throws an error', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					throw new Error('Claims extraction failed');
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				new BadRequestError('Invalid token'),
+			);
+		});
+
+		it('should throw an error if there are no claims', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return undefined;
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				new ForbiddenError('No claims found in the OIDC token'),
+			);
+		});
+
+		it('throws an error if fetchUserInfo throws an error', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			jest.spyOn(client, 'fetchUserInfo').mockRejectedValue(new Error('Fetch user info failed'));
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				new BadRequestError('Invalid token'),
+			);
+		});
+
+		it('throws an error if there is no email', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			jest.spyOn(client, 'fetchUserInfo').mockResolvedValue({ email_verified: true } as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				new BadRequestError('An email is required'),
+			);
+		});
+
+		it('throws an error if the email is invalid', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			jest
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'invalid-email' } as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				new BadRequestError('Invalid email format'),
+			);
+		});
+
+		it('should return the user if the auth identity already exists', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
+			authIdentityRepository.findOne = jest
+				.fn()
+				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			jest
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			expect(user).toBeDefined();
+			expect(user.email).toEqual('john.doe@test.com');
+			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(user, { sub: 'valid-subject' });
+		});
+
+		it('should return a user if the user exists but the auth identity does not', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
+			userRepository.findOne = jest.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			jest
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			expect(user).toBeDefined();
+			expect(user.email).toEqual('john.doe@test.com');
+			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(user, { sub: 'valid-subject' });
+		});
+
+		it('should create a new user if the user does not exist', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
+			userRepository.manager.transaction = jest
+				.fn()
+				.mockResolvedValue({ email: 'john.doe@test.com' } as any);
+
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			jest
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			expect(user).toBeDefined();
+			expect(user.email).toEqual('john.doe@test.com');
 		});
 	});
 });
