@@ -52,7 +52,6 @@ vi.mock('vue-router', () => {
 let usageStore: ReturnType<typeof mockedStore<typeof useUsageStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
-let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 let mockToast: ReturnType<typeof useToast>;
 
 const renderComponent = createComponentRenderer(SettingsUsageAndPlan);
@@ -63,7 +62,6 @@ describe('SettingsUsageAndPlan', () => {
 		usageStore = mockedStore(useUsageStore);
 		uiStore = mockedStore(useUIStore);
 		usersStore = mockedStore(useUsersStore);
-		settingsStore = mockedStore(useSettingsStore);
 
 		mockToast = {
 			showMessage: vi.fn(),
@@ -349,6 +347,13 @@ describe('SettingsUsageAndPlan', () => {
 
 		it('should get license info when user cannot activate license', async () => {
 			usersStore.currentUser = {
+				id: '1',
+				email: 'test@example.com',
+				firstName: 'Test',
+				lastName: 'User',
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
 				globalScopes: [],
 			} as IUser;
 			// Reset query params
