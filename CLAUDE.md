@@ -39,7 +39,6 @@ tail -n 20 build.log
 - `pnpm test` - Run all tests
 - `pnpm test:affected` - Runs tests based on what has changed since the last
   commit
-- `pnpm dev:e2e` - E2E tests in development mode
 
 Running a particular test file requires going to the directory of that test
 and running: `pnpm test <test-file>`.
@@ -135,8 +134,8 @@ What we use for testing and writing tests:
 - For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
 - We use `nock` for server mocking
 - For frontend we use `vitest`
-- For e2e tests we use `Playwright` and `pnpm dev:e2e`. The old Cypress tests
-  are being migrated to Playwright, so please use Playwright for new tests.
+- For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
+  See `packages/testing/playwright/README.md` for details.
 
 ### Common Development Tasks
 

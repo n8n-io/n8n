@@ -47,20 +47,12 @@ onMounted(() => {
 });
 
 onBeforeMount(() => {
-	if (window.Cypress !== undefined) {
-		return;
-	}
-
 	pushConnection.initialize();
 	pushStore.pushConnect();
 	orchestrationManagerStore.startWorkerStatusPolling();
 });
 
 onBeforeUnmount(() => {
-	if (window.Cypress !== undefined) {
-		return;
-	}
-
 	orchestrationManagerStore.stopWorkerStatusPolling();
 	pushStore.pushDisconnect();
 	pushConnection.terminate();
