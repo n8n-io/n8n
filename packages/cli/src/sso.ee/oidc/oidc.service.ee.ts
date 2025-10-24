@@ -277,6 +277,7 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
+			await this.applySsoProvisioning(foundUser, claims);
 
 			return foundUser;
 		}
