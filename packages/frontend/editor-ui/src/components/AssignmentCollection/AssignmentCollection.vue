@@ -17,11 +17,10 @@ import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
 import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;

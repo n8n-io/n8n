@@ -17,7 +17,7 @@ import ParameterInputList from './ParameterInputList.vue';
 import FixedCollectionItem from './FixedCollectionItem.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 import { useFixedCollectionItemState } from '@/composables/useFixedCollectionItemState';
@@ -43,7 +43,7 @@ export type Props = {
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values?: Record<string, INodeParameters[]>;
+	values?: Record<string, INodeParameters[] | INodeParameters>;
 	isReadOnly?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
@@ -70,7 +70,7 @@ const ndvStore = useNDVStore();
 
 const { activeNode } = storeToRefs(ndvStore);
 
-const mutableValues = ref({} as Record<string, INodeParameters[]>);
+const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
 const selectedOption = ref<string | undefined>(undefined);
 const isDragging = ref(false);
 
@@ -193,7 +193,7 @@ const initExpandedState = () => {
 
 watch(
 	() => props.values,
-	(newValues: Record<string, INodeParameters[]>) => {
+	(newValues: Record<string, INodeParameters[] | INodeParameters>) => {
 		mutableValues.value = deepCopy(newValues);
 
 		Object.entries(mutableValues.value).forEach(([propertyName, items]) => {
@@ -220,7 +220,10 @@ const deleteOption = (optionName: string, index?: number) => {
 	}
 
 	// Determine what to delete
-	if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
+	if (
+		!currentOptionsOfSameType ||
+		(Array.isArray(currentOptionsOfSameType) && currentOptionsOfSameType.length > 1)
+	) {
 		// Delete single item in array
 		emit('valueChanged', {
 			name: getPropertyPath(optionName, index),
@@ -362,7 +365,8 @@ const trackWorkflowInputFieldAdded = () => {
 };
 
 function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
-	const index = mutableValues.value[property.name]?.indexOf(item) ?? -1;
+	const values = mutableValues.value[property.name];
+	const index = Array.isArray(values) ? values.indexOf(item) : -1;
 	if (index === -1) return -1;
 	return itemState.getItemId(property.name, index);
 }
@@ -535,7 +539,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 				>
 					<div>
 						<Draggable
-							v-model="mutableValues[property.name]"
+							v-model="mutableValues[property.name] as INodeParameters[]"
 							:item-key="(item: INodeParameters) => getItemKey(item, property)"
 							handle=".drag-handle"
 							drag-class="dragging"
@@ -550,7 +554,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 									:key="itemState.getItemId(property.name, index)"
 									:item-id="itemState.getItemId(property.name, index)"
 									:property="property"
-									:item-data="mutableValues[property.name][index]"
+									:item-data="(mutableValues[property.name] as INodeParameters[])[index]"
 									:item-index="index"
 									:stable-index="itemState.getItemStableIndex(property.name, index)"
 									:node-values="nodeValues"
@@ -602,7 +606,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 		>
 			<template v-if="isTopLevelMultiple">
 				<Draggable
-					v-model="mutableValues[property.name]"
+					v-model="mutableValues[property.name] as INodeParameters[]"
 					:item-key="(item: INodeParameters) => getItemKey(item, property)"
 					handle=".drag-handle"
 					drag-class="dragging"
@@ -617,7 +621,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 							:key="itemState.getItemId(property.name, index)"
 							:item-id="itemState.getItemId(property.name, index)"
 							:property="property"
-							:item-data="mutableValues[property.name][index]"
+							:item-data="(mutableValues[property.name] as INodeParameters[])[index]"
 							:item-index="index"
 							:stable-index="itemState.getItemStableIndex(property.name, index)"
 							:node-values="nodeValues"

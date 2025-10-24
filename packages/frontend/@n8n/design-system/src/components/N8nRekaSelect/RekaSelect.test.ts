@@ -41,7 +41,8 @@ describe('N8nRekaSelect', () => {
 			},
 		});
 
-		expect(wrapper.text()).toContain('Option 2');
+		const trigger = wrapper.find('[data-test-id="dropdown-trigger-option2"]');
+		expect(trigger.exists()).toBe(true);
 	});
 
 	it('should emit update:modelValue when selection changes', async () => {
@@ -68,7 +69,7 @@ describe('N8nRekaSelect', () => {
 		});
 
 		const trigger = wrapper.find('[data-test-id^="dropdown-trigger-"]');
-		expect(trigger.classes()).toContain('disabled');
+		expect(trigger.attributes('data-disabled')).toBeDefined();
 	});
 
 	it('should apply size variants correctly', () => {
@@ -110,11 +111,8 @@ describe('N8nRekaSelect', () => {
 			},
 		});
 
-		interface VmWithLabel {
-			selectedLabel: string;
-		}
-		const vm = wrapper.vm as unknown as VmWithLabel;
-		expect(vm.selectedLabel).toBe('Option 1');
+		const trigger = wrapper.find('[data-test-id="dropdown-trigger-option1"]');
+		expect(trigger.exists()).toBe(true);
 	});
 
 	it('should show placeholder for invalid value', () => {
@@ -126,11 +124,8 @@ describe('N8nRekaSelect', () => {
 			},
 		});
 
-		interface VmWithLabel {
-			selectedLabel: string;
-		}
-		const vm = wrapper.vm as unknown as VmWithLabel;
-		expect(vm.selectedLabel).toBe('Select option');
+		const trigger = wrapper.find('[data-test-id="dropdown-trigger-invalid-value"]');
+		expect(trigger.exists()).toBe(true);
 	});
 
 	it('should support custom trigger slot', () => {

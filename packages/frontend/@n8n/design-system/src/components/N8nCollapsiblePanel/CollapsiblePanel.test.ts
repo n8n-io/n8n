@@ -22,7 +22,7 @@ describe('N8nCollapsiblePanel', () => {
 			},
 		});
 
-		const chevron = screen.getByRole('button', { name: /collapse/i });
+		const chevron = screen.getByRole('button', { name: /test item/i });
 		await fireEvent.click(chevron);
 
 		expect(wrapper.emitted()).toHaveProperty('update:modelValue');
@@ -49,17 +49,13 @@ describe('N8nCollapsiblePanel', () => {
 
 	it('calls action onClick handler when action button is clicked', async () => {
 		const onClickMock = vi.fn();
-		const wrapper = render(N8nCollapsiblePanel, {
+		render(N8nCollapsiblePanel, {
 			props: {
 				title: 'Test Item',
 				modelValue: true,
 			},
-		});
-
-		// Mount with slot content containing button
-		wrapper.rerender({
 			slots: {
-				actions: '<button aria-label="Delete" data-testid="delete-btn">Delete</button>',
+				actions: '<button aria-label="Delete" data-test-id="delete-btn">Delete</button>',
 			},
 		});
 

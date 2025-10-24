@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { useFixedCollectionItemState } from './useFixedCollectionItemState';
+import { jsonParse } from 'n8n-workflow';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'test-uuid-' + Math.random().toString(36).substring(7)),
@@ -21,7 +22,7 @@ vi.mock('@vueuse/core', async () => {
 			const read = () => {
 				const stored = sessionStorage.getItem(typeof key === 'string' ? key : key.value);
 				if (!stored) return typeof initialValue === 'function' ? initialValue() : initialValue;
-				return options?.serializer?.read?.(stored) ?? JSON.parse(stored);
+				return options?.serializer?.read?.(stored) ?? jsonParse(stored);
 			};
 
 			storage.value = read();
