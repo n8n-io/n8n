@@ -290,7 +290,7 @@
 	"chat.window.session.id.copy": "(click to copy)",
 	"chat.window.session.reset": "Reset",
 	"chat.window.session.resetSession": "Reset chat session",
-	"chatHub.agent.myAgents": "My Agents",
+	"chatHub.agent.customAgents": "Custom Agents",
 	"chatHub.agent.newAgent": "New Agent",
 	"chatHub.agent.editor.title.new": "New Agent",
 	"chatHub.agent.editor.title.edit": "Edit Agent",
