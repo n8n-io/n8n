@@ -36,7 +36,6 @@ import { useChatStore } from './chat.store';
 import { credentialsMapSchema, type CredentialsMap } from './chat.types';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useUIStore } from '@/stores/ui.store';
-import CredentialSelectorModal from '@/features/ai/chatHub/components/CredentialSelectorModal.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -162,7 +161,6 @@ const isMissingSelectedCredential = computed(() => {
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 const initialization = ref({ credentialsFetched: false, modelsFetched: false });
-const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
 const editingAgentId = ref<string | undefined>(undefined);
 const isInitialized = computed(
 	() => initialization.value.credentialsFetched && initialization.value.modelsFetched,
@@ -386,25 +384,12 @@ function handleSwitchAlternative(messageId: string) {
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
-function handleConfigureCredentials(provider: ChatHubLLMProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-
-	if (existingCredentials.length === 0) {
-		uiStore.openNewCredential(credentialType);
-		return;
-	}
-
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
+function handleConfigureCredentials(_provider: ChatHubLLMProvider) {
+	// todo call model selector to open model
 }
 
 function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
-}
-
-function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
 }
 
 async function handleEditAgent(agentId: string) {
@@ -444,18 +429,9 @@ function handleAgentEditorClose() {
 			:selected-model="selectedModel"
 			:credentials="mergedCredentials"
 			@select-model="handleSelectModel"
-			@set-credentials="handleConfigureCredentials"
 			@edit-agent="handleEditAgent"
 			@create-agent="handleCreateAgent"
-		/>
-
-		<CredentialSelectorModal
-			v-if="credentialSelectorProvider && credentialSelectorProvider !== 'n8n'"
-			:key="credentialSelectorProvider"
-			:provider="credentialSelectorProvider"
-			:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
-			@select="handleSelectCredentials"
-			@create-new="handleCreateNewCredential"
+			@select-credential="handleSelectCredentials"
 		/>
 
 		<AgentEditorModal :agent-id="editingAgentId" @close="handleAgentEditorClose" />
