@@ -103,6 +103,7 @@ import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddPro
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
+import { AddActiveVersionIdColumn1761302979000 } from '../common/1761302979000-AddActiveVersionIdColumn';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -209,6 +210,7 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowDependencyTable1760314000000,
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
+	AddActiveVersionIdColumn1761302979000,
 ];
 
 export { sqliteMigrations };

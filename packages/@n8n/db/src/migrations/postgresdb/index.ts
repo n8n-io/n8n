@@ -105,6 +105,7 @@ import { CreateChatHubTables1760019379982 } from '../common/1760019379982-Create
 import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
+import { AddActiveVersionIdColumn1761302979000 } from '../common/1761302979000-AddActiveVersionIdColumn';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -215,4 +216,5 @@ export const postgresMigrations: Migration[] = [
 	CreateWorkflowDependencyTable1760314000000,
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
+	AddActiveVersionIdColumn1761302979000,
 ];
