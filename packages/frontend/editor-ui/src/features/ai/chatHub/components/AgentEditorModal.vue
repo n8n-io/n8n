@@ -99,7 +99,7 @@ function onModelChange(model: ChatHubConversationModel) {
 	selectedModel.value = model;
 }
 
-function handleConfigureCredentials(provider: ChatHubProvider) {
+function handleConfigureCredentials(_provider: ChatHubProvider) {
 	// todo
 }
 
