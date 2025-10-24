@@ -17,20 +17,8 @@ import {
 } from '../shared/utils';
 
 function jsonSchemaTypeToFieldType(schema: JSONSchema7): FieldType {
-	if (schema.type === 'string') {
-		if (schema.format === 'date-time') {
-			return 'dateTime';
-		}
-
-		if (schema.format === 'time') {
-			return 'time';
-		}
-
-		if (schema.format === 'uri' || schema.format === 'url') {
-			return 'url';
-		}
-
-		return 'string';
+	if (schema.type === 'string' && schema.format === 'date-time') {
+		return 'dateTime';
 	}
 
 	if (schema.type === 'number' || schema.type === 'integer') {
