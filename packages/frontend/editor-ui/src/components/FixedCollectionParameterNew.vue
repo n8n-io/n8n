@@ -11,7 +11,7 @@ import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
-import { computed, ref, watch, onBeforeMount } from 'vue';
+import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import ParameterInputList from './ParameterInputList.vue';
 import FixedCollectionItem from './FixedCollectionItem.vue';
@@ -21,6 +21,7 @@ import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 import { useFixedCollectionItemState } from '@/composables/useFixedCollectionItemState';
+import type { ComponentExposed } from 'vue-component-type-helpers';
 
 import {
 	N8nButton,
@@ -36,6 +37,7 @@ import type { RekaSelectOption } from '@n8n/design-system';
 import { refDebounced } from '@vueuse/core';
 
 const locale = useI18n();
+const addDropdownRef = ref<ComponentExposed<typeof N8nRekaSelect>>();
 
 export type Props = {
 	nodeValues: INodeParameters;
@@ -127,13 +129,45 @@ const dropdownOptions = computed((): Array<RekaSelectOption<string>> => {
 	}));
 });
 
+const isAddDisabled = computed(() => parameterOptions.value.length === 0);
+
+const addTooltipText = computed(() => {
+	if (!isAddDisabled.value) {
+		return locale.baseText('fixedCollectionParameter.addParameter', {
+			interpolate: {
+				parameter: locale
+					.nodeText(activeNode.value?.type)
+					.inputLabelDisplayName(props.parameter, props.path),
+			},
+		});
+	}
+	return locale.baseText('fixedCollectionParameter.allOptionsAdded');
+});
+
 const isTopLevelMultiple = computed(() => !props.isNested && multipleValues.value);
+
+// Top-level single-value with multiple options (e.g., additionalParameters with author/branch/committer)
+const isTopLevelMultipleOptions = computed(() => {
+	if (props.isNested || multipleValues.value) return false;
+	return (
+		isINodePropertyCollectionList(props.parameter.options) && props.parameter.options.length > 1
+	);
+});
 
 const isNestedMultipleWrapper = computed(() => props.isNested && multipleValues.value);
 
 const isNestedSingle = computed(() => props.isNested && !multipleValues.value);
 
 const showWrapper = computed(() => isNestedMultipleWrapper.value);
+
+// Add control visibility
+const showAddControls = computed(() => parameterOptions.value.length > 0 && !props.isReadOnly);
+const hasSingleOption = computed(
+	() => props.parameter.options && props.parameter.options.length === 1,
+);
+const showBottomAddControl = computed(
+	() => showAddControls.value && !showWrapper.value && !isTopLevelMultipleOptions.value,
+);
 
 // Computed property for wrapper expanded state with proper type
 const isWrapperExpanded = computed({
@@ -270,6 +304,16 @@ const onAddButtonClick = (optionName: string) => {
 	}
 };
 
+const onHeaderAddClick = async () => {
+	if (addDropdownRef.value) {
+		// Open the dropdown and scroll into view
+		addDropdownRef.value.open();
+		// Wait for DOM update and scroll the dropdown into view
+		await nextTick();
+		addDropdownRef.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+};
+
 const valueChanged = (parameterData: IUpdateInformation) => {
 	emit('valueChanged', parameterData);
 	if (props.parameter.name === 'workflowInputs') {
@@ -330,7 +374,6 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 		:data-test-id="`fixed-collection-${props.parameter?.name}`"
 		@keydown.stop
 	>
-		<!-- Top-level multiple: Section header with add button -->
 		<N8nSectionHeader
 			v-if="isTopLevelMultiple && parameter.displayName !== ''"
 			:title="locale.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
@@ -364,7 +407,91 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 			</template>
 		</N8nSectionHeader>
 
-		<!-- Nested multiple: Collapsible wrapper with add button -->
+		<template v-if="isTopLevelMultipleOptions && parameter.displayName !== ''">
+			<N8nSectionHeader
+				:title="locale.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+				:bordered="getProperties.length === 0"
+				:class="$style.fixedCollectionSectionHeader"
+			>
+				<template v-if="!isReadOnly" #actions>
+					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
+						<template #content>{{ addTooltipText }}</template>
+						<N8nIconButton
+							type="secondary"
+							text
+							size="small"
+							icon="plus"
+							icon-size="large"
+							:disabled="isAddDisabled"
+							:aria-label="locale.baseText('fixedCollectionParameter.addItem')"
+							data-test-id="fixed-collection-add-header-top-level"
+							@click="onHeaderAddClick"
+						/>
+					</N8nTooltip>
+				</template>
+			</N8nSectionHeader>
+
+			<div
+				v-for="property in getProperties"
+				:key="property.name"
+				:class="[$style.fixedCollectionParameterProperty, $style.collapsibleItem]"
+			>
+				<N8nCollapsiblePanel
+					:model-value="itemState.getExpandedState(property.name, 0)"
+					@update:model-value="itemState.setExpandedState(property.name, 0, $event)"
+					:title="property.displayName"
+					:data-item-key="property.name"
+				>
+					<template v-if="!isReadOnly" #actions>
+						<N8nHeaderAction
+							icon="trash-2"
+							:label="locale.baseText('fixedCollectionParameter.deleteItem')"
+							danger
+							@click="deleteOption(property.name, 0)"
+						/>
+					</template>
+
+					<Suspense>
+						<ParameterInputList
+							hide-delete
+							:parameters="property.values"
+							:node-values="nodeValues"
+							:path="getPropertyPath(property.name, 0)"
+							:is-read-only="isReadOnly"
+							:is-nested="false"
+							:remove-first-parameter-margin="true"
+							:remove-last-parameter-margin="true"
+							@value-changed="valueChanged"
+						/>
+					</Suspense>
+				</N8nCollapsiblePanel>
+			</div>
+
+			<div v-if="showAddControls" :class="$style.controls">
+				<N8nButton
+					v-if="hasSingleOption"
+					type="secondary"
+					icon="plus"
+					data-test-id="fixed-collection-add-top-level"
+					:label="getPlaceholderText"
+					@click="onAddButtonClick(parameter.options![0].name)"
+				/>
+				<N8nRekaSelect
+					v-else
+					ref="addDropdownRef"
+					v-model="selectedOption"
+					:options="dropdownOptions"
+					:class="$style.addDropdown"
+					data-test-id="fixed-collection-add-dropdown-top-level"
+					@update:model-value="optionSelected"
+				>
+					<template #trigger>
+						<N8nButton type="secondary" icon="plus" :label="getPlaceholderText" />
+					</template>
+				</N8nRekaSelect>
+			</div>
+		</template>
+
 		<N8nCollapsiblePanel
 			v-if="showWrapper && parameter.displayName !== ''"
 			v-model="isWrapperExpanded"
@@ -442,7 +569,6 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 					</div>
 				</div>
 
-				<!-- Add control inside wrapper -->
 				<div v-if="parameterOptions.length > 0 && !isReadOnly" :class="$style.controls">
 					<N8nButton
 						v-if="parameter.options && parameter.options.length === 1"
@@ -468,14 +594,12 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 			</div>
 		</N8nCollapsiblePanel>
 
-		<!-- Top-level multiple or nested single (no wrapper) -->
 		<div
 			v-for="property in getProperties"
 			v-else
 			:key="property.name"
 			:class="$style.fixedCollectionParameterProperty"
 		>
-			<!-- Top-level multiple: Draggable list of items -->
 			<template v-if="isTopLevelMultiple">
 				<Draggable
 					v-model="mutableValues[property.name]"
@@ -511,7 +635,6 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 				</Draggable>
 			</template>
 
-			<!-- Nested single: Collapsible panel with delete -->
 			<N8nCollapsiblePanel
 				v-else-if="isNestedSingle"
 				v-model="isWrapperExpanded"
@@ -543,15 +666,14 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 			</N8nCollapsiblePanel>
 		</div>
 
-		<!-- Add control at bottom (for non-wrapper cases) -->
-		<div v-if="parameterOptions.length > 0 && !isReadOnly && !showWrapper" :class="$style.controls">
+		<div v-if="showBottomAddControl" :class="$style.controls">
 			<N8nButton
-				v-if="parameter.options && parameter.options.length === 1"
+				v-if="hasSingleOption"
 				type="secondary"
 				icon="plus"
 				data-test-id="fixed-collection-add"
 				:label="getPlaceholderText"
-				@click="onAddButtonClick(parameter.options[0].name)"
+				@click="onAddButtonClick(parameter.options![0].name)"
 			/>
 			<N8nRekaSelect
 				v-else
@@ -598,6 +720,14 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 .addDropdown {
 	display: inline-flex;
+}
+
+.collapsibleItem {
+	margin-bottom: var(--spacing--xs);
+
+	&:last-child {
+		margin-bottom: 0;
+	}
 }
 
 :global(.ghost),

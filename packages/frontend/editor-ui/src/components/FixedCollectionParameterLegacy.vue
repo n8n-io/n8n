@@ -35,7 +35,7 @@ export type Props = {
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values?: Record<string, INodeParameters[]>;
+	values?: Record<string, INodeParameters[] | INodeParameters>;
 	isReadOnly?: boolean;
 	isNested?: boolean;
 };
@@ -60,7 +60,7 @@ const ndvStore = useNDVStore();
 
 const { activeNode } = storeToRefs(ndvStore);
 
-const mutableValues = ref({} as Record<string, INodeParameters[]>);
+const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
 const selectedOption = ref<string | null | undefined>(null);
 
 const getOptionProperties = (optionName: string): INodePropertyCollection | undefined => {
@@ -101,7 +101,7 @@ const parameterOptions = computed(() => {
 
 watch(
 	() => props.values,
-	(newValues: Record<string, INodeParameters[]>) => {
+	(newValues: Record<string, INodeParameters[] | INodeParameters>) => {
 		mutableValues.value = deepCopy(newValues);
 	},
 	{ deep: true },
@@ -113,8 +113,9 @@ onBeforeMount(() => {
 
 const deleteOption = (optionName: string, index?: number) => {
 	const currentOptionsOfSameType = mutableValues.value[optionName];
+	const isArray = Array.isArray(currentOptionsOfSameType);
 
-	if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
+	if (!currentOptionsOfSameType || (isArray && currentOptionsOfSameType.length > 1)) {
 		emit('valueChanged', {
 			name: getPropertyPath(optionName, index),
 			value: undefined,
@@ -194,10 +195,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 	}
 };
 
-const onDragChange = (
-	optionName: string,
-	event: { moved?: { oldIndex: number; newIndex: number } },
-) => {
+const onDragChange = (optionName: string) => {
 	const parameterData: ValueChangedEvent = {
 		name: getPropertyPath(optionName),
 		value: mutableValues.value[optionName],
@@ -222,7 +220,7 @@ const trackWorkflowInputFieldAdded = () => {
 	});
 };
 
-function getItemKey(item: INodeParameters, index: number) {
+function getItemKey(_item: INodeParameters, index: number) {
 	return index;
 }
 </script>
@@ -252,15 +250,15 @@ function getItemKey(item: INodeParameters, index: number) {
 				color="text-dark"
 			/>
 
-			<template v-if="multipleValues">
+			<div v-if="multipleValues">
 				<Draggable
-					v-model="mutableValues[property.name]"
+					v-model="mutableValues[property.name] as INodeParameters[]"
 					:item-key="getItemKey"
 					handle=".drag-handle"
 					drag-class="dragging"
 					ghost-class="ghost"
 					chosen-class="chosen"
-					@change="onDragChange(property.name, $event)"
+					@change="onDragChange(property.name)"
 				>
 					<template #item="{ index }">
 						<div :key="property.name + '-' + index" :class="$style.parameterItem">
@@ -294,6 +292,7 @@ function getItemKey(item: INodeParameters, index: number) {
 										:path="getPropertyPath(property.name, index)"
 										:is-read-only="isReadOnly"
 										:is-nested="isNested"
+										:hide-delete="true"
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
@@ -301,7 +300,7 @@ function getItemKey(item: INodeParameters, index: number) {
 						</div>
 					</template>
 				</Draggable>
-			</template>
+			</div>
 
 			<div v-else :class="$style.parameterItem">
 				<div :class="$style.parameterItemWrapper">
@@ -322,6 +321,7 @@ function getItemKey(item: INodeParameters, index: number) {
 						:path="getPropertyPath(property.name)"
 						:is-read-only="isReadOnly"
 						:is-nested="isNested"
+						:hide-delete="true"
 						:class="$style.parameterItem"
 						@value-changed="valueChanged"
 					/>
@@ -365,6 +365,11 @@ function getItemKey(item: INodeParameters, index: number) {
 	padding-left: var(--spacing--sm);
 }
 
+.fixedCollectionParameterProperty {
+	margin: var(--spacing--xs) 0;
+	margin-bottom: 0;
+}
+
 .iconButton {
 	display: flex;
 	flex-direction: column;
@@ -375,7 +380,7 @@ function getItemKey(item: INodeParameters, index: number) {
 	transition: opacity 100ms ease-in;
 }
 
-.fixedCollectionParameter .controls {
+.controls {
 	:global(.button) {
 		font-weight: var(--font-weight-normal);
 		--button--color--text: var(--color--text--shade-1);
@@ -458,6 +463,48 @@ function getItemKey(item: INodeParameters, index: number) {
 
 	.parameterItemWrapper {
 		border: none;
+	}
+}
+
+.addOption {
+	> * {
+		border: none;
+	}
+
+	:global(.el-select .el-input.is-disabled) {
+		:global(.el-input__icon) {
+			opacity: 1 !important;
+			cursor: not-allowed;
+			color: var(--color--foreground--shade-1);
+		}
+		:global(.el-input__inner),
+		:global(.el-input__inner::placeholder) {
+			opacity: 1;
+			color: var(--color--foreground--shade-1);
+		}
+	}
+	:global(.el-select .el-input:not(.is-disabled) .el-input__icon) {
+		color: var(--color--text--shade-1);
+	}
+	:global(.el-input .el-input__inner) {
+		text-align: center;
+	}
+	:global(.el-input:not(.is-disabled) .el-input__inner) {
+		&,
+		&:hover,
+		&:focus {
+			padding-left: 35px;
+			border-radius: var(--radius);
+			color: var(--color--text--shade-1);
+			background-color: var(--color--background);
+			border-color: var(--color--foreground);
+			text-align: center;
+		}
+
+		&::placeholder {
+			color: var(--color--text--shade-1);
+			opacity: 1;
+		}
 	}
 }
 </style>

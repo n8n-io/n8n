@@ -693,21 +693,6 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					<N8nIcon icon="triangle-alert" size="xsmall" />
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
-				<N8nIconButton
-					v-if="
-						hideDelete !== true &&
-						!isReadOnly &&
-						!parameter.isNodeSetting &&
-						!isCollectionOverhaulEnabled
-					"
-					type="tertiary"
-					text
-					size="small"
-					icon="trash-2"
-					class="icon-button"
-					:title="i18n.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
-				></N8nIconButton>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"

@@ -6,7 +6,6 @@ import FixedCollectionParameterNew, {
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 
@@ -336,6 +335,174 @@ describe('FixedCollectionParameterNew.vue', () => {
 
 			// Verify component still renders after update
 			expect(getByTestId('fixed-collection-rules')).toBeInTheDocument();
+		});
+
+		it('normalizes mixed array and object values correctly', async () => {
+			const myProps: Props = {
+				...baseProps,
+				parameter: {
+					...baseProps.parameter,
+					typeOptions: {
+						multipleValues: false,
+					},
+				},
+			};
+
+			// Pass object value (not array) for single value mode
+			const { getByTestId } = renderComponent({
+				props: {
+					...myProps,
+					values: {
+						values: { outputKey: 'Single Value' },
+					},
+					nodeValues: {
+						parameters: {
+							rules: { values: { outputKey: 'Single Value' } },
+						},
+					},
+				},
+			});
+
+			expect(getByTestId('fixed-collection-rules')).toBeInTheDocument();
+		});
+
+		it('handles empty object values', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					values: {
+						values: [],
+					},
+					nodeValues: {
+						parameters: {
+							rules: { values: [] },
+						},
+					},
+				},
+			});
+
+			expect(getByTestId('fixed-collection-rules')).toBeInTheDocument();
+		});
+	});
+
+	describe('Top-level multiple options', () => {
+		const topLevelMultipleOptionsProps: Props = {
+			...baseProps,
+			parameter: {
+				...baseProps.parameter,
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						name: 'option1',
+						displayName: 'Option 1',
+						values: [
+							{
+								displayName: 'Field 1',
+								name: 'field1',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+					{
+						name: 'option2',
+						displayName: 'Option 2',
+						values: [
+							{
+								displayName: 'Field 2',
+								name: 'field2',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			isNested: false,
+			values: {},
+		};
+
+		it('renders section header with add button for top-level multiple options', () => {
+			const { getByText, getByTestId } = renderComponent({
+				props: topLevelMultipleOptionsProps,
+			});
+
+			expect(getByText('Routing Rules')).toBeInTheDocument();
+			expect(getByTestId('fixed-collection-add-header-top-level')).toBeInTheDocument();
+		});
+
+		it('renders collapsible panels for each added option', () => {
+			const { getByText } = renderComponent({
+				props: {
+					...topLevelMultipleOptionsProps,
+					values: {
+						option1: { field1: 'test' },
+					},
+					nodeValues: {
+						parameters: {
+							rules: { option1: { field1: 'test' } },
+						},
+					},
+				},
+			});
+
+			expect(getByText('Option 1')).toBeInTheDocument();
+		});
+
+		it('disables add button when all options are added', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...topLevelMultipleOptionsProps,
+					values: {
+						option1: { field1: 'test1' },
+						option2: { field2: 'test2' },
+					},
+					nodeValues: {
+						parameters: {
+							rules: {
+								option1: { field1: 'test1' },
+								option2: { field2: 'test2' },
+							},
+						},
+					},
+				},
+			});
+
+			const addButton = getByTestId('fixed-collection-add-header-top-level');
+			expect(addButton).toBeDisabled();
+		});
+
+		it('shows correct tooltip when all options added', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...topLevelMultipleOptionsProps,
+					values: {
+						option1: { field1: 'test1' },
+						option2: { field2: 'test2' },
+					},
+					nodeValues: {
+						parameters: {
+							rules: {
+								option1: { field1: 'test1' },
+								option2: { field2: 'test2' },
+							},
+						},
+					},
+				},
+			});
+
+			const addButton = getByTestId('fixed-collection-add-header-top-level');
+			expect(addButton).toBeDisabled();
+		});
+
+		it('renders add dropdown at bottom for top-level multiple options', () => {
+			const { getByTestId } = renderComponent({
+				props: topLevelMultipleOptionsProps,
+			});
+
+			expect(getByTestId('fixed-collection-add-dropdown-top-level')).toBeInTheDocument();
 		});
 	});
 });

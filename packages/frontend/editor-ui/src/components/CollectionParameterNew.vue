@@ -329,7 +329,7 @@ const onDragChange = () => {
 				:class="$style.collectionSectionHeader"
 			>
 				<template v-if="!isReadOnly" #actions>
-					<N8nTooltip :disabled="!isAddDisabled">
+					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
 						<N8nIconButton
 							type="secondary"
@@ -337,7 +337,6 @@ const onDragChange = () => {
 							size="small"
 							icon="plus"
 							icon-size="large"
-							:title="isAddDisabled ? addTooltipText : i18n.baseText('collectionParameter.addItem')"
 							:aria-label="i18n.baseText('collectionParameter.addItem')"
 							:disabled="isAddDisabled"
 							data-test-id="collection-parameter-add-header"
@@ -406,28 +405,19 @@ const onDragChange = () => {
 				</Suspense>
 			</div>
 
-			<div v-if="!isReadOnly" :class="$style.paramOptions">
-				<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
-					<template #content>{{ addTooltipText }}</template>
-					<N8nRekaSelect
-						ref="addDropdownRef"
-						v-model="selectedOption"
-						:options="dropdownOptions"
-						:disabled="isAddDisabled"
-						:class="$style.addDropdown"
-						data-test-id="collection-parameter-add-dropdown"
-						@update:model-value="optionSelected"
-					>
-						<template #trigger>
-							<N8nButton
-								type="secondary"
-								icon="plus"
-								:label="getPlaceholderText"
-								:disabled="isAddDisabled"
-							/>
-						</template>
-					</N8nRekaSelect>
-				</N8nTooltip>
+			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
+				<N8nRekaSelect
+					ref="addDropdownRef"
+					v-model="selectedOption"
+					:options="dropdownOptions"
+					:class="$style.addDropdown"
+					data-test-id="collection-parameter-add-dropdown"
+					@update:model-value="optionSelected"
+				>
+					<template #trigger>
+						<N8nButton type="secondary" icon="plus" :label="getPlaceholderText" />
+					</template>
+				</N8nRekaSelect>
 			</div>
 		</div>
 	</div>
@@ -436,6 +426,10 @@ const onDragChange = () => {
 <style lang="scss" module>
 .collectionParameter {
 	padding-left: 0;
+
+	:global(.multi-parameter):first-child {
+		margin-top: 0;
+	}
 }
 
 .showHeaderDivider .collectionSectionHeader {

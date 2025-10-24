@@ -994,6 +994,7 @@
 	"expressionModalInput.pairedItemError.noRunData": "Can't determine which item to use - execute node for more info",
 	"fixedCollectionParameter.addItem": "Add item",
 	"fixedCollectionParameter.addParameter": "Add {parameter}",
+	"fixedCollectionParameter.allOptionsAdded": "All options have been added",
 	"fixedCollectionParameter.choose": "Choose...",
 	"fixedCollectionParameter.currentlyNoItemsExist": "Currently no items exist",
 	"fixedCollectionParameter.deleteItem": "Delete item",

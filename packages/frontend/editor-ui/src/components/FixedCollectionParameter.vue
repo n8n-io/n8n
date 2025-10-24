@@ -1,7 +1,5 @@
 <script lang="ts" setup>
-import type { IUpdateInformation } from '@/Interface';
 import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
-
 import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
 import FixedCollectionParameterLegacy from './FixedCollectionParameterLegacy.vue';
 import FixedCollectionParameterNew from './FixedCollectionParameterNew.vue';
@@ -12,7 +10,7 @@ export type Props = {
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values?: Record<string, INodeParameters[]>;
+	values?: Record<string, INodeParameters[] | INodeParameters>;
 	isReadOnly?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
