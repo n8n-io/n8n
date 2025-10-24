@@ -26,6 +26,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import EulaAcceptanceModal from '../components/EulaAcceptanceModal.vue';
+
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
@@ -45,6 +47,8 @@ const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCa
 const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
+const eulaModal = ref(false);
+const eulaUrl = ref('');
 
 const canUserActivateLicense = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'license:manage' } }),
@@ -87,14 +91,50 @@ const showActivationError = (error: Error) => {
 	toast.showError(error, locale.baseText('settings.usageAndPlan.license.activation.error.title'));
 };
 
-const onLicenseActivation = async () => {
+const onLicenseActivation = async (eulaUri?: string) => {
 	try {
-		await usageStore.activateLicense(activationKey.value);
+		await usageStore.activateLicense(activationKey.value, eulaUri);
 		activationKeyModal.value = false;
+		eulaModal.value = false;
+		activationKey.value = '';
 		showActivationSuccess();
-	} catch (error) {
-		showActivationError(error);
+	} catch (error: unknown) {
+		// Check if error requires EULA acceptance
+		// Handle ResponseError (has httpStatusCode and meta directly)
+		const responseError = error as {
+			httpStatusCode?: number;
+			meta?: { eulaUrl?: string };
+			response?: { status?: number; data?: { meta?: { eulaUrl?: string } } };
+		};
+
+		const statusCode = responseError.httpStatusCode ?? responseError.response?.status;
+		const eulaUrlFromError =
+			responseError.meta?.eulaUrl ?? responseError.response?.data?.meta?.eulaUrl;
+
+		if (statusCode && statusCode >= 400 && statusCode < 500 && eulaUrlFromError) {
+			activationKeyModal.value = false;
+			eulaUrl.value = eulaUrlFromError;
+			eulaModal.value = true;
+			return;
+		}
+
+		// Use type guard instead of type casting
+		if (error instanceof Error) {
+			showActivationError(error);
+		} else {
+			showActivationError(new Error(String(error)));
+		}
 	}
+};
+
+const onEulaAccept = () => {
+	void onLicenseActivation(eulaUrl.value);
+};
+
+const onEulaCancel = () => {
+	eulaModal.value = false;
+	eulaUrl.value = '';
+	activationKey.value = '';
 };
 
 onMounted(async () => {
@@ -280,11 +320,18 @@ const openCommunityRegisterModal = () => {
 					<N8nButton type="secondary" @click="activationKeyModal = false">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</N8nButton>
-					<N8nButton @click="onLicenseActivation">
+					<N8nButton :disabled="!activationKey" @click="onLicenseActivation">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 					</N8nButton>
 				</template>
 			</ElDialog>
+
+			<EulaAcceptanceModal
+				v-model="eulaModal"
+				:eula-url="eulaUrl"
+				@accept="onEulaAccept"
+				@cancel="onEulaCancel"
+			/>
 		</div>
 	</div>
 </template>
