@@ -8,7 +8,12 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { createClient, createCluster } from 'redis';
 
-import type { RedisCredential, RedisClientType } from './types';
+import type {
+	RedisCredential,
+	RedisClientType,
+	RedisCommandClient,
+	RedisClusterCommandClient,
+} from './types';
 
 export function setupRedisClient(credentials: RedisCredential, isTest = false): RedisClientType {
 	// Check if cluster mode is enabled
@@ -169,19 +174,21 @@ export function convertInfoToObject(stringData: string): IDataObject {
 }
 
 export async function getValue(client: RedisClientType, keyName: string, type?: string) {
+	const commandClient = client as RedisCommandClient;
+
 	if (type === undefined || type === 'automatic') {
 		// Request the type first
-		type = await (client as any).type(keyName);
+		type = await commandClient.type(keyName);
 	}
 
 	if (type === 'string') {
-		return await (client as any).get(keyName);
+		return await commandClient.get(keyName);
 	} else if (type === 'hash') {
-		return await (client as any).hGetAll(keyName);
+		return await commandClient.hGetAll(keyName);
 	} else if (type === 'list') {
-		return await (client as any).lRange(keyName, 0, -1);
+		return await commandClient.lRange(keyName, 0, -1);
 	} else if (type === 'sets') {
-		return await (client as any).sMembers(keyName);
+		return await commandClient.sMembers(keyName);
 	}
 }
 
@@ -211,10 +218,10 @@ export async function setValue(
 		}
 	}
 
-	const anyClient = client as any;
+	const commandClient = client as RedisCommandClient;
 
 	if (type === 'string') {
-		await anyClient.set(keyName, value.toString());
+		await commandClient.set(keyName, value.toString());
 	} else if (type === 'hash') {
 		if (valueIsJSON) {
 			let values: unknown;
@@ -229,23 +236,23 @@ export async function setValue(
 				values = value;
 			}
 			for (const key of Object.keys(values as object)) {
-				await anyClient.hSet(keyName, key, (values as IDataObject)[key]!.toString());
+				await commandClient.hSet(keyName, key, (values as IDataObject)[key]!.toString());
 			}
 		} else {
 			const values = value.toString().split(' ');
-			await anyClient.hSet(keyName, values);
+			await commandClient.hSet(keyName, values);
 		}
 	} else if (type === 'list') {
 		for (let index = 0; index < (value as string[]).length; index++) {
-			await anyClient.lSet(keyName, index, (value as IDataObject)[index]!.toString());
+			await commandClient.lSet(keyName, index, (value as IDataObject)[index]!.toString());
 		}
 	} else if (type === 'sets') {
 		//@ts-ignore
-		await anyClient.sAdd(keyName, value);
+		await commandClient.sAdd(keyName, value);
 	}
 
 	if (expire) {
-		await anyClient.expire(keyName, ttl);
+		await commandClient.expire(keyName, ttl);
 	}
 	return;
 }
@@ -259,16 +266,17 @@ export async function getKeys(
 	pattern: string,
 	isClusterMode: boolean,
 ): Promise<string[]> {
-	const anyClient = client as any;
+	const commandClient = client as RedisCommandClient;
 
 	// In standalone mode, use the regular KEYS command
 	if (!isClusterMode) {
-		return await anyClient.keys(pattern);
+		return await commandClient.keys(pattern);
 	}
 
 	// In cluster mode, iterate over all master nodes to get keys from all shards
+	const clusterClient = client as RedisClusterCommandClient;
 	const allKeys: string[] = [];
-	const masters = anyClient.masters;
+	const masters = clusterClient.masters;
 
 	if (!masters || masters.length === 0) {
 		throw new Error('Cluster mode is enabled but no master nodes were found');

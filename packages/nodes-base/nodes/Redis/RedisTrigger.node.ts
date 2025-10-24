@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import type { RedisCredential } from './types';
+import type { RedisCredential, RedisPubSubClient } from './types';
 import { redisConnectionTest, setupRedisClient } from './utils';
 
 interface Options {
@@ -85,7 +85,8 @@ export class RedisTrigger implements INodeType {
 		}
 
 		const client = setupRedisClient(credentials);
-		const anyClient = client as any;
+		// Type assertion is safe here as both RedisClient and RedisClusterClient support pub/sub operations
+		const pubSubClient = client as RedisPubSubClient;
 
 		// Connect to Redis (works for both standalone and cluster)
 		await client.connect();
@@ -103,18 +104,18 @@ export class RedisTrigger implements INodeType {
 
 		const manualTriggerFunction = async () =>
 			await new Promise<void>(async (resolve) => {
-				await anyClient.pSubscribe(channels, (message: string, channel: string) => {
+				await pubSubClient.pSubscribe(channels, (message: string, channel: string) => {
 					onMessage(message, channel);
 					resolve();
 				});
 			});
 
 		if (this.getMode() === 'trigger') {
-			await anyClient.pSubscribe(channels, onMessage);
+			await pubSubClient.pSubscribe(channels, onMessage);
 		}
 
 		async function closeFunction() {
-			await anyClient.pUnsubscribe();
+			await pubSubClient.pUnsubscribe();
 			await client.quit();
 		}
 

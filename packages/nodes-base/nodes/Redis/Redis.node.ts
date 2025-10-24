@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import type { RedisCredential } from './types';
+import type { RedisCredential, RedisCommandClient } from './types';
 import {
 	setupRedisClient,
 	redisConnectionTest,
@@ -516,7 +516,8 @@ export class Redis implements INodeType {
 		const credentials = await this.getCredentials<RedisCredential>('redis');
 
 		const client = setupRedisClient(credentials);
-		const anyClient = client as any;
+		// Type assertion is safe here as both RedisClient and RedisClusterClient implement these commands
+		const commandClient = client as RedisCommandClient;
 
 		try {
 			// Connect to Redis (works for both standalone and cluster)
@@ -527,7 +528,7 @@ export class Redis implements INodeType {
 
 			if (operation === 'info') {
 				try {
-					const result = await anyClient.info();
+					const result = await commandClient.info();
 					returnItems.push({ json: convertInfoToObject(result) });
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -550,11 +551,11 @@ export class Redis implements INodeType {
 					try {
 						item = { json: {}, pairedItem: { item: itemIndex } };
 
-						if (operation === 'delete') {
-							const keyDelete = this.getNodeParameter('key', itemIndex) as string;
+					if (operation === 'delete') {
+						const keyDelete = this.getNodeParameter('key', itemIndex) as string;
 
-							await anyClient.del(keyDelete);
-							returnItems.push(items[itemIndex]);
+						await commandClient.del(keyDelete);
+						returnItems.push(items[itemIndex]);
 						} else if (operation === 'get') {
 							const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
 							const keyGet = this.getNodeParameter('key', itemIndex) as string;
@@ -597,38 +598,38 @@ export class Redis implements INodeType {
 
 							await setValue.call(this, client, keySet, value, expire, ttl, keyType, valueIsJSON);
 							returnItems.push(items[itemIndex]);
-						} else if (operation === 'incr') {
-							const keyIncr = this.getNodeParameter('key', itemIndex) as string;
-							const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
-							const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
-							const incrementVal = await anyClient.incr(keyIncr);
-							if (expire && ttl > 0) {
-								await anyClient.expire(keyIncr, ttl);
-							}
-							returnItems.push({ json: { [keyIncr]: incrementVal } });
-						} else if (operation === 'publish') {
-							const channel = this.getNodeParameter('channel', itemIndex) as string;
-							const messageData = this.getNodeParameter('messageData', itemIndex) as string;
-							await anyClient.publish(channel, messageData);
-							returnItems.push(items[itemIndex]);
-						} else if (operation === 'push') {
-							const redisList = this.getNodeParameter('list', itemIndex) as string;
-							const messageData = this.getNodeParameter('messageData', itemIndex) as string;
-							const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-							await anyClient[tail ? 'rPush' : 'lPush'](redisList, messageData);
-							returnItems.push(items[itemIndex]);
-						} else if (operation === 'pop') {
-							const redisList = this.getNodeParameter('list', itemIndex) as string;
-							const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-							const propertyName = this.getNodeParameter(
-								'propertyName',
-								itemIndex,
-								'propertyName',
-							) as string;
+					} else if (operation === 'incr') {
+						const keyIncr = this.getNodeParameter('key', itemIndex) as string;
+						const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
+						const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
+						const incrementVal = await commandClient.incr(keyIncr);
+						if (expire && ttl > 0) {
+							await commandClient.expire(keyIncr, ttl);
+						}
+						returnItems.push({ json: { [keyIncr]: incrementVal } });
+					} else if (operation === 'publish') {
+						const channel = this.getNodeParameter('channel', itemIndex) as string;
+						const messageData = this.getNodeParameter('messageData', itemIndex) as string;
+						await commandClient.publish(channel, messageData);
+						returnItems.push(items[itemIndex]);
+					} else if (operation === 'push') {
+						const redisList = this.getNodeParameter('list', itemIndex) as string;
+						const messageData = this.getNodeParameter('messageData', itemIndex) as string;
+						const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
+						await commandClient[tail ? 'rPush' : 'lPush'](redisList, messageData);
+						returnItems.push(items[itemIndex]);
+					} else if (operation === 'pop') {
+						const redisList = this.getNodeParameter('list', itemIndex) as string;
+						const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
+						const propertyName = this.getNodeParameter(
+							'propertyName',
+							itemIndex,
+							'propertyName',
+						) as string;
 
-							const value = await anyClient[tail ? 'rPop' : 'lPop'](redisList);
+						const value = await commandClient[tail ? 'rPop' : 'lPop'](redisList);
 
-							let outputValue;
+						let outputValue;
 							try {
 								outputValue = value && JSON.parse(value);
 							} catch {
