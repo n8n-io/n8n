@@ -236,11 +236,13 @@ const isOpen = computed({
 	}
 
 	&[data-state='open'] {
-		animation: slideDown var(--animation--duration--spring) var(--animation--easing--spring);
+		animation: slideDown var(--collapsible-animation-duration, var(--animation--duration--spring))
+			var(--animation--easing--spring);
 	}
 
 	&[data-state='closed'] {
-		animation: slideUp var(--animation--duration--spring) var(--animation--easing--spring);
+		animation: slideUp var(--collapsible-animation-duration, var(--animation--duration--spring))
+			var(--animation--easing--spring);
 	}
 
 	// Add padding to the content, inside the animated container
@@ -251,10 +253,7 @@ const isOpen = computed({
 }
 
 .noAnimation {
-	&[data-state='open'],
-	&[data-state='closed'] {
-		animation: none !important;
-	}
+	--collapsible-animation-duration: 0s;
 }
 
 @keyframes slideDown {
