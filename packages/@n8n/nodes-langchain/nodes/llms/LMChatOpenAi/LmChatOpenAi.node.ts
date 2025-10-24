@@ -1,4 +1,5 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -14,6 +15,38 @@ import { searchModels } from './methods/loadModels';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+
+/**
+ * Custom ChatOpenAI class that ensures AIMessages with tool_calls have non-empty content
+ * This is required for some OpenAI-compatible APIs (like NVIDIA) that reject empty content
+ */
+class ChatOpenAIWithContentFix extends ChatOpenAI {
+	override async _generate(
+		messages: BaseMessage[],
+		options: this['ParsedCallOptions'],
+		runManager?: any,
+	): Promise<any> {
+		// Fix empty content in messages with tool_calls
+		const fixedMessages = messages.map((msg) => {
+			// Check if this is an AIMessage with tool_calls and empty content
+			if (
+				'tool_calls' in msg &&
+				Array.isArray((msg as any).tool_calls) &&
+				(msg as any).tool_calls.length > 0 &&
+				typeof msg.content === 'string' &&
+				msg.content.trim() === ''
+			) {
+				// Clone the message and set content to a space to satisfy API requirements
+				const fixed = msg.constructor ? new (msg.constructor as any)(msg) : { ...msg };
+				fixed.content = ' ';
+				return fixed;
+			}
+			return msg;
+		});
+
+		return super._generate(fixedMessages, options, runManager);
+	}
+}
 
 export class LmChatOpenAi implements INodeType {
 	methods = {
@@ -378,13 +411,45 @@ export class LmChatOpenAi implements INodeType {
 		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
 			modelKwargs.reasoning_effort = options.reasoningEffort;
 
-		const model = new ChatOpenAI({
+	// Fix for OpenAI-compatible APIs (like NVIDIA) that require non-empty content
+	// in assistant messages even when making tool calls
+	const configWithContentFix = {
+		...configuration,
+		fetch: async (url: any, init?: any) => {
+			if (init?.body && typeof init.body === 'string') {
+				try {
+					const requestBody = JSON.parse(init.body);
+					if (requestBody.messages && Array.isArray(requestBody.messages)) {
+						requestBody.messages = requestBody.messages.map((msg: any) => {
+							if (
+								msg.role === 'assistant' &&
+								msg.tool_calls &&
+								Array.isArray(msg.tool_calls) &&
+								msg.tool_calls.length > 0 &&
+								typeof msg.content === 'string' &&
+								msg.content.trim() === ''
+							) {
+								return { ...msg, content: ' ' };
+							}
+							return msg;
+						});
+						init.body = JSON.stringify(requestBody);
+					}
+				} catch (e) {
+					// If parsing fails, continue with original body
+				}
+			}
+			return fetch(url, init);
+		},
+	};
+
+		const model = new ChatOpenAIWithContentFix({
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
-			configuration,
+			configuration: configWithContentFix,
 			callbacks: [new N8nLlmTracing(this)],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
