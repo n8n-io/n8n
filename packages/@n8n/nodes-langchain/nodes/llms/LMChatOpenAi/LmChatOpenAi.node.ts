@@ -17,6 +17,7 @@ import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
+import type { ModelOptions } from './types';
 
 export class LmChatOpenAi implements INodeType {
 	methods = {
@@ -190,6 +191,18 @@ export class LmChatOpenAi implements INodeType {
 				},
 			},
 			{
+				displayName: 'Use Responses API',
+				name: 'responsesApiEnabled',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to use the Responses API to generate the response',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Built-in Tools',
 				name: 'builtInTools',
 				placeholder: 'Add Built-in Tool',
@@ -246,105 +259,6 @@ export class LmChatOpenAi implements INodeType {
 						],
 					},
 					{
-						displayName: 'MCP Servers',
-						name: 'mcpServers',
-						type: 'fixedCollection',
-						placeholder: 'Add MCP Server',
-						typeOptions: {
-							multipleValues: true,
-							sortable: true,
-						},
-						default: { mcpServerOptions: [{ serverLabel: '' }] },
-						options: [
-							{
-								displayName: 'MCP Server',
-								name: 'mcpServerOptions',
-								values: [
-									{
-										displayName: 'Server Label',
-										name: 'serverLabel',
-										type: 'string',
-										default: '',
-										description: 'A label to identify this MCP server',
-										placeholder: 'e.g. My Database Server',
-									},
-									{
-										displayName: 'Connection Type',
-										name: 'connectionType',
-										type: 'options',
-										default: 'url',
-										options: [
-											{ name: 'URL', value: 'url' },
-											{ name: 'Connector ID', value: 'connector_id' },
-										],
-										description: 'Choose how to connect to the MCP server',
-									},
-									{
-										displayName: 'Server URL',
-										name: 'serverUrl',
-										type: 'string',
-										default: '',
-										description: 'The URL of the MCP server',
-										placeholder: 'e.g. https://api.example.com/mcp',
-										displayOptions: {
-											show: {
-												connectionType: ['url'],
-											},
-										},
-									},
-									{
-										displayName: 'Connector ID',
-										name: 'connectorId',
-										type: 'string',
-										default: '',
-										description: 'The connector ID for the MCP server',
-										placeholder: 'e.g. connector_gmail',
-										displayOptions: {
-											show: {
-												connectionType: ['connector_id'],
-											},
-										},
-									},
-									{
-										displayName: 'Authorization',
-										name: 'authorization',
-										type: 'string',
-										default: '',
-										description: 'Authorization token or credentials for the MCP server',
-									},
-									{
-										displayName: 'Headers',
-										name: 'headers',
-										type: 'json',
-										default: '{}',
-										description: 'Additional headers to send with requests to the MCP server',
-										placeholder: '{"X-Custom-Header": "value"}',
-									},
-									{
-										displayName: 'Server Description',
-										name: 'serverDescription',
-										type: 'string',
-										default: '',
-										description: 'A description of what this MCP server provides',
-										placeholder: 'e.g. Database access for user management',
-										typeOptions: {
-											rows: 2,
-										},
-									},
-									{
-										displayName: 'Allowed Tools',
-										name: 'allowedTools',
-										type: 'string',
-										default: '',
-										description:
-											'Comma-separated list of tools to allow. If not provided, all tools will be allowed.',
-										placeholder: 'e.g. tool1,tool2',
-									},
-								],
-							},
-						],
-					},
-					{
 						displayName: 'File Search',
 						name: 'fileSearch',
 						type: 'collection',
@@ -383,6 +297,7 @@ export class LmChatOpenAi implements INodeType {
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.3 } }],
+						'/responsesApiEnabled': [true],
 					},
 				},
 			},
@@ -533,6 +448,7 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -546,6 +462,7 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -559,6 +476,7 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -577,6 +495,7 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -590,6 +509,7 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -607,6 +527,7 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -697,6 +618,7 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -737,6 +659,7 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -754,20 +677,9 @@ export class LmChatOpenAi implements INodeType {
 				? (this.getNodeParameter('model.value', itemIndex) as string)
 				: (this.getNodeParameter('model', itemIndex) as string);
 
-		const responsesApiEnabled = version >= 1.3;
+		const responsesApiEnabled = this.getNodeParameter('responsesApiEnabled', itemIndex, false);
 
-		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			baseURL?: string;
-			frequencyPenalty?: number;
-			maxTokens?: number;
-			maxRetries: number;
-			timeout: number;
-			presencePenalty?: number;
-			temperature?: number;
-			topP?: number;
-			responseFormat?: 'text' | 'json_object';
-			reasoningEffort?: 'low' | 'medium' | 'high';
-		};
+		const options = this.getNodeParameter('options', itemIndex, {}) as ModelOptions;
 
 		const configuration: ClientOptions = {};
 

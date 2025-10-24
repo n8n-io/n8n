@@ -2,12 +2,15 @@ import type { OpenAIClient } from '@langchain/openai';
 import type { ChatOpenAIToolType } from '@langchain/openai/dist/utils/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
-import { isObjectEmpty, jsonParse, type IDataObject } from 'n8n-workflow';
+import { isObjectEmpty, jsonParse } from 'n8n-workflow';
 
-export type ChatResponseRequest = OpenAIClient.Responses.ResponseCreateParamsNonStreaming & {
-	conversation?: { id: string } | string;
-	top_logprobs?: number;
-};
+import type {
+	BuiltInTools,
+	ChatResponseRequest,
+	ModelOptions,
+	PromptOptions,
+	TextOptions,
+} from './types';
 
 const removeEmptyProperties = <T>(rest: { [key: string]: any }): T => {
 	return Object.keys(rest)
@@ -24,13 +27,13 @@ const toArray = (str: string) =>
 		.map((e) => e.trim())
 		.filter(Boolean);
 
-export const formatBuiltInTools = (builtInTools: IDataObject) => {
+export const formatBuiltInTools = (builtInTools: BuiltInTools) => {
 	const tools: ChatOpenAIToolType[] = [];
 	if (builtInTools) {
-		const webSearchOptions = get(builtInTools, 'webSearch') as IDataObject | undefined;
+		const webSearchOptions = get(builtInTools, 'webSearch');
 		if (webSearchOptions) {
 			let allowedDomains: string[] | undefined;
-			const allowedDomainsRaw = get(webSearchOptions, 'allowedDomains', '') as string;
+			const allowedDomainsRaw = get(webSearchOptions, 'allowedDomains', '');
 			if (allowedDomainsRaw) {
 				allowedDomains = toArray(allowedDomainsRaw);
 			}
@@ -46,45 +49,11 @@ export const formatBuiltInTools = (builtInTools: IDataObject) => {
 			}
 
 			tools.push({
-				type: 'web_search_preview',
-				search_context_size: get(webSearchOptions, 'searchContextSize', 'medium') as
-					| 'low'
-					| 'medium'
-					| 'high',
+				type: 'web_search',
+				search_context_size: get(webSearchOptions, 'searchContextSize', 'medium'),
 				user_location: userLocation,
 				...(allowedDomains && { filters: { allowed_domains: allowedDomains } }),
 			});
-		}
-
-		const mcpServers = get(builtInTools.mcpServers, 'mcpServerOptions') as
-			| IDataObject[]
-			| undefined;
-		if (Array.isArray(mcpServers) && mcpServers.length) {
-			for (const mcpServer of mcpServers) {
-				let allowedTools: string[] | undefined;
-				const allowedToolsRaw = get(mcpServer, 'allowedTools', '') as string;
-				if (allowedToolsRaw) {
-					allowedTools = toArray(allowedToolsRaw);
-				}
-
-				const headersRaw = get(mcpServer, 'headers', '') as string;
-
-				tools.push(
-					removeEmptyProperties({
-						type: 'mcp',
-						server_label: mcpServer.serverLabel as string,
-						server_url: mcpServer.serverUrl as string,
-						connector_id: mcpServer.connectorId as string,
-						authorization: mcpServer.authorization as string,
-						allowed_tools: allowedTools,
-						headers: headersRaw
-							? jsonParse(headersRaw, { errorMessage: 'Failed to parse headers' })
-							: undefined,
-						require_approval: 'never',
-						server_description: mcpServer.serverDescription as string,
-					}),
-				);
-			}
 		}
 
 		if (builtInTools.codeInterpreter) {
@@ -97,8 +66,8 @@ export const formatBuiltInTools = (builtInTools: IDataObject) => {
 		}
 
 		if (builtInTools.fileSearch) {
-			const vectorStoreIds = get(builtInTools.fileSearch, 'vectorStoreIds', '[]') as string;
-			const filters = get(builtInTools.fileSearch, 'filters', '{}') as string;
+			const vectorStoreIds = get(builtInTools.fileSearch, 'vectorStoreIds', '[]');
+			const filters = get(builtInTools.fileSearch, 'filters', '{}');
 			tools.push({
 				type: 'file_search',
 				vector_store_ids: jsonParse(vectorStoreIds, {
@@ -114,32 +83,32 @@ export const formatBuiltInTools = (builtInTools: IDataObject) => {
 	return tools;
 };
 
-export const prepareAdditionalResponsesParams = (options: IDataObject) => {
+export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 	const body: Partial<ChatResponseRequest> = {
-		previous_response_id: options.previousResponseId as string,
-		prompt_cache_key: options.promptCacheKey as string,
-		safety_identifier: options.safetyIdentifier as string,
-		service_tier: options.serviceTier as ChatResponseRequest['service_tier'],
-		top_logprobs: options.topLogprobs as number,
+		previous_response_id: options.previousResponseId,
+		prompt_cache_key: options.promptCacheKey,
+		safety_identifier: options.safetyIdentifier,
+		service_tier: options.serviceTier,
+		top_logprobs: options.topLogprobs,
 	};
 
 	if (options.conversationId) {
-		body.conversation = options.conversationId as string;
+		body.conversation = options.conversationId;
 	}
 
 	if (options.metadata) {
-		body.metadata = jsonParse(options.metadata as string, {
+		body.metadata = jsonParse(options.metadata, {
 			errorMessage: 'Failed to parse metadata',
 		});
 	}
 
 	if (options.promptConfig) {
-		const prompt = get(options, 'promptConfig.promptOptions', {}) as IDataObject;
+		const prompt = get(options, 'promptConfig.promptOptions', {} as PromptOptions);
 		body.prompt = removeEmptyProperties({
 			id: prompt.promptId,
 			version: prompt.version,
 			...(prompt.variables && {
-				variables: jsonParse(prompt.variables as string, {
+				variables: jsonParse(prompt.variables, {
 					errorMessage: 'Failed to parse prompt variables',
 				}),
 			}),
@@ -147,7 +116,7 @@ export const prepareAdditionalResponsesParams = (options: IDataObject) => {
 	}
 
 	if (options.textFormat) {
-		const textOptions = get(options, 'textFormat.textOptions', {}) as IDataObject;
+		const textOptions = get(options, 'textFormat.textOptions', {} as TextOptions);
 		const textConfig: OpenAIClient.Responses.ResponseTextConfig = {
 			verbosity: textOptions.verbosity as OpenAIClient.Responses.ResponseTextConfig['verbosity'],
 		};
