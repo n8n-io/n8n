@@ -121,6 +121,9 @@ export class WorkflowBuilderAgent {
 			}
 
 			const hasPreviousSummary = state.previousSummary && state.previousSummary !== 'EMPTY';
+			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+			const executionData = state.workflowContext?.executionData ?? {};
+			const executionSchema = state.workflowContext?.executionSchema ?? [];
 
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
@@ -131,9 +134,6 @@ export class WorkflowBuilderAgent {
 				instanceUrl: this.instanceUrl,
 				previousSummary: hasPreviousSummary ? state.previousSummary : '',
 			});
-			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
-			const executionData = state.workflowContext?.executionData ?? {};
-			const executionSchema = state.workflowContext?.executionSchema ?? [];
 
 			const workflowContext = [
 				'',

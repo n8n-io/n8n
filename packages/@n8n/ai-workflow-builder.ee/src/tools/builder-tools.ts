@@ -17,6 +17,7 @@ import {
 	createUpdateNodeParametersTool,
 	UPDATING_NODE_PARAMETER_TOOL,
 } from './update-node-parameters.tool';
+import { createValidateWorkflowTool, VALIDATE_WORKFLOW_TOOL } from './validate-workflow.tool';
 
 export function getBuilderTools({
 	parsedNodeTypes,
@@ -40,6 +41,7 @@ export function getBuilderTools({
 		createRemoveNodeTool(logger),
 		createUpdateNodeParametersTool(parsedNodeTypes, llmComplexTask, logger, instanceUrl),
 		createGetNodeParameterTool(),
+		createValidateWorkflowTool(parsedNodeTypes, logger),
 	];
 }
 
@@ -62,5 +64,6 @@ export function getBuilderToolsForDisplay({
 		REMOVE_NODE_TOOL,
 		UPDATING_NODE_PARAMETER_TOOL,
 		GET_NODE_PARAMETER_TOOL,
+		VALIDATE_WORKFLOW_TOOL,
 	];
 }
