@@ -33,8 +33,8 @@ import type {
 import { ManualExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 
 import { ExecutionDataRepository } from './execution-data.repository';
-import { ExecutionDataService } from '../../../../core/src/execution-data/execution-data.service';
-// import { ExecutionDataService } from '../../../../core/src/execution-data/execution-data.service';
+import { ExecutionDataService } from 'n8n-core/src/execution-data/execution-data.service';
+
 import {
 	AnnotationTagEntity,
 	AnnotationTagMapping,
