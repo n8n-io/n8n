@@ -138,6 +138,13 @@ export class WorkflowComposer {
 
 		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
 		await expect(saveButton).toBeVisible();
+
+		// Wait for the popup window that will open when clicking duplicate
+		const popupPromise = this.n8n.page.waitForEvent('popup');
 		await saveButton.click();
+
+		// Close the popup to prevent it from interfering with the test
+		const popup = await popupPromise;
+		await popup.close();
 	}
 }
