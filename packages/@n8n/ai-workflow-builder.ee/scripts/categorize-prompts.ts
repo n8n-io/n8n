@@ -28,7 +28,7 @@ interface CategorizationResult {
 async function categorizeAllPrompts() {
 	// Get concurrency from environment or default to 10
 	const DEFAULT_CONCURRENCY = 10;
-	const parsedConcurrency = parseInt(process.env.CONCURRENCY || '', 10);
+	const parsedConcurrency = parseInt(process.env.CONCURRENCY ?? '', 10);
 	const concurrency =
 		!isNaN(parsedConcurrency) && parsedConcurrency >= 1 ? parsedConcurrency : DEFAULT_CONCURRENCY;
 
