@@ -90,7 +90,6 @@ export const createSearchWorkflowsTool = (
 					},
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				console.log(telemetryPayload);
 
 				return {
 					structuredContent: payload,
@@ -109,7 +108,6 @@ export const createSearchWorkflowsTool = (
 					error: error instanceof Error ? error.message : String(error),
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				console.log(telemetryPayload);
 				throw error;
 			}
 		},

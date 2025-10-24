@@ -64,7 +64,6 @@ export const createWorkflowDetailsTool = (
 					success: true,
 					data: payload,
 				};
-				console.log('Payload:', telemetryPayload);
 
 				return {
 					content: [{ type: 'text', text: JSON.stringify(payload) }],
@@ -77,7 +76,6 @@ export const createWorkflowDetailsTool = (
 					error: error instanceof Error ? error.message : String(error),
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				console.log('Error:', telemetryPayload);
 				throw error;
 			}
 		},
