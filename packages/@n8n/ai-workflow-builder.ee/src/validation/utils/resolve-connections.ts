@@ -8,6 +8,14 @@ import { Expression } from 'n8n-workflow';
 
 import type { NodeResolvedConnectionTypesInfo } from '../types';
 
+function isDynamicConnectionsExpression(
+	connections: Array<NodeConnectionType | INodeInputConfiguration> | ExpressionString,
+): connections is ExpressionString {
+	return (
+		typeof connections === 'string' && connections.startsWith('={{') && connections.endsWith('}}')
+	);
+}
+
 /**
  * Use light version of expression resolver to resolve connections
  * We need only parameter values of the specific node and no workflow context
@@ -21,11 +29,7 @@ export function resolveConnections<T = INodeInputConfiguration>(
 		return connections;
 	}
 
-	if (
-		typeof connections === 'string' &&
-		connections.startsWith('={{') &&
-		connections.endsWith('}}')
-	) {
+	if (isDynamicConnectionsExpression(connections)) {
 		const context: IDataObject = {};
 		Expression.initializeGlobalContext(context);
 

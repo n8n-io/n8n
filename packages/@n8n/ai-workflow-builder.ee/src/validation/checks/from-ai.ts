@@ -1,4 +1,4 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, INodeParameters } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
@@ -13,14 +13,14 @@ function containsFromAi(value: unknown): boolean {
 	return /\$from[Aa][Ii]\(.+\)/.test(value);
 }
 
-function parametersContainFromAi(parameters: Record<string, unknown>): boolean {
+function parametersContainFromAi(parameters: INodeParameters): boolean {
 	for (const value of Object.values(parameters)) {
 		if (containsFromAi(value)) {
 			return true;
 		}
 
 		if (value && typeof value === 'object' && !Array.isArray(value)) {
-			if (parametersContainFromAi(value as Record<string, unknown>)) {
+			if (parametersContainFromAi(value as INodeParameters)) {
 				return true;
 			}
 		}
@@ -31,8 +31,8 @@ function parametersContainFromAi(parameters: Record<string, unknown>): boolean {
 					return true;
 				}
 
-				if (item && typeof item === 'object') {
-					if (parametersContainFromAi(item as Record<string, unknown>)) {
+				if (item && typeof item === 'object' && !Array.isArray(value)) {
+					if (parametersContainFromAi(value as INodeParameters)) {
 						return true;
 					}
 				}
