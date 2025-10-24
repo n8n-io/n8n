@@ -103,7 +103,7 @@ describe('License', () => {
 	test('attempts to activate license with provided key', async () => {
 		await license.activate(MOCK_ACTIVATION_KEY);
 
-		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY);
+		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY, undefined);
 	});
 
 	test('renews license', async () => {
