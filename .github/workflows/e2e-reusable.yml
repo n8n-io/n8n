@@ -25,7 +25,7 @@ on:
       containers:
         description: 'Number of containers to run tests in.'
         required: false
-        default: '[1, 2, 3]'
+        default: '[1, 2]'
         type: string
       pr_number:
         description: 'PR number to run tests for.'
