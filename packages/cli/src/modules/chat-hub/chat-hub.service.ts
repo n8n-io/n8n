@@ -339,6 +339,7 @@ export class ChatHubService {
 		model: ChatHubConversationModel,
 		generateConversationTitle: boolean,
 		trx?: EntityManager,
+		systemMessage?: string,
 	): Promise<{
 		workflowData: IWorkflowBase;
 		triggerToStartFrom: { name: string; data: ITaskData };
@@ -351,6 +352,7 @@ export class ChatHubService {
 				credentials,
 				model,
 				generateConversationTitle,
+				systemMessage,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -524,6 +526,7 @@ export class ChatHubService {
 		history: ChatHubMessage[],
 		message: string,
 		trx: EntityManager,
+		systemMessage?: string,
 	) {
 		const credential = await this.ensureCredentials(user, payload.model, payload.credentials, trx);
 
@@ -536,6 +539,7 @@ export class ChatHubService {
 			payload.model,
 			payload.previousMessageId === null, // generate title on receiving the first human message only
 			trx,
+			systemMessage,
 		);
 	}
 
@@ -567,6 +571,8 @@ export class ChatHubService {
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
+		const systemMessage = agent.systemPrompt;
+
 		const updatedPayload: HumanMessagePayload = {
 			...payload,
 			model: {
@@ -589,6 +595,7 @@ export class ChatHubService {
 			history,
 			message,
 			trx,
+			systemMessage,
 		);
 	}
 
@@ -999,6 +1006,7 @@ export class ChatHubService {
 		credentials,
 		model,
 		generateConversationTitle,
+		systemMessage,
 	}: {
 		sessionId: ChatSessionId;
 		history: ChatHubMessage[];
@@ -1006,6 +1014,7 @@ export class ChatHubService {
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
 		generateConversationTitle: boolean;
+		systemMessage?: string;
 	}) {
 		const nodes: INode[] = [
 			{
@@ -1031,6 +1040,7 @@ export class ChatHubService {
 							model.provider !== 'n8n' && model.provider !== 'custom-agent'
 								? getMaxContextWindowTokens(model.provider, model.model)
 								: undefined,
+						systemMessage,
 					},
 				},
 				type: AGENT_LANGCHAIN_NODE_TYPE,
