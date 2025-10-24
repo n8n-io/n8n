@@ -476,16 +476,28 @@ export class ChatHubService {
 				trx,
 			);
 
-			if (provider !== 'n8n') {
-				return await this.prepareBaseChatWorkflow(user, payload, sessionId, history, message, trx);
+			if (provider === 'n8n') {
+				return await this.prepareCustomAgentWorkflow(
+					user,
+					sessionId,
+					payload.model.workflowId,
+					message,
+				);
 			}
 
-			return await this.prepareCustomAgentWorkflow(
-				user,
-				sessionId,
-				payload.model.workflowId,
-				message,
-			);
+			if (provider === 'custom-agent') {
+				return await this.prepareChatAgentWorkflow(
+					payload.model.agentId,
+					user,
+					payload,
+					sessionId,
+					history,
+					message,
+					trx,
+				);
+			}
+
+			return await this.prepareBaseChatWorkflow(user, payload, sessionId, history, message, trx);
 		});
 
 		try {
@@ -523,6 +535,59 @@ export class ChatHubService {
 			payload.credentials,
 			payload.model,
 			payload.previousMessageId === null, // generate title on receiving the first human message only
+			trx,
+		);
+	}
+
+	private async prepareChatAgentWorkflow(
+		agentId: string,
+		user: User,
+		payload: HumanMessagePayload,
+		sessionId: ChatSessionId,
+		history: ChatHubMessage[],
+		message: string,
+		trx: EntityManager,
+	) {
+		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id);
+
+		if (!agent) {
+			throw new BadRequestError('Agent not found');
+		}
+
+		if (!agent.provider || !agent.model) {
+			throw new BadRequestError('Provider or model not set for agent');
+		}
+
+		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
+			throw new BadRequestError('Invalid provider');
+		}
+
+		const credentialId = agent.credentialId;
+		if (!credentialId) {
+			throw new BadRequestError('Credentials not set for agent');
+		}
+
+		const updatedPayload: HumanMessagePayload = {
+			...payload,
+			model: {
+				provider: agent.provider,
+				model: agent.model,
+				name: agent.model,
+			} as ChatHubConversationModel,
+			credentials: {
+				[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
+					id: credentialId,
+					name: '',
+				},
+			},
+		};
+
+		return await this.prepareBaseChatWorkflow(
+			user,
+			updatedPayload,
+			sessionId,
+			history,
+			message,
 			trx,
 		);
 	}

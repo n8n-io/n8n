@@ -145,7 +145,9 @@ const credentialsId = computed(() =>
 const modelRequiresCredentials = computed(() => {
 	if (!selectedModel.value) return false;
 
-	return selectedModel.value?.provider !== 'n8n';
+	return (
+		selectedModel.value?.provider !== 'n8n' && selectedModel.value?.provider !== 'custom-agent'
+	);
 });
 
 const isMissingSelectedCredential = computed(() => {
