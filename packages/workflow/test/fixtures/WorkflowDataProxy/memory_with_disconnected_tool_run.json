@@ -2,7 +2,23 @@
 	"data": {
 		"resultData": {
 			"runData": {
-				"Chat Trigger": [
+				"When clicking 'Execute Workflow'": [
+					{
+						"startTime": 1234567890000,
+						"executionTime": 0,
+						"data": {
+							"main": [
+								[
+									{
+										"json": {}
+									}
+								]
+							]
+						},
+						"source": []
+					}
+				],
+				"Edit Fields1": [
 					{
 						"startTime": 1234567890000,
 						"executionTime": 0,
@@ -11,8 +27,7 @@
 								[
 									{
 										"json": {
-											"sessionId": "test-session-123",
-											"chatInput": "Hello"
+											"sessionId": "test-session-123"
 										}
 									}
 								]
@@ -36,7 +51,7 @@
 						},
 						"source": [
 							{
-								"previousNode": "Chat Trigger"
+								"previousNode": "Edit Fields1"
 							}
 						]
 					}

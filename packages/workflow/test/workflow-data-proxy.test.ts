@@ -962,16 +962,11 @@ describe('WorkflowDataProxy', () => {
 			// (via AiMemory) and an agent tool (via AiTool) where the tool is NOT connected
 			// to the parent agent. The memory node should still be able to resolve expressions
 			// that reference the Chat Trigger node.
-			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Memory Node');
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Simple Memory');
 
 			// This should not throw "No path back to node" error
-			expect(() => proxy.$('Chat Trigger').first().json.sessionId).not.toThrow();
-			expect(proxy.$('Chat Trigger').first().json.sessionId).toEqual('test-session-123');
-		});
-
-		test('should access chatInput from Chat Trigger', () => {
-			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Memory Node');
-			expect(proxy.$('Chat Trigger').first().json.chatInput).toEqual('Hello');
+			expect(() => proxy.$('Edit Fields1').first().json.sessionId).not.toThrow();
+			expect(proxy.$('Edit Fields1').first().json.sessionId).toEqual('test-session-123');
 		});
 	});
 
