@@ -165,4 +165,8 @@ export const defaultSettings: FrontendSettings = {
 	},
 	activeModules: [],
 	envFeatureFlags: {},
+	dynamicBanners: {
+		endpoint: 'https://api.n8n.io/api/banners',
+		enabled: true,
+	},
 };

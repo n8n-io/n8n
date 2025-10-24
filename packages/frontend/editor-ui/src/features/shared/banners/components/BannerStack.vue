@@ -1,4 +1,6 @@
 <script lang="ts">
+import type { BannerName } from '@n8n/api-types';
+import { useDynamicBannersStore } from '@/stores/dynamic-banners.store';
 import NonProductionLicenseBanner from './banners/NonProductionLicenseBanner.vue';
 import TrialOverBanner from './banners/TrialOverBanner.vue';
 import TrialBanner from './banners/TrialBanner.vue';
@@ -36,25 +38,42 @@ import { computed, onMounted } from 'vue';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
 
 const uiStore = useUIStore();
+const dynamicBannersStore = useDynamicBannersStore();
 
 async function updateCurrentBannerHeight() {
 	const bannerHeight = await getBannerRowHeight();
 	uiStore.updateBannersHeight(bannerHeight);
 }
 
+const getBannerForName = (bannerName: BannerName) => {
+	return N8N_BANNERS[bannerName] || dynamicBannersStore.itemsMap[bannerName];
+};
+
 const currentlyShownBanner = computed(() => {
 	void updateCurrentBannerHeight();
 	if (uiStore.bannerStack.length === 0) return null;
 	// Find the banner with the highest priority
-	let banner = N8N_BANNERS[uiStore.bannerStack[0]];
+	let currentBanner = getBannerForName(uiStore.bannerStack[0]);
+	let currentBannerName = uiStore.bannerStack[0];
 	uiStore.bannerStack.forEach((bannerName, index) => {
 		if (index === 0) return;
-		const bannerToCompare = N8N_BANNERS[bannerName];
-		if (bannerToCompare.priority > banner.priority) {
-			banner = bannerToCompare;
+		const bannerToCompare = getBannerForName(bannerName);
+		if (bannerToCompare.priority > currentBanner.priority) {
+			currentBanner = bannerToCompare;
+			currentBannerName = bannerName;
 		}
 	});
-	return banner.component;
+
+	return {
+		component: currentBanner.component,
+		props: {
+			name: currentBannerName,
+			content: currentBanner.content,
+			theme: currentBanner.theme,
+			isDismissible: currentBanner.isDismissible,
+			dismissPermanently: currentBanner.dismissPermanently,
+		},
+	};
 });
 
 onMounted(async () => {
@@ -64,6 +83,10 @@ onMounted(async () => {
 
 <template>
 	<div data-test-id="banner-stack">
-		<component :is="currentlyShownBanner" />
+		<component
+			:is="currentlyShownBanner.component"
+			v-if="currentlyShownBanner"
+			v-bind="currentlyShownBanner.props"
+		/>
 	</div>
 </template>

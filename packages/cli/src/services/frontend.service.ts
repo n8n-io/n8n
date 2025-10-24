@@ -10,6 +10,8 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { UrlService } from './url.service';
+
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -29,8 +31,6 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
-
-import { UrlService } from './url.service';
 
 @Service()
 export class FrontendService {
@@ -149,6 +149,10 @@ export class FrontendService {
 				whatsNewEnabled: this.globalConfig.versionNotifications.whatsNewEnabled,
 				whatsNewEndpoint: this.globalConfig.versionNotifications.whatsNewEndpoint,
 				infoUrl: this.globalConfig.versionNotifications.infoUrl,
+			},
+			dynamicBanners: {
+				endpoint: this.globalConfig.dynamicBanners.endpoint,
+				enabled: this.globalConfig.dynamicBanners.enabled,
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,

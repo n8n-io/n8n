@@ -41,8 +41,9 @@ vi.mock('@/composables/usePushConnection/handlers', () => ({
 	builderCreditsUpdated: vi.fn(),
 }));
 
-vi.mock('vue-router', async () => {
+vi.mock('vue-router', async (importOriginal) => {
 	return {
+		...(await importOriginal()),
 		useRouter: vi.fn().mockReturnValue({
 			push: vi.fn(),
 		}),

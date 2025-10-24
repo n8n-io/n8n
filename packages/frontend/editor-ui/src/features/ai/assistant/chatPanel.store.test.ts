@@ -21,7 +21,8 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 
 // Mock vue-router
 const mockRoute = reactive({ name: VIEWS.WORKFLOW });
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
 	useRoute: () => mockRoute,
 }));
 

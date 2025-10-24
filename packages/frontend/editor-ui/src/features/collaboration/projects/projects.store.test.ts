@@ -8,7 +8,8 @@ import { ProjectTypes } from './projects.types';
 import type { ProjectRole, Scope } from '@n8n/permissions';
 
 // Minimal router mock to satisfy useRoute usage in the store
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
 	useRoute: () => reactive({ params: {}, query: {}, path: '' }),
 }));
 
