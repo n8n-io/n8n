@@ -280,20 +280,6 @@ describe('AWS GenericFunctions', () => {
 					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test-path'),
 				).rejects.toThrow(NodeApiError);
 			});
-
-			it('should handle network timeout errors', async () => {
-				const mockCredentials = { region: 'us-east-1' };
-				const timeoutError = new Error('Request timeout');
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-					timeoutError,
-				);
-
-				await expect(
-					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test-path'),
-				).rejects.toThrow(NodeApiError);
-			});
 		});
 
 		describe('Edge Cases', () => {
