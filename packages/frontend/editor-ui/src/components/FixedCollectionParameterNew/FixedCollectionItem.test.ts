@@ -1,6 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import FixedCollectionItem, { type Props } from '@/components/FixedCollectionItem.vue';
+import FixedCollectionItem, {
+	type Props,
+} from '@/components/FixedCollectionParameterNew/FixedCollectionItem.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -87,7 +89,6 @@ describe('FixedCollectionItem.vue', () => {
 		global: {
 			stubs: {
 				ParameterInputList: { template: '<div data-test-id="parameter-input-list"></div>' },
-				Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
 			},
 		},
 	});
@@ -238,12 +239,6 @@ describe('FixedCollectionItem.vue', () => {
 			const { getByTestId } = renderComponent();
 			const parameterList = getByTestId('parameter-input-list');
 			expect(parameterList).toBeInTheDocument();
-		});
-
-		it('renders ParameterInputList inside Suspense', () => {
-			const { getByTestId } = renderComponent();
-			expect(getByTestId('suspense-stub')).toBeInTheDocument();
-			expect(getByTestId('parameter-input-list')).toBeInTheDocument();
 		});
 	});
 

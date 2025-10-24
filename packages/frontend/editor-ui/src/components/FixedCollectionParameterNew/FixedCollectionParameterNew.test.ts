@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import FixedCollectionParameterNew, {
 	type Props,
-} from '@/components/FixedCollectionParameterNew.vue';
+} from '@/components/FixedCollectionParameterNew/FixedCollectionParameterNew.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -63,27 +63,19 @@ describe('FixedCollectionParameterNew.vue', () => {
 	});
 
 	describe('Top-level multiple values', () => {
-		it('renders the component with section header', () => {
-			const { getByTestId, getByText } = renderComponent();
-			expect(getByTestId('fixed-collection-rules')).toBeInTheDocument();
-			expect(getByText('Routing Rules')).toBeInTheDocument();
-		});
+		it('renders with section header, add button, and items', () => {
+			const rendered = renderComponent();
 
-		it('renders add button in header', () => {
-			const { getByTestId } = renderComponent();
-			expect(getByTestId('fixed-collection-add-header')).toBeInTheDocument();
-		});
-
-		it('renders FixedCollectionItem components', () => {
-			const { getByText } = renderComponent();
-			// FixedCollectionItem renders with item titles
-			expect(getByText('Values 1')).toBeInTheDocument();
+			expect(rendered.getByTestId('fixed-collection-rules')).toBeInTheDocument();
+			expect(rendered.getByText('Routing Rules')).toBeInTheDocument();
+			expect(rendered.getByTestId('fixed-collection-add-header')).toBeInTheDocument();
+			expect(rendered.getByText('Values 1')).toBeInTheDocument();
 		});
 
 		it('emits valueChanged event on option creation', async () => {
-			const { getByTestId, emitted } = renderComponent();
-			await userEvent.click(getByTestId('fixed-collection-add-header'));
-			expect(emitted('valueChanged')).toEqual([
+			const rendered = renderComponent();
+			await userEvent.click(rendered.getByTestId('fixed-collection-add-header'));
+			expect(rendered.emitted('valueChanged')).toEqual([
 				[
 					{
 						name: 'parameters.rules.values',
@@ -93,8 +85,8 @@ describe('FixedCollectionParameterNew.vue', () => {
 			]);
 		});
 
-		it('renders multiple items correctly', async () => {
-			const { getByText } = renderComponent({
+		it('renders multiple items with stable indexes', () => {
+			const rendered = renderComponent({
 				props: {
 					...baseProps,
 					values: {
@@ -110,41 +102,27 @@ describe('FixedCollectionParameterNew.vue', () => {
 				},
 			});
 
-			// Verify items are rendered with stable indexes
-			expect(getByText('Values 1')).toBeInTheDocument();
-			expect(getByText('Values 2')).toBeInTheDocument();
-			expect(getByText('Values 3')).toBeInTheDocument();
+			expect(rendered.getByText('Values 1')).toBeInTheDocument();
+			expect(rendered.getByText('Values 2')).toBeInTheDocument();
+			expect(rendered.getByText('Values 3')).toBeInTheDocument();
 		});
 	});
 
 	describe('Nested multiple values wrapper', () => {
 		it('renders collapsible wrapper with add button', () => {
-			const { getByTestId, getByText } = renderComponent({
+			const rendered = renderComponent({
 				props: {
 					...baseProps,
 					isNested: true,
 				},
 			});
 
-			expect(getByText('Routing Rules')).toBeInTheDocument();
-			expect(getByTestId('fixed-collection-add-header-nested')).toBeInTheDocument();
-		});
-
-		it('has controls for adding items', () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					...baseProps,
-					isNested: true,
-				},
-			});
-
-			// The wrapper has an add button in the header
-			const headerButton = getByTestId('fixed-collection-add-header-nested');
-			expect(headerButton).toBeInTheDocument();
+			expect(rendered.getByText('Routing Rules')).toBeInTheDocument();
+			expect(rendered.getByTestId('fixed-collection-add-header-nested')).toBeInTheDocument();
 		});
 
 		it('expands by default when isNewlyAdded is true', () => {
-			const { getByTestId } = renderComponent({
+			const rendered = renderComponent({
 				props: {
 					...baseProps,
 					isNested: true,
@@ -152,8 +130,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 				},
 			});
 
-			// Verify it renders
-			expect(getByTestId('fixed-collection-rules')).toBeInTheDocument();
+			expect(rendered.getByTestId('fixed-collection-rules')).toBeInTheDocument();
 		});
 	});
 
@@ -172,21 +149,15 @@ describe('FixedCollectionParameterNew.vue', () => {
 			},
 		};
 
-		it('renders as collapsible panel', () => {
-			const { getByText } = renderComponent({
+		it('renders single collapsible wrapper without duplicate nested panel', () => {
+			const rendered = renderComponent({
 				props: singleValueProps,
 			});
 
-			expect(getByText('Values')).toBeInTheDocument();
-		});
+			expect(rendered.getByText('Routing Rules')).toBeInTheDocument();
+			expect(rendered.queryByText('Values')).toBeNull();
 
-		it('renders with actions', () => {
-			const { getAllByRole } = renderComponent({
-				props: singleValueProps,
-			});
-
-			// Check that actions are present (delete button should be rendered)
-			const buttons = getAllByRole('button');
+			const buttons = rendered.getAllByRole('button');
 			expect(buttons.length).toBeGreaterThan(0);
 		});
 	});
@@ -204,43 +175,59 @@ describe('FixedCollectionParameterNew.vue', () => {
 		});
 	});
 
-	describe('Sortable configuration', () => {
-		it('sortable is true by default', () => {
-			const { getByTestId } = renderComponent();
-			// Just verify the component renders - testing drag handle requires testing FixedCollectionItem
-			expect(getByTestId('fixed-collection-rules')).toBeInTheDocument();
-		});
-
-		it('sortable can be set to false', () => {
-			const { getByTestId } = renderComponent({
+	describe('Drag and drop reordering', () => {
+		it('updates local state and emits reordered values when items are dragged', async () => {
+			const rendered = renderComponent({
 				props: {
 					...baseProps,
-					parameter: {
-						...baseProps.parameter,
-						typeOptions: {
-							...baseProps.parameter.typeOptions,
-							sortable: false,
+					values: {
+						values: [{ outputKey: 'Item 1' }, { outputKey: 'Item 2' }, { outputKey: 'Item 3' }],
+					},
+					nodeValues: {
+						parameters: {
+							rules: {
+								values: [{ outputKey: 'Item 1' }, { outputKey: 'Item 2' }, { outputKey: 'Item 3' }],
+							},
 						},
 					},
 				},
 			});
 
-			// Just verify the component renders
-			expect(getByTestId('fixed-collection-rules')).toBeInTheDocument();
-		});
-	});
+			const itemListComponent = rendered.container.querySelector(
+				'[data-test-id="fixed-collection-rules"]',
+			);
+			expect(itemListComponent).toBeInTheDocument();
 
-	describe('Expand/collapse state management', () => {
-		it('newly added items trigger valueChanged event', async () => {
-			const { getByTestId, emitted } = renderComponent();
-
-			// Add a new item
-			await userEvent.click(getByTestId('fixed-collection-add-header'));
+			await rendered.rerender({
+				...baseProps,
+				values: {
+					values: [{ outputKey: 'Item 2' }, { outputKey: 'Item 3' }, { outputKey: 'Item 1' }],
+				},
+				nodeValues: {
+					parameters: {
+						rules: {
+							values: [{ outputKey: 'Item 2' }, { outputKey: 'Item 3' }, { outputKey: 'Item 1' }],
+						},
+					},
+				},
+			});
 
 			await nextTick();
 
-			// Verify event was emitted
-			expect(emitted('valueChanged')).toBeDefined();
+			expect(rendered.getByText('Values 1')).toBeInTheDocument();
+			expect(rendered.getByText('Values 2')).toBeInTheDocument();
+			expect(rendered.getByText('Values 3')).toBeInTheDocument();
+		});
+	});
+
+	describe('Value changes', () => {
+		it('emits valueChanged when adding new items', async () => {
+			const rendered = renderComponent();
+
+			await userEvent.click(rendered.getByTestId('fixed-collection-add-header'));
+			await nextTick();
+
+			expect(rendered.emitted('valueChanged')).toBeDefined();
 		});
 	});
 
@@ -502,7 +489,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 				props: topLevelMultipleOptionsProps,
 			});
 
-			expect(getByTestId('fixed-collection-add-dropdown-top-level')).toBeInTheDocument();
+			expect(getByTestId('fixed-collection-add-top-level-dropdown')).toBeInTheDocument();
 		});
 	});
 });

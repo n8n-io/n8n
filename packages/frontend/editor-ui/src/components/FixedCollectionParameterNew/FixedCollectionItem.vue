@@ -5,7 +5,7 @@ import type { IUpdateInformation } from '@/Interface';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCollapsiblePanel, N8nHeaderAction } from '@n8n/design-system';
-import ParameterInputList from './ParameterInputList.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
 
@@ -50,27 +50,17 @@ const { resolvedExpression } = useResolvedExpression({
 	}),
 });
 
+const isValidResolvedTitle = (resolved: unknown): resolved is string =>
+	!!resolved && resolved !== 'undefined' && resolved !== 'null' && typeof resolved === 'string';
+
 const itemTitle = computed(() => {
-	if (!props.titleTemplate) {
-		return defaultTitle.value;
-	}
-
+	if (!props.titleTemplate) return defaultTitle.value;
 	const resolved = resolvedExpression.value;
-	if (
-		!resolved ||
-		resolved === 'undefined' ||
-		resolved === 'null' ||
-		typeof resolved !== 'string'
-	) {
-		return defaultTitle.value;
-	}
-
-	return resolved;
+	return isValidResolvedTitle(resolved) ? resolved : defaultTitle.value;
 });
 
-const handleValueChanged = (parameterData: IUpdateInformation) => {
+const handleValueChanged = (parameterData: IUpdateInformation) =>
 	emit('valueChanged', parameterData);
-};
 </script>
 
 <template>
@@ -103,18 +93,16 @@ const handleValueChanged = (parameterData: IUpdateInformation) => {
 			/>
 		</template>
 
-		<Suspense>
-			<ParameterInputList
-				hide-delete
-				is-nested
-				:parameters="property.values"
-				:node-values="nodeValues"
-				:path="propertyPath"
-				:is-read-only="isReadOnly"
-				:remove-first-parameter-margin="isCollectionOverhaulEnabled"
-				:remove-last-parameter-margin="isCollectionOverhaulEnabled"
-				@value-changed="handleValueChanged"
-			/>
-		</Suspense>
+		<ParameterInputList
+			hide-delete
+			is-nested
+			:parameters="property.values"
+			:node-values="nodeValues"
+			:path="propertyPath"
+			:is-read-only="isReadOnly"
+			:remove-first-parameter-margin="isCollectionOverhaulEnabled"
+			:remove-last-parameter-margin="isCollectionOverhaulEnabled"
+			@value-changed="handleValueChanged"
+		/>
 	</N8nCollapsiblePanel>
 </template>
