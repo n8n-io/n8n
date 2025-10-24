@@ -19,7 +19,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	save: [];
+	createAgent: [agent: ChatHubConversationModel];
 	close: [];
 }>();
 
@@ -150,14 +150,15 @@ async function onSave() {
 				type: 'success',
 			});
 		} else {
-			await chatStore.createAgent(payload);
+			const agent = await chatStore.createAgent(payload);
+			emit('createAgent', agent);
+
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.create'),
 				type: 'success',
 			});
 		}
 
-		emit('save');
 		modalBus.value.emit('close');
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';

@@ -433,13 +433,13 @@ async function handleEditAgent(agentId: string) {
 	}
 }
 
-function handleCreateAgent() {
+function openNewAgentCreator() {
 	chatStore.currentEditingAgent = null;
 	editingAgentId.value = undefined;
 	uiStore.openModal('agentEditor');
 }
 
-function handleAgentEditorClose() {
+function closeAgentEditor() {
 	editingAgentId.value = undefined;
 }
 </script>
@@ -460,14 +460,15 @@ function handleAgentEditorClose() {
 			:credentials="mergedCredentials"
 			@select-model="handleSelectModel"
 			@edit-agent="handleEditAgent"
-			@create-agent="handleCreateAgent"
+			@create-agent="openNewAgentCreator"
 			@select-credential="handleSelectCredentials"
 		/>
 
 		<AgentEditorModal
 			:agent-id="editingAgentId"
 			:credentials="mergedCredentials"
-			@close="handleAgentEditorClose"
+			@create-agent="handleSelectModel"
+			@close="closeAgentEditor"
 		/>
 
 		<N8nScrollArea

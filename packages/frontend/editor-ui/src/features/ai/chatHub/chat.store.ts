@@ -550,16 +550,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return agent;
 	}
 
-	async function createAgent(payload: ChatHubCreateAgentRequest): Promise<ChatHubAgentDto> {
+	async function createAgent(
+		payload: ChatHubCreateAgentRequest,
+	): Promise<ChatHubConversationModel> {
 		const agent = await createAgentApi(rootStore.restApiContext, payload);
 		agents.value.push(agent);
-		models.value?.['custom-agent'].models.push({
-			provider: 'custom-agent',
+		const model = {
+			provider: 'custom-agent' as const,
 			agentId: agent.id,
 			name: agent.name,
-		});
+		};
+		models.value?.['custom-agent'].models.push(model);
 
-		return agent;
+		return model;
 	}
 
 	async function updateAgent(
