@@ -331,122 +331,127 @@ describe('AuthService', () => {
 				expect(res.status).not.toHaveBeenCalled();
 			});
 		});
-	});
 
-	describe('createOptionalAuthMiddleware', () => {
-		const mockReq = () =>
-			mock<AuthenticatedRequest>({
-				cookies: {},
-				user: undefined,
-				browserId,
+		describe('allowUnauthenticated', () => {
+			it('should populate the user info if the token is valid', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBe(user);
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
 			});
-		const res = mock<Response>();
-		const next = jest.fn() as NextFunction;
 
-		beforeEach(() => {
-			res.status.mockReturnThis();
-		});
+			it('should clear the cookie if the token is expired', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
-		it('should populate the user info if the token is valid', async () => {
-			const req = mockReq();
-			req.cookies[AUTH_COOKIE_NAME] = validToken;
-			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(user);
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
 
-			const middleware = authService.createOptionalAuthMiddleware();
+				await middleware(req, res, next);
 
-			await middleware(req, res, next);
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
 
-			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-			expect(userRepository.findOne).toHaveBeenCalled();
-			expect(req.user).toBe(user);
-			expect(next).toHaveBeenCalled();
-			expect(res.clearCookie).not.toHaveBeenCalled();
-		});
+			it('should clear the cookie if the token has been invalidated', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
 
-		it('should clear the cookie if the token is expired', async () => {
-			const req = mockReq();
-			req.cookies[AUTH_COOKIE_NAME] = validToken;
-			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
 
-			const middleware = authService.createOptionalAuthMiddleware();
+				await middleware(req, res, next);
 
-			await middleware(req, res, next);
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
 
-			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-			expect(userRepository.findOne).not.toHaveBeenCalled();
-			expect(req.user).toBeUndefined();
-			expect(next).toHaveBeenCalled();
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
-		});
+			it('should not populate the user info if the token is invalid', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = 'invalid-token';
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 
-		it('should clear the cookie if the token has been invalidated', async () => {
-			const req = mockReq();
-			req.cookies[AUTH_COOKIE_NAME] = validToken;
-			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
 
-			const middleware = authService.createOptionalAuthMiddleware();
+				await middleware(req, res, next);
 
-			await middleware(req, res, next);
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
 
-			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-			expect(userRepository.findOne).not.toHaveBeenCalled();
-			expect(req.user).toBeUndefined();
-			expect(next).toHaveBeenCalled();
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
-		});
+			it('should not populate the user info if the token is not set', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
 
-		it('should not populate the user info if the token is invalid', async () => {
-			const req = mockReq();
-			req.cookies[AUTH_COOKIE_NAME] = 'invalid-token';
-			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
 
-			const middleware = authService.createOptionalAuthMiddleware();
+				await middleware(req, res, next);
 
-			await middleware(req, res, next);
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
+			});
 
-			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-			expect(userRepository.findOne).not.toHaveBeenCalled();
-			expect(req.user).toBeUndefined();
-			expect(next).toHaveBeenCalled();
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
-		});
+			it('should clear the cookie if MFA is enforced and user has MFA but token was not created with MFA', async () => {
+				const userWithMfa = mock<User>({ ...userData, mfaEnabled: true, mfaSecret: 'secret' });
 
-		it('should not populate the user info if the token is not set', async () => {
-			const req = mockReq();
-			req.cookies[AUTH_COOKIE_NAME] = undefined;
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
 
-			const middleware = authService.createOptionalAuthMiddleware();
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(userWithMfa);
+				mfaService.isMFAEnforced.mockReturnValue(true);
 
-			await middleware(req, res, next);
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
 
-			expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
-			expect(userRepository.findOne).not.toHaveBeenCalled();
-			expect(req.user).toBeUndefined();
-			expect(next).toHaveBeenCalled();
-			expect(res.clearCookie).not.toHaveBeenCalled();
-		});
+				await middleware(req, res, next);
 
-		it('should clear the cookie if MFA is enforced and user has MFA but token was not created with MFA', async () => {
-			const userWithMfa = mock<User>({ ...userData, mfaEnabled: true, mfaSecret: 'secret' });
-
-			const req = mockReq();
-			req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
-
-			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(userWithMfa);
-			mfaService.isMFAEnforced.mockReturnValue(true);
-
-			const middleware = authService.createOptionalAuthMiddleware();
-
-			await middleware(req, res, next);
-
-			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-			expect(userRepository.findOne).toHaveBeenCalled();
-			expect(req.user).toBeUndefined();
-			expect(next).toHaveBeenCalled();
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
 		});
 	});
 
