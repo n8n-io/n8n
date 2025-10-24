@@ -79,7 +79,7 @@ const mockSettings = mock<FrontendSettings>({
 
 describe('settings.store', () => {
 	beforeEach(() => {
-		vi.restoreAllMocks();
+		vi.clearAllMocks();
 		setActivePinia(createPinia());
 	});
 
