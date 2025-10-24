@@ -15,6 +15,7 @@ import type { ExecutionRequest } from '../../../types';
 import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 
 export = {
 	deleteExecution: [
@@ -222,15 +223,28 @@ export = {
 				});
 			}
 
-			const stopResult = await Container.get(ExecutionService).stop(id, sharedWorkflowsIds);
-			const updatedExecution = {
-				...execution,
-				status: stopResult.status,
-				finished: stopResult.finished,
-				stoppedAt: stopResult.stoppedAt,
-			};
+			try {
+				const stopResult = await Container.get(ExecutionService).stop(id, sharedWorkflowsIds);
+				const updatedExecution = {
+					...execution,
+					status: stopResult.status,
+					finished: stopResult.finished,
+					stoppedAt: stopResult.stoppedAt,
+				};
 
-			return res.json(replaceCircularReferences(updatedExecution));
+				return res.json(replaceCircularReferences(updatedExecution));
+			} catch (error) {
+				if (
+					error instanceof QueuedExecutionRetryError ||
+					error instanceof AbortedExecutionRetryError
+				) {
+					return res.status(409).json({ message: error.message });
+				} else if (error instanceof MissingExecutionStopError) {
+					return res.status(404).json({ message: error.message });
+				} else {
+					throw error;
+				}
+			}
 		},
 	],
 };
