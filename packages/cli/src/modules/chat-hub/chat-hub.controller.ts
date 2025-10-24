@@ -10,6 +10,7 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	type ChatHubProvider,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -221,13 +222,15 @@ export class ChatHubController {
 	@GlobalScope('chatHub:message')
 	async updateConversation(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Body payload: ChatHubUpdateConversationRequest,
-	): Promise<void> {
-		await this.chatService.updateSession(req.user.id, sessionId, payload);
+	): Promise<ChatHubConversationResponse> {
+		if (Object.keys(payload).length > 0) {
+			await this.chatService.updateSession(req.user.id, sessionId, payload);
+		}
 
-		res.status(204).send();
+		return await this.chatService.getConversation(req.user.id, sessionId);
 	}
 
 	@Delete('/conversations/:sessionId')

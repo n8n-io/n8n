@@ -27,6 +27,7 @@ export {
 	type ChatHubMessageDto,
 	type ChatHubSessionDto,
 	type ChatHubConversationDto,
+	type ChatHubConversationResponse,
 	type ChatHubConversationsResponse,
 	type ChatHubAgentDto,
 	ChatHubCreateAgentRequest,
