@@ -222,9 +222,15 @@ export = {
 				});
 			}
 
-			const result = await Container.get(ExecutionService).stop(id, sharedWorkflowsIds);
+			const stopResult = await Container.get(ExecutionService).stop(id, sharedWorkflowsIds);
+			const updatedExecution = {
+				...execution,
+				status: stopResult.status,
+				finished: stopResult.finished,
+				stoppedAt: stopResult.stoppedAt,
+			};
 
-			return res.json({ result });
+			return res.json(replaceCircularReferences(updatedExecution));
 		},
 	],
 };
