@@ -286,6 +286,7 @@ const checkConditions = (
 	conditions: Array<NodeParameterValue | DisplayCondition>,
 	actualValues: NodeParameterValue[],
 ) => {
+	if (!actualValues || actualValues.length === 0) return false;
 	return conditions.some((condition) => {
 		if (
 			condition &&
@@ -303,7 +304,10 @@ const checkConditions = (
 					return !isEqual(propertyValue, targetValue);
 				}
 				if (key === 'gte') {
-					return (propertyValue as number) >= targetValue;
+					return typeof propertyValue === 'number' && propertyValue >= targetValue;
+				}
+				if (key === 'lte' || key === 'gt' || key === 'lt') {
+					if (typeof propertyValue !== 'number') return false;
 				}
 				if (key === 'lte') {
 					return (propertyValue as number) <= targetValue;
@@ -319,17 +323,21 @@ const checkConditions = (
 					return (propertyValue as number) >= from && (propertyValue as number) <= to;
 				}
 				if (key === 'includes') {
-					return (propertyValue as string).includes(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.includes(targetValue);
 				}
 				if (key === 'startsWith') {
-					return (propertyValue as string).startsWith(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.startsWith(targetValue);
 				}
 				if (key === 'endsWith') {
-					return (propertyValue as string).endsWith(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.endsWith(targetValue);
 				}
 				if (key === 'regex') {
-					return new RegExp(targetValue as string).test(propertyValue as string);
+					return (
+						typeof propertyValue === 'string' &&
+						new RegExp(targetValue as string).test(propertyValue)
+					);
 				}
+
 				if (key === 'exists') {
 					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
 				}
@@ -389,13 +397,9 @@ export function displayParameter(
 	if (hide) {
 		// Any of the defined hide rules have to match to hide the parameter
 		for (const propertyName of Object.keys(hide)) {
-			const values = getPropertyValues(
-				nodeValues,
-				propertyName,
-				node,
-				nodeTypeDescription,
-				nodeValuesRoot,
-			);
+			const values =
+				getPropertyValues(nodeValues, propertyName, node, nodeTypeDescription, nodeValuesRoot) ||
+				[];
 
 			if (values.length !== 0 && checkConditions(hide[propertyName]!, values)) {
 				return false;
@@ -416,26 +420,29 @@ export function displayParameter(
  * @param {string} path The path to the property
  */
 export function displayParameterPath(
-	nodeValues: INodeParameters,
+	nodeValues: INodeParameters | undefined,
 	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
-	let resolvedNodeValues = nodeValues;
-	if (path !== '') {
-		resolvedNodeValues = get(nodeValues, path) as INodeParameters;
+	const safeNodeValues: INodeParameters = nodeValues ?? {};
+	function isNodeParameters(value: unknown): value is INodeParameters {
+		return typeof value === 'object' && value !== null && !Array.isArray(value);
 	}
+	const pathValue = path ? get(safeNodeValues, path) : safeNodeValues;
+	const resolvedNodeValues: INodeParameters = isNodeParameters(pathValue) ? pathValue : {};
 
 	// Get the root parameter data
-	let nodeValuesRoot = nodeValues ?? {};
-	if (path && path.split('.')[0] === 'parameters') {
-		nodeValuesRoot = (get(nodeValues, 'parameters') as INodeParameters) ?? {};
+	let nodeValuesRoot: INodeParameters = {};
+	if (path?.split('.')[0] === 'parameters') {
+		const parameters = get(safeNodeValues, 'parameters');
+		nodeValuesRoot = isNodeParameters(parameters) ? parameters : {};
+	} else {
+		nodeValuesRoot = isNodeParameters(safeNodeValues) ? safeNodeValues : {};
 	}
-
 	if (!parameter) return false;
-
 	return displayParameter(
 		resolvedNodeValues,
 		parameter,

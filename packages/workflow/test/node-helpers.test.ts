@@ -22,6 +22,7 @@ import {
 	makeNodeName,
 	isTool,
 	getNodeWebhookPath,
+	displayParameterPath,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -4881,6 +4882,81 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(expected);
 			});
 		}
+	});
+
+	describe('displayParameterPath', () => {
+		it('should return true when parameter has no displayOptions', () => {
+			const nodeValues: INodeParameters = { key: 'value' };
+			const parameter: INodeProperties = {
+				name: 'param1',
+				displayName: 'Param 1',
+				type: 'string',
+				default: '',
+			};
+			const result = displayParameterPath(nodeValues, parameter, '', null, null);
+			expect(result).toBe(true);
+		});
+
+		it('should handle nested parameter path safely', () => {
+			const nodeValues: INodeParameters = {
+				parameters: {
+					group: {
+						field1: 'B',
+						field2: 'B',
+					},
+				},
+			};
+			const parameter: INodeProperties = {
+				name: 'field2',
+				displayName: 'Field 2',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						field1: ['B'],
+					},
+				},
+			};
+			const result = displayParameterPath(nodeValues, parameter, 'parameters.group', null, null);
+			expect(result).toBe(true);
+		});
+
+		it('should handle undefined nodeValues gracefully', () => {
+			const parameter: INodeProperties = {
+				name: 'field2',
+				displayName: 'Field 2',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						field1: ['B'],
+					},
+				},
+			};
+			const result = displayParameterPath(undefined, parameter, '', null, null);
+			expect(result).toBe(false);
+		});
+
+		it('should return false when show condition not met', () => {
+			const nodeValues: INodeParameters = {
+				parameters: {
+					field1: 'A',
+				},
+			};
+			const parameter: INodeProperties = {
+				name: 'field2',
+				displayName: 'Field 2',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						field1: ['B'],
+					},
+				},
+			};
+			const result = displayParameterPath(nodeValues, parameter, 'parameters', null, null);
+			expect(result).toBe(false);
+		});
 	});
 
 	describe('makeDescription', () => {
