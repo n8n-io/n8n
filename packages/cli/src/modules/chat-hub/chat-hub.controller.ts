@@ -5,7 +5,7 @@ import {
 	ChatHubConversationResponse,
 	ChatHubEditMessageRequest,
 	ChatHubRegenerateMessageRequest,
-	ChatHubChangeConversationTitleRequest,
+	ChatHubUpdateConversationRequest,
 	ChatSessionId,
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
@@ -13,7 +13,16 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Post, Body, GlobalScope, Get, Delete, Param } from '@n8n/decorators';
+import {
+	RestController,
+	Post,
+	Body,
+	GlobalScope,
+	Get,
+	Delete,
+	Param,
+	Patch,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
@@ -208,15 +217,17 @@ export class ChatHubController {
 		res.status(204).send();
 	}
 
-	@Post('/conversations/:sessionId/rename')
+	@Patch('/conversations/:sessionId')
 	@GlobalScope('chatHub:message')
-	async updateConversationTitle(
+	async updateConversation(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
-		@Body payload: ChatHubChangeConversationTitleRequest,
+		@Body payload: ChatHubUpdateConversationRequest,
 	): Promise<ChatHubConversationResponse> {
-		await this.chatService.updateSessionTitle(req.user.id, sessionId, payload.title);
+		if (payload.title !== undefined) {
+			await this.chatService.updateSessionTitle(req.user.id, sessionId, payload.title);
+		}
 
 		return await this.chatService.getConversation(req.user.id, sessionId);
 	}

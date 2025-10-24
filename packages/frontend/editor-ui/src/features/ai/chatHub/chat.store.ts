@@ -499,12 +499,26 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
+	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
+		sessions.value = sessions.value.map((session) =>
+			session.id === sessionId
+				? {
+						...session,
+						...toUpdate,
+					}
+				: session,
+		);
+	}
+
 	async function renameSession(sessionId: ChatSessionId, title: string) {
 		const updated = await updateConversationTitleApi(rootStore.restApiContext, sessionId, title);
 
-		sessions.value = sessions.value.map((session) =>
-			session.id === sessionId ? updated.session : session,
-		);
+		updateSession(sessionId, updated.session);
+	}
+
+	function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
+		// todo call api
+		updateSession(sessionId, model);
 	}
 
 	async function deleteSession(sessionId: ChatSessionId) {
@@ -565,6 +579,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		isResponding,
 		streamingMessageId,
 		fetchChatModels,
+		updateSessionModel,
 		sendMessage,
 		editMessage,
 		regenerateMessage,

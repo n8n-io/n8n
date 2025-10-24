@@ -101,15 +101,26 @@ export const fetchConversationsApi = async (
 	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
 };
 
+export const updateConversationApi = async (
+	context: IRestApiContext,
+	sessionId: ChatSessionId,
+	updates: { title?: string },
+): Promise<ChatHubConversationResponse> => {
+	const apiEndpoint = `/chat/conversations/${sessionId}`;
+	return await makeRestApiRequest<ChatHubConversationResponse>(
+		context,
+		'PATCH',
+		apiEndpoint,
+		updates,
+	);
+};
+
 export const updateConversationTitleApi = async (
 	context: IRestApiContext,
 	sessionId: ChatSessionId,
 	title: string,
 ): Promise<ChatHubConversationResponse> => {
-	const apiEndpoint = `/chat/conversations/${sessionId}/rename`;
-	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'POST', apiEndpoint, {
-		title,
-	});
+	return await updateConversationApi(context, sessionId, { title });
 };
 
 export const deleteConversationApi = async (

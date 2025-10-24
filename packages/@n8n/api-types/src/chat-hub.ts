@@ -115,8 +115,8 @@ export class ChatHubEditMessageRequest extends Z.class({
 	),
 }) {}
 
-export class ChatHubChangeConversationTitleRequest extends Z.class({
-	title: z.string(),
+export class ChatHubUpdateConversationRequest extends Z.class({
+	title: z.string().optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';

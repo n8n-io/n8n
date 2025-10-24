@@ -65,7 +65,7 @@ const currentConversationTitle = computed(() => currentConversation.value?.title
 
 const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
 
-const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
+const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
 	{
@@ -83,6 +83,18 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
+
+const selectedModel = computed<ChatHubConversationModel | null>(() => {
+	if (currentConversation.value?.model && currentConversation.value?.provider) {
+		return {
+			provider: currentConversation.value.provider,
+			model: currentConversation.value.model,
+			name: currentConversation.value.model,
+		} as ChatHubConversationModel;
+	}
+
+	return defaultModel.value;
+});
 
 const selectedCredentials = useLocalStorage<CredentialsMap>(
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(usersStore.currentUserId ?? 'anonymous'),
@@ -200,10 +212,18 @@ watch(
 	mergedCredentials,
 	async (credentials) => {
 		const models = await chatStore.fetchChatModels(credentials);
-		const selected = selectedModel.value;
+		if (!models) {
+			useToast().showError(undefined, 'Could not load models with updated credentials');
+			return;
+		}
 
+		const selected = selectedModel.value;
 		if (selected === null) {
-			selectedModel.value = findOneFromModelsResponse(models) ?? null;
+			const model = findOneFromModelsResponse(models) ?? null;
+
+			if (model) {
+				handleSelectModel(model);
+			}
 		}
 
 		initialization.value.modelsFetched = true;
@@ -348,7 +368,11 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 }
 
 function handleSelectModel(selection: ChatHubConversationModel) {
-	selectedModel.value = selection;
+	if (currentConversation.value) {
+		chatStore.updateSessionModel(sessionId.value, selection);
+	} else {
+		defaultModel.value = selection;
+	}
 }
 
 function handleSelectCredentials(provider: ChatHubProvider, id: string) {
