@@ -1,9 +1,18 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
+import * as usageApi from '@n8n/rest-api-client/api/usage';
+
+vi.mock('@n8n/rest-api-client/api/usage');
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({
+		restApiContext: { baseUrl: '/', pushRef: '' },
+	}),
+}));
 
 describe('Usage and plan store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		vi.clearAllMocks();
 	});
 
 	test.each([
@@ -39,4 +48,46 @@ describe('Usage and plan store', () => {
 			expect(store.isCloseToLimit).toBe(expectation);
 		},
 	);
+
+	describe('activateLicense', () => {
+		it('should call activateLicenseKey with eulaUri when provided', async () => {
+			const store = useUsageStore();
+			const mockData = {
+				usage: {
+					activeWorkflowTriggers: { limit: 10, value: 5, warningThreshold: 0.8 },
+					workflowsHavingEvaluations: { value: 0, limit: 0 },
+				},
+				license: { planId: 'pro', planName: 'Pro' },
+			};
+
+			vi.mocked(usageApi.activateLicenseKey).mockResolvedValue(mockData);
+
+			await store.activateLicense('test-key', 'https://example.com/eula');
+
+			expect(usageApi.activateLicenseKey).toHaveBeenCalledWith(expect.anything(), {
+				activationKey: 'test-key',
+				eulaUri: 'https://example.com/eula',
+			});
+			expect(store.planName).toBe('Pro');
+		});
+
+		it('should call activateLicenseKey without eulaUri when not provided', async () => {
+			const store = useUsageStore();
+			const mockData = {
+				usage: {
+					activeWorkflowTriggers: { limit: 10, value: 5, warningThreshold: 0.8 },
+					workflowsHavingEvaluations: { value: 0, limit: 0 },
+				},
+				license: { planId: 'pro', planName: 'Pro' },
+			};
+
+			vi.mocked(usageApi.activateLicenseKey).mockResolvedValue(mockData);
+
+			await store.activateLicense('test-key');
+
+			expect(usageApi.activateLicenseKey).toHaveBeenCalledWith(expect.anything(), {
+				activationKey: 'test-key',
+			});
+		});
+	});
 });
