@@ -3,7 +3,7 @@ import { test, expect } from '../../fixtures/base';
 const OWNER_EMAIL = 'nathan@n8n.io';
 const ADMIN_EMAIL = 'admin@n8n.io';
 const MEMBER_0_EMAIL = 'member@n8n.io'; // U2
-const MEMBER_1_EMAIL = 'member-two@n8n.io'; // U3
+const MEMBER_1_EMAIL = 'member2@n8n.io'; // U3
 
 const TEST_API_KEY = '1234567890';
 const TEST_ACCESS_TOKEN = '1234567890';
