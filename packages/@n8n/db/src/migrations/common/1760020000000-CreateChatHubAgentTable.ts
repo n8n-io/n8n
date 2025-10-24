@@ -23,7 +23,6 @@ export class CreateChatHubAgentTable1760020000000 implements ReversibleMigration
 				column('model')
 					.varchar(64)
 					.comment('Model name used at the respective Model node, ie. "gpt-4"'),
-				column('workflowId').varchar(36),
 			)
 			.withForeignKey('ownerId', {
 				tableName: table.user,

@@ -1,5 +1,5 @@
 import { ChatHubProvider } from '@n8n/api-types';
-import { WithTimestamps, User, CredentialsEntity, WorkflowEntity } from '@n8n/db';
+import { WithTimestamps, User, CredentialsEntity } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'chat_hub_agents' })
@@ -62,17 +62,4 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 64, nullable: true })
 	model: string | null;
-
-	/*
-	 * ID of the custom n8n agent workflow to use (if applicable)
-	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	workflowId: string | null;
-
-	/**
-	 * Custom n8n agent workflow to use (if applicable)
-	 */
-	@ManyToOne('WorkflowEntity', { onDelete: 'SET NULL', nullable: true })
-	@JoinColumn({ name: 'workflowId' })
-	workflow?: WorkflowEntity | null;
 }

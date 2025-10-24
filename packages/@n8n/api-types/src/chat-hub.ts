@@ -181,7 +181,6 @@ export interface ChatHubAgentDto {
 	credentialId: string | null;
 	provider: ChatHubProvider | null;
 	model: string | null;
-	workflowId: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -193,7 +192,6 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	credentialId: z.string().optional(),
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	workflowId: z.string().uuid().optional(),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
@@ -203,5 +201,4 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	credentialId: z.string().optional(),
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	workflowId: z.string().uuid().optional(),
 }) {}
