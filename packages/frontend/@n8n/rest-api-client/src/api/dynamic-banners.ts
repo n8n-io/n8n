@@ -6,6 +6,7 @@ export type DynamicBanner = {
 	id: BannerName;
 	content: string;
 	isDismissible: boolean;
+	dismissPermanently: boolean | null;
 	theme: 'info' | 'warning' | 'danger';
 	priority: number;
 };

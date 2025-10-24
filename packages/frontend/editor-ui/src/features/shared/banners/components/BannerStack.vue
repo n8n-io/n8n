@@ -71,6 +71,7 @@ const currentlyShownBanner = computed(() => {
 			content: currentBanner.content,
 			theme: currentBanner.theme,
 			isDismissible: currentBanner.isDismissible,
+			dismissPermanently: currentBanner.dismissPermanently,
 		},
 	};
 });

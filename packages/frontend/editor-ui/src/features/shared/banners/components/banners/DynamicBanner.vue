@@ -7,6 +7,7 @@ interface Props {
 	content: string;
 	theme: 'info' | 'warning' | 'danger';
 	isDismissible: boolean;
+	dismissPermanently: boolean | null;
 }
 
 const props = defineProps<Props>();
@@ -17,7 +18,7 @@ const props = defineProps<Props>();
 		:name="props.name"
 		:theme="props.theme"
 		:dismissible="props.isDismissible"
-		:dismiss-permanently="true"
+		:dismiss-permanently="props.dismissPermanently ?? false"
 	>
 		<template #mainContent>
 			<N8nMarkdown :content="props.content" :class="$style.markdown" />

@@ -9,5 +9,6 @@ export type N8nBanners = {
 		content?: string;
 		theme?: CalloutTheme;
 		isDismissible?: boolean;
+		dismissPermanently?: boolean;
 	};
 };
