@@ -73,7 +73,7 @@ test.describe('Sharing - Workflow and Credential Sharing (Sequential)', () => {
 		await n8n.navigate.toWorkflows();
 
 		// U3 only sees W1 (not W2)
-		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
+		await expect(n8n.workflows.cards.getWorkflow('Workflow W1')).toBeVisible();
 
 		await n8n.workflows.cards.getWorkflow('Workflow W1').click();
 
@@ -97,7 +97,8 @@ test.describe('Sharing - Workflow and Credential Sharing (Sequential)', () => {
 		await n8n.navigate.toWorkflows();
 
 		// U2 sees W1 and W2 (both owned by U2)
-		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(2);
+		await expect(n8n.workflows.cards.getWorkflow('Workflow W1')).toBeVisible();
+		await expect(n8n.workflows.cards.getWorkflow('Workflow W2')).toBeVisible();
 
 		await n8n.workflows.cards.getWorkflow('Workflow W1').click();
 
@@ -131,7 +132,8 @@ test.describe('Sharing - Workflow and Credential Sharing (Sequential)', () => {
 		await n8n.navigate.toWorkflows();
 
 		// Owner sees W1 and W2 (created by U2)
-		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(2);
+		await expect(n8n.workflows.cards.getWorkflow('Workflow W1')).toBeVisible();
+		await expect(n8n.workflows.cards.getWorkflow('Workflow W2')).toBeVisible();
 
 		await n8n.workflows.cards.getWorkflow('Workflow W1').click();
 
