@@ -189,15 +189,17 @@ _Nothing currently in progress - all implementation completed!_
 
 ### Backend
 - `/app/packages/@n8n/api-types/src/dto/ai/ai-build-request.dto.ts` - API DTO ✅ Updated
-- `/app/packages/cli/src/controllers/ai.controller.ts` - Controller ✅ Updated
+- `/app/packages/cli/src/controllers/ai.controller.ts` - Controller ✅ Updated **(New endpoint added)** 🆕
 - `/app/packages/cli/src/services/ai-workflow-builder.service.ts` - Service Wrapper ✅ Ready
 - `/app/packages/@n8n/ai-workflow-builder.ee/src/ai-workflow-builder-agent.service.ts` - Core Service ✅ Ready
-- `/app/packages/@n8n/ai-workflow-builder.ee/src/types/multi-modal.ts` - Types ✅
-- `/app/packages/@n8n/ai-workflow-builder.ee/src/multi-modal-config.ts` - Config ✅
+- `/app/packages/@n8n/ai-workflow-builder.ee/src/types/multi-modal.ts` - Types ✅ **(OpenRouter added)** 🆕
+- `/app/packages/@n8n/ai-workflow-builder.ee/src/multi-modal-config.ts` - Config ✅ **(OpenRouter added)** 🆕
 - `/app/packages/@n8n/ai-workflow-builder.ee/src/utils/multi-modal-helper.ts` - Helpers ✅
+- `/app/packages/@n8n/ai-workflow-builder.ee/src/services/provider-models.service.ts` - **Dynamic Model Fetching** 🆕 ✅
 
 ### Frontend
-- `/app/packages/frontend/editor-ui/src/features/ai/assistant/components/MultiModalConfigModal.vue` - Modal UI ✅ Created
+- `/app/packages/frontend/editor-ui/src/features/ai/assistant/components/MultiModalConfigModal.vue` - Modal UI ✅ **(Dynamic models)** 🆕
+- `/app/packages/frontend/editor-ui/src/features/ai/assistant/providerModels.api.ts` - **Provider Models API** 🆕 ✅
 - `/app/packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/AskAssistantBuild.vue` - Integration ✅ Updated
 - `/app/packages/frontend/editor-ui/src/features/ai/assistant/builder.store.ts` - State Management ✅ Updated
 - `/app/packages/frontend/editor-ui/src/api/ai.ts` - API Calls (No changes needed - payload auto-included)
