@@ -1,6 +1,6 @@
 import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 
-import { getResponseCode, getResponseData } from './utils';
+import { DEFAULT_REDACTED_HEADERS, getResponseCode, getResponseData } from './utils';
 
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
@@ -402,6 +402,15 @@ export const optionsProperty: INodeProperties = {
 					],
 				},
 			],
+		},
+		{
+			displayName: 'Reducted Headers in Response',
+			name: 'reductedHeaders',
+			type: 'string',
+			default: DEFAULT_REDACTED_HEADERS,
+			placeholder: 'e.g. authorization, x-auth-token, ...',
+			description: 'Those headers will be replaced by **hidden** in the response',
+			hint: 'Comma-separated list of headers to hide',
 		},
 		{
 			displayName: 'Property Name',
