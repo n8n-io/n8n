@@ -10,4 +10,5 @@ export class OidcConfigDto extends Z.class({
 		.enum(['none', 'login', 'consent', 'select_account', 'create'])
 		.optional()
 		.default('select_account'),
+	authenticationContextClassReference: z.array(z.string()).default([]),
 }) {}

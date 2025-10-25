@@ -99,6 +99,8 @@ const promptDescriptions: PromptDescription[] = [
 
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
+const authenticationContextClassReference = ref('');
+
 const ipsOptions = ref([
 	{
 		label: i18n.baseText('settings.sso.settings.ips.options.url'),
@@ -278,6 +280,8 @@ const getOidcConfig = async () => {
 	clientSecret.value = config.clientSecret;
 	discoveryEndpoint.value = config.discoveryEndpoint;
 	prompt.value = config.prompt ?? 'select_account';
+	authenticationContextClassReference.value =
+		config.authenticationContextClassReference?.join(',') || '';
 };
 
 async function loadOidcConfig() {
@@ -296,12 +300,22 @@ function onAuthProtocolUpdated(value: SupportedProtocolType) {
 }
 
 const cannotSaveOidcSettings = computed(() => {
+	const currentAcrString = authenticationContextClassReference.value
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean)
+		.join(',');
+
+	const storedAcrString = ssoStore.oidcConfig?.authenticationContextClassReference?.join(',') || '';
+
 	return (
 		ssoStore.oidcConfig?.clientId === clientId.value &&
 		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
 		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
 		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
-		ssoStore.oidcConfig?.prompt === prompt.value
+		ssoStore.oidcConfig?.prompt === prompt.value &&
+		storedAcrString === authenticationContextClassReference.value &&
+		currentAcrString === storedAcrString
 	);
 });
 
@@ -322,6 +336,11 @@ async function onOidcSettingsSave() {
 		if (confirmAction !== MODAL_CONFIRM) return;
 	}
 
+	const acrArray = authenticationContextClassReference.value
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
+
 	try {
 		const newConfig = await ssoStore.saveOidcConfig({
 			clientId: clientId.value,
@@ -329,6 +348,7 @@ async function onOidcSettingsSave() {
 			discoveryEndpoint: discoveryEndpoint.value,
 			prompt: prompt.value,
 			loginEnabled: ssoStore.isOidcLoginEnabled,
+			authenticationContextClassReference: acrArray,
 		});
 
 		// Update store with saved protocol selection
@@ -547,6 +567,20 @@ async function onOidcSettingsSave() {
 						/>
 					</N8nSelect>
 					<small>The prompt parameter to use when authenticating with the OIDC provider</small>
+				</div>
+				<div :class="$style.group">
+					<label>Authentication Context Class Reference</label>
+					<N8nInput
+						:model-value="authenticationContextClassReference"
+						type="textarea"
+						data-test-id="oidc-authentication-context-class-reference"
+						placeholder="mfa, phrh, pwd"
+						@update:model-value="(v: string) => (authenticationContextClassReference = v)"
+					/>
+					<small
+						>ACR values to include in the authorization request (acr_values parameter), separated by
+						commas in order of preference.</small
+					>
 				</div>
 				<div :class="$style.group">
 					<ElSwitch

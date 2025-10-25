@@ -57,6 +57,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'http://n8n.io/not-set',
 				loginEnabled: false,
 				prompt: 'select_account',
+				authenticationContextClassReference: [],
 			});
 		});
 
@@ -68,6 +69,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: new URL('http://n8n.io/not-set'),
 				loginEnabled: false,
 				prompt: 'select_account',
+				authenticationContextClassReference: [],
 			});
 		});
 
@@ -78,6 +80,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -100,6 +103,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -121,6 +125,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'Not an url',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(UserError);
@@ -133,6 +138,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -155,6 +161,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			discoveryMock.mockRejectedValueOnce(new Error('Discovery failed'));
@@ -175,6 +182,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			const mockConfiguration = new real_odic_client.Configuration(
@@ -205,6 +213,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://newprovider.example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			const newMockConfiguration = new real_odic_client.Configuration(
@@ -256,6 +265,7 @@ describe('OIDC service', () => {
 			discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 			loginEnabled: true,
 			prompt: 'consent',
+			authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 		};
 
 		await oidcService.updateConfig(initialConfig);
@@ -299,6 +309,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'consent',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await oidcService.updateConfig(initialConfig);

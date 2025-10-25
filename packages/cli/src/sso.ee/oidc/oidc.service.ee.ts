@@ -39,11 +39,12 @@ const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	discoveryEndpoint: '',
 	loginEnabled: false,
 	prompt: 'select_account',
+	authenticationContextClassReference: [],
 };
 
 type OidcRuntimeConfig = Pick<
 	OidcConfigDto,
-	'clientId' | 'clientSecret' | 'loginEnabled' | 'prompt'
+	'clientId' | 'clientSecret' | 'loginEnabled' | 'prompt' | 'authenticationContextClassReference'
 > & {
 	discoveryEndpoint: URL;
 };
@@ -177,6 +178,7 @@ export class OidcService {
 		const nonce = this.generateNonce();
 
 		const prompt = this.oidcConfig.prompt;
+		const authenticationContextClassReference = this.oidcConfig.authenticationContextClassReference;
 
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const provisioningEnabled =
@@ -195,6 +197,9 @@ export class OidcService {
 			prompt,
 			state: state.plaintext,
 			nonce: nonce.plaintext,
+			...(authenticationContextClassReference.length > 0 && {
+				acr_values: authenticationContextClassReference.join(' '),
+			}),
 		});
 
 		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
