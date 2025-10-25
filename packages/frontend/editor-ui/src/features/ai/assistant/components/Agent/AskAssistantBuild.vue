@@ -110,14 +110,17 @@ function handleOpenConfigModal() {
 	showConfigModal.value = true;
 }
 
-function handleSaveConfig(config: MultiModalConfig) {
+function handleSaveConfig(config: MultiModalConfig | undefined) {
 	builderStore.setMultiModalConfig(config);
 	showConfigModal.value = false;
-	telemetry.track('User updated AI provider configuration', {
-		provider: config.provider,
-		model: config.model,
-		workflow_id: workflowsStore.workflowId,
-	});
+	
+	if (config) {
+		telemetry.track('User updated AI provider configuration', {
+			provider: config.provider,
+			model: config.model,
+			workflow_id: workflowsStore.workflowId,
+		});
+	}
 }
 
 function onFeedback(feedback: RatingFeedback) {
