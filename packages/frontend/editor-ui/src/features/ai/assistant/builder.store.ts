@@ -558,6 +558,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
                 creditsRemaining,
                 hasNoCreditsRemaining,
                 hasMessages: computed(() => hasMessages.value),
+                multiModalConfig: computed(() => multiModalConfig.value),
 
                 // Methods
                 stopStreaming,
@@ -570,5 +571,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
                 updateBuilderCredits,
                 getRunningTools,
                 fetchSessionsMetadata,
+                updateMultiModalConfig,
         };
 });
