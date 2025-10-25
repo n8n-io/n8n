@@ -60,11 +60,93 @@ describe('CredentialsService', () => {
 				enum: [false], // boolean false as dependant value
 			});
 
-			// then block requires field3 when field2 === false
-			expect(condition.then?.allOf.some((req: any) => req.required?.includes('field3'))).toBe(true);
-			// else block forbids field3 when field2 !== false
 			expect(
-				condition.else?.allOf.some((notReq: any) => notReq.not?.required?.includes('field3')),
+				(condition.then as any).allOf.some((req: any) => req.required?.includes('field3')),
+			).toBe(true);
+			expect(
+				(condition.else as any).allOf.some((req: any) => req.not?.required?.includes('field3')),
+			).toBe(true);
+		});
+
+		it('should generate correct schema for JWT credential fields with proper required fields', () => {
+			const jwtProperties: INodeProperties[] = [
+				{
+					displayName: 'Key Type',
+					name: 'keyType',
+					type: 'options',
+					description: 'Choose either the secret passphrase or PEM encoded public keys',
+					options: [
+						{ name: 'Passphrase', value: 'passphrase' },
+						{ name: 'PEM Key', value: 'pemKey' },
+					],
+					default: 'passphrase',
+				},
+				{
+					displayName: 'Secret',
+					name: 'secret',
+					type: 'string',
+					typeOptions: { password: true },
+					default: '',
+					displayOptions: { show: { keyType: ['passphrase'] } },
+				},
+				{
+					displayName: 'Private Key',
+					name: 'privateKey',
+					type: 'string',
+					typeOptions: { password: true },
+					default: '',
+					displayOptions: { show: { keyType: ['pemKey'] } },
+				},
+				{
+					displayName: 'Public Key',
+					name: 'publicKey',
+					type: 'string',
+					typeOptions: { password: true },
+					default: '',
+					displayOptions: { show: { keyType: ['pemKey'] } },
+				},
+				{
+					displayName: 'Algorithm',
+					name: 'algorithm',
+					type: 'options',
+					default: 'HS256',
+					options: [
+						{ name: 'HS256', value: 'HS256' },
+						{ name: 'HS384', value: 'HS384' },
+						{ name: 'HS512', value: 'HS512' },
+						{ name: 'RS256', value: 'RS256' },
+						{ name: 'RS384', value: 'RS384' },
+						{ name: 'RS512', value: 'RS512' },
+						{ name: 'ES256', value: 'ES256' },
+						{ name: 'ES384', value: 'ES384' },
+						{ name: 'ES512', value: 'ES512' },
+						{ name: 'PS256', value: 'PS256' },
+						{ name: 'PS384', value: 'PS384' },
+						{ name: 'PS512', value: 'PS512' },
+						{ name: 'none', value: 'none' },
+					],
+				},
+			];
+
+			const schema = toJsonSchema(jwtProperties);
+			const allOf = schema.allOf as any[];
+
+			// Check passphrase condition
+			const passphraseCond = allOf.find((cond) =>
+				cond.if?.properties?.keyType?.enum?.includes('passphrase'),
+			);
+			expect(passphraseCond).toBeDefined();
+			expect(passphraseCond.then?.allOf.some((r: any) => r.required?.includes('secret'))).toBe(
+				true,
+			);
+
+			// Check PEM key condition
+			const pemCond = allOf.find((cond) => cond.if?.properties?.keyType?.enum?.includes('pemKey'));
+			expect(pemCond).toBeDefined();
+			expect(
+				pemCond.then?.allOf.some((r: any) =>
+					['privateKey', 'publicKey'].every((key) => r.required?.includes(key)),
+				),
 			).toBe(true);
 		});
 	});
