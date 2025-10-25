@@ -15,35 +15,35 @@ minimumReleaseAgeExclude:
 catalog:
   '@n8n/typeorm': 0.3.20-14
   '@n8n_io/ai-assistant-sdk': 1.17.0
-  '@langchain/core': 0.3.68
+  '@langchain/core': 0.3.78
   '@langchain/openai': 0.6.16
-  '@langchain/anthropic': 0.3.26
-  '@langchain/community': 0.3.50
+  '@langchain/anthropic': 0.3.32
+  '@langchain/community': 0.3.57
   '@sentry/node': ^9.42.1
   '@types/basic-auth': ^1.1.3
   '@types/express': ^5.0.1
   '@types/jsonwebtoken': ^9.0.9
-  '@types/lodash': 4.17.17
+  '@types/lodash': 4.17.20
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 3.2.4
-  axios: 1.12.0
+  axios: 1.12.2
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
-  fast-glob: 3.2.12
+  fast-glob: 3.3.3
   fastest-levenshtein: 1.0.16
-  flatted: 3.2.7
+  flatted: 3.3.3
   form-data: 4.0.0
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
-  iconv-lite: 0.6.3
+  iconv-lite: 0.7.0
   jsonwebtoken: 9.0.2
-  js-base64: 3.7.2
+  js-base64: 3.7.8
   lodash: 4.17.21
-  luxon: 3.4.4
-  nanoid: 3.3.8
-  picocolors: 1.0.1
+  luxon: 3.7.2
+  nanoid: 3.3.11
+  picocolors: 1.1.1
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   tsdown: ^0.15.6
@@ -56,11 +56,11 @@ catalog:
   vitest-mock-extended: ^3.1.0
   xml2js: 0.6.2
   xss: 1.0.15
-  zod: 3.25.67
-  zod-to-json-schema: 3.23.3
+  zod: 3.25.76
+  zod-to-json-schema: 3.24.6
   typescript: 5.9.2
   eslint: 9.29.0
-  mysql2: 3.15.0
+  mysql2: 3.15.2
   run-script-os: 1.1.6
 
 catalogs:
@@ -74,7 +74,7 @@ catalogs:
     '@vueuse/core': ^10.11.0
     '@vitejs/plugin-vue': ^5.2.4
     pinia: ^2.2.4
-    unplugin-icons: ^0.19.0
+    unplugin-icons: ^0.22.0
     vue: ^3.5.13
     vue-i18n: ^11.1.2
     vue-router: ^4.5.0
