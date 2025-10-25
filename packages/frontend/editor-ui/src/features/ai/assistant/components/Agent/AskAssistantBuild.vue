@@ -106,6 +106,20 @@ function onNewWorkflow() {
 	workflowUpdated.value = undefined;
 }
 
+function handleOpenConfigModal() {
+	showConfigModal.value = true;
+}
+
+function handleSaveConfig(config: MultiModalConfig) {
+	builderStore.setMultiModalConfig(config);
+	showConfigModal.value = false;
+	telemetry.track('User updated AI provider configuration', {
+		provider: config.provider,
+		model: config.model,
+		workflow_id: workflowsStore.workflowId,
+	});
+}
+
 function onFeedback(feedback: RatingFeedback) {
 	if (feedback.rating) {
 		telemetry.track('User rated workflow generation', {
