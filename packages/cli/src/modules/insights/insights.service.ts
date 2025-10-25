@@ -1,5 +1,6 @@
 import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@/events/event.service';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
@@ -24,6 +25,7 @@ export class InsightsService {
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
@@ -125,6 +127,16 @@ export class InsightsService {
 		// If the previous period has no executions, we discard deviation
 		const getDeviation = (current: number, previous: number) =>
 			previousTotal === 0 ? null : current - previous;
+
+		// Emit metrics events for Prometheus
+		this.emitInsightsMetrics({
+			averageRunTime: currentAvgRuntime,
+			failed: currentFailures,
+			failureRate: currentFailureRate,
+			timeSaved: currentTimeSaved,
+			total: currentTotal,
+			projectId,
+		});
 
 		// Return the formatted result
 		const result: InsightsSummary = {
@@ -312,3 +324,57 @@ type DateRange = {
 	licensed: boolean;
 	granularity: 'hour' | 'day' | 'week';
 };
+
+/**
+ * Emits events for each insights metric for Prometheus to consume
+ */
+private emitInsightsMetrics(metrics: {
+	averageRunTime: number;
+	failed: number;
+	failureRate: number;
+	timeSaved: number;
+	total: number;
+	projectId?: string;
+}) {
+	const period = 'current';
+	
+	// Emit average runtime metric
+	this.eventService.emit('insights-metrics-calculated', {
+		metricType: 'avg_runtime_ms',
+		period,
+		value: metrics.averageRunTime,
+		projectId: metrics.projectId,
+	});
+	
+	// Emit failure count metric
+	this.eventService.emit('insights-metrics-calculated', {
+		metricType: 'failures',
+		period,
+		value: metrics.failed,
+		projectId: metrics.projectId,
+	});
+	
+	// Emit failure rate metric
+	this.eventService.emit('insights-metrics-calculated', {
+		metricType: 'failure_rate',
+		period,
+		value: metrics.failureRate,
+		projectId: metrics.projectId,
+	});
+	
+	// Emit time saved metric
+	this.eventService.emit('insights-metrics-calculated', {
+		metricType: 'time_saved_min',
+		period,
+		value: metrics.timeSaved,
+		projectId: metrics.projectId,
+	});
+	
+	// Emit total executions metric
+	this.eventService.emit('insights-metrics-calculated', {
+		metricType: 'total_executions',
+		period,
+		value: metrics.total,
+		projectId: metrics.projectId,
+	});
+}

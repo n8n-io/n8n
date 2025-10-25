@@ -575,4 +575,16 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region insights metrics
+
+	'insights-metrics-calculated': {
+		metricType: string;
+		period: string;
+		value: number;
+		workflowId?: string;
+		projectId?: string;
+	};
+
+	// #endregion
 } & AiEventMap;
