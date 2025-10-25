@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import Close from 'virtual:icons/mdi/close';
-import { computed, nextTick, onMounted } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 
 import GetStarted from '@n8n/chat/components/GetStarted.vue';
 import GetStartedFooter from '@n8n/chat/components/GetStartedFooter.vue';
 import Input from '@n8n/chat/components/Input.vue';
+import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import Layout from '@n8n/chat/components/Layout.vue';
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
@@ -18,7 +19,16 @@ const { options } = useOptions();
 
 const showCloseButton = computed(() => options.mode === 'window' && options.showWindowCloseButton);
 
-async function getStarted() {
+// Message history navigation
+const messageHistoryIndex = ref(-1);
+const currentInputBuffer = ref('');
+const userMessages = computed(() =>
+	messages.value
+		.filter((m) => m.sender === 'user')
+		.map((m) => ('text' in m && typeof m.text === 'string' ? m.text : '')),
+);
+
+function getStarted() {
 	if (!chatStore.startNewSession) {
 		return;
 	}
@@ -42,11 +52,76 @@ function closeChat() {
 	chatEventBus.emit('close');
 }
 
+function onArrowKeyDown(payload: ArrowKeyDownPayload) {
+	const userMessagesList = userMessages.value;
+
+	if (userMessagesList.length === 0) {
+		return;
+	}
+
+	// Save current input if we're starting navigation
+	if (messageHistoryIndex.value === -1 && payload.currentInputValue.length > 0) {
+		currentInputBuffer.value = payload.currentInputValue;
+	}
+
+	if (payload.key === 'ArrowUp') {
+		// Temporarily blur to avoid cursor position issues
+		chatEventBus.emit('blurInput');
+
+		// Navigate to previous message
+		if (messageHistoryIndex.value < userMessagesList.length - 1) {
+			messageHistoryIndex.value++;
+			const messageText = userMessagesList[userMessagesList.length - 1 - messageHistoryIndex.value];
+			chatEventBus.emit('setInputValue', messageText);
+		}
+
+		// Refocus and move cursor to end
+		chatEventBus.emit('focusInput');
+	} else if (payload.key === 'ArrowDown') {
+		// Only navigate if we're in history mode
+		if (messageHistoryIndex.value === -1) return;
+
+		// Temporarily blur to avoid cursor position issues
+		chatEventBus.emit('blurInput');
+
+		// Navigate to next message or restore original input
+		if (messageHistoryIndex.value > 0) {
+			messageHistoryIndex.value--;
+			const messageText = userMessagesList[userMessagesList.length - 1 - messageHistoryIndex.value];
+			chatEventBus.emit('setInputValue', messageText);
+		} else if (messageHistoryIndex.value === 0) {
+			// Reached the end - restore original input or clear
+			messageHistoryIndex.value = -1;
+			chatEventBus.emit('setInputValue', currentInputBuffer.value);
+			currentInputBuffer.value = '';
+		}
+
+		// Refocus and move cursor to end
+		chatEventBus.emit('focusInput');
+	}
+}
+
+function onEscapeKeyDown() {
+	// Only handle escape if we're in history navigation mode
+	if (messageHistoryIndex.value === -1) return;
+
+	// Exit history mode and restore original input
+	messageHistoryIndex.value = -1;
+	chatEventBus.emit('setInputValue', currentInputBuffer.value);
+	currentInputBuffer.value = '';
+}
+
 onMounted(async () => {
 	await initialize();
 	if (!options.showWelcomeScreen && !currentSessionId.value) {
-		await getStarted();
+		getStarted();
 	}
+
+	// Reset history index and buffer when a new message is sent
+	chatEventBus.on('messageSent', () => {
+		messageHistoryIndex.value = -1;
+		currentInputBuffer.value = '';
+	});
 });
 </script>
 
@@ -71,7 +146,11 @@ onMounted(async () => {
 		<GetStarted v-if="!currentSessionId && options.showWelcomeScreen" @click:button="getStarted" />
 		<MessagesList v-else :messages="messages" />
 		<template #footer>
-			<Input v-if="currentSessionId" />
+			<Input
+				v-if="currentSessionId"
+				@arrow-key-down="onArrowKeyDown"
+				@escape-key-down="onEscapeKeyDown"
+			/>
 			<GetStartedFooter v-else />
 		</template>
 	</Layout>

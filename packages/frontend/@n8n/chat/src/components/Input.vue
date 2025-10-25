@@ -254,6 +254,8 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 
 	if (chatStore.ws && waitingForChatResponse.value) {
 		await respondToChatNode(chatStore.ws, messageText);
+		// Emit event to reset message history navigation
+		chatEventBus.emit('messageSent');
 		return;
 	}
 
@@ -262,6 +264,9 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	if (response?.executionId) {
 		setupWebsocketConnection(response.executionId);
 	}
+
+	// Emit event to reset message history navigation
+	chatEventBus.emit('messageSent');
 
 	isSubmitting.value = false;
 }
@@ -290,6 +295,7 @@ function onFileRemove(file: File) {
 
 function onKeyDown(event: KeyboardEvent) {
 	if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+		console.log('Arrow key pressed:', event.key); // Debug
 		event.preventDefault();
 
 		emit('arrowKeyDown', {
@@ -322,7 +328,7 @@ function adjustTextAreaHeight() {
 </script>
 
 <template>
-	<div class="chat-input" :style="styleVars" @keydown.stop="onKeyDown">
+	<div class="chat-input" :style="styleVars">
 		<div class="chat-inputs">
 			<div v-if="$slots.leftPanel" class="chat-input-left-panel">
 				<slot name="leftPanel" />
@@ -334,6 +340,7 @@ function adjustTextAreaHeight() {
 				:disabled="isInputDisabled"
 				:placeholder="t(props.placeholder)"
 				@keydown.enter="onSubmitKeydown"
+				@keydown="onKeyDown"
 				@input="adjustTextAreaHeight"
 				@mousedown="adjustTextAreaHeight"
 				@focus="adjustTextAreaHeight"
@@ -381,34 +388,34 @@ function adjustTextAreaHeight() {
 	}
 }
 .chat-inputs {
-	width: 100%;
+	width: var(--chat--input--width, 100%);
 	display: flex;
 	justify-content: center;
 	align-items: flex-end;
+	background: var(--chat--input--container--background, var(--color--background--light-2));
+	border: var(--chat--input--container--border, 1px solid var(--color--foreground--tint-1));
+	border-radius: var(--chat--input--container--border-radius, 24px);
+	padding: var(--chat--input--container--padding, 12px);
 
 	textarea {
 		font-family: inherit;
 		font-size: var(--chat--input--font-size);
 		width: 100%;
-		border: var(--chat--input--border, 0);
-		border-radius: var(--chat--input--border-radius);
-		padding: var(--chat--input--padding);
-		min-height: var(--chat--textarea--height, 2.5rem); // Set a smaller initial height
+		border: none;
+		border-radius: var(--chat--input--border-radius, 16px);
+		padding: var(--chat--input--padding, 12px 16px);
+		min-height: var(--chat--textarea--height, 2.5rem);
 		max-height: var(--chat--textarea--max-height);
-		height: var(--chat--textarea--height, 2.5rem); // Set initial height same as min-height
+		height: var(--chat--textarea--height, 2.5rem);
 		resize: none;
 		overflow-y: auto;
-		background: var(--chat--input--background, white);
+		background: transparent;
 		color: var(--chat--input--text-color, initial);
 		outline: none;
 		line-height: var(--chat--input--line-height, 1.5);
 
 		&::placeholder {
 			font-size: var(--chat--input--placeholder--font-size, var(--chat--input--font-size));
-		}
-		&:focus,
-		&:hover {
-			border-color: var(--chat--input--border-active, 0);
 		}
 	}
 }
@@ -417,17 +424,19 @@ function adjustTextAreaHeight() {
 }
 .chat-input-send-button,
 .chat-input-file-button {
-	height: var(--chat--textarea--height);
-	width: var(--chat--textarea--height);
-	background: var(--chat--input--send--button--background, white);
+	height: calc(var(--chat--textarea--height, 2.5rem) - 16px);
+	width: calc(var(--chat--textarea--height, 2.5rem) - 16px);
+	background: var(--chat--input--send--button--background, transparent);
 	cursor: pointer;
 	color: var(--chat--input--send--button--color, var(--chat--color--secondary));
-	border: 0;
+	border: none;
+	border-radius: var(--chat--input--button--border-radius, 16px);
 	font-size: 24px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	transition: color var(--chat--transition-duration) ease;
+	transition: all var(--chat--transition-duration, 0.15s) ease;
+	margin: 8px;
 
 	svg {
 		min-width: fit-content;
@@ -438,24 +447,18 @@ function adjustTextAreaHeight() {
 		color: var(--chat--color-disabled);
 	}
 
-	.chat-input-send-button {
-		&:hover,
-		&:focus {
-			background: var(
-				--chat--input--send--button--background-hover,
-				var(--chat--input--send--button--background)
-			);
-			color: var(--chat--input--send--button--color-hover);
-		}
+	&:hover:not([disabled]) {
+		background: var(--chat--input--send--button--background-hover, rgba(0, 0, 0, 0.05));
+		color: var(--chat--input--send--button--color-hover, var(--chat--color--secondary));
 	}
 }
 .chat-input-file-button {
-	background: var(--chat--input--file--button--background, white);
-	color: var(--chat--input--file--button--color);
+	background: var(--chat--input--file--button--background, transparent);
+	color: var(--chat--input--file--button--color, var(--chat--color--secondary));
 
-	&:hover {
-		background: var(--chat--input--file--button--background-hover);
-		color: var(--chat--input--file--button--color-hover);
+	&:hover:not([disabled]) {
+		background: var(--chat--input--file--button--background-hover, rgba(0, 0, 0, 0.05));
+		color: var(--chat--input--file--button--color-hover, var(--chat--color--secondary));
 	}
 }
 
