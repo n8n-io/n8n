@@ -12,6 +12,9 @@ export async function getMysqlDataSource(this: IExecuteFunctions): Promise<DataS
 		password: credentials.password as string,
 		database: credentials.database as string,
 		ssl: {
+			ca: credentials.caCertificate as string,
+			cert: credentials.clientCertificate as string,
+			key: credentials.clientPrivateKey as string,
 			rejectUnauthorized: credentials.ssl as boolean,
 		},
 	});
