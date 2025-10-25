@@ -1819,10 +1819,8 @@ watch(
 			draggable: false,
 		};
 
-		fallbackNodes.value =
-			builderStore.isAIBuilderEnabled && builderStore.assistantMessages.length === 0
-				? [choicePromptItem]
-				: [addNodesItem];
+		// Always show Build with AI option (no conditions)
+		fallbackNodes.value = [choicePromptItem];
 	},
 );
 
