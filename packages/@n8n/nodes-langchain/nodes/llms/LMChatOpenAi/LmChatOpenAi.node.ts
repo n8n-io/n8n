@@ -1,10 +1,13 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { isPlainObject } from 'lodash';
 import {
 	NodeConnectionTypes,
+  jsonParse,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { getProxyAgent } from '@utils/httpProxyAgent';
@@ -318,6 +321,14 @@ export class LmChatOpenAi implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Extra Body',
+						name: 'extraBody',
+						type: 'json',
+						default: '{"enable_search": true}',
+						description:
+							'Optional additional JSON properties to include in the request parameters when making requests to OpenAI compatible APIs, such as vLLM',
+					},
 				],
 			},
 		],
@@ -343,6 +354,7 @@ export class LmChatOpenAi implements INodeType {
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
 			reasoningEffort?: 'low' | 'medium' | 'high';
+			extraBody?: string;
 		};
 
 		const configuration: ClientOptions = {};
@@ -373,10 +385,19 @@ export class LmChatOpenAi implements INodeType {
 		const modelKwargs: {
 			response_format?: object;
 			reasoning_effort?: 'low' | 'medium' | 'high';
+			[key: string]: string | number | object | undefined;
 		} = {};
 		if (options.responseFormat) modelKwargs.response_format = { type: options.responseFormat };
 		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
 			modelKwargs.reasoning_effort = options.reasoningEffort;
+
+		if (options.extraBody) {
+			const extraBody: unknown = jsonParse(options.extraBody);
+			if (!isPlainObject(extraBody)) {
+				throw new NodeOperationError(this.getNode(), 'The ‘extraBody parameter is invalid.');
+			}
+			Object.assign(modelKwargs, extraBody);
+		}
 
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey as string,
