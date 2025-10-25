@@ -10,18 +10,30 @@ Adding multi-modal LLM provider support to the "Build with AI" feature, allowing
 ### Backend Infrastructure
 - [x] **Multi-Modal Types** (`/app/packages/@n8n/ai-workflow-builder.ee/src/types/multi-modal.ts`)
   - ✅ MultiModalConfig interface defined
-  - ✅ Provider info with models (OpenAI, Anthropic, Google, Groq, Cohere)
+  - ✅ Provider info with models (OpenAI, Anthropic, Google, Groq, Cohere, **OpenRouter**)
   - ✅ Helper functions: getProviderInfo(), getDefaultConfig()
   
 - [x] **Multi-Modal Configuration** (`/app/packages/@n8n/ai-workflow-builder.ee/src/multi-modal-config.ts`)
-  - ✅ createMultiModalLLM() function for all 5 providers
+  - ✅ createMultiModalLLM() function for all 6 providers
   - ✅ Provider-specific model configurations
   - ✅ LangChain integration for each provider
+  - ✅ **OpenRouter support with custom baseURL and headers**
 
 - [x] **Helper Utilities** (`/app/packages/@n8n/ai-workflow-builder.ee/src/utils/multi-modal-helper.ts`)
   - ✅ validateMultiModalConfig() - validation logic
   - ✅ getProviderApiKey() - environment variable support
   - ✅ mergeMultiModalConfig() - config merging
+
+- [x] **Dynamic Model Fetching Service** (`/app/packages/@n8n/ai-workflow-builder.ee/src/services/provider-models.service.ts`) 🆕
+  - ✅ Fetch models dynamically from provider APIs
+  - ✅ OpenRouter: https://openrouter.ai/api/v1/models
+  - ✅ OpenAI: https://api.openai.com/v1/models
+  - ✅ Google: https://generativelanguage.googleapis.com/v1beta/models
+  - ✅ Groq: https://api.groq.com/openai/v1/models
+  - ✅ Cohere: https://api.cohere.ai/v1/models
+  - ✅ Anthropic: Hardcoded fallback (no public API)
+  - ✅ In-memory caching with 1-hour TTL
+  - ✅ Fallback to hardcoded models on API failure
 
 ### Backend Integration
 - [x] **Updated API DTO** (`/app/packages/@n8n/api-types/src/dto/ai/ai-build-request.dto.ts`)
@@ -31,6 +43,8 @@ Adding multi-modal LLM provider support to the "Build with AI" feature, allowing
 - [x] **Updated AI Controller** (`/app/packages/cli/src/controllers/ai.controller.ts`)
   - ✅ Extracts multiModalConfig from request payload
   - ✅ Passes multiModalConfig to workflowBuilderService.chat()
+  - ✅ **New endpoint: GET /ai/providers/:provider/models** 🆕
+  - ✅ Returns dynamic model list for any provider
 
 - [x] **WorkflowBuilderService** (`/app/packages/cli/src/services/ai-workflow-builder.service.ts`)
   - ✅ Accepts multiModalConfig parameter
@@ -44,14 +58,23 @@ Adding multi-modal LLM provider support to the "Build with AI" feature, allowing
 
 ### Frontend Implementation
 - [x] **MultiModalConfigModal Component** (`/app/packages/frontend/editor-ui/src/features/ai/assistant/components/MultiModalConfigModal.vue`)
-  - ✅ Provider selection dropdown (5 providers)
-  - ✅ Dynamic model dropdown (changes based on provider)
+  - ✅ Provider selection dropdown (6 providers including OpenRouter)
+  - ✅ **Dynamic model dropdown** - fetches models from backend API 🆕
+  - ✅ **Loading states** while fetching models 🆕
+  - ✅ **Error handling** for failed API requests 🆕
+  - ✅ **Automatic model refresh** when API key changes 🆕
+  - ✅ **Caching** to avoid redundant API calls 🆕
   - ✅ API key input field
   - ✅ Advanced settings (temperature, maxTokens) with toggle
   - ✅ Form validation
   - ✅ Save/Cancel/Reset buttons
   - ✅ Custom URL support for OpenAI
   - ✅ Responsive design with proper styling
+
+- [x] **Provider Models API** (`/app/packages/frontend/editor-ui/src/features/ai/assistant/providerModels.api.ts`) 🆕
+  - ✅ fetchProviderModelsApi() function
+  - ✅ Type definitions for ProviderModel
+  - ✅ Integration with n8n REST API client
 
 - [x] **Updated Builder Store** (`/app/packages/frontend/editor-ui/src/features/ai/assistant/builder.store.ts`)
   - ✅ Added `multiModalConfig` state
