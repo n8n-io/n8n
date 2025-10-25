@@ -24,6 +24,20 @@ export interface ProviderInfo {
 
 export const PROVIDERS: ProviderInfo[] = [
 	{
+		name: 'OpenRouter',
+		value: 'openrouter',
+		models: [
+			{ name: 'Claude 3.5 Sonnet (via OpenRouter)', value: 'anthropic/claude-3.5-sonnet' },
+			{ name: 'GPT-4o (via OpenRouter)', value: 'openai/gpt-4o' },
+			{ name: 'GPT-4o Mini (via OpenRouter)', value: 'openai/gpt-4o-mini' },
+			{ name: 'Gemini Pro 1.5 (via OpenRouter)', value: 'google/gemini-pro-1.5' },
+			{ name: 'Llama 3.1 405B (via OpenRouter)', value: 'meta-llama/llama-3.1-405b-instruct' },
+		],
+		requiresApiKey: true,
+		supportsCustomUrl: false,
+		defaultModel: 'anthropic/claude-3.5-sonnet',
+	},
+	{
 		name: 'OpenAI',
 		value: 'openai',
 		models: [
