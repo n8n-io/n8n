@@ -497,6 +497,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsClaimed.value = claimed;
 	}
 
+	function setMultiModalConfig(config: MultiModalConfig | undefined) {
+		multiModalConfig.value = config;
+	}
+
 	async function fetchBuilderCredits() {
 		if (!isAIBuilderEnabled.value) {
 			return;
