@@ -61,13 +61,12 @@ class MemoryChatBufferSingleton {
 	}
 
 	private async cleanupStaleBuffers(): Promise<void> {
-		// Clean up buffers that haven't been accessed in the last 30 seconds
-		// This aggressive cleanup ensures that when users refresh/reset their chat,
-		// they get a fresh session almost immediately without needing to wait
-		const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+		// Clean up buffers that haven't been accessed in the last 5 minutes
+		// This balances session cleanup with supporting active conversations where users may pause
+		const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
 		for (const [key, memoryInstance] of this.memoryBuffer.entries()) {
-			if (memoryInstance.last_accessed < thirtySecondsAgo) {
+			if (memoryInstance.last_accessed < fiveMinutesAgo) {
 				await this.memoryBuffer.get(key)?.buffer.clear();
 				this.memoryBuffer.delete(key);
 			}
