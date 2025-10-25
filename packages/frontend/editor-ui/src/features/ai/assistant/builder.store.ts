@@ -36,6 +36,15 @@ import { useNDVStore } from '@/features/ndv/ndv.store';
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 
+export interface MultiModalConfig {
+	provider: 'openai' | 'anthropic' | 'google' | 'groq' | 'cohere';
+	model?: string;
+	apiKey?: string;
+	baseUrl?: string;
+	temperature?: number;
+	maxTokens?: number;
+}
+
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
         // Core state
         const chatMessages = ref<ChatUI.AssistantMessage[]>([]);

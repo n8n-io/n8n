@@ -106,6 +106,20 @@ function onNewWorkflow() {
 	workflowUpdated.value = undefined;
 }
 
+function handleOpenConfigModal() {
+	showConfigModal.value = true;
+}
+
+function handleSaveConfig(config: MultiModalConfig) {
+	builderStore.setMultiModalConfig(config);
+	showConfigModal.value = false;
+	telemetry.track('User updated AI provider configuration', {
+		provider: config.provider,
+		model: config.model,
+		workflow_id: workflowsStore.workflowId,
+	});
+}
+
 function onFeedback(feedback: RatingFeedback) {
 	if (feedback.rating) {
 		telemetry.track('User rated workflow generation', {
@@ -306,7 +320,17 @@ defineExpose({
 			@stop="builderStore.stopStreaming"
 		>
 			<template #header>
-				<slot name="header" />
+				<div :class="$style.header">
+					<slot name="header" />
+					<N8nIconButton
+						icon="cog"
+						type="tertiary"
+						size="small"
+						:title="i18n.baseText('aiAssistant.multiModal.configure', 'Configure AI Provider')"
+						data-testid="open-config-modal-button"
+						@click="handleOpenConfigModal"
+					/>
+				</div>
 			</template>
 			<template #messagesFooter>
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
@@ -317,12 +341,26 @@ defineExpose({
 				</N8nText>
 			</template>
 		</N8nAskAssistantChat>
+
+		<!-- Multi-Modal Config Modal -->
+		<MultiModalConfigModal
+			v-model="showConfigModal"
+			:current-config="builderStore.multiModalConfig"
+			@save="handleSaveConfig"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
 	height: 100%;
+	width: 100%;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 	width: 100%;
 }
 
