@@ -55,7 +55,7 @@ export class AiController {
 
 			res.on('close', handleClose);
 
-			const { text, workflowContext } = payload.payload;
+			const { text, workflowContext, multiModalConfig } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					message: text,
@@ -68,6 +68,7 @@ export class AiController {
 				},
 				req.user,
 				signal,
+				multiModalConfig,
 			);
 
 			res.header('Content-type', 'application/json-lines').flush();
