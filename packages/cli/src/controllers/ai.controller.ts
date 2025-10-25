@@ -262,4 +262,19 @@ export class AiController {
 			throw new InternalServerError(e.message, e);
 		}
 	}
+
+	@Licensed('feat:aiBuilder')
+	@Get('/providers/:provider/models')
+	async getProviderModels(req: AuthenticatedRequest, _: Response) {
+		try {
+			const provider = req.params.provider as MultiModalConfig['provider'];
+			const apiKey = req.query.apiKey as string | undefined;
+
+			const models = await getProviderModels(provider, apiKey);
+			return { models };
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
 }
