@@ -123,6 +123,7 @@ _Nothing currently in progress - all implementation completed!_
 | Google | Gemini 1.5 Pro, Flash | ✅ Yes | ❌ No |
 | Groq | Llama 3.1 70B/8B, Mixtral | ✅ Yes | ❌ No |
 | Cohere | Command R+, Command R | ✅ Yes | ❌ No |
+| **OpenRouter** | **Multiple (Unified API)** | **✅ Yes** | **✅ Yes** |
 
 ---
 
