@@ -18,7 +18,7 @@ describe('Microsoft SharePoint Node', () => {
 						'@odata.context':
 							'https://mydomain.sharepoint.com/sites/site1/_api/v2.0/$metadata#items/$entity',
 						'@content.downloadUrl':
-							'https://mydomain.sharepoint.com/sites/site1/_layouts/15/download.aspx?UniqueId=d86f89ab-378e-43bc-8d46-18d2f52bd603',
+							'https://mydomain.sharepoint.com/sites/site1/_layouts/15/download.aspx?UniqueId=hide-ai-build',
 						createdBy: {
 							application: {
 								id: 'b9c26603-3c9b-4050-b848-27dfab0a52fa',

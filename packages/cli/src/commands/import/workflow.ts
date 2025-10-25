@@ -59,9 +59,9 @@ const flagsSchema = z.object({
 	examples: [
 		'--input=file.json',
 		'--separate --input=backups/latest/',
-		'--input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--input=file.json --userId=hide-ai-build',
 		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
-		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--separate --input=backups/latest/ --userId=hide-ai-build',
 	],
 	flagsSchema,
 })

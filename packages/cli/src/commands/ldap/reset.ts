@@ -52,7 +52,7 @@ const flagsSchema = z.object({
 	description:
 		'Resets the database to the default ldap state.\n\nTHIS DELETES ALL LDAP MANAGED USERS.',
 	examples: [
-		'--userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--userId=hide-ai-build',
 		'--projectId=Ox8O54VQrmBrb4qL',
 		'--deleteWorkflowsAndCredentials',
 	],

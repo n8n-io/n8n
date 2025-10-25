@@ -608,7 +608,7 @@ describe('Microsoft SharePoint Node', () => {
 									allowUnlimitedLength: false,
 									columnName: 'Title',
 									displayFormUrl:
-										'https://mydomain.sharepoint.com/sites/n8ntest10/_layouts/15/listform.aspx?PageType=4&ListId=58a279af-1f06-4392-a5ed-2b37fa1d6c1d',
+										'https://mydomain.sharepoint.com/sites/n8ntest10/_layouts/15/listform.aspx?PageType=4&ListId=hide-ai-build',
 									listId: '58a279af-1f06-4392-a5ed-2b37fa1d6c1d',
 								},
 							},
