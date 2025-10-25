@@ -8,6 +8,15 @@ export interface ExpressionValue {
 	nodeType?: string;
 }
 
+export interface MultiModalConfig {
+	provider: 'openai' | 'anthropic' | 'google' | 'groq' | 'cohere';
+	model?: string;
+	apiKey?: string;
+	baseUrl?: string;
+	temperature?: number;
+	maxTokens?: number;
+}
+
 export class AiBuilderChatRequestDto extends Z.class({
 	payload: z.object({
 		role: z.literal('user'),
@@ -57,5 +66,15 @@ export class AiBuilderChatRequestDto extends Z.class({
 				})
 				.optional(),
 		}),
+		multiModalConfig: z
+			.object({
+				provider: z.enum(['openai', 'anthropic', 'google', 'groq', 'cohere']),
+				model: z.string().optional(),
+				apiKey: z.string().optional(),
+				baseUrl: z.string().optional(),
+				temperature: z.number().min(0).max(2).optional(),
+				maxTokens: z.number().positive().optional(),
+			})
+			.optional(),
 	}),
 }) {}
