@@ -36,6 +36,7 @@ export function chatWithBuilder(
                         payload: {
                                 ...payload.payload,
                         },
+                        multiModalConfig,
                 },
                 onMessageUpdated,
                 onDone,
