@@ -152,21 +152,26 @@ _Nothing currently in progress - all implementation completed!_
 
 ## 🐛 Known Issues & Current Status
 
-### 🔴 ACTIVE ISSUES:
-1. **Modal Fields Not Rendering**
-   - Status: 🔴 Bug Found
-   - Issue: Provider dropdown, model selection, and API key input not showing in modal
-   - Likely Cause: Vue component rendering issue or design system compatibility
-   - Action: Debugging and fixing component
-
-2. **OpenRouter Support Requested**
-   - Status: 🟡 Enhancement Requested
-   - User wants to use OpenRouter (unified API for multiple models)
-   - Action: Adding OpenRouter as 6th provider option
-
 ### ✅ RESOLVED ISSUES:
 - License error is expected (enterprise feature) - working correctly
 - Settings button successfully integrated
+- **Modal fields rendering issue** - RESOLVED
+- **OpenRouter support** - ✅ IMPLEMENTED
+- **Dynamic model fetching** - ✅ IMPLEMENTED for all providers
+
+### 🆕 NEW FEATURES ADDED:
+1. **Dynamic Model Fetching**
+   - Models are now fetched dynamically from provider APIs
+   - Reduces maintenance overhead (no hardcoded model lists)
+   - Always up-to-date with latest models from providers
+   - 1-hour caching to optimize performance
+   - Fallback to hardcoded models on API failure
+
+2. **OpenRouter Integration**
+   - Full support for OpenRouter unified API
+   - Access to models from multiple providers through single API
+   - Custom baseURL support
+   - Proper headers for OpenRouter API
 
 ---
 
