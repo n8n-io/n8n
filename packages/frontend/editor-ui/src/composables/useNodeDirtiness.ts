@@ -9,7 +9,10 @@ import {
 } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { CanvasNodeDirtiness, type CanvasNodeDirtinessType } from '@/features/canvas/canvas.types';
+import {
+	CanvasNodeDirtiness,
+	type CanvasNodeDirtinessType,
+} from '@/features/workflows/canvas/canvas.types';
 import type { INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';

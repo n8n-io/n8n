@@ -11,7 +11,6 @@ import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -258,7 +257,7 @@ export class PrometheusMetricsService {
 	private initQueueMetrics() {
 		if (
 			!this.includes.metrics.queue ||
-			config.getEnv('executions.mode') !== 'queue' ||
+			this.globalConfig.executions.mode !== 'queue' ||
 			this.instanceSettings.instanceType !== 'main'
 		) {
 			return;

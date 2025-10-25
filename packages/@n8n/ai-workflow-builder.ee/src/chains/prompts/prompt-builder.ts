@@ -14,6 +14,7 @@ import { IF_NODE_GUIDE } from './node-types/if-node';
 import { SET_NODE_GUIDE } from './node-types/set-node';
 import { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
 import { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
+import { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
 import { TEXT_FIELDS_GUIDE } from './parameter-types/text-fields';
 import {
 	DEFAULT_PROMPT_CONFIG,
@@ -35,7 +36,9 @@ export class ParameterUpdatePromptBuilder {
 		sections.push(EXPRESSION_RULES);
 
 		// Add node-type specific guides
-		if (this.isSetNode(context.nodeType)) {
+		if (this.hasSystemMessageParameters(context.nodeDefinition)) {
+			sections.push(SYSTEM_MESSAGE_GUIDE);
+		} else if (this.isSetNode(context.nodeType)) {
 			sections.push(SET_NODE_GUIDE);
 		} else if (this.isIfNode(context.nodeType)) {
 			sections.push(IF_NODE_GUIDE);
@@ -76,6 +79,39 @@ export class ParameterUpdatePromptBuilder {
 		const finalPrompt = sections.join('\n');
 
 		return finalPrompt;
+	}
+
+	/**
+	 * Checks if node has system message parameters based on node definition
+	 * This applies to nodes like AI Agent, LLM Chain, Anthropic, OpenAI, etc.
+	 */
+	private static hasSystemMessageParameters(nodeDefinition: INodeTypeDescription): boolean {
+		if (!nodeDefinition.properties) return false;
+
+		// Check for common system message parameter patterns
+		const hasSystemMessageParam = nodeDefinition.properties.some((prop) => {
+			// Pattern 1 & 2: options.systemMessage (AI Agent) or options.system (Anthropic)
+			if (prop.name === 'options' && prop.type === 'collection') {
+				const collectionProp = prop;
+				if (Array.isArray(collectionProp.options)) {
+					return collectionProp.options.some(
+						(opt) => opt.name === 'systemMessage' || opt.name === 'system',
+					);
+				}
+			}
+
+			// Pattern 3: messages parameter with role support (OpenAI, LLM Chain)
+			if (
+				prop.name === 'messages' &&
+				(prop.type === 'fixedCollection' || prop.type === 'collection')
+			) {
+				return true; // Messages typically support system role
+			}
+
+			return false;
+		});
+
+		return hasSystemMessageParam;
 	}
 
 	/**
