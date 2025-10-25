@@ -55,7 +55,8 @@ export class AiController {
 
 			res.on('close', handleClose);
 
-			const { text, workflowContext, multiModalConfig } = payload.payload;
+			const { text, workflowContext } = payload.payload;
+			const { multiModalConfig } = payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					message: text,
