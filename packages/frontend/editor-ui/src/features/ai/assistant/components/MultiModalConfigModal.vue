@@ -134,20 +134,6 @@ const selectedProvider = computed(() => {
 	return PROVIDERS.find((p) => p.value === config.value.provider);
 });
 
-const availableModels = computed(() => {
-	return selectedProvider.value?.models.map((m) => ({
-		label: m.name,
-		value: m.value,
-	})) || [];
-});
-
-const providerOptions = computed(() => {
-	return PROVIDERS.map((p) => ({
-		label: p.name,
-		value: p.value,
-	}));
-});
-
 const isValid = computed(() => {
 	// If API key is required and not provided
 	if (selectedProvider.value?.requiresApiKey && !config.value.apiKey) {
