@@ -44,6 +44,7 @@ import {
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
+import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -914,7 +915,11 @@ export class HttpRequestV3 implements INodeType {
 									false,
 								) as boolean;
 
-								const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+								const data = await binaryToStringWithEncodingDetection(
+									response.body as Buffer | Readable,
+									responseContentType,
+									this.helpers,
+								);
 								response.body = jsonParse(data, {
 									...(neverError
 										? { fallbackValue: {} }
@@ -926,7 +931,11 @@ export class HttpRequestV3 implements INodeType {
 						} else {
 							responseFormat = 'text';
 							if (!response.__bodyResolved) {
-								const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+								const data = await binaryToStringWithEncodingDetection(
+									response.body as Buffer | Readable,
+									responseContentType,
+									this.helpers,
+								);
 								response.body = !data ? undefined : data;
 							}
 						}
