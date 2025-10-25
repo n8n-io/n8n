@@ -1800,15 +1800,6 @@ watch(
 			return;
 		}
 
-		const addNodesItem: INodeUi = {
-			id: CanvasNodeRenderType.AddNodes,
-			name: CanvasNodeRenderType.AddNodes,
-			type: CanvasNodeRenderType.AddNodes,
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		};
-
 		const choicePromptItem: INodeUi = {
 			id: CanvasNodeRenderType.ChoicePrompt,
 			name: CanvasNodeRenderType.ChoicePrompt,
@@ -1819,10 +1810,8 @@ watch(
 			draggable: false,
 		};
 
-		fallbackNodes.value =
-			builderStore.isAIBuilderEnabled && builderStore.assistantMessages.length === 0
-				? [choicePromptItem]
-				: [addNodesItem];
+		// Always show Build with AI option (no conditions)
+		fallbackNodes.value = [choicePromptItem];
 	},
 );
 

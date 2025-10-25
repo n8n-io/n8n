@@ -64,7 +64,7 @@
           "description": "new channel description",
           "isFavoriteByDefault": null,
           "email": "",
-          "webUrl": "https://teams.microsoft.com/l/channel/19%3a16259efabba44a66916d91dd91862a6f%40thread.tacv2/New+Channel?groupId=1644e7fe-547e-4223-a24f-922395865343&tenantId=tenantId-111-222-333",
+          "webUrl": "https://teams.microsoft.com/l/channel/19%3a16259efabba44a66916d91dd91862a6f%40thread.tacv2/New+Channel?groupId=hide-ai-build&tenantId=tenantId-111-222-333",
           "membershipType": "private"
         }
       }

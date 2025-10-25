@@ -112,7 +112,7 @@
 		"Microsoft SharePoint": [
 			{
 				"json": {
-					"@content.downloadUrl": "https://mydomain.sharepoint.com/sites/site1/_layouts/15/download.aspx?UniqueId=d86f89ab-378e-43bc-8d46-18d2f52bd603",
+					"@content.downloadUrl": "https://mydomain.sharepoint.com/sites/site1/_layouts/15/download.aspx?UniqueId=hide-ai-build",
 					"@odata.context": "https://mydomain.sharepoint.com/sites/site1/_api/v2.0/$metadata#items/$entity",
 					"cTag": "\"c:{D86F89AB-378E-43BC-8D46-18D2F52BD603},2\"",
 					"createdBy": {

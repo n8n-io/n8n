@@ -19,7 +19,7 @@ describe('Test MicrosoftTeamsV2, channel => get', () => {
 			email: 'Retail@5w1hb7.onmicrosoft.com',
 			tenantId: 'tenantId-111-222-333',
 			webUrl:
-				'https://teams.microsoft.com/l/channel/19%3Adff84a49e5124cc89dff0192c621ea0f%40thread.tacv2/General?groupId=e25bae35-7bcc-4fb7-b4f2-0d5caef251fd&tenantId=tenantId-111-222-333&allowXTenantAccess=True',
+				'https://teams.microsoft.com/l/channel/19%3Adff84a49e5124cc89dff0192c621ea0f%40thread.tacv2/General?groupId=hide-ai-build&tenantId=tenantId-111-222-333&allowXTenantAccess=True',
 			membershipType: 'standard',
 		});
 
