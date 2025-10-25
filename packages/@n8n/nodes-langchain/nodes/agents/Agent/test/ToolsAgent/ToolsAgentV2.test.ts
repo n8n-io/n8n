@@ -586,6 +586,72 @@ describe('toolsAgentExecute', () => {
 			expect(step.observation).toBe('Tool execution result');
 		});
 
+		it('should capture intermediate steps in non-streaming execution when returnIntermediateSteps is true', async () => {
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'enableStreaming') return false; // Streaming disabled - this is the key condition
+				if (param === 'text') return 'test input';
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: true, // User expects intermediate steps to be shown
+						passthroughBinaryImages: true,
+					};
+				return defaultValue;
+			});
+
+			// Mock executor.invoke to return what LangChain's AgentExecutor actually returns
+			// when returnIntermediateSteps is true in real scenarios
+			const mockExecutor = {
+				invoke: jest.fn().mockResolvedValue({
+					output: 'Final response',
+					intermediateSteps: [
+						{
+							action: {
+								tool: 'TestTool',
+								toolInput: { input: 'test data' },
+								log: 'I need to call a tool',
+							},
+							observation: 'Tool execution result',
+						},
+					],
+				}),
+				streamEvents: jest.fn(),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0][0].json.output).toBe('Final response');
+
+			// FIXED: Non-streaming mode now processes intermediate steps consistently
+			// with streaming mode, providing the same rich metadata
+			const step = (result[0][0].json.intermediateSteps as any[])[0];
+
+			// These are now present in non-streaming mode (like in streaming mode):
+			expect(step.action.messageLog).toBeDefined(); // ✓ Fixed: LLM response messages
+			expect(step.action.toolCallId).toBeDefined(); // ✓ Fixed: Tool call ID
+			expect(step.action.type).toBeDefined(); // ✓ Fixed: Tool call type
+
+			// Verify the content structure matches expectations
+			expect(step.action.messageLog).toHaveLength(1);
+			expect(step.action.messageLog[0]).toHaveProperty('content');
+			expect(step.action.messageLog[0]).toHaveProperty('tool_calls');
+			expect(step.action.type).toBe('function');
+
+			// Verify toolCallId consistency between action and messageLog
+			const toolCallInMessage = step.action.messageLog[0].tool_calls[0];
+			expect(step.action.toolCallId).toBe(toolCallInMessage.id);
+			expect(toolCallInMessage.name).toBe('TestTool');
+			expect(toolCallInMessage.args).toEqual({ input: 'test data' });
+		});
+
 		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {
 			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
 			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
