@@ -4,7 +4,7 @@ interface LLMProviderConfig {
 	apiKey: string;
 	baseUrl?: string;
 	headers?: Record<string, string>;
-	provider: 'openai' | 'anthropic' | 'google' | 'groq' | 'cohere';
+	provider: 'openai' | 'anthropic' | 'google' | 'groq' | 'cohere' | 'openrouter';
 	model?: string;
 	temperature?: number;
 	maxTokens?: number;
