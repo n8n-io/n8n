@@ -9,7 +9,10 @@ import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
+import { createMultiModalLLM } from '@/multi-modal-config';
 import { SessionManagerService } from '@/session-manager.service';
+import type { MultiModalConfig } from '@/types/multi-modal';
+import { mergeMultiModalConfig, validateMultiModalConfig } from '@/utils/multi-modal-helper';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
 type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
@@ -60,8 +63,11 @@ export class AiWorkflowBuilderService {
 		return authHeaders;
 	}
 
-	private async setupModels(user: IUser): Promise<{
-		anthropicClaude: ChatAnthropic;
+	private async setupModels(
+		user: IUser,
+		multiModalConfig?: MultiModalConfig,
+	): Promise<{
+		primaryModel: any;
 		tracingClient?: TracingClient;
 		authHeaders?: { Authorization: string };
 	}> {
@@ -73,10 +79,19 @@ export class AiWorkflowBuilderService {
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
 
-				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
-					baseUrl: baseUrl + '/anthropic',
-					authHeaders,
-				});
+				let primaryModel;
+				if (multiModalConfig) {
+					primaryModel = await createMultiModalLLM({
+						...multiModalConfig,
+						baseUrl: baseUrl + `/${multiModalConfig.provider}`,
+						headers: authHeaders,
+					});
+				} else {
+					primaryModel = await AiWorkflowBuilderService.getAnthropicClaudeModel({
+						baseUrl: baseUrl + '/anthropic',
+						authHeaders,
+					});
+				}
 
 				const tracingClient = new TracingClient({
 					apiKey: '-',
@@ -90,15 +105,20 @@ export class AiWorkflowBuilderService {
 					},
 				});
 
-				return { tracingClient, anthropicClaude, authHeaders };
+				return { tracingClient, primaryModel, authHeaders };
 			}
 
 			// If base URL is not set, use environment variables
-			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
-				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-			});
+			let primaryModel;
+			if (multiModalConfig) {
+				primaryModel = await createMultiModalLLM(multiModalConfig);
+			} else {
+				primaryModel = await AiWorkflowBuilderService.getAnthropicClaudeModel({
+					apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+				});
+			}
 
-			return { anthropicClaude };
+			return { primaryModel };
 		} catch (error) {
 			const errorMessage = error instanceof Error ? `: ${error.message}` : '';
 			const llmError = new LLMServiceError(`Failed to connect to LLM Provider${errorMessage}`, {
@@ -144,14 +164,17 @@ export class AiWorkflowBuilderService {
 		});
 	}
 
-	private async getAgent(user: IUser) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(user);
+	private async getAgent(user: IUser, multiModalConfig?: MultiModalConfig) {
+		const { primaryModel, tracingClient, authHeaders } = await this.setupModels(
+			user,
+			multiModalConfig,
+		);
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
-			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: anthropicClaude,
-			llmComplexTask: anthropicClaude,
+			// Use the configured model for both simple and complex tasks
+			llmSimpleTask: primaryModel,
+			llmComplexTask: primaryModel,
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
 			tracer: tracingClient
@@ -188,8 +211,23 @@ export class AiWorkflowBuilderService {
 		}
 	}
 
-	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user);
+	async *chat(
+		payload: ChatPayload,
+		user: IUser,
+		abortSignal?: AbortSignal,
+		userMultiModalConfig?: Partial<MultiModalConfig>,
+	) {
+		let multiModalConfig: MultiModalConfig | undefined;
+
+		if (userMultiModalConfig) {
+			multiModalConfig = mergeMultiModalConfig(userMultiModalConfig);
+			const errors = validateMultiModalConfig(multiModalConfig);
+			if (errors.length > 0) {
+				throw new LLMServiceError(`Invalid multi-modal configuration: ${errors.join(', ')}`);
+			}
+		}
+
+		const agent = await this.getAgent(user, multiModalConfig);
 
 		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
 			yield output;
