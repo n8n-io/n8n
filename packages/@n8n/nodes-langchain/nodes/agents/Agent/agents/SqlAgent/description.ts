@@ -1,6 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+	textInput,
+} from '@utils/descriptions';
 
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 
@@ -111,6 +116,16 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 				'@version': [{ _cnd: { lte: 1.2 } }],
 			},
 			show: {
+				agent: ['sqlAgent'],
+			},
+		},
+	},
+	{
+		...textFromGuardrailsNode,
+		displayOptions: {
+			show: {
+				promptType: ['guardrails'],
+				'@version': [{ _cnd: { gte: 1.7 } }],
 				agent: ['sqlAgent'],
 			},
 		},
