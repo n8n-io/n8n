@@ -139,14 +139,14 @@ _Nothing currently in progress - all implementation completed!_
 4. **Advanced Settings:** Hidden by default, shown with "Advanced" toggle
 
 ### Provider Support
-| Provider | Models | API Key Required | Custom URL |
-|----------|--------|------------------|------------|
-| OpenAI | GPT-4o, GPT-4o Mini, GPT-4 Turbo | ✅ Yes | ✅ Yes |
-| Anthropic | Claude 3.5 Sonnet, Haiku, Opus | ✅ Yes | ❌ No |
-| Google | Gemini 1.5 Pro, Flash | ✅ Yes | ❌ No |
-| Groq | Llama 3.1 70B/8B, Mixtral | ✅ Yes | ❌ No |
-| Cohere | Command R+, Command R | ✅ Yes | ❌ No |
-| **OpenRouter** | **Multiple (Unified API)** | **✅ Yes** | **✅ Yes** |
+| Provider | Models | API Key Required | Custom URL | **Dynamic Models** 🆕 |
+|----------|--------|------------------|------------|---------------------|
+| OpenRouter | Multiple (Unified API) | ✅ Yes | ✅ Yes | ✅ **Yes - Fetched from API** |
+| OpenAI | GPT-4o, GPT-4o Mini, GPT-4 Turbo | ✅ Yes | ✅ Yes | ✅ **Yes - Fetched from API** |
+| Anthropic | Claude 3.5 Sonnet, Haiku, Opus | ✅ Yes | ❌ No | ⚠️ **Hardcoded (No public API)** |
+| Google | Gemini 1.5 Pro, Flash | ✅ Yes | ❌ No | ✅ **Yes - Fetched from API** |
+| Groq | Llama 3.1 70B/8B, Mixtral | ✅ Yes | ❌ No | ✅ **Yes - Fetched from API** |
+| Cohere | Command R+, Command R | ✅ Yes | ❌ No | ✅ **Yes - Fetched from API** |
 
 ---
 
