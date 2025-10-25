@@ -519,6 +519,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
                 }
         }
 
+        function updateMultiModalConfig(config: MultiModalConfig | undefined) {
+                multiModalConfig.value = config;
+        }
+
         // Watch workflowId changes to fetch sessions metadata when a valid workflow is loaded
         watch(
                 () => workflowsStore.workflowId,
