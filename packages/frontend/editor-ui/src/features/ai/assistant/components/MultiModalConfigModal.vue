@@ -169,8 +169,8 @@ function handleSave() {
 
 function handleReset() {
 	config.value = {
-		provider: 'anthropic',
-		model: 'claude-3-5-sonnet-20241022',
+		provider: 'openrouter',
+		model: 'anthropic/claude-3.5-sonnet',
 		apiKey: '',
 		baseUrl: '',
 		temperature: 0.7,
