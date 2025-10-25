@@ -357,6 +357,13 @@ defineExpose({
 	width: 100%;
 }
 
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+}
+
 .topText {
 	color: var(--color--text);
 }
