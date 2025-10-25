@@ -98,6 +98,57 @@ describe('ResourceMapper::Workflow Inputs', () => {
 		expect(getAllByTestId('field-input')).toHaveLength(2);
 	});
 
+	it('initializes boolean fields with false instead of null when value object is empty', async () => {
+		// Mock a response with a boolean field
+		nodeTypesStore.getLocalResourceMapperFields.mockResolvedValue({
+			fields: [
+				{
+					id: 'enableFeature',
+					displayName: 'Enable Feature',
+					type: 'boolean',
+					required: false,
+					defaultMatch: false,
+					display: true,
+					canBeUsedToMatch: true,
+				},
+			],
+		});
+
+		// Create a node with an empty value object (this is the bug scenario)
+		const nodeWithEmptyValue = {
+			...WORKFLOW_INPUTS_TEST_NODE,
+			parameters: {
+				...WORKFLOW_INPUTS_TEST_NODE.parameters,
+				workflowInputs: {
+					mappingMode: 'defineBelow',
+					value: {}, // Empty value object - this triggers the bug
+					matchingColumns: [],
+					schema: [],
+					attemptToConvertTypes: false,
+					convertFieldsToString: true,
+				},
+			},
+		};
+
+		const { emitted } = renderComponent({
+			props: {
+				parameter: WORKFLOW_INPUTS_TEST_PARAMETER,
+				node: nodeWithEmptyValue,
+				path: WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
+			},
+		});
+
+		await waitAllPromises();
+
+		// Find the valueChanged emission that contains the boolean field initialization
+		const valueChangedEvents = emitted('valueChanged') as any[];
+		const lastValueChanged = valueChangedEvents[valueChangedEvents.length - 1];
+
+		// Verify that the boolean field is initialized with false, not null
+		expect(lastValueChanged[0].value.value.enableFeature).toBe(false);
+		expect(lastValueChanged[0].value.value.enableFeature).not.toBe(null);
+	});
+
 	it('renders provided empty fields message', async () => {
 		nodeTypesStore.getLocalResourceMapperFields.mockResolvedValue({
 			fields: [],

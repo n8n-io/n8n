@@ -24,6 +24,7 @@ import {
 	parseResourceMapperFieldName,
 } from '@/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
+import { isEmpty } from '@/utils/typesUtils';
 import { i18n as locale } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -185,7 +186,8 @@ onMounted(async () => {
 		await checkStaleFields();
 	}
 	// Set default values if this is the first time the parameter is being set
-	if (!state.paramValue.value) {
+	// Also set defaults if the value object exists but is empty (no fields initialized)
+	if (isEmpty(state.paramValue.value)) {
 		setDefaultFieldValues();
 	}
 	updateNodeIssues();
