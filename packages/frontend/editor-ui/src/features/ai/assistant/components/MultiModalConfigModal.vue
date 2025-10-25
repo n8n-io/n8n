@@ -206,13 +206,19 @@ function handleReset() {
 				<!-- Provider Selection -->
 				<div :class="$style.field">
 					<N8nText tag="label" size="small" :class="$style.label">
-						{{ i18n.baseText('aiAssistant.multiModal.provider', 'AI Provider') }}
+						AI Provider
 					</N8nText>
 					<N8nSelect
 						v-model="config.provider"
-						:options="providerOptions"
 						data-testid="provider-select"
-					/>
+					>
+						<N8nOption
+							v-for="provider in PROVIDERS"
+							:key="provider.value"
+							:value="provider.value"
+							:label="provider.name"
+						/>
+					</N8nSelect>
 					<N8nText v-if="selectedProvider" size="xsmall" color="text-light" :class="$style.hint">
 						{{ selectedProvider.name }}
 					</N8nText>
@@ -221,13 +227,19 @@ function handleReset() {
 				<!-- Model Selection -->
 				<div :class="$style.field">
 					<N8nText tag="label" size="small" :class="$style.label">
-						{{ i18n.baseText('aiAssistant.multiModal.model', 'Model') }}
+						Model
 					</N8nText>
 					<N8nSelect
 						v-model="config.model"
-						:options="availableModels"
 						data-testid="model-select"
-					/>
+					>
+						<N8nOption
+							v-for="model in selectedProvider?.models"
+							:key="model.value"
+							:value="model.value"
+							:label="model.name"
+						/>
+					</N8nSelect>
 					<N8nText
 						v-if="config.model && selectedProvider"
 						size="xsmall"
@@ -241,7 +253,7 @@ function handleReset() {
 				<!-- API Key -->
 				<div v-if="selectedProvider?.requiresApiKey" :class="$style.field">
 					<N8nText tag="label" size="small" :class="$style.label">
-						{{ i18n.baseText('aiAssistant.multiModal.apiKey', 'API Key') }}
+						API Key
 						<span :class="$style.required">*</span>
 					</N8nText>
 					<N8nInput
@@ -251,18 +263,18 @@ function handleReset() {
 						data-testid="api-key-input"
 					/>
 					<N8nText size="xsmall" color="text-light" :class="$style.hint">
-						{{ i18n.baseText('aiAssistant.multiModal.apiKeyHint', 'Your API key will be used for this session only') }}
+						Your API key will be used for this session only
 					</N8nText>
 				</div>
 
-				<!-- Custom URL (OpenAI only) -->
-				<div v-if="selectedProvider?.supportsCustomUrl" :class="$style.field">
+				<!-- Custom URL (OpenAI and OpenRouter) -->
+				<div v-if="selectedProvider?.supportsCustomUrl || config.provider === 'openrouter'" :class="$style.field">
 					<N8nText tag="label" size="small" :class="$style.label">
-						{{ i18n.baseText('aiAssistant.multiModal.baseUrl', 'Custom Base URL (Optional)') }}
+						Custom Base URL (Optional)
 					</N8nText>
 					<N8nInput
 						v-model="config.baseUrl"
-						placeholder="https://api.openai.com/v1"
+						:placeholder="config.provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'https://api.openai.com/v1'"
 						data-testid="base-url-input"
 					/>
 				</div>
@@ -276,7 +288,7 @@ function handleReset() {
 						data-testid="advanced-toggle"
 					>
 						{{ showAdvanced ? '▼' : '▶' }}
-						{{ i18n.baseText('aiAssistant.multiModal.advanced', 'Advanced Settings') }}
+						Advanced Settings
 					</N8nButton>
 				</div>
 
@@ -285,7 +297,7 @@ function handleReset() {
 					<!-- Temperature -->
 					<div :class="$style.field">
 						<N8nText tag="label" size="small" :class="$style.label">
-							{{ i18n.baseText('aiAssistant.multiModal.temperature', 'Temperature') }}
+							Temperature
 						</N8nText>
 						<N8nInput
 							v-model.number="config.temperature"
@@ -296,14 +308,14 @@ function handleReset() {
 							data-testid="temperature-input"
 						/>
 						<N8nText size="xsmall" color="text-light" :class="$style.hint">
-							{{ i18n.baseText('aiAssistant.multiModal.temperatureHint', 'Controls randomness. Lower = more focused, Higher = more creative (0-2)') }}
+							Controls randomness. Lower = more focused, Higher = more creative (0-2)
 						</N8nText>
 					</div>
 
 					<!-- Max Tokens -->
 					<div :class="$style.field">
 						<N8nText tag="label" size="small" :class="$style.label">
-							{{ i18n.baseText('aiAssistant.multiModal.maxTokens', 'Max Tokens') }}
+							Max Tokens
 						</N8nText>
 						<N8nInput
 							v-model.number="config.maxTokens"
@@ -314,7 +326,7 @@ function handleReset() {
 							data-testid="max-tokens-input"
 						/>
 						<N8nText size="xsmall" color="text-light" :class="$style.hint">
-							{{ i18n.baseText('aiAssistant.multiModal.maxTokensHint', 'Maximum response length') }}
+							Maximum response length
 						</N8nText>
 					</div>
 				</div>
