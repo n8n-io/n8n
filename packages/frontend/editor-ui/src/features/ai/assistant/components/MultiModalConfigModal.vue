@@ -326,7 +326,7 @@ function handleReset() {
 					@click="handleReset"
 					data-testid="reset-button"
 				>
-					{{ i18n.baseText('aiAssistant.multiModal.reset', 'Reset to Default') }}
+					Reset to Default
 				</N8nButton>
 				<div :class="$style.actions">
 					<N8nButton
@@ -334,7 +334,7 @@ function handleReset() {
 						@click="handleClose"
 						data-testid="cancel-button"
 					>
-						{{ i18n.baseText('aiAssistant.multiModal.cancel', 'Cancel') }}
+						Cancel
 					</N8nButton>
 					<N8nButton
 						type="primary"
@@ -342,7 +342,7 @@ function handleReset() {
 						@click="handleSave"
 						data-testid="save-button"
 					>
-						{{ i18n.baseText('aiAssistant.multiModal.save', 'Save Configuration') }}
+						Save Configuration
 					</N8nButton>
 				</div>
 			</div>
