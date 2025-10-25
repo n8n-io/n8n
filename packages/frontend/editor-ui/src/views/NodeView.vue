@@ -1800,15 +1800,6 @@ watch(
 			return;
 		}
 
-		const addNodesItem: INodeUi = {
-			id: CanvasNodeRenderType.AddNodes,
-			name: CanvasNodeRenderType.AddNodes,
-			type: CanvasNodeRenderType.AddNodes,
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		};
-
 		const choicePromptItem: INodeUi = {
 			id: CanvasNodeRenderType.ChoicePrompt,
 			name: CanvasNodeRenderType.ChoicePrompt,
