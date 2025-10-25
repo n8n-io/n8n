@@ -14,8 +14,10 @@ import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 import shuffle from 'lodash/shuffle';
+import MultiModalConfigModal from '../MultiModalConfigModal.vue';
+import type { MultiModalConfig } from '../../builder.store';
 
-import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nText, N8nIconButton } from '@n8n/design-system';
 
 const emit = defineEmits<{
 	close: [];
