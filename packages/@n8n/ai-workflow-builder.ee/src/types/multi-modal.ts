@@ -1,5 +1,5 @@
 export interface MultiModalConfig {
-	provider: 'openai' | 'anthropic' | 'google' | 'groq' | 'cohere';
+	provider: 'openai' | 'anthropic' | 'google' | 'groq' | 'cohere' | 'openrouter';
 	model?: string;
 	apiKey?: string;
 	baseUrl?: string;
