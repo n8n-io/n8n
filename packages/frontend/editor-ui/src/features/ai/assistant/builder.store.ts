@@ -290,6 +290,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
 
+		// Add multiModalConfig to payload if it exists
+		if (multiModalConfig.value) {
+			(payload as any).multiModalConfig = multiModalConfig.value;
+		}
+
 		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
 
 		// Abort previous streaming request if any
