@@ -19,6 +19,18 @@ const i18n = useI18n();
 // Provider options with models
 const PROVIDERS = [
         {
+                label: 'OpenRouter',
+                value: 'openrouter',
+                models: [
+                        { label: 'Claude 3.5 Sonnet (via OpenRouter)', value: 'anthropic/claude-3.5-sonnet' },
+                        { label: 'GPT-4o (via OpenRouter)', value: 'openai/gpt-4o' },
+                        { label: 'GPT-4o Mini (via OpenRouter)', value: 'openai/gpt-4o-mini' },
+                        { label: 'Gemini Pro 1.5 (via OpenRouter)', value: 'google/gemini-pro-1.5' },
+                        { label: 'Llama 3.1 405B (via OpenRouter)', value: 'meta-llama/llama-3.1-405b-instruct' },
+                ],
+                defaultModel: 'anthropic/claude-3.5-sonnet',
+        },
+        {
                 label: 'OpenAI',
                 value: 'openai',
                 models: [
