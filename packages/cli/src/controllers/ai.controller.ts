@@ -25,6 +25,8 @@ import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
+import { getProviderModels } from '@n8n/ai-workflow-builder.ee/services/provider-models.service';
+import type { MultiModalConfig } from '@n8n/ai-workflow-builder.ee/types/multi-modal';
 
 export type FlushableResponse = Response & { flush: () => void };
 
