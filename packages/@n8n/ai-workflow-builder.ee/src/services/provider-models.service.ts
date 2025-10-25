@@ -1,6 +1,6 @@
 import type { MultiModalConfig } from '../types/multi-modal';
 
-interface ProviderModel {
+export interface ProviderModel {
 	id: string;
 	name: string;
 	description?: string;
