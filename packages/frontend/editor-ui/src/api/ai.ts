@@ -26,6 +26,7 @@ export function chatWithBuilder(
         onDone: () => void,
         onError: (e: Error) => void,
         abortSignal?: AbortSignal,
+        multiModalConfig?: MultiModalConfig,
 ): void {
         void streamRequest<ChatRequest.ResponsePayload>(
                 ctx,
