@@ -74,6 +74,24 @@ export const createMultiModalLLM = async (config: LLMProviderConfig) => {
 			});
 		}
 
+		case 'openrouter': {
+			const { ChatOpenAI } = await import('@langchain/openai');
+			return new ChatOpenAI({
+				model: model || 'anthropic/claude-3.5-sonnet',
+				apiKey: config.apiKey,
+				temperature,
+				maxTokens: maxTokens > 0 ? maxTokens : undefined,
+				configuration: {
+					baseURL: config.baseUrl || 'https://openrouter.ai/api/v1',
+					defaultHeaders: {
+						...config.headers,
+						'HTTP-Referer': 'https://n8n.io',
+						'X-Title': 'n8n AI Workflow Builder',
+					},
+				},
+			});
+		}
+
 		default:
 			throw new Error(`Unsupported provider: ${provider}`);
 	}
