@@ -38,8 +38,6 @@ const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
-const showMultiModalConfig = ref(false);
-
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',
