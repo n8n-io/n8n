@@ -9,3 +9,7 @@ export {
 export { evaluateEfficiency, type EfficiencyResult } from './efficiency-evaluator';
 export { evaluateDataFlow, type DataFlowResult } from './data-flow-evaluator';
 export { evaluateMaintainability, type MaintainabilityResult } from './maintainability-evaluator';
+export {
+	evaluateBestPractices,
+	type BestPracticesResult,
+} from './best-practices-evaluator';

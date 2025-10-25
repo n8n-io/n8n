@@ -2,9 +2,8 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { ProgrammaticEvaluationResult } from '@/validation/types';
-
-import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
+import type { SimpleWorkflow, WorkflowOperation } from './types';
+import type { ProgrammaticEvaluationResult } from './validation/types';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**

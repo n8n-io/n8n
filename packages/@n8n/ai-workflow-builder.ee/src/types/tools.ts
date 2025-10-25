@@ -1,6 +1,7 @@
 import type { INodeParameters } from 'n8n-workflow';
 import type { ZodIssue } from 'zod';
 
+import type { PromptCategorization } from './categorization';
 import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
 
 /**
@@ -143,4 +144,11 @@ export interface RemoveConnectionOutput {
 	sourceOutputIndex: number;
 	targetInputIndex: number;
 	message: string;
+}
+
+/**
+ * Output type for categorize prompt tool
+ */
+export interface CategorizePromptOutput {
+	categorization: PromptCategorization;
 }

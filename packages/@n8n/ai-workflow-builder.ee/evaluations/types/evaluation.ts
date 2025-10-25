@@ -36,6 +36,15 @@ const maintainabilityScoreSchema = categoryScoreSchema.extend({
 	modularity: z.number().min(0).max(1).describe('Score for reusable and modular components'),
 });
 
+const bestPracticesScoreSchema = categoryScoreSchema.extend({
+	techniques: z
+		.array(z.string())
+		.describe(
+			'Workflow techniques identified for this evaluation (e.g., chatbot, content-generation)',
+		)
+		.optional(),
+});
+
 // Main evaluation result schema
 export const evaluationResultSchema = z.object({
 	overallScore: z
@@ -51,6 +60,7 @@ export const evaluationResultSchema = z.object({
 	efficiency: efficiencyScoreSchema,
 	dataFlow: categoryScoreSchema,
 	maintainability: maintainabilityScoreSchema,
+	bestPractices: bestPracticesScoreSchema,
 	summary: z.string().describe('2-3 sentences summarizing main strengths and weaknesses'),
 	criticalIssues: z
 		.array(z.string())
@@ -63,6 +73,7 @@ export type Violation = z.infer<typeof violationSchema>;
 export type CategoryScore = z.infer<typeof categoryScoreSchema>;
 export type EfficiencyScore = z.infer<typeof efficiencyScoreSchema>;
 export type MaintainabilityScore = z.infer<typeof maintainabilityScoreSchema>;
+export type BestPracticesScore = z.infer<typeof bestPracticesScoreSchema>;
 export type EvaluationResult = z.infer<typeof evaluationResultSchema>;
 
 // Test case schema for evaluation
