@@ -91,34 +91,38 @@ export function buildGetManyFilter(
 	node: INode,
 ): DataTableFilter {
 	const filters = fieldEntries.map((x) => {
+		const common = {
+			columnName: x.keyName.split(' ')[0],
+			path: x.path,
+		};
 		switch (x.condition) {
 			case 'isEmpty':
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: 'eq' as const,
 					value: null,
 				};
 			case 'isNotEmpty':
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: 'neq' as const,
 					value: null,
 				};
 			case 'isTrue':
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: 'eq' as const,
 					value: true,
 				};
 			case 'isFalse':
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: 'eq' as const,
 					value: false,
 				};
 			default: {
 				let value = x.keyValue;
-				const columnType = columnTypeMap[x.keyName];
+				const columnType = columnTypeMap[common.columnName];
 
 				// Convert ISO date strings to Date objects for date columns
 				if (columnType === 'date' && typeof value === 'string') {
@@ -126,13 +130,13 @@ export function buildGetManyFilter(
 					if (isNaN(parsed.getTime())) {
 						throw new NodeOperationError(
 							node,
-							`Invalid date string '${value}' for column '${x.keyName}'`,
+							`Invalid date string '${value}' for column '${common.columnName}'`,
 						);
 					}
 					value = parsed;
 				}
 				return {
-					columnName: x.keyName,
+					...common,
 					condition: x.condition ?? 'eq',
 					value,
 				};
@@ -186,10 +190,7 @@ export function dataObjectToApiInput(
 					}
 				}
 
-				throw new NodeOperationError(
-					node,
-					`unexpected object input '${JSON.stringify(v)}' in row ${row}`,
-				);
+				return [k, dataObjectToApiInput(v as IDataObject, node, row)];
 			}
 
 			return [k, v];
