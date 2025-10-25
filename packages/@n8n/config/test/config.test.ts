@@ -55,6 +55,7 @@ describe('GlobalConfig', () => {
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
 			sizeCheckCacheDuration: 60000,
+			uploadMaxFileSize: 100 * 1024 * 1024,
 		},
 		database: {
 			logging: {

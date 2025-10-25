@@ -37,6 +37,68 @@ export class ControllerRegistry {
 		}
 	}
 
+	private buildMiddlewares(
+		route: {
+			skipAuth?: boolean;
+			allowSkipMFA?: boolean;
+			allowSkipPreviewAuth?: boolean;
+			rateLimit?: boolean | RateLimit;
+			licenseFeature?: BooleanLicenseFeature;
+			accessScope?: AccessScope;
+			middlewares?: RequestHandler[];
+		},
+		controllerMiddlewares: RequestHandler[],
+	): RequestHandler[] {
+		const middlewares: RequestHandler[] = [];
+
+		// Rate limiting (if in production and configured)
+		if (inProduction && route.rateLimit) {
+			middlewares.push(this.createRateLimitMiddleware(route.rateLimit));
+		}
+
+		// Authentication (unless skipAuth is true)
+		if (!route.skipAuth) {
+			middlewares.push(
+				this.authService.createAuthMiddleware({
+					allowSkipMFA: route.allowSkipMFA ?? false,
+					allowSkipPreviewAuth: route.allowSkipPreviewAuth ?? false,
+				}),
+				this.lastActiveAtService.middleware.bind(this.lastActiveAtService) as RequestHandler,
+			);
+		}
+
+		// License check (if configured)
+		if (route.licenseFeature) {
+			middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
+		}
+
+		// Scope check (if configured)
+		if (route.accessScope) {
+			middlewares.push(this.createScopedMiddleware(route.accessScope));
+		}
+
+		// Controller-level middlewares
+		middlewares.push(...controllerMiddlewares);
+
+		// Route-specific middlewares
+		if (route.middlewares) {
+			middlewares.push(...route.middlewares);
+		}
+
+		return middlewares;
+	}
+
+	private createRawBodyMiddleware(): RequestHandler {
+		return (req, _res, next) => {
+			// Restore the raw body that was saved by rawBodyReader middleware
+			// This overwrites the parsed JSON body with the raw buffer
+			if (req.rawBody) {
+				req.body = req.rawBody;
+			}
+			next();
+		};
+	}
+
 	private activateController(app: Application, controllerClass: Controller) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
@@ -79,25 +141,12 @@ export class ControllerRegistry {
 				return await controller[handlerName](...args);
 			};
 
+			// Build all middlewares for this route
+			const middlewares = this.buildMiddlewares(route, controllerMiddlewares);
+
 			router[route.method](
 				route.path,
-				...(inProduction && route.rateLimit
-					? [this.createRateLimitMiddleware(route.rateLimit)]
-					: []),
-
-				...(route.skipAuth
-					? []
-					: ([
-							this.authService.createAuthMiddleware({
-								allowSkipMFA: route.allowSkipMFA,
-								allowSkipPreviewAuth: route.allowSkipPreviewAuth,
-							}),
-							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
-						] as RequestHandler[])),
-				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
-				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
-				...controllerMiddlewares,
-				...route.middlewares,
+				...middlewares,
 				route.usesTemplates
 					? async (req, res) => {
 							// When using templates, intentionally drop the return value,

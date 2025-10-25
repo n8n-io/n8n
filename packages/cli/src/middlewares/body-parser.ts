@@ -49,6 +49,10 @@ export const rawBodyReader: RequestHandler = async (req, _res, next) => {
 };
 
 export const parseBody = async (req: Request) => {
+	if (req.contentType?.startsWith('multipart/')) {
+		return;
+	}
+
 	await req.readRawBody();
 	const { rawBody, contentType, encoding } = req;
 	if (rawBody?.length) {
