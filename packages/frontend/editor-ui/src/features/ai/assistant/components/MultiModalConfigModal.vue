@@ -182,7 +182,7 @@ function handleReset() {
 <template>
 	<N8nModal
 		:model-value="modelValue"
-		:title="i18n.baseText('aiAssistant.multiModal.title', 'Configure AI Provider')"
+		title="Configure AI Provider"
 		width="600px"
 		data-testid="multi-modal-config-modal"
 		@update:model-value="handleClose"
