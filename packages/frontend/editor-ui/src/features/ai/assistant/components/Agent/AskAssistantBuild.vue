@@ -14,8 +14,10 @@ import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 import shuffle from 'lodash/shuffle';
+import MultiModalConfigModal from '../MultiModalConfigModal.vue';
+import type { MultiModalConfig } from '@/api/ai';
 
-import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nText, N8nIconButton } from '@n8n/design-system';
 
 const emit = defineEmits<{
 	close: [];
@@ -36,6 +38,7 @@ const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+const showMultiModalConfig = ref(false);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
