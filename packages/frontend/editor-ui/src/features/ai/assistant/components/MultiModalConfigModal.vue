@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue';
-import { N8nModal, N8nSelect, N8nInput, N8nButton, N8nText } from '@n8n/design-system';
+import { N8nModal, N8nSelect, N8nOption, N8nInput, N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 // Types
