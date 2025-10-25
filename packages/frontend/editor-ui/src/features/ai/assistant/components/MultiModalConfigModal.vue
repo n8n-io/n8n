@@ -170,13 +170,22 @@ function onReset() {
                                         >
                                                 <N8nSelect
                                                         v-model="model"
-                                                        :placeholder="i18n.baseText('aiAssistant.builder.multiModalConfig.selectModel')"
+                                                        :placeholder="loadingModels ? 'Loading models...' : i18n.baseText('aiAssistant.builder.multiModalConfig.selectModel')"
+                                                        :disabled="loadingModels"
                                                         data-test-id="multimodal-model-select"
                                                 >
-                                                        <template v-for="modelOption in availableModels" :key="modelOption.value">
-                                                                <n8n-option :value="modelOption.value" :label="modelOption.label" />
+                                                        <template v-if="loadingModels">
+                                                                <n8n-option value="" label="Loading..." disabled />
+                                                        </template>
+                                                        <template v-else>
+                                                                <template v-for="modelOption in availableModels" :key="modelOption.value">
+                                                                        <n8n-option :value="modelOption.value" :label="modelOption.label" />
+                                                                </template>
                                                         </template>
                                                 </N8nSelect>
+                                                <N8nText v-if="modelsError" size="small" color="danger" tag="p" :class="$style.hint">
+                                                        {{ modelsError }}
+                                                </N8nText>
                                         </N8nFormInput>
                                 </div>
 
