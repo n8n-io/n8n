@@ -17,7 +17,7 @@ import {
 	DateRangePickerTrigger,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { useSlots } from 'vue';
+import { useSlots, type Slots } from 'vue';
 
 import Button from '../N8nButton/Button.vue';
 import IconButton from '../N8nIconButton';
@@ -33,7 +33,7 @@ const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 
 const emit = defineEmits<N8nDateRangePickerRootEmits>();
 const forwarded = useForwardPropsEmits(props, emit);
-const slots = useSlots();
+const slots: Slots = useSlots();
 </script>
 
 <template>

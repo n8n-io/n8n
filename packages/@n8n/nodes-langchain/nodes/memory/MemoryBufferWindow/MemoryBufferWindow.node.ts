@@ -61,10 +61,12 @@ class MemoryChatBufferSingleton {
 	}
 
 	private async cleanupStaleBuffers(): Promise<void> {
-		const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+		// Clean up buffers that haven't been accessed in the last 5 minutes
+		// This balances session cleanup with supporting active conversations where users may pause
+		const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
 		for (const [key, memoryInstance] of this.memoryBuffer.entries()) {
-			if (memoryInstance.last_accessed < oneHourAgo) {
+			if (memoryInstance.last_accessed < fiveMinutesAgo) {
 				await this.memoryBuffer.get(key)?.buffer.clear();
 				this.memoryBuffer.delete(key);
 			}
