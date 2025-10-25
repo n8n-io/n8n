@@ -320,7 +320,17 @@ defineExpose({
 			@stop="builderStore.stopStreaming"
 		>
 			<template #header>
-				<slot name="header" />
+				<div :class="$style.header">
+					<slot name="header" />
+					<N8nIconButton
+						icon="cog"
+						type="tertiary"
+						size="small"
+						:title="i18n.baseText('aiAssistant.multiModal.configure', 'Configure AI Provider')"
+						data-testid="open-config-modal-button"
+						@click="handleOpenConfigModal"
+					/>
+				</div>
 			</template>
 			<template #messagesFooter>
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
@@ -331,6 +341,13 @@ defineExpose({
 				</N8nText>
 			</template>
 		</N8nAskAssistantChat>
+
+		<!-- Multi-Modal Config Modal -->
+		<MultiModalConfigModal
+			v-model="showConfigModal"
+			:current-config="builderStore.multiModalConfig"
+			@save="handleSaveConfig"
+		/>
 	</div>
 </template>
 
