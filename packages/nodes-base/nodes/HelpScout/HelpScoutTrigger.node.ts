@@ -124,10 +124,10 @@ export class HelpScoutTrigger implements INodeType {
 								return false;
 							}
 						}
+						// Found matching webhook, store its ID
+						webhookData.webhookId = webhook.id as string;
+						return true;
 					}
-					// Set webhook-id to be sure that it can be deleted
-					webhookData.webhookId = webhook.id as string;
-					return true;
 				}
 				return false;
 			},
