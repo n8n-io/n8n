@@ -3,25 +3,23 @@ import { useDebugInfo } from '@/composables/useDebugInfo';
 const BASE_FORUM_URL = 'https://github.com/n8n-io/n8n/issues/new?labels=bug-report';
 
 const REPORT_TEMPLATE = `
-<!-- Please follow the template below. Skip the questions that are not relevant to you. -->
+<!-- Please follow the template below. -->
+<!-- Please do not use this for general support, feature requests or questions -->
 
-## Describe the problem/error/question
+## Bug Description
+<!-- Describe the bug in as much detail as possible. -->
 
 
-## What is the error message (if any)?
-
-
-## Please share your workflow/screenshots/recording
+## To Reproduce
+<!-- Steps to reproduce the behavior. If possible, provide a link to a workflow that can be imported into n8n. -->
 
 \`\`\`
 (Select the nodes on your canvas and use the keyboard shortcuts CMD+C/CTRL+C and CMD+V/CTRL+V to copy and paste the workflow.)
 ⚠️ WARNING ⚠️ If you have sensitive data in your workflow (like API keys), please remove it before sharing.
 \`\`\`
 
-
-## Share the output returned by the last node
-<!-- If you need help with data transformations, please also share your expected output. -->
-
+## Expected Behavior
+<!-- A clear and concise description of what you expected to happen. -->
 `;
 
 export function useBugReporting() {
