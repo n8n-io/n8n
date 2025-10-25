@@ -20,7 +20,7 @@ interface ProviderInfo {
 }
 
 export interface MultiModalConfig {
-	provider: 'openai' | 'anthropic' | 'google' | 'groq' | 'cohere';
+	provider: 'openai' | 'anthropic' | 'google' | 'groq' | 'cohere' | 'openrouter';
 	model?: string;
 	apiKey?: string;
 	baseUrl?: string;
@@ -30,6 +30,20 @@ export interface MultiModalConfig {
 
 // Provider configurations
 const PROVIDERS: ProviderInfo[] = [
+	{
+		name: 'OpenRouter',
+		value: 'openrouter',
+		models: [
+			{ name: 'Claude 3.5 Sonnet (via OpenRouter)', value: 'anthropic/claude-3.5-sonnet', description: 'Best for complex tasks' },
+			{ name: 'GPT-4o (via OpenRouter)', value: 'openai/gpt-4o', description: 'Most capable OpenAI model' },
+			{ name: 'GPT-4o Mini (via OpenRouter)', value: 'openai/gpt-4o-mini', description: 'Fast and efficient' },
+			{ name: 'Gemini Pro 1.5 (via OpenRouter)', value: 'google/gemini-pro-1.5', description: 'Google\'s best' },
+			{ name: 'Llama 3.1 405B (via OpenRouter)', value: 'meta-llama/llama-3.1-405b-instruct', description: 'Most capable open model' },
+		],
+		requiresApiKey: true,
+		supportsCustomUrl: false,
+		defaultModel: 'anthropic/claude-3.5-sonnet',
+	},
 	{
 		name: 'OpenAI',
 		value: 'openai',
