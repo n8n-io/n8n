@@ -22,11 +22,12 @@ export async function microsoftApiRequest(
 	option: IDataObject = { json: true },
 ) {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
+	const graphEndpoint = (credentials.graphEndpoint as string) || 'https://graph.microsoft.com';
 
-	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
+	let apiUrl = `${graphEndpoint}/v1.0/me${resource}`;
 	// If accessing shared mailbox
 	if (credentials.useShared && credentials.userPrincipalName) {
-		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+		apiUrl = `${graphEndpoint}/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
 	const options: IRequestOptions = {
