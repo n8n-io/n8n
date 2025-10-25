@@ -126,16 +126,31 @@ _Nothing currently in progress - all implementation completed!_
 
 ---
 
-## 🐛 Known Issues
-- None yet (to be updated during testing)
+## 🐛 Known Issues & Current Status
+
+### 🔴 ACTIVE ISSUES:
+1. **Modal Fields Not Rendering**
+   - Status: 🔴 Bug Found
+   - Issue: Provider dropdown, model selection, and API key input not showing in modal
+   - Likely Cause: Vue component rendering issue or design system compatibility
+   - Action: Debugging and fixing component
+
+2. **OpenRouter Support Requested**
+   - Status: 🟡 Enhancement Requested
+   - User wants to use OpenRouter (unified API for multiple models)
+   - Action: Adding OpenRouter as 6th provider option
+
+### ✅ RESOLVED ISSUES:
+- License error is expected (enterprise feature) - working correctly
+- Settings button successfully integrated
 
 ---
 
 ## 📅 Timeline
 - **Phase 1 (Backend):** ✅ Completed
-- **Phase 2 (Frontend Modal):** ✅ Completed
-- **Phase 3 (Integration):** ✅ Completed
-- **Phase 4 (Testing):** 🟡 Pending
+- **Phase 2 (Frontend Modal):** 🟡 Debugging (fields not showing)
+- **Phase 3 (Integration):** ✅ Completed (backend ready)
+- **Phase 4 (Testing):** ⏸️ Blocked by Phase 2 issue
 
 ---
 
