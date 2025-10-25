@@ -25,6 +25,8 @@ import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
+import { getProviderModels } from '@n8n/ai-workflow-builder.ee/services/provider-models.service';
+import type { MultiModalConfig } from '@n8n/ai-workflow-builder.ee/types/multi-modal';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -255,6 +257,21 @@ export class AiController {
 	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
 		try {
 			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Get('/providers/:provider/models')
+	async getProviderModels(req: AuthenticatedRequest, _: Response) {
+		try {
+			const provider = req.params.provider as MultiModalConfig['provider'];
+			const apiKey = req.query.apiKey as string | undefined;
+
+			const models = await getProviderModels(provider, apiKey);
+			return { models };
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

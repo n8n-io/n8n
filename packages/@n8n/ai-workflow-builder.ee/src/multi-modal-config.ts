@@ -74,6 +74,24 @@ export const createMultiModalLLM = async (config: LLMProviderConfig) => {
 			});
 		}
 
+		case 'openrouter': {
+			const { ChatOpenAI } = await import('@langchain/openai');
+			return new ChatOpenAI({
+				model: model || 'anthropic/claude-3.5-sonnet',
+				apiKey: config.apiKey,
+				temperature,
+				maxTokens: maxTokens > 0 ? maxTokens : undefined,
+				configuration: {
+					baseURL: config.baseUrl || 'https://openrouter.ai/api/v1',
+					defaultHeaders: {
+						...config.headers,
+						'HTTP-Referer': 'https://n8n.io',
+						'X-Title': 'n8n AI Workflow Builder',
+					},
+				},
+			});
+		}
+
 		default:
 			throw new Error(`Unsupported provider: ${provider}`);
 	}
@@ -81,6 +99,13 @@ export const createMultiModalLLM = async (config: LLMProviderConfig) => {
 
 // Provider-specific model configurations
 export const PROVIDER_MODELS = {
+	openrouter: [
+		'anthropic/claude-3.5-sonnet',
+		'openai/gpt-4o',
+		'openai/gpt-4o-mini',
+		'google/gemini-pro-1.5',
+		'meta-llama/llama-3.1-405b-instruct',
+	],
 	openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
 	anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
 	google: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],

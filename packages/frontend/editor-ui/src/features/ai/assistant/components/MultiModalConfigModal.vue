@@ -1,75 +1,38 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
-import { N8nModal, N8nSelect, N8nInput, N8nFormInput, N8nText } from '@n8n/design-system';
+import { ref, computed, watch, onMounted } from 'vue';
+import { N8nModal, N8nSelect, N8nInput, N8nFormInput, N8nText, N8nSpinner } from '@n8n/design-system';
 import type { MultiModalConfig } from '@/api/ai';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@/stores/root.store';
+import { fetchProviderModelsApi, type ProviderModel } from '../providerModels.api';
 
 const emit = defineEmits<{
-        'update:modelValue': [value: boolean];
-        save: [config: MultiModalConfig | undefined];
+	'update:modelValue': [value: boolean];
+	save: [config: MultiModalConfig | undefined];
 }>();
 
 const props = defineProps<{
-        modelValue: boolean;
-        currentConfig?: MultiModalConfig;
+	modelValue: boolean;
+	currentConfig?: MultiModalConfig;
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
 
-// Provider options with models
+// Provider options (static)
 const PROVIDERS = [
-        {
-                label: 'OpenAI',
-                value: 'openai',
-                models: [
-                        { label: 'GPT-4o (Most capable)', value: 'gpt-4o' },
-                        { label: 'GPT-4o Mini (Fast and efficient)', value: 'gpt-4o-mini' },
-                        { label: 'GPT-4 Turbo', value: 'gpt-4-turbo' },
-                        { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' },
-                ],
-                defaultModel: 'gpt-4o',
-        },
-        {
-                label: 'Anthropic',
-                value: 'anthropic',
-                models: [
-                        { label: 'Claude 3.5 Sonnet (Best for complex tasks)', value: 'claude-3-5-sonnet-20241022' },
-                        { label: 'Claude 3.5 Haiku (Fast and efficient)', value: 'claude-3-5-haiku-20241022' },
-                        { label: 'Claude 3 Opus (Most capable)', value: 'claude-3-opus-20240229' },
-                ],
-                defaultModel: 'claude-3-5-sonnet-20241022',
-        },
-        {
-                label: 'Google Gemini',
-                value: 'google',
-                models: [
-                        { label: 'Gemini 1.5 Pro (Most capable)', value: 'gemini-1.5-pro' },
-                        { label: 'Gemini 1.5 Flash (Fast and efficient)', value: 'gemini-1.5-flash' },
-                        { label: 'Gemini Pro', value: 'gemini-pro' },
-                ],
-                defaultModel: 'gemini-1.5-pro',
-        },
-        {
-                label: 'Groq',
-                value: 'groq',
-                models: [
-                        { label: 'Llama 3.1 70B (Most capable)', value: 'llama-3.1-70b-versatile' },
-                        { label: 'Llama 3.1 8B (Fast inference)', value: 'llama-3.1-8b-instant' },
-                        { label: 'Mixtral 8x7B (Large context)', value: 'mixtral-8x7b-32768' },
-                ],
-                defaultModel: 'llama-3.1-70b-versatile',
-        },
-        {
-                label: 'Cohere',
-                value: 'cohere',
-                models: [
-                        { label: 'Command R+ (Most capable)', value: 'command-r-plus' },
-                        { label: 'Command R (Balanced)', value: 'command-r' },
-                        { label: 'Command (General purpose)', value: 'command' },
-                ],
-                defaultModel: 'command-r-plus',
-        },
+	{ label: 'OpenRouter', value: 'openrouter', defaultModel: 'anthropic/claude-3.5-sonnet' },
+	{ label: 'OpenAI', value: 'openai', defaultModel: 'gpt-4o' },
+	{ label: 'Anthropic', value: 'anthropic', defaultModel: 'claude-3-5-sonnet-20241022' },
+	{ label: 'Google Gemini', value: 'google', defaultModel: 'gemini-1.5-pro' },
+	{ label: 'Groq', value: 'groq', defaultModel: 'llama-3.1-70b-versatile' },
+	{ label: 'Cohere', value: 'cohere', defaultModel: 'command-r-plus' },
 ];
+
+// Dynamic models
+const dynamicModels = ref<Record<string, ProviderModel[]>>({});
+const loadingModels = ref<boolean>(false);
+const modelsError = ref<string | null>(null);
 
 // Form state
 const provider = ref<string>(props.currentConfig?.provider || 'anthropic');
@@ -80,46 +43,96 @@ const maxTokens = ref<number>(props.currentConfig?.maxTokens ?? 4000);
 
 // Computed
 const selectedProvider = computed(() => PROVIDERS.find((p) => p.value === provider.value));
-const availableModels = computed(() => selectedProvider.value?.models || []);
+const availableModels = computed(() => {
+	const providerValue = provider.value;
+	const models = dynamicModels.value[providerValue] || [];
+	return models.map((m) => ({
+		label: m.description ? `${m.name} - ${m.description}` : m.name,
+		value: m.id,
+	}));
+});
 
-// Watch provider changes to update model
-watch(provider, (newProvider) => {
-        const providerInfo = PROVIDERS.find((p) => p.value === newProvider);
-        if (providerInfo) {
-                model.value = providerInfo.defaultModel;
-        }
+// Fetch models for a provider
+async function fetchModelsForProvider(providerValue: string, key?: string) {
+	// Skip if already loaded
+	if (dynamicModels.value[providerValue]?.length > 0) {
+		return;
+	}
+
+	loadingModels.value = true;
+	modelsError.value = null;
+
+	try {
+		const context = rootStore.restApiContext;
+		const response = await fetchProviderModelsApi(context, providerValue, key);
+		dynamicModels.value[providerValue] = response.models;
+	} catch (error) {
+		console.error(`Failed to fetch models for ${providerValue}:`, error);
+		modelsError.value = `Failed to load models for ${providerValue}`;
+	} finally {
+		loadingModels.value = false;
+	}
+}
+
+// Watch provider changes to update model and fetch new models
+watch(provider, async (newProvider) => {
+	const providerInfo = PROVIDERS.find((p) => p.value === newProvider);
+	if (providerInfo) {
+		// Fetch models for new provider
+		await fetchModelsForProvider(newProvider, apiKey.value);
+		
+		// Set default model
+		if (!model.value || !dynamicModels.value[newProvider]?.find(m => m.id === model.value)) {
+			model.value = providerInfo.defaultModel;
+		}
+	}
+});
+
+// Watch API key changes to refetch models (useful for providers that need auth)
+watch(apiKey, async (newKey) => {
+	if (newKey && provider.value) {
+		// Clear cached models and refetch
+		delete dynamicModels.value[provider.value];
+		await fetchModelsForProvider(provider.value, newKey);
+	}
 });
 
 // Initialize model if not set
-if (!model.value && selectedProvider.value) {
-        model.value = selectedProvider.value.defaultModel;
-}
+onMounted(async () => {
+	if (selectedProvider.value) {
+		await fetchModelsForProvider(provider.value, apiKey.value);
+		
+		if (!model.value) {
+			model.value = selectedProvider.value.defaultModel;
+		}
+	}
+});
 
 function onClose() {
-        emit('update:modelValue', false);
+	emit('update:modelValue', false);
 }
 
 function onSave() {
-        const config: MultiModalConfig = {
-                provider: provider.value as MultiModalConfig['provider'],
-                model: model.value,
-                apiKey: apiKey.value || undefined,
-                temperature: temperature.value,
-                maxTokens: maxTokens.value,
-        };
-        
-        emit('save', config);
-        emit('update:modelValue', false);
+	const config: MultiModalConfig = {
+		provider: provider.value as MultiModalConfig['provider'],
+		model: model.value,
+		apiKey: apiKey.value || undefined,
+		temperature: temperature.value,
+		maxTokens: maxTokens.value,
+	};
+	
+	emit('save', config);
+	emit('update:modelValue', false);
 }
 
 function onReset() {
-        provider.value = 'anthropic';
-        model.value = 'claude-3-5-sonnet-20241022';
-        apiKey.value = '';
-        temperature.value = 0.7;
-        maxTokens.value = 4000;
-        emit('save', undefined);
-        emit('update:modelValue', false);
+	provider.value = 'anthropic';
+	model.value = 'claude-3-5-sonnet-20241022';
+	apiKey.value = '';
+	temperature.value = 0.7;
+	maxTokens.value = 4000;
+	emit('save', undefined);
+	emit('update:modelValue', false);
 }
 </script>
 
@@ -157,13 +170,22 @@ function onReset() {
                                         >
                                                 <N8nSelect
                                                         v-model="model"
-                                                        :placeholder="i18n.baseText('aiAssistant.builder.multiModalConfig.selectModel')"
+                                                        :placeholder="loadingModels ? 'Loading models...' : i18n.baseText('aiAssistant.builder.multiModalConfig.selectModel')"
+                                                        :disabled="loadingModels"
                                                         data-test-id="multimodal-model-select"
                                                 >
-                                                        <template v-for="modelOption in availableModels" :key="modelOption.value">
-                                                                <n8n-option :value="modelOption.value" :label="modelOption.label" />
+                                                        <template v-if="loadingModels">
+                                                                <n8n-option value="" label="Loading..." disabled />
+                                                        </template>
+                                                        <template v-else>
+                                                                <template v-for="modelOption in availableModels" :key="modelOption.value">
+                                                                        <n8n-option :value="modelOption.value" :label="modelOption.label" />
+                                                                </template>
                                                         </template>
                                                 </N8nSelect>
+                                                <N8nText v-if="modelsError" size="small" color="danger" tag="p" :class="$style.hint">
+                                                        {{ modelsError }}
+                                                </N8nText>
                                         </N8nFormInput>
                                 </div>
 
