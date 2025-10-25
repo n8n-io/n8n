@@ -46,6 +46,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
 	const hasMessages = ref<boolean>(false);
+	const multiModalConfig = ref<MultiModalConfig | undefined>();
 
 	// Store dependencies
 	const settings = useSettingsStore();
