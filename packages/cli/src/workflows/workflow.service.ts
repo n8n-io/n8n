@@ -1,13 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity, ListQueryDb, WorkflowFolderUnionFull } from '@n8n/db';
+import type { User, ListQueryDb, WorkflowFolderUnionFull } from '@n8n/db';
 import {
 	SharedWorkflow,
 	ExecutionRepository,
 	FolderRepository,
-	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowEntity,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -302,53 +303,57 @@ export class WorkflowService {
 			'versionId',
 		]);
 
-		// First add a record to workflow history to be able to get the full version object during the update
-		if (workflowUpdateData.versionId !== workflow.versionId) {
-			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
-		}
-
-		// Some users do not have workflow history enabled, for them activeVersion can be null
-		let updatedVersion = null;
-		try {
-			updatedVersion = await this.workflowHistoryService.getVersion(
-				user,
-				workflowId,
-				workflowUpdateData.versionId,
-			);
-		} catch (error) {
-			// TODO: Remove try-catch blocks when workflow history is enabled for all users
-		}
-
-		if (parentFolderId) {
-			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
-			if (parentFolderId !== PROJECT_ROOT) {
-				try {
-					await this.folderRepository.findOneOrFailFolderInProject(
-						parentFolderId,
-						project?.id ?? '',
-					);
-				} catch (e) {
-					throw new FolderNotFoundError(parentFolderId);
-				}
-			}
-			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
-		}
-
-		if (updatedVersion) {
-			updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
-				workflow,
-				updatedVersion,
-				workflowUpdateData.active,
-			);
-		}
-
-		await this.workflowRepository.update(workflowId, updatePayload);
-
 		const tagsDisabled = this.globalConfig.tags.disabled;
 
-		if (tagIds && !tagsDisabled) {
-			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
-		}
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			// First add a record to workflow history to be able to get the full version object during the update
+			if (workflowUpdateData.versionId !== workflow.versionId) {
+				await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
+			}
+
+			// Some users do not have workflow history enabled, for them activeVersion can be null
+			let updatedVersion = null;
+			try {
+				updatedVersion = await this.workflowHistoryService.getVersion(
+					user,
+					workflowId,
+					workflowUpdateData.versionId,
+				);
+			} catch (error) {
+				// TODO: Remove try-catch blocks when workflow history is enabled for all users
+			}
+
+			if (parentFolderId) {
+				const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
+				if (parentFolderId !== PROJECT_ROOT) {
+					try {
+						await this.folderRepository.findOneOrFailFolderInProject(
+							parentFolderId,
+							project?.id ?? '',
+						);
+					} catch (e) {
+						throw new FolderNotFoundError(parentFolderId);
+					}
+				}
+				updatePayload.parentFolder =
+					parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
+			}
+
+			if (updatedVersion) {
+				updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
+					workflow,
+					updatedVersion,
+					workflowUpdateData.active,
+				);
+			}
+
+			await trx.update(WorkflowEntity, workflowId, updatePayload);
+
+			// Update tags atomically with the workflow update
+			if (tagIds && !tagsDisabled) {
+				await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds, trx);
+			}
+		});
 
 		const relations = tagsDisabled ? [] : ['tags'];
 

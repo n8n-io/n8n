@@ -26,7 +26,6 @@ import {
 	getWorkflowById,
 	setWorkflowAsActive,
 	setWorkflowAsInactive,
-	updateWorkflow,
 	createWorkflow,
 	parseTagNames,
 	getWorkflowTags,
@@ -304,36 +303,38 @@ export = {
 			}
 
 			try {
-				// First add a record to workflow history to be able to get the full version object during the update
-				if (updateData.versionId !== workflow.versionId) {
-					await Container.get(WorkflowHistoryService).saveVersion(
-						req.user,
-						updateData,
-						workflow.id,
-					);
-				}
+				await Container.get(WorkflowRepository).manager.transaction(async (trx) => {
+					// First add a record to workflow history to be able to get the full version object during the update
+					if (updateData.versionId !== workflow.versionId) {
+						await Container.get(WorkflowHistoryService).saveVersion(
+							req.user,
+							updateData,
+							workflow.id,
+						);
+					}
 
-				// Some users do not have workflow history enabled, for them activeVersion can be null
-				let updatedVersion = null;
-				try {
-					updatedVersion = await Container.get(WorkflowHistoryService).getVersion(
-						req.user,
-						id,
-						updateData.versionId,
-					);
-				} catch (error) {
-					// TODO: Remove try-catch blocks when workflow history is enabled for all users
-				}
+					// Some users do not have workflow history enabled, for them activeVersion can be null
+					let updatedVersion = null;
+					try {
+						updatedVersion = await Container.get(WorkflowHistoryService).getVersion(
+							req.user,
+							id,
+							updateData.versionId,
+						);
+					} catch (error) {
+						// TODO: Remove try-catch blocks when workflow history is enabled for all users
+					}
 
-				if (updatedVersion) {
-					updateData.activeVersion = getActiveVersionUpdateValue(
-						workflow,
-						updatedVersion,
-						undefined, // active is read-only
-					);
-				}
+					if (updatedVersion) {
+						updateData.activeVersion = getActiveVersionUpdateValue(
+							workflow,
+							updatedVersion,
+							undefined, // active is read-only
+						);
+					}
 
-				await updateWorkflow(workflow.id, updateData);
+					await trx.update(WorkflowEntity, workflow.id, updateData);
+				});
 			} catch (error) {
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
@@ -396,27 +397,20 @@ export = {
 					// Update the workflow object for response
 					workflow.active = true;
 					workflow.activeVersion = activeVersion;
-				} catch (error) {
-					// Rollback: restore previous state
-					await Container.get(WorkflowRepository).update(workflow.id, {
-						active: workflow.active,
-						activeVersion: workflow.activeVersion,
-						updatedAt: new Date(),
+
+					Container.get(EventService).emit('workflow-activated', {
+						user: req.user,
+						workflowId: workflow.id,
+						workflow,
+						publicApi: true,
 					});
 
+					return res.json(workflow);
+				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
 					}
 				}
-
-				Container.get(EventService).emit('workflow-activated', {
-					user: req.user,
-					workflowId: workflow.id,
-					workflow,
-					publicApi: true,
-				});
-
-				return res.json(workflow);
 			}
 
 			// nothing to do as this version is already active
