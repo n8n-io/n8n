@@ -5,6 +5,7 @@ import {
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -185,3 +186,18 @@ export async function getAllSharedWorkflows() {
 
 export const getWorkflowById = async (id: string) =>
 	await Container.get(WorkflowRepository).findOneBy({ id });
+
+/**
+ * Create a workflow history record for a workflow
+ * @param workflow workflow to create history for
+ * @param user user who created the version (optional)
+ */
+export async function createWorkflowHistory(workflow: IWorkflowDb, user?: User): Promise<void> {
+	await Container.get(WorkflowHistoryRepository).insert({
+		workflowId: workflow.id,
+		versionId: workflow.versionId,
+		nodes: workflow.nodes,
+		connections: workflow.connections,
+		authors: user?.email ?? 'test@example.com',
+	});
+}

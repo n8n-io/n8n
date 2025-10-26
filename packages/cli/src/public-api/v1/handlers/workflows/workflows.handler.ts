@@ -329,7 +329,7 @@ export = {
 					updateData.activeVersion = getActiveVersionUpdateValue(
 						workflow,
 						updatedVersion,
-						updateData.active,
+						undefined, // active is read-only
 					);
 				}
 
