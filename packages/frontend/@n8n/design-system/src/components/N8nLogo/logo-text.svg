@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="100" height="32" viewBox="0 0 80 32">
   <text 
-    fill="var(--color-text-dark, #13285a)" 
+    fill="var(--color-io--icon--color, #13285a)" 
     font-size="25" 
     font-family="'Poppins', sans-serif" 
     font-weight="500" 

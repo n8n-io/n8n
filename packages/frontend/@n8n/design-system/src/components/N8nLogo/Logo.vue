@@ -44,10 +44,6 @@ onMounted(() => {
 
 	const logoEl = svg.value!.$el;
 
-	// Change the logo fill color inline, so that favicon can also use it
-	const logoColor = releaseChannel === 'dev' ? '#838383' : '#E9984B';
-	logoEl.querySelector('path')?.setAttribute('fill', logoColor);
-
 	// Reuse the SVG as favicon
 	const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
 	useFavicon(URL.createObjectURL(blob));
@@ -71,26 +67,15 @@ onMounted(() => {
 
 .logoText {
 	margin-left: var(--spacing--5xs);
-	path {
-		fill: var(--color--text--shade-1);
-	}
 }
 
 .large {
 	transform: scale(2);
-	margin-bottom: var(--spacing-xl);
-
-	svg > path {
-		fill: var(--color-text-dark, #13285a);
-	}
 	margin-bottom: var(--spacing--xl);
 
 	.logo,
 	.logoText {
 		transform: scale(1.3) translateY(-2px);
-		path {
-			fill: var(--color-text-dark);
-		}
 	}
 
 	.logoText {
@@ -100,20 +85,12 @@ onMounted(() => {
 }
 
 .sidebarExpanded .logo {
-	margin-left: var(--spacing-2xs);
-	path {
-		fill: var(--color-text-dark);
-	}
 	margin-left: var(--spacing--2xs);
 }
 
 .sidebarCollapsed .logo {
 	width: 40px;
 	height: 30px;
-	padding: 0 var(--spacing-4xs);
-	path {
-		fill: var(--color-text-dark);
-	}
 	padding: 0 var(--spacing--4xs);
 }
 </style>
