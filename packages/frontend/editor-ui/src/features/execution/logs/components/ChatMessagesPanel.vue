@@ -2,7 +2,6 @@
 import { useI18n } from '@n8n/i18n';
 import Chat from '@n8n/chat/components/Chat.vue';
 import { ChatPlugin } from '@n8n/chat/plugins';
-import type { ChatOptions } from '@n8n/chat/types';
 import {
 	computed,
 	createApp,
@@ -11,17 +10,14 @@ import {
 	onUnmounted,
 	useTemplateRef,
 	watch,
-	ref,
 	type App,
 } from 'vue';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useRouter } from 'vue-router';
 import { useClipboard } from '@vueuse/core';
 import { useToast } from '@/composables/useToast';
+import { useChatState } from '@/features/execution/logs/composables/useChatState';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 interface Props {
 	sessionId: string;
@@ -47,28 +43,26 @@ const emit = defineEmits<{
 const locale = useI18n();
 const clipboard = useClipboard();
 const toast = useToast();
-const router = useRouter();
 const workflowsStore = useWorkflowsStore();
-const rootStore = useRootStore();
-const { runWorkflow } = useRunWorkflow({ router });
 const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
 
+// Use the chat state composable
+const {
+	chatTriggerNode,
+	isStreamingEnabled,
+	isFileUploadsAllowed,
+	allowedFilesMimeTypes,
+	isWorkflowReadyForChat,
+	chatOptions,
+} = useChatState(props.isReadOnly, props.sessionId);
+
 let chatApp: App | null = null;
-const webhookRegistered = ref(false);
-const isRegistering = ref(false);
 
 const sessionIdText = computed(() =>
 	locale.baseText('chat.window.session.id', {
 		interpolate: { id: `${props.sessionId.slice(0, 5)}...` },
 	}),
 );
-
-// Find ChatTrigger node in the workflow
-const chatTriggerNode = computed(() => {
-	return workflowsStore.allNodes.find(
-		(node) => node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
-	);
-});
 
 async function copySessionId() {
 	await clipboard.copy(props.sessionId);
@@ -77,137 +71,6 @@ async function copySessionId() {
 		message: '',
 		type: 'success',
 	});
-}
-
-// Check if streaming is enabled in ChatTrigger node
-const isStreamingEnabled = computed(() => {
-	const options = chatTriggerNode.value?.parameters?.options;
-
-	if (options && typeof options === 'object' && 'responseMode' in options) {
-		const responseMode = options.responseMode;
-		return responseMode === 'streaming';
-	}
-
-	return false;
-});
-
-// Check if file uploads are allowed in ChatTrigger node
-const isFileUploadsAllowed = computed(() => {
-	const options = chatTriggerNode.value?.parameters?.options;
-
-	if (options && typeof options === 'object' && 'allowFileUploads' in options) {
-		return !!options.allowFileUploads;
-	}
-
-	return false;
-});
-
-// Get allowed file MIME types from ChatTrigger node
-const allowedFilesMimeTypes = computed(() => {
-	const options = chatTriggerNode.value?.parameters?.options;
-
-	if (options && typeof options === 'object' && 'allowedFilesMimeTypes' in options) {
-		return options.allowedFilesMimeTypes as string;
-	}
-
-	return 'image/*';
-});
-
-// Check if workflow is ready for chat execution
-const isWorkflowReadyForChat = computed(() => {
-	// Must have a ChatTrigger node
-	if (!chatTriggerNode.value) {
-		return false;
-	}
-
-	// Must have a valid workflow ID (for new workflows, this might not be set until saved)
-	if (!workflowsStore.workflowId && !workflowsStore.isNewWorkflow) {
-		return false;
-	}
-
-	return true;
-});
-
-const webhookUrl = computed(() => {
-	if (!chatTriggerNode.value) {
-		return '';
-	}
-
-	const workflowId = workflowsStore.workflowId;
-	if (!workflowId) {
-		return '';
-	}
-
-	const url = `${rootStore.webhookTestUrl}/${workflowId}/${props.sessionId}`;
-
-	return url;
-});
-
-const chatOptions = computed<ChatOptions>(() => {
-	const options = {
-		webhookUrl: webhookUrl.value,
-		webhookConfig: {
-			method: 'POST' as const,
-			headers: {
-				'Content-Type': 'application/json',
-			},
-		},
-		mode: 'fullscreen' as const,
-		showWindowCloseButton: false,
-		showWelcomeScreen: false,
-		// Force the chat SDK to use our canvas session ID
-		sessionId: props.sessionId,
-		// Enable streaming based on ChatTrigger node configuration
-		enableStreaming: isStreamingEnabled.value,
-		// Enable message actions (repost and copy to input)
-		enableMessageActions: true,
-		// Enable file uploads based on ChatTrigger node configuration
-		allowFileUploads: isFileUploadsAllowed.value,
-		allowedFilesMimeTypes: allowedFilesMimeTypes.value,
-		// Use the correct field names that ChatTrigger expects
-		chatInputKey: 'chatInput',
-		chatSessionKey: 'sessionId',
-		defaultLanguage: 'en' as const,
-		initialMessages: [],
-		i18n: {
-			en: {
-				title: locale.baseText('chat.window.title') || 'Chat',
-				subtitle: 'Test your workflow',
-				footer: '',
-				getStarted: 'Send a message',
-				inputPlaceholder: locale.baseText('chat.window.chat.placeholder') || 'Type your message...',
-				closeButtonTooltip: 'Close',
-			},
-		},
-		beforeMessageSent: async (_message: string) => {
-			// Register fresh webhook before each message to ensure it's active
-			// This gives us a fresh webhook with full timeout for each message
-			await registerChatWebhook();
-		},
-	};
-	return options;
-});
-
-// Register ChatTrigger webhook for test execution
-async function registerChatWebhook(): Promise<void> {
-	if (isRegistering.value || !chatTriggerNode.value) {
-		return;
-	}
-
-	isRegistering.value = true;
-
-	try {
-		// Use the useRunWorkflow composable to properly register the webhook
-		await runWorkflow({
-			triggerNode: chatTriggerNode.value.name,
-			source: 'RunData.ManualChatTrigger',
-			sessionId: props.sessionId,
-		});
-
-		webhookRegistered.value = true;
-	} finally {
-		isRegistering.value = false;
-	}
 }
 
 async function initializeChat() {
@@ -236,9 +99,6 @@ function destroyChat() {
 		chatApp = null;
 		chatContainer.value.innerHTML = '';
 	}
-	// Reset webhook registration state when chat is destroyed
-	webhookRegistered.value = false;
-	isRegistering.value = false;
 }
 
 // Watch for isOpen changes to handle panel close/reopen
