@@ -3,6 +3,9 @@ import {
 	getPersonalProject,
 	linkUserToProject,
 	createWorkflow,
+	createWorkflowWithTrigger,
+	createWorkflowHistory,
+	setActiveVersion,
 	shareWorkflowWithProjects,
 	shareWorkflowWithUsers,
 	randomCredentialPayload,
@@ -2443,6 +2446,129 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(id).toBe(workflow.id);
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(false);
+	});
+
+	test('should set activeVersionId when activating via PATCH with workflow history enabled', async () => {
+		license.enable('feat:workflowHistory');
+		const workflow = await createWorkflowWithTrigger({}, owner);
+		await createWorkflowHistory(workflow, owner);
+
+		const payload = {
+			versionId: workflow.versionId,
+			active: true,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.add).toBeCalled();
+
+		const {
+			data: { id, active },
+		} = response.body;
+
+		expect(id).toBe(workflow.id);
+		expect(active).toBe(true);
+
+		// Verify activeVersion is set
+		const updatedWorkflow = await Container.get(WorkflowRepository).findOne({
+			where: { id: workflow.id },
+			relations: ['activeVersion'],
+		});
+
+		expect(updatedWorkflow?.active).toBe(true);
+		expect(updatedWorkflow?.activeVersion).not.toBeNull();
+		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
+		expect(updatedWorkflow?.activeVersion?.nodes).toEqual(workflow.nodes);
+		expect(updatedWorkflow?.activeVersion?.connections).toEqual(workflow.connections);
+	});
+
+	test('should clear activeVersionId when deactivating via PATCH', async () => {
+		license.enable('feat:workflowHistory');
+		const workflow = await createWorkflowWithTrigger({ active: true }, owner);
+		await createWorkflowHistory(workflow, owner);
+
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		const payload = {
+			versionId: workflow.versionId,
+			active: false,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.remove).toBeCalled();
+
+		const {
+			data: { id, active },
+		} = response.body;
+
+		expect(id).toBe(workflow.id);
+		expect(active).toBe(false);
+
+		// Verify activeVersion is cleared
+		const updatedWorkflow = await Container.get(WorkflowRepository).findOne({
+			where: { id: workflow.id },
+			relations: ['activeVersion'],
+		});
+
+		expect(updatedWorkflow?.active).toBe(false);
+		expect(updatedWorkflow?.activeVersion).toBeNull();
+	});
+
+	test('should update activeVersionId when updating an active workflow', async () => {
+		license.enable('feat:workflowHistory');
+		const workflow = await createWorkflowWithTrigger({ active: true }, owner);
+		await createWorkflowHistory(workflow, owner);
+
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		// Verify initial state
+		const initialWorkflow = await Container.get(WorkflowRepository).findOne({
+			where: { id: workflow.id },
+			relations: ['activeVersion'],
+		});
+		expect(initialWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
+
+		// Update workflow nodes
+		const updatedNodes: INode[] = [
+			{
+				id: 'uuid-updated',
+				parameters: { triggerTimes: { item: [{ mode: 'everyHour' }] } },
+				name: 'Cron Updated',
+				type: 'n8n-nodes-base.cron',
+				typeVersion: 1,
+				position: [500, 400],
+			},
+		];
+
+		const payload = {
+			versionId: workflow.versionId,
+			nodes: updatedNodes,
+			connections: {},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id, versionId: newVersionId },
+		} = response.body;
+
+		expect(id).toBe(workflow.id);
+		expect(newVersionId).not.toBe(workflow.versionId);
+
+		// Verify activeVersion points to the new version
+		const updatedWorkflow = await Container.get(WorkflowRepository).findOne({
+			where: { id: workflow.id },
+			relations: ['activeVersion'],
+		});
+
+		expect(updatedWorkflow?.active).toBe(true);
+		expect(updatedWorkflow?.activeVersion?.versionId).toBe(newVersionId);
+		expect(updatedWorkflow?.activeVersion?.nodes).toEqual(updatedNodes);
 	});
 
 	test('should update workflow meta', async () => {

@@ -201,3 +201,18 @@ export async function createWorkflowHistory(workflow: IWorkflowDb, user?: User):
 		authors: user?.email ?? 'test@example.com',
 	});
 }
+
+/**
+ * Set the active version for a workflow
+ * @param workflowId workflow ID
+ * @param versionId version ID to set as active
+ */
+export async function setActiveVersion(workflowId: string, versionId: string): Promise<void> {
+	const workflowHistory = await Container.get(WorkflowHistoryRepository).findOneOrFail({
+		where: { workflowId, versionId },
+	});
+
+	await Container.get(WorkflowRepository).update(workflowId, {
+		activeVersion: workflowHistory,
+	});
+}
