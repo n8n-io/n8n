@@ -610,6 +610,7 @@ const redirectToDataTables = () => {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	align-items: start;
 
 	&:hover {
 		background-color: var(--color--background--light-2);
@@ -625,7 +626,7 @@ const redirectToDataTables = () => {
 .columnName,
 .columnType {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 }
 
 .inputError {
