@@ -14,6 +14,7 @@ export type Props = {
 	isReadOnly?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
+	canDelete?: boolean;
 };
 
 type ValueChangedEvent = {
@@ -26,6 +27,7 @@ defineProps<Props>();
 
 const emit = defineEmits<{
 	valueChanged: [value: ValueChangedEvent];
+	delete: [];
 }>();
 </script>
 
@@ -39,5 +41,6 @@ const emit = defineEmits<{
 		v-else
 		v-bind="$props"
 		@value-changed="emit('valueChanged', $event)"
+		@delete="emit('delete')"
 	/>
 </template>

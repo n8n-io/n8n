@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch, nextTick, onBeforeMount } from 'vue';
+import { ref, computed, nextTick, watch } from 'vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -31,7 +31,6 @@ import {
 } from '@n8n/design-system';
 import type { RekaSelectOption } from '@n8n/design-system';
 import { isPresent } from '@/utils/typesUtils';
-import Draggable from 'vuedraggable';
 import type { ComponentExposed } from 'vue-component-type-helpers';
 
 const selectedOption = ref<string | undefined>(undefined);
@@ -48,6 +47,7 @@ export interface Props {
 }
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
+	delete: [];
 }>();
 
 const props = defineProps<Props>();
@@ -57,13 +57,16 @@ const nodeHelpers = useNodeHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
 
-const expandedItems = ref<Record<string, boolean>>({});
+const storageKey = computed(() => {
+	return `n8n-collection-parameter-expanded-${activeNode.value?.id ?? 'unknown'}-${props.path}`;
+});
+const isExpanded = ref(false);
 const newlyAddedParameters = ref<Set<string>>(new Set());
 
-const getPlaceholderText = computed(() => {
+const placeholder = computed(() => {
 	return (
-		i18n.nodeText(activeNode.value?.type).placeholder(props.parameter, props.path) ??
-		i18n.baseText('collectionParameter.choose')
+		i18n.nodeText(activeNode.value?.type).placeholder(props.parameter, props.path) ||
+		i18n.baseText('collectionParameter.addItem')
 	);
 });
 
@@ -123,14 +126,6 @@ const getProperties = computed(() => {
 	return propertyNames.value.map((name) => getOptionProperties(name)).filter(isPresent);
 });
 
-const getCollections = computed(() => {
-	return getProperties.value.filter(isINodePropertyCollection);
-});
-
-const sortable = computed(() => props.parameter.typeOptions?.sortable);
-
-const mutableCollections = ref<INodePropertyCollection[]>([]);
-
 const getFlattenedProperties = computed((): INodeProperties[] => {
 	// For new UI: if it's a collection, use its values; otherwise treat as property
 	return getProperties.value.flatMap((option) => {
@@ -184,17 +179,18 @@ const addTooltipText = computed(() => {
 	return i18n.baseText('collectionParameter.allOptionsAdded');
 });
 
-// Helper functions for new UI
-const getPropertyDisplayName = (property: INodePropertyCollection): string => {
-	return property.displayName;
-};
+watch(
+	storageKey,
+	(newKey) => {
+		const storedValue = sessionStorage.getItem(newKey);
+		isExpanded.value = storedValue === 'true';
+	},
+	{ immediate: true },
+);
 
-const deleteProperty = (propertyName: string) => {
-	emit('valueChanged', {
-		name: `${props.path}.${propertyName}`,
-		value: undefined,
-	});
-};
+watch(isExpanded, (newValue) => {
+	sessionStorage.setItem(storageKey.value, newValue.toString());
+});
 
 function optionSelected(optionName: string) {
 	const option = getOptionProperties(optionName);
@@ -245,10 +241,6 @@ function optionSelected(optionName: string) {
 
 	emit('valueChanged', { name, value });
 
-	// For new collections, expand them by default
-	if (isINodePropertyCollection(option)) {
-		expandedItems.value[option.name] = true;
-	}
 	newlyAddedParameters.value.add(option.name);
 
 	// Clear selection after emitting to allow adding another item
@@ -269,50 +261,60 @@ async function onHeaderAddClick() {
 		addDropdownRef.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 	}
 }
-
-const initExpandedState = () => {
-	const newState: Record<string, boolean> = {};
-
-	getCollections.value.forEach((collection) => {
-		const key = collection.name;
-		newState[key] = expandedItems.value[key] ?? false;
-	});
-
-	expandedItems.value = newState;
-};
-
-watch(
-	getCollections,
-	(newCollections) => {
-		mutableCollections.value = [...newCollections];
-		initExpandedState();
-	},
-	{ immediate: true },
-);
-
-onBeforeMount(() => {
-	initExpandedState();
-});
-
-const onDragChange = () => {
-	// Build new values object based on reordered collections
-	const newValues: INodeParameters = {};
-	for (const collection of mutableCollections.value) {
-		const existingValue = props.values[collection.name];
-		if (existingValue !== undefined) {
-			newValues[collection.name] = existingValue;
-		}
-	}
-
-	emit('valueChanged', {
-		name: props.path,
-		value: newValues,
-	});
-};
 </script>
 
 <template>
+	<!-- When nested, wrap everything in a collapsible panel -->
+	<N8nCollapsiblePanel
+		v-if="isNested"
+		v-model="isExpanded"
+		:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+		@keydown.stop
+	>
+		<template v-if="!isReadOnly && !hideDelete" #actions>
+			<N8nHeaderAction icon="plus" :label="placeholder" @click="onHeaderAddClick" />
+			<N8nHeaderAction
+				icon="trash-2"
+				:label="i18n.baseText('collectionParameter.deleteItem')"
+				danger
+				@click="emit('delete')"
+			/>
+		</template>
+
+		<div>
+			<Suspense v-if="getFlattenedProperties.length > 0">
+				<ParameterInputList
+					:class="$style.parameterList"
+					:parameters="getFlattenedProperties"
+					:node-values="nodeValues"
+					:path="path"
+					:is-read-only="isReadOnly"
+					:is-nested="true"
+					:newly-added-parameters="newlyAddedParameters"
+					@value-changed="valueChanged"
+				/>
+			</Suspense>
+
+			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
+				<N8nRekaSelect
+					ref="addDropdownRef"
+					v-model="selectedOption"
+					:options="dropdownOptions"
+					:class="$style.addDropdown"
+					data-test-id="collection-parameter-add-dropdown"
+					@update:model-value="optionSelected"
+				>
+					<template #trigger>
+						<N8nButton type="secondary" icon="plus" :label="placeholder" />
+					</template>
+				</N8nRekaSelect>
+			</div>
+		</div>
+	</N8nCollapsiblePanel>
+
+	<!-- When not nested, render directly with section header -->
 	<div
+		v-else
 		:class="[
 			$style.collectionParameter,
 			{
@@ -323,7 +325,6 @@ const onDragChange = () => {
 	>
 		<div :class="$style.collectionParameterWrapper">
 			<N8nSectionHeader
-				v-if="!isNested"
 				:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 				:bordered="showHeaderDivider"
 				:class="$style.collectionSectionHeader"
@@ -346,64 +347,18 @@ const onDragChange = () => {
 				</template>
 			</N8nSectionHeader>
 
-			<div>
-				<Draggable
-					v-if="mutableCollections.length > 0"
-					v-model="mutableCollections"
-					:item-key="(item: INodePropertyCollection) => item.name"
-					handle=".drag-handle"
-					drag-class="dragging"
-					ghost-class="ghost"
-					chosen-class="chosen"
-					@change="onDragChange"
-				>
-					<template #item="{ element: collection }">
-						<N8nCollapsiblePanel
-							:key="collection.name"
-							v-model="expandedItems[collection.name]"
-							:title="getPropertyDisplayName(collection)"
-						>
-							<template v-if="!isReadOnly && !hideDelete" #actions>
-								<N8nHeaderAction
-									icon="trash-2"
-									:label="i18n.baseText('collectionParameter.deleteItem')"
-									danger
-									@click="deleteProperty(collection.name)"
-								/>
-								<N8nHeaderAction
-									v-if="sortable && getCollections.length > 1"
-									icon="grip-vertical"
-									:label="i18n.baseText('collectionParameter.dragItem')"
-								/>
-							</template>
-
-							<Suspense>
-								<ParameterInputList
-									:parameters="collection.values"
-									:node-values="nodeValues"
-									:path="`${path}.${collection.name}`"
-									:is-read-only="isReadOnly"
-									:is-nested="true"
-									:newly-added-parameters="newlyAddedParameters"
-									@value-changed="valueChanged"
-								/>
-							</Suspense>
-						</N8nCollapsiblePanel>
-					</template>
-				</Draggable>
-
-				<Suspense v-if="getFlattenedProperties.length > 0">
-					<ParameterInputList
-						:parameters="getFlattenedProperties"
-						:node-values="nodeValues"
-						:path="path"
-						:is-read-only="isReadOnly"
-						:is-nested="true"
-						:newly-added-parameters="newlyAddedParameters"
-						@value-changed="valueChanged"
-					/>
-				</Suspense>
-			</div>
+			<Suspense v-if="getFlattenedProperties.length > 0">
+				<ParameterInputList
+					:class="$style.parameterList"
+					:parameters="getFlattenedProperties"
+					:node-values="nodeValues"
+					:path="path"
+					:is-read-only="isReadOnly"
+					:is-nested="true"
+					:newly-added-parameters="newlyAddedParameters"
+					@value-changed="valueChanged"
+				/>
+			</Suspense>
 
 			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
 				<N8nRekaSelect
@@ -415,7 +370,7 @@ const onDragChange = () => {
 					@update:model-value="optionSelected"
 				>
 					<template #trigger>
-						<N8nButton type="secondary" icon="plus" :label="getPlaceholderText" />
+						<N8nButton type="secondary" icon="plus" :label="placeholder" />
 					</template>
 				</N8nRekaSelect>
 			</div>
@@ -424,11 +379,19 @@ const onDragChange = () => {
 </template>
 
 <style lang="scss" module>
-.collectionParameter {
-	padding-left: 0;
+.parameterList {
+	& > div:first-child {
+		:global(.multi-parameter),
+		:global(.parameter-item) {
+			margin-top: 0;
+		}
+	}
 
-	:global(.multi-parameter):first-child {
-		margin-top: 0;
+	& > div:last-child {
+		:global(.multi-parameter),
+		:global(.parameter-item) {
+			margin-top: 0;
+		}
 	}
 }
 

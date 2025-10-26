@@ -676,6 +676,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						:is-read-only="isReadOnly"
 						:is-nested="isNested"
 						@value-changed="valueChanged"
+						@delete="deleteOption(parameter.name)"
 					/>
 					<LazyFixedCollectionParameter
 						v-else-if="parameter.type === 'fixedCollection'"
@@ -686,7 +687,9 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						:is-read-only="isReadOnly"
 						:is-nested="isNested"
 						:is-newly-added="newlyAddedParameters.has(parameter.name)"
+						:can-delete="!hideDelete"
 						@value-changed="valueChanged"
+						@delete="deleteOption(parameter.name)"
 					/>
 				</template>
 				<N8nText v-else size="small" color="danger" class="async-notice">

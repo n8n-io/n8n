@@ -20,7 +20,6 @@ import {
 	N8nButton,
 	N8nCollapsiblePanel,
 	N8nHeaderAction,
-	N8nIconButton,
 	N8nRekaSelect,
 	N8nSectionHeader,
 	N8nTooltip,
@@ -43,6 +42,7 @@ export type Props = {
 	isReadOnly?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
+	canDelete?: boolean;
 };
 
 type ValueChangedEvent = {
@@ -55,10 +55,12 @@ const props = withDefaults(defineProps<Props>(), {
 	values: () => ({}),
 	isReadOnly: false,
 	isNewlyAdded: false,
+	canDelete: false,
 });
 
 const emit = defineEmits<{
 	valueChanged: [value: ValueChangedEvent];
+	delete: [];
 }>();
 
 const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
@@ -85,6 +87,8 @@ const getPropertyPath = (name: string, index?: number): string => {
 
 const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleValues);
 
+const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
+
 const propertyNames = computed(() => new Set(Object.keys(mutableValues.value ?? {})));
 
 const properties = computed(() =>
@@ -108,7 +112,7 @@ const isAddDisabled = computed(() => parameterOptions.value.length === 0);
 const placeholder = computed(
 	() =>
 		locale.nodeText(activeNode.value?.type).placeholder(props.parameter, props.path) ||
-		locale.baseText('fixedCollectionParameter.choose'),
+		locale.baseText('fixedCollectionParameter.addItem'),
 );
 
 const addTooltipText = computed(() =>
@@ -348,14 +352,10 @@ const onDropdownSelect = (value: string | number) => {
 				<template v-if="shouldShowAddInHeader" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
-						<N8nIconButton
-							type="secondary"
-							text
-							size="small"
+						<N8nHeaderAction
 							icon="plus"
-							icon-size="large"
+							:label="placeholder"
 							:disabled="isAddDisabled"
-							:aria-label="locale.baseText('fixedCollectionParameter.addItem')"
 							:data-test-id="
 								multipleValues
 									? 'fixed-collection-add-header'
@@ -376,7 +376,7 @@ const onDropdownSelect = (value: string | number) => {
 						:get-property-path="getPropertyPath"
 						:item-state="itemState"
 						:is-read-only="!!isReadOnly"
-						:sortable="true"
+						:sortable="sortable"
 						:title-template="parameter.typeOptions?.fixedCollection?.itemTitle"
 						@value-changed="valueChanged"
 						@delete="handleDelete"
@@ -453,22 +453,26 @@ const onDropdownSelect = (value: string | number) => {
 			v-else-if="shouldWrapInCollapsible"
 			v-model="isWrapperExpanded"
 			:title="displayName"
-			:show-actions-on-hover="false"
 		>
 			<template #actions>
 				<N8nTooltip v-if="shouldShowAddInCollapsibleActions" :show-after="TOOLTIP_DELAY_MS">
 					<template #content>{{ addTooltipText }}</template>
-					<N8nIconButton
-						type="secondary"
-						text
-						size="small"
+					<N8nHeaderAction
 						icon="plus"
-						icon-size="large"
-						:aria-label="locale.baseText('fixedCollectionParameter.addItem')"
-						:data-test-id="`fixed-collection-add-header-nested`"
-						@click="optionSelected(dropdownOptions[0]?.value)"
+						:label="placeholder"
+						:disabled="isAddDisabled"
+						data-test-id="fixed-collection-add-header-nested"
+						@click="onHeaderAddClick"
 					/>
 				</N8nTooltip>
+				<N8nHeaderAction
+					v-if="canDelete && !isReadOnly"
+					icon="trash-2"
+					:label="locale.baseText('fixedCollectionParameter.deleteItem')"
+					danger
+					data-test-id="fixed-collection-delete-nested"
+					@click="emit('delete')"
+				/>
 			</template>
 
 			<div>
@@ -482,7 +486,7 @@ const onDropdownSelect = (value: string | number) => {
 							:get-property-path="getPropertyPath"
 							:item-state="itemState"
 							:is-read-only="!!isReadOnly"
-							:sortable="true"
+							:sortable="sortable"
 							:title-template="parameter.typeOptions?.fixedCollection?.itemTitle"
 							@value-changed="valueChanged"
 							@delete="handleDelete"
@@ -549,7 +553,7 @@ const onDropdownSelect = (value: string | number) => {
 						:get-property-path="getPropertyPath"
 						:item-state="itemState"
 						:is-read-only="!!isReadOnly"
-						:sortable="true"
+						:sortable="sortable"
 						:title-template="parameter.typeOptions?.fixedCollection?.itemTitle"
 						@value-changed="valueChanged"
 						@delete="handleDelete"

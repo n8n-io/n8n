@@ -22,6 +22,7 @@ defineProps<Props>();
 
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
+	delete: [];
 }>();
 </script>
 
@@ -31,5 +32,10 @@ const emit = defineEmits<{
 		v-bind="$props"
 		@value-changed="emit('valueChanged', $event)"
 	/>
-	<CollectionParameterNew v-else v-bind="$props" @value-changed="emit('valueChanged', $event)" />
+	<CollectionParameterNew
+		v-else
+		v-bind="$props"
+		@value-changed="emit('valueChanged', $event)"
+		@delete="emit('delete')"
+	/>
 </template>
