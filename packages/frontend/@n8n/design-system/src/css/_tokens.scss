@@ -19,9 +19,9 @@
  */
 
 @mixin theme {
-	--color-primary-h: 224;
-	--color-primary-s: 66%;
-	--color-primary-l: 22%;
+	--color--primary--h: 224;
+	--color--primary--s: 66%;
+	--color--primary--l: 22%;
 
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--primary--h: var(--color-primary-h, var(--p--color--primary--h));

@@ -4,28 +4,27 @@
 // Tokens should be used instead in components and other UI elements
 
 @mixin primitives {
-	--p--color--gray: 220;
+	--color--gray--h: 220;
 
 	// Gray
-	--p--color--gray-820: var(--p-darkblue-1500);
-	--p--color--gray-800: var(--p-darkblue-1400);
-	--p--color--gray-780: var(--p-darkblue-1300);
-	--p--color--gray-740: var(--p-midnight-main);
-	--p--color--gray-710: var(--p-midnight-900);
-	--p--color--gray-670: var(--p-midnight-800);
-	--p--color--gray-540: var(--p-midnight-700);
-	--p--color--gray-490: var(--p-midnight-600);
-	--p--color--gray-420: var(--p-stale-main);
-	--p--color--gray-320: var(--p-stale-900);
-	--p--color--gray-200: var(--p-stale-500);
-	--p--color--gray-120: hsl(var(--h-gray), 25%, 88%);
-	--p--color--gray-070: hsl(var(--h-gray), 32%, 93%);
-	--p--color--gray-040: hsl(var(--h-gray), 40%, 96%);
-	--p--color--gray-030: hsl(var(--h-gray), 43%, 97%);
-	--p--color--gray-025: var(--p-gray-100);
-	--p--color--gray-010: var(--p-gray-50);
-	--p--color--white: var(--p-io-white);
-
+	--p--color--gray-820: var(--p--color--darkblue-1500);
+	--p--color--gray-800: var(--p--color--darkblue-1400);
+	--p--color--gray-780: var(--p--color--darkblue-1300);
+	--p--color--gray-740: var(--p--color--midnight-main);
+	--p--color--gray-710: var(--p--color--midnight-900);
+	--p--color--gray-670: var(--p--color--midnight-800);
+	--p--color--gray-540: var(--p--color--midnight-700);
+	--p--color--gray-490: var(--p--color--midnight-600);
+	--p--color--gray-420: var(--p--color--stale-main);
+	--p--color--gray-320: var(--p--color--stale-900);
+	--p--color--gray-200: var(--p--color--stale-500);
+	--p--color--gray-120: hsl(var(--color--gray--h), 25%, 88%);
+	--p--color--gray-070: hsl(var(--color--gray--h), 32%, 93%);
+	--p--color--gray-040: hsl(var(--color--gray--h), 40%, 96%);
+	--p--color--gray-030: hsl(var(--color--gray--h), 43%, 97%);
+	--p--color--gray-025: var(--p--color--gray-100);
+	--p--color--gray-010: var(--p--color--gray-50);
+	--p--color--white: var(--p--color--io-white);
 
 	// Gray alpha
 	--p--color--gray-320-a-010: hsla(var(--p--color--gray), 10%, 68%, 0.1);
@@ -44,73 +43,65 @@
 	--p--color--primary--s: 66%;
 	--p--color--primary--l: 22%;
 
-	--p--color--primary-420: var(--p-midnight-1500);
-	--p--color--primary-320: var(--p-midnight-main); // Base
-	--p--color--primary-220: var(--p-midnight-800);
-	--p--color--primary-120: var(--p-midnight-600);
-	--p--color--primary-070: var(--p-midnight-300);
-	--p--color--primary-050: var(--p-midnight-100);
-	--p--color--primary-030: var(--p-midnight-50);
-
-
+	--p--color--primary-420: var(--p--color--midnight-1500);
+	--p--color--primary-320: var(--p--color--midnight-main); // Base
+	--p--color--primary-220: var(--p--color--midnight-800);
+	--p--color--primary-120: var(--p--color--midnight-600);
+	--p--color--primary-070: var(--p--color--midnight-300);
+	--p--color--primary-050: var(--p--color--midnight-100);
+	--p--color--primary-030: var(--p--color--midnight-50);
 
 	--p--color--primary-320-a-010: hsla(7, 100%, 68%, 0.1);
 	--p--color--primary-320-a-035: hsla(7, 100%, 68%, 0.35);
-	--p--color--primary-320-a-050: var(--p-midnight-900) // Secondary color
-
-	// Secondary color
-	--p--color--secondary-720: var(--p-stale-1700);
-	--p--color--secondary-570: var(--p-stale-1200);
-	--p--color--secondary-470: var(--p-stale-main); /* Base */
-	--p--color--secondary-370: var(--p-stale-900);
-	--p--color--secondary-270: var(--p-stale-700);
-	--p--color--secondary-170: var(--p-stale-500);
-	--p--color--secondary-070: var(--p-stale-200);
+	--p--color--primary-320-a-050: var(--p--color--midnight-900) // Secondary color
+		// Secondary color
+		--p--color--secondary-720: var(--p--color--stale-1700);
+	--p--color--secondary-570: var(--p--color--stale-1200);
+	--p--color--secondary-470: var(--p--color--stale-main); /* Base */
+	--p--color--secondary-370: var(--p--color--stale-900);
+	--p--color--secondary-270: var(--p--color--stale-700);
+	--p--color--secondary-170: var(--p--color--stale-500);
+	--p--color--secondary-070: var(--p--color--stale-200);
 
 	--p--color--secondary-470-a-010: hsla(247, 49%, 53%, 0.1);
 	--p--color--secondary-470-a-025: hsla(247, 49%, 53%, 0.25);
 
 	// Color Alternate A
-	--p-color-alt-a-300: var(--p-green-900);
-	--p-color-alt-a-200: var(--p-green-700);
-	--p-color-alt-a-100: var(--p-green-500);
-	--p-color-alt-a-050: var(--p-green-400);
-
-	--p--color--alt-a-800: var(--p-green-1900);
-	--p--color--alt-a-700: var(--p-green-1700);
-	--p--color--alt-a-600: var(--p-green-main); /* Base */
-	--p--color--alt-a-300: var(--p-green-900);
-	--p--color--alt-a-200: var(--p-green-700);
-	--p--color--alt-a-100: var(--p-green-500);
-	--p--color--alt-a-050: var(--p-green-400);
+	--p--color--alt-a-800: var(--p--color--green-1900);
+	--p--color--alt-a-700: var(--p--color--green-1700);
+	--p--color--alt-a-600: var(--p--color--green-main); /* Base */
+	--p--color--alt-a-300: var(--p--color--green-900);
+	--p--color--alt-a-200: var(--p--color--green-700);
+	--p--color--alt-a-100: var(--p--color--green-500);
+	--p--color--alt-a-050: var(--p--color--green-400);
 
 	--p--color--alt-a-600-a-015: hsla(150, 60%, 40%, 0.15);
 	--p--color--alt-a-600-a-025: hsla(150, 60%, 40%, 0.25);
 
 	// Color Alternate B
 
-	--p--color--alt-b-780: var(--p-orange-1900);
-	--p--color--alt-b-680: var(--p-orange-1700);
-	--p--color--alt-b-530: var(--p-orange-1100);
-	--p--color--alt-b-430: var(--p-orange-main); /* Base */
-	--p--color--alt-b-280: var(--p-orange-800);
-	--p--color--alt-b-180: var(--p-orange-600);
-	--p--color--alt-b-130: var(--p-orange-200);
-	--p--color--alt-b-030: var(--p-orange-50);
+	--p--color--alt-b-780: var(--p--color--orange-1900);
+	--p--color--alt-b-680: var(--p--color--orange-1700);
+	--p--color--alt-b-530: var(--p--color--orange-1100);
+	--p--color--alt-b-430: var(--p--color--orange-main); /* Base */
+	--p--color--alt-b-280: var(--p--color--orange-800);
+	--p--color--alt-b-180: var(--p--color--orange-600);
+	--p--color--alt-b-130: var(--p--color--orange-200);
+	--p--color--alt-b-030: var(--p--color--orange-50);
 
 	--p--color--alt-b-430-a-020: hsla(36, 77%, 57%, 0.2);
 
 	// Color Alternate C
 
-	--p--color--alt-c-730: var(--p-red-1900);
-	--p--color--alt-c-630: var(--p-red-1700);
-	--p--color--alt-c-580: var(--p-red-1500);
-	--p--color--alt-c-480: var(--p-red-main); /* Base */
-	--p--color--alt-c-330: var(--p-red-900);
-	--p--color--alt-c-230: var(--p-red-700);
-	--p--color--alt-c-180: var(--p-red-600);
-	--p--color--alt-c-080: var(--p-red-500);
-	--p--color--alt-c-030: var(--p-red-300);
+	--p--color--alt-c-730: var(--p--color--red-1900);
+	--p--color--alt-c-630: var(--p--color--red-1700);
+	--p--color--alt-c-580: var(--p--color--red-1500);
+	--p--color--alt-c-480: var(--p--color--red-main); /* Base */
+	--p--color--alt-c-330: var(--p--color--red-900);
+	--p--color--alt-c-230: var(--p--color--red-700);
+	--p--color--alt-c-180: var(--p--color--red-600);
+	--p--color--alt-c-080: var(--p--color--red-500);
+	--p--color--alt-c-030: var(--p--color--red-300);
 
 	--p--color--alt-c-480-a-020: hsla(355, 83%, 52%, 0.2);
 	--p--color--alt-c-480-a-010: hsla(355, 83%, 52%, 0.1);

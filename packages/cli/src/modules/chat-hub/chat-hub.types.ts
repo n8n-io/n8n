@@ -1,7 +1,15 @@
-import type { ChatHubConversationModel, ChatMessageId, ChatSessionId } from '@n8n/api-types';
+import type {
+	ChatHubConversationModel,
+	ChatHubProvider,
+	ChatMessageId,
+	ChatSessionId,
+} from '@n8n/api-types';
 import type { INodeCredentials } from 'n8n-workflow';
 
-export interface ModelWithCredentials extends ChatHubConversationModel {
+export interface ModelWithCredentials {
+	provider: ChatHubProvider;
+	model?: string;
+	workflowId?: string;
 	credentialId: string | null;
 }
 

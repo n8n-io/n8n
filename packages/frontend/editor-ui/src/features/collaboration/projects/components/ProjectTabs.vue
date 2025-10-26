@@ -2,12 +2,11 @@
 import { ref, watch, computed } from 'vue';
 import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
-import { PROJECT_VARIABLES_EXPERIMENT, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
 import { processDynamicTabs, type DynamicTabOptions } from '@/utils/modules/tabUtils';
-import { usePostHog } from '@/stores/posthog.store';
 
 import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
@@ -29,16 +28,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const locale = useI18n();
 const route = useRoute();
-const posthogStore = usePostHog();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
-
-const isProjectVariablesEnabled = computed(() =>
-	posthogStore.isVariantEnabled(
-		PROJECT_VARIABLES_EXPERIMENT.name,
-		PROJECT_VARIABLES_EXPERIMENT.variant,
-	),
-);
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 
@@ -119,7 +110,7 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if ((props.pageType === 'overview' || isTeamProject.value) && isProjectVariablesEnabled.value) {
+	if (props.pageType === 'overview' || isTeamProject.value) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 
