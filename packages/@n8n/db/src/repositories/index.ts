@@ -30,5 +30,8 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WebhookRepository } from './webhook.repository';
-export { WorkflowDependencyRepository } from './workflow-dependency.repository';
+export {
+	WorkflowDependencyRepository,
+	WorkflowDependencies,
+} from './workflow-dependency.repository';
 export { UserRepository } from './user.repository';

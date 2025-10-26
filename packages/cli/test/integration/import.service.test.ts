@@ -1,4 +1,3 @@
-/* eslint-disable import-x/extensions */
 import {
 	getPersonalProject,
 	createWorkflow,
@@ -77,7 +76,6 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
-		// eslint-disable-next-line @typescript-eslint/unbound-method
 		expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport);
 	});
 

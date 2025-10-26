@@ -1,20 +1,19 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
-import {
-	type WorkflowDependency,
-	WorkflowDependencyRepository,
-	WorkflowRepository,
-	WorkflowEntity,
-} from '@n8n/db';
+import { WorkflowDependencyRepository, WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import type { WorkflowDependencies } from '@n8n/db';
+import { ErrorReporter } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
-import type { EventService } from '@/events/event.service';
 import { WorkflowIndexService } from '../workflow-index.service';
+
+import type { EventService } from '@/events/event.service';
 
 describe('WorkflowIndexService', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const dependencyRepository = mockInstance(WorkflowDependencyRepository);
 	const logger = mockInstance(Logger);
+	const errorReporter = mockInstance(ErrorReporter);
 
 	// Create a mock EventService that captures event callbacks
 	let eventCallbacks: Map<string, Array<(...args: unknown[]) => Promise<void>>>;
@@ -48,6 +47,8 @@ describe('WorkflowIndexService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		workflowRepository.findWorkflowsNeedingIndexing.mockReset();
+		dependencyRepository.updateDependenciesForWorkflow.mockReset();
 
 		// Reset event callbacks
 		eventCallbacks = new Map();
@@ -71,6 +72,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflow = createMockWorkflow({
@@ -87,7 +89,9 @@ describe('WorkflowIndexService', () => {
 				],
 			});
 
-			workflowRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.findWorkflowsNeedingIndexing
+				.mockResolvedValueOnce([mockWorkflow])
+				.mockResolvedValueOnce([]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			// Act
@@ -101,15 +105,18 @@ describe('WorkflowIndexService', () => {
 			await serverStartedCallbacks![0]();
 
 			// Assert
-			expect(workflowRepository.find).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith({
+				take: 100,
+				skip: 0,
+			});
 			expect(dependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledTimes(1);
 
 			const [workflowId, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock
-				.calls[0] as [string, WorkflowDependency[]];
+				.calls[0] as [string, WorkflowDependencies];
 
 			expect(workflowId).toBe('workflow-123');
-			expect(dependencies).toHaveLength(1);
-			expect(dependencies[0]).toMatchObject({
+			expect(dependencies.dependencies).toHaveLength(1);
+			expect(dependencies.dependencies[0]).toMatchObject({
 				workflowId: 'workflow-123',
 				workflowVersionId: 1,
 				dependencyType: 'nodeType',
@@ -126,6 +133,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflows = [
@@ -161,7 +169,9 @@ describe('WorkflowIndexService', () => {
 				}),
 			];
 
-			workflowRepository.find.mockResolvedValue(mockWorkflows);
+			workflowRepository.findWorkflowsNeedingIndexing
+				.mockResolvedValueOnce(mockWorkflows)
+				.mockResolvedValueOnce([]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			// Act
@@ -170,18 +180,21 @@ describe('WorkflowIndexService', () => {
 			await serverStartedCallbacks![0]();
 
 			// Assert
-			expect(workflowRepository.find).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith({
+				take: 100,
+				skip: 0,
+			});
 			expect(dependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledTimes(2);
 
 			const [workflowId1, dependencies1] = dependencyRepository.updateDependenciesForWorkflow.mock
-				.calls[0] as [string, WorkflowDependency[]];
+				.calls[0] as [string, WorkflowDependencies];
 			const [workflowId2, dependencies2] = dependencyRepository.updateDependenciesForWorkflow.mock
-				.calls[1] as [string, WorkflowDependency[]];
+				.calls[1] as [string, WorkflowDependencies];
 
 			expect(workflowId1).toBe('workflow-1');
 			expect(workflowId2).toBe('workflow-2');
-			expect(dependencies1).toHaveLength(1);
-			expect(dependencies2).toHaveLength(1);
+			expect(dependencies1.dependencies).toHaveLength(1);
+			expect(dependencies2.dependencies).toHaveLength(1);
 		});
 
 		test('should handle workflows with no nodes', async () => {
@@ -191,6 +204,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflow = createMockWorkflow({
@@ -199,7 +213,9 @@ describe('WorkflowIndexService', () => {
 				nodes: [],
 			});
 
-			workflowRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.findWorkflowsNeedingIndexing
+				.mockResolvedValueOnce([mockWorkflow])
+				.mockResolvedValueOnce([]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			// Act
@@ -211,10 +227,10 @@ describe('WorkflowIndexService', () => {
 			expect(dependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledTimes(1);
 
 			const [workflowId, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock
-				.calls[0] as [string, WorkflowDependency[]];
+				.calls[0] as [string, WorkflowDependencies];
 
 			expect(workflowId).toBe('workflow-123');
-			expect(dependencies).toHaveLength(0);
+			expect(dependencies.dependencies).toHaveLength(0);
 		});
 	});
 
@@ -226,6 +242,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflow = createMockWorkflow({
@@ -260,11 +277,11 @@ describe('WorkflowIndexService', () => {
 			expect(dependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledTimes(1);
 
 			const [workflowId, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock
-				.calls[0] as [string, WorkflowDependency[]];
+				.calls[0] as [string, WorkflowDependencies];
 
 			expect(workflowId).toBe('workflow-456');
-			expect(dependencies).toHaveLength(1);
-			expect(dependencies[0]).toMatchObject({
+			expect(dependencies.dependencies).toHaveLength(1);
+			expect(dependencies.dependencies[0]).toMatchObject({
 				workflowId: 'workflow-456',
 				workflowVersionId: 2,
 				dependencyType: 'nodeType',
@@ -281,6 +298,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflow = createMockWorkflow({
@@ -305,7 +323,9 @@ describe('WorkflowIndexService', () => {
 				],
 			});
 
-			workflowRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.findWorkflowsNeedingIndexing
+				.mockResolvedValueOnce([mockWorkflow])
+				.mockResolvedValueOnce([]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			// Act
@@ -316,16 +336,16 @@ describe('WorkflowIndexService', () => {
 			// Assert
 			const [, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock.calls[0] as [
 				string,
-				WorkflowDependency[],
+				WorkflowDependencies,
 			];
 
-			expect(dependencies).toHaveLength(2);
-			expect(dependencies[0]).toMatchObject({
+			expect(dependencies.dependencies).toHaveLength(2);
+			expect(dependencies.dependencies[0]).toMatchObject({
 				dependencyType: 'nodeType',
 				dependencyKey: 'n8n-nodes-base.httpRequest',
 				dependencyInfo: 'node-1',
 			});
-			expect(dependencies[1]).toMatchObject({
+			expect(dependencies.dependencies[1]).toMatchObject({
 				dependencyType: 'nodeType',
 				dependencyKey: 'n8n-nodes-base.slack',
 				dependencyInfo: 'node-2',
@@ -338,6 +358,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflow = createMockWorkflow({
@@ -360,7 +381,9 @@ describe('WorkflowIndexService', () => {
 				],
 			});
 
-			workflowRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.findWorkflowsNeedingIndexing
+				.mockResolvedValueOnce([mockWorkflow])
+				.mockResolvedValueOnce([]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			// Act
@@ -371,19 +394,17 @@ describe('WorkflowIndexService', () => {
 			// Assert
 			const [, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock.calls[0] as [
 				string,
-				WorkflowDependency[],
+				WorkflowDependencies,
 			];
 
-			expect(dependencies).toHaveLength(2); // One for nodeType, one for credential
-			const credentialDependency = dependencies.find((d) => d.dependencyType === 'credential');
+			expect(dependencies.dependencies).toHaveLength(2); // One for nodeType, one for credential
+			const credentialDependency = dependencies.dependencies.find(
+				(d) => d.dependencyType === 'credentialId',
+			);
 			expect(credentialDependency).toMatchObject({
-				dependencyType: 'credential',
+				dependencyType: 'credentialId',
 				dependencyKey: 'cred-123',
-			});
-			expect(JSON.parse(credentialDependency!.dependencyInfo!)).toMatchObject({
-				nodeId: 'node-1',
-				credentialType: 'slackApi',
-				credentialName: 'My Slack Account',
+				dependencyInfo: 'node-1',
 			});
 		});
 
@@ -393,6 +414,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflow = createMockWorkflow({
@@ -402,7 +424,7 @@ describe('WorkflowIndexService', () => {
 					{
 						id: 'node-1',
 						name: 'Execute Workflow',
-						type: 'n8n-nodes-base.workflowCall',
+						type: 'n8n-nodes-base.executeWorkflow',
 						typeVersion: 1,
 						position: [250, 300],
 						parameters: {
@@ -412,7 +434,9 @@ describe('WorkflowIndexService', () => {
 				],
 			});
 
-			workflowRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.findWorkflowsNeedingIndexing
+				.mockResolvedValueOnce([mockWorkflow])
+				.mockResolvedValueOnce([]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			// Act
@@ -423,11 +447,13 @@ describe('WorkflowIndexService', () => {
 			// Assert
 			const [, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock.calls[0] as [
 				string,
-				WorkflowDependency[],
+				WorkflowDependencies,
 			];
 
-			expect(dependencies).toHaveLength(2); // One for nodeType, one for workflowCall
-			const workflowCallDependency = dependencies.find((d) => d.dependencyType === 'workflowCall');
+			expect(dependencies.dependencies).toHaveLength(2); // One for nodeType, one for workflowCall
+			const workflowCallDependency = dependencies.dependencies.find(
+				(d) => d.dependencyType === 'workflowCall',
+			);
 			expect(workflowCallDependency).toMatchObject({
 				dependencyType: 'workflowCall',
 				dependencyKey: 'child-workflow-456',
@@ -441,6 +467,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflow = createMockWorkflow({
@@ -460,7 +487,9 @@ describe('WorkflowIndexService', () => {
 				],
 			});
 
-			workflowRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.findWorkflowsNeedingIndexing
+				.mockResolvedValueOnce([mockWorkflow])
+				.mockResolvedValueOnce([]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			// Act
@@ -471,11 +500,13 @@ describe('WorkflowIndexService', () => {
 			// Assert
 			const [, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock.calls[0] as [
 				string,
-				WorkflowDependency[],
+				WorkflowDependencies,
 			];
 
-			expect(dependencies).toHaveLength(2); // One for nodeType, one for webhookPath
-			const webhookDependency = dependencies.find((d) => d.dependencyType === 'webhookPath');
+			expect(dependencies.dependencies).toHaveLength(2); // One for nodeType, one for webhookPath
+			const webhookDependency = dependencies.dependencies.find(
+				(d) => d.dependencyType === 'webhookPath',
+			);
 			expect(webhookDependency).toMatchObject({
 				dependencyType: 'webhookPath',
 				dependencyKey: 'my-webhook-path',
@@ -489,6 +520,7 @@ describe('WorkflowIndexService', () => {
 				dependencyRepository,
 				workflowRepository,
 				logger,
+				errorReporter,
 			);
 
 			const mockWorkflow = createMockWorkflow({
@@ -522,7 +554,7 @@ describe('WorkflowIndexService', () => {
 					{
 						id: 'node-3',
 						name: 'Execute Workflow',
-						type: 'n8n-nodes-base.workflowCall',
+						type: 'n8n-nodes-base.executeWorkflow',
 						typeVersion: 1,
 						position: [650, 300],
 						parameters: {
@@ -532,7 +564,9 @@ describe('WorkflowIndexService', () => {
 				],
 			});
 
-			workflowRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.findWorkflowsNeedingIndexing
+				.mockResolvedValueOnce([mockWorkflow])
+				.mockResolvedValueOnce([]);
 			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			// Act
@@ -543,16 +577,22 @@ describe('WorkflowIndexService', () => {
 			// Assert
 			const [, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock.calls[0] as [
 				string,
-				WorkflowDependency[],
+				WorkflowDependencies,
 			];
 
 			// 3 nodeType + 1 credential + 1 workflowCall + 1 webhookPath = 6 total
-			expect(dependencies).toHaveLength(6);
+			expect(dependencies.dependencies).toHaveLength(6);
 
-			const nodeTypeDeps = dependencies.filter((d) => d.dependencyType === 'nodeType');
-			const credentialDeps = dependencies.filter((d) => d.dependencyType === 'credential');
-			const workflowCallDeps = dependencies.filter((d) => d.dependencyType === 'workflowCall');
-			const webhookDeps = dependencies.filter((d) => d.dependencyType === 'webhookPath');
+			const nodeTypeDeps = dependencies.dependencies.filter((d) => d.dependencyType === 'nodeType');
+			const credentialDeps = dependencies.dependencies.filter(
+				(d) => d.dependencyType === 'credentialId',
+			);
+			const workflowCallDeps = dependencies.dependencies.filter(
+				(d) => d.dependencyType === 'workflowCall',
+			);
+			const webhookDeps = dependencies.dependencies.filter(
+				(d) => d.dependencyType === 'webhookPath',
+			);
 
 			expect(nodeTypeDeps).toHaveLength(3);
 			expect(credentialDeps).toHaveLength(1);

@@ -1,10 +1,16 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowDependency, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { IWorkflowBase } from 'n8n-workflow';
+import { ErrorReporter } from 'n8n-core';
+import { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
+/**
+ * Service for managing the workflow dependency index. The index tracks dependencies such as node types,
+ * credentials, workflow calls, and webhook paths used by each workflow. The service builds the index on server start
+ * and updates it in response to workflow-related events.
+ */
 @Service()
 export class WorkflowIndexService {
 	constructor(
@@ -12,13 +18,13 @@ export class WorkflowIndexService {
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	init() {
-		this.eventService.on('server-started', async () => {
+		this.eventService.on('server-started', async (): Promise<void> => {
 			this.logger.info('Building workflow dependency index...');
-			// eslint-disable-next-line @typescript-eslint/return-await
-			return this.buildIndex();
+			await this.buildIndex().catch((e) => this.errorReporter.error(e));
 		});
 		this.eventService.on('workflow-created', async ({ workflow }) => {
 			await this.updateIndexFor(workflow);
@@ -28,28 +34,55 @@ export class WorkflowIndexService {
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
 			// Updating with an empty list effectively removes the existing dependencies.
-			await this.dependencyRepository.updateDependenciesForWorkflow(workflowId, []);
+			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
 		});
 		this.eventService.on('workflow-archived', async ({ workflowId }) => {
 			// Updating with an empty list effectively removes the existing dependencies.
-			await this.dependencyRepository.updateDependenciesForWorkflow(workflowId, []);
+			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
 		});
 		this.eventService.on('workflow-unarchived', async ({ workflowId }) => {
-			await this.workflowRepository.findOneBy({ id: workflowId }).then(async (workflow) => {
-				if (workflow) {
-					await this.updateIndexFor(workflow);
-				}
-			});
+			const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+			if (workflow) {
+				await this.updateIndexFor(workflow);
+			}
 		});
 	}
 
 	private async buildIndex() {
-		// Get all the workflows.
-		const workflows = await this.workflowRepository.find();
-		// Build the index for each workflow.
-		for (const workflow of workflows) {
-			await this.updateIndexFor(workflow);
+		const batchSize = 100;
+		let skip = 0;
+		let processedCount = 0;
+
+		while (true) {
+			// Get only workflows that need indexing (unindexed or outdated).
+			const workflows = await this.workflowRepository.findWorkflowsNeedingIndexing({
+				take: batchSize,
+				skip,
+			});
+
+			if (workflows.length === 0) {
+				break;
+			}
+
+			// Build the index for each workflow in the batch.
+			for (const workflow of workflows) {
+				await this.updateIndexFor(workflow);
+			}
+
+			processedCount += workflows.length;
+			this.logger.debug(`Indexed ${processedCount} workflows so far`);
+
+			// If we got fewer workflows than the batch size, we're done.
+			if (workflows.length < batchSize) {
+				break;
+			}
+
+			skip += batchSize;
 		}
+
+		this.logger.info(
+			`Finished building workflow dependency index. Processed ${processedCount} workflows.`,
+		);
 	}
 
 	/**
@@ -63,103 +96,111 @@ export class WorkflowIndexService {
 	async updateIndexFor(workflow: IWorkflowBase) {
 		// TODO: input validation.
 		// Generate the dependency updates for the given workflow.
-		const dependencyUpdates: WorkflowDependency[] = [];
-
-		this.addNodeTypeDependencies(workflow, dependencyUpdates);
-		this.addCredentialDependencies(workflow, dependencyUpdates);
-		this.addWorkflowCallDependencies(workflow, dependencyUpdates);
-		this.addWebhookPathDependencies(workflow, dependencyUpdates);
-
-		const updated = await this.dependencyRepository.updateDependenciesForWorkflow(
+		const dependencyUpdates = new WorkflowDependencies(
 			workflow.id,
-			dependencyUpdates,
+			workflow.versionCounter,
+			/*indexVersionId=*/ 1, // TODO: find a better way to manage this.
 		);
+
+		workflow.nodes.forEach((node) => {
+			this.addNodeTypeDependencies(node, dependencyUpdates);
+			this.addCredentialDependencies(node, dependencyUpdates);
+			this.addWorkflowCallDependencies(node, dependencyUpdates);
+			this.addWebhookPathDependencies(node, dependencyUpdates);
+		});
+
+		let updated: boolean;
+		try {
+			updated = await this.dependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				dependencyUpdates,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Failed to update workflow dependency index for workflow ${workflow.id}: ${(error as Error).message}`,
+			);
+			return;
+		}
 		this.logger.debug(
 			`Workflow dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
 		);
 	}
 
-	private addNodeTypeDependencies(
-		workflow: IWorkflowBase,
-		dependencyUpdates: WorkflowDependency[],
-	): void {
-		// Iterate over the nodes, extract node types, and add to dependencyUpdates.
-		workflow.nodes.forEach((node) => {
-			const dependency = new WorkflowDependency();
-			Object.assign(dependency, {
-				workflowId: workflow.id,
-				workflowVersionId: workflow.versionCounter,
-				dependencyType: 'nodeType',
-				dependencyKey: node.type,
-				dependencyInfo: node.id,
-				indexVersionId: 1, // TODO: figure out a better way to manage this.
-			});
-			dependencyUpdates.push(dependency);
+	private addNodeTypeDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		dependencyUpdates.add({
+			dependencyType: 'nodeType',
+			dependencyKey: node.type,
+			dependencyInfo: node.id,
 		});
 	}
 
-	private addCredentialDependencies(
-		workflow: IWorkflowBase,
-		dependencyUpdates: WorkflowDependency[],
-	): void {
-		workflow.nodes
-			.filter((node) => node.credentials) // Only include nodes with credentials.
-			.forEach((node) => {
-				// TODO: figure out if this is actually right, and what checks I need.
-				const credentialType = Object.keys(node.credentials!)[0];
-				const { id, name } = node.credentials![credentialType];
-				const dependency = new WorkflowDependency();
-				Object.assign(dependency, {
-					workflowId: workflow.id,
-					workflowVersionId: workflow.versionCounter,
-					dependencyType: 'credential',
-					dependencyKey: id,
-					dependencyInfo: JSON.stringify({ nodeId: node.id, credentialType, credentialName: name }),
-					indexVersionId: 1, // TODO: figure out a better way to manage this.
-				});
-				dependencyUpdates.push(dependency);
+	private addCredentialDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		if (!node.credentials) {
+			return;
+		}
+		for (const credentialDetails of Object.values(node.credentials)) {
+			const { id } = credentialDetails;
+			dependencyUpdates.add({
+				dependencyType: 'credentialId',
+				dependencyKey: id,
+				dependencyInfo: node.id,
 			});
+		}
 	}
 
-	private addWorkflowCallDependencies(
-		workflow: IWorkflowBase,
-		dependencyUpdates: WorkflowDependency[],
-	): void {
-		workflow.nodes
-			.filter((node) => node.type === 'n8n-nodes-base.workflowCall') // Only include workflow call nodes.
-			.forEach((node) => {
-				const calledWorkflowId = node.parameters.workflowId as string;
-				const dependency = new WorkflowDependency();
-				Object.assign(dependency, {
-					workflowId: workflow.id,
-					workflowVersionId: workflow.versionCounter,
-					dependencyType: 'workflowCall',
-					dependencyKey: calledWorkflowId,
-					dependencyInfo: node.id,
-					indexVersionId: 1, // TODO: figure out a better way to manage this.
-				});
-				dependencyUpdates.push(dependency);
-			});
+	private addWorkflowCallDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		if (node.type !== 'n8n-nodes-base.executeWorkflow') {
+			return;
+		}
+		const calledWorkflowId: string | undefined = this.getWorkflowIdFrom(node);
+		if (!calledWorkflowId) {
+			return;
+		}
+		dependencyUpdates.add({
+			dependencyType: 'workflowCall',
+			dependencyKey: calledWorkflowId,
+			dependencyInfo: node.id,
+		});
 	}
 
-	private addWebhookPathDependencies(
-		workflow: IWorkflowBase,
-		dependencyUpdates: WorkflowDependency[],
-	): void {
-		workflow.nodes
-			.filter((node) => node.type === 'n8n-nodes-base.webhook') // Only include webhook nodes.
-			.forEach((node) => {
-				const webhookPath = node.parameters.path as string;
-				const dependency = new WorkflowDependency();
-				Object.assign(dependency, {
-					workflowId: workflow.id,
-					workflowVersionId: workflow.versionCounter,
-					dependencyType: 'webhookPath',
-					dependencyKey: webhookPath,
-					dependencyInfo: node.id,
-					indexVersionId: 1, // TODO: figure out a better way to manage this.
-				});
-				dependencyUpdates.push(dependency);
-			});
+	private addWebhookPathDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		if (node.type !== 'n8n-nodes-base.webhook') {
+			return;
+		}
+		const webhookPath = node.parameters.path as string;
+		dependencyUpdates.add({
+			dependencyType: 'webhookPath',
+			dependencyKey: webhookPath,
+			dependencyInfo: node.id,
+		});
+	}
+
+	private getWorkflowIdFrom(node: INode): string | undefined {
+		if (node.parameters?.['source'] === 'parameter') {
+			return undefined; // The sub-workflow is provided directly in the parameters, so no dependency to track.
+		}
+		if (node.parameters?.['source'] === 'localFile') {
+			return undefined; // The sub-workflow is provided via a local file, so no dependency to track.
+		}
+		if (node.parameters?.['source'] === 'url') {
+			return undefined; // The sub-workflow is provided via a URL, so no dependency to track.
+		}
+		// If it's none of those sources, it must be 'workflowId'. This might be either directly as a string, or an object.
+		if (typeof node.parameters?.['workflowId'] === 'string') {
+			return node.parameters?.['workflowId'];
+		}
+		if (
+			node.parameters &&
+			typeof node.parameters['workflowId'] === 'object' &&
+			node.parameters['workflowId'] !== null &&
+			'value' in node.parameters['workflowId'] &&
+			typeof node.parameters['workflowId']['value'] === 'string'
+		) {
+			return node.parameters['workflowId']['value'];
+		}
+		this.errorReporter.warn(
+			`While indexing, could not determine called workflow ID from executeWorkflow node ${node.id}`,
+		);
+		return undefined;
 	}
 }

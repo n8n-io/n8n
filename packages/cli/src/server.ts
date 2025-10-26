@@ -106,7 +106,9 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
+		console.log('1');
 		this.eventService.emit('server-started');
+		console.log('2');
 	}
 
 	private async registerAdditionalControllers() {
@@ -292,12 +294,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// Workflow Indexing Setup
 		// ----------------------------------------
-		if (Container.get(WorkflowsConfig).indexingEnabled) {
-			const { WorkflowIndexService } = await import(
-				'@/modules/workflow-index/workflow-index.service'
-			);
-			Container.get(WorkflowIndexService).init();
-		}
+		await this.initializeWorkflowIndexing();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
@@ -491,6 +488,15 @@ export class Server extends AbstractServer {
 		}
 
 		installGlobalProxyAgent();
+	}
+
+	private async initializeWorkflowIndexing() {
+		if (Container.get(WorkflowsConfig).indexingEnabled) {
+			const { WorkflowIndexService } = await import(
+				'@/modules/workflow-index/workflow-index.service'
+			);
+			Container.get(WorkflowIndexService).init();
+		}
 	}
 
 	protected setupPushServer(): void {
