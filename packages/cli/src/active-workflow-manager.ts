@@ -248,17 +248,20 @@ export class ActiveWorkflowManager {
 	async clearWebhooks(workflowId: WorkflowId) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
+			relations: { activeVersion: true },
 		});
 
 		if (workflowData === null) {
 			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
 		}
 
+		const { nodes, connections } = workflowData.activeVersion ?? workflowData;
+
 		const workflow = new Workflow({
 			id: workflowId,
 			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
+			nodes,
+			connections,
 			active: workflowData.active,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
@@ -577,11 +580,16 @@ export class ActiveWorkflowManager {
 				return added;
 			}
 
+			// Get workflow data from the active version if it exists
+			const { nodes, connections } = dbWorkflow.activeVersion ?? dbWorkflow;
+			dbWorkflow.nodes = nodes;
+			dbWorkflow.connections = connections;
+
 			workflow = new Workflow({
 				id: dbWorkflow.id,
 				name: dbWorkflow.name,
-				nodes: dbWorkflow.nodes,
-				connections: dbWorkflow.connections,
+				nodes,
+				connections,
 				active: dbWorkflow.active,
 				nodeTypes: this.nodeTypes,
 				staticData: dbWorkflow.staticData,

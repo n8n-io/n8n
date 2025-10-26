@@ -205,9 +205,12 @@ export class WorkflowService {
 		parentFolderId?: string,
 		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:update',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:update'],
+			{ includeActiveVersion: true },
+		);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to update a workflow without permissions', {
@@ -299,6 +302,23 @@ export class WorkflowService {
 			'versionId',
 		]);
 
+		// First add a record to workflow history to be able to get the full version object during the update
+		if (workflowUpdateData.versionId !== workflow.versionId) {
+			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
+		}
+
+		// Some users do not have workflow history enabled, for them activeVersion can be null
+		let updatedVersion = null;
+		try {
+			updatedVersion = await this.workflowHistoryService.getVersion(
+				user,
+				workflowId,
+				workflowUpdateData.versionId,
+			);
+		} catch (error) {
+			// TODO: Remove try-catch blocks when workflow history is enabled for all users
+		}
+
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
 			if (parentFolderId !== PROJECT_ROOT) {
@@ -314,16 +334,20 @@ export class WorkflowService {
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
 
+		if (updatedVersion) {
+			updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
+				workflow,
+				updatedVersion,
+				workflowUpdateData.active,
+			);
+		}
+
 		await this.workflowRepository.update(workflowId, updatePayload);
 
 		const tagsDisabled = this.globalConfig.tags.disabled;
 
 		if (tagIds && !tagsDisabled) {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
-		}
-
-		if (workflowUpdateData.versionId !== workflow.versionId) {
-			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
 		const relations = tagsDisabled ? [] : ['tags'];
@@ -383,14 +407,16 @@ export class WorkflowService {
 				await this.activeWorkflowManager.add(workflowId, workflow.active ? 'update' : 'activate');
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
-				// and revert the versionId change so UI remains consistent
+				// and revert the versionId and activeVersionId change so UI remains consistent
 				await this.workflowRepository.update(workflowId, {
 					active: false,
 					versionId: workflow.versionId,
+					activeVersion: workflow.activeVersion,
 				});
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
+				updatedWorkflow.activeVersion = workflow.activeVersion;
 
 				// Emit deactivation event since activation failed
 				this.eventService.emit('workflow-deactivated', {

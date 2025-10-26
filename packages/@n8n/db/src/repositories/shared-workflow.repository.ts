@@ -149,6 +149,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where?: FindOptionsWhere<SharedWorkflow>;
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
+			includeActiveVersion?: boolean;
 			em?: EntityManager;
 		} = {},
 	) {
@@ -156,6 +157,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where = {},
 			includeTags = false,
 			includeParentFolder = false,
+			includeActiveVersion = false,
 			em = this.manager,
 		} = options;
 
@@ -169,6 +171,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 					shared: { project: { projectRelations: { user: true } } },
 					tags: includeTags,
 					parentFolder: includeParentFolder,
+					activeVersion: includeActiveVersion,
 				},
 			},
 		});

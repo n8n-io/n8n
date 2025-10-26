@@ -12,7 +12,11 @@ import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import {
+	addNodeIds,
+	getActiveVersionUpdateValue,
+	replaceInvalidCredentials,
+} from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -279,6 +283,7 @@ export = {
 				id,
 				req.user,
 				['workflow:update'],
+				{ includeActiveVersion: true },
 			);
 
 			if (!workflow) {
@@ -299,6 +304,35 @@ export = {
 			}
 
 			try {
+				// First add a record to workflow history to be able to get the full version object during the update
+				if (updateData.versionId !== workflow.versionId) {
+					await Container.get(WorkflowHistoryService).saveVersion(
+						req.user,
+						updateData,
+						workflow.id,
+					);
+				}
+
+				// Some users do not have workflow history enabled, for them activeVersion can be null
+				let updatedVersion = null;
+				try {
+					updatedVersion = await Container.get(WorkflowHistoryService).getVersion(
+						req.user,
+						id,
+						updateData.versionId,
+					);
+				} catch (error) {
+					// TODO: Remove try-catch blocks when workflow history is enabled for all users
+				}
+
+				if (updatedVersion) {
+					updateData.activeVersion = getActiveVersionUpdateValue(
+						workflow,
+						updatedVersion,
+						updateData.active,
+					);
+				}
+
 				await updateWorkflow(workflow.id, updateData);
 			} catch (error) {
 				if (error instanceof Error) {
@@ -318,14 +352,6 @@ export = {
 
 			const updatedWorkflow = await getWorkflowById(workflow.id);
 
-			if (updatedWorkflow) {
-				await Container.get(WorkflowHistoryService).saveVersion(
-					req.user,
-					updatedWorkflow,
-					workflow.id,
-				);
-			}
-
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
 			Container.get(EventService).emit('workflow-saved', {
 				user: req.user,
@@ -341,6 +367,7 @@ export = {
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
+			const { versionId } = req.body;
 
 			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
@@ -354,19 +381,33 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			if (!workflow.active) {
+			const activeVersionId = versionId ?? workflow.versionId;
+
+			const newVersionIsBeingActivated =
+				activeVersionId && activeVersionId !== workflow.activeVersion?.versionId;
+
+			if (!workflow.active || newVersionIsBeingActivated) {
 				try {
+					// change the status to active in the DB
+					const activeVersion = await setWorkflowAsActive(req.user, workflow.id, activeVersionId);
+
 					await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
+
+					// Update the workflow object for response
+					workflow.active = true;
+					workflow.activeVersion = activeVersion;
 				} catch (error) {
+					// Rollback: restore previous state
+					await Container.get(WorkflowRepository).update(workflow.id, {
+						active: workflow.active,
+						activeVersion: workflow.activeVersion,
+						updatedAt: new Date(),
+					});
+
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
 					}
 				}
-
-				// change the status to active in the DB
-				await setWorkflowAsActive(workflow.id);
-
-				workflow.active = true;
 
 				Container.get(EventService).emit('workflow-activated', {
 					user: req.user,
@@ -378,7 +419,7 @@ export = {
 				return res.json(workflow);
 			}
 
-			// nothing to do as the workflow is already active
+			// nothing to do as this version is already active
 			return res.json(workflow);
 		},
 	],

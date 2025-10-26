@@ -13,6 +13,7 @@ import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@
 import type { WorkflowId } from 'n8n-workflow';
 
 import { License } from '@/license';
+import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -85,16 +86,33 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(workflowId: WorkflowId) {
+export async function setWorkflowAsActive(user: User, workflowId: WorkflowId, versionId: string) {
+	// Some users do not have workflow history enabled, for them activeVersion can be null
+	let activeVersion = null;
+
+	try {
+		activeVersion = await Container.get(WorkflowHistoryService).getVersion(
+			user,
+			workflowId,
+			versionId,
+		);
+	} catch (error) {
+		// TODO: Remove try blocks when workflow history is enabled for all users
+	}
+
 	await Container.get(WorkflowRepository).update(workflowId, {
 		active: true,
+		activeVersion,
 		updatedAt: new Date(),
 	});
+
+	return activeVersion;
 }
 
 export async function setWorkflowAsInactive(workflowId: WorkflowId) {
 	return await Container.get(WorkflowRepository).update(workflowId, {
 		active: false,
+		activeVersion: null,
 		updatedAt: new Date(),
 	});
 }
