@@ -39,6 +39,7 @@ export const createDataTableApi = async (
 	name: string,
 	projectId: string,
 	columns?: DataTableColumnCreatePayload[],
+	fileId?: string,
 ) => {
 	return await makeRestApiRequest<DataTable>(
 		context,
@@ -47,6 +48,7 @@ export const createDataTableApi = async (
 		{
 			name,
 			columns: columns ?? [],
+			...(fileId ? { fileId } : {}),
 		},
 	);
 };
@@ -216,4 +218,17 @@ export const fetchDataTableGlobalLimitInBytes = async (context: IRestApiContext)
 		'GET',
 		'/data-tables-global/limits',
 	);
+};
+
+export const uploadCsvFileApi = async (context: IRestApiContext, file: File) => {
+	const formData = new FormData();
+	formData.append('file', file);
+
+	return await makeRestApiRequest<{
+		originalName: string;
+		id: string;
+		rowCount: number;
+		columnCount: number;
+		columns: Array<{ name: string; type: string }>;
+	}>(context, 'POST', '/data-tables/uploads', formData);
 };
