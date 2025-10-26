@@ -244,11 +244,11 @@ const onSubmit = async () => {
 	}
 };
 
-const onCancel = () => {
-	resetForm();
-	uiStore.closeModal(props.modalName);
-	redirectToDataTables();
-};
+// const onCancel = () => {
+// 	resetForm();
+// 	uiStore.closeModal(props.modalName);
+// 	redirectToDataTables();
+// };
 
 const resetForm = () => {
 	dataTableName.value = '';
@@ -466,12 +466,12 @@ const redirectToDataTables = () => {
 					data-test-id="confirm-add-data-table-button"
 					@click="onSubmit"
 				/>
-				<N8nButton
+				<!-- <N8nButton
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="cancel-add-data-table-button"
 					@click="onCancel"
-				/>
+				/> -->
 			</div>
 		</template>
 	</Modal>
