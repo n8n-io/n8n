@@ -231,8 +231,26 @@ export const flattenObject = <T extends Record<string, unknown>>(obj: T, prefix 
 		{} as Record<string, unknown>,
 	);
 
+/**
+ * Extracts and sanitizes the URL in a cURL command.
+ * Converts invalid placeholder syntax like \<PLACEHOLDER\> → {PLACEHOLDER}
+ */
+export function sanitizeCurlUrlPlaceholders(curlCommand: string): string {
+	const CURL_URL_REGEX = /curl\s+(['"]?)(https?:\/\/[^\s'"]+)\1/;
+	const PLACEHOLDER_REGEX = /<([A-Za-z0-9_-]+)>/g;
+
+	const urlMatch = curlCommand.match(CURL_URL_REGEX);
+	if (!urlMatch || !urlMatch[2]) return curlCommand;
+
+	const originalUrl = urlMatch[2];
+	const sanitizedUrl = originalUrl.replaceAll(PLACEHOLDER_REGEX, '{$1}');
+
+	return curlCommand.replace(originalUrl, sanitizedUrl);
+}
+
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
-	const curlJson = curlToJson(curlCommand);
+	const curlJson = curlToJson(sanitizeCurlUrlPlaceholders(curlCommand));
+
 	const headers = curlJson.headers ?? {};
 
 	lowerCaseContentTypeKey(headers);

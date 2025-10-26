@@ -20,6 +20,7 @@ export class SamlPreferences extends Z.class({
 			firstName: z.string(),
 			lastName: z.string(),
 			userPrincipalName: z.string(),
+			n8nInstanceRole: z.string(),
 		})
 		.optional(),
 	/** SAML metadata in XML format. */
