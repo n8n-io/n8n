@@ -36,6 +36,7 @@ export default class Lint extends Command {
 				context: 'local',
 				stdio: 'pipe',
 				env: { ...process.env, FORCE_COLOR: '1' },
+				alwaysPrintOutput: true,
 				printOutput: ({ stdout, stderr }) => {
 					eslintOutput = Buffer.concat([...stdout, ...stderr]).toString();
 					process.stdout.write(Buffer.concat(stdout));
@@ -130,8 +131,8 @@ ${picocolors.dim(`Note: This will switch to ${picocolors.magenta('configWithoutC
 
 	private containsCloudOnlyErrors(errorMessage: string): boolean {
 		const cloudOnlyRules = [
-			'@n8n/eslint-plugin-community-nodes/no-restricted-globals',
-			'@n8n/eslint-plugin-community-nodes/no-restricted-imports',
+			'@n8n/community-nodes/no-restricted-imports',
+			'@n8n/community-nodes/no-restricted-globals',
 		];
 
 		return cloudOnlyRules.some((rule) => errorMessage.includes(rule));
