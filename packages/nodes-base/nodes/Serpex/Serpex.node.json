@@ -1,0 +1,20 @@
+{
+	"node": "n8n-nodes-base.serpex",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Data", "Search"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://serpex.dev/docs"
+			}
+		],
+		"generic": [
+			{
+				"label": "Serpex Multi-Engine Search Documentation",
+				"icon": "🔍",
+				"url": "https://serpex.dev"
+			}
+		]
+	}
+}

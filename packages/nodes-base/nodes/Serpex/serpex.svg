@@ -1,0 +1,10 @@
+<svg fill="none" viewBox="-0.5 -0.5 16 16" stroke="#fff" aria-label="Serpex Logo">
+  <desc>
+    Letter S Streamline Icon: https://streamlinehq.com
+  </desc>
+  <!-- {/* Dark background */} -->
+  <path fill="#000" d="M-.5-.5h16v16h-16z"/>
+  <!-- {/* Rounded border */} -->
+  <path d="M0 0h15v15H0z"/>
+  <path d="M9.531 5.352v-.196a.78.78 0 0 0-.781-.781H6.406a.78.78 0 0 0-.781.781v.769c0 .48.292.91.737 1.089l2.432.972a1.17 1.17 0 0 1 .737 1.088v.77c0 .431-.35.781-.781.781H6.406a.78.78 0 0 1-.781-.781v-.195"/>
+</svg>
