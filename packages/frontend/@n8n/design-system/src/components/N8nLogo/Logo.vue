@@ -2,8 +2,12 @@
 import { useFavicon } from '@vueuse/core';
 import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 
-import LogoIcon from './logo-icon.svg';
-import LogoText from './logo-text.svg';
+import { getBrandOwner } from '@n8n/design-system/utils/brandOwner';
+
+import CortexLogoIcon from './cortex-logo-icon.svg';
+import CortexLogoText from './cortex-logo-text.svg';
+import MOHLogoIcon from './moh-logo-icon.svg';
+import MOHLogoText from './moh-logo-text.svg';
 
 const props = defineProps<
 	(
@@ -25,6 +29,20 @@ const showLogoText = computed(() => {
 	if (size === 'large') return true;
 	return !props.collapsed;
 });
+
+const getLogoText = () => {
+	if (getBrandOwner() === 'MOH') {
+		return MOHLogoText;
+	}
+	return CortexLogoText;
+};
+
+const getLogoIcon = () => {
+	if (getBrandOwner() === 'MOH') {
+		return MOHLogoIcon;
+	}
+	return CortexLogoIcon;
+};
 
 const $style = useCssModule();
 const containerClasses = computed(() => {
@@ -52,8 +70,8 @@ onMounted(() => {
 
 <template>
 	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon ref="logo" :class="$style.logo" />
-		<LogoText v-if="showLogoText" :class="$style.logoText" />
+		<component :is="getLogoIcon()" ref="logo" :class="$style.logo" />
+		<component v-if="showLogoText" :is="getLogoText()" :class="$style.logoText" />
 		<slot />
 	</div>
 </template>
@@ -79,7 +97,7 @@ onMounted(() => {
 	}
 
 	.logoText {
-		margin-left: var(--spacing--xs);
+		margin-left: var(--spacing--lg);
 		margin-right: var(--spacing--3xs);
 	}
 }
@@ -92,5 +110,11 @@ onMounted(() => {
 	width: 40px;
 	height: 30px;
 	padding: 0 var(--spacing--4xs);
+}
+.dark .logoContainer .logoText text {
+	fill: var(--color-text-light, #fff);
+}
+.dark .logoContainer .logo path {
+	fill: var(--color-text-light, #fff);
 }
 </style>
