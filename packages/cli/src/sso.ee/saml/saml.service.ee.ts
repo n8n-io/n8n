@@ -1,4 +1,4 @@
-import type { SamlPreferences } from '@n8n/api-types';
+import type { ProvisioningConfigDto, SamlPreferences } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
@@ -34,6 +34,7 @@ import { SamlValidator } from './saml-validator';
 import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
 import { isSsoJustInTimeProvisioningEnabled, reloadAuthenticationMethod } from '../sso-helpers';
+import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
 
 @Service()
 export class SamlService {
@@ -48,6 +49,8 @@ export class SamlService {
 			firstName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
 			lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
 			userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+			// this value is loaded on init from the provisioning config
+			n8nInstanceRole: '',
 		},
 		metadata: '',
 		metadataUrl: '',
@@ -199,6 +202,7 @@ export class SamlService {
 		onboardingRequired: boolean;
 	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
+
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
 
@@ -244,6 +248,7 @@ export class SamlService {
 				}
 			}
 		}
+
 		return {
 			authenticatedUser: undefined,
 			attributes,
@@ -384,8 +389,19 @@ export class SamlService {
 		const samlPreferences = await this.settingsRepository.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
+		const provisioningConfigObject = await this.settingsRepository.findOne({
+			where: { key: PROVISIONING_PREFERENCES_DB_KEY },
+		});
 		if (samlPreferences) {
 			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
+			const provisioningConfig = jsonParse<ProvisioningConfigDto>(
+				provisioningConfigObject?.value ?? '{}',
+			);
+
+			if (prefs && prefs.mapping) {
+				prefs.mapping.n8nInstanceRole = provisioningConfig.scopesInstanceRoleClaimName;
+			}
+
 			if (prefs) {
 				if (apply) {
 					await this.setSamlPreferences(prefs, true, broadcastReload);

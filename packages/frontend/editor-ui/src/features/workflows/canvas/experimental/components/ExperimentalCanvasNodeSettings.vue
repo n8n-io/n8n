@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import NodeSettings from '@/components/NodeSettings.vue';
+import NodeSettings from '@/features/ndv/components/settings/NodeSettings.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { type IUpdateInformation } from '@/Interface';
-import { useNDVStore } from '@/features/nodes/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';

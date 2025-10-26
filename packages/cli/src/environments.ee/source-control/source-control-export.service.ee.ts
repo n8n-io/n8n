@@ -20,6 +20,8 @@ import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workfl
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
+import { formatWorkflow } from '@/workflows/workflow.formatter';
+
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -46,8 +48,7 @@ import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
-
-import { formatWorkflow } from '@/workflows/workflow.formatter';
+import { ExportableVariable } from './types/exportable-variable';
 
 @Service()
 export class SourceControlExportService {
@@ -198,10 +199,10 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportVariablesToWorkFolder(): Promise<ExportResult> {
+	async exportGlobalVariablesToWorkFolder(): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
-			const variables = await this.variablesService.getAllCached();
+			const variables = await this.variablesService.getAllCached({ globalOnly: true });
 			// do not export empty variables
 			if (variables.length === 0) {
 				return {
@@ -211,7 +212,12 @@ export class SourceControlExportService {
 				};
 			}
 			const fileName = getVariablesPath(this.gitFolder);
-			const sanitizedVariables = variables.map((e) => ({ ...e, value: '' }));
+			const sanitizedVariables: ExportableVariable[] = variables.map((e) => ({
+				id: e.id,
+				key: e.key,
+				type: e.type,
+				value: '',
+			}));
 			await fsWriteFile(fileName, JSON.stringify(sanitizedVariables, null, 2));
 			return {
 				count: sanitizedVariables.length,
@@ -487,6 +493,7 @@ export class SourceControlExportService {
 			const projectIds = candidates.map((e) => e.id);
 			const projects = await this.projectRepository.find({
 				where: { id: In(projectIds), type: 'team' },
+				relations: ['variables'],
 			});
 
 			await Promise.all(
@@ -504,6 +511,12 @@ export class SourceControlExportService {
 							teamId: project.id,
 							teamName: project.name,
 						},
+						variableStubs: project.variables.map((variable) => ({
+							id: variable.id,
+							key: variable.key,
+							type: variable.type,
+							value: '',
+						})),
 					};
 
 					this.logger.debug(`Writing project ${project.id} to ${fileName}`);

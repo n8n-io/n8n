@@ -9,7 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 const undoMock = vi.fn();
 const redoMock = vi.fn();
-vi.mock('@/features/nodes/ndv/ndv.store', () => ({
+vi.mock('@/features/ndv/ndv.store', () => ({
 	useNDVStore: () => ({
 		activeNodeName: null,
 		activeNode: {},

@@ -34,7 +34,7 @@ import type {
 
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { AddedNode, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import type { NodePanelType } from '@/features/nodes/ndv/ndv.types';
+import type { NodePanelType } from '@/features/ndv/ndv.types';
 
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
@@ -627,8 +627,9 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		nodeName: string,
 		outputIndex = 0,
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
+		execution?: IRunExecutionData,
 	) {
-		const allTaskData = getAllNodeTaskData(nodeName) ?? [];
+		const allTaskData = getAllNodeTaskData(nodeName, execution) ?? [];
 
 		return allTaskData.findLastIndex(
 			(taskData) =>

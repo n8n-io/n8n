@@ -98,6 +98,7 @@ const pullMessage = ({
 	variables,
 	workflow,
 	folders,
+	project,
 }: Partial<Record<SourceControlledFile['type'], SourceControlledFile[]>>) => {
 	const messages: string[] = [];
 
@@ -131,6 +132,10 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.folders_plural'));
 	}
 
+	if (project?.length) {
+		messages.push(i18n.baseText('generic.projects'));
+	}
+
 	return [
 		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
 		'were pulled',
@@ -151,14 +156,14 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
-	const { credential, tags, variables, workflow, folders } = groupBy(files, 'type');
+	const { credential, tags, variables, workflow, folders, project } = groupBy(files, 'type');
 
 	const toastMessages = [
 		...(variables?.length ? [createVariablesToast(router)] : []),
 		...(credential?.length ? [createCredentialsToast(router)] : []),
 		{
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, workflow, folders }),
+			message: pullMessage({ credential, tags, variables, workflow, folders, project }),
 			type: 'success' as const,
 		},
 	];

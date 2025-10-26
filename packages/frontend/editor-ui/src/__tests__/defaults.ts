@@ -47,6 +47,7 @@ export const defaultSettings: FrontendSettings = {
 				limit: 1,
 			},
 		},
+		customRoles: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,

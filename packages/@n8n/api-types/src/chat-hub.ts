@@ -4,14 +4,16 @@ import { Z } from 'zod-class';
 /**
  * Supported AI model providers
  */
-export const chatHubProviderSchema = z.enum(['openai', 'anthropic', 'google']);
+export const chatHubLLMProviderSchema = z.enum(['openai', 'anthropic', 'google']);
+export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
+export const chatHubProviderSchema = z.enum([...chatHubLLMProviderSchema.options, 'n8n'] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
 /**
  * Map of providers to their credential types
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubProvider, string> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
@@ -20,11 +22,36 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubProvider, string> = {
 /**
  * Chat Hub conversation model configuration
  */
-export const chatHubConversationModelSchema = z.object({
-	provider: chatHubProviderSchema,
+const openAIModelSchema = z.object({
+	provider: z.literal('openai'),
+	name: z.string(),
 	model: z.string(),
-	workflowId: z.string().nullable().default(null),
 });
+
+const anthropicModelSchema = z.object({
+	provider: z.literal('anthropic'),
+	name: z.string(),
+	model: z.string(),
+});
+
+const googleModelSchema = z.object({
+	provider: z.literal('google'),
+	name: z.string(),
+	model: z.string(),
+});
+
+const n8nModelSchema = z.object({
+	provider: z.literal('n8n'),
+	name: z.string(),
+	workflowId: z.string(),
+});
+
+export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
+	openAIModelSchema,
+	anthropicModelSchema,
+	googleModelSchema,
+	n8nModelSchema,
+]);
 
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
 
@@ -43,7 +70,10 @@ export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
  */
 export type ChatModelsResponse = Record<
 	ChatHubProvider,
-	{ models: Array<{ name: string }>; error?: string }
+	{
+		models: ChatHubConversationModel[];
+		error?: string;
+	}
 >;
 
 export class ChatHubSendMessageRequest extends Z.class({
@@ -62,8 +92,6 @@ export class ChatHubSendMessageRequest extends Z.class({
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
-	retryId: z.string().uuid(),
-	sessionId: z.string().uuid(),
 	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
@@ -75,10 +103,8 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 }) {}
 
 export class ChatHubEditMessageRequest extends Z.class({
-	editId: z.string().uuid(),
 	message: z.string(),
 	messageId: z.string().uuid(),
-	sessionId: z.string().uuid(),
 	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
@@ -94,7 +120,7 @@ export class ChatHubChangeConversationTitleRequest extends Z.class({
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageState = 'success' | 'error' | 'pending';
+export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID
@@ -122,7 +148,7 @@ export interface ChatHubMessageDto {
 	model: string | null;
 	workflowId: string | null;
 	executionId: number | null;
-	state: ChatHubMessageState;
+	status: ChatHubMessageStatus;
 	createdAt: string;
 	updatedAt: string;
 
