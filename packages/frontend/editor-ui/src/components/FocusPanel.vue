@@ -17,10 +17,10 @@ import {
 	getParameterTypeOption,
 	isValidParameterOption,
 	parseFromExpression,
-} from '@/utils/nodeSettingsUtils';
+} from '@/features/ndv/ndv.utils';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { useNodeSettingsParameters } from '@/features/ndv/composables/useNodeSettingsParameters';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import {
@@ -42,7 +42,7 @@ import { useExecutionData } from '@/features/execution/executions/composables/us
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
