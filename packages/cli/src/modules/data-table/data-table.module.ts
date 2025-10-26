@@ -14,6 +14,9 @@ export class DataTableModule implements ModuleInterface {
 
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service');
 		await Container.get(DataTableAggregateService).start();
+
+		const { DataTableFileCleanupService } = await import('./data-table-file-cleanup.service');
+		await Container.get(DataTableFileCleanupService).start();
 	}
 
 	@OnShutdown()
@@ -23,6 +26,9 @@ export class DataTableModule implements ModuleInterface {
 
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service');
 		await Container.get(DataTableAggregateService).shutdown();
+
+		const { DataTableFileCleanupService } = await import('./data-table-file-cleanup.service');
+		await Container.get(DataTableFileCleanupService).shutdown();
 	}
 
 	async entities() {

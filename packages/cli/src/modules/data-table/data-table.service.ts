@@ -33,6 +33,7 @@ import { RoleService } from '@/services/role.service';
 import { CsvParserService } from './csv-parser.service';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
+import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import { DataTableRepository } from './data-table.repository';
@@ -55,6 +56,7 @@ export class DataTableService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly csvParserService: CsvParserService,
+		private readonly fileCleanupService: DataTableFileCleanupService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -71,6 +73,8 @@ export class DataTableService {
 		if (dto.fileId) {
 			try {
 				await this.importDataFromFile(projectId, result.id, dto.fileId);
+				// Delete the CSV file after successful import
+				await this.fileCleanupService.deleteFile(dto.fileId);
 			} catch (error) {
 				// If import fails, delete the table that was just created
 				await this.deleteDataTable(result.id, projectId);
