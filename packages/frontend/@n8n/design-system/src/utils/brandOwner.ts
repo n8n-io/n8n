@@ -1,3 +1,3 @@
 export const getBrandOwner = (): 'MOH' | 'CORTEX' => {
-	return 'MOH';
+	return 'CORTEX';
 };
