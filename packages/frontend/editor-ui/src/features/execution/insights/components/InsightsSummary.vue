@@ -77,7 +77,11 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
-				<N8nTooltip placement="top" :disabled="!(summaryHasNoData && id === 'total')">
+				<N8nTooltip
+					:placement="route.name === VIEWS.INSIGHTS ? 'bottom' : 'top'"
+					:disabled="!(summaryHasNoData && id === 'total')"
+					:show-after="500"
+				>
 					<template #content>
 						<I18nT keypath="insights.banner.noData.tooltip" scope="global">
 							<template #link>

@@ -6,7 +6,7 @@ import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/ndv.types';
 
-import NodeSettings from '@/components/NodeSettings.vue';
+import NodeSettings from '@/features/ndv/components/settings/NodeSettings.vue';
 import NDVDraggablePanels from '../components/panel/NDVDraggablePanels.vue';
 
 import OutputPanel from '../components/panel/OutputPanel.vue';
