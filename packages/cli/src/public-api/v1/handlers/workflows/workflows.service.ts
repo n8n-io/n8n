@@ -98,6 +98,7 @@ export async function setWorkflowAsActive(user: User, workflowId: WorkflowId, ve
 				user,
 				workflowId,
 				versionId,
+				trx,
 			);
 		} catch (error) {
 			// TODO: Remove try blocks when workflow history is enabled for all users

@@ -310,6 +310,7 @@ export = {
 							req.user,
 							updateData,
 							workflow.id,
+							trx,
 						);
 					}
 
@@ -320,6 +321,7 @@ export = {
 							req.user,
 							id,
 							updateData.versionId,
+							trx,
 						);
 					} catch (error) {
 						// TODO: Remove try-catch blocks when workflow history is enabled for all users

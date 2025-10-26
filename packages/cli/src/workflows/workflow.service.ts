@@ -308,7 +308,7 @@ export class WorkflowService {
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			// First add a record to workflow history to be able to get the full version object during the update
 			if (workflowUpdateData.versionId !== workflow.versionId) {
-				await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
+				await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId, trx);
 			}
 
 			// Some users do not have workflow history enabled, for them activeVersion can be null
@@ -318,18 +318,23 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflowUpdateData.versionId,
+					trx,
 				);
 			} catch (error) {
 				// TODO: Remove try-catch blocks when workflow history is enabled for all users
 			}
 
 			if (parentFolderId) {
-				const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
+				const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+					workflow.id,
+					trx,
+				);
 				if (parentFolderId !== PROJECT_ROOT) {
 					try {
 						await this.folderRepository.findOneOrFailFolderInProject(
 							parentFolderId,
 							project?.id ?? '',
+							trx,
 						);
 					} catch (e) {
 						throw new FolderNotFoundError(parentFolderId);

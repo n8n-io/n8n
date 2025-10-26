@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import type { User, WorkflowHistory } from '@n8n/db';
-import { WorkflowHistoryRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { EntityManager } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from 'n8n-workflow';
 
@@ -44,16 +46,25 @@ export class WorkflowHistoryService {
 		});
 	}
 
-	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:read',
-		]);
+	async getVersion(
+		user: User,
+		workflowId: string,
+		versionId: string,
+		em?: EntityManager,
+	): Promise<WorkflowHistory> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:read'],
+			{ em },
+		);
 
 		if (!workflow) {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const hist = await this.workflowHistoryRepository.findOne({
+		const manager = em ?? this.workflowHistoryRepository.manager;
+		const hist = await manager.findOne(WorkflowHistory, {
 			where: {
 				workflowId: workflow.id,
 				versionId,
@@ -65,13 +76,14 @@ export class WorkflowHistoryService {
 		return hist;
 	}
 
-	async saveVersion(user: User, workflow: IWorkflowBase, workflowId: string) {
+	async saveVersion(user: User, workflow: IWorkflowBase, workflowId: string, em?: EntityManager) {
 		// On some update scenarios, `nodes` and `connections` are missing, such as when
 		// changing workflow settings or renaming. In these cases, we don't want to save
 		// a new version
 		if (isWorkflowHistoryEnabled() && workflow.nodes && workflow.connections) {
 			try {
-				await this.workflowHistoryRepository.insert({
+				const manager = em ?? this.workflowHistoryRepository.manager;
+				await manager.insert(WorkflowHistory, {
 					authors: user.firstName + ' ' + user.lastName,
 					connections: workflow.connections,
 					nodes: workflow.nodes,
