@@ -33,8 +33,8 @@ export class DataTableUploadsController {
 			throw new BadRequestError('No file uploaded');
 		}
 
-		const filePath = req.file.path;
-		const metadata = await this.csvParserService.parseFile(filePath);
+		// Parse CSV file to extract metadata
+		const metadata = await this.csvParserService.parseFile(req.file.filename);
 
 		return {
 			originalName: req.file.originalname,

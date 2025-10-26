@@ -1,6 +1,10 @@
+import { InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { parse } from 'csv-parse';
 import { createReadStream } from 'fs';
+import path from 'path';
+
+const UPLOADS_FOLDER_NAME = 'data-table-uploads';
 
 export interface CsvColumnMetadata {
 	name: string;
@@ -15,11 +19,18 @@ export interface CsvMetadata {
 
 @Service()
 export class CsvParserService {
+	private readonly uploadDir: string;
+
+	constructor(private readonly instanceSettingsConfig: InstanceSettingsConfig) {
+		this.uploadDir = path.join(this.instanceSettingsConfig.n8nFolder, UPLOADS_FOLDER_NAME);
+	}
+
 	/**
 	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types
 	 * Assumes the first row always contains column names
 	 */
-	async parseFile(filePath: string): Promise<CsvMetadata> {
+	async parseFile(fileId: string): Promise<CsvMetadata> {
+		const filePath = path.join(this.uploadDir, fileId);
 		let rowCount = 0;
 		let firstDataRow: Record<string, string> | null = null;
 		let columnNames: string[] = [];
@@ -50,6 +61,33 @@ export class CsvParserService {
 						columnCount: columns.length,
 						columns,
 					});
+				})
+				.on('error', reject);
+		});
+	}
+
+	/**
+	 * Parses a CSV file and returns all rows as an array of objects
+	 * Assumes the first row always contains column names
+	 */
+	async parseFileData(fileId: string): Promise<Array<Record<string, string>>> {
+		const filePath = path.join(this.uploadDir, fileId);
+
+		const rows: Array<Record<string, string>> = [];
+
+		return await new Promise((resolve, reject) => {
+			const parser = parse({
+				columns: true,
+				skip_empty_lines: true,
+			});
+
+			createReadStream(filePath)
+				.pipe(parser)
+				.on('data', (row: Record<string, string>) => {
+					rows.push(row);
+				})
+				.on('end', () => {
+					resolve(rows);
 				})
 				.on('error', reject);
 		});
