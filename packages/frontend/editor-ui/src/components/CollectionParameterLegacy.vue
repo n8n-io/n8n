@@ -19,7 +19,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
-import { N8nButton, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { isPresent } from '@/utils/typesUtils';
 
 const selectedOption = ref<string | undefined>(undefined);
@@ -141,13 +141,6 @@ const parameterOptions = computed(() => {
 	return filteredOptions.value.filter((option) => !propertyNames.value.includes(option.name));
 });
 
-const isAddDisabled = computed(() => parameterOptions.value.length === 0);
-
-const addTooltipText = computed(() => {
-	if (!isAddDisabled.value) return '';
-	return i18n.baseText('collectionParameter.allOptionsAdded');
-});
-
 function optionSelected(optionName: string) {
 	const option = getOptionProperties(optionName);
 	if (!option) return;
@@ -206,16 +199,6 @@ function optionSelected(optionName: string) {
 function valueChanged(parameterData: IUpdateInformation) {
 	emit('valueChanged', parameterData);
 }
-
-function onAddClick() {
-	// If only one option, add it directly
-	if (parameterOptions.value.length === 1) {
-		optionSelected(parameterOptions.value[0].name);
-	} else if (addSelectRef.value) {
-		// For multiple options, focus the select dropdown
-		addSelectRef.value.focus();
-	}
-}
 </script>
 
 <template>
@@ -238,47 +221,26 @@ function onAddClick() {
 				/>
 			</Suspense>
 
-			<div v-if="!isReadOnly" :class="$style.paramOptions">
-				<N8nTooltip
-					v-if="
-						parameterOptions.length === 1 ||
-						(parameterOptions.length === 0 && props.parameter.options?.length === 1)
-					"
-					:disabled="!isAddDisabled"
-				>
-					<template #content>{{ addTooltipText }}</template>
-					<N8nButton
-						type="tertiary"
-						block
-						data-test-id="collection-parameter-add"
-						:label="getPlaceholderText"
-						:disabled="isAddDisabled"
-						@click="onAddClick"
-					/>
-				</N8nTooltip>
-				<N8nTooltip v-else :disabled="!isAddDisabled">
-					<template #content>{{ addTooltipText }}</template>
-					<div :class="$style.addOption">
-						<N8nSelect
-							ref="addSelectRef"
-							v-model="selectedOption"
-							:placeholder="getPlaceholderText"
-							size="small"
-							filterable
-							:disabled="isAddDisabled"
-							@update:model-value="optionSelected"
+			<div v-if="!isReadOnly && parameterOptions.length > 0" :class="$style.paramOptions">
+				<div :class="$style.addOption">
+					<N8nSelect
+						ref="addSelectRef"
+						v-model="selectedOption"
+						:placeholder="getPlaceholderText"
+						size="small"
+						filterable
+						@update:model-value="optionSelected"
+					>
+						<N8nOption
+							v-for="item in parameterOptions"
+							:key="item.name"
+							:label="getParameterOptionLabel(item)"
+							:value="item.name"
+							data-test-id="collection-parameter-option"
 						>
-							<N8nOption
-								v-for="item in parameterOptions"
-								:key="item.name"
-								:label="getParameterOptionLabel(item)"
-								:value="item.name"
-								data-test-id="collection-parameter-option"
-							>
-							</N8nOption>
-						</N8nSelect>
-					</div>
-				</N8nTooltip>
+						</N8nOption>
+					</N8nSelect>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -315,6 +277,48 @@ function onAddClick() {
 		&.active,
 		&:focus {
 			outline: none;
+		}
+	}
+}
+
+.addOption {
+	> * {
+		border: none;
+	}
+
+	:global(.el-select .el-input.is-disabled) {
+		:global(.el-input__icon) {
+			opacity: 1 !important;
+			cursor: not-allowed;
+			color: var(--color--foreground--shade-1);
+		}
+		:global(.el-input__inner),
+		:global(.el-input__inner::placeholder) {
+			opacity: 1;
+			color: var(--color--foreground--shade-1);
+		}
+	}
+	:global(.el-select .el-input:not(.is-disabled) .el-input__icon) {
+		color: var(--color--text--shade-1);
+	}
+	:global(.el-input .el-input__inner) {
+		text-align: center;
+	}
+	:global(.el-input:not(.is-disabled) .el-input__inner) {
+		&,
+		&:hover,
+		&:focus {
+			padding-left: 35px;
+			border-radius: var(--radius);
+			color: var(--color--text--shade-1);
+			background-color: var(--color--background);
+			border-color: var(--color--foreground);
+			text-align: center;
+		}
+
+		&::placeholder {
+			color: var(--color--text--shade-1);
+			opacity: 1;
 		}
 	}
 }
