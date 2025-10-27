@@ -221,7 +221,9 @@ class TaskExecutor:
             TaskExecutor._put_result(write_conn.fileno(), result, print_args)
 
         except BaseException as e:
-            TaskExecutor._put_error(write_conn.fileno(), e, stderr_capture.getvalue(), print_args)
+            TaskExecutor._put_error(
+                write_conn.fileno(), e, stderr_capture.getvalue(), print_args
+            )
 
     @staticmethod
     def _per_item(
@@ -274,7 +276,9 @@ class TaskExecutor:
             TaskExecutor._put_result(write_conn.fileno(), result, print_args)
 
         except BaseException as e:
-            TaskExecutor._put_error(write_conn.fileno(), e, stderr_capture.getvalue(), print_args)
+            TaskExecutor._put_error(
+                write_conn.fileno(), e, stderr_capture.getvalue(), print_args
+            )
 
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
