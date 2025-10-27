@@ -11,7 +11,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
