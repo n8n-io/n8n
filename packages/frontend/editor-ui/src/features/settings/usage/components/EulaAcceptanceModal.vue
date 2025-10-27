@@ -51,7 +51,7 @@ const onClose = () => {
 				<div :class="$style.checkboxWrapper">
 					<N8nCheckbox v-model="accepted" data-test-id="eula-checkbox">
 						<span>
-							{{ `${locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label')}} ` }}
+							{{ `${locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label')} ` }}
 							<a :href="eulaUrl" target="_blank" rel="noopener noreferrer" data-test-id="eula-link">
 								{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }}
 							</a>
