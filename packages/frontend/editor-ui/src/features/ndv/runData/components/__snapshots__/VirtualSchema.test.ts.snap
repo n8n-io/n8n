@@ -341,6 +341,48 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
 </div>
 `;
 
+exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 2`] = `
+<div
+  class="schema-header"
+  data-test-id="run-data-schema-header"
+  data-v-fb014c00=""
+>
+  <div
+    class="toggle"
+    data-v-fb014c00=""
+  >
+    <n8n-icon-stub
+      class="collapse-icon"
+      data-v-fb014c00=""
+      icon="chevron-down"
+      size="medium"
+      spin="false"
+    />
+  </div>
+  <node-icon-stub
+    class="icon"
+    data-v-fb014c00=""
+    node-type="n8n-nodes-base.if"
+    size="12"
+  />
+  <div
+    class="title"
+    data-v-fb014c00=""
+  >
+    If 
+    <!--v-if-->
+  </div>
+  <!--v-if-->
+  <div
+    class="extra-info"
+    data-test-id="run-data-schema-node-item-count"
+    data-v-fb014c00=""
+  >
+    2 items
+  </div>
+</div>
+`;
+
 exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
 <div>
   <div
