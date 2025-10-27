@@ -199,8 +199,8 @@ export interface ChatHubAgentDto {
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
-	provider: ChatHubProvider | null;
-	model: string | null;
+	provider: ChatHubProvider;
+	model: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -210,7 +210,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1),
 	credentialId: z.string(),
-	provider: chatHubProviderSchema,
+	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
 	model: z.string().max(64),
 }) {}
 

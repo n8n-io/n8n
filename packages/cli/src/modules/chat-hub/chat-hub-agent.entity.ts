@@ -55,11 +55,11 @@ export class ChatHubAgent extends WithTimestamps {
 	 * Enum value of the LLM provider to use, e.g. 'openai', 'anthropic', 'google', 'n8n' (if applicable).
 	 */
 	@Column({ type: 'varchar', length: 16, nullable: true })
-	provider: ChatHubProvider | null;
+	provider: ChatHubProvider;
 
 	/*
 	 * LLM model to use from the provider (if applicable)
 	 */
 	@Column({ type: 'varchar', length: 64, nullable: true })
-	model: string | null;
+	model: string;
 }
