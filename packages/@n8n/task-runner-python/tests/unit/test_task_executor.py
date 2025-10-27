@@ -30,7 +30,6 @@ class TestTaskExecutorProcessExitHandling:
         process.is_alive.return_value = False
         process.exitcode = SIGKILL_EXIT_CODE
 
-        # Create mock connections
         read_conn = MagicMock()
         write_conn = MagicMock()
         read_conn.fileno.return_value = 999
@@ -49,7 +48,6 @@ class TestTaskExecutorProcessExitHandling:
         process.is_alive.return_value = False
         process.exitcode = -1  # Some other error code
 
-        # Create mock connections
         read_conn = MagicMock()
         write_conn = MagicMock()
         read_conn.fileno.return_value = 999

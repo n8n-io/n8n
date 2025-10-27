@@ -137,7 +137,7 @@ class TaskExecutor:
 
             if read_error:
                 logger.error(
-                    f"Failed to retrieve results from child process: {read_error[0]}"
+                    f"Failed to retrieve result from child process: {read_error[0]}"
                 )
                 raise TaskResultMissingError()
 
@@ -154,11 +154,11 @@ class TaskExecutor:
 
             result = returned["result"]
             print_args = returned.get("print_args", [])
-            message_length = len(
+            result_size_bytes = len(
                 json.dumps(returned, default=str, ensure_ascii=False).encode("utf-8")
             )
 
-            return result, print_args, message_length
+            return result, print_args, result_size_bytes
 
         except Exception as e:
             if continue_on_fail:
