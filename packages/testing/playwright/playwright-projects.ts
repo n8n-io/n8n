@@ -17,6 +17,9 @@ const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')}
 // These tests will be run AFTER the first run of the UI tests
 // In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
 const SERIAL_EXECUTION = /@db:reset/;
+
+// Routes tests to isolated worker without triggering automatic database resets in fixtures
+// Use when tests need worker isolation but have intentional state dependencies (e.g., serial tests sharing data)
 const ISOLATED_ONLY = /@isolated/;
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
