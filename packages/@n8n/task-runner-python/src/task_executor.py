@@ -22,6 +22,12 @@ from src.import_validation import validate_module_import
 from src.config.security_config import SecurityConfig
 
 from src.message_types.broker import NodeMode, Items
+from src.message_types.pipe import (
+    PipeMessage,
+    PipeResultMessage,
+    PipeErrorMessage,
+    TaskErrorInfo,
+)
 from src.constants import (
     EXECUTOR_CIRCULAR_REFERENCE_KEY,
     EXECUTOR_USER_OUTPUT_KEY,
@@ -82,11 +88,13 @@ class TaskExecutor:
         write_conn,
         task_timeout: int,
         continue_on_fail: bool,
-    ) -> tuple[list, PrintArgs, int]:
+    ) -> tuple[Items, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
         read_fd = read_conn.fileno()
-        result_data: list[dict] = []
+        shared_list: list[
+            PipeMessage
+        ] = []  # for inter-thread communication (0 or 1 msg)
         read_error: list[Exception] = []
         print_args: PrintArgs = []
 
@@ -94,11 +102,12 @@ class TaskExecutor:
             """Read result from pipe in background thread."""
 
             try:
-                length_bytes = TaskExecutor._read_exact(read_fd, PIPE_MSG_PREFIX_LENGTH)
+                length_bytes = TaskExecutor._read_exact_bytes(
+                    read_fd, PIPE_MSG_PREFIX_LENGTH
+                )
                 length_int = int.from_bytes(length_bytes, "big")
-                data = TaskExecutor._read_exact(read_fd, length_int)
-                returned = json.loads(data.decode("utf-8"))
-                result_data.append(returned)
+                data = TaskExecutor._read_exact_bytes(read_fd, length_int)
+                shared_list.append(json.loads(data.decode("utf-8")))
             except Exception as e:
                 read_error.append(e)
             finally:
@@ -136,10 +145,10 @@ class TaskExecutor:
             if read_error:
                 raise TaskResultReadError()
 
-            if not result_data:
+            if not shared_list:
                 raise TaskResultMissingError()
 
-            returned = result_data[0]
+            returned = shared_list[0]
 
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
@@ -239,7 +248,7 @@ class TaskExecutor:
             filtered_builtins = TaskExecutor._filter_builtins(security_config)
             custom_print = TaskExecutor._create_custom_print(print_args)
 
-            result = []
+            result: Items = []
             for index, item in enumerate(items):
                 globals = {
                     "__builtins__": filtered_builtins,
@@ -289,19 +298,17 @@ class TaskExecutor:
         return user_output
 
     @staticmethod
-    def _put_result(write_fd: int, result: list[Any], print_args: PrintArgs):
-        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-
-        message = {
+    def _put_result(write_fd: int, result: Items, print_args: PrintArgs):
+        message: PipeResultMessage = {
             "result": result,
-            "print_args": print_args_to_send,
+            "print_args": TaskExecutor._truncate_print_args(print_args),
         }
 
         data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
         length_bytes = len(data).to_bytes(PIPE_MSG_PREFIX_LENGTH, "big")
 
-        TaskExecutor._write_all(write_fd, length_bytes)
-        TaskExecutor._write_all(write_fd, data)
+        TaskExecutor._write_bytes(write_fd, length_bytes)
+        TaskExecutor._write_bytes(write_fd, data)
         os.close(write_fd)
 
     @staticmethod
@@ -311,7 +318,7 @@ class TaskExecutor:
         stderr: str = "",
         print_args: PrintArgs = [],
     ):
-        error_dict = {
+        error_dict: TaskErrorInfo = {
             "message": f"Process exited with code {e.code}"
             if isinstance(e, SystemExit)
             else str(e),
@@ -320,18 +327,16 @@ class TaskExecutor:
             "stderr": stderr,
         }
 
-        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-
-        message = {
+        message: PipeErrorMessage = {
             "error": error_dict,
-            "print_args": print_args_to_send,
+            "print_args": TaskExecutor._truncate_print_args(print_args),
         }
 
         data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
         length_bytes = len(data).to_bytes(PIPE_MSG_PREFIX_LENGTH, "big")
 
-        TaskExecutor._write_all(write_fd, length_bytes)
-        TaskExecutor._write_all(write_fd, data)
+        TaskExecutor._write_bytes(write_fd, length_bytes)
+        TaskExecutor._write_bytes(write_fd, data)
         os.close(write_fd)
 
     # ========== print() ==========
@@ -478,10 +483,10 @@ class TaskExecutor:
 
         return safe_import
 
-    @staticmethod
-    def _read_exact(fd: int, n: int) -> bytes:
-        """Read exactly n bytes from file descriptor."""
+    # ========== pipe I/O ==========
 
+    @staticmethod
+    def _read_exact_bytes(fd: int, n: int) -> bytes:
         result = b""
         while len(result) < n:
             chunk = os.read(fd, n - len(result))
@@ -491,9 +496,7 @@ class TaskExecutor:
         return result
 
     @staticmethod
-    def _write_all(fd: int, data: bytes):
-        """Write all bytes to file descriptor."""
-
+    def _write_bytes(fd: int, data: bytes):
         total_written = 0
         while total_written < len(data):
             written = os.write(fd, data[total_written:])
