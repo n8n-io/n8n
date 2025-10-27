@@ -28,6 +28,7 @@ from src.constants import (
     EXECUTOR_PER_ITEM_FILENAME,
     SIGTERM_EXIT_CODE,
     SIGKILL_EXIT_CODE,
+    PIPE_MSG_PREFIX_LENGTH,
 )
 from typing import Any
 
@@ -95,9 +96,10 @@ class TaskExecutor:
                 """Read result from pipe in background thread."""
 
                 try:
-                    length_bytes = TaskExecutor._read_exact(read_fd, 4)
+                    length_bytes = TaskExecutor._read_exact(
+                        read_fd, PIPE_MSG_PREFIX_LENGTH
+                    )
                     length = int.from_bytes(length_bytes, "big")
-
                     data = TaskExecutor._read_exact(read_fd, length)
                     returned = json.loads(data.decode("utf-8"))
                     result_data.append(returned)
@@ -133,13 +135,13 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            reader.join(timeout=5.0) # @TODO: Reasonable length?
+            reader.join(timeout=5.0)  # @TODO: Reasonable length?
 
             if read_error:
                 logger.error(
                     f"Failed to retrieve result from child process: {read_error[0]}"
                 )
-                raise TaskResultMissingError() # @TODO: New error?
+                raise TaskResultMissingError()  # @TODO: New error?
 
             if not result_data:
                 raise TaskResultMissingError()
@@ -303,7 +305,7 @@ class TaskExecutor:
         }
 
         data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
-        length_bytes = len(data).to_bytes(4, "big")
+        length_bytes = len(data).to_bytes(PIPE_MSG_PREFIX_LENGTH, "big")
 
         TaskExecutor._write_all(write_fd, length_bytes)
         TaskExecutor._write_all(write_fd, data)
@@ -333,7 +335,7 @@ class TaskExecutor:
         }
 
         data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
-        length_bytes = len(data).to_bytes(4, "big")
+        length_bytes = len(data).to_bytes(PIPE_MSG_PREFIX_LENGTH, "big")
 
         TaskExecutor._write_all(write_fd, length_bytes)
         TaskExecutor._write_all(write_fd, data)

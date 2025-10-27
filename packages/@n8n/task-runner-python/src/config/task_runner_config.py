@@ -21,6 +21,7 @@ from src.constants import (
     ENV_TASK_TIMEOUT,
     ENV_AUTO_SHUTDOWN_TIMEOUT,
     ENV_GRACEFUL_SHUTDOWN_TIMEOUT,
+    PIPE_MSG_MAX_SIZE,
 )
 
 
@@ -91,13 +92,18 @@ class TaskRunnerConfig:
                 f"Graceful shutdown timeout must be positive, got {graceful_shutdown_timeout}"
             )
 
+        max_payload_size = read_int_env(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)
+        if max_payload_size > PIPE_MSG_MAX_SIZE:
+            raise ConfigurationError(
+                f"Max payload size of {max_payload_size} bytes exceeds protocol limit of "
+                f"{PIPE_MSG_MAX_SIZE} bytes. Reduce {ENV_MAX_PAYLOAD_SIZE}."
+            )
+
         return cls(
             grant_token=grant_token,
             task_broker_uri=read_str_env(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
             max_concurrency=read_int_env(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY),
-            max_payload_size=read_int_env(
-                ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE
-            ),
+            max_payload_size=max_payload_size,
             task_timeout=task_timeout,
             auto_shutdown_timeout=auto_shutdown_timeout,
             graceful_shutdown_timeout=graceful_shutdown_timeout,
