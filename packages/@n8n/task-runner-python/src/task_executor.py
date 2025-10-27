@@ -93,11 +93,12 @@ class TaskExecutor:
         """Execute a subprocess for a Python code task."""
 
         read_fd = read_conn.fileno()
-        shared_list: list[
-            PipeMessage
-        ] = []  # for inter-thread communication (0 or 1 msg)
-        read_error: list[Exception] = []
         print_args: PrintArgs = []
+
+        # lists for reader-to-runner comms (each either 0 or 1 msg)
+        pipe_message_list: list[PipeMessage] = []
+        message_size_list: list[int] = []
+        read_error_list: list[Exception] = []
 
         def read_from_pipe():
             """Read result from pipe in background thread."""
@@ -107,10 +108,11 @@ class TaskExecutor:
                     read_fd, PIPE_MSG_PREFIX_LENGTH
                 )
                 length_int = int.from_bytes(length_bytes, "big")
+                message_size_list.append(length_int)
                 data = TaskExecutor._read_exact_bytes(read_fd, length_int)
-                shared_list.append(json.loads(data.decode("utf-8")))
+                pipe_message_list.append(json.loads(data.decode("utf-8")))
             except Exception as e:
-                read_error.append(e)
+                read_error_list.append(e)
             finally:
                 read_conn.close()
 
@@ -143,13 +145,13 @@ class TaskExecutor:
 
             pipe_reader.join(timeout=PIPE_READER_THREAD_JOIN_TIMEOUT)
 
-            if read_error:
+            if read_error_list:
                 raise TaskResultReadError()
 
-            if not shared_list:
+            if not pipe_message_list:
                 raise TaskResultMissingError()
 
-            returned = shared_list[0]
+            returned = pipe_message_list[0]
 
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
@@ -159,9 +161,7 @@ class TaskExecutor:
 
             result = returned["result"]
             print_args = returned.get("print_args", [])
-            result_size_bytes = len(
-                json.dumps(returned, default=str, ensure_ascii=False).encode("utf-8")
-            )
+            result_size_bytes = message_size_list[0]
 
             return result, print_args, result_size_bytes
 
