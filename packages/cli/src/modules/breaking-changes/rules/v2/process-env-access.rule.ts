@@ -27,6 +27,15 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 		workflow: WorkflowEntity,
 		_nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
+		// If N8N_BLOCK_ENV_ACCESS_IN_NODE is explicitly set to 'false', users are not affected
+		// because they've already configured the system to allow process.env access
+		if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'false') {
+			return {
+				isAffected: false,
+				issues: [],
+			};
+		}
+
 		// Match process.env with optional whitespace, newlines, comments between 'process' and '.env'
 		// This covers: process.env, process  .env, process/* comment */.env, process\n.env, etc.
 		// Also matches optional chaining: process?.env
