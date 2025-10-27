@@ -199,7 +199,11 @@ onBeforeMount(() => {
 					<VueMarkdown
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-						:source="message.content"
+						:source="
+							message.status === 'error' && !message.content
+								? 'Error: Unknown error occurred'
+								: message.content
+						"
 						:options="markdownOptions"
 						:plugins="[linksNewTabPlugin]"
 					/>
