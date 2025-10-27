@@ -39,6 +39,7 @@ ${colors.yellow}Options:${colors.reset}
   --postgres        Use PostgreSQL instead of SQLite
   --queue           Enable queue mode (requires PostgreSQL)
   --task-runner     Enable external task runner container
+  --source-control  Enable source control (Git) container for testing
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -69,6 +70,9 @@ ${colors.yellow}Examples:${colors.reset}
 
   ${colors.bright}# With external task runner${colors.reset}
   npm run stack --postgres --task-runner
+
+  ${colors.bright}# With source control (Git) testing${colors.reset}
+  npm run stack --postgres --source-control
 
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
@@ -102,6 +106,7 @@ async function main() {
 			postgres: { type: 'boolean' },
 			queue: { type: 'boolean' },
 			'task-runner': { type: 'boolean' },
+			'source-control': { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -121,6 +126,7 @@ async function main() {
 	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
 		taskRunner: values['task-runner'] ?? false,
+		sourceControl: values['source-control'] ?? false,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -240,6 +246,15 @@ function displayConfig(config: N8NConfig) {
 		}
 	} else {
 		log.info('Task runner: disabled');
+	}
+
+	// Display source control status
+	if (config.sourceControl) {
+		log.info('Source Control: enabled (Git server - Gitea 1.24.6)');
+		log.info('  Admin: giteaadmin / giteapassword');
+		log.info('  Repository: n8n-test-repo');
+	} else {
+		log.info('Source Control: disabled');
 	}
 
 	if (config.resourceQuota) {

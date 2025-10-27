@@ -102,7 +102,11 @@ watch(
 			/>
 		</template>
 		<template #icon>
-			<N8nIcon v-if="session.provider === null" size="medium" icon="message-circle" />
+			<N8nIcon
+				v-if="session.provider === null || session.provider === 'n8n'"
+				size="medium"
+				icon="message-circle"
+			/>
 			<CredentialIcon
 				v-else
 				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[session.provider]"
