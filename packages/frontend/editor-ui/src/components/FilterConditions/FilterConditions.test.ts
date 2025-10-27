@@ -505,4 +505,40 @@ describe('FilterConditions.vue', () => {
 		const events = emitted('valueChanged') ?? [];
 		expect(get(events[0], '0.value.options.caseSensitive')).toBe(false);
 	});
+
+	it('should auto-change operator type when dropping a value', async () => {
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockReturnValue(42);
+
+		const { findAllByTestId, emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: {
+					conditions: [
+						{
+							id: '1',
+							leftValue: '',
+							rightValue: '',
+							operator: getFilterOperator('string:equals'),
+						},
+					],
+					combinator: 'and',
+				} as Partial<FilterValue> as FilterValue,
+			},
+		});
+
+		const conditions = await findAllByTestId('filter-condition');
+		const leftInput = within(conditions[0]).getByTestId('filter-condition-left');
+
+		leftInput.dispatchEvent(new Event('drop'));
+
+		await waitFor(
+			() => {
+				const events = emitted('valueChanged') ?? [];
+				const lastEvent = events[events.length - 1];
+				expect(get(lastEvent, '0.value.conditions.0.operator.type')).toBe('number');
+			},
+			{ timeout: 1000 },
+		);
+	});
 });

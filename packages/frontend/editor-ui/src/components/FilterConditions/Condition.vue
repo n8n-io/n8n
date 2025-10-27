@@ -11,9 +11,9 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
-import { type FilterOperatorId } from './constants';
+import { type FilterOperatorId, DEFAULT_OPERATOR_BY_TYPE } from './constants';
 import {
 	getFilterOperator,
 	handleOperatorChange,
@@ -57,7 +57,7 @@ const { debounce } = useDebounce();
 const condition = ref<FilterConditionValue>(props.condition);
 
 const operatorId = computed<FilterOperatorId>(() => {
-	const { type, operation } = props.condition.operator;
+	const { type, operation } = condition.value.operator;
 	return `${type}:${operation}` as FilterOperatorId;
 });
 const operator = computed(() => getFilterOperator(operatorId.value));
@@ -76,7 +76,12 @@ const conditionResult = computed(() =>
 
 const suggestedType = computed(() => {
 	if (conditionResult.value.status !== 'resolve_error') {
-		return inferOperatorType(conditionResult.value.resolved.leftValue);
+		let inferenceValue = conditionResult.value.resolved.leftValue;
+		if (inferenceValue === '') {
+			inferenceValue = conditionResult.value.resolved.rightValue;
+		}
+
+		return inferOperatorType(inferenceValue);
 	}
 
 	return 'any';
@@ -145,6 +150,33 @@ const onRemove = (): void => {
 const onBlur = (): void => {
 	debouncedEmitUpdate();
 };
+
+const setSuggestedType = (): void => {
+	const type = suggestedType.value;
+
+	const newOperatorId = DEFAULT_OPERATOR_BY_TYPE[type];
+
+	if (newOperatorId) {
+		onOperatorChange(newOperatorId);
+	}
+};
+
+const onLeftValueDrop = (droppedExpression: string): void => {
+	condition.value.leftValue = droppedExpression;
+	setSuggestedType();
+};
+
+const onRightValueDrop = (droppedExpression: string) => {
+	condition.value.rightValue = droppedExpression;
+	setSuggestedType();
+};
+
+watch(
+	() => props.condition,
+	() => {
+		condition.value = props.condition;
+	},
+);
 </script>
 
 <template>
@@ -192,6 +224,7 @@ const onBlur = (): void => {
 					data-test-id="filter-condition-left"
 					@update="onLeftValueChange"
 					@blur="onBlur"
+					@drop="onLeftValueDrop"
 				/>
 			</template>
 			<template #middle>
@@ -218,6 +251,7 @@ const onBlur = (): void => {
 					data-test-id="filter-condition-right"
 					@update="onRightValueChange"
 					@blur="onBlur"
+					@drop="onRightValueDrop"
 				/>
 			</template>
 		</InputTriple>

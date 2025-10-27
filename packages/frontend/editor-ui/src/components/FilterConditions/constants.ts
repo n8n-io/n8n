@@ -282,6 +282,15 @@ export type FilterOperatorId = keyof typeof OPERATORS_BY_ID;
 export const DEFAULT_OPERATOR_VALUE: FilterConditionValue['operator'] =
 	OPERATORS_BY_ID['string:equals'];
 
+export const DEFAULT_OPERATOR_BY_TYPE: Record<string, FilterOperatorId> = {
+	string: 'string:equals',
+	number: 'number:equals',
+	boolean: 'boolean:equals',
+	array: 'array:contains',
+	object: 'object:notEmpty',
+	dateTime: 'dateTime:equals',
+};
+
 export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
 		id: 'string',
