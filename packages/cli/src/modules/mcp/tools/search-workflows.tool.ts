@@ -86,7 +86,6 @@ export const createSearchWorkflowsTool = (
 					success: true,
 					data: {
 						count: payload.count,
-						results: payload.data,
 					},
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

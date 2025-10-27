@@ -62,7 +62,12 @@ export const createWorkflowDetailsTool = (
 				// Track successful execution
 				telemetryPayload.results = {
 					success: true,
-					data: payload,
+					data: {
+						workflow_id: workflowId,
+						workflow_name: payload.workflow.name,
+						trigger_count: payload.workflow.triggerCount,
+						node_count: payload.workflow.nodes.length,
+					},
 				};
 
 				return {
