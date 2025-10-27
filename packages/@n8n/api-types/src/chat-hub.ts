@@ -137,7 +137,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 	model: z.string().max(64).optional(),
 	workflowId: z.string().max(36).optional(),
 	agentId: z.string().uuid().optional(),
-	agentName: z.string().max(256).optional(),
+	agentName: z.string().max(128).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -207,7 +207,7 @@ export interface ChatHubAgentDto {
 }
 
 export class ChatHubCreateAgentRequest extends Z.class({
-	name: z.string().min(1).max(256),
+	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1),
 	credentialId: z.string().optional(),
@@ -216,7 +216,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
-	name: z.string().min(1).max(256).optional(),
+	name: z.string().min(1).max(128).optional(),
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1).optional(),
 	credentialId: z.string().optional(),

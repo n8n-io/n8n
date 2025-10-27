@@ -20,7 +20,7 @@ export class ChatHubSession extends WithTimestamps {
 	 * The title of the chat session/conversation.
 	 * Auto-generated if not provided by the user after the initial AI responses.
 	 */
-	@Column({ type: 'varchar', length: 256 })
+	@Column({ type: 'varchar', length: 128 })
 	title: string;
 
 	/**

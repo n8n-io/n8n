@@ -225,7 +225,7 @@ async function onDelete() {
 					<N8nInput
 						v-model="name"
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
-						:maxlength="256"
+						:maxlength="128"
 						:class="$style.input"
 					/>
 				</div>

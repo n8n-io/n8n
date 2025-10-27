@@ -10,7 +10,7 @@ export class ChatHubAgent extends WithTimestamps {
 	/**
 	 * The name of the chat agent.
 	 */
-	@Column({ type: 'varchar', length: 256 })
+	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
 	/**
