@@ -10,10 +10,13 @@ import { useNDVStore } from '@/features/ndv/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
+import { typeFromExpression } from './utils';
 import { useI18n } from '@n8n/i18n';
 import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { propertyNameFromExpression } from '@/utils/mappingUtils';
+import { removeExpressionPrefix } from '@/utils/expressions';
 interface Props {
 	path: string;
 	modelValue: AssignmentValue;
@@ -127,6 +130,19 @@ const onBlur = (): void => {
 const onValueInputHoverChange = (hovered: boolean): void => {
 	valueInputHovered.value = hovered;
 };
+
+const onValueDrop = (droppedExpression: string) => {
+	if (props.disableType) {
+		return;
+	}
+
+	const droppedValue = removeExpressionPrefix(droppedExpression);
+	assignment.value.type = typeFromExpression(droppedValue);
+
+	if (!assignment.value.name) {
+		assignment.value.name = propertyNameFromExpression(droppedValue);
+	}
+};
 </script>
 
 <template>
@@ -206,6 +222,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 							@update="onAssignmentValueChange"
 							@blur="onBlur"
 							@hover="onValueInputHoverChange"
+							@drop="onValueDrop"
 						/>
 						<ParameterInputHint
 							v-if="resolvedExpressionString"

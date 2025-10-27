@@ -8,6 +8,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 import * as useResolvedExpression from '@/composables/useResolvedExpression';
+import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 
 const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 	pinia: createTestingPinia({
@@ -115,5 +116,38 @@ describe('Assignment.vue', () => {
 				'Specify the property name of the binary data in the input item',
 			);
 		});
+	});
+
+	it('should auto-change type when dropping a value', async () => {
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+
+		const { getByTestId, emitted } = renderComponent();
+
+		const valueInput = getByTestId('assignment-value');
+		valueInput.dispatchEvent(new Event('drop'));
+
+		await waitFor(() => {
+			const events = emitted('update:model-value') ?? [];
+			const lastEvent = events[events.length - 1] as [{ type: string }];
+			expect(lastEvent[0].type).toBe('number');
+		});
+	});
+
+	it('should not auto-change type when disableType is true', async () => {
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				disableType: true,
+			},
+		});
+
+		const valueInput = getByTestId('assignment-value');
+		valueInput.dispatchEvent(new Event('drop'));
+
+		await nextTick();
+
+		expect(emitted('update:model-value')).toBeUndefined();
 	});
 });
