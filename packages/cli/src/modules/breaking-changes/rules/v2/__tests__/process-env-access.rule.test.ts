@@ -1,28 +1,9 @@
-import type { WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
-
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
 import { ProcessEnvAccessRule } from '../process-env-access.rule';
+import { createNode, createWorkflow } from './test-helpers';
 
 describe('ProcessEnvAccessRule', () => {
 	let rule: ProcessEnvAccessRule;
-
-	const createWorkflow = (id: string, name: string, nodes: INode[], active = true) =>
-		({
-			id,
-			name,
-			active,
-			nodes,
-		}) as WorkflowEntity;
-
-	const createNode = (name: string, type: string, parameters: unknown = {}): INode => ({
-		id: `node-${name}`,
-		name,
-		type,
-		typeVersion: 1,
-		position: [0, 0],
-		parameters: parameters as INode['parameters'],
-	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -66,7 +47,7 @@ describe('ProcessEnvAccessRule', () => {
 
 	describe('detectWorkflow()', () => {
 		it('should return no issues when no process.env usage is found', async () => {
-			const workflow = createWorkflow('wf-1', 'Clean Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Clean Workflow', [
 				createNode('Code', 'n8n-nodes-base.code', {
 					code: 'const data = $input.all();',
 				}),
@@ -75,7 +56,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result).toEqual({
 				isAffected: false,
@@ -84,13 +65,13 @@ describe('ProcessEnvAccessRule', () => {
 		});
 
 		it('should detect process.env in Code node', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Code', 'n8n-nodes-base.code', {
 					code: 'const apiKey = process.env.API_KEY;\nreturn { apiKey };',
 				}),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
@@ -103,14 +84,14 @@ describe('ProcessEnvAccessRule', () => {
 		});
 
 		it('should detect process.env in node parameters/expressions', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
 					url: '{{ process.env.API_URL }}',
 					authentication: 'none',
 				}),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues[0]).toMatchObject({
@@ -121,7 +102,7 @@ describe('ProcessEnvAccessRule', () => {
 		});
 
 		it('should detect process.env in multiple nodes', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Code', 'n8n-nodes-base.code', {
 					code: 'const key = process.env.KEY;',
 				}),
@@ -133,7 +114,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.issues[0].description).toContain('Code');
 			expect(result.issues[0].description).toContain('HTTP');
@@ -141,7 +122,7 @@ describe('ProcessEnvAccessRule', () => {
 		});
 
 		it('should not detect false positives', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				// Variable named 'process' but not process.env
 				createNode('Code1', 'n8n-nodes-base.code', {
 					code: 'const process = { data: "test" }; return process;',
@@ -156,7 +137,7 @@ describe('ProcessEnvAccessRule', () => {
 				}),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			// None of these should be detected as they don't access process.env
 			expect(result.isAffected).toBe(false);
@@ -183,11 +164,11 @@ describe('ProcessEnvAccessRule', () => {
 			['optional chaining (process?.env)', 'const x = process?.env?.VAR;'],
 			['multiple spaces with optional chaining', 'const x = process  ?.env.VAR;'],
 		])('should detect process.env with %s', async (_description, code) => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Code', 'n8n-nodes-base.code', { code }),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);

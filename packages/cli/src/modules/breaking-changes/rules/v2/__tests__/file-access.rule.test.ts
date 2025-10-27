@@ -1,33 +1,9 @@
-import type { WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
-
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
 import { FileAccessRule } from '../file-access.rule';
+import { createNode, createWorkflow } from './test-helpers';
 
 describe('FileAccessRule', () => {
 	let rule: FileAccessRule;
-
-	const createWorkflow = (
-		id: string,
-		name: string,
-		nodes: INode[],
-		active = true,
-	): WorkflowEntity =>
-		({
-			id,
-			name,
-			active,
-			nodes,
-		}) as WorkflowEntity;
-
-	const createNode = (name: string, type: string): INode => ({
-		id: `node-${name}`,
-		name,
-		type,
-		typeVersion: 1,
-		position: [0, 0],
-		parameters: {},
-	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -64,9 +40,9 @@ describe('FileAccessRule', () => {
 
 	describe('detectWorkflow()', () => {
 		it('should return no issues when no file access nodes are found', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', []);
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', []);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result).toEqual({
 				isAffected: false,
@@ -75,11 +51,11 @@ describe('FileAccessRule', () => {
 		});
 
 		it('should detect ReadWriteFile node usage', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Read File', 'n8n-nodes-base.readWriteFile'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
@@ -91,11 +67,11 @@ describe('FileAccessRule', () => {
 		});
 
 		it('should detect ReadBinaryFiles node usage', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Read Binary', 'n8n-nodes-base.readBinaryFiles'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues[0]).toMatchObject({
@@ -105,12 +81,12 @@ describe('FileAccessRule', () => {
 		});
 
 		it('should detect both file access nodes in the same workflow', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Read File', 'n8n-nodes-base.readWriteFile'),
 				createNode('Read Binary', 'n8n-nodes-base.readBinaryFiles'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.issues).toHaveLength(2);
 			expect(result.issues).toEqual(
@@ -127,13 +103,13 @@ describe('FileAccessRule', () => {
 		});
 
 		it('should only flag file access nodes, not other nodes', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Read File', 'n8n-nodes-base.readWriteFile'),
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
 				createNode('Code', 'n8n-nodes-base.code'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.issues).toHaveLength(1);
 			expect(result.issues[0].title).toContain('readWriteFile');

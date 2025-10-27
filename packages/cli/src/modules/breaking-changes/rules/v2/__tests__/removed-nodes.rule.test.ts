@@ -1,28 +1,9 @@
-import type { WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
-
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
 import { RemovedNodesRule } from '../removed-nodes.rule';
+import { createNode, createWorkflow } from './test-helpers';
 
 describe('RemovedNodesRule', () => {
 	let rule: RemovedNodesRule;
-
-	const createWorkflow = (id: string, name: string, nodes: INode[], active = true) =>
-		({
-			id,
-			name,
-			active,
-			nodes,
-		}) as WorkflowEntity;
-
-	const createNode = (name: string, type: string): INode => ({
-		id: `node-${name}`,
-		name,
-		type,
-		typeVersion: 1,
-		position: [0, 0],
-		parameters: {},
-	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -58,10 +39,10 @@ describe('RemovedNodesRule', () => {
 
 	describe('detectWorkflow()', () => {
 		it('should return no issues when no removed nodes are found', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('NotDeleted', 'n8n-nodes-base.not-deleted'),
 			]);
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result).toEqual({
 				isAffected: false,
@@ -83,9 +64,11 @@ describe('RemovedNodesRule', () => {
 				nodeType: 'n8n-nodes-base.kitemaker',
 			},
 		])('should detect removed node: %s', async ({ nodeName, nodeType }) => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [createNode(nodeName, nodeType)]);
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode(nodeName, nodeType),
+			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
@@ -99,13 +82,13 @@ describe('RemovedNodesRule', () => {
 		});
 
 		it('should detect multiple removed nodes in the same workflow', async () => {
-			const workflow = createWorkflow('wf-1', 'Test Workflow', [
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit', 'n8n-nodes-base.spontit'),
 				createNode('CrowdDev', 'n8n-nodes-base.crowdDev'),
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'), // Not removed
 			]);
 
-			const result = await rule.detectWorkflow(workflow);
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.issues).toHaveLength(2);
 			expect(result.issues).toEqual(

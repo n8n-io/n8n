@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core/src/errors/error-reporter';
+import { INode } from 'n8n-workflow/src/interfaces';
 import { strict as assert } from 'node:assert';
 
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
@@ -95,7 +96,15 @@ export class BreakingChangeService {
 				try {
 					const ruleId = rule.getMetadata().id;
 					for (const workflow of workflows) {
-						const workflowDetectionResult = await rule.detectWorkflow(workflow);
+						const nodesGroupedByType: Map<string, INode[]> = new Map();
+						for (const node of workflow.nodes) {
+							if (!nodesGroupedByType.has(node.type)) {
+								nodesGroupedByType.set(node.type, []);
+							}
+							nodesGroupedByType.get(node.type)!.push(node);
+						}
+
+						const workflowDetectionResult = await rule.detectWorkflow(workflow, nodesGroupedByType);
 						if (workflowDetectionResult.isAffected) {
 							const affectedWorkflow = {
 								id: workflow.id,

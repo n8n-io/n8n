@@ -1,5 +1,6 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { INode } from 'n8n-workflow/src/interfaces';
 
 import type {
 	BreakingChangeMetadata,
@@ -35,8 +36,11 @@ export class FileAccessRule implements IBreakingChangeWorkflowRule {
 		];
 	}
 
-	async detectWorkflow(workflow: WorkflowEntity): Promise<WorkflowDetectionResult> {
-		const fileNodes = workflow.nodes.filter((n) => this.FILE_NODES.includes(n.type));
+	async detectWorkflow(
+		_workflow: WorkflowEntity,
+		nodesGroupedByType: Map<string, INode[]>,
+	): Promise<WorkflowDetectionResult> {
+		const fileNodes = this.FILE_NODES.flatMap((nodeType) => nodesGroupedByType.get(nodeType) ?? []);
 		if (fileNodes.length === 0) return { isAffected: false, issues: [] };
 
 		return {

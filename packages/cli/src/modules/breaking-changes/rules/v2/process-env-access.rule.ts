@@ -1,5 +1,6 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { INode } from 'n8n-workflow/src/interfaces';
 
 import type {
 	BreakingChangeMetadata,
@@ -22,7 +23,10 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 		};
 	}
 
-	async detectWorkflow(workflow: WorkflowEntity): Promise<WorkflowDetectionResult> {
+	async detectWorkflow(
+		workflow: WorkflowEntity,
+		_nodesGroupedByType: Map<string, INode[]>,
+	): Promise<WorkflowDetectionResult> {
 		// Match process.env with optional whitespace, newlines, comments between 'process' and '.env'
 		// This covers: process.env, process  .env, process/* comment */.env, process\n.env, etc.
 		// Also matches optional chaining: process?.env

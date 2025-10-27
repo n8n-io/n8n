@@ -1,5 +1,6 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { INode } from 'n8n-workflow/src/interfaces';
 
 import type {
 	BreakingChangeMetadata,
@@ -38,8 +39,11 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 		];
 	}
 
-	async detectWorkflow(workflow: WorkflowEntity): Promise<WorkflowDetectionResult> {
-		const removedNodes = workflow.nodes.filter((n) => this.REMOVED_NODES.includes(n.type));
+	async detectWorkflow(
+		_workflow: WorkflowEntity,
+		nodesGroupedByType: Map<string, INode[]>,
+	): Promise<WorkflowDetectionResult> {
+		const removedNodes = this.REMOVED_NODES.flatMap((type) => nodesGroupedByType.get(type) ?? []);
 		if (removedNodes.length === 0) return { isAffected: false, issues: [] };
 
 		return {

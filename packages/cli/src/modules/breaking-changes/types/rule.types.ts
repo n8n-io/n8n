@@ -1,4 +1,5 @@
 import type { WorkflowEntity } from '@n8n/db';
+import type { INode } from 'n8n-workflow/src/interfaces';
 
 export const enum BreakingChangeSeverity {
 	critical = 'critical',
@@ -77,7 +78,11 @@ export interface IBreakingChangeInstanceRule {
 export interface IBreakingChangeWorkflowRule {
 	getMetadata(): BreakingChangeMetadata;
 	getRecommendations(workflowResults: AffectedWorkflow[]): Promise<Recommendation[]>;
-	detectWorkflow(workflow: WorkflowEntity): Promise<WorkflowDetectionResult>;
+	// The detectWorkflow function includes the nodes grouped by type for more efficient processing
+	detectWorkflow(
+		workflow: WorkflowEntity,
+		nodesGroupedByType: Map<string, INode[]>,
+	): Promise<WorkflowDetectionResult>;
 }
 
 export type IBreakingChangeRule = IBreakingChangeInstanceRule | IBreakingChangeWorkflowRule;
