@@ -168,7 +168,21 @@ const onLeftValueDrop = (droppedExpression: string): void => {
 
 const onRightValueDrop = (droppedExpression: string) => {
 	condition.value.rightValue = droppedExpression;
-	setSuggestedType();
+
+	// Only auto-switch operator if the default operator for the dropped type
+	// is compatible with the right side (not single-value and right type matches)
+	const inferredType = suggestedType.value;
+	const defaultOperatorId = DEFAULT_OPERATOR_BY_TYPE[inferredType];
+
+	if (defaultOperatorId) {
+		const defaultOperator = getFilterOperator(defaultOperatorId);
+		const expectedRightType = defaultOperator.rightType ?? defaultOperator.type;
+
+		// Only switch if operator accepts a right value AND the right type matches exactly
+		if (!defaultOperator.singleValue && expectedRightType === inferredType) {
+			setSuggestedType();
+		}
+	}
 };
 
 watch(
