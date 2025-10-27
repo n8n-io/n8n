@@ -323,6 +323,10 @@ export async function getInputConnectionData(
 				if (supplyData.closeFunction) {
 					closeFunctions.push(supplyData.closeFunction);
 				}
+				// Add hints from context to supply data
+				if (context.hints.length > 0) {
+					supplyData.hints = context.hints;
+				}
 				nodes.push(supplyData);
 			} catch (error) {
 				// Propagate errors from sub-nodes
