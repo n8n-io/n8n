@@ -92,16 +92,18 @@ const showActivationError = (error: Error) => {
 };
 
 interface EulaErrorResponse {
-	httpStatusCode?: number;
-	meta?: { eulaUrl?: string };
-	response?: { status?: number; data?: { meta?: { eulaUrl?: string } } };
+	httpStatusCode: number;
+	meta: { eulaUrl: string };
 }
 
 const isEulaError = (error: unknown): error is EulaErrorResponse => {
 	const err = error as EulaErrorResponse;
-	const statusCode = err.httpStatusCode ?? err.response?.status;
-	const eulaUrl = err.meta?.eulaUrl ?? err.response?.data?.meta?.eulaUrl;
-	return statusCode !== undefined && statusCode >= 400 && statusCode < 500 && !!eulaUrl;
+	return (
+		err.httpStatusCode !== undefined &&
+		err.httpStatusCode >= 400 &&
+		err.httpStatusCode < 500 &&
+		!!err.meta?.eulaUrl
+	);
 };
 
 const onLicenseActivation = async (eulaUri?: string) => {
@@ -114,13 +116,9 @@ const onLicenseActivation = async (eulaUri?: string) => {
 	} catch (error: unknown) {
 		// Check if error requires EULA acceptance using type guard
 		if (isEulaError(error)) {
-			const eulaUrlFromError = error.meta?.eulaUrl ?? error.response?.data?.meta?.eulaUrl;
-
-			if (eulaUrlFromError) {
-				activationKeyModal.value = false;
-				eulaUrl.value = eulaUrlFromError;
-				eulaModal.value = true;
-			}
+			activationKeyModal.value = false;
+			eulaUrl.value = error.meta.eulaUrl;
+			eulaModal.value = true;
 			return;
 		}
 

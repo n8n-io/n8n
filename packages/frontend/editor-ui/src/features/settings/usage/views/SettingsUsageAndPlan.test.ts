@@ -229,37 +229,6 @@ describe('SettingsUsageAndPlan', () => {
 			expect(usageStore.activateLicense).toHaveBeenCalledTimes(1);
 		});
 
-		it('should handle EULA error with response.data.meta format', async () => {
-			usageStore.isLoading = false;
-			usageStore.planName = 'Community';
-			usersStore.currentUser = {
-				globalScopes: ['license:manage'],
-			} as IUser;
-			rbacStore.setGlobalScopes(['license:manage']);
-
-			const { getByRole, findByTestId } = renderComponent();
-
-			await userEvent.click(getByRole('button', { name: /activation/i }));
-			const input = document.querySelector('input') as HTMLInputElement;
-			await userEvent.type(input, 'test-key-123');
-
-			usageStore.activateLicense.mockRejectedValueOnce({
-				response: {
-					status: 400,
-					data: {
-						meta: { eulaUrl: 'https://example.com/eula.pdf' },
-					},
-				},
-			});
-
-			await userEvent.click(getByRole('button', { name: /activate/i }));
-
-			await waitFor(async () => {
-				const eulaModal = await findByTestId('eula-acceptance-modal');
-				expect(eulaModal).toBeInTheDocument();
-			});
-		});
-
 		it('should show error when activation fails without EULA requirement', async () => {
 			usageStore.isLoading = false;
 			usageStore.planName = 'Community';
