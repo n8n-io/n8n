@@ -236,12 +236,15 @@ export function runCommands(config: CommandsConfig): void {
 			if (!proc.pid) return;
 
 			try {
-				if (process.platform !== 'win32') {
-					process.kill(-proc.pid, 'SIGTERM');
+				if (process.platform === 'win32') {
+					// On Windows, use taskkill to terminate the entire process tree
+					exec(`taskkill /PID ${proc.pid} /T /F`, () => {});
 				} else {
-					proc.kill('SIGTERM');
+					// On Unix, kill the process group
+					process.kill(-proc.pid, 'SIGTERM');
 				}
 			} catch {
+				// Fallback: try to kill just the process
 				try {
 					proc.kill('SIGTERM');
 				} catch {
@@ -273,6 +276,7 @@ export function runCommands(config: CommandsConfig): void {
 	};
 
 	process.on('SIGINT', handleSignal);
+	process.on('SIGTERM', handleSignal);
 
 	const startRenderLoop = (): void => {
 		if (renderInterval !== null) return;

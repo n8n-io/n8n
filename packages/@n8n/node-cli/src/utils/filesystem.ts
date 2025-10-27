@@ -2,6 +2,8 @@ import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { isEnoentError } from './validation';
+
 export async function folderExists(dir: string) {
 	try {
 		const stat = await fs.stat(dir);
@@ -99,7 +101,7 @@ export async function createSymlink(target: string, linkPath: string): Promise<v
 			await fs.rm(linkPath, { recursive: true, force: true });
 		}
 	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+		if (!isEnoentError(error)) {
 			throw error;
 		}
 	}
