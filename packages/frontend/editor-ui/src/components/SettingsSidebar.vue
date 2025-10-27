@@ -53,7 +53,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		},
 		{
 			id: 'settings-ai',
-			icon: 'robot',
+			icon: 'sparkles',
 			label: i18n.baseText('settings.ai'),
 			position: 'top',
 			available:
