@@ -142,7 +142,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<N8nAvatar v-else-if="isCustomAgent" :first-name="message.model" size="xsmall" />
+			<N8nAvatar v-else-if="isCustomAgent" :first-name="message.agentName" size="xsmall" />
 			<N8nTooltip
 				v-else-if="message.type === 'ai' && credentialTypeName"
 				:show-after="100"
