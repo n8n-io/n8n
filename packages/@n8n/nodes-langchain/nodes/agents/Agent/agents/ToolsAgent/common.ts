@@ -90,9 +90,39 @@ export async function extractBinaryMessages(
  * This can throw an error for some providers (like Anthropic) which expect the input to always be an object.
  * This function replaces empty string inputs with empty objects to prevent such errors.
  *
+ * Additionally, it fixes AIMessages with tool_calls that have empty content.
+ * Some OpenAI-compatible APIs (like NVIDIA) reject empty content when tool_calls are present.
+ *
  * @param steps - The agent steps to fix
  * @returns The fixed agent steps
  */
+/**
+ * Fixes a single message by ensuring AIMessages with tool_calls have non-empty content
+ * @param message - The message to fix
+ */
+function fixSingleMessage(message: BaseMessage): void {
+	// Fix empty input in array content
+	if ('content' in message && Array.isArray(message.content)) {
+		(message.content as Array<{ input?: string | object }>).forEach((content) => {
+			if (content.input === '') {
+				content.input = {};
+			}
+		});
+	}
+	
+	// Fix empty content in AIMessages with tool_calls
+	// Some APIs (e.g., NVIDIA) require non-empty content even when making tool calls
+	if (
+		'tool_calls' in message &&
+		Array.isArray((message as any).tool_calls) &&
+		(message as any).tool_calls.length > 0 &&
+		typeof message.content === 'string' &&
+		message.content.trim() === ''
+	) {
+		message.content = ' ';
+	}
+}
+
 export function fixEmptyContentMessage(
 	steps: AgentFinish | ToolsAgentAction[],
 ): AgentFinish | ToolsAgentAction[] {
@@ -102,19 +132,25 @@ export function fixEmptyContentMessage(
 		if ('messageLog' in step && step.messageLog !== undefined) {
 			if (Array.isArray(step.messageLog)) {
 				step.messageLog.forEach((message: BaseMessage) => {
-					if ('content' in message && Array.isArray(message.content)) {
-						(message.content as Array<{ input?: string | object }>).forEach((content) => {
-							if (content.input === '') {
-								content.input = {};
-							}
-						});
-					}
+					fixSingleMessage(message);
 				});
 			}
 		}
 	});
 
 	return steps;
+}
+
+/**
+ * Fixes empty content in chat history messages
+ * @param messages - Array of messages to fix
+ * @returns Fixed array of messages
+ */
+export function fixChatHistoryMessages(messages: BaseMessage[]): BaseMessage[] {
+	messages.forEach((message) => {
+		fixSingleMessage(message);
+	});
+	return messages;
 }
 
 /**

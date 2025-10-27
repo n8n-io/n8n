@@ -36,6 +36,7 @@ import {
 
 import {
 	fixEmptyContentMessage,
+	fixChatHistoryMessages,
 	getAgentStepsParser,
 	getChatModel,
 	getOptionalMemory,
@@ -642,5 +643,6 @@ async function loadChatHistory(
 		});
 	}
 
-	return chatHistory;
+	// Fix empty content in AIMessages with tool_calls (required for some APIs like NVIDIA)
+	return fixChatHistoryMessages(chatHistory);
 }
