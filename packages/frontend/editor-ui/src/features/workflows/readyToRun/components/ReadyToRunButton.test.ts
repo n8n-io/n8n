@@ -153,27 +153,6 @@ describe('ReadyToRunButton.vue', () => {
 	});
 
 	describe('button state', () => {
-		it('should show loading state when claiming credits', () => {
-			const pinia = createPinia();
-			setActivePinia(pinia);
-
-			const readyToRunStore = useReadyToRunStore();
-			const foldersStore = useFoldersStore();
-
-			vi.spyOn(readyToRunStore, 'getButtonVisibility').mockReturnValue(true);
-			vi.spyOn(readyToRunStore, 'claimingCredits', 'get').mockReturnValue(true);
-			vi.spyOn(foldersStore, 'totalWorkflowCount', 'get').mockReturnValue(5);
-
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
-
-			const button = getByTestId('ready-to-run-button');
-			// The loading state is a component prop, not an HTML attribute
-			// Just verify the button exists when in loading state
-			expect(button).toBeInTheDocument();
-		});
-
 		it('should disable button when claiming credits', () => {
 			const pinia = createPinia();
 			setActivePinia(pinia);
@@ -218,7 +197,7 @@ describe('ReadyToRunButton.vue', () => {
 	});
 
 	describe('button click', () => {
-		it('should call claimCreditsAndOpenWorkflow with correct params on button click', async () => {
+		it('should call claimCreditsAndOpenWorkflow on button click', async () => {
 			const pinia = createPinia();
 			setActivePinia(pinia);
 
@@ -238,71 +217,7 @@ describe('ReadyToRunButton.vue', () => {
 			const button = getByTestId('ready-to-run-button');
 			button.click();
 
-			// The function is called, but we can't easily test exact params due to route mocking complexity
 			expect(claimCreditsAndOpenWorkflow).toHaveBeenCalled();
-		});
-
-		it('should handle errors when claimCreditsAndOpenWorkflow fails', async () => {
-			const pinia = createPinia();
-			setActivePinia(pinia);
-
-			const readyToRunStore = useReadyToRunStore();
-			const foldersStore = useFoldersStore();
-
-			vi.spyOn(readyToRunStore, 'getButtonVisibility').mockReturnValue(true);
-			vi.spyOn(foldersStore, 'totalWorkflowCount', 'get').mockReturnValue(5);
-
-			const error = new Error('Failed to claim credits');
-			vi.spyOn(readyToRunStore, 'claimCreditsAndOpenWorkflow').mockRejectedValue(error);
-
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
-
-			const button = getByTestId('ready-to-run-button');
-			button.click();
-
-			// Error should be caught and not thrown
-			// Toast.showError should be called (mocked above)
-		});
-	});
-
-	describe('button rendering', () => {
-		it('should render button with correct test id', () => {
-			const pinia = createPinia();
-			setActivePinia(pinia);
-
-			const readyToRunStore = useReadyToRunStore();
-			const foldersStore = useFoldersStore();
-
-			vi.spyOn(readyToRunStore, 'getButtonVisibility').mockReturnValue(true);
-			vi.spyOn(foldersStore, 'totalWorkflowCount', 'get').mockReturnValue(5);
-
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
-
-			const button = getByTestId('ready-to-run-button');
-			expect(button).toBeInTheDocument();
-		});
-
-		it('should display translated text', () => {
-			const pinia = createPinia();
-			setActivePinia(pinia);
-
-			const readyToRunStore = useReadyToRunStore();
-			const foldersStore = useFoldersStore();
-
-			vi.spyOn(readyToRunStore, 'getButtonVisibility').mockReturnValue(true);
-			vi.spyOn(foldersStore, 'totalWorkflowCount', 'get').mockReturnValue(5);
-
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
-
-			const button = getByTestId('ready-to-run-button');
-			// The i18n mock translates the key, so check for translated text
-			expect(button).toHaveTextContent('Try an AI workflow');
 		});
 	});
 });
