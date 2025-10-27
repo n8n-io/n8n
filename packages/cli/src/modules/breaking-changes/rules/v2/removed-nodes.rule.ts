@@ -18,9 +18,10 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 		'n8n-nodes-base.kitemaker',
 	];
 
+	id: string = 'removed-nodes-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'removed-nodes-v2',
 			version: 'v2',
 			title: 'Removed Deprecated Nodes',
 			description: 'Several deprecated nodes have been removed and will no longer work',

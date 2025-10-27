@@ -15,7 +15,6 @@ describe('RemovedNodesRule', () => {
 			const metadata = rule.getMetadata();
 
 			expect(metadata).toEqual({
-				id: 'removed-nodes-v2',
 				version: 'v2',
 				title: 'Removed Deprecated Nodes',
 				description: 'Several deprecated nodes have been removed and will no longer work',

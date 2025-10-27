@@ -14,9 +14,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 export class FileAccessRule implements IBreakingChangeWorkflowRule {
 	private readonly FILE_NODES = ['n8n-nodes-base.readWriteFile', 'n8n-nodes-base.readBinaryFiles'];
 
+	id: string = 'file-access-restriction-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'file-access-restriction-v2',
 			version: 'v2',
 			title: 'File Access Restrictions',
 			description: 'File access is now restricted to a default directory for security purposes',

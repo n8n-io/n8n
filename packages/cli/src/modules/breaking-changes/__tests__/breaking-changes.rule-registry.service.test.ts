@@ -27,7 +27,6 @@ describe('RuleRegistry', () => {
 		title: string = 'Test Rule',
 	): IBreakingChangeRule => {
 		const metadata: BreakingChangeMetadata = {
-			id,
 			version: version as 'v2',
 			title,
 			description: `Description for ${title}`,
@@ -36,6 +35,7 @@ describe('RuleRegistry', () => {
 		};
 
 		const mockRule: IBreakingChangeRule = {
+			id,
 			getMetadata: jest.fn(() => metadata),
 			detect: jest.fn(async () => {
 				return await Promise.resolve({
@@ -77,7 +77,6 @@ describe('RuleRegistry', () => {
 
 			registry.register(rule);
 
-			expect(rule.getMetadata).toHaveBeenCalled();
 			expect(logger.debug).toHaveBeenCalledWith('Registered rule: test-rule-1');
 			expect(registry.getRules()).toHaveLength(1);
 		});

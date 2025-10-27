@@ -15,7 +15,6 @@ describe('FileAccessRule', () => {
 			const metadata = rule.getMetadata();
 
 			expect(metadata).toEqual({
-				id: 'file-access-restriction-v2',
 				version: 'v2',
 				title: 'File Access Restrictions',
 				description: 'File access is now restricted to a default directory for security purposes',

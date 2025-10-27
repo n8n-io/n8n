@@ -12,12 +12,11 @@ export class RuleRegistry {
 	}
 
 	register(rule: IBreakingChangeRule): void {
-		const metadata = rule.getMetadata();
-		if (this.rules.has(metadata.id)) {
-			this.logger.warn(`Rule with ID ${metadata.id} is already registered. Overwriting.`);
+		if (this.rules.has(rule.id)) {
+			this.logger.warn(`Rule with ID ${rule.id} is already registered. Overwriting.`);
 		}
-		this.rules.set(metadata.id, rule);
-		this.logger.debug(`Registered rule: ${metadata.id}`);
+		this.rules.set(rule.id, rule);
+		this.logger.debug(`Registered rule: ${rule.id}`);
 	}
 
 	registerAll(rules: IBreakingChangeRule[]): void {

@@ -12,9 +12,9 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 
 @Service()
 export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
+	id: string = 'process-env-access-v2';
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'process-env-access-v2',
 			version: 'v2',
 			title: 'Block process.env Access in Expressions and Code nodes',
 			description: 'Direct access to process.env is blocked by default for security',

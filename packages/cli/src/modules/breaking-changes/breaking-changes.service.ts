@@ -54,7 +54,7 @@ export class BreakingChangeService {
 				const ruleResult = await rule.detect();
 				if (ruleResult.isAffected) {
 					instanceLevelResults.push({
-						ruleId: rule.getMetadata().id,
+						ruleId: rule.id,
 						affectedWorkflows: [],
 						instanceIssues: ruleResult.instanceIssues,
 						recommendations: ruleResult.recommendations,
@@ -85,6 +85,7 @@ export class BreakingChangeService {
 				select: ['id', 'name', 'active', 'nodes'],
 				skip,
 				take: this.batchSize,
+				order: { id: 'ASC' },
 			});
 
 			this.logger.debug('Processing batch', {
@@ -92,47 +93,41 @@ export class BreakingChangeService {
 				workflowsInBatch: workflows.length,
 			});
 
-			for (const rule of workflowLevelRules) {
-				try {
-					const ruleId = rule.getMetadata().id;
-					for (const workflow of workflows) {
-						const nodesGroupedByType: Map<string, INode[]> = new Map();
-						for (const node of workflow.nodes) {
-							if (!nodesGroupedByType.has(node.type)) {
-								nodesGroupedByType.set(node.type, []);
-							}
-							nodesGroupedByType.get(node.type)!.push(node);
-						}
-
-						const workflowDetectionResult = await rule.detectWorkflow(workflow, nodesGroupedByType);
-						if (workflowDetectionResult.isAffected) {
-							const affectedWorkflow = {
-								id: workflow.id,
-								name: workflow.name,
-								active: workflow.active,
-								issues: workflowDetectionResult.issues,
-							};
-							if (!allAffectedWorkflowsByRule.has(ruleId)) {
-								allAffectedWorkflowsByRule.set(ruleId, [affectedWorkflow]);
-							} else {
-								allAffectedWorkflowsByRule.get(ruleId)!.push(affectedWorkflow);
-							}
+			for (const workflow of workflows) {
+				const nodesGroupedByType: Map<string, INode[]> = new Map();
+				for (const node of workflow.nodes) {
+					if (!nodesGroupedByType.has(node.type)) {
+						nodesGroupedByType.set(node.type, []);
+					}
+					nodesGroupedByType.get(node.type)!.push(node);
+				}
+				for (const rule of workflowLevelRules) {
+					const workflowDetectionResult = await rule.detectWorkflow(workflow, nodesGroupedByType);
+					if (workflowDetectionResult.isAffected) {
+						const affectedWorkflow = {
+							id: workflow.id,
+							name: workflow.name,
+							active: workflow.active,
+							issues: workflowDetectionResult.issues,
+						};
+						if (!allAffectedWorkflowsByRule.has(rule.id)) {
+							allAffectedWorkflowsByRule.set(rule.id, [affectedWorkflow]);
+						} else {
+							allAffectedWorkflowsByRule.get(rule.id)!.push(affectedWorkflow);
 						}
 					}
-				} catch (error) {
-					this.errorReporter.error(error, { shouldBeLogged: true });
 				}
 			}
 		}
 
 		// Aggregate results
 		for (const rule of workflowLevelRules) {
-			const workflowResults = allAffectedWorkflowsByRule.get(rule.getMetadata().id) || [];
+			const workflowResults = allAffectedWorkflowsByRule.get(rule.id) || [];
 			const isAffected = workflowResults.some((wr) => wr.issues.length > 0);
 
 			if (isAffected) {
 				allResults.push({
-					ruleId: rule.getMetadata().id,
+					ruleId: rule.id,
 					affectedWorkflows: workflowResults,
 					instanceIssues: [],
 					recommendations: await rule.getRecommendations(workflowResults),
@@ -215,7 +210,7 @@ export class BreakingChangeService {
 		rules: IBreakingChangeRule[],
 	): DetectionReport {
 		const criticalIssues = results.filter((r) => {
-			const rule = rules.find((rule) => rule.getMetadata().id === r.ruleId);
+			const rule = rules.find((rule) => rule.id === r.ruleId);
 			assert(rule);
 
 			return rule.getMetadata().severity === BreakingChangeSeverity.critical;
