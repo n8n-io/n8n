@@ -24,6 +24,7 @@ class TestTaskAnalyzer:
             },
             external_allow=set(),
             builtins_deny=set(),
+            runner_env_deny=True,
         )
 
         return TaskAnalyzer(security_config)
@@ -137,7 +138,10 @@ class TestDynamicImportDetection(TestTaskAnalyzer):
 class TestAllowAll(TestTaskAnalyzer):
     def test_allow_all_bypasses_validation(self) -> None:
         security_config = SecurityConfig(
-            stdlib_allow={"*"}, external_allow={"*"}, builtins_deny=set()
+            stdlib_allow={"*"},
+            external_allow={"*"},
+            builtins_deny=set(),
+            runner_env_deny=True,
         )
         analyzer = TaskAnalyzer(security_config)
 
