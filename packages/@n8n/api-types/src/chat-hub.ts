@@ -132,10 +132,10 @@ export class ChatHubEditMessageRequest extends Z.class({
 
 export class ChatHubUpdateConversationRequest extends Z.class({
 	title: z.string().optional(),
-	credentialId: z.string().nanoid().optional(),
+	credentialId: z.string().max(36).optional(),
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	workflowId: z.string().nanoid().optional(),
+	workflowId: z.string().max(36).optional(),
 	agentId: z.string().uuid().optional(),
 	agentName: z.string().max(256).optional(),
 }) {}
