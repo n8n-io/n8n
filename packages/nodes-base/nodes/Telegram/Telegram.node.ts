@@ -1429,6 +1429,8 @@ export class Telegram implements INodeType {
 							'sendVideo',
 							'sendAudio',
 							'sendLocation',
+							'forwardMessage',
+							'forwardMessages',
 						],
 						resource: ['message'],
 					},
