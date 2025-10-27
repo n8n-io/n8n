@@ -6,6 +6,7 @@ import axios, { AxiosError } from 'axios';
 import { ensureError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
@@ -114,9 +115,6 @@ export class LicenseService {
 		} catch (e) {
 			// Check if this is a EULA_REQUIRED error from license server
 			if (this.isEulaRequiredError(e)) {
-				const { LicenseEulaRequiredError } = await import(
-					'@/errors/response-errors/license-eula-required.error'
-				);
 				throw new LicenseEulaRequiredError('License activation requires EULA acceptance', {
 					eulaUrl: e.info.eula.uri,
 				});

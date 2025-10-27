@@ -8,7 +8,6 @@ import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
 import { ResponseError } from './errors/response-errors/abstract/response.error';
-import { LicenseEulaRequiredError } from './errors/response-errors/license-eula-required.error';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -116,10 +115,9 @@ export function sendErrorResponse(res: Response, error: Error) {
 		if (error.hint) {
 			response.hint = error.hint;
 		}
-	}
-
-	if (error instanceof LicenseEulaRequiredError) {
-		response.meta = error.meta;
+		if (error.meta) {
+			response.meta = error.meta;
+		}
 	}
 
 	if (error instanceof NodeApiError) {
