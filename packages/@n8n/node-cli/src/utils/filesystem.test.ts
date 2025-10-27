@@ -234,7 +234,8 @@ describe('file system utils', () => {
 	describe('createSymlink', () => {
 		it('should create parent directory and symlink', async () => {
 			mockFs.mkdir.mockResolvedValue(undefined);
-			mockFs.lstat.mockRejectedValue({ code: 'ENOENT' });
+			const enoentError = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+			mockFs.lstat.mockRejectedValue(enoentError);
 			mockFs.stat.mockResolvedValue(mock<Stats>({ isDirectory: () => true }));
 			mockFs.symlink.mockResolvedValue();
 
@@ -274,7 +275,8 @@ describe('file system utils', () => {
 
 		it('should fallback to junction on Windows when type detection fails', async () => {
 			mockFs.mkdir.mockResolvedValue(undefined);
-			mockFs.lstat.mockRejectedValue({ code: 'ENOENT' });
+			const enoentError = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+			mockFs.lstat.mockRejectedValue(enoentError);
 			mockFs.stat.mockRejectedValue(new Error('Access denied'));
 			mockFs.symlink.mockResolvedValue();
 
