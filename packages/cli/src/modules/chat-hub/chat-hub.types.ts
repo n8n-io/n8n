@@ -13,6 +13,7 @@ export interface ModelWithCredentials {
 	credentialId: string | null;
 	agentId?: string;
 	agentName?: string;
+	name?: string;
 }
 
 export interface BaseMessagePayload {

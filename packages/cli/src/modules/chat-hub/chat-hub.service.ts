@@ -1204,12 +1204,12 @@ export class ChatHubService {
 				id: payload.messageId,
 				sessionId: payload.sessionId,
 				type: 'human',
-				name: user.firstName || 'User',
 				status: 'success',
 				content: payload.message,
 				previousMessageId,
 				revisionOfMessageId,
 				...selectedModel,
+				name: user.firstName || 'User',
 			},
 			trx,
 		);
@@ -1260,13 +1260,11 @@ export class ChatHubService {
 				? selectedModel.name
 				: undefined;
 
-		const { name, ...restOfModel } = selectedModel;
-
 		const modelWithCredentials: ModelWithCredentials = {
-			...restOfModel,
+			...selectedModel,
 			credentialId: provider !== 'n8n' ? this.pickCredentialId(provider, credentials) : null,
 			agentId,
-			agentName,
+			agentName, // used for sessions
 		};
 
 		return modelWithCredentials;
