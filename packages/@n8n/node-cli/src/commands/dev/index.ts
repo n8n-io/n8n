@@ -3,15 +3,13 @@ import { Command, Flags } from '@oclif/core';
 import os from 'node:os';
 import path from 'node:path';
 import picocolors from 'picocolors';
-import { rimraf } from 'rimraf';
 
-import { ensureFolder } from '../../utils/filesystem';
+import { createSymlink, ensureFolder } from '../../utils/filesystem';
 import { detectPackageManager } from '../../utils/package-manager';
 import { ensureN8nPackage, onCancel } from '../../utils/prompts';
 import { validateNodeName } from '../../utils/validation';
 import { copyStaticFiles } from '../build';
 import { commands, readPackageName } from './utils';
-import { runCommand } from '../../utils/child-process';
 
 export default class Dev extends Command {
 	static override description = 'Run n8n with the node and rebuild on changes for live preview';
@@ -47,7 +45,6 @@ export default class Dev extends Command {
 
 		const linkingSpinner = spinner();
 		linkingSpinner.start('Linking custom node to n8n');
-		await runCommand(packageManager, ['link']);
 
 		const n8nUserFolder = flags['custom-user-folder'];
 		const customNodesFolder = path.join(n8nUserFolder, '.n8n', 'custom');
@@ -59,34 +56,47 @@ export default class Dev extends Command {
 
 		if (invalidNodeNameError) return onCancel(invalidNodeNameError);
 
-		// Remove existing package.json to avoid conflicts
-		await rimraf(path.join(customNodesFolder, 'package.json'));
-		await runCommand(packageManager, ['link', packageName], {
-			cwd: customNodesFolder,
-		});
+		const currentDir = process.cwd();
+		const symlinkPath = path.join(customNodesFolder, packageName);
 
-		linkingSpinner.stop('Linked custom node to n8n');
+		try {
+			await createSymlink(currentDir, symlinkPath);
+		} catch (error) {
+			linkingSpinner.stop('Failed to link custom node');
+			const message =
+				error instanceof Error ? error.message : 'Unknown error creating symbolic link';
+			return onCancel(`Failed to create symbolic link: ${message}`);
+		}
 
-		outro('✓ Setup complete');
+		linkingSpinner.stop(
+			`${picocolors.green('✓')} Your custom node ${picocolors.bold(packageName)} is now linked and will be available in n8n`,
+		);
 
-		// Run `tsc --watch` in background
-		runPersistentCommand(packageManager, ['exec', '--', 'tsc', '--watch'], {
-			name: 'build',
+		outro(`${picocolors.dim('Starting development servers...')}`);
+
+		runPersistentCommand(packageManager, ['exec', '--', 'tsc', '--watch', '--pretty'], {
+			name: 'TypeScript Build (watching)',
 		});
 
 		if (!flags['external-n8n']) {
-			// Run n8n with hot reload enabled, always attempt to use latest n8n
-			runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@latest'], {
-				cwd: n8nUserFolder,
-				env: {
-					...process.env,
-					N8N_DEV_RELOAD: 'true',
-					N8N_RUNNERS_ENABLED: 'true',
-					DB_SQLITE_POOL_SIZE: '10',
-					N8N_USER_FOLDER: n8nUserFolder,
+			runPersistentCommand(
+				'npx',
+				['-y', '--color=always', '--no-spin', '--prefer-online', 'n8n@latest'],
+				{
+					cwd: n8nUserFolder,
+					env: {
+						...process.env,
+						N8N_DEV_RELOAD: 'true',
+						N8N_RUNNERS_ENABLED: 'true',
+						DB_SQLITE_POOL_SIZE: '10',
+						N8N_USER_FOLDER: n8nUserFolder,
+						FORCE_COLOR: '3',
+						COLORTERM: 'truecolor',
+						TERM: 'xterm-256color',
+					},
+					name: 'n8n Server',
 				},
-				name: 'n8n',
-			});
+			);
 		}
 	}
 }

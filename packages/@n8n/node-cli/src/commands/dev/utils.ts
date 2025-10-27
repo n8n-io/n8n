@@ -1,103 +1,272 @@
-/* eslint-disable no-control-regex */
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, spawn, exec } from 'node:child_process';
 import fs from 'node:fs/promises';
-import type { Formatter } from 'picocolors/types';
 
 import { jsonParse } from '../../utils/json';
 
-export function commands() {
-	const childProcesses: ChildProcess[] = [];
-	let isShuttingDown = false;
+interface CommandOutput {
+	name: string;
+	lines: string[];
+	isRunning: boolean;
+	exitCode: number | null;
+}
 
-	const registerChild = (child: ChildProcess): void => {
-		childProcesses.push(child);
+const ANSI = {
+	SAVE_CURSOR: '\x1b7',
+	RESTORE_CURSOR: '\x1b8',
+	CLEAR_TO_END: '\x1b[J',
+	RESET: '\x1b[0m',
+	BOLD: '\x1b[1m',
+	DIM: '\x1b[90m',
+	RED: '\x1b[31m',
+	GREEN: '\x1b[32m',
+	YELLOW: '\x1b[33m',
+};
+
+const CONFIG = {
+	MAX_LINES: Number(process.env.N8N_DEV_MAX_LINES) || 10,
+	RENDER_INTERVAL_MS: 100,
+	SEPARATOR_WIDTH: 80,
+};
+
+/* eslint-disable no-control-regex */
+function stripScreenControlCodes(str: string): string {
+	return str
+		.replace(/\x1b\[2J/g, '')
+		.replace(/\x1b\[H/g, '')
+		.replace(/\x1b\[(\d+)?J/g, '')
+		.replace(/\x1b\[(\d+)?K/g, '')
+		.replace(/\x1b\[(\d+)?[ABCDEFG]/g, '');
+}
+/* eslint-enable no-control-regex */
+
+function getStatusDisplay(output: CommandOutput) {
+	if (output.isRunning) {
+		return { icon: '', color: ANSI.GREEN, text: 'running' };
+	}
+	if (output.exitCode === 130) {
+		return { icon: '✗ ', color: ANSI.RED, text: 'canceled' };
+	}
+	const success = output.exitCode === 0;
+	return {
+		icon: success ? '✓ ' : '✗ ',
+		color: success ? ANSI.GREEN : ANSI.RED,
+		text: `exit ${output.exitCode}`,
 	};
+}
 
-	const killChild = (child: ChildProcess, signal: NodeJS.Signals): void => {
-		if (!child.killed) {
-			child.kill(signal);
-		}
-	};
+function renderCommandHeader(output: CommandOutput): void {
+	const status = getStatusDisplay(output);
+	const hiddenLines = Math.max(0, output.lines.length - CONFIG.MAX_LINES);
+	const hiddenIndicator =
+		hiddenLines > 0 ? `${ANSI.DIM}(+${hiddenLines} more lines)${ANSI.RESET}` : '';
 
-	const forceKillAllChildren = (): void => {
-		childProcesses.forEach((child) => killChild(child, 'SIGKILL'));
-		process.exit(1);
-	};
+	process.stdout.write(
+		`╭─ ${status.color}${status.icon}${ANSI.RESET}${ANSI.BOLD}${output.name}${ANSI.RESET} ` +
+			`${status.color}(${status.text})${ANSI.RESET} ${hiddenIndicator}\n│\n`,
+	);
+}
 
-	const gracefulShutdown = (signal: 'SIGINT' | 'SIGTERM'): void => {
-		if (childProcesses.length === 0) {
-			process.exit();
-			return;
-		}
+function getVisibleLength(str: string): number {
+	// eslint-disable-next-line no-control-regex
+	return str.replace(/\x1b\[[0-9;]*m/g, '').length;
+}
 
-		let exitedCount = 0;
-		const totalChildren = childProcesses.length;
+function truncateLine(line: string, maxWidth: number): string {
+	const visibleLength = getVisibleLength(line);
+	if (visibleLength <= maxWidth) return line;
 
-		const forceExitTimer = setTimeout(forceKillAllChildren, 5000);
+	let result = '';
+	let visibleCount = 0;
+	let inAnsiCode = false;
+	const maxBeforeEllipsis = maxWidth - 1;
 
-		const onChildExit = () => {
-			exitedCount++;
-			if (exitedCount === totalChildren) {
-				clearTimeout(forceExitTimer);
-				process.exit();
+	for (let i = 0; i < line.length; i++) {
+		const char = line[i];
+
+		if (char === '\x1b') inAnsiCode = true;
+
+		if (inAnsiCode) {
+			result += char;
+			if (char === 'm') inAnsiCode = false;
+		} else {
+			if (visibleCount >= maxBeforeEllipsis) {
+				result += ANSI.DIM + '…' + ANSI.RESET;
+				break;
 			}
-		};
+			result += char;
+			visibleCount++;
+		}
+	}
 
-		childProcesses.forEach((child) => {
-			if (!child.killed) {
-				child.once('exit', onChildExit);
-				killChild(child, signal);
+	return result;
+}
 
-				// Escalate to SIGKILL after 5 seconds
-				setTimeout(() => killChild(child, 'SIGKILL'), 5000);
-			} else {
-				onChildExit(); // Process already dead
+function renderCommandOutput(output: CommandOutput): void {
+	const terminalWidth = process.stdout.columns || CONFIG.SEPARATOR_WIDTH;
+	const maxLineWidth = terminalWidth - 4;
+
+	const recentLines = output.lines.slice(-CONFIG.MAX_LINES);
+	for (let i = 0; i < CONFIG.MAX_LINES; i++) {
+		const line = recentLines[i] ?? '';
+		const cleanedLine = stripScreenControlCodes(line);
+		if (cleanedLine) {
+			const truncated = truncateLine(cleanedLine, maxLineWidth);
+			process.stdout.write('│ ' + truncated + '\n');
+		} else {
+			process.stdout.write('│\n');
+		}
+	}
+
+	process.stdout.write('╰─\n');
+}
+
+function renderOutputs(outputs: CommandOutput[], isFirstRender: boolean): void {
+	if (isFirstRender) {
+		process.stdout.write(ANSI.SAVE_CURSOR);
+	} else {
+		process.stdout.write(ANSI.RESTORE_CURSOR + ANSI.CLEAR_TO_END);
+	}
+
+	outputs.forEach((output, index) => {
+		renderCommandHeader(output);
+		renderCommandOutput(output);
+		if (index < outputs.length - 1) process.stdout.write('\n');
+	});
+
+	const allRunning = outputs.every((o) => o.isRunning);
+	if (allRunning) {
+		process.stdout.write(
+			`\n${ANSI.DIM}Press ${ANSI.RESET}q${ANSI.DIM} to quit | ${ANSI.RESET}o${ANSI.DIM} to open n8n${ANSI.RESET}\n`,
+		);
+	}
+}
+
+function processStreamData(data: Buffer, outputLines: string[]): void {
+	const text = data.toString();
+	const segments = text.split('\r');
+
+	segments.forEach((segment, segmentIndex) => {
+		if (segmentIndex > 0 && outputLines.length > 0) {
+			outputLines.pop();
+		}
+
+		const lines = segment.split('\n');
+		lines.forEach((line, lineIndex) => {
+			const isLastLine = lineIndex === lines.length - 1;
+			if (line || !isLastLine) {
+				outputLines.push(line);
 			}
 		});
-	};
+	});
+}
 
-	const handleSignal = (signal: 'SIGINT' | 'SIGTERM'): void => {
-		if (isShuttingDown) {
-			// Second signal - force kill immediately
-			console.log('\nForce killing processes...');
-			forceKillAllChildren();
-			return;
+export function commands() {
+	const commandOutputs: CommandOutput[] = [];
+	const childProcesses: ChildProcess[] = [];
+	let renderInterval: NodeJS.Timeout | null = null;
+	let isFirstRender = true;
+
+	const cleanup = () => {
+		if (renderInterval) {
+			clearInterval(renderInterval);
+			renderInterval = null;
 		}
 
-		isShuttingDown = true;
-		if (signal === 'SIGINT') {
-			console.log('\nShutting down gracefully... (press Ctrl+C again to force quit)');
+		childProcesses.forEach((proc) => {
+			if (!proc.pid) return;
+
+			try {
+				if (process.platform !== 'win32') {
+					process.kill(-proc.pid, 'SIGTERM');
+				} else {
+					proc.kill('SIGTERM');
+				}
+			} catch {
+				try {
+					proc.kill('SIGTERM');
+				} catch {
+					// Process might already be dead
+				}
+			}
+		});
+
+		if (process.stdin.isTTY && process.stdin.setRawMode) {
+			process.stdin.setRawMode(false);
 		}
-		gracefulShutdown(signal);
 	};
 
-	process.on('SIGINT', () => handleSignal('SIGINT'));
-	process.on('SIGTERM', () => handleSignal('SIGTERM'));
+	const handleSignal = (): void => {
+		cleanup();
+		commandOutputs.forEach((output) => {
+			if (output.isRunning) {
+				output.isRunning = false;
+				output.exitCode = 130;
+			}
+		});
+		renderOutputs(commandOutputs, false);
+		process.stdout.write(`\n${ANSI.RED}Terminated by user${ANSI.RESET}\n`);
+		process.exit(130);
+	};
 
-	const stripAnsiCodes = (input: string): string =>
-		input
-			.replace(/\x1Bc/g, '') // Full reset
-			.replace(/\x1B\[2J/g, '') // Clear screen
-			.replace(/\x1B\[3J/g, '') // Clear scrollback
-			.replace(/\x1B\[H/g, '') // Move cursor to top-left
-			.replace(/\x1B\[0?m/g, ''); // Reset colors
+	process.on('SIGINT', handleSignal);
 
-	const createLogger =
-		(name?: string, color?: Formatter, allowOutput?: (line: string) => boolean) =>
-		(text: string): void => {
-			if (allowOutput && !allowOutput(text)) return;
+	const startRenderLoop = (): void => {
+		if (renderInterval !== null) return;
 
-			const prefix = name ? (color ? color(`[${name}]`) : `[${name}]`) : '';
-			console.log(prefix ? `${prefix} ${text}` : text);
-		};
+		if (process.stdin.isTTY) {
+			process.stdin.setRawMode(true);
+			process.stdin.resume();
+			process.stdin.setEncoding('utf8');
 
-	const processOutput = (data: Buffer, logger: (text: string) => void): void => {
-		data
-			.toString()
-			.split('\n')
-			.map((line) => stripAnsiCodes(line).trim())
-			.filter(Boolean)
-			.forEach(logger);
+			process.stdin.on('data', (key: string) => {
+				if (key === 'q') {
+					cleanup();
+					commandOutputs.forEach((output) => {
+						if (output.isRunning) {
+							output.isRunning = false;
+							output.exitCode = 0;
+						}
+					});
+					renderOutputs(commandOutputs, false);
+					process.stdout.write(`\n${ANSI.GREEN}Quit by user${ANSI.RESET}\n`);
+					process.exit(0);
+				}
+
+				if (key === 'o') {
+					const url = 'http://localhost:5678';
+					const command =
+						process.platform === 'darwin'
+							? `open ${url}`
+							: process.platform === 'win32'
+								? `start ${url}`
+								: `xdg-open ${url}`;
+
+					exec(command, () => {});
+				}
+
+				if (key === '\u0003') {
+					handleSignal();
+				}
+			});
+		}
+
+		renderOutputs(commandOutputs, isFirstRender);
+		isFirstRender = false;
+
+		renderInterval = setInterval(() => {
+			renderOutputs(commandOutputs, isFirstRender);
+
+			if (commandOutputs.every((o) => !o.isRunning)) {
+				cleanup();
+				renderOutputs(commandOutputs, isFirstRender);
+
+				const maxExitCode = Math.max(...commandOutputs.map((o) => o.exitCode ?? 0));
+				process.stdout.write(
+					`\n\n${ANSI.BOLD}All commands completed.${ANSI.RESET} Exit code: ${maxExitCode}\n`,
+				);
+				process.exit(maxExitCode);
+			}
+		}, CONFIG.RENDER_INTERVAL_MS);
 	};
 
 	const runPersistentCommand = (
@@ -107,31 +276,44 @@ export function commands() {
 			cwd?: string;
 			env?: NodeJS.ProcessEnv;
 			name?: string;
-			color?: Formatter;
-			allowOutput?: (line: string) => boolean;
 		} = {},
 	): ChildProcess => {
+		const output: CommandOutput = {
+			name: opts.name ?? cmd,
+			lines: [],
+			isRunning: true,
+			exitCode: null,
+		};
+
+		commandOutputs.push(output);
+
 		const child = spawn(cmd, args, {
+			shell: true,
 			cwd: opts.cwd,
-			env: { ...process.env, ...opts.env },
-			stdio: ['inherit', 'pipe', 'pipe'],
-			shell: process.platform === 'win32',
+			stdio: ['ignore', 'pipe', 'pipe'],
+			detached: process.platform !== 'win32',
+			env: {
+				...process.env,
+				...opts.env,
+				FORCE_COLOR: '3',
+				COLORTERM: 'truecolor',
+				TERM: 'xterm-256color',
+			},
 		});
 
-		registerChild(child);
+		childProcesses.push(child);
 
-		const logger = createLogger(opts.name, opts.color, opts.allowOutput);
-		const handleOutput = (data: Buffer) => processOutput(data, logger);
+		const handleData = (data: Buffer) => processStreamData(data, output.lines);
 
-		child.stdout?.on('data', handleOutput);
-		child.stderr?.on('data', handleOutput);
+		child.stdout.on('data', handleData);
+		child.stderr.on('data', handleData);
 
 		child.on('close', (code) => {
-			if (!isShuttingDown) {
-				console.log(`${opts.name ?? cmd} exited with code ${code}`);
-				process.exit(code ?? 0);
-			}
+			output.isRunning = false;
+			output.exitCode = code;
 		});
+
+		if (commandOutputs.length === 1) startRenderLoop();
 
 		return child;
 	};

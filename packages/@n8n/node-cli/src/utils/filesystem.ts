@@ -87,3 +87,28 @@ export async function renameDirectory(oldDirPath: string, newDirName: string): P
 	await fs.rename(oldDirPath, newDirPath);
 	return newDirPath;
 }
+
+export async function createSymlink(target: string, linkPath: string): Promise<void> {
+	await fs.mkdir(path.dirname(linkPath), { recursive: true });
+
+	try {
+		const stats = await fs.lstat(linkPath);
+		if (stats.isSymbolicLink() || stats.isFile()) {
+			await fs.unlink(linkPath);
+		} else if (stats.isDirectory()) {
+			await fs.rm(linkPath, { recursive: true, force: true });
+		}
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+			throw error;
+		}
+	}
+
+	try {
+		const targetStats = await fs.stat(target);
+		const type = targetStats.isDirectory() ? 'dir' : 'file';
+		await fs.symlink(target, linkPath, type);
+	} catch {
+		await fs.symlink(target, linkPath, 'junction');
+	}
+}
