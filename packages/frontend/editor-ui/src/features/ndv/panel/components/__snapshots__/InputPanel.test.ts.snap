@@ -5,16 +5,16 @@ exports[`InputPanel > should render 1`] = `
   <div
     class="run-data container runData"
     data-test-id="ndv-input-panel"
-    data-v-875f3aec=""
+    data-v-5b5900d0=""
   >
     <!--v-if-->
     <div
       class="header"
-      data-v-875f3aec=""
+      data-v-5b5900d0=""
     >
       <div
         class="title"
-        data-v-875f3aec=""
+        data-v-5b5900d0=""
       >
         
         <div
@@ -71,14 +71,14 @@ exports[`InputPanel > should render 1`] = `
       <div
         class="displayModes"
         data-test-id="run-data-pane-header"
-        data-v-875f3aec=""
+        data-v-5b5900d0=""
       >
         <!---->
         <!--v-if-->
         <div
           class="n8n-radio-buttons radioGroup"
           data-test-id="ndv-run-data-display-mode"
-          data-v-875f3aec=""
+          data-v-5b5900d0=""
           role="radiogroup"
         >
           
@@ -133,13 +133,13 @@ exports[`InputPanel > should render 1`] = `
         <!--v-if-->
         <div
           class="editModeActions"
-          data-v-875f3aec=""
+          data-v-5b5900d0=""
           style="display: none;"
         >
           <button
             aria-live="polite"
             class="button button tertiary medium"
-            data-v-875f3aec=""
+            data-v-5b5900d0=""
           >
             <!--v-if-->
             <span>
@@ -149,7 +149,7 @@ exports[`InputPanel > should render 1`] = `
           <button
             aria-live="polite"
             class="button button primary medium ml-2xs ml-2xs"
-            data-v-875f3aec=""
+            data-v-5b5900d0=""
           >
             <!--v-if-->
             <span>
@@ -162,7 +162,7 @@ exports[`InputPanel > should render 1`] = `
       
     </div>
     <div
-      data-v-875f3aec=""
+      data-v-5b5900d0=""
     >
       <!--v-if-->
       <!--v-if-->
@@ -176,7 +176,7 @@ exports[`InputPanel > should render 1`] = `
     <div
       class="dataContainer"
       data-test-id="ndv-data-container"
-      data-v-875f3aec=""
+      data-v-5b5900d0=""
     >
       <!--v-if-->
       <!---->
@@ -187,7 +187,7 @@ exports[`InputPanel > should render 1`] = `
       class="uiBlocker"
       css="true"
       data-v-1a77a378=""
-      data-v-875f3aec=""
+      data-v-5b5900d0=""
       mode="out-in"
       name="fade"
       persisted="true"
