@@ -93,7 +93,7 @@ class TaskExecutor:
 
             def read_from_pipe():
                 """Read result from pipe in background thread."""
-                
+
                 try:
                     length_bytes = TaskExecutor._read_exact(read_fd, 4)
                     length = int.from_bytes(length_bytes, "big")
