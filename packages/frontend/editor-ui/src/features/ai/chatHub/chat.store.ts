@@ -336,12 +336,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	function getAgentById(agentId: string) {
-		return models.value?.['custom-agent'].models.find(
-			(model) => 'agentId' in model && model.agentId === agentId,
-		);
-	}
-
 	async function onStreamDone(sessionId: string) {
 		streamingMessageId.value = undefined;
 
