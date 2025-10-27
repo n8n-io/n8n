@@ -40,7 +40,7 @@ export type SimplifiedExecution = Pick<
 	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
 >;
 
-type ExecutionFinishedOptions = {
+export type ExecutionFinishedOptions = {
 	router: ReturnType<typeof useRouter>;
 	workflowState: WorkflowState;
 };
