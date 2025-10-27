@@ -1,4 +1,4 @@
-import { intro, log, outro, spinner } from '@clack/prompts';
+import { intro, outro, spinner } from '@clack/prompts';
 import { Command, Flags } from '@oclif/core';
 import os from 'node:os';
 import path from 'node:path';
@@ -67,59 +67,26 @@ export default class Dev extends Command {
 
 		linkingSpinner.stop('Linked custom node to n8n');
 
-		if (!flags['external-n8n']) {
-			let setupComplete = false;
-			const npxN8nSpinner = spinner();
-			npxN8nSpinner.start('Starting n8n dev server');
-			log.warn(picocolors.dim('First run may take a few minutes while dependencies are installed'));
-
-			// Run n8n with hot reload enabled, always attempt to use latest n8n
-			try {
-				await Promise.race([
-					new Promise<void>((resolve) => {
-						runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@latest'], {
-							cwd: n8nUserFolder,
-							env: {
-								...process.env,
-								N8N_DEV_RELOAD: 'true',
-								N8N_RUNNERS_ENABLED: 'true',
-								DB_SQLITE_POOL_SIZE: '10',
-								N8N_USER_FOLDER: n8nUserFolder,
-							},
-							name: 'n8n',
-							color: picocolors.green,
-							allowOutput: (line) => {
-								if (line.includes('Initializing n8n process')) {
-									resolve();
-								}
-
-								return setupComplete;
-							},
-						});
-					}),
-					new Promise<void>((_, reject) => {
-						setTimeout(() => {
-							const error = new Error('n8n startup timeout after 120 seconds');
-							reject(error);
-						}, 120_000);
-					}),
-				]);
-
-				setupComplete = true;
-				npxN8nSpinner.stop('Started n8n dev server');
-			} catch (error) {
-				npxN8nSpinner.stop('Failed to start n8n dev server');
-				onCancel(error instanceof Error ? error.message : 'Unknown error occurred', 1);
-				return;
-			}
-		}
-
 		outro('✓ Setup complete');
 
 		// Run `tsc --watch` in background
 		runPersistentCommand(packageManager, ['exec', '--', 'tsc', '--watch'], {
 			name: 'build',
-			color: picocolors.cyan,
 		});
+
+		if (!flags['external-n8n']) {
+			// Run n8n with hot reload enabled, always attempt to use latest n8n
+			runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@latest'], {
+				cwd: n8nUserFolder,
+				env: {
+					...process.env,
+					N8N_DEV_RELOAD: 'true',
+					N8N_RUNNERS_ENABLED: 'true',
+					DB_SQLITE_POOL_SIZE: '10',
+					N8N_USER_FOLDER: n8nUserFolder,
+				},
+				name: 'n8n',
+			});
+		}
 	}
 }
