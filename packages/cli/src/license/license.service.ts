@@ -125,23 +125,16 @@ export class LicenseService {
 		}
 	}
 
-	private isEulaRequiredError(
-		error: unknown,
-	): error is Error & { errorId: string; info: { eula: { uri: string } } } {
-		return (
-			error instanceof Error &&
-			'errorId' in error &&
-			error.errorId === 'EULA_REQUIRED' &&
-			'info' in error &&
-			typeof error.info === 'object' &&
-			error.info !== null &&
-			'eula' in error.info &&
-			typeof error.info.eula === 'object' &&
-			error.info.eula !== null &&
-			'uri' in error.info.eula &&
-			typeof error.info.eula.uri === 'string'
-		);
-	}
+private isEulaRequiredError(
+	error: unknown,
+): error is Error & { errorId: string; info: { eula: { uri: string } } } {
+	return (
+		error instanceof Error &&
+		'errorId' in error &&
+		error.errorId === 'EULA_REQUIRED' &&
+		typeof (error as Record<string, unknown>).info?.eula?.uri === 'string'
+	);
+}
 
 	async renewLicense() {
 		if (this.license.getPlanName() === 'Community') return; // unlicensed, nothing to renew
