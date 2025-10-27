@@ -94,6 +94,19 @@ export function getSelectFields(
 								},
 							},
 						},
+						{
+							displayName: 'Path',
+							name: 'path',
+							type: 'string',
+							default: '',
+							description:
+								"Path to value in the JSON object using lodash.get notation. { a: { b: [{c: 3}] } } -> 'a.b[0].c'.",
+							displayOptions: {
+								show: {
+									keyName: [{ _cnd: { includes: '(json)' } }],
+								},
+							},
+						},
 					],
 				},
 			],
@@ -130,10 +143,12 @@ export async function getSelectFilter(
 			...Object.fromEntries(availableColumns.map((col) => [col.name, col.type])),
 		};
 
-		const invalidConditions = fields.filter((field) => !allColumnsWithTypes[field.keyName]);
+		const invalidConditions = fields.filter(
+			(field) => !allColumnsWithTypes[field.keyName.split(' ')[0]],
+		);
 
 		if (invalidConditions.length > 0) {
-			const invalidColumnNames = invalidConditions.map((c) => c.keyName).join(', ');
+			const invalidColumnNames = invalidConditions.map((c) => c.keyName.split(' ')[0]).join(', ');
 			throw new NodeOperationError(
 				node,
 				`Filter validation failed: Column(s) "${invalidColumnNames}" do not exist in the selected table. ` +
