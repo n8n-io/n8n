@@ -207,16 +207,15 @@ const handleFileSelected = async (event: Event) => {
 		csvColumnCount.value = uploadResponse.columnCount;
 		csvColumns.value = uploadResponse.columns.map((col) => {
 			const compatibleTypes = (col.compatibleTypes || [col.type]) as ColumnType[];
+			const sanitizedName = col.name.replace(/\s+/g, '_');
 			return {
-				name: col.name,
+				name: sanitizedName,
 				type: col.type as ColumnType,
 				compatibleTypes,
 				typeOptions: getColumnTypeOptions(compatibleTypes),
-				error: validateColumnName(col.name),
+				error: validateColumnName(sanitizedName),
 			};
 		});
-
-		console.log('CSV Columns:', csvColumns.value);
 
 		// Set default table name from file name
 		if (!dataTableName.value) {
