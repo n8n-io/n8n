@@ -8,7 +8,6 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
-import { useBuilderStore } from '../builder.store';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -16,13 +15,12 @@ const documentTitle = useDocumentTitle();
 const message = useMessage();
 
 const assistantStore = useAssistantStore();
-const builderStore = useBuilderStore();
 const settingsStore = useSettingsStore();
 
 const allowSendingSchema = ref(true);
 
 const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
-const isBulderEnabled = computed(() => builderStore.isAIBuilderEnabled);
+const isBulderEnabled = computed(() => settingsStore.isAiBuilderEnabled);
 const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
 const allowSendingActualData = computed(() => settingsStore.isAiDataSharingEnabled);
 
