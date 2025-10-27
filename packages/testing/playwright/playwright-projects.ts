@@ -17,6 +17,7 @@ const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')}
 // These tests will be run AFTER the first run of the UI tests
 // In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
 const SERIAL_EXECUTION = /@db:reset/;
+const ISOLATED_ONLY = /@isolated/;
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'standard', config: {} },
@@ -34,21 +35,23 @@ export function getProjects(): Project[] {
 			{
 				name: 'ui',
 				testDir: './tests/ui',
-				grepInvert: new RegExp([CONTAINER_ONLY.source, SERIAL_EXECUTION.source].join('|')),
+				grepInvert: new RegExp(
+					[CONTAINER_ONLY.source, SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|'),
+				),
 				fullyParallel: true,
 				use: { baseURL: process.env.N8N_BASE_URL },
 			},
 			{
 				name: 'ui:isolated',
 				testDir: './tests/ui',
-				grep: SERIAL_EXECUTION,
+				grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
 				workers: 1,
 				use: { baseURL: process.env.N8N_BASE_URL },
 			},
 		);
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
-			const grepInvertPatterns = [SERIAL_EXECUTION.source];
+			const grepInvertPatterns = [SERIAL_EXECUTION.source, ISOLATED_ONLY.source];
 			projects.push(
 				{
 					name: `${name}:ui`,
@@ -61,7 +64,7 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:ui:isolated`,
 					testDir: './tests/ui',
-					grep: SERIAL_EXECUTION,
+					grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
 					workers: 1,
 					use: { containerConfig: config },
 				},
