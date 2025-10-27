@@ -48,6 +48,17 @@ const completionsResponseFormat: INodeProperties = {
 	],
 };
 
+const jsonSchemaExample = `{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["message"]
+}`;
+
 export class LmChatOpenAi implements INodeType {
 	methods = {
 		listSearch: {
@@ -228,7 +239,8 @@ export class LmChatOpenAi implements INodeType {
 				name: 'responsesApiEnabled',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to use the Responses API to generate the response',
+				description:
+					'Whether to use the Responses API to generate the response. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/#use-responses-api">Learn more</a>.',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.3 } }],
@@ -253,6 +265,8 @@ export class LmChatOpenAi implements INodeType {
 								name: 'searchContextSize',
 								type: 'options',
 								default: 'medium',
+								description:
+									'High level guidance for the amount of context window space to use for the search',
 								options: [
 									{ name: 'Low', value: 'low' },
 									{ name: 'Medium', value: 'medium' },
@@ -300,6 +314,8 @@ export class LmChatOpenAi implements INodeType {
 							{
 								displayName: 'Vector Store IDs',
 								name: 'vectorStoreIds',
+								description:
+									'The vector store IDs to use for the file search. Vector stores are managed via OpenAI Dashboard. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/#built-in-tools">Learn more</a>.',
 								type: 'json',
 								default: '[]',
 								required: true,
@@ -324,7 +340,7 @@ export class LmChatOpenAi implements INodeType {
 						name: 'codeInterpreter',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to allow the model to execute code in a local environment',
+						description: 'Whether to allow the model to execute code in a sandboxed environment',
 					},
 				],
 				displayOptions: {
@@ -405,7 +421,7 @@ export class LmChatOpenAi implements INodeType {
 										displayName: 'Type',
 										name: 'type',
 										type: 'options',
-										default: 'text',
+										default: '',
 										options: [
 											{ name: 'Text', value: 'text' },
 											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -428,7 +444,7 @@ export class LmChatOpenAi implements INodeType {
 										displayName: 'Name',
 										name: 'name',
 										type: 'string',
-										default: '',
+										default: 'my_schema',
 										description:
 											'The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.',
 										displayOptions: {
@@ -438,10 +454,22 @@ export class LmChatOpenAi implements INodeType {
 										},
 									},
 									{
+										displayName:
+											'All properties in the schema must be set to "required", when using "strict" mode.',
+										name: 'requiredNotice',
+										type: 'notice',
+										default: '',
+										displayOptions: {
+											show: {
+												strict: [true],
+											},
+										},
+									},
+									{
 										displayName: 'Schema',
 										name: 'schema',
 										type: 'json',
-										default: '',
+										default: jsonSchemaExample,
 										description: 'The schema of the response format',
 										displayOptions: {
 											show: {
@@ -466,7 +494,8 @@ export class LmChatOpenAi implements INodeType {
 										name: 'strict',
 										type: 'boolean',
 										default: false,
-										description: 'Whether to enforce the response format strictly',
+										description:
+											'Whether to require that the AI will always generate responses that match the provided JSON Schema',
 										displayOptions: {
 											show: {
 												type: ['json_schema'],
@@ -653,6 +682,8 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'Prompt',
 						name: 'promptConfig',
 						type: 'fixedCollection',
+						description:
+							'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts">Learn more</a>.',
 						default: { promptOptions: [{ promptId: '' }] },
 						options: [
 							{

@@ -16,6 +16,17 @@ import { apiRequest } from '../../../transport';
 import { messageOptions, metadataProperty, modelRLC } from '../descriptions';
 import { createRequest } from './helpers/responses';
 
+const jsonSchemaExample = `{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["message"]
+}`;
+
 const properties: INodeProperties[] = [
 	modelRLC('modelSearch'),
 	{
@@ -74,6 +85,8 @@ const properties: INodeProperties[] = [
 				options: [
 					{
 						displayName: 'Search Context Size',
+						description:
+							'High level guidance for the amount of context window space to use for the search',
 						name: 'searchContextSize',
 						type: 'options',
 						default: 'medium',
@@ -223,6 +236,8 @@ const properties: INodeProperties[] = [
 					{
 						displayName: 'Vector Store IDs',
 						name: 'vectorStoreIds',
+						description:
+							'The vector store IDs to use for the file search. Vector stores are managed via OpenAI Dashboard.',
 						type: 'json',
 						default: '[]',
 						required: true,
@@ -247,7 +262,7 @@ const properties: INodeProperties[] = [
 				name: 'codeInterpreter',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to allow the model to execute code in a local environment',
+				description: 'Whether to allow the model to execute code in a sandboxed environment',
 			},
 		],
 	},
@@ -362,6 +377,8 @@ const properties: INodeProperties[] = [
 				displayName: 'Prompt',
 				name: 'promptConfig',
 				type: 'fixedCollection',
+				description:
+					'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts">Learn more</a>.',
 				default: { promptOptions: [{ promptId: '' }] },
 				options: [
 					{
@@ -483,10 +500,11 @@ const properties: INodeProperties[] = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								default: 'text',
+								default: '',
 								options: [
 									{ name: 'Text', value: 'text' },
-									{ name: 'JSON Schema(recommended)', value: 'json_schema' },
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'JSON Schema (recommended)', value: 'json_schema' },
 									{ name: 'JSON Object', value: 'json_object' },
 								],
 							},
@@ -505,7 +523,7 @@ const properties: INodeProperties[] = [
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
-								default: '',
+								default: 'my_schema',
 								description:
 									'The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.',
 								displayOptions: {
@@ -515,10 +533,22 @@ const properties: INodeProperties[] = [
 								},
 							},
 							{
+								displayName:
+									'All properties in the schema must be set to "required", when using "strict" mode.',
+								name: 'requiredNotice',
+								type: 'notice',
+								default: '',
+								displayOptions: {
+									show: {
+										strict: [true],
+									},
+								},
+							},
+							{
 								displayName: 'Schema',
 								name: 'schema',
 								type: 'json',
-								default: '',
+								default: jsonSchemaExample,
 								description: 'The schema of the response format',
 								displayOptions: {
 									show: {
@@ -543,7 +573,8 @@ const properties: INodeProperties[] = [
 								name: 'strict',
 								type: 'boolean',
 								default: false,
-								description: 'Whether to enforce the response format strictly',
+								description:
+									'Whether to require that the AI will always generate responses that match the provided JSON Schema',
 								displayOptions: {
 									show: {
 										type: ['json_schema'],
