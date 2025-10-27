@@ -491,8 +491,11 @@ export class ActiveWorkflowManager {
 				},
 			);
 
+			const { nodes, connections } = dbWorkflow.activeVersion ?? dbWorkflow;
+			const workflowForError = { ...dbWorkflow, nodes, connections };
+
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			this.executeErrorWorkflow(error, dbWorkflow, 'internal');
+			this.executeErrorWorkflow(error, workflowForError, 'internal');
 
 			// do not keep trying to activate on authorization error
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
