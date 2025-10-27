@@ -9,6 +9,7 @@ import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConvers
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/ai/chatHub/components/ChatStarter.vue';
+import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
@@ -35,7 +36,6 @@ import { useChatStore } from './chat.store';
 import { credentialsMapSchema, type CredentialsMap } from './chat.types';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useUIStore } from '@/stores/ui.store';
-import CredentialSelectorModal from '@/features/ai/chatHub/components/CredentialSelectorModal.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -64,7 +64,7 @@ const currentConversationTitle = computed(() => currentConversation.value?.title
 
 const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
 
-const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
+const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
 	{
@@ -82,6 +82,63 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
+
+function getUpdatedModelIfAgent(model: ChatHubConversationModel | null) {
+	if (!model || !(model.provider === 'custom-agent' && 'agentId' in model)) {
+		return model;
+	}
+
+	const agent = chatStore.getAgent(model.agentId);
+	if (!agent) {
+		// agent got deleted
+		return null;
+	}
+
+	return {
+		...model,
+		// use updated name if user edited agent name
+		name: agent.name,
+	};
+}
+
+const selectedModel = computed<ChatHubConversationModel | null>(() => {
+	if (
+		currentConversation.value?.provider &&
+		currentConversation.value?.provider !== 'n8n' &&
+		currentConversation.value?.provider !== 'custom-agent' &&
+		currentConversation.value?.model
+	) {
+		// todo check if model is still available
+		return {
+			provider: currentConversation.value.provider,
+			model: currentConversation.value.model,
+			name: currentConversation.value.model,
+		};
+	}
+
+	if (
+		currentConversation.value?.provider === 'custom-agent' &&
+		currentConversation?.value.agentId &&
+		currentConversation?.value.agentName
+	) {
+		return getUpdatedModelIfAgent({
+			provider: currentConversation.value.provider,
+			agentId: currentConversation.value.agentId,
+			name: currentConversation.value.agentName,
+		});
+	}
+
+	if (currentConversation.value?.provider === 'n8n' && currentConversation?.value.workflowId) {
+		// todo check if workflow is still available or updated
+		return {
+			provider: currentConversation.value.provider,
+			workflowId: currentConversation.value.workflowId,
+			name: currentConversation.value.agentName ?? 'n8n workflow', // todo remove default once this gets set
+		};
+	}
+
+	return getUpdatedModelIfAgent(defaultModel.value);
+});
 
 const selectedCredentials = useLocalStorage<CredentialsMap>(
 	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(usersStore.currentUserId ?? 'anonymous'),
@@ -105,13 +162,18 @@ const selectedCredentials = useLocalStorage<CredentialsMap>(
 const autoSelectCredentials = computed<CredentialsMap>(() =>
 	Object.fromEntries(
 		chatHubProviderSchema.options.map((provider) => {
-			if (provider === 'n8n') {
+			if (provider === 'n8n' || provider === 'custom-agent') {
+				return [provider, null];
+			}
+
+			const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+			if (!credentialType) {
 				return [provider, null];
 			}
 
 			const lastCreatedCredential =
 				credentialsStore
-					.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])
+					.getCredentialsByType(credentialType)
 					.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
 
 			return [provider, lastCreatedCredential];
@@ -133,7 +195,9 @@ const credentialsId = computed(() =>
 const modelRequiresCredentials = computed(() => {
 	if (!selectedModel.value) return false;
 
-	return selectedModel.value?.provider !== 'n8n';
+	return (
+		selectedModel.value?.provider !== 'n8n' && selectedModel.value?.provider !== 'custom-agent'
+	);
 });
 
 const isMissingSelectedCredential = computed(() => {
@@ -148,11 +212,9 @@ const isMissingSelectedCredential = computed(() => {
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
-const initialization = ref({ credentialsFetched: false, modelsFetched: false });
-const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
-const isInitialized = computed(
-	() => initialization.value.credentialsFetched && initialization.value.modelsFetched,
-);
+const credentialsFetched = ref<boolean>(false);
+const modelsFetched = ref<boolean>(false);
+const editingAgentId = ref<string | undefined>(undefined);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -198,13 +260,23 @@ watch(
 	mergedCredentials,
 	async (credentials) => {
 		const models = await chatStore.fetchChatModels(credentials);
-		const selected = selectedModel.value;
 
+		const selected = selectedModel.value;
 		if (selected === null) {
-			selectedModel.value = findOneFromModelsResponse(models) ?? null;
+			const model = findOneFromModelsResponse(models) ?? null;
+
+			if (model) {
+				await handleSelectModel(model);
+			}
 		}
 
-		initialization.value.modelsFetched = true;
+		const currentProvider = selectedModel.value?.provider;
+		if (currentProvider && currentProvider !== 'n8n') {
+			const providerModels = models[currentProvider].models;
+			modelsFetched.value = !models[currentProvider].error && providerModels.length > 0;
+		} else {
+			modelsFetched.value = true;
+		}
 	},
 	{ immediate: true },
 );
@@ -241,7 +313,7 @@ onMounted(async () => {
 		credentialsStore.fetchCredentialTypes(false),
 		credentialsStore.fetchAllCredentials(),
 	]);
-	initialization.value.credentialsFetched = true;
+	credentialsFetched.value = true;
 });
 
 function onSubmit(message: string) {
@@ -257,7 +329,11 @@ function onSubmit(message: string) {
 	didSubmitInCurrentSession.value = true;
 
 	const credentials = {};
-	if (selectedModel.value.provider !== 'n8n' && credentialsId.value) {
+	if (
+		selectedModel.value.provider !== 'n8n' &&
+		selectedModel.value.provider !== 'custom-agent' &&
+		credentialsId.value
+	) {
 		Object.assign(credentials, {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
 				id: credentialsId.value,
@@ -305,7 +381,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 		messageToEdit,
 		message.content,
 		selectedModel.value,
-		selectedModel.value.provider === 'n8n'
+		selectedModel.value.provider === 'n8n' || selectedModel.value.provider === 'custom-agent'
 			? {}
 			: {
 					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
@@ -333,7 +409,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		sessionId.value,
 		messageToRetry,
 		selectedModel.value,
-		selectedModel.value.provider === 'n8n'
+		selectedModel.value.provider === 'n8n' || selectedModel.value.provider === 'custom-agent'
 			? {}
 			: {
 					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
@@ -344,8 +420,16 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	);
 }
 
-function handleSelectModel(selection: ChatHubConversationModel) {
-	selectedModel.value = selection;
+async function handleSelectModel(selection: ChatHubConversationModel) {
+	if (currentConversation.value) {
+		try {
+			await chatStore.updateSessionModel(sessionId.value, selection);
+		} catch (error) {
+			toast.showError(error, 'Could not update selected model');
+		}
+	} else {
+		defaultModel.value = selection;
+	}
 }
 
 function handleSelectCredentials(provider: ChatHubProvider, id: string) {
@@ -356,25 +440,32 @@ function handleSwitchAlternative(messageId: string) {
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
-function handleConfigureCredentials(provider: ChatHubLLMProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-
-	if (existingCredentials.length === 0) {
-		uiStore.openNewCredential(credentialType);
-		return;
-	}
-
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
+function handleConfigureCredentials(_provider: ChatHubLLMProvider) {
+	// todo call model selector to open model
 }
 
 function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
-function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
+async function handleEditAgent(agentId: string) {
+	try {
+		await chatStore.fetchAgent(agentId);
+		editingAgentId.value = agentId;
+		uiStore.openModal('agentEditor');
+	} catch (error) {
+		toast.showError(error, 'Failed to load agent');
+	}
+}
+
+function openNewAgentCreator() {
+	chatStore.currentEditingAgent = null;
+	editingAgentId.value = undefined;
+	uiStore.openModal('agentEditor');
+}
+
+function closeAgentEditor() {
+	editingAgentId.value = undefined;
 }
 </script>
 
@@ -389,25 +480,23 @@ function handleCreateNewCredential(provider: ChatHubLLMProvider) {
 		]"
 	>
 		<ChatConversationHeader
-			v-if="isInitialized"
 			ref="headerRef"
 			:selected-model="selectedModel"
 			:credentials="mergedCredentials"
 			@select-model="handleSelectModel"
-			@set-credentials="handleConfigureCredentials"
+			@edit-agent="handleEditAgent"
+			@create-agent="openNewAgentCreator"
+			@select-credential="handleSelectCredentials"
 		/>
 
-		<CredentialSelectorModal
-			v-if="credentialSelectorProvider && credentialSelectorProvider !== 'n8n'"
-			:key="credentialSelectorProvider"
-			:provider="credentialSelectorProvider"
-			:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
-			@select="handleSelectCredentials"
-			@create-new="handleCreateNewCredential"
+		<AgentEditorModal
+			:agent-id="editingAgentId"
+			:credentials="mergedCredentials"
+			@create-agent="handleSelectModel"
+			@close="closeAgentEditor"
 		/>
 
 		<N8nScrollArea
-			v-if="isInitialized"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
@@ -452,7 +541,6 @@ function handleCreateNewCredential(provider: ChatHubLLMProvider) {
 					/>
 
 					<ChatPrompt
-						v-if="isInitialized"
 						ref="inputRef"
 						:class="$style.prompt"
 						:is-responding="chatStore.isResponding"
