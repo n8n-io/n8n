@@ -78,21 +78,21 @@ export class Telegram implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					// {
-					// 	name: 'Bot',
-					// 	value: 'bot',
-					// },
-					{
-						name: 'Chat',
-						value: 'chat',
-					},
 					{
 						name: 'Callback',
 						value: 'callback',
 					},
 					{
+						name: 'Chat',
+						value: 'chat',
+					},
+					{
 						name: 'File',
 						value: 'file',
+					},
+					{
+						name: 'Group',
+						value: 'group',
 					},
 					{
 						name: 'Message',
@@ -101,37 +101,93 @@ export class Telegram implements INodeType {
 				],
 				default: 'message',
 			},
-
-			// ----------------------------------
-			//         operation
-			// ----------------------------------
-
-			// {
-			// 	displayName: 'Operation',
-			// 	name: 'operation',
-			// 	type: 'options',
-			// 	displayOptions: {
-			// 		show: {
-			// 			resource: [
-			// 				'bot',
-			// 			],
-			// 		},
-			// 	},
-			// 	options: [
-			// 		{
-			// 			name: 'Info',
-			// 			value: 'info',
-			// 			description: 'Get information about the bot associated with the access token.',
-			// 		},
-			// 	],
-			// 	default: 'info',
-			// 	description: 'The operation to perform.',
-			// },
-
-			// ----------------------------------
-			//         operation
-			// ----------------------------------
-
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['group'],
+					},
+				},
+				options: [
+					{
+						name: 'Close Forum Topic',
+						value: 'closeForumTopic',
+						description: 'Close a forum topic',
+						action: 'Close a forum topic',
+					},
+					{
+						name: 'Close General Forum Topic',
+						value: 'closeGeneralForumTopic',
+						description: 'Close the general topic in a forum supergroup chat',
+						action: 'Close general forum topic',
+					},
+					{
+						name: 'Create Forum Topic',
+						value: 'createForumTopic',
+						description: 'Create a new forum topic',
+						action: 'Create a forum topic',
+					},
+					{
+						name: 'Delete Forum Topic',
+						value: 'deleteForumTopic',
+						description: 'Delete a forum topic',
+						action: 'Delete a forum topic',
+					},
+					{
+						name: 'Edit Forum Topic',
+						value: 'editForumTopic',
+						description: 'Edit an existing forum topic',
+						action: 'Edit a forum topic',
+					},
+					{
+						name: 'Edit General Forum Topic',
+						value: 'editGeneralForumTopic',
+						description: 'Edit the name of the general topic in a forum supergroup chat',
+						action: 'Edit general forum topic',
+					},
+					{
+						name: 'Hide General Forum Topic',
+						value: 'hideGeneralForumTopic',
+						description: 'Hide the general topic in a forum supergroup chat',
+						action: 'Hide general forum topic',
+					},
+					{
+						name: 'Reopen Forum Topic',
+						value: 'reopenForumTopic',
+						description: 'Reopen a closed forum topic',
+						action: 'Reopen a forum topic',
+					},
+					{
+						name: 'Reopen General Forum Topic',
+						value: 'reopenGeneralForumTopic',
+						description: 'Reopen the general topic in a forum supergroup chat',
+						action: 'Reopen general forum topic',
+					},
+					{
+						name: 'Unhide General Forum Topic',
+						value: 'unhideGeneralForumTopic',
+						description: 'Unhide the general topic in a forum supergroup chat',
+						action: 'Unhide general forum topic',
+					},
+					{
+						name: 'Unpin All Forum Topic Messages',
+						value: 'unpinAllForumTopicMessages',
+						description: 'Clear the list of pinned messages in a forum topic',
+						action: 'Unpin all forum topic messages',
+					},
+					{
+						name: 'Unpin All General Forum Topic Messages',
+						value: 'unpinAllGeneralForumTopicMessages',
+						description:
+							'Clear the list of pinned messages in the general topic of a forum supergroup chat',
+						action: 'Unpin all general forum topic messages',
+					},
+				],
+				default: 'createForumTopic',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -331,6 +387,18 @@ export class Telegram implements INodeType {
 						description: 'Unpin a chat message',
 						action: 'Unpin a chat message',
 					},
+					{
+						name: 'Forward Message',
+						value: 'forwardMessage',
+						description: 'Forward a message of any kind',
+						action: 'Forward a message',
+					},
+					{
+						name: 'Forward Messages',
+						value: 'forwardMessages',
+						description: 'Forward multiple messages of any kind',
+						action: 'Forward multiple messages',
+					},
 				],
 				default: 'sendMessage',
 			},
@@ -366,13 +434,98 @@ export class Telegram implements INodeType {
 							'sendSticker',
 							'sendVideo',
 							'unpinChatMessage',
+							'forwardMessage',
+							'forwardMessages',
+							'unpinAllGeneralForumTopicMessages',
+							'unpinAllForumTopicMessages',
+							'closeForumTopic',
+							'closeGeneralForumTopic',
+							'createForumTopic',
+							'deleteForumTopic',
+							'editForumTopic',
+							'editGeneralForumTopic',
+							'hideGeneralForumTopic',
+							'reopenForumTopic',
+							'reopenGeneralForumTopic',
+							'unhideGeneralForumTopic',
 						],
-						resource: ['chat', 'message'],
+						resource: ['chat', 'message', 'group'],
 					},
 				},
 				required: true,
 				description:
 					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
+			},
+			// ----------------------------------
+			//       group:forumTopic
+			// ----------------------------------
+			{
+				displayName: 'Message Thread ID',
+				name: 'messageThreadId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'closeForumTopic',
+							'editForumTopic',
+							'deleteForumTopic',
+							'reopenForumTopic',
+							'unpinAllForumTopicMessages',
+						],
+						resource: ['group'],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the forum topic, message_thread_id as integer',
+			},
+			//       group:forumTopic:createForumTopic, editForumTopic, editGeneralForumTopic
+			// ----------------------------------
+			{
+				displayName: 'Forum Topic Name',
+				name: 'forumTopicName',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. "General" or "Announcements"',
+				displayOptions: {
+					show: {
+						operation: ['createForumTopic', 'editForumTopic', 'editGeneralForumTopic'],
+						resource: ['group'],
+					},
+				},
+				required: true,
+				description: 'Name of the forum topic, 1-128 characters',
+			},
+
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['createForumTopic', 'editForumTopic'],
+						resource: ['group'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Icon Custom Emoji ID',
+						name: 'icon_custom_emoji_id',
+						type: 'string',
+						default: '',
+						description: 'Custom emoji identifier of the topic icon',
+					},
+					{
+						displayName: 'Icon Color',
+						name: 'icon_color',
+						type: 'number',
+						default: 0,
+						description: 'Color of the topic icon in RGB format',
+					},
+				],
+				description: 'Additional fields for the forum topic creation or editing',
 			},
 
 			// ----------------------------------
@@ -391,6 +544,73 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description: 'Unique identifier of the message to delete',
+			},
+
+			// ----------------------------------
+			//       message:forwardMessage
+			// ----------------------------------
+			{
+				displayName: 'From Chat ID',
+				name: 'fromChatId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['forwardMessage'],
+						resource: ['message'],
+					},
+				},
+				required: true,
+				description:
+					'Unique identifier for the chat where the original message was sent (or channel username in the format @channelusername)',
+			},
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['forwardMessage'],
+						resource: ['message'],
+					},
+				},
+				required: true,
+				description: 'Message identifier in the chat specified in from_chat_id',
+			},
+
+			// ----------------------------------
+			//       message:forwardMessages
+			// ----------------------------------
+			{
+				displayName: 'From Chat ID',
+				name: 'fromChatId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['forwardMessages'],
+						resource: ['message'],
+					},
+				},
+				required: true,
+				description:
+					'Unique identifier for the chat where the original messages were sent (or channel username in the format @channelusername)',
+			},
+			{
+				displayName: 'Message IDs',
+				name: 'messageIds',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['forwardMessages'],
+						resource: ['message'],
+					},
+				},
+				required: true,
+				description:
+					'A JSON-serialized list of 1-100 identifiers of messages in the chat from_chat_id to forward. The identifiers must be specified in a strictly increasing order.',
 			},
 
 			// ----------------------------------
@@ -1571,6 +1791,8 @@ export class Telegram implements INodeType {
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
+							'forwardMessage',
+							'forwardMessages',
 						],
 						resource: ['message'],
 					},
@@ -1801,6 +2023,101 @@ export class Telegram implements INodeType {
 						},
 						default: 0,
 						description: 'Width of the video',
+					},
+					{
+						displayName: 'Message Thread ID',
+						name: 'message_thread_id',
+						type: 'number',
+						displayOptions: {
+							show: {
+								'/operation': ['forwardMessage', 'forwardMessages'],
+							},
+						},
+						default: 0,
+						description:
+							'Unique identifier for the target message thread (topic) of the forum; for forum supergroups only',
+					},
+					{
+						displayName: 'Direct Messages Topic ID',
+						name: 'direct_messages_topic_id',
+						type: 'number',
+						displayOptions: {
+							show: {
+								'/operation': ['forwardMessage', 'forwardMessages'],
+							},
+						},
+						default: 0,
+						description:
+							'Identifier of the direct messages topic to which the message(s) will be forwarded; required if the message(s) is/are forwarded to a direct messages chat',
+					},
+					{
+						displayName: 'Video Start Timestamp',
+						name: 'video_start_timestamp',
+						type: 'number',
+						displayOptions: {
+							show: {
+								'/operation': ['forwardMessage'],
+							},
+						},
+						default: 0,
+						description: 'New start timestamp for the forwarded video in the message',
+					},
+					{
+						displayName: 'Protect Content',
+						name: 'protect_content',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': ['forwardMessage', 'forwardMessages'],
+							},
+						},
+						default: false,
+						description:
+							'Whether to protect the contents of the forwarded message(s) from forwarding and saving',
+					},
+					{
+						displayName: 'Suggested Post Parameters',
+						name: 'suggested_post_parameters',
+						type: 'collection',
+						placeholder: 'Add Parameter',
+						displayOptions: {
+							show: {
+								'/operation': ['forwardMessage'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								displayName: 'Text',
+								name: 'text',
+								type: 'string',
+								default: '',
+								description: 'Text of the suggested post',
+							},
+							{
+								displayName: 'Parse Mode',
+								name: 'parse_mode',
+								type: 'options',
+								options: [
+									{
+										name: 'Markdown (Legacy)',
+										value: 'Markdown',
+									},
+									{
+										name: 'MarkdownV2',
+										value: 'MarkdownV2',
+									},
+									{
+										name: 'HTML',
+										value: 'HTML',
+									},
+								],
+								default: 'HTML',
+								description: 'How to parse the text',
+							},
+						],
+						description:
+							'A JSON-serialized object containing the parameters of the suggested post to send; for direct messages chats only',
 					},
 				],
 			},
@@ -2141,6 +2458,114 @@ export class Telegram implements INodeType {
 
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
+					} else if (operation === 'forwardMessage') {
+						// ----------------------------------
+						//         message:forwardMessage
+						// ----------------------------------
+
+						endpoint = 'forwardMessage';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.from_chat_id = this.getNodeParameter('fromChatId', i) as string;
+						body.message_id = this.getNodeParameter('messageId', i) as string;
+
+						// Add additional fields
+						addAdditionalFields.call(this, body, i);
+					} else if (operation === 'forwardMessages') {
+						// ----------------------------------
+						//         message:forwardMessages
+						// ----------------------------------
+
+						endpoint = 'forwardMessages';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.from_chat_id = this.getNodeParameter('fromChatId', i) as string;
+
+						// Parse message IDs from JSON string
+						const messageIdsString = this.getNodeParameter('messageIds', i) as string;
+						try {
+							body.message_ids = JSON.parse(messageIdsString);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON format for message IDs', {
+								itemIndex: i,
+							});
+						}
+
+						// Add additional fields
+						addAdditionalFields.call(this, body, i);
+					}
+				} else if (resource === 'group') {
+					if (operation === 'createForumTopic') {
+						endpoint = 'createForumTopic';
+						const name = this.getNodeParameter('forumTopicName', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const icon_color = additionalFields.icon_color as number;
+						const icon_custom_emoji_id = additionalFields.icon_custom_emoji_id as string;
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.name = name;
+						body.icon_color = icon_color;
+						body.icon_custom_emoji_id = icon_custom_emoji_id;
+					} else if (operation === 'editForumTopic') {
+						endpoint = 'editForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+						const messageThreadId = this.getNodeParameter('messageThreadId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const icon_custom_emoji_id = additionalFields.icon_custom_emoji_id as string;
+						const name = this.getNodeParameter('forumTopicName', i) as string;
+						body.message_thread_id = parseInt(messageThreadId);
+						body.icon_custom_emoji_id = icon_custom_emoji_id;
+						body.name = name;
+					} else if (operation === 'deleteForumTopic') {
+						endpoint = 'deleteForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+						const messageThreadId = this.getNodeParameter('messageThreadId', i) as string;
+						body.message_thread_id = parseInt(messageThreadId);
+					} else if (operation === 'closeForumTopic') {
+						endpoint = 'closeForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+						const messageThreadId = this.getNodeParameter('messageThreadId', i) as string;
+						body.message_thread_id = parseInt(messageThreadId);
+					} else if (operation === 'reopenForumTopic') {
+						endpoint = 'reopenForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+						const messageThreadId = this.getNodeParameter('messageThreadId', i) as string;
+						body.message_thread_id = parseInt(messageThreadId);
+					} else if (operation === 'unpinAllForumTopicMessages') {
+						endpoint = 'unpinAllForumTopicMessages';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+						const messageThreadId = this.getNodeParameter('messageThreadId', i) as string;
+						body.message_thread_id = parseInt(messageThreadId);
+					} else if (operation === 'editGeneralForumTopic') {
+						endpoint = 'editGeneralForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+						const name = this.getNodeParameter('forumTopicName', i) as string;
+						body.name = name;
+					} else if (operation === 'closeGeneralForumTopic') {
+						endpoint = 'closeGeneralForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+					} else if (operation === 'reopenGeneralForumTopic') {
+						endpoint = 'reopenGeneralForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+					} else if (operation === 'hideGeneralForumTopic') {
+						endpoint = 'hideGeneralForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+					} else if (operation === 'unhideGeneralForumTopic') {
+						endpoint = 'unhideGeneralForumTopic';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
+					} else if (operation === 'unpinAllGeneralForumTopicMessages') {
+						endpoint = 'unpinAllGeneralForumTopicMessages';
+						const chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = chat_id;
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
