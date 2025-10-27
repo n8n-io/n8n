@@ -21,16 +21,19 @@ import {
 import { formatHeader, saveEvaluationResults } from '../utils/evaluation-helpers.js';
 import { generateMarkdownReport } from '../utils/evaluation-reporter.js';
 
+type CliEvaluationOptions = {
+	testCaseFilter?: string; // Optional test case ID to run only a specific test
+	testCases?: TestCase[]; // Optional array of test cases to run (if not provided, uses defaults and generation)
+	repetitions?: number; // Number of times to run each test (e.g. for cache warming analysis)
+};
+
 /**
  * Main CLI evaluation runner that executes all test cases in parallel
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
- * @param testCaseFilter - Optional test case ID to run only a specific test
- * @param repetitions - Number of times to run each test (for cache warming analysis)
  */
-export async function runCliEvaluation(
-	testCaseFilter?: string,
-	repetitions: number = 1,
-): Promise<void> {
+export async function runCliEvaluation(options: CliEvaluationOptions = {}): Promise<void> {
+	const { repetitions = 1, testCaseFilter } = options;
+
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
 	if (repetitions > 1) {
 		console.log(pc.yellow(`➔ Each test will be run ${repetitions} times for cache analysis`));
@@ -41,7 +44,14 @@ export async function runCliEvaluation(
 		const { parsedNodeTypes, llm, tracer } = await setupTestEnvironment();
 
 		// Determine test cases to run
-		let testCases: TestCase[] = basicTestCases;
+		const providedTestCases =
+			options.testCases && options.testCases.length > 0 ? options.testCases : undefined;
+
+		let testCases: TestCase[] = providedTestCases ?? basicTestCases;
+
+		if (providedTestCases) {
+			console.log(pc.blue(`➔ Loaded ${providedTestCases.length} test cases from CSV`));
+		}
 
 		// Filter to single test case if specified
 		if (testCaseFilter) {
@@ -56,7 +66,7 @@ export async function runCliEvaluation(
 			}
 		} else {
 			// Optionally generate additional test cases
-			if (shouldGenerateTestCases()) {
+			if (!providedTestCases && shouldGenerateTestCases()) {
 				console.log(pc.blue('➔ Generating additional test cases...'));
 				const generatedCases = await generateTestCases(llm, howManyTestCasesToGenerate());
 				testCases = [...testCases, ...generatedCases];
