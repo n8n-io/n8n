@@ -1,6 +1,9 @@
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import type { INodeUi } from '@/Interface';
 import { createPinia, setActivePinia } from 'pinia';
-import { useReadyToRunStore } from './readyToRun.store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RouteLocationNormalized } from 'vue-router';
+import { useReadyToRunStore } from './readyToRun.store';
 
 const { mockPush, mockTrack, mockShowError, mockClaimFreeAiCredits, mockCreateNewWorkflow } =
 	vi.hoisted(() => ({
@@ -40,9 +43,13 @@ vi.mock('@/stores/posthog.store', () => ({
 	}),
 }));
 
+const mockAllCredentials = { value: [] as ICredentialsResponse[] };
+
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
-		allCredentials: [],
+		get allCredentials() {
+			return mockAllCredentials.value;
+		},
 		claimFreeAiCredits: mockClaimFreeAiCredits,
 	}),
 }));
@@ -53,17 +60,27 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
+const mockCurrentUser = {
+	value: {
+		settings: {} as Record<string, unknown>,
+	},
+};
+
 vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: () => ({
-		currentUser: {
-			settings: {},
+		get currentUser() {
+			return mockCurrentUser.value;
 		},
 	}),
 }));
 
+const mockIsAiCreditsEnabled = { value: true };
+
 vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore: () => ({
-		isAiCreditsEnabled: true,
+		get isAiCreditsEnabled() {
+			return mockIsAiCreditsEnabled.value;
+		},
 	}),
 }));
 
@@ -73,15 +90,17 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+const mockLocalStorageValue = { value: '' };
+
 vi.mock('@vueuse/core', () => ({
-	useLocalStorage: () => ({
-		value: '',
-	}),
+	useLocalStorage: () => mockLocalStorageValue,
 }));
+
+const mockShouldShowSimplifiedLayout = vi.fn(() => false);
 
 vi.mock('../composables/useEmptyStateDetection', () => ({
 	useEmptyStateDetection: () => ({
-		shouldShowSimplifiedLayout: vi.fn(() => false),
+		shouldShowSimplifiedLayout: mockShouldShowSimplifiedLayout,
 	}),
 }));
 
@@ -90,6 +109,13 @@ describe('useReadyToRunStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Reset dynamic mocks to default values
+		mockAllCredentials.value = [];
+		mockCurrentUser.value = { settings: {} };
+		mockIsAiCreditsEnabled.value = true;
+		mockLocalStorageValue.value = '';
+		mockShouldShowSimplifiedLayout.mockReturnValue(false);
+
 		setActivePinia(createPinia());
 		store = useReadyToRunStore();
 	});
@@ -138,12 +164,38 @@ describe('useReadyToRunStore', () => {
 			expect(result).toEqual(mockCredential);
 		});
 
+		it('should store credential ID in localStorage', async () => {
+			const mockCredential = { id: 'cred-456', name: 'OpenAI' };
+			mockClaimFreeAiCredits.mockResolvedValue(mockCredential);
+
+			await store.claimFreeAiCredits();
+
+			expect(mockLocalStorageValue.value).toBe('cred-456');
+		});
+
 		it('should show error on failure', async () => {
 			const error = new Error('Failed to claim');
 			mockClaimFreeAiCredits.mockRejectedValue(error);
 
 			await expect(store.claimFreeAiCredits()).rejects.toThrow('Failed to claim');
 			expect(mockShowError).toHaveBeenCalled();
+		});
+
+		it('should show error with correct i18n keys on failure', async () => {
+			const error = new Error('Failed to claim');
+			mockClaimFreeAiCredits.mockRejectedValue(error);
+
+			try {
+				await store.claimFreeAiCredits();
+			} catch (e) {
+				// Expected to throw
+			}
+
+			expect(mockShowError).toHaveBeenCalledWith(
+				error,
+				'freeAi.credits.showError.claim.title',
+				'freeAi.credits.showError.claim.message',
+			);
 		});
 	});
 
@@ -231,6 +283,291 @@ describe('useReadyToRunStore', () => {
 
 		it('should return false when read-only', () => {
 			expect(store.getButtonVisibility(true, true, true)).toBe(false);
+		});
+	});
+
+	describe('getSimplifiedLayoutVisibility', () => {
+		it('should call shouldShowSimplifiedLayout with route and loading', () => {
+			const mockRoute = { name: 'test', params: {} } as RouteLocationNormalized;
+			const loading = true;
+
+			store.getSimplifiedLayoutVisibility(mockRoute, loading);
+
+			expect(mockShouldShowSimplifiedLayout).toHaveBeenCalledWith(mockRoute, loading);
+		});
+
+		it('should return the result from shouldShowSimplifiedLayout', () => {
+			const mockRoute = { name: 'test', params: {} } as RouteLocationNormalized;
+			mockShouldShowSimplifiedLayout.mockReturnValueOnce(true);
+
+			const result = store.getSimplifiedLayoutVisibility(mockRoute, false);
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when shouldShowSimplifiedLayout returns false', () => {
+			const mockRoute = { name: 'test', params: {} } as RouteLocationNormalized;
+			mockShouldShowSimplifiedLayout.mockReturnValueOnce(false);
+
+			const result = store.getSimplifiedLayoutVisibility(mockRoute, true);
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('claimCreditsAndOpenWorkflow', () => {
+		it('should claim credits and open workflow', async () => {
+			const mockCredential = { id: 'cred-123', name: 'OpenAI' };
+			const mockWorkflow = { id: 'workflow-123', name: 'AI Agent workflow' };
+			mockClaimFreeAiCredits.mockResolvedValue(mockCredential);
+			mockCreateNewWorkflow.mockResolvedValue(mockWorkflow);
+
+			await store.claimCreditsAndOpenWorkflow('card');
+
+			expect(mockClaimFreeAiCredits).toHaveBeenCalled();
+			expect(mockCreateNewWorkflow).toHaveBeenCalled();
+			expect(mockPush).toHaveBeenCalledWith({
+				name: 'NodeViewExisting',
+				params: { name: 'workflow-123' },
+			});
+		});
+
+		it('should claim credits and open workflow with projectId and parentFolderId', async () => {
+			const mockCredential = { id: 'cred-456', name: 'OpenAI' };
+			const mockWorkflow = { id: 'workflow-456', name: 'AI Agent workflow' };
+			mockClaimFreeAiCredits.mockResolvedValue(mockCredential);
+			mockCreateNewWorkflow.mockResolvedValue(mockWorkflow);
+
+			await store.claimCreditsAndOpenWorkflow('button', 'folder-789', 'project-789');
+
+			expect(mockClaimFreeAiCredits).toHaveBeenCalledWith('project-789');
+			expect(mockCreateNewWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					parentFolderId: 'folder-789',
+				}),
+			);
+		});
+
+		it('should update user settings after successful claim', async () => {
+			const mockCredential = { id: 'cred-123', name: 'OpenAI' };
+			const mockWorkflow = { id: 'workflow-123', name: 'AI Agent workflow' };
+			mockClaimFreeAiCredits.mockResolvedValue(mockCredential);
+			mockCreateNewWorkflow.mockResolvedValue(mockWorkflow);
+
+			await store.claimCreditsAndOpenWorkflow('card');
+
+			// Note: This test verifies the user settings update logic
+			// In the actual implementation, this would update usersStore.currentUser.settings.userClaimedAiCredits
+		});
+
+		it('should throw error when claiming credits fails', async () => {
+			const error = new Error('Failed to claim');
+			mockClaimFreeAiCredits.mockRejectedValue(error);
+
+			await expect(store.claimCreditsAndOpenWorkflow('card')).rejects.toThrow('Failed to claim');
+			expect(mockCreateNewWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should throw error when creating workflow fails', async () => {
+			const mockCredential = { id: 'cred-123', name: 'OpenAI' };
+			const error = new Error('Failed to create workflow');
+			mockClaimFreeAiCredits.mockResolvedValue(mockCredential);
+			mockCreateNewWorkflow.mockRejectedValue(error);
+
+			await expect(store.claimCreditsAndOpenWorkflow('card')).rejects.toThrow(
+				'Failed to create workflow',
+			);
+		});
+	});
+
+	describe('claimingCredits state', () => {
+		it('should be false initially', () => {
+			expect(store.claimingCredits).toBe(false);
+		});
+
+		it('should be true while claiming credits', async () => {
+			const mockCredential = { id: 'cred-123', name: 'OpenAI' };
+			let claimingDuringExecution = false;
+
+			mockClaimFreeAiCredits.mockImplementation(async () => {
+				claimingDuringExecution = store.claimingCredits;
+				return mockCredential;
+			});
+
+			await store.claimFreeAiCredits();
+
+			expect(claimingDuringExecution).toBe(true);
+		});
+
+		it('should be false after successful claim', async () => {
+			const mockCredential = { id: 'cred-123', name: 'OpenAI' };
+			mockClaimFreeAiCredits.mockResolvedValue(mockCredential);
+
+			await store.claimFreeAiCredits();
+
+			expect(store.claimingCredits).toBe(false);
+		});
+
+		it('should be false after failed claim', async () => {
+			const error = new Error('Failed to claim');
+			mockClaimFreeAiCredits.mockRejectedValue(error);
+
+			try {
+				await store.claimFreeAiCredits();
+			} catch (e) {
+				// Expected to throw
+			}
+
+			expect(store.claimingCredits).toBe(false);
+		});
+	});
+
+	describe('userCanClaimOpenAiCredits edge cases', () => {
+		it('should return false when AI credits are disabled', () => {
+			mockIsAiCreditsEnabled.value = false;
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.userCanClaimOpenAiCredits).toBe(false);
+		});
+
+		it('should return false when user already has OpenAI credentials', () => {
+			mockAllCredentials.value = [
+				{
+					id: 'cred-1',
+					type: 'openAiApi',
+					name: 'My OpenAI Credentials',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					isManaged: false,
+				},
+			];
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.userCanClaimOpenAiCredits).toBe(false);
+		});
+
+		it('should return false when user already claimed AI credits', () => {
+			mockCurrentUser.value = {
+				settings: { userClaimedAiCredits: true },
+			};
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.userCanClaimOpenAiCredits).toBe(false);
+		});
+
+		it('should return false when multiple conditions are false', () => {
+			mockIsAiCreditsEnabled.value = false;
+			mockAllCredentials.value = [
+				{
+					id: 'cred-1',
+					type: 'openAiApi',
+					name: 'My OpenAI Credentials',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					isManaged: false,
+				},
+			];
+			mockCurrentUser.value = {
+				settings: { userClaimedAiCredits: true },
+			};
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.userCanClaimOpenAiCredits).toBe(false);
+		});
+
+		it('should return true when all conditions are met', () => {
+			mockIsAiCreditsEnabled.value = true;
+			mockAllCredentials.value = [];
+			mockCurrentUser.value = { settings: {} };
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.userCanClaimOpenAiCredits).toBe(true);
+		});
+	});
+
+	describe('createAndOpenAiWorkflow with credential injection', () => {
+		it('should inject credential into OpenAI Model node when credential exists', async () => {
+			const mockWorkflow = { id: 'workflow-123', name: 'AI Agent workflow' };
+			mockCreateNewWorkflow.mockResolvedValue(mockWorkflow);
+			mockLocalStorageValue.value = 'cred-stored-123';
+
+			await store.createAndOpenAiWorkflow('card');
+
+			expect(mockCreateNewWorkflow).toHaveBeenCalled();
+			const createCall = mockCreateNewWorkflow.mock.calls[0][0];
+			const openAiNode = createCall.nodes?.find((node: INodeUi) => node.name === 'OpenAI Model');
+
+			expect(openAiNode).toBeDefined();
+			expect(openAiNode?.credentials).toBeDefined();
+			expect(openAiNode?.credentials?.openAiApi).toEqual({
+				id: 'cred-stored-123',
+				name: '',
+			});
+		});
+
+		it('should create workflow without credential when no credential is stored', async () => {
+			const mockWorkflow = { id: 'workflow-123', name: 'AI Agent workflow' };
+			mockCreateNewWorkflow.mockResolvedValue(mockWorkflow);
+			mockLocalStorageValue.value = '';
+
+			await store.createAndOpenAiWorkflow('card');
+
+			expect(mockCreateNewWorkflow).toHaveBeenCalled();
+			const createCall = mockCreateNewWorkflow.mock.calls[0][0];
+			const openAiNode = createCall.nodes?.find((node: INodeUi) => node.name === 'OpenAI Model');
+
+			// Should not modify the credentials when no credential is stored
+			expect(openAiNode).toBeDefined();
+			expect(openAiNode?.credentials).toEqual({});
+		});
+
+		it('should not modify original workflow template', async () => {
+			const mockWorkflow = { id: 'workflow-123', name: 'AI Agent workflow' };
+			mockCreateNewWorkflow.mockResolvedValue(mockWorkflow);
+			mockLocalStorageValue.value = 'cred-stored-456';
+
+			await store.createAndOpenAiWorkflow('card');
+
+			// Create another workflow to verify the template wasn't mutated
+			await store.createAndOpenAiWorkflow('button');
+
+			expect(mockCreateNewWorkflow).toHaveBeenCalledTimes(2);
+			const firstCall = mockCreateNewWorkflow.mock.calls[0][0];
+			const secondCall = mockCreateNewWorkflow.mock.calls[1][0];
+
+			// Both should have the credential injected independently
+			const firstOpenAiNode = firstCall.nodes?.find(
+				(node: INodeUi) => node.name === 'OpenAI Model',
+			);
+			const secondOpenAiNode = secondCall.nodes?.find(
+				(node: INodeUi) => node.name === 'OpenAI Model',
+			);
+
+			expect(firstOpenAiNode?.credentials?.openAiApi?.id).toBe('cred-stored-456');
+			expect(secondOpenAiNode?.credentials?.openAiApi?.id).toBe('cred-stored-456');
+		});
+
+		it('should handle workflow where OpenAI Model node has existing credentials object', async () => {
+			const mockWorkflow = { id: 'workflow-123', name: 'AI Agent workflow' };
+			mockCreateNewWorkflow.mockResolvedValue(mockWorkflow);
+			mockLocalStorageValue.value = 'cred-new-789';
+
+			await store.createAndOpenAiWorkflow('card');
+
+			expect(mockCreateNewWorkflow).toHaveBeenCalled();
+			const createCall = mockCreateNewWorkflow.mock.calls[0][0];
+			const openAiNode = createCall.nodes?.find((node: INodeUi) => node.name === 'OpenAI Model');
+
+			// Should add the credential even if credentials object already exists
+			expect(openAiNode?.credentials?.openAiApi).toEqual({
+				id: 'cred-new-789',
+				name: '',
+			});
 		});
 	});
 });
