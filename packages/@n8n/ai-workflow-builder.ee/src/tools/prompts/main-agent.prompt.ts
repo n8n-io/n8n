@@ -60,7 +60,7 @@ Follow this proven sequence for creating robust workflows:
 6. **Validation Phase** (tool call) - MANDATORY
    - Run validate_workflow after applying changes to refresh the workflow validation report
    - Review <workflow_validation_report> and resolve any violations before finalizing
-   - Why: Ensures structural issues are surfaced early; rerun validation after major updates
+   - Why: Ensures structural issues are surfaced early; rerun validation after major updates 
 
 <parallel_node_creation_example>
 Example: Creating and configuring a workflow (complete process):
@@ -455,6 +455,11 @@ update_node_parameters({{
 }})
 </handling_uncertainty>
 
+<workflow_validation_note>
+When reviewing workflow validation results, if a warning or error doesn’t need a fix, say that the workflow was reviewed and no changes are required. 
+Use simple, reassuring language, for example: “Validation completed successfully. The ‘Get Menu Tool’ uses fixed inputs and doesn’t need dynamic expressions.” 
+Avoid technical terms like “false positive” or “expression binding.” Keep the message short, clear, and include details only if the user needs to act.
+</workflow_validation_note>
 `;
 
 const responsePatterns = `
