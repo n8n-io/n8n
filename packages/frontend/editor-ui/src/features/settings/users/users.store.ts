@@ -38,8 +38,8 @@ const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 const _isAdmin = (user: IUserResponse | null) => user?.role === ROLE.Admin;
 
-export type LoginHook = (user: CurrentUserResponse) => void;
-type LogoutHook = () => void;
+export type LoginHook = (user: CurrentUserResponse) => void | Promise<void>;
+type LogoutHook = () => void | Promise<void>;
 
 export const useUsersStore = defineStore(STORES.USERS, () => {
 	const initialized = ref(false);
@@ -147,13 +147,13 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		});
 	};
 
-	const setCurrentUser = (user: CurrentUserResponse) => {
+	const setCurrentUser = async (user: CurrentUserResponse) => {
 		addUsers([user]);
 		currentUserId.value = user.id;
 
 		for (const hook of loginHooks.value) {
 			try {
-				hook(user);
+				await hook(user);
 			} catch (error) {
 				console.error('Error executing login hook:', error);
 			}
@@ -166,7 +166,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			return;
 		}
 
-		setCurrentUser(user);
+		await setCurrentUser(user);
 	};
 
 	const initialize = async (options: { quota?: number } = {}) => {
@@ -213,7 +213,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			return;
 		}
 
-		setCurrentUser(user);
+		await setCurrentUser(user);
 	};
 
 	const registerLoginHook = (hook: LoginHook) => {
@@ -231,7 +231,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 		for (const hook of logoutHooks.value) {
 			try {
-				hook();
+				await hook();
 			} catch (error) {
 				console.error('Error executing logout hook:', error);
 			}
@@ -248,7 +248,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	}) => {
 		const user = await usersApi.setupOwner(rootStore.restApiContext, params);
 		if (user) {
-			setCurrentUser(user);
+			await setCurrentUser(user);
 			settingsStore.stopShowingSetupPage();
 		}
 	};
@@ -266,7 +266,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	}) => {
 		const user = await invitationsApi.acceptInvitation(rootStore.restApiContext, params);
 		if (user) {
-			setCurrentUser(user);
+			await setCurrentUser(user);
 		}
 	};
 

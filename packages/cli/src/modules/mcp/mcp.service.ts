@@ -8,6 +8,7 @@ import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -19,6 +20,7 @@ export class McpService {
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	getServer(user: User) {
@@ -27,7 +29,11 @@ export class McpService {
 			version: '1.0.0',
 		});
 
-		const workflowSearchTool = createSearchWorkflowsTool(user, this.workflowService);
+		const workflowSearchTool = createSearchWorkflowsTool(
+			user,
+			this.workflowService,
+			this.telemetry,
+		);
 		server.registerTool(
 			workflowSearchTool.name,
 			workflowSearchTool.config,
@@ -43,6 +49,7 @@ export class McpService {
 				webhook: this.globalConfig.endpoints.webhook,
 				webhookTest: this.globalConfig.endpoints.webhookTest,
 			},
+			this.telemetry,
 		);
 		server.registerTool(
 			workflowDetailsTool.name,
