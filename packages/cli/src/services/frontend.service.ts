@@ -308,7 +308,7 @@ export class FrontendService {
 				credits: 0,
 			},
 			ai: {
-				allowSendingActualData: false,
+				allowSendingActualData: true,
 			},
 			workflowHistory: {
 				pruneTime: -1,
