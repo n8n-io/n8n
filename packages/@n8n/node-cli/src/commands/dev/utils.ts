@@ -160,6 +160,14 @@ function processStreamData(data: Buffer, outputLines: string[]): void {
 	});
 }
 
+export async function sleep(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function clearScreen(): void {
+	process.stdout.write('\n\x1b[2J\x1b[0;0H\n');
+}
+
 export function commands() {
 	const commandOutputs: CommandOutput[] = [];
 	const childProcesses: ChildProcess[] = [];
