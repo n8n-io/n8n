@@ -1,3 +1,4 @@
+import type { StructuredChunk } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -94,7 +95,6 @@ export type ChatModelsResponse = Record<
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
-	replyId: z.string().uuid(),
 	message: z.string(),
 	model: chatHubConversationModelSchema,
 	previousMessageId: z.string().uuid().nullable(),
@@ -107,7 +107,6 @@ export class ChatHubSendMessageRequest extends Z.class({
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
-	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
 		z.object({
@@ -120,7 +119,6 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 export class ChatHubEditMessageRequest extends Z.class({
 	message: z.string(),
 	messageId: z.string().uuid(),
-	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
 		z.object({
@@ -222,3 +220,11 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
 }) {}
+
+export interface EnrichedStructuredChunk extends StructuredChunk {
+	metadata: StructuredChunk['metadata'] & {
+		messageId: ChatMessageId;
+		previousMessageId: ChatMessageId | null;
+		retryOfMessageId: ChatMessageId | null;
+	};
+}
