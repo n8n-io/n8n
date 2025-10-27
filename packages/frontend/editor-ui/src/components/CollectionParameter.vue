@@ -16,6 +16,7 @@ export interface Props {
 	values: INodeParameters;
 	isReadOnly?: boolean;
 	isNested?: boolean;
+	isNewlyAdded?: boolean;
 }
 
 defineProps<Props>();

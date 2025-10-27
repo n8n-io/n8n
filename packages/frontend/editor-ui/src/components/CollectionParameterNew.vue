@@ -44,13 +44,18 @@ export interface Props {
 	values: INodeParameters;
 	isReadOnly?: boolean;
 	isNested?: boolean;
+	isNewlyAdded?: boolean;
 }
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 	delete: [];
 }>();
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	isReadOnly: false,
+	isNested: false,
+	isNewlyAdded: false,
+});
 const ndvStore = useNDVStore();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
@@ -60,7 +65,7 @@ const { activeNode } = storeToRefs(ndvStore);
 const storageKey = computed(() => {
 	return `n8n-collection-parameter-expanded-${activeNode.value?.id ?? 'unknown'}-${props.path}`;
 });
-const isExpanded = ref(false);
+const isExpanded = ref(props.isNewlyAdded);
 const newlyAddedParameters = ref<Set<string>>(new Set());
 
 const placeholder = computed(() => {
@@ -183,7 +188,7 @@ watch(
 	storageKey,
 	(newKey) => {
 		const storedValue = sessionStorage.getItem(newKey);
-		isExpanded.value = storedValue === 'true';
+		isExpanded.value = isExpanded.value || storedValue === 'true';
 	},
 	{ immediate: true },
 );

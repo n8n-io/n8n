@@ -1,4 +1,4 @@
-import { ref, type MaybeRefOrGetter, toValue } from 'vue';
+import { ref, type MaybeRefOrGetter, toValue, watch } from 'vue';
 import { v4 as uuid } from 'uuid';
 
 interface ItemMetadata {
@@ -12,7 +12,10 @@ interface ItemMetadata {
  * Uses stable indexes for persistence to survive component remounts
  * @param key - Storage key for scoping state (should be nodeId + parameterPath)
  */
-export function useFixedCollectionItemState(key: MaybeRefOrGetter<string>) {
+export function useFixedCollectionItemState(
+	key: MaybeRefOrGetter<string>,
+	{ defaultWrapperExpanded = false } = {},
+) {
 	const storageKey = toValue(key);
 	const expandedStorageKey = `n8n-fixed-collection-expanded-${storageKey}`;
 	const wrapperStorageKey = `n8n-fixed-collection-wrapper-${storageKey}`;
@@ -49,23 +52,21 @@ export function useFixedCollectionItemState(key: MaybeRefOrGetter<string>) {
 		sessionStorage.setItem(expandedStorageKey, Array.from(expandedKeys).join(','));
 	};
 
-	// In-memory set of expanded items (format: "propertyName:stableIndex")
 	const expandedStableIndexes = ref<Set<string>>(loadExpandedStableIndexes());
 
-	// Load wrapper expanded state from session storage on init
-	const loadWrapperExpanded = (): boolean | null => {
+	const loadWrapperExpanded = () => {
 		const stored = sessionStorage.getItem(wrapperStorageKey);
-		if (stored === null) return null; // Not set yet
-		return stored === 'true';
+		console.log('loadWrapperExpanded', wrapperStorageKey, stored);
+		return defaultWrapperExpanded || stored === 'true';
 	};
 
 	// Save wrapper expanded state to session storage
 	const saveWrapperExpanded = (value: boolean) => {
+		console.log('saveWrapperExpanded', wrapperStorageKey, value);
 		sessionStorage.setItem(wrapperStorageKey, String(value));
 	};
 
-	// In-memory wrapper expanded state
-	const wrapperExpanded = ref<boolean | null>(loadWrapperExpanded());
+	const wrapperExpanded = ref<boolean>(loadWrapperExpanded());
 
 	const getItemId = (propertyName: string, index: number): string => {
 		if (!itemMetadata.value[propertyName]) {
@@ -228,15 +229,11 @@ export function useFixedCollectionItemState(key: MaybeRefOrGetter<string>) {
 		}
 	};
 
-	const getWrapperExpanded = () => {
-		return wrapperExpanded.value;
-	};
-
-	const setWrapperExpanded = (value: boolean) => {
-		wrapperExpanded.value = value;
-		// Save to session storage on every expand/collapse
-		saveWrapperExpanded(value);
-	};
+	watch(wrapperExpanded, (newValue) => {
+		if (newValue) {
+			saveWrapperExpanded(newValue);
+		}
+	});
 
 	return {
 		getItemId,
@@ -249,7 +246,5 @@ export function useFixedCollectionItemState(key: MaybeRefOrGetter<string>) {
 		trimArrays,
 		reorderItems,
 		wrapperExpanded,
-		getWrapperExpanded,
-		setWrapperExpanded,
 	};
 }

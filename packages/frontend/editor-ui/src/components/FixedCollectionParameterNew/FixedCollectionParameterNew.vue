@@ -68,13 +68,11 @@ const addDropdownRef = ref<ComponentExposed<typeof N8nRekaSelect>>();
 const selectedOption = ref<string | undefined>(undefined);
 
 const storageKey = computed(() => `${activeNode.value?.id ?? 'unknown'}-${props.path}`);
-const itemState = useFixedCollectionItemState(storageKey);
+const itemState = useFixedCollectionItemState(storageKey, {
+	defaultWrapperExpanded: props.isNewlyAdded,
+});
 
-const isWrapperExpanded = ref(
-	itemState.wrapperExpanded.value !== null
-		? itemState.wrapperExpanded.value
-		: !props.isNested || props.isNewlyAdded,
-);
+const isWrapperExpanded = itemState.wrapperExpanded;
 
 const getOptionProperties = (optionName: string): INodePropertyCollection | undefined => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return undefined;

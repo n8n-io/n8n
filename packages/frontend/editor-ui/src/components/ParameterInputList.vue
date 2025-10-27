@@ -675,6 +675,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						:path="getPath(parameter.name)"
 						:is-read-only="isReadOnly"
 						:is-nested="isNested"
+						:is-newly-added="newlyAddedParameters.has(parameter.name)"
 						@value-changed="valueChanged"
 						@delete="deleteOption(parameter.name)"
 					/>
