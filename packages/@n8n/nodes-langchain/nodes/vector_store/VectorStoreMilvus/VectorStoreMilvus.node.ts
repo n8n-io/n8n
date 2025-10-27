@@ -98,6 +98,10 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			password: credentials.password,
 			collectionName: collection,
 			indexCreateOptions: indexCreateOptions,
+			clientConfig: {
+				address: credentials.baseUrl,
+				database: credentials.databaseName,
+			},
 		};
 
 		return await Milvus.fromExistingCollection(embeddings, config);
@@ -120,6 +124,10 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			username: credentials.username,
 			password: credentials.password,
 			collectionName: collection,
+			clientConfig: {
+				address: credentials.baseUrl,
+				database: credentials.databaseName,
+			},
 		};
 
 		if (options.clearCollection) {
