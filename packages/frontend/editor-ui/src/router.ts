@@ -610,8 +610,7 @@ export const routes: RouteRecordRaw[] = [
 						},
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							const assistantStore = useAssistantStore();
-							return assistantStore.isAssistantEnabled || settingsStore.isAskAiEnabled;
+							return settingsStore.isAiAssistantEnabled || settingsStore.isAskAiEnabled;
 						},
 					},
 					telemetry: {
