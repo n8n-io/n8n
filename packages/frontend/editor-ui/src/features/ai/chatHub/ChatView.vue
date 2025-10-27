@@ -83,36 +83,61 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 	},
 );
 
+function getUpdatedModelIfAgent(model: ChatHubConversationModel | null) {
+	if (!model || !(model.provider === 'custom-agent' && 'agentId' in model)) {
+		return model;
+	}
+
+	const agent = chatStore.getAgent(model.agentId);
+	if (!agent) {
+		// agent got deleted
+		return null;
+	}
+
+	return {
+		...model,
+		// use updated name if user edited agent name
+		name: agent.name,
+	};
+}
+
 const selectedModel = computed<ChatHubConversationModel | null>(() => {
-	let model: ChatHubConversationModel | null = null;
-	if (currentConversation.value?.model && currentConversation.value?.provider) {
-		model = {
+	if (
+		currentConversation.value?.provider &&
+		currentConversation.value?.provider !== 'n8n' &&
+		currentConversation.value?.provider !== 'custom-agent' &&
+		currentConversation.value?.model
+	) {
+		// todo check if model is still available
+		return {
 			provider: currentConversation.value.provider,
 			model: currentConversation.value.model,
 			name: currentConversation.value.model,
-		} as ChatHubConversationModel;
-	} else {
-		model = defaultModel.value;
+		};
 	}
 
-	if (model?.provider === 'custom-agent') {
-		const agent = chatStore.models?.['custom-agent'].models.find(
-			(agent) => 'agentId' in agent && agent.agentId === model.agentId,
-		);
-
-		// if agent got deleted
-		if (!agent) {
-			return null;
-		} else {
-			return {
-				...model,
-				// use updated name if user edited agent name
-				name: agent.name,
-			};
-		}
+	if (
+		currentConversation.value?.provider === 'custom-agent' &&
+		currentConversation?.value.agentId &&
+		currentConversation?.value.agentName
+	) {
+		return getUpdatedModelIfAgent({
+			provider: currentConversation.value.provider,
+			agentId: currentConversation.value.agentId,
+			name: currentConversation.value.agentName,
+		});
 	}
 
-	return model;
+	if (currentConversation.value?.provider === 'n8n' && currentConversation?.value.workflowId) {
+		// todo check if workflow is still available or updated
+		return {
+			provider: currentConversation.value.provider,
+			workflowId: currentConversation.value.workflowId,
+			name: currentConversation.value.agentName ?? 'n8n workflow', // todo remove default once this gets set
+		};
+	}
+
+	return getUpdatedModelIfAgent(defaultModel.value);
 });
 
 const selectedCredentials = useLocalStorage<CredentialsMap>(

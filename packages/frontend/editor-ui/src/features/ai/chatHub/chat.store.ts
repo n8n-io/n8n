@@ -504,6 +504,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
+		console.log(JSON.stringify(sessions.value.find((s) => s.id === sessionId)));
 		sessions.value = sessions.value.map((session) =>
 			session.id === sessionId
 				? {
@@ -512,6 +513,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 					}
 				: session,
 		);
+		console.log(JSON.stringify(sessions.value.find((s) => s.id === sessionId)));
 	}
 
 	async function renameSession(sessionId: ChatSessionId, title: string) {
