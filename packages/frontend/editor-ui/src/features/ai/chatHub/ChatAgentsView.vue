@@ -3,13 +3,14 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
-import { N8nButton, N8nCard, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ChatHubAgentDto } from '@n8n/api-types';
-import { CHAT_VIEW, providerDisplayNames } from '@/features/ai/chatHub/constants';
+import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
+import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import { chatHubProviderSchema, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -111,25 +112,6 @@ async function handleDeleteAgent(agentId: string, event?: MouseEvent) {
 	}
 }
 
-function formatDate(dateString: string): string {
-	const date = new Date(dateString);
-	const now = new Date();
-	const diffInMs = now.getTime() - date.getTime();
-	const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-	if (diffInDays === 0) {
-		return 'Today';
-	}
-	if (diffInDays === 1) {
-		return 'Yesterday';
-	}
-	if (diffInDays < 7) {
-		return `${diffInDays} days ago`;
-	}
-
-	return date.toLocaleDateString();
-}
-
 onMounted(async () => {
 	await Promise.all([
 		chatStore.fetchAgents(),
@@ -160,51 +142,14 @@ onMounted(async () => {
 		</div>
 
 		<div v-else :class="$style.agentsGrid">
-			<N8nCard
+			<ChatAgentCard
 				v-for="agent in agents"
 				:key="agent.id"
-				:class="$style.agentCard"
-				hoverable
+				:agent="agent"
 				@click="handleAgentCardClick(agent)"
-			>
-				<template #header>
-					<N8nText tag="h3" size="medium" bold>{{ agent.name }}</N8nText>
-					<div :class="$style.cardActions" @click.stop>
-						<N8nIconButton
-							icon="pen"
-							type="tertiary"
-							size="small"
-							title="Edit agent"
-							@click="handleEditAgent(agent, $event)"
-						/>
-						<N8nIconButton
-							icon="trash-2"
-							type="tertiary"
-							size="small"
-							title="Delete agent"
-							@click="handleDeleteAgent(agent.id, $event)"
-						/>
-					</div>
-				</template>
-
-				<div :class="$style.descriptionContainer">
-					<N8nText :class="$style.description" color="text-light">
-						{{ agent.description }}
-					</N8nText>
-				</div>
-
-				<template #footer>
-					<N8nText size="xsmall" color="text-light">
-						<span v-if="agent.provider && agent.model">
-							{{ providerDisplayNames[agent.provider] }} • {{ agent.model }}
-						</span>
-						<span v-else>No model configured</span>
-					</N8nText>
-					<N8nText size="xsmall" color="text-light" :class="$style.lastUpdate">
-						Updated {{ formatDate(agent.updatedAt) }}
-					</N8nText>
-				</template>
-			</N8nCard>
+				@edit="handleEditAgent(agent, $event)"
+				@delete="handleDeleteAgent(agent.id, $event)"
+			/>
 		</div>
 
 		<AgentEditorModal
@@ -254,39 +199,5 @@ onMounted(async () => {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 	gap: var(--spacing--lg);
-}
-
-.agentCard {
-	cursor: pointer;
-	transition: transform 0.2s ease;
-
-	&:hover {
-		transform: translateY(-2px);
-	}
-}
-
-.cardActions {
-	display: flex;
-	gap: var(--spacing--4xs);
-	flex-shrink: 0;
-}
-
-.descriptionContainer {
-	padding-block: var(--spacing--sm);
-}
-
-.description {
-	display: -webkit-box;
-	line-clamp: 2;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	min-height: 2.6em;
-	word-break: break-word;
-}
-
-.lastUpdate {
-	flex-shrink: 0;
 }
 </style>
