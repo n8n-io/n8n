@@ -18,8 +18,8 @@ export function findOneFromModelsResponse(
 	return undefined;
 }
 
-export function getRelativeDate(now: Date, dateString: string | null): string {
-	const date = dateString ? new Date(dateString) : now;
+export function getRelativeDate(now: Date, dateString: string): string {
+	const date = new Date(dateString);
 	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	const yesterday = new Date(today);
 	yesterday.setDate(yesterday.getDate() - 1);
@@ -45,7 +45,7 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 
 	// Group sessions by relative date
 	for (const session of sessions) {
-		const group = getRelativeDate(now, session.lastMessageAt);
+		const group = getRelativeDate(now, session.lastMessageAt ?? session.updatedAt);
 
 		if (!groups.has(group)) {
 			groups.set(group, []);
@@ -66,8 +66,8 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 						group: groupName,
 						sessions: sessions.sort(
 							(a, b) =>
-								(b.lastMessageAt ? Date.parse(b.lastMessageAt) : +now) -
-								(a.lastMessageAt ? Date.parse(a.lastMessageAt) : +now),
+								Date.parse(b.lastMessageAt ?? b.updatedAt) -
+								Date.parse(a.lastMessageAt ?? a.updatedAt),
 						),
 					},
 				]
