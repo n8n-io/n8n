@@ -1,19 +1,25 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
+import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import type { ChatHubConversationModel, ChatHubLLMProvider } from '@n8n/api-types';
 import { N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
-import { ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 
-const { disabled } = defineProps<{
-	placeholder: string;
-	disabled: boolean;
+const { selectedModel, isMissingCredentials } = defineProps<{
+	isResponding: boolean;
+	selectedModel: ChatHubConversationModel | null;
+	isMissingCredentials: boolean;
 }>();
 
 const emit = defineEmits<{
 	submit: [string];
+	stop: [];
+	selectModel: [];
+	setCredentials: [ChatHubLLMProvider];
 }>();
 
-const inputRef = useTemplateRef('inputRef');
+const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const message = ref('');
 
 const toast = useToast();
@@ -24,10 +30,24 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-function onAttach() {}
+const placeholder = computed(() => {
+	if (!selectedModel) {
+		return 'Select a model';
+	}
+
+	return `Message ${selectedModel.name}`;
+});
 
 function onMic() {
-	speechInput.isListening.value ? speechInput.stop() : speechInput.start();
+	if (speechInput.isListening.value) {
+		speechInput.stop();
+	} else {
+		speechInput.start();
+	}
+}
+
+function onStop() {
+	emit('stop');
 }
 
 function handleSubmitForm() {
@@ -83,6 +103,20 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
+			<div v-if="!selectedModel" :class="$style.callout">
+				Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
+				conversation
+			</div>
+			<div v-else-if="isMissingCredentials" :class="$style.callout">
+				Please
+				<a
+					href=""
+					@click.prevent="emit('setCredentials', selectedModel.provider as ChatHubLLMProvider)"
+				>
+					set credentials
+				</a>
+				for {{ providerDisplayNames[selectedModel.provider] }} to start a conversation
+			</div>
 			<N8nInput
 				ref="inputRef"
 				v-model="message"
@@ -92,37 +126,48 @@ defineExpose({
 				autocomplete="off"
 				:autosize="{ minRows: 1, maxRows: 6 }"
 				autofocus
+				:disabled="isMissingCredentials || !selectedModel"
 				@keydown="handleKeydownTextarea"
 			/>
 
 			<div :class="$style.actions">
+				<!-- TODO: Implement attachments
 				<N8nIconButton
 					native-type="button"
 					type="secondary"
 					title="Attach"
-					:disabled="disabled"
+					:disabled="isMissingCredentials || !selectedModel || isResponding"
 					icon="paperclip"
 					icon-size="large"
 					text
 					@click="onAttach"
-				/>
+				/> -->
 				<N8nIconButton
 					v-if="speechInput.isSupported"
 					native-type="button"
 					:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
 					type="secondary"
-					:disabled="disabled"
+					:disabled="isMissingCredentials || !selectedModel || isResponding"
 					:icon="speechInput.isListening.value ? 'square' : 'mic'"
 					:class="{ [$style.recording]: speechInput.isListening.value }"
 					icon-size="large"
 					@click="onMic"
 				/>
 				<N8nIconButton
+					v-if="!isResponding"
 					native-type="submit"
-					:disabled="disabled || !message.trim()"
+					:disabled="isMissingCredentials || !selectedModel || !message.trim()"
 					title="Send"
 					icon="arrow-up"
 					icon-size="large"
+				/>
+				<N8nIconButton
+					v-else
+					native-type="button"
+					title="Stop generating"
+					icon="square"
+					icon-size="large"
+					@click="onStop"
 				/>
 			</div>
 		</div>
@@ -139,7 +184,26 @@ defineExpose({
 	position: relative;
 	display: flex;
 	align-items: center;
+	flex-direction: column;
 	width: 100%;
+}
+
+.callout {
+	color: var(--color--secondary);
+	background-color: hsla(247, 49%, 53%, 0.1);
+	padding: 16px 16px 32px;
+	border-top-left-radius: 16px;
+	border-top-right-radius: 16px;
+	width: 100%;
+	border: var(--border);
+	border-color: var(--color--secondary);
+	text-align: center;
+	margin-bottom: -16px;
+
+	& a {
+		text-decoration: underline;
+		color: inherit;
+	}
 }
 
 .input {

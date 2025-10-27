@@ -23,6 +23,18 @@ export class SidebarPage {
 		await this.page.getByTestId('project-home-menu-item').click();
 	}
 
+	async clickPersonalMenuItem() {
+		await this.page.getByTestId('project-personal-menu-item').click();
+	}
+
+	async clickWorkflowsLink(): Promise<void> {
+		await this.page.getByRole('link', { name: 'Workflows' }).click();
+	}
+
+	async clickCredentialsLink(): Promise<void> {
+		await this.page.getByRole('link', { name: 'Credentials' }).click();
+	}
+
 	async addProjectFromUniversalAdd() {
 		await this.universalAdd();
 		await this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
