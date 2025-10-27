@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
 import type { MemorySaver } from '@langchain/langgraph';
 import { GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
@@ -69,7 +70,9 @@ import {
 	WorkflowBuilderAgent,
 	type WorkflowBuilderAgentConfig,
 	type ChatPayload,
+	shouldModifyState,
 } from '@/workflow-builder-agent';
+import type { WorkflowState } from '@/workflow-state';
 
 describe('WorkflowBuilderAgent', () => {
 	let agent: WorkflowBuilderAgent;
@@ -143,7 +146,6 @@ describe('WorkflowBuilderAgent', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
 				},
-				useDeprecatedCredentials: false,
 			};
 		});
 
@@ -151,7 +153,6 @@ describe('WorkflowBuilderAgent', () => {
 			const longMessage = 'x'.repeat(MAX_AI_BUILDER_PROMPT_LENGTH + 1);
 			const payload: ChatPayload = {
 				message: longMessage,
-				useDeprecatedCredentials: false,
 			};
 
 			await expect(async () => {
@@ -169,7 +170,6 @@ describe('WorkflowBuilderAgent', () => {
 			const validMessage = 'Create a simple workflow';
 			const payload: ChatPayload = {
 				message: validMessage,
-				useDeprecatedCredentials: false,
 			};
 
 			// Mock the stream processing to return a proper StreamOutput
@@ -247,6 +247,113 @@ describe('WorkflowBuilderAgent', () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
 			}).rejects.toThrow(unknownError);
+		});
+	});
+
+	describe('shouldModifyState', () => {
+		const autoCompactThresholdTokens = 10000;
+
+		const createMockState = (
+			messageContent: string,
+			workflowName?: string,
+			messageCount: number = 1,
+			nodesCount: number = 0,
+		): typeof WorkflowState.State => {
+			const messages = [];
+			for (let i = 0; i < messageCount; i++) {
+				messages.push(
+					new HumanMessage({ content: i === messageCount - 1 ? messageContent : `Message ${i}` }),
+				);
+			}
+
+			const nodes = Array.from({ length: nodesCount }, (_, i) => ({
+				id: `node-${i}`,
+				name: `Node ${i}`,
+				type: 'n8n-nodes-base.testNode',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			}));
+
+			return {
+				messages,
+				workflowJSON: { nodes: [], connections: {}, name: '' },
+				workflowOperations: [],
+				workflowContext: {
+					currentWorkflow: {
+						name: workflowName,
+						nodes,
+					},
+				},
+				workflowValidation: null,
+				previousSummary: 'EMPTY',
+			};
+		};
+
+		describe('command handling', () => {
+			it('should return "compact_messages" for /compact command', () => {
+				const state = createMockState('/compact');
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('compact_messages');
+			});
+
+			it('should return "delete_messages" for /clear command', () => {
+				const state = createMockState('/clear');
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('delete_messages');
+			});
+		});
+
+		describe('workflow name generation', () => {
+			it('should return "create_workflow_name" when workflow name is undefined and empty workflow', () => {
+				const state = createMockState('Create a workflow', undefined, 1, 0);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
+			});
+
+			it('should return "create_workflow_name" when workflow name is "My workflow" and empty workflow', () => {
+				const state = createMockState('Create a workflow', 'My workflow', 1, 0);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
+			});
+
+			it('should return "create_workflow_name" when workflow name is "My workflow 1" and empty workflow', () => {
+				const state = createMockState('Create a workflow', 'My workflow 1', 1, 0);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
+			});
+
+			it('should return "create_workflow_name" when workflow name is "My workflow 123" and empty workflow', () => {
+				const state = createMockState('Create a workflow', 'My workflow 123', 1, 0);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
+			});
+
+			it('should return "agent" when workflow name is a custom name', () => {
+				const state = createMockState('Create a workflow', 'Custom Workflow Name', 1, 0);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
+
+			it('should return "agent" when workflow name is "My workflow edited"', () => {
+				const state = createMockState('Create a workflow', 'My workflow edited', 1, 0);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
+
+			it('should return "agent" when workflow has default name but multiple messages exist', () => {
+				const state = createMockState('Continue workflow', 'My workflow', 2, 0);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
+
+			it('should return "agent" when workflow has default name but workflow has nodes', () => {
+				const state = createMockState('Create a workflow', 'My workflow', 1, 3);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
+
+			it('should return "agent" when workflow name is undefined but workflow has nodes', () => {
+				const state = createMockState('Create a workflow', undefined, 1, 2);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
+		});
+
+		describe('auto-compact handling', () => {
+			it('should return "agent" when below threshold', () => {
+				const state = createMockState('Short message', 'Custom Name', 1);
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
 		});
 	});
 });

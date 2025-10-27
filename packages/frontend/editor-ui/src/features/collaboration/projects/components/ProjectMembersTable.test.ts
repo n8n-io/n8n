@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import type { ProjectRole } from '@n8n/permissions';
+import type { ProjectRole, AllRolesMap } from '@n8n/permissions';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import ProjectMembersTable from './ProjectMembersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -87,7 +87,7 @@ vi.mock('./ProjectMembersRoleCell.vue', () => ({
 					:data-test-id="'role-dropdown-' + data.id"
 					@click="$emit('update:role', { role: 'project:admin', userId: data.id })"
 				>
-					{{ roles[data.role]?.label || data.role }}
+					{{ roles.find(role => role.slug === data.role)?.displayName || data.role }}
 				</button>
 				<template v-for="action in actions" :key="action.id">
 					<span
@@ -146,7 +146,7 @@ const mockProjectRoles = [
 	{ slug: 'project:admin', displayName: 'Admin', licensed: true },
 	{ slug: 'project:editor', displayName: 'Editor', licensed: true },
 	{ slug: 'project:viewer', displayName: 'Viewer', licensed: false },
-];
+] as AllRolesMap['project'];
 
 const mockData = {
 	items: mockMembers,

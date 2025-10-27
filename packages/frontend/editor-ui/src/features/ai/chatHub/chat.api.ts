@@ -9,8 +9,13 @@ import type {
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
 	ChatSessionId,
+	ChatMessageId,
+	ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
+	ChatHubUpdateConversationRequest,
+	EnrichedStructuredChunk,
 } from '@n8n/api-types';
-import type { StructuredChunk } from './chat.types';
 
 // Workflows stream data as newline separated JSON objects (jsonl)
 const STREAM_SEPARATOR = '\n';
@@ -26,11 +31,11 @@ export const fetchChatModelsApi = async (
 export function sendMessageApi(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
-	onMessageUpdated: (data: StructuredChunk) => void,
+	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
-	void streamRequest<StructuredChunk>(
+	void streamRequest<EnrichedStructuredChunk>(
 		ctx,
 		'/chat/conversations/send',
 		payload,
@@ -43,14 +48,16 @@ export function sendMessageApi(
 
 export function editMessageApi(
 	ctx: IRestApiContext,
+	sessionId: ChatSessionId,
+	editId: ChatMessageId,
 	payload: ChatHubEditMessageRequest,
-	onMessageUpdated: (data: StructuredChunk) => void,
+	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
-	void streamRequest<StructuredChunk>(
+	void streamRequest<EnrichedStructuredChunk>(
 		ctx,
-		'/chat/conversations/edit',
+		`/chat/conversations/${sessionId}/messages/${editId}/edit`,
 		payload,
 		onMessageUpdated,
 		onDone,
@@ -61,14 +68,16 @@ export function editMessageApi(
 
 export function regenerateMessageApi(
 	ctx: IRestApiContext,
+	sessionId: ChatSessionId,
+	retryId: ChatMessageId,
 	payload: ChatHubRegenerateMessageRequest,
-	onMessageUpdated: (data: StructuredChunk) => void,
+	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
-	void streamRequest<StructuredChunk>(
+	void streamRequest<EnrichedStructuredChunk>(
 		ctx,
-		'/chat/conversations/regenerate',
+		`/chat/conversations/${sessionId}/messages/${retryId}/regenerate`,
 		payload,
 		onMessageUpdated,
 		onDone,
@@ -77,6 +86,15 @@ export function regenerateMessageApi(
 	);
 }
 
+export const stopGenerationApi = async (
+	context: IRestApiContext,
+	sessionId: ChatSessionId,
+	messageId: ChatMessageId,
+): Promise<void> => {
+	const apiEndpoint = `/chat/conversations/${sessionId}/messages/${messageId}/stop`;
+	await makeRestApiRequest(context, 'POST', apiEndpoint);
+};
+
 export const fetchConversationsApi = async (
 	context: IRestApiContext,
 ): Promise<ChatHubConversationsResponse> => {
@@ -84,29 +102,75 @@ export const fetchConversationsApi = async (
 	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
 };
 
+export const updateConversationApi = async (
+	context: IRestApiContext,
+	sessionId: ChatSessionId,
+	updates: ChatHubUpdateConversationRequest,
+): Promise<ChatHubConversationResponse> => {
+	const apiEndpoint = `/chat/conversations/${sessionId}`;
+	return await makeRestApiRequest<ChatHubConversationResponse>(
+		context,
+		'PATCH',
+		apiEndpoint,
+		updates,
+	);
+};
+
 export const updateConversationTitleApi = async (
 	context: IRestApiContext,
-	conversationId: ChatSessionId,
+	sessionId: ChatSessionId,
 	title: string,
 ): Promise<ChatHubConversationResponse> => {
-	const apiEndpoint = `/chat/conversations/${conversationId}/rename`;
-	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'POST', apiEndpoint, {
-		title,
-	});
+	return await updateConversationApi(context, sessionId, { title });
 };
 
 export const deleteConversationApi = async (
 	context: IRestApiContext,
-	conversationId: ChatSessionId,
+	sessionId: ChatSessionId,
 ): Promise<void> => {
-	const apiEndpoint = `/chat/conversations/${conversationId}`;
+	const apiEndpoint = `/chat/conversations/${sessionId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
 };
 
 export const fetchSingleConversationApi = async (
 	context: IRestApiContext,
-	conversationId: ChatSessionId,
+	sessionId: ChatSessionId,
 ): Promise<ChatHubConversationResponse> => {
-	const apiEndpoint = `/chat/conversations/${conversationId}`;
+	const apiEndpoint = `/chat/conversations/${sessionId}`;
 	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);
+};
+
+export const fetchAgentsApi = async (context: IRestApiContext): Promise<ChatHubAgentDto[]> => {
+	const apiEndpoint = '/chat/agents';
+	return await makeRestApiRequest<ChatHubAgentDto[]>(context, 'GET', apiEndpoint);
+};
+
+export const fetchAgentApi = async (
+	context: IRestApiContext,
+	agentId: string,
+): Promise<ChatHubAgentDto> => {
+	const apiEndpoint = `/chat/agents/${agentId}`;
+	return await makeRestApiRequest<ChatHubAgentDto>(context, 'GET', apiEndpoint);
+};
+
+export const createAgentApi = async (
+	context: IRestApiContext,
+	payload: ChatHubCreateAgentRequest,
+): Promise<ChatHubAgentDto> => {
+	const apiEndpoint = '/chat/agents';
+	return await makeRestApiRequest<ChatHubAgentDto>(context, 'POST', apiEndpoint, payload);
+};
+
+export const updateAgentApi = async (
+	context: IRestApiContext,
+	agentId: string,
+	payload: ChatHubUpdateAgentRequest,
+): Promise<ChatHubAgentDto> => {
+	const apiEndpoint = `/chat/agents/${agentId}`;
+	return await makeRestApiRequest<ChatHubAgentDto>(context, 'POST', apiEndpoint, payload);
+};
+
+export const deleteAgentApi = async (context: IRestApiContext, agentId: string): Promise<void> => {
+	const apiEndpoint = `/chat/agents/${agentId}`;
+	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
 };

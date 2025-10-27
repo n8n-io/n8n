@@ -116,105 +116,6 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'MCP Servers',
-				name: 'mcpServers',
-				type: 'fixedCollection',
-				placeholder: 'Add MCP Server',
-				typeOptions: {
-					multipleValues: true,
-					sortable: true,
-				},
-				default: { mcpServerOptions: [{ serverLabel: '' }] },
-				options: [
-					{
-						displayName: 'MCP Server',
-						name: 'mcpServerOptions',
-						values: [
-							{
-								displayName: 'Server Label',
-								name: 'serverLabel',
-								type: 'string',
-								default: '',
-								description: 'A label to identify this MCP server',
-								placeholder: 'e.g. My Database Server',
-							},
-							{
-								displayName: 'Connection Type',
-								name: 'connectionType',
-								type: 'options',
-								default: 'url',
-								options: [
-									{ name: 'URL', value: 'url' },
-									{ name: 'Connector ID', value: 'connector_id' },
-								],
-								description: 'Choose how to connect to the MCP server',
-							},
-							{
-								displayName: 'Server URL',
-								name: 'serverUrl',
-								type: 'string',
-								default: '',
-								description: 'The URL of the MCP server',
-								placeholder: 'e.g. https://api.example.com/mcp',
-								displayOptions: {
-									show: {
-										connectionType: ['url'],
-									},
-								},
-							},
-							{
-								displayName: 'Connector ID',
-								name: 'connectorId',
-								type: 'string',
-								default: '',
-								description: 'The connector ID for the MCP server',
-								placeholder: 'e.g. connector_gmail',
-								displayOptions: {
-									show: {
-										connectionType: ['connector_id'],
-									},
-								},
-							},
-							{
-								displayName: 'Authorization',
-								name: 'authorization',
-								type: 'string',
-								default: '',
-								description: 'Authorization token or credentials for the MCP server',
-							},
-							{
-								displayName: 'Headers',
-								name: 'headers',
-								type: 'json',
-								default: '{}',
-								description: 'Additional headers to send with requests to the MCP server',
-								placeholder: '{"X-Custom-Header": "value"}',
-							},
-							{
-								displayName: 'Server Description',
-								name: 'serverDescription',
-								type: 'string',
-								default: '',
-								description: 'A description of what this MCP server provides',
-								placeholder: 'e.g. Database access for user management',
-								typeOptions: {
-									rows: 2,
-								},
-							},
-							{
-								displayName: 'Allowed Tools',
-								name: 'allowedTools',
-								type: 'string',
-								default: '',
-								description:
-									'Comma-separated list of tools to allow. If not provided, all tools will be allowed.',
-								placeholder: 'e.g. tool1,tool2',
-							},
-						],
-					},
-				],
-			},
-			{
 				displayName: 'File Search',
 				name: 'fileSearch',
 				type: 'collection',
@@ -706,7 +607,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const hasFunctionCall = () => toolCalls.some((item) => item.type === 'function_call');
 
-	const answeredToolCalls = new Set<string>();
 	let currentIteration = 1;
 	// make sure there's actually a function call to answer
 	while (toolCalls.length && hasFunctionCall()) {
@@ -714,14 +614,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
+		// if there's conversation, we don't need to include function_call or reasoning items in the request
+		// if we include them, OpenAI will throw "Duplicate item with id" error
+		if (!body.conversation) {
+			body.input.push.apply(body.input, toolCalls);
+		}
+
 		for (const item of toolCalls) {
-			if (item.type === 'function_call' && answeredToolCalls.has(item.call_id)) {
-				continue;
-			}
-
-			// include function_call or reasoning items in the request
-			body.input.push(item);
-
 			if (item.type === 'function_call') {
 				const functionName = item.name;
 				const functionArgs = item.arguments;
@@ -745,8 +644,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					call_id: callId,
 					output: functionResponse,
 				});
-
-				answeredToolCalls.add(callId);
 			}
 		}
 

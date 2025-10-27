@@ -13,7 +13,7 @@ import { useLocalStorage } from '@vueuse/core';
 import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter, type RouteLocationNormalized } from 'vue-router';
 import { READY_TO_RUN_WORKFLOW_V3 } from '../workflows/ai-workflow-v3';
 import { READY_TO_RUN_WORKFLOW_V4 } from '../workflows/ai-workflow-v4';
@@ -35,12 +35,26 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const cloudPlanStore = useCloudPlanStore();
 		const workflowsStore = useWorkflowsStore();
 
+		const hasChosenHubSpot = computed(() => {
+			const selectedApps = cloudPlanStore.selectedApps;
+
+			if (!selectedApps?.length) {
+				return false;
+			}
+
+			return (
+				selectedApps.includes('n8n-nodes-base.hubspot') ||
+				selectedApps.includes('n8n-nodes-base.hubspotTrigger')
+			);
+		});
+
 		const isFeatureEnabled = computed(() => {
 			const variant = posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
 			return (
 				(variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3 ||
 					variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant4) &&
-				cloudPlanStore.userIsTrialing
+				cloudPlanStore.userIsTrialing &&
+				!hasChosenHubSpot.value
 			);
 		});
 
@@ -84,6 +98,30 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			telemetry.track('User executed ready to run AI workflow successfully', {
 				variant,
 			});
+		};
+
+		const trackExperimentParticipation = async () => {
+			if (settingsStore.isCloudDeployment && !cloudPlanStore.state.initialized) {
+				try {
+					await cloudPlanStore.initialize();
+				} catch (error) {
+					console.warn('Could not load cloud plan data for experiment tracking:', error);
+					return;
+				}
+			}
+
+			// Skip tracking if user has selected HubSpot nodes
+			if (hasChosenHubSpot.value) {
+				return;
+			}
+
+			const variant = posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
+			if (variant) {
+				telemetry.track('User is part of experiment', {
+					name: READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+					variant,
+				});
+			}
 		};
 
 		const claimFreeAiCredits = async (projectId?: string) => {
@@ -200,6 +238,18 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const getSimplifiedLayoutVisibility = (route: RouteLocationNormalized, loading: boolean) => {
 			return shouldShowSimplifiedLayout(route, isFeatureEnabled.value, loading);
 		};
+
+		let hasTrackedExperiment = false;
+		watch(
+			isFeatureEnabled,
+			(enabled) => {
+				if (enabled && !hasTrackedExperiment) {
+					hasTrackedExperiment = true;
+					void trackExperimentParticipation();
+				}
+			},
+			{ immediate: true },
+		);
 
 		return {
 			isFeatureEnabled,

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
@@ -11,6 +11,14 @@ import {
 	fetchSingleConversationApi as fetchMessagesApi,
 	updateConversationTitleApi,
 	deleteConversationApi,
+	stopGenerationApi,
+	fetchSingleConversationApi,
+	fetchAgentsApi,
+	fetchAgentApi,
+	createAgentApi,
+	updateAgentApi,
+	deleteAgentApi,
+	updateConversationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -21,17 +29,22 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 	ChatHubMessageDto,
+	ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
+	EnrichedStructuredChunk,
+	ChatHubMessageStatus,
 } from '@n8n/api-types';
-import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import { retry } from '@n8n/utils/retry';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
 	const loadingModels = ref(false);
-	const streamingMessageId = ref<string>();
 	const sessions = ref<ChatHubSessionDto[]>([]);
-
-	const isResponding = computed(() => streamingMessageId.value !== undefined);
+	const agents = ref<ChatHubAgentDto[]>([]);
+	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
@@ -59,6 +72,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		return conversation;
+	}
+
+	function lastMessage(sessionId: ChatSessionId): ChatMessage | null {
+		const conversation = getConversation(sessionId);
+		if (!conversation || conversation.activeMessageChain.length === 0) {
+			return null;
+		}
+
+		const messageId = conversation.activeMessageChain[conversation.activeMessageChain.length - 1];
+		return conversation.messages[messageId] ?? null;
+	}
+
+	function isResponding(sessionId: ChatSessionId) {
+		const last = lastMessage(sessionId);
+		return last?.status === 'running';
 	}
 
 	function computeActiveChain(
@@ -184,6 +212,22 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: Recomputing the entire graph shouldn't be needed here
 		conversation.messages = linkMessages(Object.values(conversation.messages));
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, message.id);
+
+		return message;
+	}
+
+	function replaceMessageContent(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		content: string,
+	) {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+		if (!message) {
+			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
+		}
+
+		message.content = content;
 	}
 
 	function appendMessage(sessionId: ChatSessionId, messageId: ChatMessageId, chunk: string) {
@@ -194,6 +238,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		message.content += chunk;
+	}
+
+	function updateMessage(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		status: ChatHubMessageStatus,
+	) {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+		if (!message) {
+			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
+		}
+
+		message.status = status;
+		message.updatedAt = new Date().toISOString();
 	}
 
 	async function fetchChatModels(credentialMap: CredentialsMap) {
@@ -226,15 +285,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function onBeginMessage(
-		sessionId: string,
-		messageId: string,
-		replyToMessageId: string,
-		retryOfMessageId: string | null,
-		_nodeId: string,
-		_runIndex?: number,
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		previousMessageId: ChatMessageId | null,
+		retryOfMessageId: ChatMessageId | null,
+		status: ChatHubMessageStatus = 'running',
 	) {
-		streamingMessageId.value = messageId;
-
 		addMessage(sessionId, {
 			id: messageId,
 			sessionId,
@@ -245,10 +301,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model: null,
 			workflowId: null,
 			executionId: null,
-			state: 'success',
+			agentId: null,
+			status,
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
-			previousMessageId: replyToMessageId,
+			previousMessageId,
 			retryOfMessageId,
 			revisionOfMessageId: null,
 			responses: [],
@@ -256,72 +313,115 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		});
 	}
 
-	function onChunk(
-		sessionId: string,
-		messageId: string,
-		chunk: string,
-		_nodeId?: string,
-		_runIndex?: number,
-	) {
+	function ensureMessage(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		previousMessageId: ChatMessageId | null,
+		retryOfMessageId: ChatMessageId | null,
+	): ChatMessage {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+		if (message) {
+			return message;
+		}
+
+		return addMessage(sessionId, {
+			id: messageId,
+			sessionId,
+			type: 'ai',
+			name: 'AI',
+			content: '',
+			provider: null,
+			model: null,
+			workflowId: null,
+			executionId: null,
+			status: 'running',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			previousMessageId,
+			retryOfMessageId,
+			revisionOfMessageId: null,
+			responses: [],
+			alternatives: [],
+			agentId: null,
+		});
+	}
+
+	function onChunk(sessionId: string, messageId: string, chunk: string) {
 		appendMessage(sessionId, messageId, chunk);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
-		streamingMessageId.value = undefined;
+	function onEndMessage(sessionId: ChatSessionId, messageId: ChatMessageId) {
+		updateMessage(sessionId, messageId, 'success');
 	}
 
-	function onStreamMessage(
-		sessionId: string,
-		message: StructuredChunk,
-		messageId: string,
-		replyToMessageId: string,
-		retryOfMessageId: string | null,
-	) {
-		const nodeId = message.metadata?.nodeId || 'unknown';
-		const runIndex = message.metadata?.runIndex;
+	function onStreamMessage(sessionId: string, chunk: EnrichedStructuredChunk) {
+		const { messageId, previousMessageId, retryOfMessageId } = chunk.metadata;
 
-		switch (message.type) {
+		switch (chunk.type) {
 			case 'begin':
-				onBeginMessage(sessionId, messageId, replyToMessageId, retryOfMessageId, nodeId, runIndex);
+				onBeginMessage(sessionId, messageId, previousMessageId, retryOfMessageId);
 				break;
 			case 'item':
-				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
+				onChunk(sessionId, messageId, chunk.content ?? '');
 				break;
 			case 'end':
-				onEndMessage(messageId, nodeId, runIndex);
+				onEndMessage(sessionId, messageId);
 				break;
-			case 'error':
-				onChunk(
-					sessionId,
-					messageId,
-					`Error: ${message.content ?? 'Unknown error'}`,
-					nodeId,
-					runIndex,
-				);
-				onEndMessage(messageId, nodeId, runIndex);
+			case 'error': {
+				// Ignore errors after cancellation
+				const message = ensureMessage(sessionId, messageId, previousMessageId, retryOfMessageId);
+
+				if (message.status === 'cancelled') {
+					return;
+				}
+
+				updateMessage(sessionId, messageId, 'error');
+				onChunk(sessionId, messageId, message.content ?? '');
 				break;
+			}
 		}
 	}
 
-	async function onStreamDone() {
-		streamingMessageId.value = undefined;
-		await fetchSessions(); // update the conversation list
+	async function onStreamDone(sessionId: ChatSessionId) {
+		// wait up to 3 seconds until conversation title is generated
+		await retry(
+			async () => {
+				const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
+
+				return session.session.title !== 'New Chat';
+			},
+			1000,
+			3,
+		);
+
+		// update the conversation list
+		await fetchSessions();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onStreamError(_e: Error) {
-		streamingMessageId.value = undefined;
+	function onStreamError(sessionId: ChatSessionId, _e: Error) {
+		const conversation = getConversation(sessionId);
+		if (!conversation) {
+			return;
+		}
+
+		// TODO: Not sure if we want to mark all running messages as errored?
+		for (const messageId of conversation.activeMessageChain) {
+			const message = conversation.messages[messageId];
+			if (message.status === 'running') {
+				updateMessage(sessionId, messageId, 'error');
+			}
+		}
 	}
 
 	function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
-		model: ChatHubConversationModel | null,
-		credentials: ChatHubSendMessageRequest['credentials'] | null,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const messageId = uuidv4();
-		const replyId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.activeMessageChain.length
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
@@ -334,10 +434,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: model?.model ?? null,
+			model: model.provider === 'n8n' || model.provider === 'custom-agent' ? null : model.model,
 			workflowId: null,
 			executionId: null,
-			state: 'success',
+			agentId: null,
+			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			previousMessageId,
@@ -347,93 +448,73 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
-		if (!model || !credentials) {
-			addMessage(sessionId, {
-				id: replyId,
-				sessionId,
-				type: 'ai',
-				name: 'AI',
-				content: '**ERROR:** Select a model to start a conversation.',
-				provider: null,
-				model: null,
-				workflowId: null,
-				executionId: null,
-				state: 'error',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				previousMessageId: messageId,
-				retryOfMessageId: null,
-				revisionOfMessageId: null,
-				responses: [],
-				alternatives: [],
-			});
-			return;
-		}
-
 		sendMessageApi(
 			rootStore.restApiContext,
 			{
 				model,
 				messageId,
 				sessionId,
-				replyId,
 				message,
 				credentials,
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
-			onStreamDone,
-			onStreamError,
+			(chunk: EnrichedStructuredChunk) => onStreamMessage(sessionId, chunk),
+			async () => await onStreamDone(sessionId),
+			(e) => onStreamError(sessionId, e),
 		);
 	}
 
 	function editMessage(
 		sessionId: ChatSessionId,
 		editId: ChatMessageId,
-		message: string,
+		content: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const messageId = uuidv4();
-		const replyId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
-		const previousMessageId = conversation.messages[editId]?.previousMessageId ?? null;
+		const message = conversation.messages[editId];
+		const previousMessageId = message?.previousMessageId ?? null;
 
-		addMessage(sessionId, {
-			id: messageId,
-			sessionId,
-			type: 'human',
-			name: 'User',
-			content: message,
-			provider: null,
-			model: null,
-			workflowId: null,
-			executionId: null,
-			state: 'success',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			previousMessageId,
-			retryOfMessageId: null,
-			revisionOfMessageId: editId,
-			responses: [],
-			alternatives: [],
-		});
+		if (message?.type === 'human') {
+			addMessage(sessionId, {
+				id: messageId,
+				sessionId,
+				type: 'human',
+				name: message.name ?? 'User',
+				content,
+				provider: null,
+				model: null,
+				workflowId: null,
+				executionId: null,
+				agentId: null,
+				status: 'success',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				previousMessageId,
+				retryOfMessageId: null,
+				revisionOfMessageId: editId,
+				responses: [],
+				alternatives: [],
+			});
+		} else if (message?.type === 'ai') {
+			replaceMessageContent(sessionId, editId, content);
+		}
 
 		editMessageApi(
 			rootStore.restApiContext,
+			sessionId,
+			editId,
 			{
 				model,
 				messageId,
-				sessionId,
-				replyId,
-				editId,
-				message,
+				message: content,
 				credentials,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
-			onStreamDone,
-			onStreamError,
+			(chunk: EnrichedStructuredChunk) => onStreamMessage(sessionId, chunk),
+			async () => await onStreamDone(sessionId),
+			(e) => onStreamError(sessionId, e),
 		);
 	}
 
@@ -443,7 +524,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
-		const replyId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
 
@@ -453,26 +533,47 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		regenerateMessageApi(
 			rootStore.restApiContext,
+			sessionId,
+			retryId,
 			{
 				model,
-				sessionId,
-				retryId,
-				replyId,
 				credentials,
 			},
-			(chunk: StructuredChunk) =>
-				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId),
-			onStreamDone,
-			onStreamError,
+			(chunk: EnrichedStructuredChunk) => onStreamMessage(sessionId, chunk),
+			async () => await onStreamDone(sessionId),
+			(e) => onStreamError(sessionId, e),
+		);
+	}
+
+	async function stopStreamingMessage(sessionId: ChatSessionId) {
+		const currentMessage = lastMessage(sessionId);
+
+		if (currentMessage && currentMessage.status === 'running') {
+			updateMessage(sessionId, currentMessage.id, 'cancelled');
+			await stopGenerationApi(rootStore.restApiContext, sessionId, currentMessage.id);
+		}
+	}
+
+	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
+		sessions.value = sessions.value.map((session) =>
+			session.id === sessionId
+				? {
+						...session,
+						...toUpdate,
+					}
+				: session,
 		);
 	}
 
 	async function renameSession(sessionId: ChatSessionId, title: string) {
 		const updated = await updateConversationTitleApi(rootStore.restApiContext, sessionId, title);
 
-		sessions.value = sessions.value.map((session) =>
-			session.id === sessionId ? updated.session : session,
-		);
+		updateSession(sessionId, updated.session);
+	}
+
+	async function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
+		await updateConversationApi(rootStore.restApiContext, sessionId, model);
+		updateSession(sessionId, model);
 	}
 
 	async function deleteSession(sessionId: ChatSessionId) {
@@ -493,17 +594,82 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
+	async function fetchAgents() {
+		agents.value = await fetchAgentsApi(rootStore.restApiContext);
+	}
+
+	async function fetchAgent(agentId: string): Promise<ChatHubAgentDto> {
+		const agent = await fetchAgentApi(rootStore.restApiContext, agentId);
+		currentEditingAgent.value = agent;
+		return agent;
+	}
+
+	function getAgent(agentId: string) {
+		return models.value?.['custom-agent'].models.find(
+			(model) => 'agentId' in model && model.agentId === agentId,
+		);
+	}
+
+	async function createAgent(
+		payload: ChatHubCreateAgentRequest,
+	): Promise<ChatHubConversationModel> {
+		const agent = await createAgentApi(rootStore.restApiContext, payload);
+		agents.value.push(agent);
+		const model = {
+			provider: 'custom-agent' as const,
+			agentId: agent.id,
+			name: agent.name,
+		};
+		models.value?.['custom-agent'].models.push(model);
+
+		return model;
+	}
+
+	async function updateAgent(
+		agentId: string,
+		payload: ChatHubUpdateAgentRequest,
+	): Promise<ChatHubAgentDto> {
+		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+		agents.value = agents.value.map((a) => (a.id === agentId ? agent : a));
+
+		// Update the agent in models as well
+		if (models.value?.['custom-agent']) {
+			models.value['custom-agent'].models = models.value['custom-agent'].models.map((model) =>
+				'agentId' in model && model.agentId === agentId ? { ...model, name: agent.name } : model,
+			);
+		}
+
+		return agent;
+	}
+
+	async function deleteAgent(agentId: string) {
+		await deleteAgentApi(rootStore.restApiContext, agentId);
+		agents.value = agents.value.filter((a) => a.id !== agentId);
+
+		// Remove the agent from models as well
+		if (models.value?.['custom-agent']) {
+			models.value['custom-agent'].models = models.value['custom-agent'].models.filter(
+				(model) => !('agentId' in model) || model.agentId !== agentId,
+			);
+		}
+	}
+
 	return {
 		models,
 		sessions,
+		agents,
+		currentEditingAgent,
 		conversationsBySession,
 		loadingModels,
 		isResponding,
-		streamingMessageId,
+		getAgent,
+		lastMessage,
 		fetchChatModels,
+		updateSessionModel,
 		sendMessage,
 		editMessage,
 		regenerateMessage,
+		stopStreamingMessage,
 		fetchSessions,
 		fetchMessages,
 		renameSession,
@@ -511,5 +677,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		getConversation,
 		getActiveMessages,
 		switchAlternative,
+		fetchAgents,
+		fetchAgent,
+		createAgent,
+		updateAgent,
+		deleteAgent,
 	};
 });

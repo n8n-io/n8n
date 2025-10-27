@@ -1,4 +1,4 @@
-import type { ChatHubProvider, ChatHubMessageType, ChatHubMessageState } from '@n8n/api-types';
+import type { ChatHubProvider, ChatHubMessageType, ChatHubMessageStatus } from '@n8n/api-types';
 import { ExecutionEntity, WithTimestamps, WorkflowEntity } from '@n8n/db';
 import {
 	Column,
@@ -75,6 +75,13 @@ export class ChatHubMessage extends WithTimestamps {
 	@ManyToOne('WorkflowEntity', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'workflowId' })
 	workflow?: Relation<WorkflowEntity> | null;
+
+	/**
+	 * ID of the custom agent that produced this message (if applicable).
+	 * Only set when provider is 'custom-agent'.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	agentId: string | null;
 
 	/**
 	 * ID of an execution that produced this message (reset to null when the execution is deleted).
@@ -156,8 +163,8 @@ export class ChatHubMessage extends WithTimestamps {
 	revisions?: Array<Relation<ChatHubMessage>>;
 
 	/**
-	 * State of the message, e.g. 'success', 'error'.
+	 * Status of the message, e.g. 'running', 'success', 'error', 'cancelled'.
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'success' })
-	state: ChatHubMessageState;
+	status: ChatHubMessageStatus;
 }
