@@ -100,9 +100,9 @@ const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as c
 );
 const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
 
-const dataTable = (
-	['read', 'update', 'create', 'delete', 'listProject', 'readRow', 'writeRow'] as const
-).map((action) => `dataTable:${action}` as const);
+const dataTable = (['read', 'readRow', 'update', 'writeRow', 'create', 'delete'] as const).map(
+	(action) => `dataTable:${action}` as const,
+);
 
 const projectVariable = (['read', 'update', 'create', 'delete'] as const).map(
 	(action) => `projectVariable:${action}` as const,
@@ -136,7 +136,12 @@ function toggleScope(scope: string) {
 		form.value.scopes.push(scope);
 	}
 
-	if (scope.endsWith(':read') && !scope.startsWith('dataTable:')) {
+	if (scope.startsWith('dataTable:') && scope.endsWith(':read')) {
+		toggleScope(scope.replace(':read', ':listProject'));
+		return;
+	}
+
+	if (scope.endsWith(':read')) {
 		toggleScope(scope.replace(':read', ':list'));
 	}
 
