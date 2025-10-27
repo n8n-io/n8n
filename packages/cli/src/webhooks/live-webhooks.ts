@@ -96,18 +96,23 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: webhook.workflowId },
-			relations: { shared: { project: { projectRelations: true } } },
+			relations: {
+				activeVersion: true,
+				shared: { project: { projectRelations: true } },
+			},
 		});
 
 		if (workflowData === null) {
 			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
 		}
 
+		const { nodes, connections } = workflowData.activeVersion ?? workflowData;
+
 		const workflow = new Workflow({
 			id: webhook.workflowId,
 			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
+			nodes,
+			connections,
 			active: workflowData.active,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
