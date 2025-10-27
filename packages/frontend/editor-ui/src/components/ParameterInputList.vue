@@ -23,7 +23,7 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useI18n } from '@n8n/i18n';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { useNodeSettingsParameters } from '@/features/ndv/composables/useNodeSettingsParameters';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useMessage } from '@/composables/useMessage';
 import {
@@ -33,7 +33,7 @@ import {
 	MODAL_CONFIRM,
 	WAIT_NODE_TYPE,
 } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { captureException } from '@sentry/vue';
@@ -41,7 +41,7 @@ import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
 import { storeToRefs } from 'pinia';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { getParameterTypeOption } from '@/features/ndv/ndv.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
@@ -729,7 +729,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	--disabled-fill: var(--color--background);
+	--input--color--background--disabled: var(--color--background);
 	.icon-button {
 		position: absolute;
 		opacity: 0;

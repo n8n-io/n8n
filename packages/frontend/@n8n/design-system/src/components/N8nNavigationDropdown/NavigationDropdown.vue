@@ -45,6 +45,10 @@ defineSlots<{
 	[key: `item.append.${string}`]: (props: { item: Item }) => unknown;
 }>();
 
+const open = () => {
+	menuRef.value?.open(ROOT_MENU_INDEX);
+};
+
 const close = () => {
 	menuRef.value?.close(ROOT_MENU_INDEX);
 };
@@ -61,6 +65,7 @@ const onClose = (index: string) => {
 };
 
 defineExpose({
+	open,
 	close,
 });
 </script>
@@ -167,7 +172,7 @@ defineExpose({
 
 <style lang="scss" module>
 :global(.el-menu).dropdown {
-	border-bottom: 0;
+	border-bottom: 0 !important;
 	background-color: transparent;
 
 	> :global(.el-sub-menu) {

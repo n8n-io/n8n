@@ -22,23 +22,22 @@ import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	PROJECT_VARIABLES_EXPERIMENT,
 	RELEASE_NOTES_URL,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
 import { EXTERNAL_LINKS } from '@/constants/externalLinks';
-import { CHAT_VIEW } from '@/features/chatHub/constants';
+import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTemplatesStore } from '@/features/templates/templates.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSourceControlStore } from '@/features/sourceControl.ee/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -55,10 +54,9 @@ import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTempl
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import ProjectNavigation from '@/features/projects/components/ProjectNavigation.vue';
+import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
-import { usePostHog } from '@/stores/posthog.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -80,7 +78,6 @@ const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
 const calloutHelpers = useCalloutHelpers();
-const posthogStore = usePostHog();
 
 useKeybindings({
 	ctrl_alt_o: () => handleSelect('about'),
@@ -101,13 +98,6 @@ const showWhatsNewNotification = computed(
 		),
 );
 
-const isProjectVariablesEnabled = computed(() =>
-	posthogStore.isVariantEnabled(
-		PROJECT_VARIABLES_EXPERIMENT.name,
-		PROJECT_VARIABLES_EXPERIMENT.variant,
-	),
-);
-
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
@@ -115,6 +105,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: 'Admin Panel',
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+	},
+	{
+		id: 'chat',
+		icon: 'message-circle',
+		label: 'Chat',
+		position: 'bottom',
+		route: { to: { name: CHAT_VIEW } },
+		available:
+			settingsStore.isChatFeatureEnabled &&
+			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		// Link to in-app pre-built agent templates, available experiment is enabled
@@ -178,14 +178,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		},
 	},
 	{
-		id: 'variables',
-		icon: 'variable',
-		label: i18n.baseText('mainSidebar.variables'),
-		position: 'bottom',
-		route: { to: { name: VIEWS.VARIABLES } },
-		available: !isProjectVariablesEnabled.value,
-	},
-	{
 		id: 'insights',
 		icon: 'chart-column-decreasing',
 		label: 'Insights',
@@ -194,16 +186,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
-	},
-	{
-		id: 'chat',
-		icon: 'bot',
-		label: 'Chat',
-		position: 'bottom',
-		route: { to: { name: CHAT_VIEW } },
-		available:
-			settingsStore.isChatFeatureEnabled &&
-			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		id: 'help',

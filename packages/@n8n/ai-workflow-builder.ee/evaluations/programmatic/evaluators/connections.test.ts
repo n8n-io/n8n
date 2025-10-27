@@ -8,8 +8,9 @@ import type {
 } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import { resolveConnections } from '@/validation/utils/resolve-connections';
 
-import { evaluateConnections, resolveConnections } from './connections';
+import { evaluateConnections } from './connections';
 
 const DEFAULT_VERSION = 1;
 
@@ -769,6 +770,88 @@ describe('evaluateConnections', () => {
 				expect.objectContaining({
 					description:
 						'Merge node Merge Data has only 1 input connection(s). Merge nodes require at least 2 inputs to function properly.',
+				}),
+			);
+		});
+
+		it('should report issue when merge node inputs reuse the same index', () => {
+			const workflow = mock<SimpleWorkflow>({
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Code1',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Code2',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 200],
+					},
+					{
+						id: '3',
+						name: 'Code3',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 400],
+					},
+					{
+						id: '4',
+						name: 'Merge',
+						type: 'n8n-nodes-test.merge',
+						parameters: { numberInputs: 3 },
+						typeVersion: 1,
+						position: [200, 200],
+					},
+				],
+				connections: {
+					Code1: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Code2: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Code3: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+			});
+
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description: 'Merge node Merge is missing connections for input(s) 2, 3.',
 				}),
 			);
 		});

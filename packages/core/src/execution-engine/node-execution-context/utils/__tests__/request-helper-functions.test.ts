@@ -1,8 +1,5 @@
 import FormData from 'form-data';
-import { Agent as HttpAgent } from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { Agent as HttpsAgent } from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import type { Agent as HttpsAgent } from 'https';
 import { mock } from 'jest-mock-extended';
 import type {
 	IHttpRequestMethods,
@@ -22,7 +19,6 @@ import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
 	createFormDataObject,
-	getAgentWithProxy,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
@@ -868,92 +864,6 @@ describe('Request Helper Functions', () => {
 
 			expect(response).toEqual({ success: true });
 			scope.done();
-		});
-	});
-
-	describe('getAgentWithProxy', () => {
-		const baseUrlHttps = 'https://example.com';
-		const baseUrlHttp = 'http://example.com';
-		const proxyUrlHttps = 'http://proxy-for-https.com:8080/';
-		const proxyUrlHttp = 'http://proxy-for-http.com:8080/';
-
-		test('should return a regular HTTP agent when no proxy is set', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttp,
-			});
-			expect(protocol).toEqual('http');
-			expect(agent).toBeInstanceOf(HttpAgent);
-		});
-
-		test('should return a regular HTTPS agent when no proxy is set', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-			});
-			expect(protocol).toEqual('https');
-			expect(agent).toBeInstanceOf(HttpsAgent);
-		});
-
-		test('should use a proxyConfig object', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-				proxyConfig: {
-					host: 'proxy-for-https.com',
-					port: 8080,
-				},
-			});
-			expect(protocol).toEqual('https');
-			expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
-		});
-
-		test('should use a proxyConfig string', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-				proxyConfig: proxyUrlHttps,
-			});
-			expect(agent).toBeInstanceOf(HttpsProxyAgent);
-			expect(protocol).toEqual('https');
-			expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
-		});
-
-		describe('environment variables', () => {
-			let originalEnv: NodeJS.ProcessEnv;
-
-			beforeAll(() => {
-				originalEnv = { ...process.env };
-				process.env.HTTP_PROXY = proxyUrlHttp;
-				process.env.HTTPS_PROXY = proxyUrlHttps;
-				process.env.NO_PROXY = 'should-not-proxy.com';
-			});
-
-			afterAll(() => {
-				process.env = originalEnv;
-			});
-
-			test('should proxy http requests (HTTP_PROXY)', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: baseUrlHttp,
-				});
-				expect(protocol).toEqual('http');
-				expect(agent).toBeInstanceOf(HttpProxyAgent);
-				expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttp);
-			});
-
-			test('should proxy https requests (HTTPS_PROXY)', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: baseUrlHttps,
-				});
-				expect(protocol).toEqual('https');
-				expect(agent).toBeInstanceOf(HttpsProxyAgent);
-				expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
-			});
-
-			test('should not proxy some hosts based on NO_PROXY', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: 'https://should-not-proxy.com/foo',
-				});
-				expect(protocol).toEqual('https');
-				expect(agent).toBeInstanceOf(HttpsAgent);
-			});
 		});
 	});
 });

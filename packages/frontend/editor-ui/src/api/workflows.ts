@@ -1,11 +1,13 @@
 import type {
-	IExecutionResponse,
-	IExecutionsCurrentSummaryExtended,
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+} from '@/features/execution/executions/executions.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
@@ -100,5 +102,16 @@ export async function getExecutionData(context: IRestApiContext, executionId: st
 		context,
 		'GET',
 		`/executions/${executionId}`,
+	);
+}
+
+export async function getLastSuccessfulExecution(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<IExecutionResponse | null> {
+	return await makeRestApiRequest<IExecutionResponse | null>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/executions/last-successful`,
 	);
 }

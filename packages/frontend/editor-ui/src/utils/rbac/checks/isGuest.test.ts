@@ -1,7 +1,7 @@
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { isGuest } from '@/utils/rbac/checks/isGuest';
 
-vi.mock('@/stores/users.store', () => ({
+vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 

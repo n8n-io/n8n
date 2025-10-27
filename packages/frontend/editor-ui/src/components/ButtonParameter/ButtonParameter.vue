@@ -5,7 +5,7 @@ import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import {
 	getParentNodes,
 	generateCodeForAiTransform,
@@ -337,7 +337,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 }
 .disabled {
 	.meta {
-		background-color: var(--fill-disabled);
+		background-color: var(--input--color--background--disabled);
 	}
 }
 </style>
