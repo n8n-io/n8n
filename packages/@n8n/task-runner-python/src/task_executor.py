@@ -1,4 +1,3 @@
-from queue import Empty
 import multiprocessing
 import traceback
 import textwrap
@@ -7,6 +6,7 @@ import io
 import os
 import sys
 import logging
+import threading
 
 from src.errors import (
     TaskCancelledError,
@@ -32,7 +32,6 @@ from src.constants import (
 from typing import Any
 
 from multiprocessing.context import ForkServerProcess
-from multiprocessing import shared_memory
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,7 @@ class TaskExecutor:
         items: Items,
         security_config: SecurityConfig,
     ):
-        """Create a subprocess for executing a Python code task and a queue for communication."""
+        """Create a subprocess for executing a Python code task and a pipe for communication."""
 
         fn = (
             TaskExecutor._all_items
@@ -60,23 +59,25 @@ class TaskExecutor:
             else TaskExecutor._per_item
         )
 
-        queue = MULTIPROCESSING_CONTEXT.Queue()
+        parent_conn, child_conn = MULTIPROCESSING_CONTEXT.Pipe(duplex=False)
+
         process = MULTIPROCESSING_CONTEXT.Process(
             target=fn,
             args=(
                 code,
                 items,
-                queue,
+                child_conn,
                 security_config,
             ),
         )
 
-        return process, queue
+        return process, parent_conn, child_conn
 
     @staticmethod
     def execute_process(
         process: ForkServerProcess,
-        queue: multiprocessing.Queue,
+        parent_conn,
+        child_conn,
         task_timeout: int,
         continue_on_fail: bool,
     ) -> tuple[list, PrintArgs, int]:
@@ -85,10 +86,35 @@ class TaskExecutor:
         print_args: PrintArgs = []
 
         try:
+            read_fd = parent_conn.fileno()
+
+            result_data: list[dict] = []
+            read_error: list[Exception] = []
+
+            def read_from_pipe():
+                """Read result from pipe in background thread."""
+                
+                try:
+                    length_bytes = TaskExecutor._read_exact(read_fd, 4)
+                    length = int.from_bytes(length_bytes, "big")
+
+                    data = TaskExecutor._read_exact(read_fd, length)
+                    returned = json.loads(data.decode("utf-8"))
+                    result_data.append(returned)
+                except Exception as e:
+                    read_error.append(e)
+                finally:
+                    parent_conn.close()
+
+            reader = threading.Thread(target=read_from_pipe, daemon=True)
+            reader.start()
+
             try:
                 process.start()
+                child_conn.close()
             except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
                 logger.error(f"Failed to start child process: {e}")
+                child_conn.close()
                 raise TaskSubprocessFailedError(-1)
 
             process.join(timeout=task_timeout)
@@ -107,40 +133,32 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            try:
-                returned = queue.get_nowait()
-            except Empty:
-                raise TaskResultMissingError()
-            except EOFError as e:
-                logger.error(f"Failed to retrieve results from child process: {e}")
+            reader.join(timeout=5.0)
+
+            if read_error:
+                logger.error(
+                    f"Failed to retrieve results from child process: {read_error[0]}"
+                )
                 raise TaskResultMissingError()
 
-            finally:
-                queue.close()
-                queue.join_thread()
+            if not result_data:
+                raise TaskResultMissingError()
+
+            returned = result_data[0]
 
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            if "shm_name" not in returned:
+            if "result" not in returned:
                 raise TaskResultMissingError()
 
-            shm_name = returned["shm_name"]
-            shm_size = returned["shm_size"]
-            try:
-                shm = shared_memory.SharedMemory(name=shm_name)
-                try:
-                    json_str = bytes(shm.buf[:shm_size]).decode("utf-8")
-                    result = json.loads(json_str)
-                finally:
-                    shm.close()
-                    shm.unlink()
-            except FileNotFoundError:
-                raise TaskResultMissingError()
-
+            result = returned["result"]
             print_args = returned.get("print_args", [])
+            message_length = len(
+                json.dumps(returned, default=str, ensure_ascii=False).encode("utf-8")
+            )
 
-            return result, print_args, shm_size
+            return result, print_args, message_length
 
         except Exception as e:
             if continue_on_fail:
@@ -169,7 +187,7 @@ class TaskExecutor:
     def _all_items(
         raw_code: str,
         items: Items,
-        queue: multiprocessing.Queue,
+        child_conn,
         security_config: SecurityConfig,
     ):
         """Execute a Python code task in all-items mode."""
@@ -195,16 +213,18 @@ class TaskExecutor:
             exec(compiled_code, globals)
 
             result = globals[EXECUTOR_USER_OUTPUT_KEY]
-            TaskExecutor._put_result(queue, result, print_args)
+            write_fd = child_conn.fileno()
+            TaskExecutor._put_result(write_fd, result, print_args)
 
         except BaseException as e:
-            TaskExecutor._put_error(queue, e, stderr_capture.getvalue(), print_args)
+            write_fd = child_conn.fileno()
+            TaskExecutor._put_error(write_fd, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _per_item(
         raw_code: str,
         items: Items,
-        queue: multiprocessing.Queue,
+        child_conn,
         security_config: SecurityConfig,
     ):
         """Execute a Python code task in per-item mode."""
@@ -248,10 +268,12 @@ class TaskExecutor:
 
                 result.append(item)
 
-            TaskExecutor._put_result(queue, result, print_args)
+            write_fd = child_conn.fileno()
+            TaskExecutor._put_result(write_fd, result, print_args)
 
         except BaseException as e:
-            TaskExecutor._put_error(queue, e, stderr_capture.getvalue(), print_args)
+            write_fd = child_conn.fileno()
+            TaskExecutor._put_error(write_fd, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
@@ -272,29 +294,24 @@ class TaskExecutor:
         return user_output
 
     @staticmethod
-    def _put_result(
-        queue: multiprocessing.Queue, result: list[Any], print_args: PrintArgs
-    ):
-        json_bytes = json.dumps(result, default=str, ensure_ascii=False).encode("utf-8")
-        json_bytes_size = len(json_bytes)
-
-        shm = shared_memory.SharedMemory(create=True, size=json_bytes_size)
-        shm.buf[:json_bytes_size] = json_bytes
-
+    def _put_result(write_fd: int, result: list[Any], print_args: PrintArgs):
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-        queue.put(
-            {
-                "shm_name": shm.name,
-                "shm_size": json_bytes_size,  # stay exact, shm.size can round up for alignment
-                "print_args": print_args_to_send,
-            }
-        )
 
-        shm.close()
+        message = {
+            "result": result,
+            "print_args": print_args_to_send,
+        }
+
+        data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
+        length_bytes = len(data).to_bytes(4, "big")
+
+        TaskExecutor._write_all(write_fd, length_bytes)
+        TaskExecutor._write_all(write_fd, data)
+        os.close(write_fd)
 
     @staticmethod
     def _put_error(
-        queue: multiprocessing.Queue,
+        write_fd: int,
         e: BaseException,
         stderr: str = "",
         print_args: PrintArgs = [],
@@ -310,12 +327,17 @@ class TaskExecutor:
 
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
 
-        queue.put(
-            {
-                "error": error_dict,
-                "print_args": print_args_to_send,
-            }
-        )
+        message = {
+            "error": error_dict,
+            "print_args": print_args_to_send,
+        }
+
+        data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
+        length_bytes = len(data).to_bytes(4, "big")
+
+        TaskExecutor._write_all(write_fd, length_bytes)
+        TaskExecutor._write_all(write_fd, data)
+        os.close(write_fd)
 
     # ========== print() ==========
 
@@ -460,3 +482,26 @@ class TaskExecutor:
             return original_import(name, *args, **kwargs)
 
         return safe_import
+
+    @staticmethod
+    def _read_exact(fd: int, n: int) -> bytes:
+        """Read exactly n bytes from file descriptor."""
+
+        result = b""
+        while len(result) < n:
+            chunk = os.read(fd, n - len(result))
+            if not chunk:
+                raise EOFError("Pipe closed before reading all data")
+            result += chunk
+        return result
+
+    @staticmethod
+    def _write_all(fd: int, data: bytes):
+        """Write all bytes to file descriptor."""
+
+        total_written = 0
+        while total_written < len(data):
+            written = os.write(fd, data[total_written:])
+            if written == 0:
+                raise OSError("Write failed")
+            total_written += written
