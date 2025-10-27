@@ -263,7 +263,7 @@ export class ChatHubController {
 		_res: Response,
 		@Body payload: ChatHubCreateAgentRequest,
 	) {
-		return await this.chatAgentService.createAgent(req.user.id, payload);
+		return await this.chatAgentService.createAgent(req.user, payload);
 	}
 
 	@Post('/agents/:agentId')
@@ -274,7 +274,7 @@ export class ChatHubController {
 		@Param('agentId') agentId: string,
 		@Body payload: ChatHubUpdateAgentRequest,
 	) {
-		return await this.chatAgentService.updateAgent(agentId, req.user.id, payload);
+		return await this.chatAgentService.updateAgent(agentId, req.user, payload);
 	}
 
 	@Delete('/agents/:agentId')

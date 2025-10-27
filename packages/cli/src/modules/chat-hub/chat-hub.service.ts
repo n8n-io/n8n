@@ -47,9 +47,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -72,6 +70,8 @@ import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
 import { captureResponseWrites } from './stream-capturer';
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
 const providerNodeTypeMapping: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -124,6 +124,7 @@ export class ChatHubService {
 		private readonly messageRepository: ChatHubMessageRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatHubAgentService: ChatHubAgentService,
+		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 	) {}
 
 	async getModels(
@@ -390,23 +391,7 @@ export class ChatHubService {
 		credentials: INodeCredentials,
 		trx?: EntityManager,
 	) {
-		const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
-			user,
-			['credential:read'],
-			trx,
-		);
-
-		const credentialId = this.pickCredentialId(model.provider, credentials);
-		if (!credentialId) {
-			throw new BadRequestError('No credentials provided for the selected model provider');
-		}
-
-		// If credential is shared through multiple projects just pick the first one.
-		const credential = allCredentials.find((c) => c.id === credentialId);
-		if (!credential) {
-			throw new ForbiddenError("You don't have access to the provided credentials");
-		}
-		return credential;
+		return await this.chatHubCredentialsService.ensureCredentials(user, model, credentials, trx);
 	}
 
 	private async deleteChatWorkflow(workflowId: string): Promise<void> {

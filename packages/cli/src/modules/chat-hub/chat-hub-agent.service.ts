@@ -7,12 +7,15 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatModelsResponse } from '@n8n/api-types';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import type { User } from '@n8n/db';
 
 @Service()
 export class ChatHubAgentService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly chatAgentRepository: ChatHubAgentRepository,
+		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 	) {}
 
 	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelsResponse['custom-agent']> {
@@ -40,16 +43,19 @@ export class ChatHubAgentService {
 	}
 
 	async createAgent(
-		userId: string,
+		user: User,
 		data: {
 			name: string;
 			description?: string;
 			systemPrompt: string;
-			credentialId?: string;
-			provider?: string;
-			model?: string;
+			credentialId: string;
+			provider: ChatHubAgent['provider'];
+			model: string;
 		},
 	): Promise<ChatHubAgent> {
+		// Ensure user has access to credentials if provided
+		await this.chatHubCredentialsService.ensureCredentialById(user, data.credentialId);
+
 		const id = uuidv4();
 
 		const agent = await this.chatAgentRepository.createAgent({
@@ -57,19 +63,19 @@ export class ChatHubAgentService {
 			name: data.name,
 			description: data.description ?? null,
 			systemPrompt: data.systemPrompt,
-			ownerId: userId,
-			credentialId: data.credentialId ?? null,
-			provider: (data.provider as ChatHubAgent['provider']) ?? null,
-			model: data.model ?? null,
+			ownerId: user.id,
+			credentialId: data.credentialId,
+			provider: data.provider,
+			model: data.model,
 		});
 
-		this.logger.info(`Chat agent created: ${id} by user ${userId}`);
+		this.logger.info(`Chat agent created: ${id} by user ${user.id}`);
 		return agent;
 	}
 
 	async updateAgent(
 		id: string,
-		userId: string,
+		user: User,
 		updates: {
 			name?: string;
 			description?: string;
@@ -80,9 +86,14 @@ export class ChatHubAgentService {
 		},
 	): Promise<ChatHubAgent> {
 		// First check if the agent exists and belongs to the user
-		const existingAgent = await this.chatAgentRepository.getOneById(id, userId);
+		const existingAgent = await this.chatAgentRepository.getOneById(id, user.id);
 		if (!existingAgent) {
 			throw new NotFoundError('Chat agent not found');
+		}
+
+		// Ensure user has access to credentials if provided
+		if (updates.credentialId !== undefined && updates.credentialId !== null) {
+			await this.chatHubCredentialsService.ensureCredentialById(user, updates.credentialId);
 		}
 
 		const updateData: Partial<ChatHubAgent> = {};
@@ -96,7 +107,7 @@ export class ChatHubAgentService {
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
-		this.logger.info(`Chat agent updated: ${id} by user ${userId}`);
+		this.logger.info(`Chat agent updated: ${id} by user ${user.id}`);
 		return agent;
 	}
 

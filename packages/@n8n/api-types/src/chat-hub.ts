@@ -209,9 +209,9 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1),
-	credentialId: z.string().optional(),
-	provider: chatHubProviderSchema.optional(),
-	model: z.string().max(64).optional(),
+	credentialId: z.string(),
+	provider: chatHubProviderSchema,
+	model: z.string().max(64),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
