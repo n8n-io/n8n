@@ -116,9 +116,10 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return [...new Set(projectIds)];
 	}
 
-	async getWorkflowOwningProject(workflowId: string) {
+	async getWorkflowOwningProject(workflowId: string, em?: EntityManager) {
+		const manager = em ?? this.manager;
 		return (
-			await this.findOne({
+			await manager.findOne(SharedWorkflow, {
 				where: { workflowId, role: 'workflow:owner' },
 				relations: { project: true },
 			})

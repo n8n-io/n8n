@@ -1,5 +1,5 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowHistoryRepository } from '@n8n/db';
+import { User, WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -9,6 +9,16 @@ import { getWorkflow } from '@test-integration/workflow';
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 const logger = mockLogger();
 const workflowFinderService = mockInstance(WorkflowFinderService);
+
+// Mock the manager.insert method
+const mockManagerInsert = jest.fn();
+Object.defineProperty(workflowHistoryRepository, 'manager', {
+	value: {
+		insert: mockManagerInsert,
+	},
+	writable: true,
+});
+
 const workflowHistoryService = new WorkflowHistoryService(
 	logger,
 	workflowHistoryRepository,
@@ -31,7 +41,7 @@ jest.mock('@/workflows/workflow-history.ee/workflow-history-helper.ee', () => {
 
 describe('WorkflowHistoryService', () => {
 	beforeEach(() => {
-		mockClear(workflowHistoryRepository.insert);
+		mockClear(mockManagerInsert);
 	});
 
 	describe('saveVersion', () => {
@@ -48,7 +58,7 @@ describe('WorkflowHistoryService', () => {
 			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
 
 			// Assert
-			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
+			expect(mockManagerInsert).toHaveBeenCalledWith(WorkflowHistory, {
 				authors: 'John Doe',
 				connections: {},
 				nodes: workflow.nodes,
@@ -70,7 +80,7 @@ describe('WorkflowHistoryService', () => {
 			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
 
 			// Assert
-			expect(workflowHistoryRepository.insert).not.toHaveBeenCalled();
+			expect(mockManagerInsert).not.toHaveBeenCalled();
 		});
 
 		it('should not save a new version when nodes or connections are missing', async () => {
@@ -86,7 +96,7 @@ describe('WorkflowHistoryService', () => {
 			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
 
 			// Assert
-			expect(workflowHistoryRepository.insert).not.toHaveBeenCalled();
+			expect(mockManagerInsert).not.toHaveBeenCalled();
 		});
 
 		it('should log an error when failed to save workflow history version', async () => {
@@ -97,13 +107,13 @@ describe('WorkflowHistoryService', () => {
 			workflow.connections = {};
 			workflow.id = workflowId;
 			workflow.versionId = '456';
-			workflowHistoryRepository.insert.mockRejectedValueOnce(new Error('Test error'));
+			mockManagerInsert.mockRejectedValueOnce(new Error('Test error'));
 
 			// Act
 			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
 
 			// Assert
-			expect(workflowHistoryRepository.insert).toHaveBeenCalled();
+			expect(mockManagerInsert).toHaveBeenCalled();
 		});
 	});
 });
