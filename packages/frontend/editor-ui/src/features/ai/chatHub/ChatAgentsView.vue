@@ -4,30 +4,76 @@ import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import { N8nButton, N8nCard, N8nIconButton, N8nText } from '@n8n/design-system';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ChatHubAgentDto } from '@n8n/api-types';
 import { CHAT_VIEW, providerDisplayNames } from '@/features/ai/chatHub/constants';
+import { useUIStore } from '@/stores/ui.store';
+import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
+import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
+import { chatHubProviderSchema, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const router = useRouter();
 const chatStore = useChatStore();
+const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
 const toast = useToast();
 const message = useMessage();
 
 const agents = computed(() => chatStore.agents);
+const editingAgentId = ref<string | undefined>(undefined);
+
+const autoSelectCredentials = computed<CredentialsMap>(() =>
+	Object.fromEntries(
+		chatHubProviderSchema.options.map((provider) => {
+			if (provider === 'n8n' || provider === 'custom-agent') {
+				return [provider, null];
+			}
+
+			const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+			if (!credentialType) {
+				return [provider, null];
+			}
+
+			const lastCreatedCredential =
+				credentialsStore
+					.getCredentialsByType(credentialType)
+					.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
+
+			return [provider, lastCreatedCredential];
+		}),
+	),
+);
 
 function handleCreateAgent() {
-	// TODO: Integrate with AgentEditorModal when it's available
 	chatStore.currentEditingAgent = null;
+	editingAgentId.value = undefined;
+	uiStore.openModal('agentEditor');
 }
 
-function handleEditAgent(agent: ChatHubAgentDto, event?: MouseEvent) {
+async function handleEditAgent(agent: ChatHubAgentDto, event?: MouseEvent) {
 	// Prevent card click when clicking action buttons
 	if (event) {
 		event.stopPropagation();
 	}
-	// TODO: Integrate with AgentEditorModal when it's available
-	chatStore.currentEditingAgent = agent;
+
+	try {
+		await chatStore.fetchAgent(agent.id);
+		editingAgentId.value = agent.id;
+		uiStore.openModal('agentEditor');
+	} catch (error) {
+		toast.showError(error, 'Failed to load agent');
+	}
+}
+
+function handleCloseAgentEditor() {
+	editingAgentId.value = undefined;
+}
+
+async function handleAgentCreatedOrUpdated() {
+	await chatStore.fetchAgents();
+	editingAgentId.value = undefined;
 }
 
 function handleAgentCardClick(agent: ChatHubAgentDto) {
@@ -85,7 +131,11 @@ function formatDate(dateString: string): string {
 }
 
 onMounted(async () => {
-	await chatStore.fetchAgents();
+	await Promise.all([
+		chatStore.fetchAgents(),
+		credentialsStore.fetchCredentialTypes(false),
+		credentialsStore.fetchAllCredentials(),
+	]);
 });
 </script>
 
@@ -109,7 +159,7 @@ onMounted(async () => {
 			</N8nText>
 		</div>
 
-		<div :class="$style.agentsGrid">
+		<div v-else :class="$style.agentsGrid">
 			<N8nCard
 				v-for="agent in agents"
 				:key="agent.id"
@@ -156,6 +206,13 @@ onMounted(async () => {
 				</div>
 			</N8nCard>
 		</div>
+
+		<AgentEditorModal
+			:agent-id="editingAgentId"
+			:credentials="autoSelectCredentials"
+			@create-agent="handleAgentCreatedOrUpdated"
+			@close="handleCloseAgentEditor"
+		/>
 	</div>
 </template>
 
@@ -164,6 +221,7 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	width: 100%;
 	padding: var(--spacing--xl);
 	gap: var(--spacing--xl);
 	overflow-y: auto;
@@ -174,6 +232,7 @@ onMounted(async () => {
 	justify-content: space-between;
 	align-items: flex-start;
 	gap: var(--spacing--lg);
+	width: 100%;
 }
 
 .headerContent {
@@ -187,6 +246,8 @@ onMounted(async () => {
 	align-items: center;
 	justify-content: center;
 	min-height: 200px;
+	flex: 1;
+	width: 100%;
 }
 
 .agentsGrid {
