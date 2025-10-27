@@ -457,11 +457,10 @@ export class ChatHubService {
 		const { sessionId, messageId, replyId, message } = payload;
 		const provider = payload.model.provider;
 
-		const selectedModel: ModelWithCredentials = {
-			...payload.model,
-			credentialId:
-				provider !== 'n8n' ? this.pickCredentialId(provider, payload.credentials) : null,
-		};
+		const selectedModel: ModelWithCredentials = this.getModelWithCredentials(
+			payload.model,
+			payload.credentials,
+		);
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
 			const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
@@ -695,13 +694,11 @@ export class ChatHubService {
 
 	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
 		const { sessionId, editId, messageId, replyId } = payload;
-		const selectedModel: ModelWithCredentials = {
-			...payload.model,
-			credentialId:
-				payload.model.provider !== 'n8n'
-					? this.pickCredentialId(payload.model.provider, payload.credentials)
-					: null,
-		};
+
+		const selectedModel: ModelWithCredentials = this.getModelWithCredentials(
+			payload.model,
+			payload.credentials,
+		);
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
 			const credential = await this.ensureCredentials(
@@ -777,13 +774,10 @@ export class ChatHubService {
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
 		const { sessionId, retryId, replyId } = payload;
-		const selectedModel: ModelWithCredentials = {
-			...payload.model,
-			credentialId:
-				payload.model.provider !== 'n8n'
-					? this.pickCredentialId(payload.model.provider, payload.credentials)
-					: null,
-		};
+		const selectedModel: ModelWithCredentials = this.getModelWithCredentials(
+			payload.model,
+			payload.credentials,
+		);
 
 		const { workflow, retryOfMessageId, previousMessageId } =
 			await this.messageRepository.manager.transaction(async (trx) => {
@@ -1253,6 +1247,29 @@ export class ChatHubService {
 			retryOfMessageId,
 			...selectedModel,
 		});
+	}
+
+	private getModelWithCredentials(
+		selectedModel: ChatHubConversationModel,
+		credentials: INodeCredentials,
+	) {
+		const provider = selectedModel.provider;
+		const agentId = selectedModel?.provider === 'custom-agent' ? selectedModel.agentId : undefined;
+		const agentName =
+			selectedModel?.provider === 'custom-agent' && 'name' in selectedModel
+				? selectedModel.name
+				: undefined;
+
+		const { name, ...restOfModel } = selectedModel;
+
+		const modelWithCredentials: ModelWithCredentials = {
+			...restOfModel,
+			credentialId: provider !== 'n8n' ? this.pickCredentialId(provider, credentials) : null,
+			agentId,
+			agentName,
+		};
+
+		return modelWithCredentials;
 	}
 
 	private async getChatSession(
