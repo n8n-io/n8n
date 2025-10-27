@@ -131,6 +131,8 @@ async function onSave() {
 		assert(model);
 
 		const provider = selectedModel.value.provider;
+		assert(provider !== 'n8n' && provider !== 'custom-agent');
+
 		const credentialId = agentMergedCredentials.value[provider];
 		assert(credentialId);
 
