@@ -13,6 +13,12 @@ import {
 	deleteConversationApi,
 	stopGenerationApi,
 	fetchSingleConversationApi,
+	fetchAgentsApi,
+	fetchAgentApi,
+	createAgentApi,
+	updateAgentApi,
+	deleteAgentApi,
+	updateConversationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -23,6 +29,9 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 	ChatHubMessageDto,
+	ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
 } from '@n8n/api-types';
 import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
 import type { StructuredChunk } from 'n8n-workflow';
@@ -34,6 +43,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const loadingModels = ref(false);
 	const streamingMessageId = ref<string>();
 	const sessions = ref<ChatHubSessionDto[]>([]);
+	const agents = ref<ChatHubAgentDto[]>([]);
+	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 
 	const isResponding = computed(() => streamingMessageId.value !== undefined);
 
@@ -263,6 +274,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model: null,
 			workflowId: null,
 			executionId: null,
+			agentId: null,
 			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
@@ -366,9 +378,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: model.provider === 'n8n' ? null : model.model,
+			model: model.provider === 'n8n' || model.provider === 'custom-agent' ? null : model.model,
 			workflowId: null,
 			executionId: null,
+			agentId: null,
 			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
@@ -421,6 +434,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model: null,
 				workflowId: null,
 				executionId: null,
+				agentId: null,
 				status: 'success',
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
@@ -489,12 +503,28 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
+	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
+		console.log(JSON.stringify(sessions.value.find((s) => s.id === sessionId)));
+		sessions.value = sessions.value.map((session) =>
+			session.id === sessionId
+				? {
+						...session,
+						...toUpdate,
+					}
+				: session,
+		);
+		console.log(JSON.stringify(sessions.value.find((s) => s.id === sessionId)));
+	}
+
 	async function renameSession(sessionId: ChatSessionId, title: string) {
 		const updated = await updateConversationTitleApi(rootStore.restApiContext, sessionId, title);
 
-		sessions.value = sessions.value.map((session) =>
-			session.id === sessionId ? updated.session : session,
-		);
+		updateSession(sessionId, updated.session);
+	}
+
+	async function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
+		await updateConversationApi(rootStore.restApiContext, sessionId, model);
+		updateSession(sessionId, model);
 	}
 
 	async function deleteSession(sessionId: ChatSessionId) {
@@ -515,14 +545,78 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
+	async function fetchAgents() {
+		agents.value = await fetchAgentsApi(rootStore.restApiContext);
+	}
+
+	async function fetchAgent(agentId: string): Promise<ChatHubAgentDto> {
+		const agent = await fetchAgentApi(rootStore.restApiContext, agentId);
+		currentEditingAgent.value = agent;
+		return agent;
+	}
+
+	function getAgent(agentId: string) {
+		return models.value?.['custom-agent'].models.find(
+			(model) => 'agentId' in model && model.agentId === agentId,
+		);
+	}
+
+	async function createAgent(
+		payload: ChatHubCreateAgentRequest,
+	): Promise<ChatHubConversationModel> {
+		const agent = await createAgentApi(rootStore.restApiContext, payload);
+		agents.value.push(agent);
+		const model = {
+			provider: 'custom-agent' as const,
+			agentId: agent.id,
+			name: agent.name,
+		};
+		models.value?.['custom-agent'].models.push(model);
+
+		return model;
+	}
+
+	async function updateAgent(
+		agentId: string,
+		payload: ChatHubUpdateAgentRequest,
+	): Promise<ChatHubAgentDto> {
+		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+		agents.value = agents.value.map((a) => (a.id === agentId ? agent : a));
+
+		// Update the agent in models as well
+		if (models.value?.['custom-agent']) {
+			models.value['custom-agent'].models = models.value['custom-agent'].models.map((model) =>
+				'agentId' in model && model.agentId === agentId ? { ...model, name: agent.name } : model,
+			);
+		}
+
+		return agent;
+	}
+
+	async function deleteAgent(agentId: string) {
+		await deleteAgentApi(rootStore.restApiContext, agentId);
+		agents.value = agents.value.filter((a) => a.id !== agentId);
+
+		// Remove the agent from models as well
+		if (models.value?.['custom-agent']) {
+			models.value['custom-agent'].models = models.value['custom-agent'].models.filter(
+				(model) => !('agentId' in model) || model.agentId !== agentId,
+			);
+		}
+	}
+
 	return {
 		models,
 		sessions,
+		agents,
+		currentEditingAgent,
 		conversationsBySession,
 		loadingModels,
 		isResponding,
 		streamingMessageId,
+		getAgent,
 		fetchChatModels,
+		updateSessionModel,
 		sendMessage,
 		editMessage,
 		regenerateMessage,
@@ -534,5 +628,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		getConversation,
 		getActiveMessages,
 		switchAlternative,
+		fetchAgents,
+		fetchAgent,
+		createAgent,
+		updateAgent,
+		deleteAgent,
 	};
 });

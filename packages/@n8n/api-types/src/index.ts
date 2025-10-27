@@ -21,7 +21,7 @@ export {
 	ChatHubSendMessageRequest,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
-	ChatHubChangeConversationTitleRequest,
+	ChatHubUpdateConversationRequest,
 	type ChatMessageId,
 	type ChatSessionId,
 	type ChatHubMessageDto,
@@ -29,6 +29,9 @@ export {
 	type ChatHubConversationDto,
 	type ChatHubConversationResponse,
 	type ChatHubConversationsResponse,
+	type ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
