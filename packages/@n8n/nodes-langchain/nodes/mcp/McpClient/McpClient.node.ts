@@ -143,6 +143,7 @@ export class McpClient implements INodeType {
 						resourceMapperMethod: 'getToolParameters',
 						hideNoDataError: true,
 						addAllFields: false,
+						supportAutoMap: false,
 						mode: 'add',
 						fieldWords: {
 							singular: 'parameter',
@@ -234,7 +235,7 @@ export class McpClient implements INodeType {
 			try {
 				const tool = this.getNodeParameter('tool.value', itemIndex) as string;
 				const options = this.getNodeParameter('options', itemIndex);
-				let parameters: IDataObject;
+				let parameters: IDataObject = {};
 				if (inputMode === 'manual') {
 					parameters = this.getNodeParameter('parameters.value', itemIndex) as IDataObject;
 				} else {

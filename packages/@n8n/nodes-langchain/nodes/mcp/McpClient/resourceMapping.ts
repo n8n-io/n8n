@@ -1,13 +1,7 @@
-import type { JSONSchema7 } from 'json-schema';
-import type {
-	ILoadOptionsFunctions,
-	ResourceMapperFields,
-	ResourceMapperField,
-	FieldType,
-	INodePropertyOptions,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, ResourceMapperFields } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { convertJsonSchemaToResourceMapperFields } from './utils';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
 	getAuthHeaders,
@@ -15,72 +9,6 @@ import {
 	getAllTools,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
-
-function jsonSchemaTypeToFieldType(schema: JSONSchema7): FieldType {
-	if (schema.type === 'string' && schema.format === 'date-time') {
-		return 'dateTime';
-	}
-
-	if (schema.type === 'number' || schema.type === 'integer') {
-		return 'number';
-	}
-
-	if (schema.type === 'boolean' || schema.type === 'array' || schema.type === 'object') {
-		return schema.type;
-	}
-
-	return 'string';
-}
-
-function convertJsonSchemaToResourceMapperFields(
-	schema: JSONSchema7,
-	required: string[] = [],
-): ResourceMapperField[] {
-	const fields: ResourceMapperField[] = [];
-	if (schema.type !== 'object' || !schema.properties) {
-		return fields;
-	}
-
-	for (const [key, propertySchema] of Object.entries(schema.properties)) {
-		if (propertySchema === false) {
-			continue;
-		}
-
-		if (propertySchema === true) {
-			fields.push({
-				id: key,
-				displayName: key,
-				defaultMatch: false,
-				canBeUsedToMatch: true,
-				required: required.includes(key),
-				display: true,
-				type: 'string', // use string as a "catch all" for any values
-			});
-			continue;
-		}
-
-		const field: ResourceMapperField = {
-			id: key,
-			displayName: propertySchema.title ?? key,
-			defaultMatch: false,
-			required: required.includes(key),
-			display: true,
-			type: jsonSchemaTypeToFieldType(propertySchema),
-		};
-
-		if (propertySchema.enum && Array.isArray(propertySchema.enum)) {
-			field.type = 'options';
-			field.options = propertySchema.enum.map((value) => ({
-				name: value,
-				value,
-			})) as INodePropertyOptions[];
-		}
-
-		fields.push(field);
-	}
-
-	return fields;
-}
 
 export async function getToolParameters(
 	this: ILoadOptionsFunctions,
