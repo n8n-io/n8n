@@ -238,12 +238,14 @@ export function normalizeRows(
 			if (type === 'json') {
 				try {
 					if (typeof value === 'string') {
-						const result = JSON.parse(value);
+						const result = JSON.parse(value) as unknown;
 						if (typeof result !== 'object') throw new Error();
-						normalized[key] = result;
+						normalized[key] = result as DataTableColumnJsType;
 					}
 				} catch (e) {
-					throw new UserError(`Received invalid json object input for column '${key}': '${value}'`);
+					throw new UserError(
+						`Received invalid json object input for column '${key}': '${JSON.stringify(value)}'`,
+					);
 				}
 			}
 
