@@ -29,6 +29,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 } from '@/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
@@ -100,11 +101,11 @@ import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHis
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
-import type { EventBus } from '@n8n/utils/event-bus';
 import PromptMfaCodeModal from '@/features/core/auth/components/PromptMfaCodeModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
+import NodeRecommendationModalTDG from '@/experiments/templatesDataGathering/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 </script>
 
@@ -123,15 +124,7 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		</ModalRoot>
 
 		<ModalRoot :name="API_KEY_CREATE_OR_EDIT_MODAL_KEY">
-			<template
-				#default="{
-					modalName,
-					data: { mode, activeId },
-				}: {
-					modalName: string;
-					data: { mode: 'new' | 'edit'; activeId: string };
-				}"
-			>
+			<template #default="{ modalName, data: { mode, activeId } }">
 				<ApiKeyCreateOrEditModal :modal-name="modalName" :mode="mode" :active-id="activeId" />
 			</template>
 		</ModalRoot>
@@ -241,15 +234,7 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		</ModalRoot>
 
 		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
-			<template
-				#default="{
-					modalName,
-					data,
-				}: {
-					modalName: string;
-					data: { destination: Object; isNew: boolean; eventBus: EventBus };
-				}"
-			>
+			<template #default="{ modalName, data }">
 				<EventDestinationSettingsModal
 					:modal-name="modalName"
 					:destination="data.destination"
@@ -381,6 +366,12 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY">
+			<template #default="{ modalName, data }">
+				<NodeRecommendationModalTDG :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="PRE_BUILT_AGENTS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<PreBuiltAgentsModal :modal-name="modalName" :data="data" />
@@ -388,7 +379,7 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		</ModalRoot>
 
 		<ModalRoot :name="VARIABLE_MODAL_KEY">
-			<template #default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any } }">
+			<template #default="{ data }">
 				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
 			</template>
 		</ModalRoot>

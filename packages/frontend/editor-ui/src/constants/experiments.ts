@@ -55,6 +55,12 @@ export const TEMPLATE_RECO_V2 = {
 	variant: 'variant',
 };
 
+export const TEMPLATES_DATA_GATHERING_EXPERIMENT = {
+	name: '046_templates_data_gathering',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const READY_TO_RUN_V2_EXPERIMENT = {
 	name: '042_ready-to-run-worfklow_v2',
 	control: 'control',
@@ -82,4 +88,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
+	TEMPLATES_DATA_GATHERING_EXPERIMENT.name,
 ];
