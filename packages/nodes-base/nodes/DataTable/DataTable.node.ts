@@ -17,7 +17,7 @@ export class DataTable implements INodeType {
 		icon: 'fa:table',
 		iconColor: 'orange-red',
 		group: ['input', 'transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["action"]}}',
 		description: 'Permanently save data across workflow executions in a table',
 		defaults: {
