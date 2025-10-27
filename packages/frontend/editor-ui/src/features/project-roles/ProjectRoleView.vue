@@ -399,6 +399,7 @@ const displayNameValidationRules = [
 								:content="i18n.baseText(`projectRoles.${scope}.tooltip`)"
 								placement="right"
 								:enterable="false"
+								:show-after="250"
 							>
 								<N8nFormInput
 									:data-test-id="`scope-checkbox-${scope}`"
