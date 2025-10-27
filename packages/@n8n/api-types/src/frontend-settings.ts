@@ -31,7 +31,37 @@ export interface IUserManagementSettings {
 	authenticationMethod: AuthenticationMethod;
 }
 
+export interface IEnterpriseSettings {
+	sharing: boolean;
+	ldap: boolean;
+	saml: boolean;
+	oidc: boolean;
+	mfaEnforcement: boolean;
+	logStreaming: boolean;
+	advancedExecutionFilters: boolean;
+	variables: boolean;
+	sourceControl: boolean;
+	auditLogs: boolean;
+	externalSecrets: boolean;
+	showNonProdBanner: boolean;
+	debugInEditor: boolean;
+	binaryDataS3: boolean;
+	workflowHistory: boolean;
+	workerView: boolean;
+	advancedPermissions: boolean;
+	apiKeyScopes: boolean;
+	workflowDiffs: boolean;
+	provisioning: boolean;
+	projects: {
+		team: {
+			limit: number;
+		};
+	};
+	customRoles: boolean;
+}
+
 export interface FrontendSettings {
+	settingsMode?: 'public' | 'authenticated';
 	inE2ETests: boolean;
 	isDocker: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
@@ -145,34 +175,7 @@ export interface FrontendSettings {
 		builtIn?: string[];
 		external?: string[];
 	};
-	enterprise: {
-		sharing: boolean;
-		ldap: boolean;
-		saml: boolean;
-		oidc: boolean;
-		mfaEnforcement: boolean;
-		logStreaming: boolean;
-		advancedExecutionFilters: boolean;
-		variables: boolean;
-		sourceControl: boolean;
-		auditLogs: boolean;
-		externalSecrets: boolean;
-		showNonProdBanner: boolean;
-		debugInEditor: boolean;
-		binaryDataS3: boolean;
-		workflowHistory: boolean;
-		workerView: boolean;
-		advancedPermissions: boolean;
-		apiKeyScopes: boolean;
-		workflowDiffs: boolean;
-		provisioning: boolean;
-		projects: {
-			team: {
-				limit: number;
-			};
-		};
-		customRoles: boolean;
-	};
+	enterprise: IEnterpriseSettings;
 	hideUsagePage: boolean;
 	license: {
 		planName?: string;

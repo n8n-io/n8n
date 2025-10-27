@@ -5,6 +5,7 @@ import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 jest.mock('../tools/webhook-utils', () => ({
@@ -21,6 +22,9 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: jest.fn(),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
+			const telemetry = mockInstance(Telemetry, {
+				track: jest.fn(),
+			});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
 			const tool = createWorkflowDetailsTool(
@@ -29,6 +33,7 @@ describe('get-workflow-details MCP tool', () => {
 				workflowFinderService,
 				credentialsService,
 				endpoints,
+				telemetry,
 			);
 
 			expect(tool.name).toBe('get_workflow_details');

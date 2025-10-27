@@ -103,6 +103,7 @@ import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/175
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
 import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
+import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-CreateChatHubAgentTable';
 import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
@@ -213,6 +214,7 @@ export const mysqlMigrations: Migration[] = [
 	AddAudienceColumnToApiKeys1758731786132,
 	ChangeValueTypesForInsights1759399811000,
 	CreateChatHubTables1760019379982,
+	CreateChatHubAgentTable1760020000000,
 	UniqueRoleNames1760020838000,
 	CreateWorkflowDependencyTable1760314000000,
 	DropUnusedChatHubColumns1760965142113,
