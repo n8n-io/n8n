@@ -133,13 +133,13 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            reader.join(timeout=5.0)
+            reader.join(timeout=5.0) # @TODO: Reasonable length?
 
             if read_error:
                 logger.error(
                     f"Failed to retrieve result from child process: {read_error[0]}"
                 )
-                raise TaskResultMissingError()
+                raise TaskResultMissingError() # @TODO: New error?
 
             if not result_data:
                 raise TaskResultMissingError()
