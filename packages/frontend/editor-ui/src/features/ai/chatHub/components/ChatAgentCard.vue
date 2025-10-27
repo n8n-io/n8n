@@ -2,13 +2,15 @@
 import type { ChatHubAgentDto } from '@n8n/api-types';
 import { N8nCard, N8nIconButton, N8nText } from '@n8n/design-system';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import { RouterLink } from 'vue-router';
+import type { RouteLocationRaw } from 'vue-router';
 
 defineProps<{
 	agent: ChatHubAgentDto;
+	to: RouteLocationRaw;
 }>();
 
 const emit = defineEmits<{
-	click: [];
 	edit: [event: MouseEvent];
 	delete: [event: MouseEvent];
 }>();
@@ -34,10 +36,14 @@ function formatDate(dateString: string): string {
 </script>
 
 <template>
-	<N8nCard :class="$style.card" hoverable @click="emit('click')">
+	<N8nCard :class="$style.card" hoverable>
 		<template #header>
-			<N8nText tag="h3" size="medium" bold>{{ agent.name }}</N8nText>
-			<div :class="$style.cardActions" @click.stop>
+			<N8nText tag="h3" size="medium" bold>
+				<RouterLink :to="to" :class="$style.cardLink">
+					{{ agent.name }}
+				</RouterLink>
+			</N8nText>
+			<div :class="$style.cardActions">
 				<N8nIconButton
 					icon="pen"
 					type="tertiary"
@@ -77,6 +83,7 @@ function formatDate(dateString: string): string {
 
 <style lang="scss" module>
 .card {
+	position: relative;
 	cursor: pointer;
 	transition: transform 0.2s ease;
 
@@ -85,10 +92,24 @@ function formatDate(dateString: string): string {
 	}
 }
 
+.cardLink {
+	color: inherit;
+	text-decoration: none;
+
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+	}
+}
+
 .cardActions {
 	display: flex;
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
+	position: relative;
+	z-index: 1;
 }
 
 .descriptionContainer {

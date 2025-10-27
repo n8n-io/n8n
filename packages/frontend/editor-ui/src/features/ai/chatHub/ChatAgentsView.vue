@@ -5,7 +5,6 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import type { ChatHubAgentDto } from '@n8n/api-types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
@@ -15,7 +14,6 @@ import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import { chatHubProviderSchema, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
-const router = useRouter();
 const chatStore = useChatStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
@@ -47,6 +45,15 @@ const autoSelectCredentials = computed<CredentialsMap>(() =>
 	),
 );
 
+function getAgentRoute(agent: ChatHubAgentDto) {
+	return {
+		name: CHAT_VIEW,
+		query: {
+			agentId: agent.id,
+		},
+	};
+}
+
 function handleCreateAgent() {
 	chatStore.currentEditingAgent = null;
 	editingAgentId.value = undefined;
@@ -75,15 +82,6 @@ function handleCloseAgentEditor() {
 async function handleAgentCreatedOrUpdated() {
 	await chatStore.fetchAgents();
 	editingAgentId.value = undefined;
-}
-
-function handleAgentCardClick(agent: ChatHubAgentDto) {
-	void router.push({
-		name: CHAT_VIEW,
-		query: {
-			agentId: agent.id,
-		},
-	});
 }
 
 async function handleDeleteAgent(agentId: string, event?: MouseEvent) {
@@ -146,7 +144,7 @@ onMounted(async () => {
 				v-for="agent in agents"
 				:key="agent.id"
 				:agent="agent"
-				@click="handleAgentCardClick(agent)"
+				:to="getAgentRoute(agent)"
 				@edit="handleEditAgent(agent, $event)"
 				@delete="handleDeleteAgent(agent.id, $event)"
 			/>
