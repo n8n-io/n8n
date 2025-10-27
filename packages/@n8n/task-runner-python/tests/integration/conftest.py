@@ -46,7 +46,7 @@ async def manager_with_env_access_blocked(broker):
         task_broker_url=broker.get_url(),
         custom_env={
             "N8N_RUNNERS_STDLIB_ALLOW": "os",
-            "N8N_BLOCK_ENV_ACCESS": "true",
+            "N8N_BLOCK_RUNNER_ENV_ACCESS": "true",
         },
     )
     await manager.start()
@@ -60,7 +60,7 @@ async def manager_with_env_access_allowed(broker):
         task_broker_url=broker.get_url(),
         custom_env={
             "N8N_RUNNERS_STDLIB_ALLOW": "os",
-            "N8N_BLOCK_ENV_ACCESS": "false",
+            "N8N_BLOCK_RUNNER_ENV_ACCESS": "false",
         },
     )
     await manager.start()

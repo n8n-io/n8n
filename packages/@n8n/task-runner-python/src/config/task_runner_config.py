@@ -10,7 +10,7 @@ from src.constants import (
     DEFAULT_TASK_TIMEOUT,
     DEFAULT_AUTO_SHUTDOWN_TIMEOUT,
     DEFAULT_SHUTDOWN_TIMEOUT,
-    ENV_BLOCK_ENV_ACCESS,
+    ENV_BLOCK_RUNNER_ENV_ACCESS,
     ENV_BUILTINS_DENY,
     ENV_EXTERNAL_ALLOW,
     ENV_GRANT_TOKEN,
@@ -113,5 +113,5 @@ class TaskRunnerConfig:
                     ENV_BUILTINS_DENY, BUILTINS_DENY_DEFAULT
                 ).split(",")
             ),
-            env_deny=read_bool_env(ENV_BLOCK_ENV_ACCESS, True),
+            env_deny=read_bool_env(ENV_BLOCK_RUNNER_ENV_ACCESS, True),
         )

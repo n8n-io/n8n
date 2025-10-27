@@ -6,4 +6,4 @@ class SecurityConfig:
     stdlib_allow: set[str]
     external_allow: set[str]
     builtins_deny: set[str]
-    env_deny: bool
+    runner_env_deny: bool

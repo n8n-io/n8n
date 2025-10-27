@@ -174,7 +174,7 @@ class TaskExecutor:
     ):
         """Execute a Python code task in all-items mode."""
 
-        if security_config.env_deny:
+        if security_config.runner_env_deny:
             os.environ.clear()
 
         TaskExecutor._sanitize_sys_modules(security_config)
@@ -209,7 +209,7 @@ class TaskExecutor:
     ):
         """Execute a Python code task in per-item mode."""
 
-        if security_config.env_deny:
+        if security_config.runner_env_deny:
             os.environ.clear()
 
         TaskExecutor._sanitize_sys_modules(security_config)
