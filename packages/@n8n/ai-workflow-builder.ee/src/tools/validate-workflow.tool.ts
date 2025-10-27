@@ -62,7 +62,7 @@ export function createValidateWorkflowTool(
 					);
 
 					reporter.error(validationError);
-					logger?.warn('validate_workflow tool detected blocking violations', {
+					logger?.debug('validate_workflow tool detected blocking violations', {
 						violations: blockingViolations,
 					});
 
