@@ -13,9 +13,6 @@ import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/use
 import { useSpeechSynthesis } from '@vueuse/core';
 import type { ChatMessage } from '../chat.types';
 import type { ChatMessageId } from '@n8n/api-types';
-import { useChatStore } from '../chat.store';
-
-const chatStore = useChatStore();
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
