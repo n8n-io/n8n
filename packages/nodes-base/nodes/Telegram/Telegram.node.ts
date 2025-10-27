@@ -16,6 +16,15 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+// Typeguard functions for safe type validation
+function isString(value: unknown): value is string {
+	return typeof value === 'string';
+}
+
+function isNumber(value: unknown): value is number {
+	return typeof value === 'number' && !isNaN(value);
+}
+
 import {
 	addAdditionalFields,
 	apiRequest,
@@ -2501,22 +2510,62 @@ export class Telegram implements INodeType {
 						endpoint = 'createForumTopic';
 						const name = this.getNodeParameter('forumTopicName', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const icon_color = additionalFields.icon_color as number;
-						const icon_custom_emoji_id = additionalFields.icon_custom_emoji_id as string;
+
+						// Safe type validation for icon_color
+						const icon_color = additionalFields.icon_color;
+						if (icon_color !== undefined && !isNumber(icon_color)) {
+							throw new NodeOperationError(this.getNode(), 'icon_color must be a number', {
+								itemIndex: i,
+								description: `Expected a number but got ${typeof icon_color}`,
+							});
+						}
+
+						// Safe type validation for icon_custom_emoji_id
+						const icon_custom_emoji_id = additionalFields.icon_custom_emoji_id;
+						if (icon_custom_emoji_id !== undefined && !isString(icon_custom_emoji_id)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'icon_custom_emoji_id must be a string',
+								{
+									itemIndex: i,
+									description: `Expected a string but got ${typeof icon_custom_emoji_id}`,
+								},
+							);
+						}
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.name = name;
-						body.icon_color = icon_color;
-						body.icon_custom_emoji_id = icon_custom_emoji_id;
+						if (icon_color !== undefined) {
+							body.icon_color = icon_color;
+						}
+						if (icon_custom_emoji_id !== undefined) {
+							body.icon_custom_emoji_id = icon_custom_emoji_id;
+						}
 					} else if (operation === 'editForumTopic') {
 						endpoint = 'editForumTopic';
 						const chat_id = this.getNodeParameter('chatId', i) as string;
 						body.chat_id = chat_id;
 						const messageThreadId = this.getNodeParameter('messageThreadId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const icon_custom_emoji_id = additionalFields.icon_custom_emoji_id as string;
+
+						// Safe type validation for icon_custom_emoji_id
+						const icon_custom_emoji_id = additionalFields.icon_custom_emoji_id;
+						if (icon_custom_emoji_id !== undefined && !isString(icon_custom_emoji_id)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'icon_custom_emoji_id must be a string',
+								{
+									itemIndex: i,
+									description: `Expected a string but got ${typeof icon_custom_emoji_id}`,
+								},
+							);
+						}
+
 						const name = this.getNodeParameter('forumTopicName', i) as string;
 						body.message_thread_id = parseInt(messageThreadId);
-						body.icon_custom_emoji_id = icon_custom_emoji_id;
+						if (icon_custom_emoji_id !== undefined) {
+							body.icon_custom_emoji_id = icon_custom_emoji_id;
+						}
 						body.name = name;
 					} else if (operation === 'deleteForumTopic') {
 						endpoint = 'deleteForumTopic';
