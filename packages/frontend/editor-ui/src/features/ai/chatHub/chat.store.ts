@@ -274,6 +274,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model: null,
 			workflowId: null,
 			executionId: null,
+			agentId: null,
+			agentName: null,
 			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
@@ -375,8 +377,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const previousMessageId = conversation.activeMessageChain.length
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
-
-		const agent = model.provider === 'custom-agent' ? getAgentById(model.agentId) : null;
 
 		addMessage(sessionId, {
 			id: messageId,

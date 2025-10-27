@@ -51,7 +51,12 @@ const speech = useSpeechSynthesis(messageContent, {
 });
 
 const credentialTypeName = computed(() => {
-	if (message.type !== 'ai' || !message.provider || message.provider === 'n8n') {
+	if (
+		message.type !== 'ai' ||
+		!message.provider ||
+		message.provider === 'n8n' ||
+		message.provider === 'custom-agent'
+	) {
 		return null;
 	}
 	return PROVIDER_CREDENTIAL_TYPE_MAP[message.provider] ?? null;
