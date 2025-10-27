@@ -33,6 +33,13 @@ export class MilvusApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		{
+			displayName: 'Database Name',
+			name: 'databaseName',
+			type: 'string',
+			default: 'default',
+			placeholder: 'default',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
