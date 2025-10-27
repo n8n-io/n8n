@@ -171,7 +171,6 @@ export interface ChatHubMessageDto {
 	model: string | null;
 	workflowId: string | null;
 	agentId: string | null;
-	agentName: string | null;
 	executionId: number | null;
 	status: ChatHubMessageStatus;
 	createdAt: string;

@@ -1426,7 +1426,6 @@ export class ChatHubService {
 			model: message.model,
 			workflowId: message.workflowId,
 			agentId: message.agentId,
-			agentName: message.agentName,
 			executionId: message.executionId,
 			status: message.status,
 			createdAt: message.createdAt.toISOString(),
