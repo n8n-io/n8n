@@ -69,6 +69,7 @@ export const createWorkflowDetailsTool = (
 						node_count: payload.workflow.nodes.length,
 					},
 				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 				return {
 					content: [{ type: 'text', text: JSON.stringify(payload) }],
