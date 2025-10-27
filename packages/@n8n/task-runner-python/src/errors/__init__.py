@@ -5,6 +5,7 @@ from .task_cancelled_error import TaskCancelledError
 from .task_killed_error import TaskKilledError
 from .task_missing_error import TaskMissingError
 from .task_result_missing_error import TaskResultMissingError
+from .task_result_read_error import TaskResultReadError
 from .task_subprocess_failed_error import TaskSubprocessFailedError
 from .task_runtime_error import TaskRuntimeError
 from .task_timeout_error import TaskTimeoutError
@@ -19,6 +20,7 @@ __all__ = [
     "TaskMissingError",
     "TaskSubprocessFailedError",
     "TaskResultMissingError",
+    "TaskResultReadError",
     "TaskRuntimeError",
     "TaskTimeoutError",
     "WebsocketConnectionError",

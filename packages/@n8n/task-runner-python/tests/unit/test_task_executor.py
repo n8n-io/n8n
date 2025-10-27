@@ -63,8 +63,8 @@ class TestTaskExecutorProcessExitHandling:
 
         assert exc_info.value.exit_code == -1
 
-    def test_zero_exit_code_with_empty_pipe_raises_task_result_missing_error(self):
-        from src.errors import TaskResultMissingError
+    def test_zero_exit_code_with_empty_pipe_raises_task_result_read_error(self):
+        from src.errors import TaskResultReadError
 
         process = MagicMock()
         process.is_alive.return_value = False
@@ -74,7 +74,7 @@ class TestTaskExecutorProcessExitHandling:
         write_conn = MagicMock()
         read_conn.fileno.return_value = 999
 
-        with pytest.raises(TaskResultMissingError):
+        with pytest.raises(TaskResultReadError):
             TaskExecutor.execute_process(
                 process=process,
                 read_conn=read_conn,

@@ -12,6 +12,7 @@ from src.errors import (
     TaskCancelledError,
     TaskKilledError,
     TaskResultMissingError,
+    TaskResultReadError,
     TaskRuntimeError,
     TaskTimeoutError,
     TaskSubprocessFailedError,
@@ -109,7 +110,7 @@ class TaskExecutor:
         try:
             try:
                 process.start()
-            except Exception as e:
+            except Exception:
                 raise TaskSubprocessFailedError(-1)
             finally:
                 write_conn.close()
@@ -133,10 +134,7 @@ class TaskExecutor:
             pipe_reader.join(timeout=5.0)  # @TODO: Reasonable length?
 
             if read_error:
-                logger.error(
-                    f"Failed to retrieve result from child process: {read_error[0]}"
-                )
-                raise TaskResultMissingError()  # @TODO: New error?
+                raise TaskResultReadError()
 
             if not result_data:
                 raise TaskResultMissingError()
