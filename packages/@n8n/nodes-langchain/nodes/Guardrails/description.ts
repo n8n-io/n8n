@@ -138,6 +138,9 @@ export const versionDescription: INodeTypeDescription = {
 					promptType: ['define'],
 				},
 			},
+			typeOptions: {
+				rows: 1,
+			},
 		},
 		{
 			displayName: 'Guardrails',
