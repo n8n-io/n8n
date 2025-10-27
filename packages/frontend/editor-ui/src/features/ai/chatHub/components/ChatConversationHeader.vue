@@ -105,6 +105,9 @@ defineExpose({
 
 .grow {
 	flex-grow: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .title {
