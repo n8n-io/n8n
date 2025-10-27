@@ -1095,6 +1095,16 @@ describe('InsightsService', () => {
 			);
 		});
 
+		test('returns correct summary and dashboard licenses', () => {
+			licenseMock.isInsightsSummaryLicensed.mockReturnValue(true);
+			licenseMock.isInsightsDashboardLicensed.mockReturnValue(true);
+
+			const result = insightsService.settings();
+
+			expect(result.summary).toBe(true);
+			expect(result.dashboard).toBe(true);
+		});
+
 		describe('dateRanges', () => {
 			test('returns correct ranges when hourly data is enabled and max history is unlimited', () => {
 				licenseMock.getInsightsMaxHistory.mockReturnValue(-1);
