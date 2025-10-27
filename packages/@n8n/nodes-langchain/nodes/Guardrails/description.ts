@@ -10,7 +10,6 @@ import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } 
 import { JAILBREAK_PROMPT } from './actions/checks/jailbreak';
 import { NSFW_SYSTEM_PROMPT } from './actions/checks/nsfw';
 import { PII_NAME_MAP, PIIEntity } from './actions/checks/pii';
-import { PROMPT_INJECTION_DETECTION_CHECK_PROMPT } from './actions/checks/promptInjection';
 import { TOPICAL_ALIGNMENT_SYSTEM_PROMPT } from './actions/checks/topicalAlignment';
 import { configureNodeInputs } from './helpers/configureNodeInputs';
 
@@ -268,24 +267,6 @@ export const versionDescription: INodeTypeDescription = {
 							},
 						]),
 					],
-				},
-				{
-					displayName: 'Prompt Injection',
-					name: 'promptInjection',
-					type: 'fixedCollection',
-					default: { value: { threshold: 0.7 } },
-					description: 'Detects attempts to inject prompt into the input text',
-					options: [
-						wrapValue([
-							...getPromptOption(PROMPT_INJECTION_DETECTION_CHECK_PROMPT),
-							THRESHOLD_OPTION,
-						]),
-					],
-					displayOptions: {
-						show: {
-							'/operation': ['classify'],
-						},
-					},
 				},
 				{
 					displayName: 'Secret Keys',

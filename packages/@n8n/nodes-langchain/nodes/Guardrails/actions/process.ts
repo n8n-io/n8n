@@ -1,20 +1,18 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { getPromptInputByType } from '@utils/helpers';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
+import { getPromptInputByType } from '@utils/helpers';
 
 import { runStageGuardrails } from '../helpers/base';
 import { splitByComma } from '../helpers/common';
 import { mapGuardrailErrorsToMessage, mapGuardrailResultToUserResult } from '../helpers/mappers';
 import { createLLMCheckFn } from '../helpers/model';
 import { applyPreflightModifications } from '../helpers/preflight';
+import { createJailbreakCheckFn, JAILBREAK_PROMPT } from './checks/jailbreak';
 import { createKeywordsCheckFn } from './checks/keywords';
 import { createNSFWCheckFn, NSFW_SYSTEM_PROMPT } from './checks/nsfw';
 import { createPiiCheckFn } from './checks/pii';
-import {
-	createPromptInjectionCheckFn,
-	PROMPT_INJECTION_DETECTION_CHECK_PROMPT,
-} from './checks/promptInjection';
 import { createSecretKeysCheckFn } from './checks/secretKeys';
 import {
 	createTopicalAlignmentCheckFn,
@@ -27,7 +25,6 @@ import type {
 	GuardrailUserResult,
 	StageGuardRails,
 } from './types';
-import { createJailbreakCheckFn, JAILBREAK_PROMPT } from './checks/jailbreak';
 
 interface Result {
 	checks: GuardrailUserResult[];
@@ -141,18 +138,6 @@ export async function process(
 			stageGuardrails.input.push({
 				name: 'nsfw',
 				check: createNSFWCheckFn({ model, prompt: prompt ?? NSFW_SYSTEM_PROMPT, threshold }),
-			});
-		}
-
-		if (guardrails.promptInjection?.value) {
-			const { prompt, threshold } = guardrails.promptInjection.value;
-			stageGuardrails.input.push({
-				name: 'promptInjection',
-				check: createPromptInjectionCheckFn({
-					model,
-					prompt: prompt ?? PROMPT_INJECTION_DETECTION_CHECK_PROMPT,
-					threshold,
-				}),
 			});
 		}
 

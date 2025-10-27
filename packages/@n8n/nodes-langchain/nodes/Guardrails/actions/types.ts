@@ -54,10 +54,6 @@ export interface GuardrailsOptions {
 		prompt?: string;
 		threshold: number;
 	}>;
-	promptInjection?: Value<{
-		prompt?: string;
-		threshold: number;
-	}>;
 	pii?: Value<{
 		type: 'all' | 'selected';
 		entities?: PIIEntity[];
