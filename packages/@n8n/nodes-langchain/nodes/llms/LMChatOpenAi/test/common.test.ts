@@ -129,7 +129,6 @@ describe('formatBuiltInTools', () => {
 describe('prepareAdditionalResponsesParams', () => {
 	it('maps simple scalar fields and conversation id', () => {
 		const body = prepareAdditionalResponsesParams({
-			previousResponseId: 'prev-1',
 			promptCacheKey: 'cache-1',
 			safetyIdentifier: 'safe-1',
 			serviceTier: 'default',
@@ -138,7 +137,6 @@ describe('prepareAdditionalResponsesParams', () => {
 		} as unknown as IDataObject);
 
 		expect(body).toEqual({
-			previous_response_id: 'prev-1',
 			prompt_cache_key: 'cache-1',
 			safety_identifier: 'safe-1',
 			service_tier: 'default',
@@ -208,5 +206,12 @@ describe('prepareAdditionalResponsesParams', () => {
 			textFormat: { textOptions: { type: 'text', verbosity: 'high' } },
 		} as unknown as IDataObject);
 		expect(text).toEqual({ text: { verbosity: 'high', format: { type: 'text' } } });
+	});
+
+	it('sets reasoning effort', () => {
+		const body = prepareAdditionalResponsesParams({
+			reasoningEffort: 'low',
+		} as unknown as IDataObject);
+		expect(body).toEqual({ reasoning: { effort: 'low' } });
 	});
 });

@@ -2,6 +2,7 @@ import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchai
 import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
+	type INodeProperties,
 	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
@@ -18,6 +19,34 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
+
+const INCLUDE_JSON_WARNING: INodeProperties = {
+	displayName:
+		'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
+	name: 'notice',
+	type: 'notice',
+	default: '',
+};
+
+const completionsResponseFormat: INodeProperties = {
+	displayName: 'Response Format',
+	name: 'responseFormat',
+	default: 'text',
+	type: 'options',
+	options: [
+		{
+			name: 'Text',
+			value: 'text',
+			description: 'Regular text response',
+		},
+		{
+			name: 'JSON',
+			value: 'json_object',
+			description:
+				'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
+		},
+	],
+};
 
 export class LmChatOpenAi implements INodeType {
 	methods = {
@@ -70,14 +99,18 @@ export class LmChatOpenAi implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
-				displayName:
-					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
+				...INCLUDE_JSON_WARNING,
 				displayOptions: {
 					show: {
 						'/options.responseFormat': ['json_object'],
+					},
+				},
+			},
+			{
+				...INCLUDE_JSON_WARNING,
+				displayOptions: {
+					show: {
+						'/options.textFormat.textOptions.type': ['json_object'],
 					},
 				},
 			},
@@ -342,26 +375,111 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
+						...completionsResponseFormat,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lt: 1.3 } }],
+							},
+						},
+					},
+					{
+						...completionsResponseFormat,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [false],
+							},
+						},
+					},
+					{
 						displayName: 'Response Format',
-						name: 'responseFormat',
-						default: 'text',
-						type: 'options',
+						name: 'textFormat',
+						type: 'fixedCollection',
+						default: { textOptions: [{ type: 'text' }] },
 						options: [
 							{
-								name: 'Text',
-								value: 'text',
-								description: 'Regular text response',
-							},
-							{
-								name: 'JSON',
-								value: 'json_object',
-								description:
-									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
+								displayName: 'Text',
+								name: 'textOptions',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										default: 'text',
+										options: [
+											{ name: 'Text', value: 'text' },
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											{ name: 'JSON Schema (recommended)', value: 'json_schema' },
+											{ name: 'JSON Object', value: 'json_object' },
+										],
+									},
+									{
+										displayName: 'Verbosity',
+										name: 'verbosity',
+										type: 'options',
+										default: 'medium',
+										options: [
+											{ name: 'Low', value: 'low' },
+											{ name: 'Medium', value: 'medium' },
+											{ name: 'High', value: 'high' },
+										],
+									},
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description:
+											'The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.',
+										displayOptions: {
+											show: {
+												type: ['json_schema'],
+											},
+										},
+									},
+									{
+										displayName: 'Schema',
+										name: 'schema',
+										type: 'json',
+										default: '',
+										description: 'The schema of the response format',
+										displayOptions: {
+											show: {
+												type: ['json_schema'],
+											},
+										},
+									},
+									{
+										displayName: 'Description',
+										name: 'description',
+										type: 'string',
+										default: '',
+										description: 'The description of the response format',
+										displayOptions: {
+											show: {
+												type: ['json_schema'],
+											},
+										},
+									},
+									{
+										displayName: 'Strict',
+										name: 'strict',
+										type: 'boolean',
+										default: false,
+										description: 'Whether to enforce the response format strictly',
+										displayOptions: {
+											show: {
+												type: ['json_schema'],
+											},
+										},
+									},
+								],
 							},
 						],
 						displayOptions: {
 							show: {
-								'@version': [{ _cnd: { lt: 1.3 } }],
+								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/responsesApiEnabled': [true],
 							},
 						},
 					},
@@ -532,97 +650,6 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Output Format',
-						name: 'textFormat',
-						type: 'fixedCollection',
-						default: { textOptions: [{ type: 'text' }] },
-						options: [
-							{
-								displayName: 'Text',
-								name: 'textOptions',
-								values: [
-									{
-										displayName: 'Type',
-										name: 'type',
-										type: 'options',
-										default: 'text',
-										options: [
-											{ name: 'Text', value: 'text' },
-											{ name: 'JSON Schema (recommended)', value: 'json_schema' },
-											{ name: 'JSON Object', value: 'json_object' },
-										],
-									},
-									{
-										displayName: 'Verbosity',
-										name: 'verbosity',
-										type: 'options',
-										default: 'medium',
-										options: [
-											{ name: 'Low', value: 'low' },
-											{ name: 'Medium', value: 'medium' },
-											{ name: 'High', value: 'high' },
-										],
-									},
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description:
-											'The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.',
-										displayOptions: {
-											show: {
-												type: ['json_schema'],
-											},
-										},
-									},
-									{
-										displayName: 'Schema',
-										name: 'schema',
-										type: 'json',
-										default: '',
-										description: 'The schema of the response format',
-										displayOptions: {
-											show: {
-												type: ['json_schema'],
-											},
-										},
-									},
-									{
-										displayName: 'Description',
-										name: 'description',
-										type: 'string',
-										default: '',
-										description: 'The description of the response format',
-										displayOptions: {
-											show: {
-												type: ['json_schema'],
-											},
-										},
-									},
-									{
-										displayName: 'Strict',
-										name: 'strict',
-										type: 'boolean',
-										default: false,
-										description: 'Whether to enforce the response format strictly',
-										displayOptions: {
-											show: {
-												type: ['json_schema'],
-											},
-										},
-									},
-								],
-							},
-						],
-						displayOptions: {
-							show: {
-								'@version': [{ _cnd: { gte: 1.3 } }],
-								'/responsesApiEnabled': [true],
-							},
-						},
-					},
-					{
 						displayName: 'Prompt',
 						name: 'promptConfig',
 						type: 'fixedCollection',
@@ -712,6 +739,9 @@ export class LmChatOpenAi implements INodeType {
 			Object.assign(modelKwargs, kwargs);
 		} else {
 			if (options.responseFormat) modelKwargs.response_format = { type: options.responseFormat };
+			if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
+				modelKwargs.reasoning_effort = options.reasoningEffort;
+			}
 		}
 
 		const includedOptions = pick(options, [
@@ -734,12 +764,6 @@ export class LmChatOpenAi implements INodeType {
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		};
-
-		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
-			fields.reasoning = {
-				effort: options.reasoningEffort,
-			};
-		}
 
 		// by default ChatOpenAI can switch to responses API automatically, so force it only on 1.3 and above to keep backwards compatibility
 		if (responsesApiEnabled) {

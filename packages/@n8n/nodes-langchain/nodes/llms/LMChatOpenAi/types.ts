@@ -30,7 +30,6 @@ export type ModelOptions = {
 	conversationId?: string;
 	metadata?: string;
 	promptCacheKey?: string;
-	previousResponseId?: string;
 	safetyIdentifier?: string;
 	serviceTier?: 'auto' | 'flex' | 'default' | 'priority';
 	topLogprobs?: number;

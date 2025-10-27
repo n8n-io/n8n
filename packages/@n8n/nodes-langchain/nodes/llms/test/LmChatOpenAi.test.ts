@@ -299,11 +299,31 @@ describe('LmChatOpenAi', () => {
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {
 						response_format: { type: 'json_object' },
-					},
-					reasoning: {
-						effort: 'high',
+						reasoning_effort: 'high',
 					},
 					onFailedAttempt: expect.any(Function),
+				}),
+			);
+		});
+
+		it('should only add valid reasoning effort to modelKwargs', async () => {
+			const mockContext = setupMockContext();
+			const options = {
+				reasoningEffort: 'invalid' as 'low' | 'medium' | 'high',
+			};
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return options;
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'gpt-4o-mini',
+					modelKwargs: {}, // Should not include invalid reasoning_effort
 				}),
 			);
 		});
@@ -433,8 +453,8 @@ describe('LmChatOpenAi', () => {
 
 				expect(MockedChatOpenAI).toHaveBeenCalledWith(
 					expect.objectContaining({
-						reasoning: {
-							effort,
+						modelKwargs: {
+							reasoning_effort: effort,
 						},
 					}),
 				);

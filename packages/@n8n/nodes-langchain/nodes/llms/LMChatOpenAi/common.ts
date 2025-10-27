@@ -85,7 +85,6 @@ export const formatBuiltInTools = (builtInTools: BuiltInTools) => {
 
 export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 	const body: Partial<ChatResponseRequest> = {
-		previous_response_id: options.previousResponseId,
 		prompt_cache_key: options.promptCacheKey,
 		safety_identifier: options.safetyIdentifier,
 		service_tier: options.serviceTier,
@@ -139,6 +138,12 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 		}
 
 		body.text = textConfig;
+	}
+
+	if (options.reasoningEffort) {
+		body.reasoning = {
+			effort: options.reasoningEffort,
+		};
 	}
 
 	return body;
