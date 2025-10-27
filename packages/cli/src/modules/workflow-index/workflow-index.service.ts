@@ -33,18 +33,7 @@ export class WorkflowIndexService {
 			await this.updateIndexFor(workflow);
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
-			// Updating with an empty list effectively removes the existing dependencies.
 			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
-		});
-		this.eventService.on('workflow-archived', async ({ workflowId }) => {
-			// Updating with an empty list effectively removes the existing dependencies.
-			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
-		});
-		this.eventService.on('workflow-unarchived', async ({ workflowId }) => {
-			const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
-			if (workflow) {
-				await this.updateIndexFor(workflow);
-			}
 		});
 	}
 

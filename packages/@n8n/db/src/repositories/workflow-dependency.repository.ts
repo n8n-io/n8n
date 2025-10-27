@@ -76,7 +76,8 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			// NOTE: in the typical case where we're updating an existing workflow, this would happen
 			// anyway when we delete the existing dependencies. We lock explicitly to make it clearer,
 			// and ensure nothing weird happens when there are no existing dependencies.
-			await queryRunner.query('BEGIN IMMEDIATE');
+			await queryRunner.startTransaction();
+			await queryRunner.query('BEGIN IMMEDIATE TRANSACTION');
 
 			// Perform the update using queryRunner.manager
 			const result = await this.executeUpdate(workflowId, dependencies, queryRunner.manager);
