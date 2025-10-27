@@ -68,6 +68,7 @@ class TaskExecutor:
             else TaskExecutor._per_item
         )
 
+        # thread in runner process reads, subprocess writes
         read_conn, write_conn = MULTIPROCESSING_CONTEXT.Pipe(duplex=False)
 
         process = MULTIPROCESSING_CONTEXT.Process(
