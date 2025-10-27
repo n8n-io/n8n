@@ -11,12 +11,14 @@ export interface ModelWithCredentials {
 	model?: string;
 	workflowId?: string;
 	credentialId: string | null;
+	agentId?: string;
+	agentName?: string;
+	name?: string;
 }
 
 export interface BaseMessagePayload {
 	userId: string;
 	sessionId: ChatSessionId;
-	replyId: ChatMessageId;
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
 }
