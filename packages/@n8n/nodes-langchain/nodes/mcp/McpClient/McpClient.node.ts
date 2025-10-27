@@ -12,7 +12,7 @@ import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow
 
 import * as listSearch from './listSearch';
 import * as resourceMapping from './resourceMapping';
-import { authenticationProperties, credentials, transportSelect } from '../shared/descriptions';
+import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import { getAuthHeaders, tryRefreshOAuth2Token, connectMcpClient } from '../shared/utils';
 
@@ -46,7 +46,43 @@ export class McpClient implements INodeType {
 				required: true,
 				description: 'The URL of the MCP server to connect to',
 			},
-			...authenticationProperties,
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'MCP OAuth2',
+						value: 'mcpOAuth2Api',
+					},
+					{
+						name: 'Bearer Auth',
+						value: 'bearerAuth',
+					},
+					{
+						name: 'Header Auth',
+						value: 'headerAuth',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'The way to authenticate with your endpoint',
+			},
+			{
+				displayName: 'Credentials',
+				name: 'credentials',
+				type: 'credentials',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api'],
+					},
+				},
+			},
+
 			{
 				displayName: 'Tool',
 				name: 'tool',

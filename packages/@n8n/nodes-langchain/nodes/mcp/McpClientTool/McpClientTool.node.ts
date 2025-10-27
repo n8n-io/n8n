@@ -16,7 +16,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
 import { createCallTool, getSelectedTools, McpToolkit, mcpToolToDynamicTool } from './utils';
-import { authenticationProperties, credentials, transportSelect } from '../shared/descriptions';
+import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
 	connectMcpClient,
