@@ -88,5 +88,8 @@
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch"
     }
+  },
+  "dependencies": {
+    "@lezer/common": "^1.0.4"
   }
 }
