@@ -548,7 +548,7 @@ export class LmChatOpenAi implements INodeType {
 										default: 'text',
 										options: [
 											{ name: 'Text', value: 'text' },
-											{ name: 'JSON Schema(recommended)', value: 'json_schema' },
+											{ name: 'JSON Schema (recommended)', value: 'json_schema' },
 											{ name: 'JSON Object', value: 'json_object' },
 										],
 									},
