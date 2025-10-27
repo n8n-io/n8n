@@ -103,8 +103,8 @@ class TaskExecutor:
             finally:
                 read_conn.close()
 
-        reader = threading.Thread(target=read_from_pipe, daemon=True)
-        reader.start()
+        pipe_reader = threading.Thread(target=read_from_pipe)
+        pipe_reader.start()
 
         try:
             try:
@@ -131,7 +131,7 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            reader.join(timeout=5.0)  # @TODO: Reasonable length?
+            pipe_reader.join(timeout=5.0)  # @TODO: Reasonable length?
 
             if read_error:
                 logger.error(
