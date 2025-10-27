@@ -1076,6 +1076,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string): void;
+		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
 			runIndex: number;
 			inputData: INodeExecutionData[][];
@@ -1716,6 +1717,7 @@ export interface SupplyData {
 	metadata?: IDataObject;
 	response: unknown;
 	closeFunction?: CloseFunction;
+	hints?: NodeExecutionHint[];
 }
 
 export type NodeOutput =
