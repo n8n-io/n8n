@@ -15,7 +15,7 @@ import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
-import type { INodeParameters } from 'n8n-workflow';
+import type { INode, INodeParameters } from 'n8n-workflow';
 import { isChatNode } from '@/utils/aiUtils';
 import { constructChatWebsocketUrl } from '@n8n/chat/utils';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
@@ -33,7 +33,7 @@ interface ChatState {
 	sendMessage: (message: string, files?: File[]) => Promise<void>;
 	refreshSession: () => void;
 	displayExecution: (executionId: string) => void;
-	chatTriggerNode: ComputedRef<any>;
+	chatTriggerNode: ComputedRef<INode | null>;
 	isStreamingEnabled: ComputedRef<boolean>;
 	isFileUploadsAllowed: ComputedRef<boolean>;
 	allowedFilesMimeTypes: ComputedRef<string>;
