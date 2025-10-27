@@ -1,4 +1,3 @@
-import { intro, outro, spinner } from '@clack/prompts';
 import { Command, Flags } from '@oclif/core';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,10 +5,18 @@ import picocolors from 'picocolors';
 
 import { createSymlink, ensureFolder } from '../../utils/filesystem';
 import { detectPackageManager } from '../../utils/package-manager';
-import { ensureN8nPackage, onCancel } from '../../utils/prompts';
+import { onCancel, printCommandHeader } from '../../utils/prompts';
 import { validateNodeName } from '../../utils/validation';
 import { copyStaticFiles } from '../build';
-import { clearScreen, commands, readPackageName, sleep } from './utils';
+import {
+	buildHelpText,
+	type CommandConfig,
+	createOpenN8nHandler,
+	createQuitHandler,
+	createSpinner,
+	readPackageName,
+	runCommands,
+} from './utils';
 
 export default class Dev extends Command {
 	static override description = 'Run n8n with the node and rebuild on changes for live preview';
@@ -35,21 +42,14 @@ export default class Dev extends Command {
 		const { flags } = await this.parse(Dev);
 
 		const packageManager = (await detectPackageManager()) ?? 'npm';
-		const { runPersistentCommand } = commands();
-
-		intro(picocolors.inverse(' n8n-node dev '));
-
-		await ensureN8nPackage('n8n-node dev');
 
 		await copyStaticFiles();
 
-		const linkingSpinner = spinner();
-		linkingSpinner.start('Linking custom node to n8n');
-
 		const n8nUserFolder = flags['custom-user-folder'];
 		const customNodesFolder = path.join(n8nUserFolder, '.n8n', 'custom');
+		const nodeModulesFolder = path.join(customNodesFolder, 'node_modules');
 
-		await ensureFolder(customNodesFolder);
+		await ensureFolder(nodeModulesFolder);
 
 		const packageName = await readPackageName();
 		const invalidNodeNameError = validateNodeName(packageName);
@@ -57,35 +57,36 @@ export default class Dev extends Command {
 		if (invalidNodeNameError) return onCancel(invalidNodeNameError);
 
 		const currentDir = process.cwd();
-		const symlinkPath = path.join(customNodesFolder, packageName);
+		const symlinkPath = path.join(nodeModulesFolder, packageName);
 
 		try {
 			await createSymlink(currentDir, symlinkPath);
 		} catch (error) {
-			linkingSpinner.stop('Failed to link custom node');
 			const message =
 				error instanceof Error ? error.message : 'Unknown error creating symbolic link';
 			return onCancel(`Failed to create symbolic link: ${message}`);
 		}
 
-		linkingSpinner.stop(
-			`${picocolors.green('✓')} Your custom node ${picocolors.bold(packageName)} is now linked and will be available in n8n`,
+		let n8nReady = false;
+		const hasN8n = !flags['external-n8n'];
+
+		const n8nSpinner = createSpinner(
+			`Installing n8n... ${picocolors.dim('(this can take a while on first run)')}`,
 		);
 
-		outro(`${picocolors.dim('Starting development servers...\n')}`);
+		const commandsList: CommandConfig[] = [
+			{
+				cmd: packageManager,
+				args: ['exec', '--', 'tsc', '--watch', '--pretty'],
+				name: 'TypeScript Build (watching)',
+			},
+		];
 
-		// Wait a moment before clearing the screen so users can see the intro
-		await sleep(1000);
-
-		// Clear the screen and position cursor at top before starting persistent commands
-		clearScreen();
-
-		runPersistentCommand(packageManager, ['exec', '--', 'tsc', '--watch', '--pretty'], {
-			name: 'TypeScript Build (watching)',
-		});
-
-		if (!flags['external-n8n']) {
-			runPersistentCommand('npx', ['-y', '--color=always', '--prefer-online', 'n8n@latest'], {
+		if (hasN8n) {
+			commandsList.push({
+				cmd: 'npx',
+				args: ['-y', '--color=always', '--prefer-online', 'n8n@latest'],
+				name: 'n8n Server',
 				cwd: n8nUserFolder,
 				env: {
 					...process.env,
@@ -93,12 +94,27 @@ export default class Dev extends Command {
 					N8N_RUNNERS_ENABLED: 'true',
 					DB_SQLITE_POOL_SIZE: '10',
 					N8N_USER_FOLDER: n8nUserFolder,
-					FORCE_COLOR: '3',
-					COLORTERM: 'truecolor',
-					TERM: 'xterm-256color',
 				},
-				name: 'n8n Server',
+				onOutput: (line: string) => {
+					if (line.includes('Editor is now accessible')) {
+						n8nReady = true;
+					}
+				},
+				getPlaceholder: n8nSpinner,
 			});
 		}
+
+		const keyHandlers = [createQuitHandler()];
+		if (hasN8n) {
+			keyHandlers.push(createOpenN8nHandler());
+		}
+
+		await printCommandHeader('n8n-node dev');
+
+		runCommands({
+			commands: commandsList,
+			keyHandlers,
+			helpText: () => buildHelpText(hasN8n, n8nReady),
+		});
 	}
 }

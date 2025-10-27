@@ -1,3 +1,4 @@
+import { intro } from '@clack/prompts';
 import { Command, Flags } from '@oclif/core';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -6,7 +7,7 @@ import picocolors from 'picocolors';
 import { ChildProcessError, runCommand } from '../utils/child-process';
 import { suggestCloudSupportCommand } from '../utils/command-suggestions';
 import { getPackageJson } from '../utils/package';
-import { ensureN8nPackage } from '../utils/prompts';
+import { ensureN8nPackage, getCommandHeader } from '../utils/prompts';
 import { isEnoentError } from '../utils/validation';
 
 export default class Lint extends Command {
@@ -19,6 +20,8 @@ export default class Lint extends Command {
 
 	async run(): Promise<void> {
 		const { flags } = await this.parse(Lint);
+
+		intro(await getCommandHeader('n8n-node lint'));
 
 		await ensureN8nPackage('lint');
 

@@ -3,7 +3,6 @@ import { Args, Command, Flags } from '@oclif/core';
 import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import picocolors from 'picocolors';
 
 import { declarativeTemplatePrompt, nodeNamePrompt, nodeTypePrompt } from './prompts';
 import { createIntro } from './utils';
@@ -42,7 +41,7 @@ export default class New extends Command {
 		const { flags, args } = await this.parse(New);
 		const [typeFlag, templateFlag] = flags.template?.split('/') ?? [];
 
-		intro(picocolors.inverse(createIntro()));
+		intro(await createIntro());
 
 		const nodeName = args.name ?? (await nodeNamePrompt());
 		const invalidNodeNameError = validateNodeName(nodeName);
