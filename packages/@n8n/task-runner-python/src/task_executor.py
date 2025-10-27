@@ -84,40 +84,36 @@ class TaskExecutor:
     ) -> tuple[list, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
+        read_fd = read_conn.fileno()
+        result_data: list[dict] = []
+        read_error: list[Exception] = []
         print_args: PrintArgs = []
 
-        try:
-            read_fd = read_conn.fileno()
-
-            result_data: list[dict] = []
-            read_error: list[Exception] = []
-
-            def read_from_pipe():
-                """Read result from pipe in background thread."""
-
-                try:
-                    length_bytes = TaskExecutor._read_exact(
-                        read_fd, PIPE_MSG_PREFIX_LENGTH
-                    )
-                    length = int.from_bytes(length_bytes, "big")
-                    data = TaskExecutor._read_exact(read_fd, length)
-                    returned = json.loads(data.decode("utf-8"))
-                    result_data.append(returned)
-                except Exception as e:
-                    read_error.append(e)
-                finally:
-                    read_conn.close()
-
-            reader = threading.Thread(target=read_from_pipe, daemon=True)
-            reader.start()
+        def read_from_pipe():
+            """Read result from pipe in background thread."""
 
             try:
+                length_bytes = TaskExecutor._read_exact(read_fd, PIPE_MSG_PREFIX_LENGTH)
+                length_int = int.from_bytes(length_bytes, "big")
+                data = TaskExecutor._read_exact(read_fd, length_int)
+                returned = json.loads(data.decode("utf-8"))
+                result_data.append(returned)
+            except Exception as e:
+                read_error.append(e)
+            finally:
+                read_conn.close()
+
+        reader = threading.Thread(target=read_from_pipe, daemon=True)
+        reader.start()
+
+        try:
+            try:
                 process.start()
-                write_conn.close()
             except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
                 logger.error(f"Failed to start child process: {e}")
-                write_conn.close()
                 raise TaskSubprocessFailedError(-1)
+            finally:
+                write_conn.close()
 
             process.join(timeout=task_timeout)
 
