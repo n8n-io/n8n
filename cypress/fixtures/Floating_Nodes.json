@@ -4,7 +4,7 @@
     {
       "parameters": {},
       "id": "d0eda550-2526-42a1-aa19-dee411c8acf9",
-      "name": "When clicking ‘Test workflow’",
+      "name": "When clicking ‘Execute workflow’",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
@@ -87,11 +87,59 @@
         1600,
         740
       ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        440,
+        -140
+      ],
+      "id": "a00959d3-8d4b-40af-b4f2-35ca3d73fd84",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -20,
+        -120
+      ],
+      "id": "a5cbc221-ccfd-4034-a648-6a192834af81",
+      "name": "Edit Fields0"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        100
+      ],
+      "id": "d3b4c17a-bee8-418b-a721-5debafd1ce11",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        440,
+        100
+      ],
+      "id": "b23a2a43-ffac-41a5-a265-054e21a57d70",
+      "name": "Merge1"
     }
   ],
   "pinData": {},
   "connections": {
-    "When clicking ‘Test workflow’": {
+    "When clicking ‘Execute workflow’": {
       "main": [
         [
           {
@@ -161,7 +209,40 @@
           }
         ]
       ]
+    },
+    "Edit Fields0": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     }
+
   },
   "active": false,
   "settings": {

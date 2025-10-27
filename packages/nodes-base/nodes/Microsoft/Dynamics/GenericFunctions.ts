@@ -42,7 +42,6 @@ export async function microsoftApiRequest(
 		if (Object.keys(option).length !== 0) {
 			options = Object.assign({}, options, option);
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftDynamicsOAuth2Api', options, {
 			property: 'id_token',
 		});

@@ -1,13 +1,12 @@
 import { NodeApiError } from 'n8n-workflow';
 import type { JsonObject, IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
 
+import { prepareFilterString, simplifyOutputMessages } from '../v2/helpers/utils';
 import {
 	downloadAttachments,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } from '../v2/transport';
-
-import { prepareFilterString, simplifyOutputMessages } from '../v2/helpers/utils';
 
 export async function getPollResponse(
 	this: IPollFunctions,

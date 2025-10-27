@@ -1,5 +1,6 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { ApplicationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 import type { PyDict } from 'pyodide/ffi';
+
 import { LoadPyodide } from './Pyodide';
 import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
@@ -18,7 +19,6 @@ export class PythonSandbox extends Sandbox {
 	constructor(
 		context: SandboxContext,
 		private pythonCode: string,
-		itemIndex: number | undefined,
 		helpers: IExecuteFunctions['helpers'],
 	) {
 		super(
@@ -28,7 +28,6 @@ export class PythonSandbox extends Sandbox {
 					plural: 'dictionaries',
 				},
 			},
-			itemIndex,
 			helpers,
 		);
 		// Since python doesn't allow variable names starting with `$`,
@@ -39,8 +38,8 @@ export class PythonSandbox extends Sandbox {
 		}, {} as PythonSandboxContext);
 	}
 
-	async runCode(): Promise<unknown> {
-		return await this.runCodeInPython<unknown>();
+	async runCode<T = unknown>(): Promise<T> {
+		return await this.runCodeInPython<T>();
 	}
 
 	async runCodeAllItems() {
@@ -48,9 +47,9 @@ export class PythonSandbox extends Sandbox {
 		return this.validateRunCodeAllItems(executionResult);
 	}
 
-	async runCodeEachItem() {
+	async runCodeEachItem(itemIndex: number) {
 		const executionResult = await this.runCodeInPython<INodeExecutionData>();
-		return this.validateRunCodeEachItem(executionResult);
+		return this.validateRunCodeEachItem(executionResult, itemIndex);
 	}
 
 	private async runCodeInPython<T>() {
@@ -99,7 +98,9 @@ await __main()`;
 	private getPrettyError(error: PyodideError): Error {
 		const errorTypeIndex = error.message.indexOf(error.type);
 		if (errorTypeIndex !== -1) {
-			return new Error(error.message.slice(errorTypeIndex));
+			return new ApplicationError(error.message.slice(errorTypeIndex), {
+				level: ['TypeError', 'AttributeError'].includes(error.type) ? 'warning' : 'error',
+			});
 		}
 
 		return error;

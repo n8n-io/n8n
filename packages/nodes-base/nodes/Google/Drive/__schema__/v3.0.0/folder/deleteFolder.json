@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "fileId": {
+            "type": "string"
+        },
+        "success": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

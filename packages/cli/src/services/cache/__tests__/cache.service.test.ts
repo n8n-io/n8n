@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { sleep } from 'n8n-workflow';
-import Container from 'typedi';
 
 import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
@@ -38,7 +38,7 @@ for (const backend of ['memory', 'redis'] as const) {
 
 			if (backend === 'redis') {
 				test('with auto backend and queue mode, should select redis', async () => {
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 
 					await cacheService.init();
 

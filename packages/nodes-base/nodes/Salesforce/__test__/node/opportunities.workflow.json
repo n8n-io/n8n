@@ -1,0 +1,574 @@
+{
+	"name": "opportunities.workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-240, 800],
+			"id": "bfbc5552-b033-4a9b-88cc-2c489313b0c5",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"name": "New Opportunity",
+				"closeDate": "2025-01-01T00:00:00",
+				"stageName": "Prospecting",
+				"additionalFields": {
+					"amount": 1000
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 100],
+			"id": "bb9d487c-64ad-4e31-b54f-81282543f9b3",
+			"name": "Salesforce",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 100],
+			"id": "cd4f2393-8fa7-4bf0-8a4e-81a519c2ca98",
+			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 300],
+			"id": "fec8e003-be8d-4f54-9d97-6b59c2390c44",
+			"name": "Salesforce1",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 300],
+			"id": "15d62e5f-6576-4045-bc71-c75383e1dad4",
+			"name": "No Operation, do nothing1"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"operation": "upsert",
+				"externalId": "Name",
+				"externalIdValue": "SomeName",
+				"name": "New Opportunity",
+				"closeDate": "2025-01-01T00:00:00",
+				"stageName": "Prospecting",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 500],
+			"id": "119704da-9b17-4f0f-8e2f-93b97e0cc897",
+			"name": "Salesforce2",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 500],
+			"id": "487f0b0a-10c4-4015-a3d8-3007c62c57c7",
+			"name": "No Operation, do nothing2"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"operation": "addNote",
+				"opportunityId": "id1",
+				"title": "New Note",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 700],
+			"id": "a6298428-c2b4-4f4a-a1ef-5241d4bf3cb7",
+			"name": "Salesforce3",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 700],
+			"id": "b9dfe31c-7d30-47d5-833e-8d0043c4f156",
+			"name": "No Operation, do nothing3"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"operation": "get",
+				"opportunityId": "id1"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 900],
+			"id": "27a29694-ebfb-4f22-a44d-33539b18609d",
+			"name": "Salesforce4",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 900],
+			"id": "4da4ce39-99ba-430a-9dcb-f98dfd618988",
+			"name": "No Operation, do nothing4"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"operation": "getSummary"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 1100],
+			"id": "671c9b0f-5c90-4789-967d-015112a31d69",
+			"name": "Salesforce5",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 1100],
+			"id": "428e9f87-406c-4363-bf6c-c557eeabbdf4",
+			"name": "No Operation, do nothing5"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"operation": "delete",
+				"opportunityId": "id1"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 1300],
+			"id": "c0069703-112e-4180-8f83-df1c993dd202",
+			"name": "Salesforce6",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 1300],
+			"id": "83ef4a9a-cdcc-4052-9f8a-cd63207bf2bd",
+			"name": "No Operation, do nothing6"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"operation": "update",
+				"opportunityId": "id1",
+				"updateFields": {
+					"amount": 123
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 1500],
+			"id": "870e9a87-f1c7-4c28-9e44-86deaf9112e6",
+			"name": "Salesforce7",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 1500],
+			"id": "7a98ba79-98b1-4a91-8bd0-b4432773b094",
+			"name": "No Operation, do nothing7"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "id1",
+					"success": true,
+					"errors": []
+				}
+			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"attributes": {
+						"type": "Opportunity",
+						"url": "/services/data/v59.0/sobjects/Opportunity/id1"
+					},
+					"Id": "id1",
+					"AccountId": "accountid1",
+					"Amount": 15000,
+					"Probability": 10,
+					"Type": "New Customer"
+				}
+			},
+			{
+				"json": {
+					"attributes": {
+						"type": "Opportunity",
+						"url": "/services/data/v59.0/sobjects/Opportunity/id2"
+					},
+					"Id": "id2",
+					"AccountId": "accountid2",
+					"Amount": 125000,
+					"Probability": 90,
+					"Type": "Existing Customer - Upgrade"
+				}
+			}
+		],
+		"No Operation, do nothing3": [
+			{
+				"json": {
+					"id": "noteid1",
+					"success": true,
+					"errors": []
+				}
+			}
+		],
+		"No Operation, do nothing4": [
+			{
+				"json": {
+					"attributes": {
+						"type": "Opportunity",
+						"url": "/services/data/v59.0/sobjects/Opportunity/id1"
+					},
+					"Id": "id1",
+					"IsDeleted": false,
+					"AccountId": "accountid1",
+					"IsPrivate": false,
+					"Name": "Opportunity 1",
+					"Description": null,
+					"StageName": "Qualification",
+					"Amount": 15000,
+					"Probability": 10,
+					"ExpectedRevenue": 1500,
+					"TotalOpportunityQuantity": null,
+					"CloseDate": "2025-02-05",
+					"Type": "New Customer",
+					"NextStep": null,
+					"LeadSource": "Purchased List",
+					"IsClosed": false,
+					"IsWon": false,
+					"ForecastCategory": "Pipeline",
+					"ForecastCategoryName": "Pipeline",
+					"CampaignId": null,
+					"HasOpportunityLineItem": false,
+					"Pricebook2Id": null,
+					"OwnerId": "id1",
+					"CreatedDate": "2025-03-30T17:57:34.000+0000",
+					"CreatedById": "id1",
+					"LastModifiedDate": "2025-03-30T17:57:34.000+0000",
+					"LastModifiedById": "id1",
+					"SystemModstamp": "2025-03-30T17:57:34.000+0000",
+					"LastActivityDate": null,
+					"PushCount": 0,
+					"LastStageChangeDate": null,
+					"FiscalQuarter": 1,
+					"FiscalYear": 2015,
+					"Fiscal": "2015 1",
+					"ContactId": null,
+					"LastViewedDate": null,
+					"LastReferencedDate": null,
+					"HasOpenActivity": false,
+					"HasOverdueTask": false,
+					"LastAmountChangedHistoryId": null,
+					"LastCloseDateChangedHistoryId": null,
+					"DeliveryInstallationStatus__c": null,
+					"TrackingNumber__c": null,
+					"OrderNumber__c": null,
+					"CurrentGenerators__c": null,
+					"MainCompetitors__c": "Honda"
+				}
+			}
+		],
+		"No Operation, do nothing5": [
+			{
+				"json": {
+					"objectDescribe": {
+						"activateable": false,
+						"associateEntityType": null,
+						"associateParentEntity": null,
+						"createable": true,
+						"custom": false,
+						"customSetting": false,
+						"deepCloneable": true,
+						"deletable": true,
+						"deprecatedAndHidden": false,
+						"feedEnabled": true,
+						"hasSubtypes": false,
+						"isInterface": false,
+						"isSubtype": false,
+						"keyPrefix": "006",
+						"label": "Opportunity",
+						"labelPlural": "Opportunities",
+						"layoutable": true,
+						"mergeable": false,
+						"mruEnabled": true,
+						"name": "Opportunity",
+						"queryable": true,
+						"replicateable": true,
+						"retrieveable": true,
+						"searchable": true,
+						"triggerable": true,
+						"undeletable": true,
+						"updateable": true,
+						"urls": {
+							"compactLayouts": "/services/data/v59.0/sobjects/Opportunity/describe/compactLayouts",
+							"rowTemplate": "/services/data/v59.0/sobjects/Opportunity/{ID}",
+							"approvalLayouts": "/services/data/v59.0/sobjects/Opportunity/describe/approvalLayouts",
+							"listviews": "/services/data/v59.0/sobjects/Opportunity/listviews",
+							"describe": "/services/data/v59.0/sobjects/Opportunity/describe",
+							"quickActions": "/services/data/v59.0/sobjects/Opportunity/quickActions",
+							"layouts": "/services/data/v59.0/sobjects/Opportunity/describe/layouts",
+							"sobject": "/services/data/v59.0/sobjects/Opportunity"
+						}
+					},
+					"recentItems": [
+						{
+							"attributes": {
+								"type": "Opportunity",
+								"url": "/services/data/v59.0/sobjects/Opportunity/id1"
+							},
+							"Id": "id1",
+							"Name": "Opportunity 1"
+						},
+						{
+							"attributes": {
+								"type": "Opportunity",
+								"url": "/services/data/v59.0/sobjects/Opportunity/id2"
+							},
+							"Id": "id2",
+							"Name": "Opportunity 2"
+						}
+					]
+				}
+			}
+		],
+		"No Operation, do nothing6": [
+			{
+				"json": {
+					"errors": [],
+					"success": true
+				}
+			}
+		],
+		"No Operation, do nothing2": [
+			{
+				"json": {
+					"id": "id1",
+					"success": true,
+					"errors": [],
+					"created": false
+				}
+			}
+		],
+		"No Operation, do nothing7": [
+			{
+				"json": {
+					"errors": [],
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Salesforce",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesforce1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesforce2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesforce3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesforce4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesforce5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesforce6",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesforce7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce1": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce2": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce3": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce4": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce5": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce6": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce7": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "8c7902c9-6bf2-44b1-85c8-13384bfd5ad1",
+	"meta": {
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "5uU0KQPrh1moPgAs",
+	"tags": []
+}

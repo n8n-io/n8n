@@ -3,40 +3,13 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "5ae8991f-08a2-4b27-b61c-85e3b8a83693",
-      "name": "When clicking ‘Test workflow’",
+      "id": "06ce84a5-0ed0-45bb-ac2e-aa8c35cd67c7",
+      "name": "Start Manually",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        460,
-        460
-      ]
-    },
-    {
-      "parameters": {
-        "url": "https://internal.users.n8n.cloud/webhook/random-data-api",
-        "options": {}
-      },
-      "id": "22511d75-ab54-49e1-b8af-08b8b3372373",
-      "name": "fetch 5 random users",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        680,
-        460
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.first_name_reversed = item.json = {\n    firstName: item.json.firstname,\n    firstnNameReversed: item.json.firstname.split(\"\").reverse().join(\"\")\n  };\n}\n\nreturn $input.all();"
-      },
-      "id": "4b66b15a-1685-46c1-a5e3-ebf8cdb11d21",
-      "name": "do something with them",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        900,
-        460
+        -400,
+        -140
       ]
     },
     {
@@ -50,68 +23,81 @@
           ]
         }
       },
-      "id": "d763fc3b-6c4a-4d39-8857-ff84f7b6dc83",
-      "name": "Schedule Trigger",
+      "id": "b23a2576-2940-4faf-8a8f-79fdb128087a",
+      "name": "Start on Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        460,
-        660
+        -400,
+        60
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  \"message\": $input.first().json.message + ' from code node'\n}"
+      },
+      "id": "1742daae-ad58-47cf-b777-3c95670af1ea",
+      "name": "Process The Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e8ce419c-b8c8-415c-81e1-7e260884f2a7",
+              "name": "message",
+              "value": "Hello",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        -60
+      ],
+      "id": "e56681c5-2111-4065-bb28-2358f86058c6",
+      "name": "Edit Fields"
     }
   ],
-  "pinData": {
-    "Schedule Trigger": [
-      {
-        "json": {
-          "timestamp": "2024-01-29T13:45:00.006+01:00",
-          "Readable date": "January 29th 2024, 1:45:00 pm",
-          "Readable time": "1:45:00 pm",
-          "Day of week": "Monday",
-          "Year": "2024",
-          "Month": "January",
-          "Day of month": "29",
-          "Hour": "13",
-          "Minute": "45",
-          "Second": "00",
-          "Timezone": "CET +01:00"
-        }
-      }
-    ],
-    "When clicking ‘Test workflow’": [
-      {
-        "json": {}
-      }
-    ]
-  },
+  "pinData": {},
   "connections": {
-    "When clicking ‘Test workflow’": {
+    "Start Manually": {
       "main": [
         [
           {
-            "node": "fetch 5 random users",
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "fetch 5 random users": {
+    "Start on Schedule": {
       "main": [
         [
           {
-            "node": "do something with them",
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Schedule Trigger": {
+    "Edit Fields": {
       "main": [
         [
           {
-            "node": "fetch 5 random users",
+            "node": "Process The Data",
             "type": "main",
             "index": 0
           }
@@ -123,11 +109,10 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "b9a6c3b0-15cd-4359-a92e-12a691a36b7b",
+  "versionId": "411bb599-f9b1-4db0-b289-6603403ebd82",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "8a47b83b4479b11330fdf21ccc96d4a8117035a968612e452b4c87bfd09c16c7"
+    "instanceId": "60c7f4290f8c974ffff64c8edee1558609a63570231cabdd7fb7ab83d151d879"
   },
-  "id": "PymcwIrbqgNh3O0K",
+  "id": "Q5svYbZJ8WEAedTH",
   "tags": []
 }

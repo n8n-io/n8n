@@ -1,23 +1,24 @@
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, WorkflowEntity } from '@n8n/db';
+import type { User, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
-import type { User } from '@/databases/entities/user';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 describe('ActiveWorkflowsService', () => {
 	const user = mock<User>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const workflowFinderService = mock<WorkflowFinderService>();
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const service = new ActiveWorkflowsService(
 		mock(),
 		workflowRepository,
 		sharedWorkflowRepository,
 		activationErrorsService,
+		workflowFinderService,
 	);
 	const activeIds = ['1', '2', '3', '4'];
 
@@ -40,21 +41,19 @@ describe('ActiveWorkflowsService', () => {
 		});
 
 		it('should return all workflow ids when user has full access', async () => {
-			user.hasGlobalScope.mockReturnValue(true);
+			user.role = GLOBAL_ADMIN_ROLE;
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['2', '3', '4']);
-			expect(user.hasGlobalScope).toHaveBeenCalledWith('workflow:list');
 			expect(sharedWorkflowRepository.getSharedWorkflowIds).not.toHaveBeenCalled();
 		});
 
 		it('should filter out workflow ids that the user does not have access to', async () => {
-			user.hasGlobalScope.mockReturnValue(false);
+			user.role = GLOBAL_MEMBER_ROLE;
 			sharedWorkflowRepository.getSharedWorkflowIds.mockResolvedValue(['3']);
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['3']);
-			expect(user.hasGlobalScope).toHaveBeenCalledWith('workflow:list');
 			expect(sharedWorkflowRepository.getSharedWorkflowIds).toHaveBeenCalledWith(activeIds);
 		});
 	});
@@ -63,22 +62,22 @@ describe('ActiveWorkflowsService', () => {
 		const workflowId = 'workflowId';
 
 		it('should throw a BadRequestError a user does not have access to the workflow id', async () => {
-			sharedWorkflowRepository.findWorkflowForUser.mockResolvedValue(null);
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 			await expect(service.getActivationError(workflowId, user)).rejects.toThrow(BadRequestError);
 
-			expect(sharedWorkflowRepository.findWorkflowForUser).toHaveBeenCalledWith(workflowId, user, [
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, user, [
 				'workflow:read',
 			]);
 			expect(activationErrorsService.get).not.toHaveBeenCalled();
 		});
 
 		it('should return the error when the user has access', async () => {
-			sharedWorkflowRepository.findWorkflowForUser.mockResolvedValue(new WorkflowEntity());
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(new WorkflowEntity());
 			activationErrorsService.get.mockResolvedValue('some-error');
 			const error = await service.getActivationError(workflowId, user);
 
 			expect(error).toEqual('some-error');
-			expect(sharedWorkflowRepository.findWorkflowForUser).toHaveBeenCalledWith(workflowId, user, [
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, user, [
 				'workflow:read',
 			]);
 			expect(activationErrorsService.get).toHaveBeenCalledWith(workflowId);

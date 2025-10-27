@@ -9,7 +9,8 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
+
 import type { IAttachment, IRecord } from '../helpers/interfaces';
 import { flattenOutput } from '../helpers/utils';
 

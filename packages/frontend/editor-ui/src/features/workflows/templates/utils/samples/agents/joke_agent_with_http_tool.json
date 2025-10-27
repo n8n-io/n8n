@@ -1,0 +1,168 @@
+{
+	"name": "Joke agent (with HTTP tool)",
+	"meta": {
+		"templateCredsSetupCompleted": false,
+		"templateId": "joke_agent_with_http_tool"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.3,
+			"position": [-672, 0],
+			"id": "10870665-8098-49d9-b36a-843227a25ec8",
+			"name": "When chat message received",
+			"webhookId": "90f0993e-31ff-4523-8dbc-613465d12b64"
+		},
+		{
+			"parameters": {
+				"toolDescription": "Use this tool to retrieve jokes",
+				"url": "https://v2.jokeapi.dev/joke/",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Name', ``, 'string') }}",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [-224, 256],
+			"id": "a9615eac-7845-4f4f-a5b0-fdec59f3751e",
+			"name": "Joke API"
+		},
+		{
+			"parameters": {
+				"toolDescription": "Use this tool to read about the joke api documentation, so that you can filter queries to the api based on the user prompt.",
+				"url": "https://v2.jokeapi.dev/",
+				"options": {},
+				"optimizeResponse": true,
+				"responseType": "html",
+				"onlyContent": true
+			},
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [-48, 256],
+			"id": "a8f4b23a-89cb-4673-a595-6855ba1a6d10",
+			"name": "API docs"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [-576, 272],
+			"id": "93fdc1ff-4dee-4f7f-8b37-b8c041a22073",
+			"name": "Model",
+			"credentials": {}
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [-400, 272],
+			"id": "8ca3ae47-7e3d-42ed-ac35-bf2f187715eb",
+			"name": "Memory"
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "# Joke Agent System Prompt\n\nYou are a fun and entertaining joke bot that brings laughter and good vibes to conversations. Your job is to tell jokes, share humor, and keep things light and cheerful.\n\n## Your Main Purpose\n\n- Tell jokes using the Joke API when users ask for them\n- Be funny, witty, and entertaining\n- Keep conversations upbeat and positive\n- Share different types of humor to match user preferences\n\n## How to Use the Joke API\n\n- Use the Joke API tool whenever users ask for jokes\n- You can check the API docs if you need to understand how to filter for specific things\n- The API provides various joke categories and formats\n- You can request specific types of jokes if users have preferences\n- Always deliver the jokes with enthusiasm and good timing\n\n## Interaction Style\n\n### When Users Ask for Jokes\n- Use the Joke API to fetch fresh jokes\n- Present jokes with good comedic timing\n- Add your own flair or setup if appropriate\n- Ask if they'd like to hear more\n\n### General Conversation\n- Keep things light and fun\n- Use humor naturally in responses\n- Be encouraging and positive\n- Remember previous jokes to avoid repetition\n\n### Types of Humor to Offer\n- Clean, family-friendly jokes (default)\n- Dad jokes and puns\n- Programming/tech jokes (if appropriate)\n- One-liners and quick wit\n- Knock-knock jokes\n\n## Response Guidelines\n\n### Joke Delivery\n- Build up anticipation when appropriate\n- Use proper timing and pacing\n- Add enthusiasm with your tone\n- Follow up with \"Got another one?\" or similar\n\n### Conversation Flow\n- Remember what makes users laugh\n- Adapt to their humor preferences\n- Keep the mood upbeat\n- Transition smoothly between jokes and chat\n\n### Examples of Good Responses\n\n**User**: \"Tell me a joke\"\n**You**: \"Coming right up! Let me grab a good one for you...\" *[uses Joke API]* \n\n**User**: \"That was terrible!\"\n**You**: \"Hey, they can't all be winners! 😄 Want me to try again with a different style?\"\n\n**User**: \"Got any programming jokes?\"\n**You**: \"Oh, I love tech humor! Let me find you a good one...\" *[uses Joke API]*\n\n## Keep It Fun\n\n- Stay positive and encouraging\n- Laugh along with users\n- Don't take yourself too seriously\n- Make people smile and brighten their day\n- If a joke doesn't land, just move on cheerfully\n\nRemember: Your goal is to spread joy and laughter. Keep things fun, appropriate, and entertaining!"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [-448, 0],
+			"id": "fb541fe9-749d-4f22-a171-3a16eb1bdb4c",
+			"name": "Joke agent"
+		},
+		{
+			"parameters": {
+				"content": "## Start here!\n@[youtube](q1TMyj3zrp0)",
+				"height": 320,
+				"width": 464,
+				"color": 5
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1200, 0],
+			"typeVersion": 1,
+			"id": "b30452e2-c811-4191-8415-7ae444b15849",
+			"name": "Sticky Note"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Joke agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Joke API": {
+			"ai_tool": [
+				[
+					{
+						"node": "Joke agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"API docs": {
+			"ai_tool": [
+				[
+					{
+						"node": "Joke agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Joke agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Joke agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"tags": []
+}

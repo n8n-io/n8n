@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "properties": {
+        "bill_by": {
+            "type": "string"
+        },
+        "budget_by": {
+            "type": "string"
+        },
+        "budget_is_monthly": {
+            "type": "boolean"
+        },
+        "client": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "cost_budget_include_expenses": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_active": {
+            "type": "boolean"
+        },
+        "is_billable": {
+            "type": "boolean"
+        },
+        "is_fixed_fee": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notify_when_over_budget": {
+            "type": "boolean"
+        },
+        "over_budget_notification_percentage": {
+            "type": "integer"
+        },
+        "show_budget_to_all": {
+            "type": "boolean"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

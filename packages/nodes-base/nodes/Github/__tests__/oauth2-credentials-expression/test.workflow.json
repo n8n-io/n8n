@@ -1,0 +1,103 @@
+{
+	"name": "My workflow 255",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-300, 160],
+			"id": "ab490d05-67aa-4061-b01d-4478e9984c75",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "13c9caa1-e4e6-4365-8282-747dd318abce",
+							"name": "server",
+							"value": "https://github.example.com/api/v3",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-40, 160],
+			"id": "562791a3-7ff5-4f29-901b-5b1061cc2da2",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "13c9caa1-e4e6-4365-8282-747dd318abce",
+							"name": "authUrl",
+							"value": "={{$json[\"server\"] === \"https://api.github.com\" ? \"https://github.com\" : $json[\"server\"].split(\"://\")[0] + \"://\" + $json[\"server\"].split(\"://\")[1].split(\"/\")[0]}}/login/oauth/authorize",
+							"type": "string"
+						},
+						{
+							"id": "02bd6a24-1375-490e-9683-7faedea36e20",
+							"name": "accessTokenUrl",
+							"value": "={{$json[\"server\"] === \"https://api.github.com\" ? \"https://github.com\" : $json[\"server\"].split(\"://\")[0] + \"://\" + $json[\"server\"].split(\"://\")[1].split(\"/\")[0]}}/login/oauth/access_token",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 160],
+			"id": "73059a97-269e-4c1a-b034-b114f3f5e671",
+			"name": "Edit Fields1"
+		}
+	],
+	"pinData": {
+		"Edit Fields1": [
+			{
+				"json": {
+					"authUrl": "https://github.example.com/login/oauth/authorize",
+					"accessTokenUrl": "https://github.example.com/login/oauth/access_token"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2acb676c-cdfb-4f4d-9000-decf4e2fdb93",
+	"meta": {
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "s9LDuRXe2e5LF5jP",
+	"tags": []
+}

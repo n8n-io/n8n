@@ -1,51 +1,51 @@
-import { Flags } from '@oclif/core';
+import { WorkflowRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import fs from 'fs';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import path from 'path';
-import Container from 'typedi';
-
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
 
-export class ExportWorkflowsCommand extends BaseCommand {
-	static description = 'Export workflows';
+const flagsSchema = z.object({
+	all: z.boolean().describe('Export all workflows').optional(),
+	backup: z
+		.boolean()
+		.describe(
+			'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
+		)
+		.optional(),
+	id: z.string().describe('The ID of the workflow to export').optional(),
+	output: z
+		.string()
+		.alias('o')
+		.describe('Output file name or directory if using separate files')
+		.optional(),
+	pretty: z.boolean().describe('Format the output in an easier to read fashion').optional(),
+	separate: z
+		.boolean()
+		.describe(
+			'Exports one file per workflow (useful for versioning). Must inform a directory via --output.',
+		)
+		.optional(),
+});
 
-	static examples = [
-		'$ n8n export:workflow --all',
-		'$ n8n export:workflow --id=5 --output=file.json',
-		'$ n8n export:workflow --all --output=backups/latest/',
-		'$ n8n export:workflow --backup --output=backups/latest/',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		all: Flags.boolean({
-			description: 'Export all workflows',
-		}),
-		backup: Flags.boolean({
-			description:
-				'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
-		}),
-		id: Flags.string({
-			description: 'The ID of the workflow to export',
-		}),
-		output: Flags.string({
-			char: 'o',
-			description: 'Output file name or directory if using separate files',
-		}),
-		pretty: Flags.boolean({
-			description: 'Format the output in an easier to read fashion',
-		}),
-		separate: Flags.boolean({
-			description:
-				'Exports one file per workflow (useful for versioning). Must inform a directory via --output.',
-		}),
-	};
-
+@Command({
+	name: 'export:workflow',
+	description: 'Export workflows',
+	examples: [
+		'--all',
+		'--id=5 --output=file.json',
+		'--all --output=backups/latest/',
+		'--backup --output=backups/latest/',
+	],
+	flagsSchema,
+})
+export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	// eslint-disable-next-line complexity
 	async run() {
-		const { flags } = await this.parse(ExportWorkflowsCommand);
+		const { flags } = this;
 
 		if (flags.backup) {
 			flags.all = true;
@@ -90,7 +90,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 					this.logger.error(e.message);
 					this.logger.error(e.stack!);
 				}
-				this.exit(1);
+				process.exit(1);
 			}
 		} else if (flags.output) {
 			if (fs.existsSync(flags.output)) {
@@ -103,11 +103,11 @@ export class ExportWorkflowsCommand extends BaseCommand {
 
 		const workflows = await Container.get(WorkflowRepository).find({
 			where: flags.id ? { id: flags.id } : {},
-			relations: ['tags'],
+			relations: ['tags', 'shared', 'shared.project'],
 		});
 
 		if (workflows.length === 0) {
-			throw new ApplicationError('No workflows found with specified filters');
+			throw new UserError('No workflows found with specified filters');
 		}
 
 		if (flags.separate) {
@@ -116,7 +116,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			for (i = 0; i < workflows.length; i++) {
 				fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
-					(flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) +
+					(flags.output!.endsWith(path.sep) ? flags.output : flags.output + path.sep) +
 					workflows[i].id
 				}.json`;
 				fs.writeFileSync(filename, fileContents);

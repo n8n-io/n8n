@@ -1,6 +1,6 @@
 {
   "name": "@n8n/config",
-  "version": "1.10.0",
+  "version": "1.59.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -8,8 +8,8 @@
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
-    "lint": "eslint .",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:dev": "jest --watch"
@@ -21,7 +21,11 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "reflect-metadata": "0.2.2",
-    "typedi": "catalog:"
+    "@n8n/di": "workspace:*",
+    "reflect-metadata": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
   }
 }

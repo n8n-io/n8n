@@ -1,0 +1,15 @@
+{
+	"node": "n8n-nodes-base.evaluationTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Utility"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.evaluationtrigger/"
+			}
+		],
+		"generic": []
+	},
+	"alias": ["Test", "Metrics", "Evals", "Set Output", "Set Metrics"]
+}

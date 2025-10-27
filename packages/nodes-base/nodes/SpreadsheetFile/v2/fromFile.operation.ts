@@ -1,10 +1,9 @@
+import { parse as createCSVParser } from 'csv-parse';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import type { Sheet2JSONOpts, ParsingOptions } from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
 
-import type { Sheet2JSONOpts, WorkBook, ParsingOptions } from 'xlsx';
-import { read as xlsxRead, readFile as xlsxReadFile, utils as xlsxUtils } from 'xlsx';
-
-import { parse as createCSVParser } from 'csv-parse';
 import { binaryProperty, fromFileOptions } from '../description';
 
 export const description: INodeProperties[] = [
@@ -96,6 +95,7 @@ export async function execute(
 					bom: options.enableBOM as boolean,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					columns: options.headerRow !== false,
+					relax_quotes: options.relaxQuotes as boolean,
 					onRecord: (record) => {
 						if (!options.includeEmptyCells) {
 							record = Object.fromEntries(
@@ -121,19 +121,24 @@ export async function execute(
 					parser.end();
 				}
 			} else {
-				let workbook: WorkBook;
 				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
-				if (options.readAsString) xlsxOptions.type = 'string';
 
+				let buffer: Buffer;
 				if (binaryData.id) {
-					const binaryPath = this.helpers.getBinaryPath(binaryData.id);
-					workbook = xlsxReadFile(binaryPath, xlsxOptions);
+					const chunkSize = 256 * 1024;
+					const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+					buffer = await this.helpers.binaryToBuffer(stream);
 				} else {
-					const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
-					workbook = xlsxRead(
-						options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
-						xlsxOptions,
-					);
+					buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+				}
+
+				let workbook;
+				if (options.readAsString) {
+					xlsxOptions.type = 'binary';
+					const binaryString = buffer.toString('binary');
+					workbook = xlsxRead(binaryString, xlsxOptions);
+				} else {
+					workbook = xlsxRead(buffer, xlsxOptions);
 				}
 
 				if (workbook.SheetNames.length === 0) {

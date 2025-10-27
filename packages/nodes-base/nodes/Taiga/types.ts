@@ -1,38 +1,38 @@
-type Resource = 'epic' | 'issue' | 'task' | 'userStory';
+export type Resource = 'epic' | 'issue' | 'task' | 'userStory';
 
-type Operation = 'create' | 'delete' | 'update' | 'get' | 'getAll';
+export type Operation = 'create' | 'delete' | 'update' | 'get' | 'getAll';
 
-type LoadedResource = {
+export type LoadedResource = {
 	id: string;
 	name: string;
 };
 
-type LoadOption = {
+export type LoadOption = {
 	value: string;
 	name: string;
 };
 
-type LoadedUser = {
+export type LoadedUser = {
 	id: string;
 	full_name_display: string;
 };
 
-type LoadedUserStory = {
+export type LoadedUserStory = {
 	id: string;
 	subject: string;
 };
 
-type LoadedEpic = LoadedUserStory;
+export type LoadedEpic = LoadedUserStory;
 
-type LoadedTags = {
+export type LoadedTags = {
 	[tagName: string]: string | null; // hex color
 };
 
-type Operations = 'all' | 'create' | 'delete' | 'change';
+export type Operations = 'all' | 'create' | 'delete' | 'change';
 
-type Resources = 'all' | 'issue' | 'milestone' | 'task' | 'userstory' | 'wikipage';
+export type Resources = 'all' | 'issue' | 'milestone' | 'task' | 'userstory' | 'wikipage';
 
-type WebhookPayload = {
+export type WebhookPayload = {
 	action: Operations;
 	type: Resources;
 	by: Record<string, string | number>;

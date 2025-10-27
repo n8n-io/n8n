@@ -1,0 +1,84 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-180, -520],
+			"id": "8218dacc-3b5f-460a-a773-817faf012ba9",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"container": {
+					"__rl": true,
+					"value": "newOne3",
+					"mode": "list",
+					"cachedResultName": "newOne3"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureCosmosDb",
+			"typeVersion": 1,
+			"position": [-80, -360],
+			"id": "4f60d430-3c90-4838-b9d1-8c9637e745b6",
+			"name": "getAllItems",
+			"alwaysOutputData": true,
+			"credentials": {
+				"microsoftAzureCosmosDbSharedKeyApi": {
+					"id": "exampleId",
+					"name": "Azure Cosmos DB account "
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "getAllItems",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"getAllItems": [
+			{
+				"json": {
+					"id": "John",
+					"FamilyName": "NewNameAdded",
+					"Parents": [
+						88,
+						{
+							"FirstName": "Thomas",
+							"FamilyName": "Bob"
+						},
+						{
+							"FamilyName": null,
+							"FirstName": "Mary Kay"
+						}
+					],
+					"ExtraField": "nothing serious",
+					"Otherdetails": "male",
+					"This": "male"
+				}
+			},
+			{
+				"json": {
+					"FamilyName": "NewName",
+					"id": "NewId"
+				}
+			},
+			{
+				"json": {
+					"id": "this"
+				}
+			}
+		]
+	}
+}

@@ -7,9 +7,16 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { allEvents, eventExists, getId, jiraSoftwareCloudApiRequest } from './GenericFunctions';
+import {
+	allEvents,
+	eventExists,
+	getWebhookId,
+	getWebhookEndpoint,
+	jiraSoftwareCloudApiRequest,
+} from './GenericFunctions';
+import type { JiraWebhook } from './types';
 
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +30,7 @@ export class JiraTrigger implements INodeType {
 			name: 'Jira Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				displayName: 'Credentials to Connect to Jira',
@@ -42,6 +49,16 @@ export class JiraTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						jiraVersion: ['server'],
+					},
+				},
+			},
+			{
+				displayName: 'Credentials to Connect to Jira',
+				name: 'jiraSoftwareServerPatApi',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: ['serverPat'],
 					},
 				},
 			},
@@ -86,6 +103,10 @@ export class JiraTrigger implements INodeType {
 					{
 						name: 'Server (Self Hosted)',
 						value: 'server',
+					},
+					{
+						name: 'Server (Pat) (Self Hosted)',
+						value: 'serverPat',
 					},
 				],
 				default: 'cloud',
@@ -397,13 +418,19 @@ export class JiraTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events') as string[];
 
-				const endpoint = '/webhooks/1.0/webhook';
+				const endpoint = await getWebhookEndpoint.call(this);
+				webhookData.endpoint = endpoint;
 
-				const webhooks = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {});
+				const webhooks: JiraWebhook[] = await jiraSoftwareCloudApiRequest.call(
+					this,
+					endpoint,
+					'GET',
+					{},
+				);
 
 				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl && eventExists(events, webhook.events as string[])) {
-						webhookData.webhookId = getId(webhook.self as string);
+					if (webhook.url === webhookUrl && eventExists(events, webhook.events)) {
+						webhookData.webhookId = getWebhookId(webhook);
 						return true;
 					}
 				}
@@ -415,8 +442,8 @@ export class JiraTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				let events = this.getNodeParameter('events', []) as string[];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-				const endpoint = '/webhooks/1.0/webhook';
 				const webhookData = this.getWorkflowStaticData('node');
+				const endpoint = webhookData.endpoint as string;
 
 				let authenticateWebhook = false;
 
@@ -452,7 +479,7 @@ export class JiraTrigger implements INodeType {
 					body.excludeBody = additionalFields.excludeBody as boolean;
 				}
 
-				const parameters: any = {};
+				const parameters: Record<string, string> = {};
 
 				if (authenticateWebhook) {
 					let httpQueryAuth;
@@ -480,13 +507,18 @@ export class JiraTrigger implements INodeType {
 				}
 
 				if (Object.keys(parameters as IDataObject).length) {
-					const params = new URLSearchParams(parameters as string).toString();
+					const params = new URLSearchParams(parameters).toString();
 					body.url = `${body.url}?${decodeURIComponent(params)}`;
 				}
 
-				const responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'POST', body);
+				const responseData: JiraWebhook = await jiraSoftwareCloudApiRequest.call(
+					this,
+					endpoint,
+					'POST',
+					body,
+				);
 
-				webhookData.webhookId = getId(responseData.self as string);
+				webhookData.webhookId = getWebhookId(responseData);
 
 				return true;
 			},
@@ -494,7 +526,9 @@ export class JiraTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/1.0/webhook/${webhookData.webhookId}`;
+					const baseUrl = webhookData.endpoint as string;
+					const webhookId = webhookData.webhookId as string;
+					const endpoint = `${baseUrl}/${webhookId}`;
 					const body = {};
 
 					try {

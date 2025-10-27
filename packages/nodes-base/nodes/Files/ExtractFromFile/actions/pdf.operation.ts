@@ -1,8 +1,6 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-
-import { NodeOperationError, deepCopy } from 'n8n-workflow';
-
 import unset from 'lodash/unset';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 import { extractDataFromPDF } from '@utils/binary';
 import { updateDisplayOptions } from '@utils/utilities';

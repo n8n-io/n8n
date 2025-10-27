@@ -1,0 +1,145 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "completed": {
+            "type": "boolean"
+        },
+        "completed_at": {
+            "type": "null"
+        },
+        "completed_by": {
+            "type": "null"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "current_status": {
+            "type": "null"
+        },
+        "current_status_update": {
+            "type": "null"
+        },
+        "default_access_level": {
+            "type": "string"
+        },
+        "default_view": {
+            "type": "string"
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "gid": {
+            "type": "string"
+        },
+        "icon": {
+            "type": "string"
+        },
+        "members": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "minimum_access_level_for_customization": {
+            "type": "string"
+        },
+        "minimum_access_level_for_sharing": {
+            "type": "string"
+        },
+        "modified_at": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "permalink_url": {
+            "type": "string"
+        },
+        "privacy_setting": {
+            "type": "string"
+        },
+        "public": {
+            "type": "boolean"
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "start_on": {
+            "type": "null"
+        },
+        "team": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspace": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

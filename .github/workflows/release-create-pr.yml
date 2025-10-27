@@ -17,6 +17,7 @@ on:
           - patch
           - minor
           - major
+          - experimental
 
 jobs:
   create-release-pr:
@@ -30,21 +31,25 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.base-branch }}
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.x
+          node-version: 22.x
 
       - run: npm install --prefix=.github/scripts --no-package-lock
 
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
       - name: Bump package versions
         run: |
-          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> $GITHUB_ENV
+          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> "$GITHUB_ENV"
         env:
           RELEASE_TYPE: ${{ github.event.inputs.release-type }}
 
@@ -52,11 +57,13 @@ jobs:
         run: node .github/scripts/update-changelog.mjs
 
       - name: Push the base branch
+        env:
+          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
         run: |
-          git push -f origin refs/remotes/origin/${{ github.event.inputs.base-branch }}:refs/heads/release/${{ env.NEXT_RELEASE }}
+          git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
 
       - name: Push the release branch, and Create the PR
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
           base: 'release/${{ env.NEXT_RELEASE }}'
           branch: 'release-pr/${{ env.NEXT_RELEASE }}'

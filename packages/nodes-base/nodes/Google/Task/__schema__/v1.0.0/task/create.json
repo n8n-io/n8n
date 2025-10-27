@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "position": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
+        },
+        "webViewLink": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

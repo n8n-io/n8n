@@ -11,6 +11,7 @@ export type PasswordResetData = {
 
 export type SendEmailResult = {
 	emailSent: boolean;
+	errors?: string[];
 };
 
 export type MailData = {

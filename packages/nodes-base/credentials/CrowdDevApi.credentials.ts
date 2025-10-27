@@ -35,7 +35,7 @@ export class CrowdDevApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			description: 'Whether to connect even if SSL certificate validation is not possible',

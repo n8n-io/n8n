@@ -2,13 +2,21 @@ import { Config, Env, Nested } from '../decorators';
 
 @Config
 class HealthConfig {
-	/** Whether to enable the worker health check endpoint `/healthz`. */
+	/**
+	 * Whether to enable the worker health check endpoints:
+	 * - `/healthz` (worker alive)
+	 * - `/healthz/readiness` (worker connected to migrated database and connected to Redis)
+	 */
 	@Env('QUEUE_HEALTH_CHECK_ACTIVE')
 	active: boolean = false;
 
-	/** Port for worker to respond to health checks requests on, if enabled. */
+	/** Port for worker server to listen on. */
 	@Env('QUEUE_HEALTH_CHECK_PORT')
 	port: number = 5678;
+
+	/** IP address for worker server to listen on. */
+	@Env('N8N_WORKER_SERVER_ADDRESS')
+	address: string = '::';
 }
 
 @Config
@@ -44,17 +52,21 @@ class RedisConfig {
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
+
+	/** Whether to enable dual-stack hostname resolution for Redis connections. */
+	@Env('QUEUE_BULL_REDIS_DUALSTACK')
+	dualStack: boolean = false;
 }
 
 @Config
 class SettingsConfig {
 	/** How long (in milliseconds) is the lease period for a worker processing a job. */
 	@Env('QUEUE_WORKER_LOCK_DURATION')
-	lockDuration: number = 30_000;
+	lockDuration: number = 60_000;
 
 	/** How often (in milliseconds) a worker must renew the lease. */
 	@Env('QUEUE_WORKER_LOCK_RENEW_TIME')
-	lockRenewTime: number = 15_000;
+	lockRenewTime: number = 10_000;
 
 	/** How often (in milliseconds) Bull must check for stalled jobs. `0` to disable. */
 	@Env('QUEUE_WORKER_STALLED_INTERVAL')
@@ -73,10 +85,6 @@ class BullConfig {
 
 	@Nested
 	redis: RedisConfig;
-
-	/** How often (in seconds) to poll the Bull queue to identify executions finished during a Redis crash. `0` to disable. May increase Redis traffic significantly. */
-	@Env('QUEUE_RECOVERY_INTERVAL')
-	queueRecoveryInterval: number = 60; // watchdog interval
 
 	/** @deprecated How long (in seconds) a worker must wait for active executions to finish before exiting. Use `N8N_GRACEFUL_SHUTDOWN_TIMEOUT` instead */
 	@Env('QUEUE_WORKER_TIMEOUT')

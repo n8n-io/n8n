@@ -1,0 +1,76 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "created": {
+            "type": "string"
+        },
+        "emailAddress": {
+            "type": "string"
+        },
+        "emailAliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "extension": {
+            "type": "null"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "emailsImported": {
+                    "type": "boolean"
+                },
+                "gongConnectEnabled": {
+                    "type": "boolean"
+                },
+                "nonRecordedMeetingsImported": {
+                    "type": "boolean"
+                },
+                "preventEmailImport": {
+                    "type": "boolean"
+                },
+                "preventWebConferenceRecording": {
+                    "type": "boolean"
+                },
+                "telephonyCallsImported": {
+                    "type": "boolean"
+                },
+                "webConferencesRecorded": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "spokenLanguages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "language": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    }
+                }
+            }
+        },
+        "trustedEmailAddress": {
+            "type": "null"
+        }
+    },
+    "version": 1
+}

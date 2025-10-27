@@ -5,9 +5,10 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { listSearch, loadOptions } from './methods';
+
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
+import { listSearch, loadOptions } from './methods';
 
 export class GoogleAnalyticsV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -16,6 +17,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...versionDescription,
+			usableAsTool: true,
 		};
 	}
 

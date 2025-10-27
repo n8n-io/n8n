@@ -1,0 +1,513 @@
+{
+    "type": "object",
+    "properties": {
+        "objectId": {
+            "type": "string"
+        },
+        "pageElements": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "objectId": {
+                        "type": "string"
+                    },
+                    "shape": {
+                        "type": "object",
+                        "properties": {
+                            "placeholder": {
+                                "type": "object",
+                                "properties": {
+                                    "parentObjectId": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "shapeProperties": {
+                                "type": "object",
+                                "properties": {
+                                    "autofit": {
+                                        "type": "object",
+                                        "properties": {
+                                            "autofitType": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "contentAlignment": {
+                                        "type": "string"
+                                    },
+                                    "outline": {
+                                        "type": "object",
+                                        "properties": {
+                                            "dashStyle": {
+                                                "type": "string"
+                                            },
+                                            "outlineFill": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "solidFill": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "alpha": {
+                                                                "type": "integer"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
+                                            "weight": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "magnitude": {
+                                                        "type": "integer"
+                                                    },
+                                                    "unit": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "shadow": {
+                                        "type": "object",
+                                        "properties": {
+                                            "alignment": {
+                                                "type": "string"
+                                            },
+                                            "alpha": {
+                                                "type": "integer"
+                                            },
+                                            "blurRadius": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "unit": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
+                                            "rotateWithShape": {
+                                                "type": "boolean"
+                                            },
+                                            "transform": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "scaleX": {
+                                                        "type": "integer"
+                                                    },
+                                                    "scaleY": {
+                                                        "type": "integer"
+                                                    },
+                                                    "unit": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "shapeBackgroundFill": {
+                                        "type": "object",
+                                        "properties": {
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
+                                            "solidFill": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "color": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "rgbColor": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "red": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "shapeType": {
+                                "type": "string"
+                            },
+                            "text": {
+                                "type": "object",
+                                "properties": {
+                                    "textElements": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "endIndex": {
+                                                    "type": "integer"
+                                                },
+                                                "paragraphMarker": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "style": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "alignment": {
+                                                                    "type": "string"
+                                                                },
+                                                                "direction": {
+                                                                    "type": "string"
+                                                                },
+                                                                "indentEnd": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "indentFirstLine": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "indentStart": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "lineSpacing": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "spaceAbove": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "spaceBelow": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "spacingMode": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "textRun": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "content": {
+                                                            "type": "string"
+                                                        },
+                                                        "style": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "baselineOffset": {
+                                                                    "type": "string"
+                                                                },
+                                                                "bold": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "fontFamily": {
+                                                                    "type": "string"
+                                                                },
+                                                                "fontSize": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "foregroundColor": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "opaqueColor": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "themeColor": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "italic": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "smallCaps": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "strikethrough": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "underline": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "weightedFontFamily": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "fontFamily": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "weight": {
+                                                                            "type": "integer"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "size": {
+                        "type": "object",
+                        "properties": {
+                            "height": {
+                                "type": "object",
+                                "properties": {
+                                    "magnitude": {
+                                        "type": "integer"
+                                    },
+                                    "unit": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "width": {
+                                "type": "object",
+                                "properties": {
+                                    "magnitude": {
+                                        "type": "integer"
+                                    },
+                                    "unit": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "transform": {
+                        "type": "object",
+                        "properties": {
+                            "scaleX": {
+                                "type": "number"
+                            },
+                            "scaleY": {
+                                "type": "number"
+                            },
+                            "unit": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "pageProperties": {
+            "type": "object",
+            "properties": {
+                "pageBackgroundFill": {
+                    "type": "object",
+                    "properties": {
+                        "propertyState": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "revisionId": {
+            "type": "string"
+        },
+        "slideProperties": {
+            "type": "object",
+            "properties": {
+                "layoutObjectId": {
+                    "type": "string"
+                },
+                "masterObjectId": {
+                    "type": "string"
+                },
+                "notesPage": {
+                    "type": "object",
+                    "properties": {
+                        "notesProperties": {
+                            "type": "object",
+                            "properties": {
+                                "speakerNotesObjectId": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "objectId": {
+                            "type": "string"
+                        },
+                        "pageElements": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "objectId": {
+                                        "type": "string"
+                                    },
+                                    "shape": {
+                                        "type": "object",
+                                        "properties": {
+                                            "placeholder": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "index": {
+                                                        "type": "integer"
+                                                    },
+                                                    "parentObjectId": {
+                                                        "type": "string"
+                                                    },
+                                                    "type": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "shapeProperties": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "autofit": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "fontScale": {
+                                                                "type": "integer"
+                                                            }
+                                                        }
+                                                    },
+                                                    "outline": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "propertyState": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "shadow": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "propertyState": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "shapeBackgroundFill": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "propertyState": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "shapeType": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "size": {
+                                        "type": "object",
+                                        "properties": {
+                                            "height": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "magnitude": {
+                                                        "type": "integer"
+                                                    },
+                                                    "unit": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "width": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "magnitude": {
+                                                        "type": "integer"
+                                                    },
+                                                    "unit": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "transform": {
+                                        "type": "object",
+                                        "properties": {
+                                            "scaleX": {
+                                                "type": "number"
+                                            },
+                                            "scaleY": {
+                                                "type": "number"
+                                            },
+                                            "unit": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "pageProperties": {
+                            "type": "object",
+                            "properties": {
+                                "pageBackgroundFill": {
+                                    "type": "object",
+                                    "properties": {
+                                        "propertyState": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "pageType": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

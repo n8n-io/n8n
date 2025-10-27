@@ -1,0 +1,35 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "298d3dc9-5e99-4b3f-919e-05fdcdfbe2d0",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [360, 220]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "65c32346-e939-4ec7-88a9-1f9184e2258d",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [580, 220]
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

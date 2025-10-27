@@ -1,0 +1,185 @@
+{
+    "type": "object",
+    "properties": {
+        "approved_at_utc": {
+            "type": "null"
+        },
+        "approved_by": {
+            "type": "null"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "associated_award": {
+            "type": "null"
+        },
+        "author": {
+            "type": "string"
+        },
+        "author_flair_richtext": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "string"
+                    },
+                    "e": {
+                        "type": "string"
+                    },
+                    "t": {
+                        "type": "string"
+                    },
+                    "u": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "author_flair_type": {
+            "type": "string"
+        },
+        "author_fullname": {
+            "type": "string"
+        },
+        "author_is_blocked": {
+            "type": "boolean"
+        },
+        "author_patreon_flair": {
+            "type": "boolean"
+        },
+        "author_premium": {
+            "type": "boolean"
+        },
+        "banned_at_utc": {
+            "type": "null"
+        },
+        "banned_by": {
+            "type": "null"
+        },
+        "body": {
+            "type": "string"
+        },
+        "body_html": {
+            "type": "string"
+        },
+        "can_gild": {
+            "type": "boolean"
+        },
+        "can_mod_post": {
+            "type": "boolean"
+        },
+        "collapsed": {
+            "type": "boolean"
+        },
+        "collapsed_because_crowd_control": {
+            "type": "null"
+        },
+        "collapsed_reason": {
+            "type": "null"
+        },
+        "comment_type": {
+            "type": "null"
+        },
+        "controversiality": {
+            "type": "integer"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "created_utc": {
+            "type": "integer"
+        },
+        "depth": {
+            "type": "integer"
+        },
+        "downs": {
+            "type": "integer"
+        },
+        "gilded": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_submitter": {
+            "type": "boolean"
+        },
+        "link_id": {
+            "type": "string"
+        },
+        "locked": {
+            "type": "boolean"
+        },
+        "mod_note": {
+            "type": "null"
+        },
+        "mod_reason_by": {
+            "type": "null"
+        },
+        "mod_reason_title": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "no_follow": {
+            "type": "boolean"
+        },
+        "num_reports": {
+            "type": "null"
+        },
+        "parent_id": {
+            "type": "string"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "removal_reason": {
+            "type": "null"
+        },
+        "report_reasons": {
+            "type": "null"
+        },
+        "saved": {
+            "type": "boolean"
+        },
+        "score": {
+            "type": "integer"
+        },
+        "score_hidden": {
+            "type": "boolean"
+        },
+        "send_replies": {
+            "type": "boolean"
+        },
+        "stickied": {
+            "type": "boolean"
+        },
+        "subreddit": {
+            "type": "string"
+        },
+        "subreddit_id": {
+            "type": "string"
+        },
+        "subreddit_name_prefixed": {
+            "type": "string"
+        },
+        "subreddit_type": {
+            "type": "string"
+        },
+        "top_awarded_type": {
+            "type": "null"
+        },
+        "total_awards_received": {
+            "type": "integer"
+        },
+        "unrepliable_reason": {
+            "type": "null"
+        },
+        "ups": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

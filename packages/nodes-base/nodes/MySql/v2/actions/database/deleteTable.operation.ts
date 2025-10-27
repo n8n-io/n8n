@@ -6,21 +6,20 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
 import type {
 	QueryRunner,
 	QueryValues,
 	QueryWithValues,
 	WhereClause,
 } from '../../helpers/interfaces';
-
 import { addWhereClauses, escapeSqlIdentifier } from '../../helpers/utils';
-
 import {
 	optionsCollection,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
 } from '../common.descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

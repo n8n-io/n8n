@@ -1,27 +1,26 @@
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import type { APIRequest, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type superagent from 'superagent';
 import request from 'supertest';
-import { Container } from 'typedi';
 import { URL } from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import { ControllerRegistry } from '@/decorators';
+import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
-import { Logger } from '@/logger';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
-import type { APIRequest } from '@/requests';
 import { Telemetry } from '@/telemetry';
+import { LicenseMocker } from '@test-integration/license';
 
-import { mockInstance } from '../../../shared/mocking';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
-import { LicenseMocker } from '../license';
-import * as testDb from '../test-db';
 import type { SetupProps, TestServer } from '../types';
 
 /**
@@ -56,39 +55,58 @@ function createAgent(
 	if (withRestSegment) void agent.use(prefix(REST_PATH_SEGMENT));
 
 	if (options?.auth && options?.user) {
-		const token = Container.get(AuthService).issueJWT(options.user, browserId);
+		const token = Container.get(AuthService).issueJWT(
+			options.user,
+			options.user.mfaEnabled,
+			browserId,
+		);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
 }
 
-function publicApiAgent(
+const userDoesNotHaveApiKey = (user: User) => {
+	return !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
+};
+
+const publicApiAgent = (
 	app: express.Application,
-	{ user, version = 1 }: { user: User; version?: number },
-) {
+	{ user, apiKey, version = 1 }: { user?: User; apiKey?: string; version?: number },
+) => {
+	if (user && apiKey) {
+		throw new Error('Cannot provide both user and API key');
+	}
+
+	if (user && userDoesNotHaveApiKey(user)) {
+		throw new Error('User does not have an API key');
+	}
+
+	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
+
 	const agent = request.agent(app);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
-	if (user.apiKey) {
-		void agent.set({ 'X-N8N-API-KEY': user.apiKey });
-	}
+	if (!user && !apiKey) return agent;
+	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
 	return agent;
-}
+};
 
 export const setupTestServer = ({
 	endpointGroups,
 	enabledFeatures,
 	quotas,
+	modules,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
+	app.set('query parser', 'extended');
 	app.use((req: APIRequest, _, next) => {
 		req.browserId = browserId;
 		next();
 	});
 
 	// Mock all telemetry and logging
-	mockInstance(Logger);
+	mockLogger();
 	mockInstance(PostHogClient);
 	mockInstance(Push);
 	mockInstance(Telemetry);
@@ -100,17 +118,22 @@ export const setupTestServer = ({
 		authlessAgent: createAgent(app),
 		restlessAgent: createAgent(app, { auth: false, noRest: true }),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
+		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
+		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
 		license: new LicenseMocker(),
 	};
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
+		if (modules) await testModules.loadModules(modules);
 		await testDb.init();
 
-		config.set('userManagement.jwtSecret', 'My JWT secret');
+		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		testServer.license.mock(Container.get(License));
+		testServer.license.mockLicenseState(Container.get(LicenseState));
+
 		if (enabledFeatures) {
 			testServer.license.setDefaults({
 				features: enabledFeatures,
@@ -140,7 +163,7 @@ export const setupTestServer = ({
 			for (const group of endpointGroups) {
 				switch (group) {
 					case 'annotationTags':
-						await import('@/controllers/annotation-tags.controller');
+						await import('@/controllers/annotation-tags.controller.ee');
 						break;
 
 					case 'credentials':
@@ -156,19 +179,20 @@ export const setupTestServer = ({
 						break;
 
 					case 'variables':
-						await import('@/environments/variables/variables.controller.ee');
+						await import('@/environments.ee/variables/variables.controller.ee');
 						break;
 
 					case 'license':
 						await import('@/license/license.controller');
 						break;
 
-					case 'metrics':
+					case 'metrics': {
 						const { PrometheusMetricsService } = await import(
 							'@/metrics/prometheus-metrics.service'
 						);
 						await Container.get(PrometheusMetricsService).init(app);
 						break;
+					}
 
 					case 'eventBus':
 						await import('@/eventbus/event-bus.controller');
@@ -186,25 +210,29 @@ export const setupTestServer = ({
 						await import('@/controllers/mfa.controller');
 						break;
 
-					case 'ldap':
-						const { LdapService } = await import('@/ldap/ldap.service.ee');
-						await import('@/ldap/ldap.controller.ee');
+					case 'ldap': {
+						const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+						await import('@/ldap.ee/ldap.controller.ee');
 						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
+					}
 
-					case 'saml':
-						const { setSamlLoginEnabled } = await import('@/sso/saml/saml-helpers');
-						await import('@/sso/saml/routes/saml.controller.ee');
+					case 'saml': {
+						const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
+						await Container.get(SamlService).init();
+						await import('@/sso.ee/saml/routes/saml.controller.ee');
+						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
 						await setSamlLoginEnabled(true);
 						break;
+					}
 
 					case 'sourceControl':
-						await import('@/environments/source-control/source-control.controller.ee');
+						await import('@/environments.ee/source-control/source-control.controller.ee');
 						break;
 
 					case 'community-packages':
-						await import('@/controllers/community-packages.controller');
+						await import('@/modules/community-packages/community-packages.controller');
 						break;
 
 					case 'me':
@@ -231,12 +259,8 @@ export const setupTestServer = ({
 						await import('@/controllers/tags.controller');
 						break;
 
-					case 'externalSecrets':
-						await import('@/external-secrets/external-secrets.controller.ee');
-						break;
-
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history/workflow-history.controller.ee');
+						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
 						break;
 
 					case 'binaryData':
@@ -258,9 +282,49 @@ export const setupTestServer = ({
 					case 'dynamic-node-parameters':
 						await import('@/controllers/dynamic-node-parameters.controller');
 						break;
+
+					case 'apiKeys':
+						await import('@/controllers/api-keys.controller');
+						break;
+
+					case 'evaluation':
+						await import('@/evaluation.ee/test-runs.controller.ee');
+						break;
+
+					case 'ai':
+						await import('@/controllers/ai.controller');
+						break;
+					case 'folder':
+						await import('@/controllers/folder.controller');
+						break;
+
+					case 'externalSecrets':
+						await import('@/modules/external-secrets.ee/external-secrets.module');
+						break;
+
+					case 'insights':
+						await import('@/modules/insights/insights.module');
+						break;
+
+					case 'data-table':
+						await import('@/modules/data-table/data-table.module');
+						break;
+
+					case 'mcp':
+						await import('@/modules/mcp/mcp.module');
+						break;
+
+					case 'module-settings':
+						await import('@/controllers/module-settings.controller');
+						break;
+
+					case 'third-party-licenses':
+						await import('@/controllers/third-party-licenses.controller');
+						break;
 				}
 			}
 
+			await Container.get(ModuleRegistry).initModules();
 			Container.get(ControllerRegistry).activate(app);
 		}
 	});

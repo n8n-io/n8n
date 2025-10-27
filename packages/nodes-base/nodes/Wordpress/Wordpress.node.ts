@@ -7,14 +7,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
-import { postFields, postOperations } from './PostDescription';
-import { pageFields, pageOperations } from './PageDescription';
-import { userFields, userOperations } from './UserDescription';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { IPost } from './PostInterface';
+import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
+import { pageFields, pageOperations } from './PageDescription';
 import type { IPage } from './PageInterface';
+import { postFields, postOperations } from './PostDescription';
+import type { IPost } from './PostInterface';
+import { userFields, userOperations } from './UserDescription';
 import type { IUser } from './UserInterface';
 
 export class Wordpress implements INodeType {
@@ -29,8 +29,9 @@ export class Wordpress implements INodeType {
 		defaults: {
 			name: 'Wordpress',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'wordpressApi',
@@ -186,6 +187,9 @@ export class Wordpress implements INodeType {
 						if (additionalFields.format) {
 							body.format = additionalFields.format as string;
 						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
 						responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
@@ -238,6 +242,9 @@ export class Wordpress implements INodeType {
 						if (updateFields.format) {
 							body.format = updateFields.format as string;
 						}
+						if (updateFields.date) {
+							body.date = updateFields.date as string;
+						}
 						responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#retrieve-a-post
@@ -267,6 +274,9 @@ export class Wordpress implements INodeType {
 						}
 						if (options.search) {
 							qs.search = options.search as string;
+						}
+						if (options.before) {
+							qs.before = options.before as string;
 						}
 						if (options.after) {
 							qs.after = options.after as string;
@@ -438,6 +448,9 @@ export class Wordpress implements INodeType {
 						}
 						if (options.search) {
 							qs.search = options.search as string;
+						}
+						if (options.before) {
+							qs.before = options.before as string;
 						}
 						if (options.after) {
 							qs.after = options.after as string;

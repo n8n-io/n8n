@@ -1,0 +1,1151 @@
+{
+	"name": "Gmail test - messages",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "765640dd-529f-4319-a435-a1b5411cf761",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 2,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, -600],
+			"id": "51f7694c-0d4c-4f84-9e4f-8a8fe8db18c9",
+			"name": "Gmail - Messages - All (simplified)",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 2,
+				"simple": false,
+				"filters": {
+					"includeSpamTrash": true,
+					"labelIds": ["CHAT"],
+					"q": "test",
+					"readStatus": "both",
+					"receivedAfter": "2024-12-17T00:00:00",
+					"receivedBefore": "2024-12-26T00:00:00",
+					"sender": "Test Sender"
+				},
+				"options": {
+					"dataPropertyAttachmentsPrefixName": "attachment_",
+					"downloadAttachments": true
+				}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, -400],
+			"id": "2ea8db65-5e60-47dc-bdca-1981bee1b63e",
+			"name": "Gmail - Messages - All",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"sendTo": "test@n8n.io",
+				"subject": "Test Subject",
+				"message": "Test Message",
+				"options": {
+					"appendAttribution": true,
+					"attachmentsUi": {
+						"attachmentsBinary": [{}, {}]
+					},
+					"bccList": "test-bcc@n8n.io",
+					"ccList": "test-cc@n8n.io",
+					"senderName": "Test Sender",
+					"replyTo": "test-reply-to@n8n.io",
+					"replyToSenderOnly": true
+				}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [1060, 1380],
+			"id": "da96a339-2df5-465f-a253-5302160ef921",
+			"name": "Gmail - Messages - Send",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "sendAndWait",
+				"sendTo": "test@n8n.io",
+				"subject": "Test Subject",
+				"message": "Test Message"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, 1580],
+			"id": "b12181b3-a98d-44ba-bb71-a22ce4e4c663",
+			"name": "Gmail - Messages - Send and Wait for Approval",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "addLabels",
+				"messageId": "test",
+				"labelIds": ["CHAT"]
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, -220],
+			"id": "2f83b7ac-3e7a-466d-b269-88928da60d3a",
+			"name": "Gmail - Messages - Add Label",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"messageId": "test"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, 180],
+			"id": "aba867fa-bf92-4ba9-b96f-c0f74d37c144",
+			"name": "Gmail - Messages - Delete",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"messageId": "test"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, 380],
+			"id": "029494b2-caf2-4a1e-b496-1ab3ac96987a",
+			"name": "Gmail - Messages - Get (simplified)",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"messageId": "test",
+				"simple": false,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, 580],
+			"id": "86a77799-6d7b-4dd6-9afa-be3cd64e82df",
+			"name": "Gmail - Messages - Get",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "markAsRead",
+				"messageId": "test"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, 760],
+			"id": "aedc33d9-cc57-4bc1-8811-8aa5fe02a363",
+			"name": "Gmail - Messages - Mark as Read",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "markAsUnread",
+				"messageId": "test"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, 980],
+			"id": "a463ad5e-3fac-40c9-b9bf-0705d28aa68d",
+			"name": "Gmail - Messages - Mark as Unread",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "removeLabels",
+				"messageId": "test",
+				"labelIds": ["CHAT"]
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, -20],
+			"id": "97996089-0116-4c86-b24c-5848661efc9c",
+			"name": "Gmail - Messages - Remove Label",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "reply",
+				"messageId": "test",
+				"message": "Test reply",
+				"options": {
+					"appendAttribution": false,
+					"bccList": "test-bcc@n8n.io",
+					"senderName": "Test Sender Name",
+					"replyToSenderOnly": false
+				}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [780, 1200],
+			"id": "aa43df3d-5de3-4663-9211-401e3040a4de",
+			"name": "Gmail - Messages - Reply",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "toJson",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [920, 1380],
+			"id": "6820a547-12dc-4146-8483-a43adf695b40",
+			"name": "Attachment"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0a4e38fe-ed38-400e-afb1-9d430f167d54",
+							"name": "attachment",
+							"value": true,
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [780, 1380],
+			"id": "72bd5e27-dd43-48ad-be97-634caf883dd5",
+			"name": "Edit Fields"
+		}
+	],
+	"pinData": {
+		"Gmail - Messages - All (simplified)": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000",
+					"labels": [],
+					"Delivered-To": "exampleuser@gmail.com",
+					"Received": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)",
+					"X-Google-Smtp-Source": "ABC12345+EXAMPLE123456789",
+					"X-Received": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)",
+					"ARC-Seal": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456=",
+					"ARC-Message-Signature": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345=",
+					"ARC-Authentication-Results": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com",
+					"Return-Path": "<promo@promotion.example.com>",
+					"Date": "Thu, 5 Dec 2024 08:30:00 -0800",
+					"From": "Holiday Deals <promo@promotion.example.com>",
+					"To": "exampleuser@gmail.com",
+					"Message-ID": "<12345abc67890@promotion.example.com>",
+					"Subject": "Exclusive Holiday Discounts!",
+					"MIME-Version": "1.0",
+					"Content-Type": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+				}
+			},
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000",
+					"labels": [],
+					"Delivered-To": "exampleuser@gmail.com",
+					"Received": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)",
+					"X-Google-Smtp-Source": "ABC12345+EXAMPLE123456789",
+					"X-Received": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)",
+					"ARC-Seal": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456=",
+					"ARC-Message-Signature": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345=",
+					"ARC-Authentication-Results": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com",
+					"Return-Path": "<promo@promotion.example.com>",
+					"Date": "Thu, 5 Dec 2024 08:30:00 -0800",
+					"From": "Holiday Deals <promo@promotion.example.com>",
+					"To": "exampleuser@gmail.com",
+					"Message-ID": "<12345abc67890@promotion.example.com>",
+					"Subject": "Exclusive Holiday Discounts!",
+					"MIME-Version": "1.0",
+					"Content-Type": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+				}
+			}
+		],
+		"Gmail - Messages - All": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"sizeEstimate": 67890,
+					"headers": {
+						"mime-version": "MIME-Version: 1.0",
+						"date": "Date: Fri, 13 Dec 2024 11:15:01 +0100",
+						"message-id": "Message-ID: <CAEGAProwudGnKXxqrhMjOuxamTh7yArjwP7OD9UBq-Jpkb0X9w@mail.gmail.com>",
+						"subject": "Subject: Test draft",
+						"from": "From: node qa <node8qa@gmail.com>",
+						"to": "To: test@gmail.com",
+						"content-type": "Content-Type: multipart/alternative; boundary=\"0000000000009d58b60629241a22\""
+					},
+					"html": "<div dir=\"ltr\">draft body<br></div>\n",
+					"text": "draft body\n",
+					"textAsHtml": "<p>draft body</p>",
+					"subject": "Test draft",
+					"date": "2024-12-13T10:15:01.000Z",
+					"to": {
+						"value": [{ "address": "test@gmail.com", "name": "" }],
+						"html": "<span class=\"mp_address_group\"><a href=\"mailto:test@gmail.com\" class=\"mp_address_email\">test@gmail.com</a></span>",
+						"text": "test@gmail.com"
+					},
+					"from": {
+						"value": [{ "address": "node8qa@gmail.com", "name": "node qa" }],
+						"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">node qa</span> &lt;<a href=\"mailto:node8qa@gmail.com\" class=\"mp_address_email\">node8qa@gmail.com</a>&gt;</span>",
+						"text": "\"node qa\" <node8qa@gmail.com>"
+					},
+					"messageId": "<CAEGAProwudGnKXxqrhMjOuxamTh7yArjwP7OD9UBq-Jpkb0X9w@mail.gmail.com>"
+				}
+			},
+			{
+				"json": {
+					"id": "z9y8x7w6v5u4t3s2",
+					"threadId": "z9y8x7w6v5u4t3s2",
+					"labelIds": ["UNREAD", "CATEGORY_SOCIAL", "INBOX"],
+					"sizeEstimate": 54321,
+					"headers": {
+						"mime-version": "MIME-Version: 1.0",
+						"date": "Date: Fri, 13 Dec 2024 11:15:01 +0100",
+						"message-id": "Message-ID: <CAEGAProwudGnKXxqrhMjOuxamTh7yArjwP7OD9UBq-Jpkb0X9w@mail.gmail.com>",
+						"subject": "Subject: Test draft",
+						"from": "From: node qa <node8qa@gmail.com>",
+						"to": "To: test@gmail.com",
+						"content-type": "Content-Type: multipart/alternative; boundary=\"0000000000009d58b60629241a22\""
+					},
+					"html": "<div dir=\"ltr\">draft body<br></div>\n",
+					"text": "draft body\n",
+					"textAsHtml": "<p>draft body</p>",
+					"subject": "Test draft",
+					"date": "2024-12-13T10:15:01.000Z",
+					"to": {
+						"value": [{ "address": "test@gmail.com", "name": "" }],
+						"html": "<span class=\"mp_address_group\"><a href=\"mailto:test@gmail.com\" class=\"mp_address_email\">test@gmail.com</a></span>",
+						"text": "test@gmail.com"
+					},
+					"from": {
+						"value": [{ "address": "node8qa@gmail.com", "name": "node qa" }],
+						"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">node qa</span> &lt;<a href=\"mailto:node8qa@gmail.com\" class=\"mp_address_email\">node8qa@gmail.com</a>&gt;</span>",
+						"text": "\"node qa\" <node8qa@gmail.com>"
+					},
+					"messageId": "<CAEGAProwudGnKXxqrhMjOuxamTh7yArjwP7OD9UBq-Jpkb0X9w@mail.gmail.com>"
+				}
+			}
+		],
+		"Gmail - Messages - Send": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"headers": [
+							{ "name": "Delivered-To", "value": "exampleuser@gmail.com" },
+							{
+								"name": "Received",
+								"value": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{ "name": "X-Google-Smtp-Source", "value": "ABC12345+EXAMPLE123456789" },
+							{
+								"name": "X-Received",
+								"value": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{
+								"name": "ARC-Seal",
+								"value": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456="
+							},
+							{
+								"name": "ARC-Message-Signature",
+								"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345="
+							},
+							{
+								"name": "ARC-Authentication-Results",
+								"value": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com"
+							},
+							{ "name": "Return-Path", "value": "<promo@promotion.example.com>" },
+							{ "name": "Date", "value": "Thu, 5 Dec 2024 08:30:00 -0800" },
+							{ "name": "From", "value": "Holiday Deals <promo@promotion.example.com>" },
+							{ "name": "To", "value": "exampleuser@gmail.com" },
+							{ "name": "Message-ID", "value": "<12345abc67890@promotion.example.com>" },
+							{ "name": "Subject", "value": "Exclusive Holiday Discounts!" },
+							{ "name": "MIME-Version", "value": "1.0" },
+							{
+								"name": "Content-Type",
+								"value": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+							}
+						],
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000"
+				}
+			}
+		],
+		"Gmail - Messages - Send and Wait for Approval": [{ "json": {} }],
+		"Gmail - Messages - Add Label": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"headers": [
+							{ "name": "Delivered-To", "value": "exampleuser@gmail.com" },
+							{
+								"name": "Received",
+								"value": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{ "name": "X-Google-Smtp-Source", "value": "ABC12345+EXAMPLE123456789" },
+							{
+								"name": "X-Received",
+								"value": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{
+								"name": "ARC-Seal",
+								"value": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456="
+							},
+							{
+								"name": "ARC-Message-Signature",
+								"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345="
+							},
+							{
+								"name": "ARC-Authentication-Results",
+								"value": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com"
+							},
+							{ "name": "Return-Path", "value": "<promo@promotion.example.com>" },
+							{ "name": "Date", "value": "Thu, 5 Dec 2024 08:30:00 -0800" },
+							{ "name": "From", "value": "Holiday Deals <promo@promotion.example.com>" },
+							{ "name": "To", "value": "exampleuser@gmail.com" },
+							{ "name": "Message-ID", "value": "<12345abc67890@promotion.example.com>" },
+							{ "name": "Subject", "value": "Exclusive Holiday Discounts!" },
+							{ "name": "MIME-Version", "value": "1.0" },
+							{
+								"name": "Content-Type",
+								"value": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+							}
+						],
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000"
+				}
+			}
+		],
+		"Gmail - Messages - Delete": [{ "json": { "success": true } }],
+		"Gmail - Messages - Get (simplified)": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000",
+					"labels": [],
+					"Delivered-To": "exampleuser@gmail.com",
+					"Received": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)",
+					"X-Google-Smtp-Source": "ABC12345+EXAMPLE123456789",
+					"X-Received": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)",
+					"ARC-Seal": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456=",
+					"ARC-Message-Signature": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345=",
+					"ARC-Authentication-Results": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com",
+					"Return-Path": "<promo@promotion.example.com>",
+					"Date": "Thu, 5 Dec 2024 08:30:00 -0800",
+					"From": "Holiday Deals <promo@promotion.example.com>",
+					"To": "exampleuser@gmail.com",
+					"Message-ID": "<12345abc67890@promotion.example.com>",
+					"Subject": "Exclusive Holiday Discounts!",
+					"MIME-Version": "1.0",
+					"Content-Type": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+				}
+			}
+		],
+		"Gmail - Messages - Get": [
+			{ "json": { "headers": { "": "ï¿½ï¿½-zfï¿½ï¿½ï¿½'ï¿½ï¿½ï¿½" }, "html": false } }
+		],
+		"Gmail - Messages - Mark as Read": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"headers": [
+							{ "name": "Delivered-To", "value": "exampleuser@gmail.com" },
+							{
+								"name": "Received",
+								"value": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{ "name": "X-Google-Smtp-Source", "value": "ABC12345+EXAMPLE123456789" },
+							{
+								"name": "X-Received",
+								"value": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{
+								"name": "ARC-Seal",
+								"value": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456="
+							},
+							{
+								"name": "ARC-Message-Signature",
+								"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345="
+							},
+							{
+								"name": "ARC-Authentication-Results",
+								"value": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com"
+							},
+							{ "name": "Return-Path", "value": "<promo@promotion.example.com>" },
+							{ "name": "Date", "value": "Thu, 5 Dec 2024 08:30:00 -0800" },
+							{ "name": "From", "value": "Holiday Deals <promo@promotion.example.com>" },
+							{ "name": "To", "value": "exampleuser@gmail.com" },
+							{ "name": "Message-ID", "value": "<12345abc67890@promotion.example.com>" },
+							{ "name": "Subject", "value": "Exclusive Holiday Discounts!" },
+							{ "name": "MIME-Version", "value": "1.0" },
+							{
+								"name": "Content-Type",
+								"value": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+							}
+						],
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000"
+				}
+			}
+		],
+		"Gmail - Messages - Mark as Unread": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"headers": [
+							{ "name": "Delivered-To", "value": "exampleuser@gmail.com" },
+							{
+								"name": "Received",
+								"value": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{ "name": "X-Google-Smtp-Source", "value": "ABC12345+EXAMPLE123456789" },
+							{
+								"name": "X-Received",
+								"value": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{
+								"name": "ARC-Seal",
+								"value": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456="
+							},
+							{
+								"name": "ARC-Message-Signature",
+								"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345="
+							},
+							{
+								"name": "ARC-Authentication-Results",
+								"value": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com"
+							},
+							{ "name": "Return-Path", "value": "<promo@promotion.example.com>" },
+							{ "name": "Date", "value": "Thu, 5 Dec 2024 08:30:00 -0800" },
+							{ "name": "From", "value": "Holiday Deals <promo@promotion.example.com>" },
+							{ "name": "To", "value": "exampleuser@gmail.com" },
+							{ "name": "Message-ID", "value": "<12345abc67890@promotion.example.com>" },
+							{ "name": "Subject", "value": "Exclusive Holiday Discounts!" },
+							{ "name": "MIME-Version", "value": "1.0" },
+							{
+								"name": "Content-Type",
+								"value": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+							}
+						],
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000"
+				}
+			}
+		],
+		"Gmail - Messages - Remove Label": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"headers": [
+							{ "name": "Delivered-To", "value": "exampleuser@gmail.com" },
+							{
+								"name": "Received",
+								"value": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{ "name": "X-Google-Smtp-Source", "value": "ABC12345+EXAMPLE123456789" },
+							{
+								"name": "X-Received",
+								"value": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{
+								"name": "ARC-Seal",
+								"value": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456="
+							},
+							{
+								"name": "ARC-Message-Signature",
+								"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345="
+							},
+							{
+								"name": "ARC-Authentication-Results",
+								"value": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com"
+							},
+							{ "name": "Return-Path", "value": "<promo@promotion.example.com>" },
+							{ "name": "Date", "value": "Thu, 5 Dec 2024 08:30:00 -0800" },
+							{ "name": "From", "value": "Holiday Deals <promo@promotion.example.com>" },
+							{ "name": "To", "value": "exampleuser@gmail.com" },
+							{ "name": "Message-ID", "value": "<12345abc67890@promotion.example.com>" },
+							{ "name": "Subject", "value": "Exclusive Holiday Discounts!" },
+							{ "name": "MIME-Version", "value": "1.0" },
+							{
+								"name": "Content-Type",
+								"value": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+							}
+						],
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000"
+				}
+			}
+		],
+		"Gmail - Messages - Reply": [
+			{
+				"json": {
+					"id": "a1b2c3d4e5f6g7h8",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"payload": {
+						"partId": "",
+						"mimeType": "multipart/alternative",
+						"filename": "",
+						"headers": [
+							{ "name": "Delivered-To", "value": "exampleuser@gmail.com" },
+							{
+								"name": "Received",
+								"value": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{ "name": "X-Google-Smtp-Source", "value": "ABC12345+EXAMPLE123456789" },
+							{
+								"name": "X-Received",
+								"value": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{
+								"name": "ARC-Seal",
+								"value": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456="
+							},
+							{
+								"name": "ARC-Message-Signature",
+								"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345="
+							},
+							{
+								"name": "ARC-Authentication-Results",
+								"value": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com"
+							},
+							{ "name": "Return-Path", "value": "<promo@promotion.example.com>" },
+							{ "name": "Date", "value": "Thu, 5 Dec 2024 08:30:00 -0800" },
+							{ "name": "From", "value": "Holiday Deals <promo@promotion.example.com>" },
+							{ "name": "To", "value": "exampleuser@gmail.com" },
+							{ "name": "Message-ID", "value": "<12345abc67890@promotion.example.com>" },
+							{ "name": "Subject", "value": "Exclusive Holiday Discounts!" },
+							{ "name": "MIME-Version", "value": "1.0" },
+							{
+								"name": "Content-Type",
+								"value": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+							}
+						],
+						"body": { "size": 0 },
+						"parts": [
+							{
+								"partId": "0",
+								"mimeType": "text/plain",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/plain; charset=utf-8" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 1234,
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+								}
+							},
+							{
+								"partId": "1",
+								"mimeType": "text/html",
+								"filename": "",
+								"headers": [
+									{ "name": "Content-Type", "value": "text/html; charset=\"utf-8\"" },
+									{ "name": "Content-Transfer-Encoding", "value": "quoted-printable" }
+								],
+								"body": {
+									"size": 5678,
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+								}
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"historyId": "54321",
+					"internalDate": "1733405400000"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Gmail - Messages - All (simplified)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Send and Wait for Approval",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Add Label",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Get (simplified)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Mark as Read",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Mark as Unread",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Remove Label",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Messages - Reply",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Attachment": {
+			"main": [
+				[
+					{
+						"node": "Gmail - Messages - Send",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Attachment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f497669f-aced-4f80-8e59-381d1c9422c7",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "jOoDfyAYzh3NAli3",
+	"tags": []
+}

@@ -6,12 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
-
-import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
-
-import { optionsCollection } from '../common.descriptions';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
+import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -62,6 +61,8 @@ export async function execute(
 
 		const options = this.getNodeParameter('options', i, {});
 
+		const nodeVersion = Number(nodeOptions.nodeVersion);
+
 		let values;
 		let queryReplacement = options.queryReplacement || [];
 
@@ -79,7 +80,7 @@ export async function execute(
 			);
 		}
 
-		const preparedQuery = prepareQueryAndReplacements(rawQuery, values);
+		const preparedQuery = prepareQueryAndReplacements(rawQuery, nodeVersion, values);
 
 		if ((nodeOptions.nodeVersion as number) >= 2.3) {
 			const parsedNumbers = preparedQuery.values.map((value) => {

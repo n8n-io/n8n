@@ -1,17 +1,16 @@
+import mysql2 from 'mysql2/promise';
 import type { IDataObject, INode } from 'n8n-workflow';
 
-import mysql2 from 'mysql2/promise';
-import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
+import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
 import * as insert from '../../v2/actions/database/insert.operation';
 import * as select from '../../v2/actions/database/select.operation';
 import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
-
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
 import { configureQueryRunner } from '../../v2/helpers/utils';
-import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 const mySqlMockNode: INode = {
 	id: '1',

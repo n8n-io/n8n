@@ -1,4 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+
 import { theHiveApiRequest } from '../transport';
 
 async function listResource(

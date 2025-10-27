@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { populate, setReturnAllOrLimit } from '../../helpers/utils';
 import { splunkApiJsonRequest } from '../../transport';

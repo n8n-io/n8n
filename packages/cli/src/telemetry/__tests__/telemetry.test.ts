@@ -1,11 +1,11 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 
 jest.unmock('@/telemetry');
 jest.mock('@/posthog');
@@ -20,6 +20,10 @@ describe('Telemetry', () => {
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
+	const globalConfig = mock<GlobalConfig>({
+		diagnostics: { enabled: true },
+		logging: { level: 'info', outputs: ['console'] },
+	});
 
 	beforeAll(() => {
 		// @ts-expect-error Spying on private method
@@ -27,8 +31,7 @@ describe('Telemetry', () => {
 
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
-		config.set('diagnostics.enabled', true);
-		config.set('deployment.type', 'n8n-testing');
+		globalConfig.deployment.type = 'n8n-testing';
 	});
 
 	afterAll(async () => {
@@ -41,10 +44,18 @@ describe('Telemetry', () => {
 	beforeEach(async () => {
 		spyTrack.mockClear();
 
-		const postHog = new PostHogClient(instanceSettings);
+		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock());
+		telemetry = new Telemetry(
+			mock(),
+			postHog,
+			mock(),
+			instanceSettings,
+			mock(),
+			globalConfig,
+			mock(),
+		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});
@@ -257,6 +268,121 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime2);
 			expect(execBuffer['1'].prod_success?.first).toEqual(execTime1);
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
+		});
+
+		test('should count crashed executions correctly', async () => {
+			const payload = {
+				workflow_id: '1',
+				is_manual: true,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.node-type',
+			};
+
+			// Manual crashed execution
+			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+			fakeJestSystemTime('2022-01-01 12:30:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			// Production crashed execution
+			payload.is_manual = false;
+			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload);
+			fakeJestSystemTime('2022-01-01 13:30:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			// Should fire "Workflow execution errored" events for manual crashed executions with n8n-nodes-base
+			expect(spyTrack).toHaveBeenCalledTimes(2);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_crashed?.count).toBe(2);
+			expect(execBuffer['1'].manual_crashed?.first).toEqual(execTime1);
+			expect(execBuffer['1'].prod_crashed?.count).toBe(2);
+			expect(execBuffer['1'].prod_crashed?.first).toEqual(execTime2);
+
+			// Other execution types should be undefined
+			expect(execBuffer['1'].manual_success).toBeUndefined();
+			expect(execBuffer['1'].manual_error).toBeUndefined();
+			expect(execBuffer['1'].prod_success).toBeUndefined();
+			expect(execBuffer['1'].prod_error).toBeUndefined();
+		});
+
+		test('should handle crashed executions with different workflow IDs', async () => {
+			const payload1 = {
+				workflow_id: '1',
+				is_manual: true,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.node-type',
+			};
+
+			const payload2 = {
+				workflow_id: '2',
+				is_manual: false,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.another-node',
+			};
+
+			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload1);
+
+			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload2);
+
+			// Should fire one "Workflow execution errored" event for manual crashed execution with n8n-nodes-base
+			expect(spyTrack).toHaveBeenCalledTimes(1);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_crashed?.count).toBe(1);
+			expect(execBuffer['1'].manual_crashed?.first).toEqual(execTime1);
+			expect(execBuffer['2'].prod_crashed?.count).toBe(1);
+			expect(execBuffer['2'].prod_crashed?.first).toEqual(execTime2);
+
+			// Cross-check other types are undefined
+			expect(execBuffer['1'].prod_crashed).toBeUndefined();
+			expect(execBuffer['2'].manual_crashed).toBeUndefined();
+		});
+	});
+
+	describe('Rudderstack', () => {
+		test("should call rudderStack.identify() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const traits = {
+				name: 'Test User',
+				age: 30,
+				isActive: true,
+			};
+
+			telemetry.identify(traits);
+
+			const expectedArgs = {
+				userId: instanceId,
+				traits: { ...traits, instanceId },
+				context: {
+					ip: '0.0.0.0', // RudderStack anonymized IP
+				},
+			};
+
+			expect(mockRudderStack.identify).toHaveBeenCalledWith(expectedArgs);
+		});
+
+		test("should call rudderStack.track() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '1234' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: eventName,
+					context: {
+						ip: '0.0.0.0', // RudderStack anonymized IP
+					},
+				}),
+			);
 		});
 	});
 });

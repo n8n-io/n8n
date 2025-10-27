@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 export const REST_PATH_SEGMENT = Container.get(GlobalConfig).endpoints.rest;
 

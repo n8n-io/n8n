@@ -1,5 +1,4 @@
-import type { Readable } from 'stream';
-
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -14,18 +13,42 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeConnectionTypes,
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
+import type { Readable } from 'stream';
 
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
 import { channelFields, channelOperations } from './ChannelDescription';
-import { messageFields, messageOperations } from './MessageDescription';
-import { starFields, starOperations } from './StarDescription';
 import { fileFields, fileOperations } from './FileDescription';
+import {
+	slackApiRequest,
+	slackApiRequestAllItems,
+	getMessageContent,
+	getTarget,
+	createSendAndWaitMessageBody,
+	processThreadOptions,
+} from './GenericFunctions';
+import {
+	channelRLC,
+	messageFields,
+	messageOperations,
+	sendToSelector,
+	userRLC,
+} from './MessageDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
-import { userGroupFields, userGroupOperations } from './UserGroupDescription';
+import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
-import { slackApiRequest, slackApiRequestAllItems, getMessageContent } from './GenericFunctions';
+import { userGroupFields, userGroupOperations } from './UserGroupDescription';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
+import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -33,12 +56,13 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2],
+			version: [2, 2.1, 2.2, 2.3],
 			defaults: {
 				name: 'Slack',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			usableAsTool: true,
 			credentials: [
 				{
 					name: 'slackApi',
@@ -59,6 +83,8 @@ export class SlackV2 implements INodeType {
 					},
 				},
 			],
+			waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
+			webhooks: sendAndWaitWebhooksDescription,
 			properties: [
 				{
 					displayName: 'Authentication',
@@ -119,6 +145,25 @@ export class SlackV2 implements INodeType {
 				...channelFields,
 				...messageOperations,
 				...messageFields,
+				...getSendAndWaitProperties([
+					{ ...sendToSelector, default: 'user' },
+					{
+						...channelRLC,
+						displayOptions: {
+							show: {
+								select: ['channel'],
+							},
+						},
+					},
+					{
+						...userRLC,
+						displayOptions: {
+							show: {
+								select: ['user'],
+							},
+						},
+					},
+				]).filter((p) => p.name !== 'subject'),
 				...starOperations,
 				...starFields,
 				...fileOperations,
@@ -306,6 +351,8 @@ export class SlackV2 implements INodeType {
 		},
 	};
 
+	webhook = sendAndWaitWebhook;
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -318,6 +365,20 @@ export class SlackV2 implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
+
+		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+			await slackApiRequest.call(
+				this,
+				'POST',
+				'/chat.postMessage',
+				createSendAndWaitMessageBody(this),
+			);
+
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
+			return [this.getInputData()];
+		}
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -748,22 +809,8 @@ export class SlackV2 implements INodeType {
 				if (resource === 'message') {
 					//https://api.slack.com/methods/chat.postMessage
 					if (operation === 'post') {
-						const select = this.getNodeParameter('select', i) as string;
-						let target =
-							select === 'channel'
-								? (this.getNodeParameter('channelId', i, undefined, {
-										extractValue: true,
-									}) as string)
-								: (this.getNodeParameter('user', i, undefined, {
-										extractValue: true,
-									}) as string);
-
-						if (
-							select === 'user' &&
-							(this.getNodeParameter('user', i) as IDataObject).mode === 'username'
-						) {
-							target = target.slice(0, 1) === '@' ? target : `@${target}`;
-						}
+						const select = this.getNodeParameter('select', i) as 'user' | 'channel';
+						const target = getTarget(this, i, select);
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						const content = getMessageContent.call(this, i, nodeVersion, instanceId);
 
@@ -794,8 +841,8 @@ export class SlackV2 implements INodeType {
 							}
 						}
 
-						const replyValues = (otherOptions.thread_ts as IDataObject)?.replyValues as IDataObject;
-						Object.assign(body, replyValues);
+						const threadParams = processThreadOptions(otherOptions.thread_ts as IDataObject);
+						Object.assign(body, threadParams);
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
 						if (otherOptions.botProfile) {
@@ -1249,24 +1296,35 @@ export class SlackV2 implements INodeType {
 
 							options.fields = fields;
 						}
+
 						Object.assign(body, options);
+						let requestBody: IDataObject = { profile: body };
+
+						let userId;
+						if (options.user) {
+							userId = options.user;
+							delete body.user;
+							requestBody = { profile: body, user: userId };
+						}
+
 						responseData = await slackApiRequest.call(
 							this,
 							'POST',
 							'/users.profile.set',
-							{ profile: body },
+							requestBody,
 							qs,
 						);
 
 						responseData = responseData.profile;
 					}
 				}
+
 				if (resource === 'userGroup') {
 					//https://api.slack.com/methods/usergroups.create
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 
-						const options = this.getNodeParameter('options', i);
+						const options = this.getNodeParameter('Options', i);
 
 						const body: IDataObject = {
 							name,
@@ -1282,7 +1340,7 @@ export class SlackV2 implements INodeType {
 					if (operation === 'enable') {
 						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
 
-						const options = this.getNodeParameter('options', i);
+						const options = this.getNodeParameter('option', i);
 
 						const body: IDataObject = {
 							usergroup: userGroupId,

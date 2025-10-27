@@ -1,43 +1,22 @@
 import type {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { createTransport } from 'nodemailer';
-import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+import { createUtmCampaignLink, updateDisplayOptions } from '@utils/utilities';
 
-import { updateDisplayOptions } from '@utils/utilities';
+import { fromEmailProperty, toEmailProperty } from './descriptions';
+import { configureTransport, type EmailSendOptions } from './utils';
 import { appendAttributionOption } from '../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
 	// TODO: Add choice for text as text or html  (maybe also from name)
-	{
-		displayName: 'From Email',
-		name: 'fromEmail',
-		type: 'string',
-		default: '',
-		required: true,
-		placeholder: 'admin@example.com',
-		description:
-			'Email address of the sender. You can also specify a name: Nathan Doe &lt;nate@n8n.io&gt;.',
-	},
-	{
-		displayName: 'To Email',
-		name: 'toEmail',
-		type: 'string',
-		default: '',
-		required: true,
-		placeholder: 'info@example.com',
-		description:
-			'Email address of the recipient. You can also specify a name: Nathan Doe &lt;nate@n8n.io&gt;.',
-	},
+	fromEmailProperty,
+	toEmailProperty,
 
 	{
 		displayName: 'Subject',
@@ -167,7 +146,7 @@ const properties: INodeProperties[] = [
 				description: 'Email address of BCC recipient',
 			},
 			{
-				displayName: 'Ignore SSL Issues',
+				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
@@ -194,72 +173,11 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-type EmailSendOptions = {
-	appendAttribution?: boolean;
-	allowUnauthorizedCerts?: boolean;
-	attachments?: string;
-	ccEmail?: string;
-	bccEmail?: string;
-	replyTo?: string;
-};
-
-function configureTransport(credentials: IDataObject, options: EmailSendOptions) {
-	const connectionOptions: SMTPTransport.Options = {
-		host: credentials.host as string,
-		port: credentials.port as number,
-		secure: credentials.secure as boolean,
-	};
-
-	if (credentials.secure === false) {
-		connectionOptions.ignoreTLS = credentials.disableStartTls as boolean;
-	}
-
-	if (typeof credentials.hostName === 'string' && credentials.hostName) {
-		connectionOptions.name = credentials.hostName;
-	}
-
-	if (credentials.user || credentials.password) {
-		connectionOptions.auth = {
-			user: credentials.user as string,
-			pass: credentials.password as string,
-		};
-	}
-
-	if (options.allowUnauthorizedCerts === true) {
-		connectionOptions.tls = {
-			rejectUnauthorized: false,
-		};
-	}
-
-	return createTransport(connectionOptions);
-}
-
-export async function smtpConnectionTest(
-	this: ICredentialTestFunctions,
-	credential: ICredentialsDecrypted,
-): Promise<INodeCredentialTestResult> {
-	const credentials = credential.data!;
-	const transporter = configureTransport(credentials, {});
-	try {
-		await transporter.verify();
-		return {
-			status: 'OK',
-			message: 'Connection successful!',
-		};
-	} catch (error) {
-		return {
-			status: 'Error',
-			message: error.message,
-		};
-	} finally {
-		transporter.close();
-	}
-}
-
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
 	const instanceId = this.getInstanceId();
+	const credentials = await this.getCredentials('smtp');
 
 	const returnData: INodeExecutionData[] = [];
 	let item: INodeExecutionData;
@@ -273,8 +191,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const subject = this.getNodeParameter('subject', itemIndex) as string;
 			const emailFormat = this.getNodeParameter('emailFormat', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as EmailSendOptions;
-
-			const credentials = await this.getCredentials('smtp');
 
 			const transporter = configureTransport(credentials, options);
 
@@ -302,9 +218,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (appendAttribution) {
 				const attributionText = 'This email was sent automatically with ';
-				const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-					'n8n-nodes-base.emailSend',
-				)}${instanceId ? '_' + instanceId : ''}`;
+				const link = createUtmCampaignLink('n8n-nodes-base.emailSend', instanceId);
 				if (emailFormat === 'html' || (emailFormat === 'both' && mailOptions.html)) {
 					mailOptions.html = `
 					${mailOptions.html}

@@ -1,4 +1,3 @@
-import { createServer, type AddressInfo } from 'node:net';
 import mysql2 from 'mysql2/promise';
 import type {
 	ICredentialTestFunctions,
@@ -6,10 +5,12 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+import { createServer, type AddressInfo } from 'node:net';
+
+import { LOCALHOST } from '@utils/constants';
+import { formatPrivateKey } from '@utils/utilities';
 
 import type { Mysql2Pool, MysqlNodeCredentials } from '../helpers/interfaces';
-import { formatPrivateKey } from '@utils/utilities';
-import { LOCALHOST } from '@utils/constants';
 
 export async function createPool(
 	this: IExecuteFunctions | ICredentialTestFunctions | ILoadOptionsFunctions,

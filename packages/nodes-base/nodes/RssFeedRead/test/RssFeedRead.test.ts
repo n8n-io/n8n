@@ -1,7 +1,8 @@
 import { mock } from 'jest-mock-extended';
+import { returnJsonArray } from 'n8n-core';
 import type { IPollFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
-import { returnJsonArray } from 'n8n-core';
+
 import { RssFeedReadTrigger } from '../RssFeedReadTrigger.node';
 
 jest.mock('rss-parser');
@@ -44,6 +45,20 @@ describe('RssFeedReadTrigger', () => {
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
 			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
 			expect(pollData.lastItemDate).toEqual(newItemDate);
+		});
+
+		it('should gracefully handle missing timestamps', async () => {
+			const pollData = mock();
+			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
+			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
+			(Parser.prototype.parseURL as jest.Mock).mockResolvedValue({ items: [{}, {}] });
+
+			const result = await node.poll.call(pollFunctions);
+
+			expect(result).toEqual(null);
+			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
+			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
+			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
 		});
 
 		it('should return null if the feed is empty', async () => {

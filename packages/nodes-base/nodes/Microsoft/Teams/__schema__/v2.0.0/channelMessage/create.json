@@ -1,0 +1,110 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            }
+        },
+        "channelIdentity": {
+            "type": "object",
+            "properties": {
+                "channelId": {
+                    "type": "string"
+                },
+                "teamId": {
+                    "type": "string"
+                }
+            }
+        },
+        "chatId": {
+            "type": "null"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "deletedDateTime": {
+            "type": "null"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "eventDetail": {
+            "type": "null"
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "null"
+                },
+                "device": {
+                    "type": "null"
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "@odata.type": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "tenantId": {
+                            "type": "string"
+                        },
+                        "userIdentityType": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "lastEditedDateTime": {
+            "type": "null"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "messageType": {
+            "type": "string"
+        },
+        "onBehalfOf": {
+            "type": "null"
+        },
+        "policyViolation": {
+            "type": "null"
+        },
+        "subject": {
+            "type": "null"
+        },
+        "summary": {
+            "type": "null"
+        },
+        "webUrl": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

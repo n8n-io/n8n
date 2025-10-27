@@ -1,0 +1,44 @@
+{
+    "type": "object",
+    "properties": {
+        "country": {
+            "type": "null"
+        },
+        "has_eod": {
+            "type": "boolean"
+        },
+        "has_intraday": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "stock_exchange": {
+            "type": "object",
+            "properties": {
+                "acronym": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "country_code": {
+                    "type": "string"
+                },
+                "mic": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                }
+            }
+        },
+        "symbol": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

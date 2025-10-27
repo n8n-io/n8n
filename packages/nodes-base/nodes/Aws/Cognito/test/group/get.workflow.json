@@ -1,0 +1,47 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "get",
+				"userPool": {
+					"__rl": true,
+					"value": "eu-central-1_qqle3XBUA",
+					"mode": "list",
+					"cachedResultName": "UserPoolThree"
+				},
+				"group": {
+					"__rl": true,
+					"value": "MyNewGroup2",
+					"mode": "list",
+					"cachedResultName": "MyNewGroup2"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [200, 1300],
+			"id": "ece9e04f-305c-45ed-afc6-34d34303f8b0",
+			"name": "AWS Cognito1",
+			"credentials": {
+				"aws": {
+					"id": "testId",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"AWS Cognito1": [
+			{
+				"json": {
+					"CreationDate": 1741609269.287,
+					"GroupName": "MyNewGroup2",
+					"LastModifiedDate": 1741609269.287,
+					"UserPoolId": "eu-central-1_qqle3XBUA"
+				}
+			}
+		]
+	}
+}

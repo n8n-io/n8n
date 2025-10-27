@@ -1,3 +1,5 @@
+import * as losslessJSON from 'lossless-json';
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,10 +11,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-
-import * as losslessJSON from 'lossless-json';
 
 function convertLosslessNumber(_: any, value: any) {
 	if (value?.isLosslessNumber) {

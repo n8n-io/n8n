@@ -1,0 +1,71 @@
+codecov:
+  max_report_age: off
+  require_ci_to_pass: true
+
+coverage:
+  status:
+    patch: false
+    project:
+      default:
+        threshold: 0.5
+
+github_checks:
+  annotations: false
+
+flags:
+  tests:
+    paths:
+      - '**'
+    carryforward: true
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        branches:
+          - '!master'
+  individual_components:
+    - component_id: backend_packages
+      name: Backend
+      paths:
+        - packages/@n8n/ai-workflow-builder.ee/**
+        - packages/@n8n/api-types/**
+        - packages/@n8n/config/**
+        - packages/@n8n/client-oauth2/**
+        - packages/@n8n/decorators/**
+        - packages/@n8n/constants/**
+        - packages/@n8n/backend-common/**
+        - packages/@n8n/backend-test-utils/**
+        - packages/@n8n/errors/**
+        - packages/@n8n/db/**
+        - packages/@n8n/di/**
+        - packages/@n8n/imap/**
+        - packages/@n8n/permissions/**
+        - packages/@n8n/task-runner/**
+        - packages/@n8n/task-runner-python/**
+        - packages/workflow/**
+        - packages/core/**
+        - packages/cli/**
+    - component_id: frontend_packages
+      name: Frontend
+      paths:
+        - packages/@n8n/codemirror-lang/**
+        - packages/frontend/**
+    - component_id: nodes_packages
+      name: Nodes
+      paths:
+        - packages/node-dev/**
+        - packages/nodes-base/**
+        - packages/@n8n/json-schema-to-zod/**
+        - packages/@n8n/nodes-langchain/**
+      statuses:
+        - type: project
+          target: auto
+          threshold: 0% # Enforce: Coverage must not decrease
+
+ignore:
+  - (?s:.*/[^\/]*\.spec\.ts.*)\Z
+  - (?s:.*/[^\/]*\.test\.ts.*)\Z
+  - (?s:.*/[^\/]*e2e[^\/]*\.ts.*)\Z
+  - (?s:.*/test_[^\/]*\.py.*)\Z

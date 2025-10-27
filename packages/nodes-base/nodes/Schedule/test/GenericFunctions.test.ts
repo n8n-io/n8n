@@ -1,4 +1,5 @@
 import * as n8nWorkflow from 'n8n-workflow';
+
 import { intervalToRecurrence, recurrenceCheck, toCronExpression } from '../GenericFunctions';
 import type { IRecurrenceRule } from '../SchedulerInterface';
 

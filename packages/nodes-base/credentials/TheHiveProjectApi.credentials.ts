@@ -10,7 +10,7 @@ export class TheHiveProjectApi implements ICredentialType {
 
 	displayName = 'The Hive 5 API';
 
-	documentationUrl = 'theHive';
+	documentationUrl = 'thehive';
 
 	properties: INodeProperties[] = [
 		{
@@ -31,7 +31,7 @@ export class TheHiveProjectApi implements ICredentialType {
 			placeholder: 'https://localhost:9000',
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			description: 'Whether to connect even if SSL certificate validation is not possible',

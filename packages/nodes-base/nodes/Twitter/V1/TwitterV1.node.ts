@@ -1,3 +1,4 @@
+import ISO6391 from 'iso-639-1';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,19 +10,15 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import ISO6391 from 'iso-639-1';
 import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
-
-import { tweetFields, tweetOperations } from './TweetDescription';
-
 import {
 	twitterApiRequest,
 	twitterApiRequestAllItems,
 	uploadAttachments,
 } from './GenericFunctions';
-
+import { tweetFields, tweetOperations } from './TweetDescription';
 import type { ITweet, ITweetCreate } from './TweetInterface';
 
 export class TwitterV1 implements INodeType {
@@ -36,8 +33,8 @@ export class TwitterV1 implements INodeType {
 			defaults: {
 				name: 'Twitter',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'twitterOAuth1Api',

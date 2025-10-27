@@ -1,11 +1,5 @@
-import type { Scope } from '@n8n/permissions';
-import { Container } from 'typedi';
-
-import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
-import type { WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import type { GlobalRole } from '@/databases/entities/user';
-import { RoleService } from '@/services/role.service';
+import { ALL_ROLES } from '@n8n/permissions';
+import type { Role } from '@n8n/permissions';
 
 import { createMember } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -18,102 +12,31 @@ const testServer = utils.setupTestServer({
 let memberAgent: SuperAgentTest;
 
 const expectedCategories = ['global', 'project', 'credential', 'workflow'] as const;
-let expectedGlobalRoles: Array<{
-	name: string;
-	role: GlobalRole;
-	scopes: Scope[];
-	licensed: boolean;
-}>;
-let expectedProjectRoles: Array<{
-	name: string;
-	role: ProjectRole;
-	scopes: Scope[];
-	licensed: boolean;
-}>;
-let expectedCredentialRoles: Array<{
-	name: string;
-	role: CredentialSharingRole;
-	scopes: Scope[];
-	licensed: boolean;
-}>;
-let expectedWorkflowRoles: Array<{
-	name: string;
-	role: WorkflowSharingRole;
-	scopes: Scope[];
-	licensed: boolean;
-}>;
+let expectedGlobalRoles: Role[];
+let expectedProjectRoles: Role[];
+let expectedCredentialRoles: Role[];
+let expectedWorkflowRoles: Role[];
+
+function checkForRole(role: Role, roles: Role[]) {
+	const returnedRole = roles.find((r) => r.slug === role.slug);
+	expect(returnedRole).toBeDefined();
+	role.scopes.sort();
+	returnedRole!.scopes.sort();
+	returnedRole!.licensed = role.licensed;
+	expect(returnedRole).toEqual({
+		...role,
+		createdAt: expect.any(String),
+		updatedAt: expect.any(String),
+	});
+}
 
 beforeAll(async () => {
 	memberAgent = testServer.authAgentFor(await createMember());
 
-	expectedGlobalRoles = [
-		{
-			name: 'Owner',
-			role: 'global:owner',
-			scopes: Container.get(RoleService).getRoleScopes('global:owner'),
-			licensed: true,
-		},
-		{
-			name: 'Admin',
-			role: 'global:admin',
-			scopes: Container.get(RoleService).getRoleScopes('global:admin'),
-			licensed: false,
-		},
-		{
-			name: 'Member',
-			role: 'global:member',
-			scopes: Container.get(RoleService).getRoleScopes('global:member'),
-			licensed: true,
-		},
-	];
-	expectedProjectRoles = [
-		{
-			name: 'Project Owner',
-			role: 'project:personalOwner',
-			scopes: Container.get(RoleService).getRoleScopes('project:personalOwner'),
-			licensed: true,
-		},
-		{
-			name: 'Project Admin',
-			role: 'project:admin',
-			scopes: Container.get(RoleService).getRoleScopes('project:admin'),
-			licensed: false,
-		},
-		{
-			name: 'Project Editor',
-			role: 'project:editor',
-			scopes: Container.get(RoleService).getRoleScopes('project:editor'),
-			licensed: false,
-		},
-	];
-	expectedCredentialRoles = [
-		{
-			name: 'Credential Owner',
-			role: 'credential:owner',
-			scopes: Container.get(RoleService).getRoleScopes('credential:owner'),
-			licensed: true,
-		},
-		{
-			name: 'Credential User',
-			role: 'credential:user',
-			scopes: Container.get(RoleService).getRoleScopes('credential:user'),
-			licensed: true,
-		},
-	];
-	expectedWorkflowRoles = [
-		{
-			name: 'Workflow Owner',
-			role: 'workflow:owner',
-			scopes: Container.get(RoleService).getRoleScopes('workflow:owner'),
-			licensed: true,
-		},
-		{
-			name: 'Workflow Editor',
-			role: 'workflow:editor',
-			scopes: Container.get(RoleService).getRoleScopes('workflow:editor'),
-			licensed: true,
-		},
-	];
+	expectedGlobalRoles = ALL_ROLES.global;
+	expectedProjectRoles = ALL_ROLES.project;
+	expectedCredentialRoles = ALL_ROLES.credential;
+	expectedWorkflowRoles = ALL_ROLES.workflow;
 });
 
 describe('GET /roles/', () => {
@@ -133,8 +56,9 @@ describe('GET /roles/', () => {
 		const resp = await memberAgent.get('/roles/');
 
 		expect(resp.status).toBe(200);
+		expect(Array.isArray(resp.body.data.global)).toBe(true);
 		for (const role of expectedGlobalRoles) {
-			expect(resp.body.data.global).toContainEqual(role);
+			checkForRole(role, resp.body.data.global);
 		}
 	});
 
@@ -143,7 +67,7 @@ describe('GET /roles/', () => {
 
 		expect(resp.status).toBe(200);
 		for (const role of expectedProjectRoles) {
-			expect(resp.body.data.project).toContainEqual(role);
+			checkForRole(role, resp.body.data.project);
 		}
 	});
 
@@ -152,7 +76,7 @@ describe('GET /roles/', () => {
 
 		expect(resp.status).toBe(200);
 		for (const role of expectedCredentialRoles) {
-			expect(resp.body.data.credential).toContainEqual(role);
+			checkForRole(role, resp.body.data.credential);
 		}
 	});
 
@@ -161,7 +85,7 @@ describe('GET /roles/', () => {
 
 		expect(resp.status).toBe(200);
 		for (const role of expectedWorkflowRoles) {
-			expect(resp.body.data.workflow).toContainEqual(role);
+			checkForRole(role, resp.body.data.workflow);
 		}
 	});
 });

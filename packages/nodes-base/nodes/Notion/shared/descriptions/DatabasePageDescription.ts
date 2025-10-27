@@ -1,10 +1,16 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { getConditions, getSearchFilters } from '../GenericFunctions';
-
 import { blocks, text } from './Blocks';
-
 import { filters } from './Filters';
+import {
+	databaseUrlExtractionRegexp,
+	databaseUrlValidationRegexp,
+	databasePageUrlExtractionRegexp,
+	databasePageUrlValidationRegexp,
+	idExtractionRegexp,
+	idValidationRegexp,
+} from '../constants';
+import { getConditions, getSearchFilters } from '../GenericFunctions';
 
 export const databasePageOperations: INodeProperties[] = [
 	{
@@ -24,7 +30,7 @@ export const databasePageOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a pages in a database',
+				description: 'Create a page in a database',
 				action: 'Create a database page',
 			},
 			{
@@ -114,16 +120,14 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							regex: databaseUrlValidationRegexp,
 							errorMessage: 'Not a valid Notion Database URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex:
-						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+					regex: databaseUrlExtractionRegexp,
 				},
 			},
 			{
@@ -135,15 +139,14 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							regex: idValidationRegexp,
 							errorMessage: 'Not a valid Notion Database ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+					regex: idExtractionRegexp,
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
@@ -600,16 +603,14 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12}).*',
+							regex: databasePageUrlValidationRegexp,
 							errorMessage: 'Not a valid Notion Database Page URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex:
-						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12})',
+					regex: databasePageUrlExtractionRegexp,
 				},
 			},
 			{
@@ -621,15 +622,14 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'^(([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))[ \t]*',
+							regex: idValidationRegexp,
 							errorMessage: 'Not a valid Notion Database Page ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})',
+					regex: idExtractionRegexp,
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
@@ -1069,16 +1069,14 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12}).*',
+							regex: databasePageUrlValidationRegexp,
 							errorMessage: 'Not a valid Notion Database Page URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex:
-						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12})',
+					regex: databasePageUrlExtractionRegexp,
 				},
 			},
 			{
@@ -1090,15 +1088,14 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'^(([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))[ \t]*',
+							regex: idValidationRegexp,
 							errorMessage: 'Not a valid Notion Database Page ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})',
+					regex: idExtractionRegexp,
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
@@ -1160,16 +1157,14 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12}).*',
+							regex: databasePageUrlValidationRegexp,
 							errorMessage: 'Not a valid Notion Database Page URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex:
-						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12})',
+					regex: databasePageUrlExtractionRegexp,
 				},
 			},
 			{
@@ -1181,15 +1176,14 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'^(([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))[ \t]*',
+							regex: idValidationRegexp,
 							errorMessage: 'Not a valid Notion Database Page ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})',
+					regex: idExtractionRegexp,
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},

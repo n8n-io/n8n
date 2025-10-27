@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasBackground > should render the background with the correct gap 1`] = `
+"<svg class="vue-flow__background vue-flow__container" style="height: 100%; width: 100%;" data-test-id="canvas-background">
+  <pattern id="pattern-vue-flow-0" x="0" y="0" width="16" height="16" patternTransform="translate(-9,-9)" patternUnits="userSpaceOnUse">
+    <circle cx="0.5" cy="0.5" r="0.5" fill="#aaa"></circle>
+    <!---->
+  </pattern>
+  <rect x="0" y="0" width="100%" height="100%" fill="url(#pattern-vue-flow-0)"></rect>
+</svg>"
+`;

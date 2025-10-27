@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "Account_Name": {
+            "type": "string"
+        },
+        "Account_Number": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

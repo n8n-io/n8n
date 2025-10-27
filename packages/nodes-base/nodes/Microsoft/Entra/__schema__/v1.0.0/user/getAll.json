@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "userPrincipalName": {
+            "type": "string"
+        }
+    },
+    "version": 5
+}

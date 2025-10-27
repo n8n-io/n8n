@@ -9,22 +9,19 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
+import { oldVersionNotice } from '@utils/descriptions';
+
 import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	microsoftApiRequestAllItemsSkip,
 } from './GenericFunctions';
-
-import { workbookFields, workbookOperations } from './WorkbookDescription';
-
-import { worksheetFields, worksheetOperations } from './WorksheetDescription';
-
 import { tableFields, tableOperations } from './TableDescription';
-
-import { oldVersionNotice } from '@utils/descriptions';
+import { workbookFields, workbookOperations } from './WorkbookDescription';
+import { worksheetFields, worksheetOperations } from './WorksheetDescription';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Excel',
@@ -37,8 +34,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Excel',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'microsoftExcelOAuth2Api',

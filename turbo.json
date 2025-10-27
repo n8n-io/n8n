@@ -1,88 +1,49 @@
 {
-	"$schema": "https://turbo.build/schema.json",
-	"ui": "stream",
 	"globalEnv": ["CI", "COVERAGE_ENABLED"],
 	"tasks": {
-		"clean": {
-			"cache": false
-		},
-		"build:backend": {
-			"dependsOn": ["n8n#build"]
-		},
-		"build:frontend": {
-			"dependsOn": ["n8n-editor-ui#build"]
-		},
-		"build:nodes": {
-			"dependsOn": ["n8n-nodes-base#build", "@n8n/n8n-nodes-langchain#build"]
-		},
+		"clean": { "cache": false },
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
 		},
 		"typecheck": {
-			"dependsOn": ["^typecheck"]
+			"dependsOn": ["^typecheck", "^build"]
 		},
 		"format": {},
 		"format:check": {},
-		"lint:backend": {
-			"dependsOn": [
-				"@n8n/api-types#lint",
-				"@n8n/config#lint",
-				"@n8n/client-oauth2#lint",
-				"@n8n/imap#lint",
-				"@n8n/permissions#lint",
-				"n8n-workflow#lint",
-				"n8n-core#lint",
-				"n8n-node-dev#lint",
-				"n8n#lint"
-			]
+		"lint": {
+			"dependsOn": ["^build", "@n8n/eslint-config#build"]
 		},
-		"lint:frontend": {
-			"dependsOn": [
-				"@n8n/chat#lint",
-				"@n8n/codemirror-lang#lint",
-				"@n8n/storybook#lint",
-				"n8n-cypress#lint",
-				"n8n-design-system#lint",
-				"n8n-editor-ui#lint"
-			]
+		"lint:fix": {},
+		"lint:styles": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
-		"lint:nodes": {
-			"dependsOn": ["n8n-nodes-base#lint", "@n8n/n8n-nodes-langchain#lint"]
+		"lint:styles:fix": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
-		"lint": {},
-		"lintfix": {},
-		"test:backend": {
-			"dependsOn": [
-				"@n8n/api-types#test",
-				"@n8n/config#test",
-				"@n8n/client-oauth2#test",
-				"@n8n/imap#test",
-				"@n8n/permissions#test",
-				"n8n-workflow#test",
-				"n8n-core#test",
-				"n8n#test"
-			]
+		"test": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
 		},
-		"test:frontend": {
-			"dependsOn": [
-				"@n8n/chat#test",
-				"@n8n/codemirror-lang#test",
-				"n8n-design-system#test",
-				"n8n-editor-ui#test"
-			]
+		"watch": { "cache": false, "persistent": true },
+		"dev": { "cache": false, "persistent": true },
+		"build:playwright": {
+			"dependsOn": ["install-browsers:ci", "build"]
 		},
-		"test:nodes": {
-			"dependsOn": ["n8n-nodes-base#test", "@n8n/n8n-nodes-langchain#test"]
+		"install-browsers:ci": {
+			"cache": true,
+			"inputs": ["package.json"],
+			"outputs": ["ms-playwright-cache/**"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
 		},
-		"test": {},
-		"watch": {
+		"install-browsers:local": {
 			"cache": false,
-			"persistent": true
+			"inputs": ["package.json"]
 		},
-		"dev": {
-			"cache": false,
-			"persistent": true
+		"test:container:standard": {
+			"dependsOn": ["install-browsers:local"],
+			"env": ["E2E_TESTS"],
+			"cache": false
 		}
 	}
 }

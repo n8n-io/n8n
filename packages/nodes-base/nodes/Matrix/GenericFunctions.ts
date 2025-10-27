@@ -7,7 +7,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
 import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(
@@ -40,7 +39,6 @@ export async function matrixApiRequest(
 		const credentials = await this.getCredentials('matrixApi');
 
 		options.uri = `${credentials.homeserverUrl}/_matrix/${
-			//@ts-ignore
 			option.overridePrefix || 'client'
 		}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;

@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,21 +10,20 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-import { channelFields, channelOperations } from './ChannelDescription';
-import { messageFields, messageOperations } from './MessageDescription';
-import { starFields, starOperations } from './StarDescription';
-import { fileFields, fileOperations } from './FileDescription';
-import { reactionFields, reactionOperations } from './ReactionDescription';
-import { userGroupFields, userGroupOperations } from './UserGroupDescription';
-import { userFields, userOperations } from './UserDescription';
-import { userProfileFields, userProfileOperations } from './UserProfileDescription';
-import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
-import type { IAttachment } from './MessageInterface';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
+
+import { channelFields, channelOperations } from './ChannelDescription';
+import { fileFields, fileOperations } from './FileDescription';
+import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { messageFields, messageOperations } from './MessageDescription';
+import type { IAttachment } from './MessageInterface';
+import { reactionFields, reactionOperations } from './ReactionDescription';
+import { starFields, starOperations } from './StarDescription';
+import { userFields, userOperations } from './UserDescription';
+import { userGroupFields, userGroupOperations } from './UserGroupDescription';
+import { userProfileFields, userProfileOperations } from './UserProfileDescription';
 
 interface Attachment {
 	fields: {
@@ -75,8 +75,8 @@ export class SlackV1 implements INodeType {
 			defaults: {
 				name: 'Slack',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'slackApi',
@@ -762,7 +762,6 @@ export class SlackV1 implements INodeType {
 									} else if (block.type === 'section') {
 										const textUi = (blockUi.textUi as IDataObject).textValue as IDataObject;
 										if (textUi) {
-											// eslint-disable-next-line @typescript-eslint/no-shadow
 											const text: Text = {};
 											if (textUi.type === 'plainText') {
 												text.type = 'plain_text';
@@ -827,7 +826,7 @@ export class SlackV1 implements INodeType {
 													const confirm: Confirm = {};
 													const titleUi = (confirmUi.titleUi as IDataObject)
 														.titleValue as IDataObject;
-													// eslint-disable-next-line @typescript-eslint/no-shadow
+
 													const textUi = (confirmUi.textUi as IDataObject).textValue as IDataObject;
 													const confirmTextUi = (confirmUi.confirmTextUi as IDataObject)
 														.confirmValue as IDataObject;
@@ -979,7 +978,7 @@ export class SlackV1 implements INodeType {
 					if (operation === 'getPermalink') {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const timestamp = this.getNodeParameter('timestamp', i) as string;
-						// eslint-disable-next-line @typescript-eslint/no-shadow
+
 						const qs = {
 							channel,
 							message_ts: timestamp,
@@ -1270,7 +1269,6 @@ export class SlackV1 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						// eslint-disable-next-line @typescript-eslint/no-shadow
 						const qs: IDataObject = {};
 
 						Object.assign(qs, additionalFields);
@@ -1349,7 +1347,6 @@ export class SlackV1 implements INodeType {
 					if (operation === 'get') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						// eslint-disable-next-line @typescript-eslint/no-shadow
 						const qs: IDataObject = {};
 
 						Object.assign(qs, additionalFields);

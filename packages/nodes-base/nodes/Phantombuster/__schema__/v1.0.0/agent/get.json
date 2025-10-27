@@ -1,0 +1,89 @@
+{
+    "type": "object",
+    "properties": {
+        "argument": {
+            "type": "string"
+        },
+        "branch": {
+            "type": "string"
+        },
+        "code": {
+            "type": "null"
+        },
+        "environment": {
+            "type": "string"
+        },
+        "fileMgmt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastEndType": {
+            "type": "string"
+        },
+        "launchType": {
+            "type": "string"
+        },
+        "maxParallelism": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nbLaunches": {
+            "type": "integer"
+        },
+        "notifications": {
+            "type": "object",
+            "properties": {
+                "mailAutomaticExitError": {
+                    "type": "boolean"
+                },
+                "mailAutomaticExitSuccess": {
+                    "type": "boolean"
+                },
+                "mailAutomaticLaunchError": {
+                    "type": "boolean"
+                },
+                "mailAutomaticTimeError": {
+                    "type": "boolean"
+                },
+                "mailManualExitError": {
+                    "type": "boolean"
+                },
+                "mailManualExitSuccess": {
+                    "type": "boolean"
+                },
+                "mailManualLaunchError": {
+                    "type": "boolean"
+                },
+                "mailManualTimeError": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "orgS3Folder": {
+            "type": "string"
+        },
+        "s3Folder": {
+            "type": "string"
+        },
+        "script": {
+            "type": "string"
+        },
+        "scriptId": {
+            "type": "string"
+        },
+        "scriptOrgName": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "integer"
+        },
+        "wasSetupValidWhenSubmittedByTheFrontend": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

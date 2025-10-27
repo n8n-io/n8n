@@ -1,21 +1,24 @@
+import { GlobalConfig } from '@n8n/config';
+import { Post, RestController } from '@n8n/decorators';
 import { Request } from 'express';
 import { readFile } from 'fs/promises';
 import get from 'lodash/get';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 
-import config from '@/config';
-import { Post, RestController } from '@/decorators';
 import { NodeTypes } from '@/node-types';
 
 @RestController('/node-types')
 export class NodeTypesController {
-	constructor(private readonly nodeTypes: NodeTypes) {}
+	constructor(
+		private readonly nodeTypes: NodeTypes,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	@Post('/')
 	async getNodeInfo(req: Request) {
 		const nodeInfos = get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 
-		const defaultLocale = config.getEnv('defaultLocale');
+		const defaultLocale = this.globalConfig.defaultLocale;
 
 		if (defaultLocale === 'en') {
 			return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {

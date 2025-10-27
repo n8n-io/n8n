@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "childFolderCount": {
+            "type": "integer"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isHidden": {
+            "type": "boolean"
+        },
+        "parentFolderId": {
+            "type": "string"
+        },
+        "totalItemCount": {
+            "type": "integer"
+        },
+        "unreadItemCount": {
+            "type": "integer"
+        }
+    },
+    "version": 2
+}

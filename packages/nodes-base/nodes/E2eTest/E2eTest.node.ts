@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
@@ -9,6 +9,7 @@ import {
 	type INodeTypeDescription,
 	type ResourceMapperFields,
 } from 'n8n-workflow';
+
 import { remoteOptions, resourceMapperFields, returnData, searchOptions } from './mock';
 
 export class E2eTest implements INodeType {
@@ -23,8 +24,9 @@ export class E2eTest implements INodeType {
 		defaults: {
 			name: 'E2E Test',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',

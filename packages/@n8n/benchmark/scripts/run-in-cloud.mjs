@@ -35,6 +35,7 @@ import { flagsObjectToCliArgs } from './utils/flags.mjs';
  * @property {string} [n8nLicenseCert]
  * @property {string} [vus]
  * @property {string} [duration]
+ * @property {string} [scenarioFilter]
  *
  * @param {Config} config
  */
@@ -78,22 +79,27 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
 	const bootstrapScriptPath = path.join(scriptsDir, 'bootstrap.sh');
 	await sshClient.ssh(`chmod a+x ${bootstrapScriptPath} && ${bootstrapScriptPath}`);
 
-	// Benchmarking the VM
-	const vmBenchmarkScriptPath = path.join(scriptsDir, 'vm-benchmark.sh');
-	await sshClient.ssh(`chmod a+x ${vmBenchmarkScriptPath} && ${vmBenchmarkScriptPath}`, {
-		verbose: true,
-	});
-
 	// Give some time for the VM to be ready
 	await sleep(1000);
 
+	const failures = [];
+
 	for (const n8nSetup of config.n8nSetupsToUse) {
-		await runBenchmarkForN8nSetup({
-			config,
-			sshClient,
-			scriptsDir,
-			n8nSetup,
-		});
+		try {
+			await runBenchmarkForN8nSetup({
+				config,
+				sshClient,
+				scriptsDir,
+				n8nSetup,
+			});
+		} catch (error) {
+			console.error(`Benchmark failed for ${n8nSetup}:`, error.message);
+			failures.push(n8nSetup);
+		}
+	}
+
+	if (failures.length > 0) {
+		throw new Error(`Benchmarks failed for setups: ${failures.join(', ')}`);
 	}
 }
 
@@ -111,6 +117,7 @@ async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup
 		resultWebhookUrl: config.resultWebhookUrl,
 		resultWebhookAuthHeader: config.resultWebhookAuthHeader,
 		n8nLicenseCert: config.n8nLicenseCert,
+		scenarioFilter: config.scenarioFilter,
 		vus: config.vus,
 		duration: config.duration,
 		env: 'cloud',

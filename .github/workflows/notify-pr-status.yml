@@ -15,7 +15,7 @@ jobs:
       (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
       (github.event_name == 'pull_request' && github.event.pull_request.merged == false && github.event.action == 'closed')
     steps:
-      - uses: fjogeleit/http-request-action@dea46570591713c7de04a5b556bf2ff7bdf0aa9c # v1
+      - uses: fjogeleit/http-request-action@bf78da14118941f7e940279dd58f67e863cbeff6 # v1
         if: ${{!contains(github.event.pull_request.labels.*.name, 'community')}}
         name: Notify
         env:

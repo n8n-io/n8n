@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { ApplicationError, type IWebhookFunctions } from 'n8n-workflow';
+
 import type { WebhookParameters } from '../utils';
 import {
 	checkResponseModeConfiguration,
@@ -282,7 +283,7 @@ describe('Webhook Utils', () => {
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);
-			}).toThrowError('Webhook node not correctly configured');
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
 		});
 	});
 

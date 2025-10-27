@@ -7,7 +7,7 @@ services:
       - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
 
   redis:
-    image: redis:6-alpine
+    image: redis:6.2.14-alpine
     restart: always
     ports:
       - 6379:6379
@@ -17,7 +17,7 @@ services:
       timeout: 3s
 
   postgres:
-    image: postgres:16
+    image: postgres:16.4
     restart: always
     environment:
       - POSTGRES_DB=n8n
@@ -50,6 +50,12 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      # Task Runner config
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN=test
+      - N8N_NATIVE_PYTHON_RUNNER=true
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker1:/n8n
@@ -63,6 +69,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  n8n_worker1_runners:
+    image: ghcr.io/n8n-io/runners:${N8N_VERSION:-latest}
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n_worker1:5679
+      - N8N_RUNNERS_AUTH_TOKEN=test
+    depends_on:
+      n8n_worker1:
+        condition: service_healthy
 
   n8n_worker2:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
@@ -82,6 +97,12 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      # Task Runner config
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN=test
+      - N8N_NATIVE_PYTHON_RUNNER=true
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker2:/n8n
@@ -98,6 +119,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  n8n_worker2_runners:
+    image: ghcr.io/n8n-io/runners:${N8N_VERSION:-latest}
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n_worker2:5679
+      - N8N_RUNNERS_AUTH_TOKEN=test
+    depends_on:
+      n8n_worker2:
+        condition: service_healthy
 
   n8n_main2:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
@@ -154,7 +184,6 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
-
     volumes:
       - ${RUN_DIR}/n8n-main1:/n8n
     depends_on:
@@ -176,7 +205,7 @@ services:
 
   # Load balancer that acts as an entry point for n8n
   n8n:
-    image: nginx:latest
+    image: nginx:1.27.2
     ports:
       - '5678:80'
     volumes:

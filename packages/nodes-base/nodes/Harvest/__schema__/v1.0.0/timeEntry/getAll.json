@@ -1,0 +1,123 @@
+{
+    "type": "object",
+    "properties": {
+        "billable": {
+            "type": "boolean"
+        },
+        "budgeted": {
+            "type": "boolean"
+        },
+        "client": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_billed": {
+            "type": "boolean"
+        },
+        "is_closed": {
+            "type": "boolean"
+        },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "is_running": {
+            "type": "boolean"
+        },
+        "project": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "spent_date": {
+            "type": "string"
+        },
+        "task": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "task_assignment": {
+            "type": "object",
+            "properties": {
+                "billable": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "user_assignment": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_project_manager": {
+                    "type": "boolean"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "use_default_rates": {
+                    "type": "boolean"
+                }
+            }
+        }
+    },
+    "version": 1
+}

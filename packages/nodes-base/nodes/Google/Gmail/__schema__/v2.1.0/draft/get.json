@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "string"
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "headers": {
+            "type": "object",
+            "properties": {
+                "content-type": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "message-id": {
+                    "type": "string"
+                },
+                "mime-version": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "labelIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "messageId": {
+            "type": "string"
+        },
+        "sizeEstimate": {
+            "type": "integer"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "textAsHtml": {
+            "type": "string"
+        },
+        "threadId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

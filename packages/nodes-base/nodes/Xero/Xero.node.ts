@@ -7,18 +7,14 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type JsonObject,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { xeroApiRequest, xeroApiRequestAllItems } from './GenericFunctions';
-
-import { invoiceFields, invoiceOperations } from './InvoiceDescription';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
-import type { IInvoice, ILineItem } from './InvoiceInterface';
-
+import { xeroApiRequest, xeroApiRequestAllItems } from './GenericFunctions';
 import type { IAddress, IContact, IPhone } from './IContactInterface';
+import { invoiceFields, invoiceOperations } from './InvoiceDescription';
+import type { IInvoice, ILineItem } from './InvoiceInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,8 +28,9 @@ export class Xero implements INodeType {
 		defaults: {
 			name: 'Xero',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'xeroOAuth2Api',

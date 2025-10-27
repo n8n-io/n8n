@@ -1,0 +1,205 @@
+{
+    "type": "object",
+    "properties": {
+        "article_count": {
+            "type": "integer"
+        },
+        "articles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "attachments": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "filename": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "preferences": {
+                                    "type": "object",
+                                    "properties": {
+                                        "Content-Disposition": {
+                                            "type": "string"
+                                        },
+                                        "Content-ID": {
+                                            "type": "string"
+                                        },
+                                        "Content-Type": {
+                                            "type": "string"
+                                        },
+                                        "Mime-Type": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "size": {
+                                    "type": "string"
+                                },
+                                "store_file_id": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "content_type": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "created_by_id": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "internal": {
+                        "type": "boolean"
+                    },
+                    "sender": {
+                        "type": "string"
+                    },
+                    "sender_id": {
+                        "type": "integer"
+                    },
+                    "ticket_id": {
+                        "type": "integer"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "type_id": {
+                        "type": "integer"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    },
+                    "updated_by_id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "checklist_id": {
+            "type": "null"
+        },
+        "create_article_sender_id": {
+            "type": "integer"
+        },
+        "create_article_type_id": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_by_id": {
+            "type": "integer"
+        },
+        "customer_id": {
+            "type": "integer"
+        },
+        "group_id": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "internal_issue_type": {
+            "type": "null"
+        },
+        "internal_ticket": {
+            "type": "boolean"
+        },
+        "note": {
+            "type": "null"
+        },
+        "number": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "preferences": {
+            "type": "object",
+            "properties": {
+                "escalation_calculation": {
+                    "type": "object",
+                    "properties": {
+                        "calendar_id": {
+                            "type": "integer"
+                        },
+                        "calendar_updated_at": {
+                            "type": "string"
+                        },
+                        "escalation_disabled": {
+                            "type": "boolean"
+                        },
+                        "first_response_at": {
+                            "type": "string"
+                        },
+                        "last_contact_at": {
+                            "type": "string"
+                        },
+                        "last_update_at": {
+                            "type": "string"
+                        },
+                        "sla_id": {
+                            "type": "integer"
+                        },
+                        "sla_updated_at": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "priority_id": {
+            "type": "integer"
+        },
+        "product": {
+            "type": "string"
+        },
+        "resolution": {
+            "type": "string"
+        },
+        "state_id": {
+            "type": "integer"
+        },
+        "sub_priority": {
+            "type": "string"
+        },
+        "ticket_severity": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type_from_ahlsell": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "updated_by_id": {
+            "type": "integer"
+        },
+        "wait_for_3rd_party": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

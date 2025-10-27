@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "crunchbase_uuid": {
+            "type": "null"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "domains": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "global": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "person_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        }
+    },
+    "version": 1
+}

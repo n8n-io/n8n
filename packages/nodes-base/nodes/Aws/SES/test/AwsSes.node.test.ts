@@ -1,11 +1,16 @@
-import qs from 'node:querystring';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
 import assert from 'node:assert';
-import { NodeConnectionType } from 'n8n-workflow';
-import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
+import qs from 'node:querystring';
+
+import { credentials } from '../../__tests__/credentials';
 
 describe('AwsSes Node', () => {
+	const testHarness = new NodeTestHarness();
+	const email = 'test+user@example.com';
+	const templateData = {
+		Name: 'Special. Characters @#$%^&*()_-',
+	};
 	const tests: WorkflowTestData[] = [
 		{
 			description: 'should create customVerificationEmail',
@@ -15,7 +20,7 @@ describe('AwsSes Node', () => {
 						{
 							parameters: {},
 							id: '61c910d6-9997-4bc0-b95d-2b2771c3110f',
-							name: 'When clicking ‘Test workflow’',
+							name: 'When clicking ‘Execute workflow’',
 							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [720, 380],
@@ -44,12 +49,12 @@ describe('AwsSes Node', () => {
 						},
 					],
 					connections: {
-						'When clicking ‘Test workflow’': {
+						'When clicking ‘Execute workflow’': {
 							main: [
 								[
 									{
 										node: 'AWS SES',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -59,7 +64,6 @@ describe('AwsSes Node', () => {
 				},
 			},
 			output: {
-				nodeExecutionOrder: ['Start'],
 				nodeData: {
 					'AWS SES': [[{ json: { success: 'true' } }]],
 				},
@@ -89,16 +93,82 @@ describe('AwsSes Node', () => {
 				],
 			},
 		},
+		{
+			description: 'should URIencode params for sending email with template',
+			input: {
+				workflowData: {
+					nodes: [
+						{
+							parameters: {},
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [-180, 520],
+							id: '363e874a-9054-4a64-bc3f-786719dde626',
+							name: 'When clicking ‘Execute workflow’',
+						},
+						{
+							parameters: {
+								operation: 'sendTemplate',
+								templateName: '=Template11',
+								fromEmail: 'test+user@example.com',
+								toAddresses: ['test+user@example.com'],
+								templateDataUi: {
+									templateDataValues: [
+										{
+											key: 'Name',
+											value: '=Special. Characters @#$%^&*()_-',
+										},
+									],
+								},
+								additionalFields: {},
+							},
+							type: 'n8n-nodes-base.awsSes',
+							typeVersion: 1,
+							position: [60, 520],
+							id: '13bbf4ef-8320-45d1-9210-61b62794a108',
+							name: 'AWS SES',
+							credentials: {
+								aws: {
+									id: 'Nz0QZhzu3MvfK4TQ',
+									name: 'AWS account',
+								},
+							},
+						},
+					],
+					connections: {
+						'When clicking ‘Execute workflow’': {
+							main: [
+								[
+									{
+										node: 'AWS SES',
+										type: NodeConnectionTypes.Main,
+										index: 0,
+									},
+								],
+							],
+						},
+					},
+				},
+			},
+			output: {
+				nodeData: { 'AWS SES': [[{ json: { success: 'true' } }]] },
+			},
+			nock: {
+				baseUrl: 'https://email.eu-central-1.amazonaws.com',
+				mocks: [
+					{
+						method: 'post',
+						path: `/?Action=SendTemplatedEmail&Template=Template11&Source=${encodeURIComponent(email)}&Destination.ToAddresses.member.1=${encodeURIComponent(email)}&TemplateData=${encodeURIComponent(JSON.stringify(templateData))}`,
+						statusCode: 200,
+						responseBody:
+							'<SendTemplatedEmailResponse><success>true</success></SendTemplatedEmailResponse>',
+					},
+				],
+			},
+		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
-	test.each(tests)('$description', async (testData) => {
-		const { result } = await executeWorkflow(testData, nodeTypes);
-		const resultNodeData = Helpers.getResultNodeData(result, testData);
-		resultNodeData.forEach(({ nodeName, resultData }) =>
-			expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-		);
-		expect(result.finished).toEqual(true);
-	});
+	for (const testData of tests) {
+		testHarness.setupTest(testData, { credentials });
+	}
 });

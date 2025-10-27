@@ -2,9 +2,12 @@ coverage
 dist
 package.json
 pnpm-lock.yaml
-packages/editor-ui/index.html
+packages/frontend/editor-ui/index.html
 packages/nodes-base/nodes/**/test
 packages/cli/templates/form-trigger.handlebars
+packages/cli/templates/form-trigger-completion.handlebars
+packages/cli/templates/form-trigger-409.handlebars
+packages/cli/templates/form-trigger-404.handlebars
 cypress/fixtures
 CHANGELOG.md
 .github/pull_request_template.md
@@ -15,3 +18,8 @@ CHANGELOG.md
 **/*.js
 **/*.json
 **/*.jsonc
+
+# Auto-generated
+**/components.d.ts
+
+justfile

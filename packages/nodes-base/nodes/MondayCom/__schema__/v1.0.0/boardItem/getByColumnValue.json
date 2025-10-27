@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "properties": {
+        "board": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "column_values": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "column": {
+                        "type": "object",
+                        "properties": {
+                            "archived": {
+                                "type": "boolean"
+                            },
+                            "settings_str": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

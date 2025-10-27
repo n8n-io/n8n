@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "properties": {
+        "channel_id": {
+            "type": "string"
+        },
+        "create_at": {
+            "type": "integer"
+        },
+        "delete_at": {
+            "type": "integer"
+        },
+        "edit_at": {
+            "type": "integer"
+        },
+        "hashtags": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_pinned": {
+            "type": "boolean"
+        },
+        "last_reply_at": {
+            "type": "integer"
+        },
+        "message": {
+            "type": "string"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "embeds": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "original_id": {
+            "type": "string"
+        },
+        "participants": {
+            "type": "null"
+        },
+        "pending_post_id": {
+            "type": "string"
+        },
+        "props": {
+            "type": "object",
+            "properties": {
+                "from_bot": {
+                    "type": "string"
+                }
+            }
+        },
+        "remote_id": {
+            "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "root_id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "update_at": {
+            "type": "integer"
+        },
+        "user_id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

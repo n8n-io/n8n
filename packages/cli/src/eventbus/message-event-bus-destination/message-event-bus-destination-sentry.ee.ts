@@ -48,7 +48,7 @@ export class MessageEventBusDestinationSentry
 			environment,
 			release: N8N_VERSION,
 			transport: Sentry.makeNodeTransport,
-			integrations: Sentry.defaultIntegrations,
+			integrations: Sentry.getDefaultIntegrations({}),
 			stackParser: Sentry.defaultStackParser,
 		});
 	}

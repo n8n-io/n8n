@@ -1,3 +1,5 @@
+import FormData from 'form-data';
+
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -5,15 +7,17 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { googleApiRequest } from '../../transport';
-import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
+
 import {
 	getItemBinaryData,
 	setFileProperties,
 	setUpdateCommonParams,
 	setParentFolder,
+	processInChunks,
 } from '../../helpers/utils';
-import { updateDisplayOptions } from '@utils/utilities';
+import { googleApiRequest } from '../../transport';
+import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -95,20 +99,34 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}) as string;
 
 	let uploadId;
+	const metadata = {
+		name,
+		parents: [setParentFolder(folderId, driveId)],
+	};
 	if (Buffer.isBuffer(fileContent)) {
+		const multiPartBody = new FormData();
+		multiPartBody.append('metadata', JSON.stringify(metadata), {
+			contentType: 'application/json',
+		});
+		multiPartBody.append('data', fileContent, {
+			contentType: mimeType,
+			knownLength: contentLength,
+		});
+
 		const response = await googleApiRequest.call(
 			this,
 			'POST',
 			'/upload/drive/v3/files',
-			fileContent,
+			multiPartBody.getBuffer(),
 			{
-				uploadType: 'media',
+				uploadType: 'multipart',
+				supportsAllDrives: true,
 			},
 			undefined,
 			{
 				headers: {
-					'Content-Type': mimeType,
-					'Content-Length': contentLength,
+					'Content-Type': `multipart/related; boundary=${multiPartBody.getBoundary()}`,
+					'Content-Length': multiPartBody.getLengthSync(),
 				},
 			},
 		);
@@ -119,26 +137,33 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			this,
 			'POST',
 			'/upload/drive/v3/files',
-			undefined,
-			{ uploadType: 'resumable' },
+			metadata,
+			{
+				uploadType: 'resumable',
+				supportsAllDrives: true,
+			},
 			undefined,
 			{
 				returnFullResponse: true,
+				headers: {
+					'X-Upload-Content-Type': mimeType,
+				},
 			},
 		);
 
 		const uploadUrl = resumableUpload.headers.location;
 
-		let offset = 0;
-		for await (const chunk of fileContent) {
-			const nextOffset = offset + Number(chunk.length);
+		// 2MB chunks, needs to be a multiple of 256kB for Google Drive API
+		const chunkSizeBytes = 2048 * 1024;
+
+		await processInChunks(fileContent, chunkSizeBytes, async (chunk, offset) => {
 			try {
 				const response = await this.helpers.httpRequest({
 					method: 'PUT',
 					url: uploadUrl,
 					headers: {
 						'Content-Length': chunk.length,
-						'Content-Range': `bytes ${offset}-${nextOffset - 1}/${contentLength}`,
+						'Content-Range': `bytes ${offset}-${offset + chunk.byteLength - 1}/${contentLength}`,
 					},
 					body: chunk,
 				});
@@ -146,8 +171,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			} catch (error) {
 				if (error.response?.status !== 308) throw error;
 			}
-			offset = nextOffset;
-		}
+		});
 	}
 
 	const options = this.getNodeParameter('options', i, {});

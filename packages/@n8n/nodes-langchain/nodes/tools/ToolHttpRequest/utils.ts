@@ -1,26 +1,22 @@
+import { Readability } from '@mozilla/readability';
+import * as cheerio from 'cheerio';
+import { convert } from 'html-to-text';
+import { JSDOM } from 'jsdom';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 import type {
-	IExecuteFunctions,
 	IDataObject,
 	IHttpRequestOptions,
 	IRequestOptionsSimplified,
 	ExecutionError,
 	NodeApiError,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
-
-import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
-
-import set from 'lodash/set';
-import get from 'lodash/get';
-import unset from 'lodash/unset';
-
-import cheerio from 'cheerio';
-import { convert } from 'html-to-text';
-
-import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
+import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
-import type { DynamicZodObject } from '../../../types/zod.types';
+
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -29,8 +25,9 @@ import type {
 	SendIn,
 	ToolParameter,
 } from './interfaces';
+import type { DynamicZodObject } from '../../../types/zod.types';
 
-const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
+const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
 
 	if (genericType === 'httpBasicAuth' || genericType === 'httpDigestAuth') {
@@ -95,7 +92,7 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 
 	if (genericType === 'oAuth2Api') {
 		return async (options: IHttpRequestOptions) => {
-			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', options, {
+			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		};
@@ -106,23 +103,22 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 	});
 };
 
-const predefinedCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
+const predefinedCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const predefinedType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
 	const additionalOptions = getOAuth2AdditionalParameters(predefinedType);
 
 	return async (options: IHttpRequestOptions) => {
-		return await ctx.helpers.requestWithAuthentication.call(
+		return await ctx.helpers.httpRequestWithAuthentication.call(
 			ctx,
 			predefinedType,
 			options,
 			additionalOptions && { oauth2: additionalOptions },
-			itemIndex,
 		);
 	};
 };
 
 export const configureHttpRequestFunction = async (
-	ctx: IExecuteFunctions,
+	ctx: ISupplyDataFunctions,
 	credentialsType: 'predefinedCredentialType' | 'genericCredentialType' | 'none',
 	itemIndex: number,
 ) => {
@@ -149,7 +145,26 @@ const defaultOptimizer = <T>(response: T) => {
 	return String(response);
 };
 
-const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
+function isBinary(data: unknown) {
+	// Check if data is a Buffer
+	if (Buffer.isBuffer(data)) {
+		return true;
+	}
+
+	// If data is a string, assume it's text unless it contains null characters.
+	if (typeof data === 'string') {
+		// If the string contains a null character, it's likely binary.
+		if (data.includes('\0')) {
+			return true;
+		}
+		return false;
+	}
+
+	// For any other type, assume it's not binary.
+	return false;
+}
+
+const htmlOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
 	const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
 	let elementsToOmit: string[] = [];
@@ -176,6 +191,7 @@ const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 			);
 		}
 		const returnData: string[] = [];
+
 		const html = cheerio.load(response);
 		const htmlElements = html(cssSelector);
 
@@ -216,7 +232,7 @@ const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 	};
 };
 
-const textOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
+const textOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
 	return (response: string | IDataObject) => {
 		if (typeof response === 'object') {
 			try {
@@ -247,7 +263,7 @@ const textOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 	};
 };
 
-const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
+const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	return (response: string): string => {
 		let responseData: IDataObject | IDataObject[] | string = response;
 
@@ -326,7 +342,7 @@ const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
 	};
 };
 
-export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
+export const configureResponseOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const optimizeResponse = ctx.getNodeParameter('optimizeResponse', itemIndex, false) as boolean;
 
 	if (optimizeResponse) {
@@ -379,7 +395,6 @@ export const extractParametersFromText = (
 	const parameters = extractPlaceholders(text);
 
 	if (parameters.length) {
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		const inputParameters = prepareParameters(
 			parameters.map((name) => ({
 				name,
@@ -471,7 +486,7 @@ const MODEL_INPUT_DESCRIPTION = {
 };
 
 export const updateParametersAndOptions = (options: {
-	ctx: IExecuteFunctions;
+	ctx: ISupplyDataFunctions;
 	itemIndex: number;
 	toolParameters: ToolParameter[];
 	placeholdersDefinitions: PlaceholderDefinition[];
@@ -560,7 +575,7 @@ export const prepareToolDescription = (
 };
 
 export const configureToolFunction = (
-	ctx: IExecuteFunctions,
+	ctx: ISupplyDataFunctions,
 	itemIndex: number,
 	toolParameters: ToolParameter[],
 	requestOptions: IHttpRequestOptions,
@@ -569,11 +584,12 @@ export const configureToolFunction = (
 	optimizeResponse: (response: string) => string,
 ) => {
 	return async (query: string | IDataObject): Promise<string> => {
-		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+		const { index } = ctx.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
 
 		// Clone options and rawRequestOptions to avoid mutating the original objects
 		const options: IHttpRequestOptions | null = structuredClone(requestOptions);
 		const clonedRawRequestOptions: { [key: string]: string } = structuredClone(rawRequestOptions);
+		let fullResponse: any;
 		let response: string = '';
 		let executionError: Error | undefined = undefined;
 
@@ -732,8 +748,6 @@ export const configureToolFunction = (
 				}
 			}
 		} catch (error) {
-			console.error(error);
-
 			const errorMessage = 'Input provided by model is not valid';
 
 			if (error instanceof NodeOperationError) {
@@ -749,10 +763,23 @@ export const configureToolFunction = (
 
 		if (options) {
 			try {
-				response = optimizeResponse(await httpRequest(options));
+				fullResponse = await httpRequest(options);
 			} catch (error) {
 				const httpCode = (error as NodeApiError).httpCode;
 				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+			}
+
+			if (!response) {
+				try {
+					// Check if the response is binary data
+					if (fullResponse.body && isBinary(fullResponse.body)) {
+						throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
+					}
+
+					response = optimizeResponse(fullResponse.body ?? fullResponse);
+				} catch (error) {
+					response = `There was an error: "${error.message}"`;
+				}
 			}
 		}
 
@@ -764,9 +791,9 @@ export const configureToolFunction = (
 		}
 
 		if (executionError) {
-			void ctx.addOutputData(NodeConnectionType.AiTool, index, executionError as ExecutionError);
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, executionError as ExecutionError);
 		} else {
-			void ctx.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
 
 		return response;

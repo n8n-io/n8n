@@ -1,0 +1,150 @@
+{
+    "type": "object",
+    "properties": {
+        "contactId": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "memberships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "contactGroupMembership": {
+                        "type": "object",
+                        "properties": {
+                            "contactGroupId": {
+                                "type": "string"
+                            },
+                            "contactGroupResourceName": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "objectType": {
+                    "type": "string"
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "etag": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "updateTime": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "organizations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "current": {
+                        "type": "boolean"
+                    },
+                    "domain": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "photos": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "default": {
+                        "type": "boolean"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "resourceName": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

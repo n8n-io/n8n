@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "objectId": {
+            "type": "integer"
+        },
+        "objectType": {
+            "type": "string"
+        },
+        "portalId": {
+            "type": "integer"
+        }
+    },
+    "version": 6
+}

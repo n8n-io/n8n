@@ -1,7 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`components > N8nBadge > props > should render default theme correctly 1`] = `"<span class="n8n-badge default"><n8n-text-stub bold="true" size="large" compact="true" tag="span"></n8n-text-stub></span>"`;
-
-exports[`components > N8nBadge > props > should render secondary theme correctly 1`] = `"<span class="n8n-badge secondary"><n8n-text-stub bold="false" size="medium" compact="true" tag="span"></n8n-text-stub></span>"`;
-
-exports[`components > N8nBadge > props > should render with default values correctly 1`] = `"<span class="n8n-badge default"><n8n-text-stub bold="false" size="small" compact="true" tag="span"></n8n-text-stub></span>"`;

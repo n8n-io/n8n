@@ -6,7 +6,12 @@ delete:
   summary: Delete a project
   description: Delete a project from your instance.
   parameters:
-    - $ref: '../schemas/parameters/projectId.yml'
+    - in: path
+      name: projectId
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
   responses:
     '204':
       description: Operation successful.
@@ -20,9 +25,16 @@ put:
   x-eov-operation-id: updateProject
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
-    - Project
+    - Projects
   summary: Update a project
-  description: Update a project.
+  description: Update a project on your instance.
+  parameters:
+    - in: path
+      name: projectId
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
   requestBody:
     description: Updated project object.
     content:

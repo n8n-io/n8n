@@ -37,14 +37,12 @@ export async function mauticApiRequest(
 			const baseUrl = credentials.url as string;
 
 			options.uri = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${options.uri}`;
-			//@ts-ignore
 			returnData = await this.helpers.requestWithAuthentication.call(this, 'mauticApi', options);
 		} else {
 			const credentials = await this.getCredentials('mauticOAuth2Api');
 			const baseUrl = credentials.url as string;
 
 			options.uri = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${options.uri}`;
-			//@ts-ignore
 			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options, {
 				includeCredentialsOnRefreshOnBody: true,
 			});
@@ -83,7 +81,6 @@ export async function mauticApiRequestAllItems(
 	do {
 		responseData = await mauticApiRequest.call(this, method, endpoint, body, query);
 		const values = Object.values(responseData[propertyName] as IDataObject[]);
-		//@ts-ignore
 		returnData.push.apply(returnData, values);
 		query.start += query.limit;
 	} while (

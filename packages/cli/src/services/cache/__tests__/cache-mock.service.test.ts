@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import Container from 'typedi';
 
 import { CacheService } from '@/services/cache/cache.service';
 

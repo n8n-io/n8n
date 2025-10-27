@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -8,9 +9,8 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
 import { convertKitApiRequest } from './GenericFunctions';
 
 export class ConvertKitTrigger implements INodeType {
@@ -26,7 +26,7 @@ export class ConvertKitTrigger implements INodeType {
 			name: 'ConvertKit Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'convertKitApi',

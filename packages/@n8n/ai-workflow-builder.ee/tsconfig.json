@@ -1,0 +1,20 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
+	"compilerOptions": {
+		"target": "es2023",
+		"lib": ["es2023"],
+		"rootDir": ".",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["./*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"types": ["node", "jest"]
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts", "evaluations/**/*.ts"]
+}

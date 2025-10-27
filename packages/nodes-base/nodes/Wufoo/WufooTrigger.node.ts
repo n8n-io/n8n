@@ -9,10 +9,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
 
 import { wufooApiRequest } from './GenericFunctions';
-
 import type { IField, IWebhook } from './Interface';
 
 export class WufooTrigger implements INodeType {
@@ -28,7 +27,7 @@ export class WufooTrigger implements INodeType {
 			name: 'Wufoo Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'wufooApi',

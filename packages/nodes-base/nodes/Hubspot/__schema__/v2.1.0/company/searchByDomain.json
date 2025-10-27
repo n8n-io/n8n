@@ -1,0 +1,92 @@
+{
+    "type": "object",
+    "properties": {
+        "additionalDomains": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "domain": {
+                        "type": "string"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
+                    "sourceId": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "companyId": {
+            "type": "integer"
+        },
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "portalId": {
+            "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceVid": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

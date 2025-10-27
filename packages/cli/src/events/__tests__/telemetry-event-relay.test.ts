@@ -1,19 +1,32 @@
-import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
-import type { IWorkflowBase } from 'n8n-workflow';
-
-import config from '@/config';
-import { N8N_VERSION } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/relay-event-map';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
-import type { IWorkflowDb } from '@/interfaces';
-import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
+import {
+	type CredentialsEntity,
+	type CredentialsRepository,
+	type IWorkflowDb,
+	type ProjectRelationRepository,
+	type SharedWorkflowRepository,
+	type WorkflowEntity,
+	type WorkflowRepository,
+	GLOBAL_OWNER_ROLE,
+} from '@n8n/db';
+import { mock } from 'jest-mock-extended';
+import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
+import {
+	type INode,
+	type INodesGraphResult,
+	type IRun,
+	type IWorkflowBase,
+	NodeApiError,
+	TelemetryHelpers,
+} from 'n8n-workflow';
+
+import { N8N_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -22,10 +35,16 @@ describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>();
 	const license = mock<License>();
 	const globalConfig = mock<GlobalConfig>({
+		deployment: {
+			type: 'default',
+		},
 		userManagement: {
 			emails: {
 				mode: 'smtp',
 			},
+		},
+		diagnostics: {
+			enabled: true,
 		},
 		endpoints: {
 			metrics: {
@@ -37,11 +56,21 @@ describe('TelemetryEventRelay', () => {
 				includeQueueMetrics: false,
 			},
 		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+		},
 	});
+	const binaryDataConfig = mock<BinaryDataConfig>({
+		mode: 'default',
+		availableModes: ['default', 'filesystem', 's3'],
+	});
+	const instanceSettings = mockInstance(InstanceSettings, { isDocker: false, n8nFolder: '/test' });
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const credentialsRepository = mock<CredentialsRepository>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -52,35 +81,38 @@ describe('TelemetryEventRelay', () => {
 			telemetry,
 			license,
 			globalConfig,
+			instanceSettings,
+			binaryDataConfig,
 			workflowRepository,
 			nodeTypes,
 			sharedWorkflowRepository,
 			projectRelationRepository,
+			credentialsRepository,
 		);
 
 		await telemetryEventRelay.init();
 	});
 
 	beforeEach(() => {
-		config.set('diagnostics.enabled', true);
-	});
-
-	afterEach(() => {
 		jest.clearAllMocks();
+		globalConfig.diagnostics.enabled = true;
 	});
 
 	describe('init', () => {
 		it('with diagnostics enabled, should init telemetry and register listeners', async () => {
-			config.set('diagnostics.enabled', true);
+			globalConfig.diagnostics.enabled = true;
 			const telemetryEventRelay = new TelemetryEventRelay(
 				eventService,
 				telemetry,
 				license,
 				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
 				workflowRepository,
 				nodeTypes,
 				sharedWorkflowRepository,
 				projectRelationRepository,
+				credentialsRepository,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
@@ -92,16 +124,19 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it('with diagnostics disabled, should neither init telemetry nor register listeners', async () => {
-			config.set('diagnostics.enabled', false);
+			globalConfig.diagnostics.enabled = false;
 			const telemetryEventRelay = new TelemetryEventRelay(
 				eventService,
 				telemetry,
 				license,
 				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
 				workflowRepository,
 				nodeTypes,
 				sharedWorkflowRepository,
 				projectRelationRepository,
+				credentialsRepository,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
@@ -179,6 +214,7 @@ describe('TelemetryEventRelay', () => {
 				readOnlyInstance: false,
 				repoType: 'github',
 				connected: true,
+				connectionType: 'ssh',
 			};
 
 			eventService.emit('source-control-settings-updated', event);
@@ -188,6 +224,7 @@ describe('TelemetryEventRelay', () => {
 				read_only_instance: false,
 				repo_type: 'github',
 				connected: true,
+				connection_type: 'ssh',
 			});
 		});
 
@@ -209,12 +246,14 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `source-control-user-finished-pull-ui` event', () => {
 			const event: RelayEventMap['source-control-user-finished-pull-ui'] = {
+				userId: 'userId',
 				workflowUpdates: 3,
 			};
 
 			eventService.emit('source-control-user-finished-pull-ui', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User finished pull via UI', {
+				user_id: 'userId',
 				workflow_updates: 3,
 			});
 		});
@@ -235,6 +274,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `source-control-user-started-push-ui` event', () => {
 			const event: RelayEventMap['source-control-user-started-push-ui'] = {
+				userId: 'userId',
 				workflowsEligible: 10,
 				workflowsEligibleWithConflicts: 2,
 				credsEligible: 5,
@@ -245,6 +285,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('source-control-user-started-push-ui', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User started push via UI', {
+				user_id: 'userId',
 				workflows_eligible: 10,
 				workflows_eligible_with_conflicts: 2,
 				creds_eligible: 5,
@@ -255,6 +296,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `source-control-user-finished-push-ui` event', () => {
 			const event: RelayEventMap['source-control-user-finished-push-ui'] = {
+				userId: 'userId',
 				workflowsEligible: 10,
 				workflowsPushed: 8,
 				credsPushed: 5,
@@ -264,6 +306,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('source-control-user-finished-push-ui', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User finished push via UI', {
+				user_id: 'userId',
 				workflows_eligible: 10,
 				workflows_pushed: 8,
 				creds_pushed: 5,
@@ -290,7 +333,25 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `variable-created` event', () => {
 			eventService.emit('variable-created', {});
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created variable');
+			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {});
+
+			eventService.emit('variable-created', { projectId: 'projectId' });
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
+				project_id: 'projectId',
+			});
+		});
+
+		it('should track on `variable-updated` event', () => {
+			eventService.emit('variable-updated', {});
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {});
+
+			eventService.emit('variable-updated', { projectId: 'projectId' });
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
+				project_id: 'projectId',
+			});
 		});
 	});
 
@@ -341,7 +402,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
 			};
@@ -361,7 +422,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
 			};
@@ -383,7 +444,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				inputString: 'n8n-nodes-package',
 				packageName: 'n8n-nodes-package',
@@ -416,7 +477,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				packageName: 'n8n-nodes-package',
 				packageVersionCurrent: '1.0.0',
@@ -446,7 +507,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				packageName: 'n8n-nodes-package',
 				packageVersion: '1.0.0',
@@ -476,7 +537,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialType: 'github',
 				credentialId: 'cred123',
@@ -503,7 +564,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialType: 'github',
 				credentialId: 'cred123',
@@ -531,7 +592,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialId: 'cred123',
 				credentialType: 'github',
@@ -553,7 +614,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialId: 'cred123',
 				credentialType: 'github',
@@ -649,7 +710,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflow: mock<IWorkflowBase>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
 				publicApi: false,
@@ -671,6 +732,50 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `workflow-archived` event', () => {
+			const event: RelayEventMap['workflow-archived'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflowId: 'workflow123',
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-archived', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User archived workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: false,
+			});
+		});
+
+		it('should track on `workflow-unarchived` event', () => {
+			const event: RelayEventMap['workflow-unarchived'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflowId: 'workflow123',
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-unarchived', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User unarchived workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: false,
+			});
+		});
+
 		it('should track on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
 				user: {
@@ -678,7 +783,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
 				publicApi: false,
@@ -724,7 +829,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
 				publicApi: false,
@@ -772,7 +877,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				fieldsChanged: ['firstName', 'lastName'],
 			};
@@ -792,7 +897,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: false,
 				targetUserOldStatus: 'active',
@@ -820,7 +925,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				targetUserId: ['user456'],
 				publicApi: false,
@@ -846,7 +951,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				userType: 'email',
 				wasDisabledLdapUser: false,
@@ -939,7 +1044,36 @@ describe('TelemetryEventRelay', () => {
 
 			await flushPromises();
 
-			// expect(telemetry.identify).toHaveBeenCalled();
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					version_cli: N8N_VERSION,
+					metrics: {
+						metrics_category_cache: false,
+						metrics_category_default: true,
+						metrics_category_logs: false,
+						metrics_category_queue: false,
+						metrics_category_routes: false,
+						metrics_enabled: true,
+					},
+					n8n_binary_data_mode: 'default',
+					n8n_deployment_type: 'default',
+					saml_enabled: false,
+					smtp_set_up: true,
+					system_info: {
+						is_docker: false,
+						cpus: expect.objectContaining({
+							count: expect.any(Number),
+							model: expect.any(String),
+							speed: expect.any(Number),
+						}),
+						memory: expect.any(Number),
+						os: expect.objectContaining({
+							type: expect.any(String),
+							version: expect.any(String),
+						}),
+					},
+				}),
+			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
@@ -1035,7 +1169,7 @@ describe('TelemetryEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				messageType: 'New user invite',
 				publicApi: false,
@@ -1051,6 +1185,584 @@ describe('TelemetryEventRelay', () => {
 					public_api: false,
 				},
 			);
+		});
+	});
+
+	describe('Community+ registered', () => {
+		it('should track `license-community-plus-registered` event', () => {
+			const event: RelayEventMap['license-community-plus-registered'] = {
+				userId: 'user123',
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			};
+
+			eventService.emit('license-community-plus-registered', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User registered for license community plus', {
+				user_id: 'user123',
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			});
+		});
+	});
+
+	describe('workflow post execute events', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		const mockWorkflowBase = mock<IWorkflowBase>({
+			id: 'workflow123',
+			name: 'Test Workflow',
+			active: true,
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					parameters: {},
+					typeVersion: 1,
+					position: [100, 200],
+				},
+			],
+			connections: {},
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			staticData: {},
+			settings: {},
+		});
+
+		it('should not track when workflow has no id', async () => {
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: { ...mockWorkflowBase, id: '' },
+				executionId: 'execution123',
+				userId: 'user123',
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			expect(telemetry.trackWorkflowExecution).not.toHaveBeenCalled();
+		});
+
+		it('should track successful workflow execution', async () => {
+			const runData = mock<IRun>({
+				finished: true,
+				status: 'success',
+				mode: 'manual',
+				data: { resultData: {} },
+			});
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData: runData as unknown as IRun,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow_id: 'workflow123',
+					user_id: 'user123',
+					success: true,
+					is_manual: true,
+					execution_mode: 'manual',
+				}),
+			);
+		});
+
+		it('should call telemetry.track when manual node execution finished', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
+			credentialsRepository.findOneBy.mockResolvedValue(
+				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: false }),
+			);
+
+			const runData = {
+				status: 'error',
+				mode: 'manual',
+				data: {
+					startData: {
+						destinationNode: 'OpenAI',
+						runNodeFilter: ['OpenAI'],
+					},
+					resultData: {
+						runData: {},
+						lastNodeExecuted: 'OpenAI',
+						error: new NodeApiError(
+							{
+								id: '1',
+								typeVersion: 1,
+								name: 'Jira',
+								type: 'n8n-nodes-base.jira',
+								parameters: {},
+								position: [100, 200],
+							},
+							{
+								message: 'Error message',
+								description: 'Incorrect API key provided',
+								httpCode: '401',
+								stack: '',
+							},
+							{
+								message: 'Error message',
+								description: 'Error description',
+								level: 'warning',
+								functionality: 'regular',
+							},
+						),
+					},
+				},
+			} as IRun;
+
+			const nodeGraph: INodesGraphResult = {
+				nodeGraph: { node_types: [], node_connections: [], webhookNodeNames: [] },
+				nameIndices: {
+					Jira: '1',
+					OpenAI: '1',
+				},
+			} as unknown as INodesGraphResult;
+
+			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+
+			jest
+				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
+				.mockImplementation(
+					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+				);
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual node exec finished',
+				expect.objectContaining({
+					webhook_domain: null,
+					user_id: 'user123',
+					workflow_id: 'workflow123',
+					status: 'error',
+					executionStatus: 'error',
+					sharing_role: 'sharee',
+					error_message: 'Error message',
+					error_node_type: 'n8n-nodes-base.jira',
+					error_node_id: '1',
+					node_id: '1',
+					node_type: 'n8n-nodes-base.jira',
+					is_managed: false,
+					credential_type: null,
+					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
+				}),
+			);
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow_id: 'workflow123',
+					success: false,
+					is_manual: true,
+					execution_mode: 'manual',
+					version_cli: N8N_VERSION,
+					error_message: 'Error message',
+					error_node_type: 'n8n-nodes-base.jira',
+					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
+					error_node_id: '1',
+				}),
+			);
+		});
+
+		it('should call telemetry.track when manual node execution finished with canceled error message', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:owner');
+
+			const runData = {
+				status: 'error',
+				mode: 'manual',
+				data: {
+					startData: {
+						destinationNode: 'OpenAI',
+						runNodeFilter: ['OpenAI'],
+					},
+					resultData: {
+						runData: {},
+						lastNodeExecuted: 'OpenAI',
+						error: new NodeApiError(
+							{
+								id: '1',
+								typeVersion: 1,
+								name: 'Jira',
+								type: 'n8n-nodes-base.jira',
+								parameters: {},
+								position: [100, 200],
+							},
+							{
+								message: 'Error message',
+								description: 'Incorrect API key provided',
+								httpCode: '401',
+								stack: '',
+							},
+							{
+								message: 'Error message canceled',
+								description: 'Error description',
+								level: 'warning',
+								functionality: 'regular',
+							},
+						),
+					},
+				},
+			} as IRun;
+
+			const nodeGraph: INodesGraphResult = {
+				nodeGraph: { node_types: [], node_connections: [] },
+				nameIndices: {
+					Jira: '1',
+					OpenAI: '1',
+				},
+			} as unknown as INodesGraphResult;
+
+			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+
+			jest
+				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
+				.mockImplementation(
+					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+				);
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual node exec finished',
+				expect.objectContaining({
+					webhook_domain: null,
+					user_id: 'user123',
+					workflow_id: 'workflow123',
+					status: 'canceled',
+					executionStatus: 'canceled',
+					sharing_role: 'owner',
+					error_message: 'Error message canceled',
+					error_node_type: 'n8n-nodes-base.jira',
+					error_node_id: '1',
+					node_id: '1',
+					node_type: 'n8n-nodes-base.jira',
+					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
+				}),
+			);
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow_id: 'workflow123',
+					success: false,
+					is_manual: true,
+					execution_mode: 'manual',
+					version_cli: N8N_VERSION,
+					error_message: 'Error message canceled',
+					error_node_type: 'n8n-nodes-base.jira',
+					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
+					error_node_id: '1',
+				}),
+			);
+		});
+
+		it('should call telemetry.track when manual workflow execution finished', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:owner');
+
+			const runData = {
+				status: 'error',
+				mode: 'manual',
+				data: {
+					startData: {
+						runNodeFilter: ['OpenAI'],
+					},
+					resultData: {
+						runData: {
+							Jira: [
+								{
+									data: { main: [[{ json: { headers: { origin: 'https://www.test.com' } } }]] },
+								},
+							],
+						},
+						lastNodeExecuted: 'OpenAI',
+						error: new NodeApiError(
+							{
+								id: '1',
+								typeVersion: 1,
+								name: 'Jira',
+								type: 'n8n-nodes-base.jira',
+								parameters: {},
+								position: [100, 200],
+							},
+							{
+								message: 'Error message',
+								description: 'Incorrect API key provided',
+								httpCode: '401',
+								stack: '',
+							},
+							{
+								message: 'Error message',
+								description: 'Error description',
+								level: 'warning',
+								functionality: 'regular',
+							},
+						),
+					},
+				},
+			} as unknown as IRun;
+
+			const nodeGraph: INodesGraphResult = {
+				webhookNodeNames: ['Jira'],
+				nodeGraph: { node_types: [], node_connections: [] },
+				nameIndices: {
+					Jira: '1',
+					OpenAI: '1',
+				},
+			} as unknown as INodesGraphResult;
+
+			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+
+			jest
+				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
+				.mockImplementation(
+					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+				);
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual workflow exec finished',
+				expect.objectContaining({
+					webhook_domain: 'test.com',
+					user_id: 'user123',
+					workflow_id: 'workflow123',
+					status: 'error',
+					executionStatus: 'error',
+					sharing_role: 'owner',
+					error_message: 'Error message',
+					error_node_type: 'n8n-nodes-base.jira',
+					error_node_id: '1',
+					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
+				}),
+			);
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow_id: 'workflow123',
+					success: false,
+					is_manual: true,
+					execution_mode: 'manual',
+					version_cli: N8N_VERSION,
+					error_message: 'Error message',
+					error_node_type: 'n8n-nodes-base.jira',
+					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
+					error_node_id: '1',
+				}),
+			);
+		});
+
+		it('should call telemetry.track when manual node execution finished with is_managed and credential_type properties', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
+			credentialsRepository.findOneBy.mockResolvedValue(
+				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: true }),
+			);
+
+			const runData = {
+				status: 'error',
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+					},
+					startData: {
+						destinationNode: 'OpenAI',
+						runNodeFilter: ['OpenAI'],
+					},
+					resultData: {
+						runData: {},
+						lastNodeExecuted: 'OpenAI',
+						error: new NodeApiError(
+							{
+								id: '1',
+								typeVersion: 1,
+								name: 'Jira',
+								type: 'n8n-nodes-base.jira',
+								parameters: {},
+								position: [100, 200],
+							},
+							{
+								message: 'Error message',
+								description: 'Incorrect API key provided',
+								httpCode: '401',
+								stack: '',
+							},
+							{
+								message: 'Error message',
+								description: 'Error description',
+								level: 'warning',
+								functionality: 'regular',
+							},
+						),
+					},
+				},
+			} as unknown as IRun;
+
+			const nodeGraph: INodesGraphResult = {
+				nodeGraph: { node_types: [], node_connections: [], webhookNodeNames: [] },
+				nameIndices: {
+					Jira: '1',
+					OpenAI: '1',
+				},
+			} as unknown as INodesGraphResult;
+
+			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+
+			jest
+				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
+				.mockImplementation(
+					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+				);
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
+				id: 'nhu-l8E4hX',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual node exec finished',
+				expect.objectContaining({
+					webhook_domain: null,
+					user_id: 'user123',
+					workflow_id: 'workflow123',
+					status: 'error',
+					executionStatus: 'error',
+					sharing_role: 'sharee',
+					error_message: 'Error message',
+					error_node_type: 'n8n-nodes-base.jira',
+					error_node_id: '1',
+					node_id: '1',
+					node_type: 'n8n-nodes-base.jira',
+
+					is_managed: true,
+					credential_type: 'openAiApi',
+					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
+				}),
+			);
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow_id: 'workflow123',
+					success: false,
+					is_manual: true,
+					execution_mode: 'manual',
+					version_cli: N8N_VERSION,
+					error_message: 'Error message',
+					error_node_type: 'n8n-nodes-base.jira',
+					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
+					error_node_id: '1',
+				}),
+			);
+		});
+
+		it('should call telemetry.track when user ran out of free AI credits', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
+			credentialsRepository.findOneBy.mockResolvedValue(
+				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: true }),
+			);
+
+			const runData = {
+				status: 'error',
+				mode: 'trigger',
+				data: {
+					startData: {
+						destinationNode: 'OpenAI',
+						runNodeFilter: ['OpenAI'],
+					},
+					executionData: {
+						nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+					},
+					resultData: {
+						runData: {},
+						lastNodeExecuted: 'OpenAI',
+						error: new NodeApiError(
+							{
+								id: '1',
+								typeVersion: 1,
+								name: 'OpenAI',
+								type: 'n8n-nodes-base.openAi',
+								parameters: {},
+								position: [100, 200],
+							},
+							{
+								message: `400 - ${JSON.stringify({
+									error: {
+										message: 'error message',
+										type: 'error_type',
+										code: 200,
+									},
+								})}`,
+								error: {
+									message: 'error message',
+									type: 'error_type',
+									code: 200,
+								},
+							},
+							{
+								httpCode: '400',
+							},
+						),
+					},
+				},
+			} as unknown as IRun;
+
+			jest
+				.spyOn(TelemetryHelpers, 'userInInstanceRanOutOfFreeAiCredits')
+				.mockImplementation(() => true);
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
 		});
 	});
 });

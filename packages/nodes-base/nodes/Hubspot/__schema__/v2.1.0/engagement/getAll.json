@@ -1,0 +1,172 @@
+{
+    "type": "object",
+    "properties": {
+        "associations": {
+            "type": "object",
+            "properties": {
+                "companyIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "contactIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "dealIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ownerIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ticketIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "engagement": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "allAccessibleTeamIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "bodyPreview": {
+                    "type": "string"
+                },
+                "bodyPreviewHtml": {
+                    "type": "string"
+                },
+                "bodyPreviewIsTruncated": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "integer"
+                },
+                "createdBy": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastUpdated": {
+                    "type": "integer"
+                },
+                "modifiedBy": {
+                    "type": "integer"
+                },
+                "ownerId": {
+                    "type": "integer"
+                },
+                "portalId": {
+                    "type": "integer"
+                },
+                "queueMembershipIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "source": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "forObjectType": {
+                    "type": "string"
+                },
+                "isAllDay": {
+                    "type": "boolean"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "reminders": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "sendDefaultReminder": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "taskType": {
+                    "type": "string"
+                }
+            }
+        },
+        "scheduledTasks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "engagementId": {
+                        "type": "integer"
+                    },
+                    "engagementType": {
+                        "type": "string"
+                    },
+                    "portalId": {
+                        "type": "integer"
+                    },
+                    "taskType": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "uuid": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

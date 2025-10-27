@@ -1,3 +1,5 @@
+import get from 'lodash/get';
+import unset from 'lodash/unset';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -7,11 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash/get';
-import unset from 'lodash/unset';
-import { disableDotNotationBoolean } from '../common.descriptions';
-import { prepareFieldsArray } from '../../helpers/utils';
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { prepareFieldsArray } from '../../helpers/utils';
+import { disableDotNotationBoolean } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -153,7 +154,7 @@ export async function execute(
 				}
 
 				if (typeof entityToSplit !== 'object' || entityToSplit === null) {
-					entityToSplit = [entityToSplit];
+					entityToSplit = [entityToSplit] as unknown as IDataObject[];
 				}
 
 				if (!Array.isArray(entityToSplit)) {

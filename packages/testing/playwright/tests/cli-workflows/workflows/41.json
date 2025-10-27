@@ -1,0 +1,210 @@
+{
+	"createdAt": "2021-02-18T15:29:36.110Z",
+	"updatedAt": "2021-02-18T15:56:49.923Z",
+	"id": "41",
+	"name": "GoogleCalendar:Event:create getAll get update delete:Calendar:availability",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "6aeb5434-f098-403c-8a10-3b49b0ce5b28"
+		},
+		{
+			"parameters": {
+				"resource": "calendar",
+				"calendar": "node8qa@gmail.com",
+				"timeMin": "2021-02-17T23:00:00.000Z",
+				"timeMax": "2021-02-18T23:00:00.000Z",
+				"options": {
+					"outputFormat": "availability"
+				}
+			},
+			"name": "Google Calendar",
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1,
+			"position": [500, 210],
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "23",
+					"name": "Google calendar 0auth creds"
+				}
+			},
+			"id": "1cd92151-378b-42a0-ab14-fb21b6efc5e5"
+		},
+		{
+			"parameters": {
+				"calendar": "node8qa@gmail.com",
+				"start": "2021-02-18T15:50:50.000Z",
+				"end": "2021-02-19T15:50:50.000Z",
+				"additionalFields": {
+					"description": "Test"
+				}
+			},
+			"name": "Google Calendar1",
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1,
+			"position": [490, 390],
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "23",
+					"name": "Google calendar 0auth creds"
+				}
+			},
+			"id": "89509d2f-ceac-4046-ac47-a0c5d5aada34"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"calendar": "node8qa@gmail.com",
+				"eventId": "={{$node[\"Google Calendar1\"].json[\"id\"]}}",
+				"options": {}
+			},
+			"name": "Google Calendar2",
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1,
+			"position": [820, 390],
+			"alwaysOutputData": true,
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "23",
+					"name": "Google calendar 0auth creds"
+				}
+			},
+			"id": "48aa1cb4-9649-46f9-9368-fec67709b825"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"calendar": "node8qa@gmail.com",
+				"limit": 1,
+				"options": {
+					"showDeleted": true
+				}
+			},
+			"name": "Google Calendar3",
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1,
+			"position": [650, 390],
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "23",
+					"name": "Google calendar 0auth creds"
+				}
+			},
+			"id": "99926665-5d81-4452-96d8-f025a3539ae6"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"calendar": "node8qa@gmail.com",
+				"eventId": "={{$node[\"Google Calendar1\"].json[\"id\"]}}",
+				"updateFields": {
+					"color": "7"
+				}
+			},
+			"name": "Google Calendar4",
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1,
+			"position": [980, 390],
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "23",
+					"name": "Google calendar 0auth creds"
+				}
+			},
+			"id": "a673096e-b394-4a98-ba01-e0cdfabde6bd"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"calendar": "node8qa@gmail.com",
+				"eventId": "={{$node[\"Google Calendar1\"].json[\"id\"]}}",
+				"options": {}
+			},
+			"name": "Google Calendar5",
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1,
+			"position": [1130, 390],
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "23",
+					"name": "Google calendar 0auth creds"
+				}
+			},
+			"id": "dd64b74a-ab43-4bed-a19c-59817cc6e4ab"
+		}
+	],
+	"connections": {
+		"Google Calendar1": {
+			"main": [
+				[
+					{
+						"node": "Google Calendar3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Calendar3": {
+			"main": [
+				[
+					{
+						"node": "Google Calendar2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Calendar2": {
+			"main": [
+				[
+					{
+						"node": "Google Calendar4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Calendar4": {
+			"main": [
+				[
+					{
+						"node": "Google Calendar5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Google Calendar1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Google Calendar",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

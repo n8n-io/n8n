@@ -1,18 +1,18 @@
-import { Container } from 'typedi';
-import validator from 'validator';
-
-import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
-
-import { createUserShell } from './shared/db/users';
 import {
 	randomEmail,
 	randomInvalidPassword,
 	randomName,
 	randomValidPassword,
-} from './shared/random';
-import * as testDb from './shared/test-db';
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import validator from 'validator';
+
+import config from '@/config';
+
+import { createUserShell } from './shared/db/users';
 import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
@@ -20,7 +20,7 @@ const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 let ownerShell: User;
 
 beforeEach(async () => {
-	ownerShell = await createUserShell('global:owner');
+	ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
 

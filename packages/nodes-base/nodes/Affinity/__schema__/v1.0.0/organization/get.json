@@ -1,0 +1,56 @@
+{
+    "type": "object",
+    "properties": {
+        "crunchbase_uuid": {
+            "type": "null"
+        },
+        "domains": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "global": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "list_entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "creator_id": {
+                        "type": "integer"
+                    },
+                    "entity_id": {
+                        "type": "integer"
+                    },
+                    "entity_type": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "list_id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "person_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        }
+    },
+    "version": 2
+}

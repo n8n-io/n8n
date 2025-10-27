@@ -1,5 +1,6 @@
+import isEmpty from 'lodash/isEmpty';
+import { DateTime } from 'luxon';
 import { simpleParser } from 'mailparser';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -8,38 +9,23 @@ import type {
 	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
+	INodePropertyOptions,
 	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import MailComposer from 'nodemailer/lib/mail-composer';
 
-import { DateTime } from 'luxon';
-
-import isEmpty from 'lodash/isEmpty';
-
-export interface IEmail {
-	from?: string;
-	to?: string;
-	cc?: string;
-	bcc?: string;
-	replyTo?: string;
-	inReplyTo?: string;
-	reference?: string;
-	subject: string;
-	body: string;
-	htmlBody?: string;
-	attachments?: IDataObject[];
-}
+import type { IEmail } from '../../../utils/sendAndWait/interfaces';
+import { createUtmCampaignLink, escapeHtml } from '../../../utils/utilities';
+import { getGoogleAccessToken } from '../GenericFunctions';
 
 export interface IAttachments {
 	type: string;
 	name: string;
 	content: string;
 }
-
-import MailComposer from 'nodemailer/lib/mail-composer';
-import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -264,7 +250,7 @@ export async function encodeEmail(email: IEmail) {
 
 	const mailBody = await mail.build();
 
-	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
+	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export async function googleApiRequestAllItems(
@@ -448,9 +434,7 @@ export function prepareEmailBody(
 
 	if (appendAttribution) {
 		const attributionText = 'This email was sent automatically with ';
-		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-			'n8n-nodes-base.gmail',
-		)}${instanceId ? '_' + instanceId : ''}`;
+		const link = createUtmCampaignLink('n8n-nodes-base.gmail', instanceId);
 		if (emailType === 'html') {
 			message = `
 			${message}
@@ -516,131 +500,11 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 	const result = items.map((item) => {
 		const snippet = item.json.snippet as string;
 		if (snippet) {
-			item.json.snippet = snippet.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
-				switch (match) {
-					case '&amp;':
-						return '&';
-					case '&lt;':
-						return '<';
-					case '&gt;':
-						return '>';
-					case '&#39;':
-						return "'";
-					case '&quot;':
-						return '"';
-					default:
-						return match;
-				}
-			});
+			item.json.snippet = escapeHtml(snippet);
 		}
 		return item;
 	});
 	return result;
-}
-
-export async function replyToEmail(
-	this: IExecuteFunctions,
-	gmailId: string,
-	options: IDataObject,
-	itemIndex: number,
-) {
-	let qs: IDataObject = {};
-
-	let cc = '';
-	let bcc = '';
-
-	if (options.ccList) {
-		cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', itemIndex);
-	}
-
-	if (options.bccList) {
-		bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', itemIndex);
-	}
-	let attachments: IDataObject[] = [];
-	if (options.attachmentsUi) {
-		attachments = await prepareEmailAttachments.call(
-			this,
-			options.attachmentsUi as IDataObject,
-			itemIndex,
-		);
-		if (attachments.length) {
-			qs = {
-				userId: 'me',
-				uploadType: 'media',
-			};
-		}
-	}
-
-	const endpoint = `/gmail/v1/users/me/messages/${gmailId}`;
-
-	qs.format = 'metadata';
-
-	const { payload, threadId } = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-	const subject =
-		payload.headers.filter(
-			(data: { [key: string]: string }) => data.name.toLowerCase() === 'subject',
-		)[0]?.value || '';
-
-	const messageIdGlobal =
-		payload.headers.filter(
-			(data: { [key: string]: string }) => data.name.toLowerCase() === 'message-id',
-		)[0]?.value || '';
-
-	const { emailAddress } = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
-
-	let to = '';
-	const replyToSenderOnly =
-		options.replyToSenderOnly === undefined ? false : (options.replyToSenderOnly as boolean);
-
-	const prepareEmailString = (email: string) => {
-		if (email.includes(emailAddress as string)) return;
-		if (email.includes('<') && email.includes('>')) {
-			to += `${email}, `;
-		} else {
-			to += `<${email}>, `;
-		}
-	};
-
-	for (const header of payload.headers as IDataObject[]) {
-		if (((header.name as string) || '').toLowerCase() === 'from') {
-			const from = header.value as string;
-			if (from.includes('<') && from.includes('>')) {
-				to += `${from}, `;
-			} else {
-				to += `<${from}>, `;
-			}
-		}
-
-		if (((header.name as string) || '').toLowerCase() === 'to' && !replyToSenderOnly) {
-			const toEmails = header.value as string;
-			toEmails.split(',').forEach(prepareEmailString);
-		}
-	}
-
-	let from = '';
-	if (options.senderName) {
-		from = `${options.senderName as string} <${emailAddress}>`;
-	}
-
-	const email: IEmail = {
-		from,
-		to,
-		cc,
-		bcc,
-		subject,
-		attachments,
-		inReplyTo: messageIdGlobal,
-		reference: messageIdGlobal,
-		...prepareEmailBody.call(this, itemIndex),
-	};
-
-	const body = {
-		raw: await encodeEmail(email),
-		threadId,
-	};
-
-	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
 export async function simplifyOutput(
@@ -667,5 +531,36 @@ export async function simplifyOutput(
 			delete (item.payload as IDataObject).headers;
 		}
 		return item;
+	});
+}
+
+/**
+ * Get all the labels to display them to user so that they can select them easily
+ */
+export async function getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+
+	const labels = await googleApiRequestAllItems.call(
+		this,
+		'labels',
+		'GET',
+		'/gmail/v1/users/me/labels',
+	);
+
+	for (const label of labels) {
+		returnData.push({
+			name: label.name,
+			value: label.id,
+		});
+	}
+
+	return returnData.sort((a, b) => {
+		if (a.name < b.name) {
+			return -1;
+		}
+		if (a.name > b.name) {
+			return 1;
+		}
+		return 0;
 	});
 }

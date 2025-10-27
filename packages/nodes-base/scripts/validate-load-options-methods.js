@@ -6,7 +6,7 @@ try {
 	definedMethods = require('../dist/methods/defined.json');
 } catch (error) {
 	console.error(
-		'Failed to find methods to validate. Please run `npm run n8n-generate-ui-types` first.',
+		'Failed to find methods to validate. Please run `npm run n8n-generate-metadata` first.',
 	);
 	process.exit(1);
 }

@@ -1,20 +1,16 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import { Readable } from 'stream';
-import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
-
-const workflows = getWorkflowFilenames(__dirname);
 
 describe('Test Crypto Node', () => {
 	jest.mock('fast-glob', () => async () => ['/test/binary.data']);
 	jest.mock('fs/promises');
 	fsPromises.access = async () => {};
+	const realpathSpy = jest.spyOn(fsPromises, 'realpath');
+	realpathSpy.mockImplementation(async (path) => path as string);
 	jest.mock('fs');
 	fs.createReadStream = () => Readable.from(Buffer.from('test')) as fs.ReadStream;
 
-	beforeEach(async () => {
-		await initBinaryDataService();
-	});
-
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests();
 });

@@ -22,7 +22,7 @@ export const binOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '/developers/postbin/api/bin',
+						url: '/api/bin',
 					},
 					output: {
 						postReceive: [transformBinResponse],

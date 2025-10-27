@@ -1,0 +1,80 @@
+{
+	"nodes": [
+		{
+			"id": "804e5ba7-4b1d-48c2-abfa-a36717a9fa66",
+			"name": "Manual trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-320, -100],
+			"parameters": {}
+		},
+		{
+			"id": "f995b1a2-8a49-4f0c-ae0d-8fb4c600cdef",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-100, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "f4d80089-a3d7-470f-8c07-dec07e37f339",
+							"name": "foo",
+							"value": "={{ test }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "62717ac7-614d-4e3f-b2ec-1e28688068c4",
+			"name": "Execute Workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.2,
+			"position": [120, -100],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"value": "={{ $json.foo }}",
+					"mode": "id"
+				},
+				"workflowInputs": {
+					"mappingMode": "defineBelow",
+					"value": {},
+					"matchingColumns": [],
+					"schema": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": true
+				},
+				"options": { "waitForSubWorkflow": "={{ true }}" }
+			}
+		}
+	],
+	"connections": {
+		"Manual trigger": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Execute Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

@@ -1,4 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+
 import { splunkApiJsonRequest } from '../transport';
 
 export async function searchReports(

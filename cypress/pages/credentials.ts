@@ -1,11 +1,21 @@
 import { BasePage } from './base';
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class CredentialsPage extends BasePage {
 	url = '/home/credentials';
 
 	getters = {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
-		createCredentialButton: () => cy.getByTestId('resources-list-add'),
+		createCredentialButton: () => {
+			return cy.getByTestId('add-resource-credential');
+		},
 		searchInput: () => cy.getByTestId('resources-list-search'),
 		emptyList: () => cy.getByTestId('resources-list-empty'),
 		credentialCards: () => cy.getByTestId('resources-list-item'),
@@ -19,7 +29,7 @@ export class CredentialsPage extends BasePage {
 		credentialDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
 		credentialMoveButton: () =>
-			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Move'),
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Change owner'),
 		sort: () => cy.getByTestId('resources-list-sort').first(),
 		sortOption: (label: string) =>
 			cy.getByTestId('resources-list-sort-item').contains(label).first(),

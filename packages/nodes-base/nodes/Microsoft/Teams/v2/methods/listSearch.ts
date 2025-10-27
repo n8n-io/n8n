@@ -6,8 +6,9 @@ import {
 	type INodeListSearchResult,
 	sleep,
 } from 'n8n-workflow';
-import { microsoftApiRequest } from '../transport';
+
 import { filterSortSearchListItems } from '../helpers/utils';
+import { microsoftApiRequest } from '../transport';
 
 export async function getChats(
 	this: ILoadOptionsFunctions,

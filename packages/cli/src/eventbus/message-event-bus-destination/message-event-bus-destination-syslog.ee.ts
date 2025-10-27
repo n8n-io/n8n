@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSyslogOptions,
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import syslog from 'syslog-client';
-import Container from 'typedi';
-
-import { Logger } from '@/logger';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
@@ -58,6 +57,7 @@ export class MessageEventBusDestinationSyslog
 			facility: syslog.Facility.Local0,
 			// severity: syslog.Severity.Error,
 			port: this.port,
+			rfc3164: false,
 			transport:
 				options.protocol !== undefined && options.protocol === 'tcp'
 					? syslog.Transport.Tcp

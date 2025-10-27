@@ -1,371 +1,341 @@
 {
-  "name": "Switch Regex Test",
-  "nodes": [
-    {
-      "parameters": {},
-      "id": "1301e15e-7a64-44bf-bc4b-d60e7b8c629a",
-      "name": "When clicking ‘Test workflow’",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        780,
-        600
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "be9a3cd8-7c19-493c-aacf-a52aba064324",
-      "name": "Fallback",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1680,
-        900
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "f7de5522-5750-4102-9b3b-0a01f7bbf6cc",
-      "name": "Output",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1640,
-        320
-      ]
-    },
-    {
-      "parameters": {
-        "fields": {
-          "values": [
-            {
-              "name": "test",
-              "stringValue": "value"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "55af4400-ed88-4ee2-b654-3a82bd112875",
-      "name": "Edit Fields",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.2,
-      "position": [
-        1020,
-        600
-      ]
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict"
-                },
-                "conditions": [
-                  {
-                    "id": "17eb6574-9578-4915-8365-772e08d2f06b",
-                    "leftValue": "={{ $json.test }}",
-                    "rightValue": "/^value$/g",
-                    "operator": {
-                      "type": "string",
-                      "operation": "notRegex"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            }
-          ]
-        },
-        "options": {
-          "fallbackOutput": "extra"
-        }
-      },
-      "id": "06657954-6bcb-4d60-a659-5d3e5e3d093d",
-      "name": "NotMatch",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [
-        1320,
-        720
-      ],
-      "alwaysOutputData": false
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict"
-                },
-                "conditions": [
-                  {
-                    "id": "17eb6574-9578-4915-8365-772e08d2f06b",
-                    "leftValue": "={{ $json.test }}",
-                    "rightValue": "/^value$/g",
-                    "operator": {
-                      "type": "string",
-                      "operation": "regex"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            }
-          ]
-        },
-        "options": {
-          "fallbackOutput": "extra"
-        }
-      },
-      "id": "07776b86-1d7c-4435-b7d8-da73a01830cf",
-      "name": "Match",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [
-        1320,
-        340
-      ],
-      "alwaysOutputData": false
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict"
-                },
-                "conditions": [
-                  {
-                    "id": "17eb6574-9578-4915-8365-772e08d2f06b",
-                    "leftValue": "={{ $json.test }}",
-                    "rightValue": "^value$",
-                    "operator": {
-                      "type": "string",
-                      "operation": "regex"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            }
-          ]
-        },
-        "options": {
-          "fallbackOutput": "extra"
-        }
-      },
-      "id": "9fb71a7e-23aa-44f6-ae75-cfc4dc045b81",
-      "name": "Match1",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [
-        1320,
-        500
-      ],
-      "alwaysOutputData": false
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict"
-                },
-                "conditions": [
-                  {
-                    "id": "17eb6574-9578-4915-8365-772e08d2f06b",
-                    "leftValue": "={{ $json.test }}",
-                    "rightValue": "^value$",
-                    "operator": {
-                      "type": "string",
-                      "operation": "notRegex"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            }
-          ]
-        },
-        "options": {
-          "fallbackOutput": "extra"
-        }
-      },
-      "id": "555125fe-6509-4b68-8e3d-bf643f9b4d09",
-      "name": "NotMatch1",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [
-        1320,
-        880
-      ],
-      "alwaysOutputData": false
-    },
-    {
-      "parameters": {},
-      "id": "a8d5d282-cff3-4bbf-8293-67b1bbb08e2f",
-      "name": "Output1",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1640,
-        480
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "3b7cf77e-f435-4863-a63d-db716cd27528",
-      "name": "Fallback1",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1680,
-        740
-      ]
-    }
-  ],
-  "pinData": {
-    "Output": [
-      {
-        "json": {
-          "test": "value"
-        }
-      }
-    ],
-    "Fallback": [
-      {
-        "json": {
-          "test": "value"
-        }
-      }
-    ],
-    "Output1": [
-      {
-        "json": {
-          "test": "value"
-        }
-      }
-    ],
-    "Fallback1": [
-      {
-        "json": {
-          "test": "value"
-        }
-      }
-    ]
-  },
-  "connections": {
-    "When clicking ‘Test workflow’": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields": {
-      "main": [
-        [
-          {
-            "node": "Match",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "NotMatch",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Match1",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "NotMatch1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "NotMatch": {
-      "main": [
-        [],
-        [
-          {
-            "node": "Fallback1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Match": {
-      "main": [
-        [
-          {
-            "node": "Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "NotMatch1": {
-      "main": [
-        [],
-        [
-          {
-            "node": "Fallback",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Match1": {
-      "main": [
-        [
-          {
-            "node": "Output1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "1fdad78e-d569-48c8-bbb9-640e8889b8e3",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
-  },
-  "id": "EbLiIKvBYzJvLtX3",
-  "tags": []
+	"name": "Switch Regex Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "1301e15e-7a64-44bf-bc4b-d60e7b8c629a",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [780, 600]
+		},
+		{
+			"parameters": {},
+			"id": "be9a3cd8-7c19-493c-aacf-a52aba064324",
+			"name": "Fallback",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1680, 900]
+		},
+		{
+			"parameters": {},
+			"id": "f7de5522-5750-4102-9b3b-0a01f7bbf6cc",
+			"name": "Output",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1640, 320]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "test",
+							"stringValue": "value"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "55af4400-ed88-4ee2-b654-3a82bd112875",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1020, 600]
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"id": "17eb6574-9578-4915-8365-772e08d2f06b",
+										"leftValue": "={{ $json.test }}",
+										"rightValue": "/^value$/g",
+										"operator": {
+											"type": "string",
+											"operation": "notRegex"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			},
+			"id": "06657954-6bcb-4d60-a659-5d3e5e3d093d",
+			"name": "NotMatch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [1320, 720],
+			"alwaysOutputData": false
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"id": "17eb6574-9578-4915-8365-772e08d2f06b",
+										"leftValue": "={{ $json.test }}",
+										"rightValue": "/^value$/g",
+										"operator": {
+											"type": "string",
+											"operation": "regex"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			},
+			"id": "07776b86-1d7c-4435-b7d8-da73a01830cf",
+			"name": "Match",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [1320, 340],
+			"alwaysOutputData": false
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"id": "17eb6574-9578-4915-8365-772e08d2f06b",
+										"leftValue": "={{ $json.test }}",
+										"rightValue": "^value$",
+										"operator": {
+											"type": "string",
+											"operation": "regex"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			},
+			"id": "9fb71a7e-23aa-44f6-ae75-cfc4dc045b81",
+			"name": "Match1",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [1320, 500],
+			"alwaysOutputData": false
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"id": "17eb6574-9578-4915-8365-772e08d2f06b",
+										"leftValue": "={{ $json.test }}",
+										"rightValue": "^value$",
+										"operator": {
+											"type": "string",
+											"operation": "notRegex"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			},
+			"id": "555125fe-6509-4b68-8e3d-bf643f9b4d09",
+			"name": "NotMatch1",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [1320, 880],
+			"alwaysOutputData": false
+		},
+		{
+			"parameters": {},
+			"id": "a8d5d282-cff3-4bbf-8293-67b1bbb08e2f",
+			"name": "Output1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1640, 480]
+		},
+		{
+			"parameters": {},
+			"id": "3b7cf77e-f435-4863-a63d-db716cd27528",
+			"name": "Fallback1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1680, 740]
+		}
+	],
+	"pinData": {
+		"Output": [
+			{
+				"json": {
+					"test": "value"
+				}
+			}
+		],
+		"Fallback": [
+			{
+				"json": {
+					"test": "value"
+				}
+			}
+		],
+		"Output1": [
+			{
+				"json": {
+					"test": "value"
+				}
+			}
+		],
+		"Fallback1": [
+			{
+				"json": {
+					"test": "value"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Match",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "NotMatch",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Match1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "NotMatch1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"NotMatch": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Fallback1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Match": {
+			"main": [
+				[
+					{
+						"node": "Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"NotMatch1": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Fallback",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Match1": {
+			"main": [
+				[
+					{
+						"node": "Output1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "1fdad78e-d569-48c8-bbb9-640e8889b8e3",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+	},
+	"id": "EbLiIKvBYzJvLtX3",
+	"tags": []
 }

@@ -1,0 +1,179 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "$approval": {
+                        "type": "object",
+                        "properties": {
+                            "approve": {
+                                "type": "boolean"
+                            },
+                            "delegate": {
+                                "type": "boolean"
+                            },
+                            "reject": {
+                                "type": "boolean"
+                            },
+                            "resubmit": {
+                                "type": "boolean"
+                            },
+                            "takeover": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "$approval_state": {
+                        "type": "string"
+                    },
+                    "$approved": {
+                        "type": "boolean"
+                    },
+                    "$converted": {
+                        "type": "boolean"
+                    },
+                    "$currency_symbol": {
+                        "type": "string"
+                    },
+                    "$editable": {
+                        "type": "boolean"
+                    },
+                    "$field_states": {
+                        "type": "null"
+                    },
+                    "$in_merge": {
+                        "type": "boolean"
+                    },
+                    "$locked_for_me": {
+                        "type": "boolean"
+                    },
+                    "$process_flow": {
+                        "type": "boolean"
+                    },
+                    "$review": {
+                        "type": "null"
+                    },
+                    "$review_process": {
+                        "type": "object",
+                        "properties": {
+                            "approve": {
+                                "type": "boolean"
+                            },
+                            "reject": {
+                                "type": "boolean"
+                            },
+                            "resubmit": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "$state": {
+                        "type": "string"
+                    },
+                    "$zia_owner_assignment": {
+                        "type": "string"
+                    },
+                    "Created_By": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "Created_Time": {
+                        "type": "string"
+                    },
+                    "Email_Opt_Out": {
+                        "type": "boolean"
+                    },
+                    "Fax": {
+                        "type": "null"
+                    },
+                    "Full_Name": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "Last_Name": {
+                        "type": "string"
+                    },
+                    "Locked__s": {
+                        "type": "boolean"
+                    },
+                    "Modified_By": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "Modified_Time": {
+                        "type": "string"
+                    },
+                    "No_of_Employees": {
+                        "type": "null"
+                    },
+                    "Owner": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "Rating": {
+                        "type": "null"
+                    },
+                    "Secondary_Email": {
+                        "type": "null"
+                    },
+                    "Tag": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "Unsubscribed_Mode": {
+                        "type": "null"
+                    },
+                    "Unsubscribed_Time": {
+                        "type": "null"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

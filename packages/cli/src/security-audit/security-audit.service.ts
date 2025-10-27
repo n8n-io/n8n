@@ -1,14 +1,18 @@
-import Container, { Service } from 'typedi';
+import { SecurityConfig } from '@n8n/config';
+import { WorkflowRepository } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 
 import config from '@/config';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { RISK_CATEGORIES } from '@/security-audit/constants';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { toReportTitle } from '@/security-audit/utils';
 
 @Service()
 export class SecurityAuditService {
-	constructor(private readonly workflowRepository: WorkflowRepository) {}
+	constructor(
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly securityConfig: SecurityConfig,
+	) {}
 
 	private reporters: {
 		[name: string]: RiskReporter;
@@ -19,7 +23,7 @@ export class SecurityAuditService {
 
 		await this.initReporters(categories);
 
-		const daysFromEnv = config.getEnv('security.audit.daysAbandonedWorkflow');
+		const daysFromEnv = this.securityConfig.daysAbandonedWorkflow;
 
 		if (daysAbandonedWorkflow) {
 			config.set('security.audit.daysAbandonedWorkflow', daysAbandonedWorkflow);

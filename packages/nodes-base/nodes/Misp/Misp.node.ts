@@ -5,17 +5,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-
-import {
-	mispApiRequest,
-	mispApiRequestAllItems,
-	mispApiRestSearch,
-	throwOnEmptyUpdate,
-	throwOnInvalidUrl,
-	throwOnMissingSharingGroup,
-} from './GenericFunctions';
 
 import {
 	attributeFields,
@@ -41,7 +32,14 @@ import {
 	warninglistFields,
 	warninglistOperations,
 } from './descriptions';
-
+import {
+	mispApiRequest,
+	mispApiRequestAllItems,
+	mispApiRestSearch,
+	throwOnEmptyUpdate,
+	throwOnInvalidUrl,
+	throwOnMissingSharingGroup,
+} from './GenericFunctions';
 import type { LoadedOrgs, LoadedSharingGroups, LoadedTags, LoadedUsers } from './types';
 
 export class Misp implements INodeType {
@@ -56,8 +54,9 @@ export class Misp implements INodeType {
 		defaults: {
 			name: 'MISP',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mispApi',

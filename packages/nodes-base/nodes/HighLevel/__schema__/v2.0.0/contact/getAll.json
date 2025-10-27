@@ -1,0 +1,58 @@
+{
+    "type": "object",
+    "properties": {
+        "attributions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "isFirst": {
+                        "type": "boolean"
+                    },
+                    "medium": {
+                        "type": "string"
+                    },
+                    "utmSessionSource": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "contactName": {
+            "type": "string"
+        },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dateAdded": {
+            "type": "string"
+        },
+        "dateUpdated": {
+            "type": "string"
+        },
+        "dnd": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "properties": {
+        "contentDetails": {
+            "type": "object",
+            "properties": {
+                "videoId": {
+                    "type": "string"
+                },
+                "videoPublishedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "snippet": {
+            "type": "object",
+            "properties": {
+                "channelId": {
+                    "type": "string"
+                },
+                "channelTitle": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "playlistId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "publishedAt": {
+                    "type": "string"
+                },
+                "resourceId": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string"
+                        },
+                        "videoId": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "thumbnails": {
+                    "type": "object",
+                    "properties": {
+                        "default": {
+                            "type": "object",
+                            "properties": {
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "high": {
+                            "type": "object",
+                            "properties": {
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "medium": {
+                            "type": "object",
+                            "properties": {
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "videoOwnerChannelId": {
+                    "type": "string"
+                },
+                "videoOwnerChannelTitle": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

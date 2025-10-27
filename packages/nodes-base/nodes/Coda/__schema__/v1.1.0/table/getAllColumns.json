@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "display": {
+            "type": "boolean"
+        },
+        "format": {
+            "type": "object",
+            "properties": {
+                "isArray": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "href": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

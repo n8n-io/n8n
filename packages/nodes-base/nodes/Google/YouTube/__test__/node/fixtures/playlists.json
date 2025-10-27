@@ -1,0 +1,59 @@
+[
+	{
+		"kind": "youtube#playlist",
+		"etag": "etag_placeholder_1",
+		"id": "playlist_id_1",
+		"snippet": {
+			"publishedAt": "2024-11-22T12:40:13Z",
+			"channelId": "channel_id_placeholder",
+			"title": "Playlist 1",
+			"description": "Description for Playlist 1.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
+				"standard": { "url": "https://example.com/sddefault.jpg", "width": 640, "height": 480 },
+				"maxres": { "url": "https://example.com/maxresdefault.jpg", "width": 1280, "height": 720 }
+			},
+			"channelTitle": "Channel Placeholder",
+			"defaultLanguage": "en",
+			"localized": {
+				"title": "Playlist 1",
+				"description": "Description for Playlist 1."
+			}
+		},
+		"status": { "privacyStatus": "public" },
+		"contentDetails": { "itemCount": 16 },
+		"player": {
+			"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
+		}
+	},
+	{
+		"kind": "youtube#playlist",
+		"etag": "etag_placeholder_2",
+		"id": "playlist_id_2",
+		"snippet": {
+			"publishedAt": "2024-08-30T18:23:41Z",
+			"channelId": "channel_id_placeholder",
+			"title": "Playlist 2",
+			"description": "Description for Playlist 2.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
+				"standard": { "url": "https://example.com/sddefault.jpg", "width": 640, "height": 480 },
+				"maxres": { "url": "https://example.com/maxresdefault.jpg", "width": 1280, "height": 720 }
+			},
+			"channelTitle": "Channel Placeholder",
+			"localized": {
+				"title": "Playlist 2",
+				"description": "Description for Playlist 2."
+			}
+		},
+		"status": { "privacyStatus": "public" },
+		"contentDetails": { "itemCount": 18 },
+		"player": {
+			"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist2\" frameborder=\"0\" allowfullscreen></iframe>"
+		}
+	}
+]

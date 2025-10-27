@@ -1,52 +1,63 @@
 process.argv[2] = 'worker';
 
+import { mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig, TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
-import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
-import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
+import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { mockInstance } from '../../shared/mocking';
-
-config.set('executions.mode', 'queue');
+Container.get(ExecutionsConfig).mode = 'queue';
 config.set('binaryDataManager.availableModes', 'filesystem');
+Container.get(TaskRunnersConfig).enabled = true;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
+const communityPackagesService = mockInstance(CommunityPackagesService);
 const externalHooks = mockInstance(ExternalHooks);
-const externalSecretsManager = mockInstance(ExternalSecretsManager);
 const license = mockInstance(License, { loadCertStr: async () => '' });
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
-const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
 const scalingService = mockInstance(ScalingService);
-const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
+const taskBrokerServer = mockInstance(TaskBrokerServer);
+const taskRunnerProcess = mockInstance(JsTaskRunnerProcess);
+mockInstance(Publisher);
+mockInstance(Subscriber);
+mockInstance(Telemetry);
+mockInstance(Push);
 
 const command = setupTestCommand(Worker);
 
 test('worker initializes all its components', async () => {
-	const worker = await command.run();
+	Container.get(ExecutionsConfig).mode = 'regular'; // should be overridden
 
-	expect(worker.queueModeId).toBeDefined();
-	expect(worker.queueModeId).toContain('worker');
-	expect(worker.queueModeId.length).toBeGreaterThan(15);
+	await command.run();
+
 	expect(license.init).toHaveBeenCalledTimes(1);
 	expect(binaryDataService.init).toHaveBeenCalledTimes(1);
+	expect(communityPackagesService.init).toHaveBeenCalledTimes(1);
 	expect(externalHooks.init).toHaveBeenCalledTimes(1);
-	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
-	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
-	expect(orchestrationHandlerWorkerService.initWithOptions).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
+	expect(taskBrokerServer.start).toHaveBeenCalledTimes(1);
+	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
+
+	expect(Container.get(ExecutionsConfig).mode).toBe('queue');
 });

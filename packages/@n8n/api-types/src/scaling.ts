@@ -6,12 +6,12 @@ export type RunningJobSummary = {
 	workflowName: string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
-	retryOf: string;
+	retryOf?: string;
 	status: ExecutionStatus;
 };
 
 export type WorkerStatus = {
-	workerId: string;
+	senderId: string;
 	runningJobsSummary: RunningJobSummary[];
 	freeMem: number;
 	totalMem: number;

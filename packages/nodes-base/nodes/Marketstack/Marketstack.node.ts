@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	endOfDayDataFields,
@@ -15,14 +15,12 @@ import {
 	tickerFields,
 	tickerOperations,
 } from './descriptions';
-
 import {
 	format,
 	marketstackApiRequest,
 	marketstackApiRequestAllItems,
 	validateTimeOptions,
 } from './GenericFunctions';
-
 import type { EndOfDayDataFilters, Operation, Resource } from './types';
 
 export class Marketstack implements INodeType {
@@ -37,8 +35,9 @@ export class Marketstack implements INodeType {
 		defaults: {
 			name: 'Marketstack',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'marketstackApi',

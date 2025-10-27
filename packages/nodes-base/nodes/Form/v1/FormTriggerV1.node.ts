@@ -1,6 +1,6 @@
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
@@ -15,7 +15,7 @@ import {
 	formTriggerPanel,
 	webhookPath,
 } from '../common.descriptions';
-import { formWebhook } from '../utils';
+import { formWebhook } from '../utils/utils';
 
 const descriptionV1: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
@@ -23,13 +23,13 @@ const descriptionV1: INodeTypeDescription = {
 	icon: 'file:form.svg',
 	group: ['trigger'],
 	version: 1,
-	description: 'Runs the flow when an n8n generated webform is submitted',
+	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'n8n Form Trigger',
 	},
 
 	inputs: [],
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
 		{
 			name: 'setup',

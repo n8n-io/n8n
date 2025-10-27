@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "email": {
+            "type": "string"
+        },
+        "gid": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "workspaces": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

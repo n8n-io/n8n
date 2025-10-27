@@ -18,14 +18,34 @@ export async function apiRequest(
 	endpoint: string,
 	parameters?: RequestParameters,
 ) {
-	const { body, qs, uri, option, headers } = parameters ?? {};
+	const { body, qs, option } = parameters ?? {};
+
+	const credentials = await this.getCredentials('openAiApi');
+
+	let uri = `https://api.openai.com/v1${endpoint}`;
+	let headers = parameters?.headers ?? {};
+	if (credentials.url) {
+		uri = `${credentials?.url}${endpoint}`;
+	}
+
+	if (
+		credentials.header &&
+		typeof credentials.headerName === 'string' &&
+		credentials.headerName &&
+		typeof credentials.headerValue === 'string'
+	) {
+		headers = {
+			...headers,
+			[credentials.headerName]: credentials.headerValue,
+		};
+	}
 
 	const options = {
 		headers,
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://api.openai.com/v1${endpoint}`,
+		uri,
 		json: true,
 	};
 

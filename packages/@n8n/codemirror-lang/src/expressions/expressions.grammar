@@ -15,7 +15,7 @@ entity { Plaintext | Resolvable }
 
   resolvableChar { unicodeChar | "}" ![}] | "\\}}" }
 
-  unicodeChar { $[\u0000-\u007C] | $[\u007E-\u20CF] | $[\u{1F300}-\u{1F64F}] | $[\u4E00-\u9FFF] }
+  unicodeChar { $[\u0000-\u007C] | $[\u007E-\u20CF] | $[\u2700-\u27BF] | $[\u{1F300}-\u{1FAF8}] | $[\u4E00-\u9FFF] }
 }
 
 @detectDelim

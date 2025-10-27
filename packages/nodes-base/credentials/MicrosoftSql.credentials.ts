@@ -5,7 +5,7 @@ export class MicrosoftSql implements ICredentialType {
 
 	displayName = 'Microsoft SQL';
 
-	documentationUrl = 'microsoftSql';
+	documentationUrl = 'microsoftsql';
 
 	properties: INodeProperties[] = [
 		{
@@ -54,7 +54,7 @@ export class MicrosoftSql implements ICredentialType {
 			default: true,
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,
