@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { AddDataTableColumnDto, CreateDataTableColumnDto } from '@n8n/api-types';
+import type {
+	AddDataTableColumnDto,
+	CreateDataTableColumnDto,
+	DataTableFilterConditionType,
+} from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { DataTableRow } from 'n8n-workflow';
+import type { DataTableColumnJsType, DataTableRow } from 'n8n-workflow';
 
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableRepository } from '../data-table.repository';
@@ -1493,6 +1497,7 @@ describe('dataTable', () => {
 				},
 			]);
 		});
+
 		describe('bulk', () => {
 			it('handles single empty row correctly in bulk mode', async () => {
 				// ARRANGE
@@ -3535,5 +3540,148 @@ describe('dataTable', () => {
 			expect(dataTable2).toBeDefined();
 			expect(dataTable2.id).toBe(dataTableId2);
 		});
+	});
+	describe('json datatype', () => {
+		it.each<[DataTableColumnJsType, DataTableColumnJsType, DataTableFilterConditionType, boolean]>([
+			[3, 3, 'eq', true],
+			[3, 3, 'neq', false],
+			[3, '3', 'eq', true],
+			[3, '3', 'neq', false],
+			// these tests fail in MariaDB and MySQL
+			// in face of V2 we decided to accept these breaking
+			// [null, null, 'eq', true],
+			// [null, null, 'neq', false],
+			[11, 3, 'gt', true],
+			[11, 3, 'lt', false],
+			[11, '3', 'gt', false],
+			[11, '3', 'lt', true],
+		])(
+			'inserts json with input %p, filter %p, operator %p, expectPresent %p',
+			async (input, filter, operator, expectPresent) => {
+				// ARRANGE
+
+				const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
+					name: 'dataStore',
+					columns: [{ name: 'c1', type: 'json' }],
+				});
+
+				// ACT
+				const rows = [{ c1: { input } }];
+				await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+
+				// ASSERT
+				{
+					const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
+						filter: {
+							type: 'and',
+							filters: [
+								{
+									columnName: 'c1',
+									condition: operator,
+									value: filter,
+									path: 'input',
+								},
+							],
+						},
+					});
+					expect(data).toEqual(
+						expectPresent
+							? [
+									{
+										c1: { input },
+										id: 1,
+										createdAt: expect.any(Date),
+										updatedAt: expect.any(Date),
+									},
+								]
+							: [],
+					);
+				}
+			},
+		);
+		it.each<[string, string]>([
+			['a', 'a'],
+			['', '""'],
+			['[', '"["'],
+			['[0]', '"[0]"'],
+			// ['"', '"\\""'], // disabled until MySQL and MariaDB support is dropped
+		])('inserts json with weird keys %p, path %p', async (input, path) => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'c1', type: 'json' }],
+			});
+
+			// ACT
+			const rows = [{ c1: { [input]: 3 } }];
+			await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+
+			// ASSERT
+
+			{
+				const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
+					filter: {
+						type: 'and',
+						filters: [
+							{
+								columnName: 'c1',
+								condition: 'eq',
+								value: 3,
+								path,
+							},
+						],
+					},
+				});
+				expect(data).toEqual([
+					{
+						c1: { [input]: 3 },
+						id: 1,
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+					},
+				]);
+			}
+		});
+
+		// it.each<[DataTableFilterConditionType, DataTableColumnJsType, boolean]>([['eq', null, true]])(
+		// 	'handles absence operator %p, value %p',
+		// 	async (operator, value, expectPresent) => {
+		// 		// ARRANGE
+		// 		const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
+		// 			name: 'dataStore',
+		// 			columns: [{ name: 'c1', type: 'json' }],
+		// 		});
+
+		// 		// ACT
+		// 		const rows = [{ c1: { a: null } }];
+		// 		await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+
+		// 		// ASSERT
+
+		// 		{
+		// 			const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
+		// 				filter: {
+		// 					type: 'and',
+		// 					filters: [
+		// 						{
+		// 							columnName: 'c1',
+		// 							condition: 'eq',
+		// 							value: 3,
+		// 							path,
+		// 						},
+		// 					],
+		// 				},
+		// 			});
+		// 			expect(data).toEqual([
+		// 				{
+		// 					c1: { [input]: 3 },
+		// 					id: 1,
+		// 					createdAt: expect.any(Date),
+		// 					updatedAt: expect.any(Date),
+		// 				},
+		// 			]);
+		// 		}
+		// 	},
+		// );
 	});
 });

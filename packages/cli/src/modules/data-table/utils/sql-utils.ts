@@ -14,12 +14,13 @@ import type {
 	DataTableRowReturn,
 	DataTableRowsReturn,
 } from 'n8n-workflow';
-import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { parsePath, toPostgresPath, toSQLitePath } from './path-utils';
 
 export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -34,13 +35,15 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 				return name.text;
 			case 'date':
 				return name.timestampTimezone();
+			case 'json':
+				return name.json;
 			default:
 				return name.text;
 		}
 	});
 }
 
-function dataTableColumnTypeToSql(
+export function dataTableColumnTypeToSql(
 	type: DataTableCreateColumnSchema['type'],
 	dbType: DataSourceOptions['type'],
 ) {
@@ -66,6 +69,8 @@ function dataTableColumnTypeToSql(
 				return 'TIMESTAMP';
 			}
 			return 'DATETIME';
+		case 'json':
+			return 'JSON';
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
@@ -230,6 +235,16 @@ export function normalizeRows(
 		for (const [key, value] of Object.entries(rest)) {
 			const type = typeMap[key];
 
+			if (type === 'json') {
+				try {
+					if (typeof value === 'string') {
+						normalized[key] = JSON.parse(value) as never;
+					}
+				} catch (e) {
+					normalized[key] = 'failed to parse';
+				}
+			}
+
 			if (type === 'boolean') {
 				// Convert boolean values to true/false
 				if (typeof value === 'boolean') {
@@ -288,11 +303,37 @@ function formatDateForDatabase(
  */
 export function normalizeValueForDatabase(
 	value: DataTableColumnJsType,
-	columnType: string | undefined,
+	columnType: DataTableColumnType | undefined,
 	dbType?: DataSourceOptions['type'],
+	path?: string,
 ): DataTableColumnJsType {
 	if (columnType === 'date' && value !== null) {
 		return formatDateForDatabase(value, dbType);
+	}
+
+	if (columnType === 'json') {
+		if (path) {
+			if (value instanceof Date) {
+				return formatDateForDatabase(value, dbType);
+			}
+			return value;
+		} else {
+			// json accepts objects or strings containing objects as input
+			// but expects values with a path for output/get/read operations
+			if (typeof value === 'string') {
+				try {
+					JSON.parse(value);
+					return value;
+				} catch (e) {
+					throw new UserError(`Failed to parse string input '${value}' as object for json column`);
+				}
+			} else if (typeof value !== 'object') {
+				throw new UserError(
+					`Unexpected non-object input '${value}' of type ${typeof value} for json column`,
+				);
+			}
+			return JSON.stringify(value);
+		}
 	}
 
 	return value;
@@ -331,4 +372,51 @@ export function toTableName(dataTableId: string): DataTableUserTableName {
 
 export function toTableId(tableName: DataTableUserTableName) {
 	return tableName.replace(/.*data_table_user_/, '');
+}
+
+export function resolvePath(
+	ref: string,
+	dbType: DataSourceOptions['type'],
+	value: unknown,
+	path?: string,
+) {
+	if (path) {
+		const pathArray = parsePath(path);
+		if (dbType === 'postgres') {
+			const base = `${ref}${toPostgresPath(pathArray)}`;
+			if (typeof value === 'number') {
+				return `(${base})::numeric`;
+			}
+			if (value instanceof Date) {
+				return `(${base})::timestamp`;
+			}
+			if (typeof value === 'boolean') {
+				return `(${base})::boolean`;
+			}
+
+			// by converting to text by default we end up with `true` for an equals NULL check
+			// both for cases where the key exists and is literally NULL and where it doesn't exist
+			return `(${base})::text`;
+		} else {
+			// this is mostly for sqlite, behavior in MariaDB and MySQL mostly aligns though there are subtle
+			// difference we don't care for in the face of imminent removal of support
+			const path = toSQLitePath(pathArray);
+			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
+			if (typeof value === 'number') {
+				return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
+			}
+			if (value instanceof Date) {
+				return `CAST(${base} as ${dataTableColumnTypeToSql('date', dbType)})`;
+			}
+			if (typeof value === 'boolean') {
+				return `CAST(${base} as ${dbType.startsWith('sqlite') ? dataTableColumnTypeToSql('boolean', dbType) : 'SIGNED'})`;
+			}
+			if (typeof value === 'string') {
+				return `CAST(${base} AS ${dbType.startsWith('sqlite') ? dataTableColumnTypeToSql('string', dbType) : 'CHAR'})`;
+			}
+			// return `CAST(${base} AS ${dataTableColumnTypeToSql('string', dbType)})`;
+			return base;
+		}
+	}
+	return ref;
 }

@@ -33,6 +33,7 @@ import {
 	normalizeRows,
 	normalizeValueForDatabase,
 	quoteIdentifier,
+	resolvePath,
 	toSqliteGlobFromPercent,
 	toTableName,
 } from './utils/sql-utils';
@@ -59,9 +60,14 @@ function getConditionAndParams(
 	tableReference?: string,
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
-	const columnRef = tableReference
-		? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
-		: quoteIdentifier(filter.columnName, dbType);
+	const columnRef = resolvePath(
+		tableReference
+			? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
+			: quoteIdentifier(filter.columnName, dbType),
+		dbType,
+		filter.value,
+		filter.path,
+	);
 
 	if (filter.value === null) {
 		switch (filter.condition) {
