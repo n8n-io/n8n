@@ -273,12 +273,12 @@ describe('buildGetManyFilter', () => {
 		});
 
 		it('should translate isFalse to eq with false value', () => {
-			const fieldEntries: FieldEntry[] = [{ keyName: 'email (string)', condition: 'isFalse' }];
+			const fieldEntries: FieldEntry[] = [{ keyName: 'isEmail (boolean)', condition: 'isFalse' }];
 
 			const result = buildGetManyFilter(
 				fieldEntries,
 				ANY_CONDITION,
-				{ email: 'boolean' },
+				{ isEmail: 'boolean' },
 				mockNode,
 			);
 
@@ -286,7 +286,7 @@ describe('buildGetManyFilter', () => {
 				type: 'or',
 				filters: [
 					{
-						columnName: 'email',
+						columnName: 'isEmail',
 						condition: 'eq',
 						value: false,
 					},
