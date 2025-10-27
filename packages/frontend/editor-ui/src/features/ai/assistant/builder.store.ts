@@ -25,6 +25,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/utils/typesUtils';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -47,7 +48,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
-
+	const ndvStore = useNDVStore();
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
@@ -217,6 +218,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (streaming.value) {
 			return;
 		}
+
+		// Close NDV on new message
+		ndvStore.unsetActiveNodeName();
 
 		const {
 			text,

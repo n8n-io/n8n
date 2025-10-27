@@ -1,18 +1,20 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { evaluateAgentPrompt } from './evaluators/agent-prompt';
-import { evaluateConnections } from './evaluators/connections';
-import { evaluateFromAi } from './evaluators/from-ai';
-import { evaluateTools } from './evaluators/tools';
-import { evaluateTrigger } from './evaluators/trigger';
-import type { EvaluationInput } from '../types/evaluation';
-import type { ProgrammaticEvaluationResult } from '../types/test-result';
+import type { ProgrammaticEvaluationInput } from '@/validation/types';
+
+import {
+	evaluateConnections,
+	evaluateTools,
+	evaluateAgentPrompt,
+	evaluateFromAi,
+	evaluateTrigger,
+} from './evaluators';
 import { calculateOverallScore } from '../utils/score';
 
-export async function programmaticEvaluation(
-	input: EvaluationInput,
+export function programmaticEvaluation(
+	input: ProgrammaticEvaluationInput,
 	nodeTypes: INodeTypeDescription[],
-): Promise<ProgrammaticEvaluationResult> {
+) {
 	const { generatedWorkflow } = input;
 
 	const connectionsEvaluationResult = evaluateConnections(generatedWorkflow, nodeTypes);

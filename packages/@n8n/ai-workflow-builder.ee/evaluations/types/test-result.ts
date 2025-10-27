@@ -1,19 +1,12 @@
-import type { TestCase, EvaluationResult, Violation } from './evaluation';
+import type { ProgrammaticEvaluationResult } from '@/validation/types';
+
+import type { TestCase, EvaluationResult } from './evaluation';
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
-export type SingleEvaluatorResult = {
-	violations: Violation[];
-	score: number;
-};
-
-export interface ProgrammaticEvaluationResult {
-	overallScore: number;
-	connections: SingleEvaluatorResult;
-	trigger: SingleEvaluatorResult;
-	agentPrompt: SingleEvaluatorResult;
-	tools: SingleEvaluatorResult;
-	fromAi: SingleEvaluatorResult;
-}
+export type {
+	ProgrammaticEvaluationResult,
+	SingleEvaluatorResult,
+} from '@/validation/types';
 
 /**
  * Cache statistics for prompt caching analysis

@@ -1,6 +1,8 @@
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
+import type { ProgrammaticViolation } from '@/validation/types';
+
 import { aggregateCacheStats, formatCacheStats } from './cache-analyzer.js';
 import {
 	formatColoredScore,
@@ -329,23 +331,23 @@ export function displayViolationsDetail(results: TestResult[]): void {
 		if (!result.error) {
 			// LLM evaluation violations
 			const llmViolations = [
-				...result.evaluationResult.functionality.violations.map((v) => ({
-					violation: { ...v, category: 'Functionality' },
+				...result.evaluationResult.functionality.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Functionality' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
-				...result.evaluationResult.connections.violations.map((v) => ({
-					violation: { ...v, category: 'Connections (LLM)' },
+				...result.evaluationResult.connections.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Connections (LLM)' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
-				...result.evaluationResult.expressions.violations.map((v) => ({
-					violation: { ...v, category: 'Expressions' },
+				...result.evaluationResult.expressions.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Expressions' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
-				...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
-					violation: { ...v, category: 'Node Config' },
+				...result.evaluationResult.nodeConfiguration.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Node Config' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
@@ -353,31 +355,41 @@ export function displayViolationsDetail(results: TestResult[]): void {
 
 			// Programmatic evaluation violations
 			const progViolations = [
-				...result.programmaticEvaluationResult.connections.violations.map((v) => ({
-					violation: { ...v, category: 'Connections' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
-				...result.programmaticEvaluationResult.trigger.violations.map((v) => ({
-					violation: { ...v, category: 'Trigger' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
-				...result.programmaticEvaluationResult.agentPrompt.violations.map((v) => ({
-					violation: { ...v, category: 'Agent Prompt' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
-				...result.programmaticEvaluationResult.tools.violations.map((v) => ({
-					violation: { ...v, category: 'Tools' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
-				...result.programmaticEvaluationResult.fromAi.violations.map((v) => ({
-					violation: { ...v, category: 'FromAI' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
+				...result.programmaticEvaluationResult.connections.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Connections' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.trigger.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Trigger' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.agentPrompt.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Agent Prompt' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.tools.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Tools' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.fromAi.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'FromAI' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
 			];
 
 			allViolations.push(...llmViolations, ...progViolations);
