@@ -291,7 +291,7 @@ describe('useProjectNavigationCommands', () => {
 
 			const rootProjects = commands.value.filter((cmd) => cmd.id === 'project-1');
 			expect(rootProjects).toHaveLength(1);
-			expect(rootProjects[0].title).toEqual('generic.open Marketing Team');
+			expect(rootProjects[0].title).toEqual('generic.openResource');
 		});
 	});
 

@@ -251,9 +251,12 @@ export function useWorkflowNavigationCommands(options: {
 
 		const suffix = getWorkflowProjectSuffix(workflow);
 
+		const name = workflow.name || i18n.baseText('commandBar.workflows.unnamed');
 		const title = isRoot
-			? `${i18n.baseText('generic.open')} ${workflow.name || i18n.baseText('commandBar.workflows.unnamed')}`
-			: workflow.name;
+			? i18n.baseText('generic.openResource', {
+					interpolate: { resource: name },
+				})
+			: name;
 		const section = isRoot
 			? i18n.baseText('commandBar.sections.workflows')
 			: i18n.baseText('commandBar.workflows.open');

@@ -303,7 +303,7 @@ describe('useDataTableNavigationCommands', () => {
 				expect(rootDataTables[0].title).toEqual(
 					expect.objectContaining({
 						props: expect.objectContaining({
-							title: 'generic.open Customer Data',
+							title: 'generic.openResource',
 						}),
 					}),
 				);

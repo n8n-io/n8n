@@ -91,7 +91,9 @@ export function useDataTableNavigationCommands(options: {
 		// Add data table name to keywords since we're using a custom component for the title
 		const keywords = [dataTable.name];
 
-		const title = isRoot ? `${i18n.baseText('generic.open')} ${dataTable.name}` : dataTable.name;
+		const title = isRoot
+			? i18n.baseText('generic.openResource', { interpolate: { resource: dataTable.name } })
+			: dataTable.name;
 		const section = isRoot
 			? i18n.baseText('commandBar.sections.dataTables')
 			: i18n.baseText('commandBar.dataTables.open');

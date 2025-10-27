@@ -356,7 +356,7 @@ describe('useCredentialNavigationCommands', () => {
 				expect(rootCredentials[0].title).toEqual(
 					expect.objectContaining({
 						props: expect.objectContaining({
-							title: 'generic.open Gmail Account',
+							title: 'generic.openResource',
 						}),
 					}),
 				);

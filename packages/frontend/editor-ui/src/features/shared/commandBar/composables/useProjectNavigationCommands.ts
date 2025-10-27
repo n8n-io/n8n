@@ -48,7 +48,7 @@ export function useProjectNavigationCommands(options: {
 					: i18n.baseText('commandBar.projects.unnamed');
 
 		if (isRoot) {
-			title = `${i18n.baseText('generic.open')} ${title}`;
+			title = i18n.baseText('generic.openResource', { interpolate: { resource: title } });
 		}
 
 		const section = isRoot

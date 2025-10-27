@@ -86,7 +86,9 @@ export function useCredentialNavigationCommands(options: {
 		// Add credential name to keywords since we're using a custom component for the title
 		const keywords = [credential.name];
 
-		const title = isRoot ? `${i18n.baseText('generic.open')} ${credential.name}` : credential.name;
+		const title = isRoot
+			? i18n.baseText('generic.openResource', { interpolate: { resource: credential.name } })
+			: credential.name;
 		const section = isRoot
 			? i18n.baseText('commandBar.sections.credentials')
 			: i18n.baseText('commandBar.credentials.open');

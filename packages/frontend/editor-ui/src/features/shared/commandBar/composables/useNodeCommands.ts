@@ -100,7 +100,9 @@ export function useNodeCommands(options: {
 	const buildOpenNodeCommand = (node: INodeUi, isRoot: boolean): CommandBarItem => {
 		const { id, name, type } = node;
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const title = isRoot ? 'Open ' + name : name;
+		const title = isRoot
+			? i18n.baseText('generic.openResource', { interpolate: { resource: name } })
+			: name;
 		const section = isRoot
 			? i18n.baseText('commandBar.sections.nodes')
 			: i18n.baseText('commandBar.nodes.openNode');

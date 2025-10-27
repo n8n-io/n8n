@@ -109,7 +109,9 @@ export function useRecentResources() {
 
 				items.push({
 					id: `recent-node-${currentWorkflowId}-${recentNode.nodeId}`,
-					title: `${i18n.baseText('generic.open')} ${node.name}`,
+					title: i18n.baseText('generic.openResource', {
+						interpolate: { resource: node.name },
+					}),
 					section: i18n.baseText('commandBar.sections.recent'),
 					icon: {
 						component: NodeIcon as Component,
@@ -145,7 +147,11 @@ export function useRecentResources() {
 
 				items.push({
 					id: `recent-workflow-${recentWorkflow.id}`,
-					title: `${i18n.baseText('generic.open')} ${workflow.name || i18n.baseText('commandBar.workflows.unnamed')}`,
+					title: i18n.baseText('generic.openResource', {
+						interpolate: {
+							resource: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+						},
+					}),
 					section: i18n.baseText('commandBar.sections.recent'),
 					icon: {
 						component: N8nIcon,

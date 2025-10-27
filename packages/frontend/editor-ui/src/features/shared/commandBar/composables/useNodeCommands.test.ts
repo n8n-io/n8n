@@ -325,7 +325,7 @@ describe('useNodeCommands', () => {
 
 			const rootOpenNodes = commands.value.filter((cmd) => cmd.id === 'node-1');
 			expect(rootOpenNodes).toHaveLength(1);
-			expect(rootOpenNodes[0].title).toEqual('Open Start');
+			expect(rootOpenNodes[0].title).toEqual('generic.openResource');
 		});
 	});
 });

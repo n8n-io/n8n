@@ -317,7 +317,7 @@ describe('useWorkflowNavigationCommands', () => {
 		});
 		const alphaWf = api.commands.value.find((c) => c.id === 'w1');
 		expect((alphaWf?.title as unknown as { props?: { title?: string } }).props?.title).toBe(
-			'generic.open Alpha',
+			'generic.openResource',
 		);
 		expect(alphaWf?.section).toBe('commandBar.sections.workflows');
 	});
