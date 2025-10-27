@@ -266,7 +266,6 @@ async function onDelete() {
 						<span :class="$style.required">*</span>
 					</N8nText>
 					<ModelSelector
-						:models="chatStore.models ?? null"
 						:selected-model="selectedModel"
 						:include-custom-agents="false"
 						:credentials="agentMergedCredentials"

@@ -209,7 +209,6 @@ const isMissingSelectedCredential = computed(() => {
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 const credentialsFetched = ref<boolean>(false);
-const modelsFetched = ref<boolean>(false);
 const editingAgentId = ref<string | undefined>(undefined);
 
 function scrollToBottom(smooth: boolean) {
@@ -251,28 +250,20 @@ watch(
 	{ immediate: true, flush: 'post' },
 );
 
-// Reload models when credentials are updated
-// TODO: fix duplicate requests
+// Preselect a model
 watch(
-	mergedCredentials,
-	async (credentials) => {
-		const models = await chatStore.fetchChatModels(credentials);
-
+	() => chatStore.models,
+	(models) => {
 		const selected = selectedModel.value;
-		if (selected === null) {
-			const model = findOneFromModelsResponse(models) ?? null;
 
-			if (model) {
-				await handleSelectModel(model);
-			}
+		if (!models || selected !== null) {
+			return;
 		}
 
-		const currentProvider = selectedModel.value?.provider;
-		if (currentProvider && currentProvider !== 'n8n') {
-			const providerModels = models[currentProvider].models;
-			modelsFetched.value = !models[currentProvider].error && providerModels.length > 0;
-		} else {
-			modelsFetched.value = true;
+		const model = findOneFromModelsResponse(models) ?? null;
+
+		if (model) {
+			void handleSelectModel(model);
 		}
 	},
 	{ immediate: true },
