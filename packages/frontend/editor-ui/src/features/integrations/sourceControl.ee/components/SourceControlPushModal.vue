@@ -680,6 +680,17 @@ watchEffect(() => {
 	}
 });
 
+// Auto-select all credentials by default
+watchEffect(() => {
+	if (changes.value.credential.length > 0) {
+		changes.value.credential.forEach((credential) => {
+			if (!selectedCredentials.has(credential.id)) {
+				selectedCredentials.add(credential.id);
+			}
+		});
+	}
+});
+
 // Load data when modal opens
 onMounted(async () => {
 	// Always load fresh data to ensure workflow names are populated
