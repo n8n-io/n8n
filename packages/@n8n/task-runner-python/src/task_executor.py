@@ -109,8 +109,7 @@ class TaskExecutor:
         try:
             try:
                 process.start()
-            except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
-                logger.error(f"Failed to start child process: {e}")
+            except Exception as e:
                 raise TaskSubprocessFailedError(-1)
             finally:
                 write_conn.close()
