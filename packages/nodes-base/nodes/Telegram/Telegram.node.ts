@@ -2511,7 +2511,6 @@ export class Telegram implements INodeType {
 						const name = this.getNodeParameter('forumTopicName', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						// Safe type validation for icon_color
 						const icon_color = additionalFields.icon_color;
 						if (icon_color !== undefined && !isNumber(icon_color)) {
 							throw new NodeOperationError(this.getNode(), 'icon_color must be a number', {
@@ -2520,7 +2519,6 @@ export class Telegram implements INodeType {
 							});
 						}
 
-						// Safe type validation for icon_custom_emoji_id
 						const icon_custom_emoji_id = additionalFields.icon_custom_emoji_id;
 						if (icon_custom_emoji_id !== undefined && !isString(icon_custom_emoji_id)) {
 							throw new NodeOperationError(
