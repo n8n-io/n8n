@@ -8,15 +8,14 @@ import { ErrorReporter } from 'n8n-core';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
-	USER_CALLED_MCP_TOOL_EVENT,
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
 } from './mcp.constants';
 import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
-import type { UserConnectedToMCPEventPayload, UserCalledMCPToolEventPayload } from './mcp.types';
-import { getClientInfo, getToolName, getToolArguments } from './mcp.utils';
+import type { UserConnectedToMCPEventPayload } from './mcp.types';
+import { getClientInfo } from './mcp.utils';
 
 import { Telemetry } from '@/telemetry';
 
@@ -42,7 +41,6 @@ export class McpController {
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
 		const body = req.body;
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
-		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
 		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
@@ -55,7 +53,7 @@ export class McpController {
 		const enabled = await this.mcpSettingsService.getEnabled();
 		if (!enabled) {
 			if (isInitializationRequest) {
-				this.trackMCPEvent('connected', {
+				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: 'error',
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
@@ -80,23 +78,15 @@ export class McpController {
 			await server.connect(transport);
 			await transport.handleRequest(req, res, req.body);
 			if (isInitializationRequest) {
-				this.trackMCPEvent('connected', {
+				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: 'success',
-				});
-			} else if (isToolCallRequest) {
-				const toolName = getToolName(body);
-				const parameters = getToolArguments(body);
-				this.trackMCPEvent('tool_call', {
-					user_id: req.user.id,
-					tool_name: toolName,
-					parameters,
 				});
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (isInitializationRequest) {
-				this.trackMCPEvent('connected', {
+				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: 'error',
 					error: error instanceof Error ? error.message : String(error),
@@ -116,14 +106,7 @@ export class McpController {
 		}
 	}
 
-	private trackMCPEvent(
-		type: 'connected' | 'tool_call',
-		payload: UserConnectedToMCPEventPayload | UserCalledMCPToolEventPayload,
-	) {
-		if (type === 'connected') {
-			this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, payload);
-		} else if (type === 'tool_call') {
-			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, payload);
-		}
+	private trackConnectionEvent(payload: UserConnectedToMCPEventPayload) {
+		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, payload);
 	}
 }

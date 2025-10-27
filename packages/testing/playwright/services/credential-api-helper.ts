@@ -70,6 +70,28 @@ export class CredentialApiHelper {
 	}
 
 	/**
+	 * Get credentials filtered by project ID
+	 */
+	async getCredentialsByProject(
+		projectId: string,
+		options?: { includeScopes?: boolean; includeData?: boolean },
+	): Promise<CredentialResponse[]> {
+		const params = new URLSearchParams();
+		params.set('includeScopes', String(options?.includeScopes ?? true));
+		params.set('includeData', String(options?.includeData ?? true));
+		params.set('filter', JSON.stringify({ projectId }));
+
+		const response = await this.api.request.get('/rest/credentials', { params });
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get credentials by project: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return Array.isArray(result) ? result : (result.data ?? []);
+	}
+
+	/**
 	 * Get a specific credential by ID
 	 */
 	async getCredential(

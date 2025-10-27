@@ -18,7 +18,6 @@ export function chatWithBuilder(
 	onDone: () => void,
 	onError: (e: Error) => void,
 	abortSignal?: AbortSignal,
-	useDeprecatedCredentials = false,
 ): void {
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,
@@ -27,7 +26,6 @@ export function chatWithBuilder(
 			...payload,
 			payload: {
 				...payload.payload,
-				useDeprecatedCredentials,
 			},
 		},
 		onMessageUpdated,
