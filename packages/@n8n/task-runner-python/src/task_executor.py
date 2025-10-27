@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
+PIPE_READER_THREAD_JOIN_TIMEOUT = 3.0  # seconds
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
 
@@ -140,7 +141,7 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            pipe_reader.join(timeout=5.0)  # @TODO: Reasonable length?
+            pipe_reader.join(timeout=PIPE_READER_THREAD_JOIN_TIMEOUT)
 
             if read_error:
                 raise TaskResultReadError()
@@ -217,12 +218,10 @@ class TaskExecutor:
             exec(compiled_code, globals)
 
             result = globals[EXECUTOR_USER_OUTPUT_KEY]
-            write_fd = write_conn.fileno()
-            TaskExecutor._put_result(write_fd, result, print_args)
+            TaskExecutor._put_result(write_conn.fileno(), result, print_args)
 
         except BaseException as e:
-            write_fd = write_conn.fileno()
-            TaskExecutor._put_error(write_fd, e, stderr_capture.getvalue(), print_args)
+            TaskExecutor._put_error(write_conn.fileno(), e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _per_item(
@@ -272,12 +271,10 @@ class TaskExecutor:
 
                 result.append(item)
 
-            write_fd = write_conn.fileno()
-            TaskExecutor._put_result(write_fd, result, print_args)
+            TaskExecutor._put_result(write_conn.fileno(), result, print_args)
 
         except BaseException as e:
-            write_fd = write_conn.fileno()
-            TaskExecutor._put_error(write_fd, e, stderr_capture.getvalue(), print_args)
+            TaskExecutor._put_error(write_conn.fileno(), e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
@@ -318,7 +315,7 @@ class TaskExecutor:
         stderr: str = "",
         print_args: PrintArgs = [],
     ):
-        error_dict: TaskErrorInfo = {
+        task_error_info: TaskErrorInfo = {
             "message": f"Process exited with code {e.code}"
             if isinstance(e, SystemExit)
             else str(e),
@@ -328,7 +325,7 @@ class TaskExecutor:
         }
 
         message: PipeErrorMessage = {
-            "error": error_dict,
+            "error": task_error_info,
             "print_args": TaskExecutor._truncate_print_args(print_args),
         }
 
