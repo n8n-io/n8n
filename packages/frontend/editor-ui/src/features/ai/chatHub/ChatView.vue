@@ -305,6 +305,26 @@ watch(
 	{ immediate: true },
 );
 
+// Handle agent pre-selection from URL query parameter
+watch(
+	() => route.query.agentId,
+	async (agentId) => {
+		if (!agentId || typeof agentId !== 'string') return;
+		if (!isNewSession.value) return; // Only apply to new sessions
+
+		const agent = chatStore.agents.find((a) => a.id === agentId);
+		if (agent) {
+			const agentModel: ChatHubConversationModel = {
+				provider: 'custom-agent',
+				agentId: agent.id,
+				name: agent.name,
+			};
+			await handleSelectModel(agentModel);
+		}
+	},
+	{ immediate: true },
+);
+
 onMounted(async () => {
 	await Promise.all([
 		credentialsStore.fetchCredentialTypes(false),

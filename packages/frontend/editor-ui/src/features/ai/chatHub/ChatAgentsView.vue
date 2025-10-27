@@ -5,9 +5,11 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import { N8nButton, N8nCard, N8nIconButton, N8nText } from '@n8n/design-system';
 import { computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import type { ChatHubAgentDto } from '@n8n/api-types';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import { CHAT_VIEW, providerDisplayNames } from '@/features/ai/chatHub/constants';
 
+const router = useRouter();
 const chatStore = useChatStore();
 const toast = useToast();
 const message = useMessage();
@@ -19,12 +21,29 @@ function handleCreateAgent() {
 	chatStore.currentEditingAgent = null;
 }
 
-function handleEditAgent(agent: ChatHubAgentDto) {
+function handleEditAgent(agent: ChatHubAgentDto, event?: MouseEvent) {
+	// Prevent card click when clicking action buttons
+	if (event) {
+		event.stopPropagation();
+	}
 	// TODO: Integrate with AgentEditorModal when it's available
 	chatStore.currentEditingAgent = agent;
 }
 
-async function handleDeleteAgent(agentId: string) {
+function handleAgentCardClick(agent: ChatHubAgentDto) {
+	void router.push({
+		name: CHAT_VIEW,
+		query: {
+			agentId: agent.id,
+		},
+	});
+}
+
+async function handleDeleteAgent(agentId: string, event?: MouseEvent) {
+	// Prevent card click when clicking delete button
+	if (event) {
+		event.stopPropagation();
+	}
 	const confirmed = await message.confirm(
 		'Are you sure you want to delete this agent?',
 		'Delete agent',
@@ -96,7 +115,7 @@ onMounted(async () => {
 				:key="agent.id"
 				:class="$style.agentCard"
 				hoverable
-				@click="handleEditAgent(agent)"
+				@click="handleAgentCardClick(agent)"
 			>
 				<div :class="$style.cardContent">
 					<div :class="$style.cardHeader">
@@ -107,14 +126,14 @@ onMounted(async () => {
 								type="tertiary"
 								size="small"
 								title="Edit agent"
-								@click="handleEditAgent(agent)"
+								@click="handleEditAgent(agent, $event)"
 							/>
 							<N8nIconButton
 								icon="trash-2"
 								type="tertiary"
 								size="small"
 								title="Delete agent"
-								@click="handleDeleteAgent(agent.id)"
+								@click="handleDeleteAgent(agent.id, $event)"
 							/>
 						</div>
 					</div>
