@@ -95,7 +95,7 @@ class TaskRunnerConfig:
         max_payload_size = read_int_env(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)
         if max_payload_size > PIPE_MSG_MAX_SIZE:
             raise ConfigurationError(
-                f"Max payload size of {max_payload_size} bytes exceeds protocol limit of "
+                f"Max payload size of {max_payload_size} bytes exceeds pipe-reading limit of "
                 f"{PIPE_MSG_MAX_SIZE} bytes. Reduce {ENV_MAX_PAYLOAD_SIZE}."
             )
 
