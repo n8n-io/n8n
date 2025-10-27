@@ -222,6 +222,12 @@ defineExpose({
 				:size="16"
 				:class="$style.menuIcon"
 			/>
+			<N8nAvatar
+				v-else-if="item.id.startsWith('agent::') && item.id !== 'agent::new'"
+				:class="$style.avatarIcon"
+				:first-name="item.title"
+				size="xsmall"
+			/>
 		</template>
 
 		<N8nButton :class="$style.dropdownButton" type="secondary" text>
@@ -292,5 +298,9 @@ defineExpose({
 
 .menuIcon {
 	flex-shrink: 0;
+}
+
+.avatarIcon {
+	margin-right: var(--spacing--2xs);
 }
 </style>
