@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from src.env import read_int_env, read_str_env
+from src.env import read_bool_env, read_int_env, read_str_env
 from src.errors import ConfigurationError
 from src.constants import (
     BUILTINS_DENY_DEFAULT,
@@ -10,6 +10,7 @@ from src.constants import (
     DEFAULT_TASK_TIMEOUT,
     DEFAULT_AUTO_SHUTDOWN_TIMEOUT,
     DEFAULT_SHUTDOWN_TIMEOUT,
+    ENV_BLOCK_RUNNER_ENV_ACCESS,
     ENV_BUILTINS_DENY,
     ENV_EXTERNAL_ALLOW,
     ENV_GRANT_TOKEN,
@@ -54,6 +55,7 @@ class TaskRunnerConfig:
     stdlib_allow: set[str]
     external_allow: set[str]
     builtins_deny: set[str]
+    env_deny: bool
 
     @property
     def is_auto_shutdown_enabled(self) -> bool:
@@ -111,4 +113,5 @@ class TaskRunnerConfig:
                     ENV_BUILTINS_DENY, BUILTINS_DENY_DEFAULT
                 ).split(",")
             ),
+            env_deny=read_bool_env(ENV_BLOCK_RUNNER_ENV_ACCESS, True),
         )
