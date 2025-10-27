@@ -239,6 +239,7 @@ export type SchemaNode = {
 	hasBinary: boolean;
 	runIndex: number;
 	isDataEmpty: boolean;
+	lastSuccessfulPreview: boolean;
 };
 
 export type RenderItem = {
@@ -268,6 +269,7 @@ export type RenderHeader = {
 	info?: string;
 	nodeType?: INodeTypeDescription;
 	preview?: boolean;
+	lastSuccessfulPreview?: boolean;
 };
 
 export type RenderIcon = {
@@ -358,6 +360,7 @@ export const useFlattenSchema = () => {
 		prefix = '',
 		level = 0,
 		preview,
+		lastSuccessfulPreview,
 		truncateLimit,
 	}: {
 		isDataEmpty: boolean;
@@ -369,6 +372,7 @@ export const useFlattenSchema = () => {
 		prefix?: string;
 		level?: number;
 		preview?: boolean;
+		lastSuccessfulPreview?: boolean;
 		truncateLimit: number;
 	}): Renders[] => {
 		// only show empty item for the first level
@@ -418,6 +422,7 @@ export const useFlattenSchema = () => {
 							prefix: itemPrefix,
 							level: level + 1,
 							preview,
+							lastSuccessfulPreview,
 							truncateLimit,
 						});
 					})
@@ -431,7 +436,7 @@ export const useFlattenSchema = () => {
 					expression,
 					level,
 					depth,
-					value: shorten(schema.value, truncateLimit, 0),
+					value: !lastSuccessfulPreview ? shorten(schema.value, truncateLimit, 0) : '',
 					id,
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,
@@ -461,6 +466,7 @@ export const useFlattenSchema = () => {
 				info: additionalInfo(item.node),
 				type: 'header',
 				preview: item.preview,
+				lastSuccessfulPreview: item.lastSuccessfulPreview,
 			});
 
 			if (closedNodes.value.has(item.node.name)) {
@@ -474,7 +480,8 @@ export const useFlattenSchema = () => {
 				}
 
 				if (item.isDataEmpty) {
-					acc.push(emptyItem('emptyData', { level: 1 }));
+					// Check for binary data even when data is empty
+					acc.push(emptyItem(item.hasBinary ? 'emptySchemaWithBinary' : 'emptyData', { level: 1 }));
 					return acc;
 				}
 				acc.push(emptyItem(item.hasBinary ? 'emptySchemaWithBinary' : 'emptySchema', { level: 1 }));
@@ -489,6 +496,7 @@ export const useFlattenSchema = () => {
 					nodeType: item.node.type,
 					nodeName: item.node.name,
 					preview: item.preview,
+					lastSuccessfulPreview: item.lastSuccessfulPreview,
 					truncateLimit,
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
@@ -497,7 +505,7 @@ export const useFlattenSchema = () => {
 				}),
 			);
 
-			if (item.preview) {
+			if (item.preview && !item.lastSuccessfulPreview) {
 				acc.push(moreFieldsItem());
 			}
 

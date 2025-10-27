@@ -8,9 +8,11 @@ from src.config.security_config import SecurityConfig
 from src.constants import (
     MAX_VALIDATION_CACHE_SIZE,
     ERROR_RELATIVE_IMPORT,
+    ERROR_DANGEROUS_NAME,
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
     BLOCKED_ATTRIBUTES,
+    BLOCKED_NAMES,
 )
 
 CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
@@ -43,6 +45,12 @@ class SecurityValidator(ast.NodeVisitor):
             self._add_violation(node.lineno, ERROR_RELATIVE_IMPORT)
         elif node.module:
             self._validate_import(node.module, node.lineno)
+
+        self.generic_visit(node)
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id in BLOCKED_NAMES:
+            self._add_violation(node.lineno, ERROR_DANGEROUS_NAME.format(name=node.id))
 
         self.generic_visit(node)
 
