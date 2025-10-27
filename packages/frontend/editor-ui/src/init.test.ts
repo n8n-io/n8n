@@ -120,9 +120,9 @@ describe('Init', () => {
 
 		it('should correctly identify the user for telemetry', async () => {
 			const telemetryIdentifySpy = vi.spyOn(telemetry, 'identify');
-			usersStore.registerLoginHook.mockImplementation((hook) =>
-				hook(mock<CurrentUserResponse>({ id: 'userId' })),
-			);
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
 			rootStore.instanceId = 'testInstanceId';
 			rootStore.versionCli = '1.102.0';
 

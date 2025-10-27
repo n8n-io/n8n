@@ -1076,18 +1076,6 @@ defineExpose({
 		opacity: 1;
 	}
 
-	:global(.vue-flow__pane) {
-		cursor: grab;
-
-		&:global(.selection) {
-			cursor: default;
-		}
-
-		&:global(.dragging) {
-			cursor: grabbing;
-		}
-	}
-
 	&.isExperimentalNdvActive {
 		--canvas-zoom-compensation-factor: 0.5;
 	}
