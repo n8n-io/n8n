@@ -114,12 +114,14 @@ const downloadAndExtractPackage = async (packageName, version) => {
 };
 
 const analyzePackage = async (packageDir) => {
-	const { config } = await import('@n8n/node-cli/eslint');
+	const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
 	const eslint = new ESLint({
 		cwd: packageDir,
 		allowInlineConfig: false,
 		overrideConfigFile: true,
-		overrideConfig: config,
+		overrideConfig: defineConfig(n8nCommunityNodesPlugin.configs.recommended, {
+			rules: { 'no-console': 'error' },
+		}),
 	});
 
 	try {
