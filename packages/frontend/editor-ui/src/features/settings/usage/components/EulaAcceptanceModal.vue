@@ -80,7 +80,7 @@ const onClose = () => {
 	</ElDialog>
 </template>
 
-<style scoped>
+<style lang="scss" module>
 .checkboxWrapper {
 	margin-top: var(--spacing--md);
 }
