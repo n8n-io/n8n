@@ -195,7 +195,7 @@ export const mainProperties: INodeProperties[] = [
 	},
 	{
 		displayName:
-			'Use <strong>{n8n_send_and_wait_url}</strong> placeholder to indicate where the waiting <em>url</em> should be inserted in your request <em>body</em><br>In case <em>Approve adn Disprove</em> approval type is selected you will also need to insert <strong>{n8n_send_and_wait_decline_url}</strong><br>Lear more about how <em>Send and Wait</em> works <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait" target="_blank">here</a>',
+			'Use <strong>{n8n_send_and_wait_url}</strong> placeholder to indicate where the waiting <em>URL</em> should be inserted in your request <em>body</em>.<br>In case the <em>Approve and Disapprove</em> approval type is selected, you will also need to insert <strong>{n8n_send_and_wait_decline_url}</strong>.<br>Learn more about how <em>Send and Wait</em> works <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait" target="_blank">here</a>.',
 		name: 'sendAndWaitNotice',
 		type: 'notice',
 		default: '',

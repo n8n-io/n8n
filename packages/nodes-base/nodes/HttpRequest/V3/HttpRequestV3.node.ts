@@ -866,7 +866,7 @@ export class HttpRequestV3 implements INodeType {
 		);
 
 		let responseData: any;
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		for (let itemIndex = 0; itemIndex < itemsLength; itemIndex++) {
 			try {
 				responseData = promisesResponses.shift();
 
