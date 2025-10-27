@@ -48,10 +48,10 @@ const onClose = () => {
 					{{ locale.baseText('settings.usageAndPlan.dialog.eula.description') }}
 				</N8nText>
 
-				<div :style="{ marginTop: 'var(--spacing--md)' }">
+				<div :class="$style.checkboxWrapper">
 					<N8nCheckbox v-model="accepted" data-test-id="eula-checkbox">
 						<span>
-							{{ locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label') }}
+							{{ `${locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label')}} ` }}
 							<a :href="eulaUrl" target="_blank" rel="noopener noreferrer" data-test-id="eula-link">
 								{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }}
 							</a>
@@ -62,7 +62,7 @@ const onClose = () => {
 		</template>
 
 		<template #footer>
-			<div :style="{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing--2xs)' }">
+			<div :class="$style.footerActions">
 				<N8nButton type="secondary" data-test-id="eula-cancel-button" @click="onCancel">
 					{{ locale.baseText('settings.usageAndPlan.dialog.eula.button.cancel') }}
 				</N8nButton>
@@ -78,3 +78,15 @@ const onClose = () => {
 		</template>
 	</ElDialog>
 </template>
+
+<style scoped>
+.checkboxWrapper {
+	margin-top: var(--spacing--md);
+}
+
+.footerActions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+}
+</style>

@@ -91,6 +91,19 @@ const showActivationError = (error: Error) => {
 	toast.showError(error, locale.baseText('settings.usageAndPlan.license.activation.error.title'));
 };
 
+interface EulaErrorResponse {
+	httpStatusCode?: number;
+	meta?: { eulaUrl?: string };
+	response?: { status?: number; data?: { meta?: { eulaUrl?: string } } };
+}
+
+const isEulaError = (error: unknown): error is EulaErrorResponse => {
+	const err = error as EulaErrorResponse;
+	const statusCode = err.httpStatusCode ?? err.response?.status;
+	const eulaUrl = err.meta?.eulaUrl ?? err.response?.data?.meta?.eulaUrl;
+	return statusCode !== undefined && statusCode >= 400 && statusCode < 500 && !!eulaUrl;
+};
+
 const onLicenseActivation = async (eulaUri?: string) => {
 	try {
 		await usageStore.activateLicense(activationKey.value, eulaUri);
@@ -99,26 +112,18 @@ const onLicenseActivation = async (eulaUri?: string) => {
 		activationKey.value = '';
 		showActivationSuccess();
 	} catch (error: unknown) {
-		// Check if error requires EULA acceptance
-		// Handle ResponseError (has httpStatusCode and meta directly)
-		const responseError = error as {
-			httpStatusCode?: number;
-			meta?: { eulaUrl?: string };
-			response?: { status?: number; data?: { meta?: { eulaUrl?: string } } };
-		};
+		// Check if error requires EULA acceptance using type guard
+		if (isEulaError(error)) {
+			const eulaUrlFromError = error.meta?.eulaUrl ?? error.response?.data?.meta?.eulaUrl;
 
-		const statusCode = responseError.httpStatusCode ?? responseError.response?.status;
-		const eulaUrlFromError =
-			responseError.meta?.eulaUrl ?? responseError.response?.data?.meta?.eulaUrl;
-
-		if (statusCode && statusCode >= 400 && statusCode < 500 && eulaUrlFromError) {
-			activationKeyModal.value = false;
-			eulaUrl.value = eulaUrlFromError;
-			eulaModal.value = true;
+			if (eulaUrlFromError) {
+				activationKeyModal.value = false;
+				eulaUrl.value = eulaUrlFromError;
+				eulaModal.value = true;
+			}
 			return;
 		}
 
-		// Use type guard instead of type casting
 		if (error instanceof Error) {
 			showActivationError(error);
 		} else {
@@ -127,8 +132,17 @@ const onLicenseActivation = async (eulaUri?: string) => {
 	}
 };
 
-const onEulaAccept = () => {
-	void onLicenseActivation(eulaUrl.value);
+const onEulaAccept = async () => {
+	try {
+		await onLicenseActivation(eulaUrl.value);
+	} catch (error) {
+		// Error is already handled in onLicenseActivation
+		// This catch ensures modal errors don't break the UI
+		eulaModal.value = false;
+		if (error instanceof Error) {
+			showActivationError(error);
+		}
+	}
 };
 
 const onEulaCancel = () => {

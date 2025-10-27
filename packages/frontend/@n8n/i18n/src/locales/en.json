@@ -2377,7 +2377,7 @@
 	"settings.usageAndPlan.license.activation.success.message": "Your {name} {type} has been successfully activated.",
 	"settings.usageAndPlan.dialog.eula.title": "Confirm terms acceptance",
 	"settings.usageAndPlan.dialog.eula.description": "To activate your license, please review and accept our EULA terms. Once you've read the terms, check the box below to confirm your agreement and proceed.",
-	"settings.usageAndPlan.dialog.eula.checkbox.label": "Accept ",
+	"settings.usageAndPlan.dialog.eula.checkbox.label": "Accept",
 	"settings.usageAndPlan.dialog.eula.link.text": "EULA terms",
 	"settings.usageAndPlan.dialog.eula.button.accept": "Accept & activate",
 	"settings.usageAndPlan.dialog.eula.button.cancel": "@:_reusableBaseText.cancel",
