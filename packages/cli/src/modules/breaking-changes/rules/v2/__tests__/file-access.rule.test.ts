@@ -1,6 +1,6 @@
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
 import { FileAccessRule } from '../file-access.rule';
-import { createNode, createWorkflow } from './test-helpers';
 
 describe('FileAccessRule', () => {
 	let rule: FileAccessRule;

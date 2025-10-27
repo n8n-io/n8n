@@ -1,12 +1,12 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
 
 import { N8N_VERSION } from '../../../constants';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
+import { createNode, createWorkflow } from './test-helpers';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
 import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule';
 import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule';
@@ -20,23 +20,6 @@ describe('BreakingChangeService', () => {
 	let ruleRegistry: RuleRegistry;
 	let cacheService: jest.Mocked<CacheService>;
 	let service: BreakingChangeService;
-
-	const createWorkflow = (id: string, name: string, nodes: INode[], active = true) =>
-		({
-			id,
-			name,
-			active,
-			nodes,
-		}) as WorkflowEntity;
-
-	const createNode = (name: string, type: string, parameters: unknown = {}): INode => ({
-		id: `node-${name}`,
-		name,
-		type,
-		typeVersion: 1,
-		position: [0, 0],
-		parameters: parameters as INode['parameters'],
-	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -92,7 +75,7 @@ describe('BreakingChangeService', () => {
 
 		it('should aggregate results from multiple rules', async () => {
 			// Create a workflow that triggers all three rules
-			const workflow = createWorkflow('wf-1', 'Complex Workflow', [
+			const { workflow } = createWorkflow('wf-1', 'Complex Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'), // Triggers RemovedNodesRule
 				createNode('Code Node', 'n8n-nodes-base.code', {
 					code: 'const key = process.env.KEY;', // Triggers ProcessEnvAccessRule
@@ -128,10 +111,10 @@ describe('BreakingChangeService', () => {
 		});
 
 		it('should correctly count critical issues', async () => {
-			const workflow1 = createWorkflow('wf-1', 'Workflow 1', [
+			const { workflow: workflow1 } = createWorkflow('wf-1', 'Workflow 1', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'), // Critical severity
 			]);
-			const workflow2 = createWorkflow('wf-2', 'Workflow 2', [
+			const { workflow: workflow2 } = createWorkflow('wf-2', 'Workflow 2', [
 				createNode('File Node', 'n8n-nodes-base.readWriteFile'), // High severity (not critical)
 			]);
 			workflowRepository.find.mockResolvedValue([workflow1, workflow2]);

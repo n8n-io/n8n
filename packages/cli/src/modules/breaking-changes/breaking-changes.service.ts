@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core/src/errors/error-reporter';
-import { INode } from 'n8n-workflow/src/interfaces';
+import { INode } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
 import { RuleRegistry } from './breaking-changes.rule-registry.service';

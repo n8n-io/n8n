@@ -1,5 +1,5 @@
 import type { WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow/src/interfaces';
+import type { INode } from 'n8n-workflow';
 
 export const enum BreakingChangeSeverity {
 	critical = 'critical',

@@ -1,6 +1,6 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { INode } from 'n8n-workflow/src/interfaces';
+import { INode } from 'n8n-workflow';
 
 import type {
 	BreakingChangeMetadata,

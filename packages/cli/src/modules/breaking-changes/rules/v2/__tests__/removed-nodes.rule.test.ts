@@ -1,6 +1,6 @@
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
 import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
 import { RemovedNodesRule } from '../removed-nodes.rule';
-import { createNode, createWorkflow } from './test-helpers';
 
 describe('RemovedNodesRule', () => {
 	let rule: RemovedNodesRule;
