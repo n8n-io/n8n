@@ -109,7 +109,7 @@ watch(
 			/>
 			<N8nAvatar
 				v-else-if="session.provider === 'custom-agent'"
-				:first-name="session.model"
+				:first-name="session.agentName"
 				size="xsmall"
 			/>
 			<CredentialIcon
