@@ -13,6 +13,9 @@ import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/use
 import { useSpeechSynthesis } from '@vueuse/core';
 import type { ChatMessage } from '../chat.types';
 import type { ChatMessageId } from '@n8n/api-types';
+import { useChatStore } from '../chat.store';
+
+const chatStore = useChatStore();
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -55,6 +58,18 @@ const credentialTypeName = computed(() => {
 });
 
 const isCustomAgent = computed(() => message.type === 'ai' && message.provider === 'custom-agent');
+
+const agentName = computed(() => {
+	if (!isCustomAgent.value || !message.agentId) {
+		return null;
+	}
+
+	const agent = chatStore.getAgent(message.agentId);
+
+	// if agent was deleted, use cached name
+	// if agent was renamed, use updated name
+	return agent?.name ?? message.agentName;
+});
 
 async function handleCopy() {
 	const text = message.content;
@@ -142,7 +157,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<N8nAvatar v-else-if="isCustomAgent" :first-name="message.agentName" size="xsmall" />
+			<N8nAvatar v-else-if="isCustomAgent" :first-name="agentName" size="xsmall" />
 			<N8nTooltip
 				v-else-if="message.type === 'ai' && credentialTypeName"
 				:show-after="100"

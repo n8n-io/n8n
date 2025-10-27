@@ -562,6 +562,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return agent;
 	}
 
+	function getAgent(agentId: string) {
+		return models.value?.['custom-agent'].models.find(
+			(model) => 'agentId' in model && model.agentId === agentId,
+		);
+	}
+
 	async function createAgent(
 		payload: ChatHubCreateAgentRequest,
 	): Promise<ChatHubConversationModel> {
@@ -615,6 +621,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		loadingModels,
 		isResponding,
 		streamingMessageId,
+		getAgent,
 		fetchChatModels,
 		updateSessionModel,
 		sendMessage,

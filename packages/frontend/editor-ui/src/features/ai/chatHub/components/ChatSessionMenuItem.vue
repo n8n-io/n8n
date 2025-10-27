@@ -6,6 +6,9 @@ import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubSessionDto } from '@n8n/api-t
 import { N8nIcon, N8nInput, N8nAvatar } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { useChatStore } from '../chat.store';
+
+const chatStore = useChatStore();
 
 const { session, isRenaming, active } = defineProps<{
 	session: ChatHubSessionDto;
@@ -24,6 +27,18 @@ const input = useTemplateRef('input');
 const editedLabel = ref('');
 
 type SessionAction = 'rename' | 'delete';
+
+const agentName = computed(() => {
+	if (!session.agentId) {
+		return null;
+	}
+
+	const agent = chatStore.getAgent(session.agentId);
+
+	// if agent was deleted, use cached name
+	// if agent was renamed, use updated name
+	return agent?.name ?? session.agentName;
+});
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 	{
@@ -109,7 +124,7 @@ watch(
 			/>
 			<N8nAvatar
 				v-else-if="session.provider === 'custom-agent'"
-				:first-name="session.agentName"
+				:first-name="agentName"
 				size="xsmall"
 			/>
 			<CredentialIcon
