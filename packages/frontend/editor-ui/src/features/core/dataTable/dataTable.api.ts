@@ -229,6 +229,6 @@ export const uploadCsvFileApi = async (context: IRestApiContext, file: File) => 
 		id: string;
 		rowCount: number;
 		columnCount: number;
-		columns: Array<{ name: string; type: string }>;
+		columns: Array<{ name: string; type: string; compatibleTypes: string[] }>;
 	}>(context, 'POST', '/data-tables/uploads', formData);
 };

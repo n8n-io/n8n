@@ -51,10 +51,14 @@ export class CsvParserService {
 					firstDataRow ??= row;
 				})
 				.on('end', () => {
-					const columns = columnNames.map((columnName) => ({
-						name: columnName,
-						type: this.inferColumnType(firstDataRow?.[columnName]),
-					}));
+					const columns = columnNames.map((columnName) => {
+						const detectedType = this.inferColumnType(firstDataRow?.[columnName]);
+						return {
+							name: columnName,
+							type: detectedType,
+							compatibleTypes: this.getCompatibleTypes(detectedType),
+						};
+					});
 
 					resolve({
 						rowCount,
@@ -91,6 +95,31 @@ export class CsvParserService {
 				})
 				.on('error', reject);
 		});
+	}
+
+	/**
+	 * Returns the list of compatible types for a detected type
+	 * Logic: more specific types can be converted to string, but string cannot be converted to specific types
+	 */
+	private getCompatibleTypes(
+		detectedType: 'string' | 'number' | 'boolean' | 'date',
+	): Array<'string' | 'number' | 'boolean' | 'date'> {
+		switch (detectedType) {
+			case 'date':
+				// Date can be kept as date or converted to string
+				return ['date', 'string'];
+			case 'number':
+				// Number can be kept as number or converted to string
+				return ['number', 'string'];
+			case 'boolean':
+				// Boolean can be kept as boolean or converted to string
+				return ['boolean', 'string'];
+			case 'string':
+				// String can only be string (cannot reliably convert to other types)
+				return ['string'];
+			default:
+				return ['string'];
+		}
 	}
 
 	/**

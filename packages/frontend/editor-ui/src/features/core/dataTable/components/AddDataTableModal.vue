@@ -10,7 +10,14 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { dataTableColumnNameSchema, DATA_TABLE_COLUMN_ERROR_MESSAGE } from '@n8n/api-types';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import { N8nButton, N8nInput, N8nInputLabel, N8nSelect, N8nIcon } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInput,
+	N8nInputLabel,
+	N8nSelect,
+	N8nOption,
+	N8nIcon,
+} from '@n8n/design-system';
 import Modal from '@/components/Modal.vue';
 
 type Props = {
@@ -23,6 +30,8 @@ type ColumnType = 'string' | 'number' | 'boolean' | 'date';
 interface CsvColumn {
 	name: string;
 	type: ColumnType;
+	compatibleTypes: ColumnType[];
+	typeOptions: Array<{ label: string; value: string }>;
 	error?: string;
 }
 
@@ -49,12 +58,21 @@ const csvRowCount = ref<number>(0);
 const csvColumnCount = ref<number>(0);
 const isUploading = ref(false);
 
-const columnTypeOptions = [
+const allColumnTypeOptions = [
 	{ label: 'String', value: 'string' },
 	{ label: 'Number', value: 'number' },
 	{ label: 'Boolean', value: 'boolean' },
 	{ label: 'Datetime', value: 'date' },
 ];
+
+const getColumnTypeOptions = (compatibleTypes: ColumnType[]) => {
+	if (!compatibleTypes || compatibleTypes.length === 0) {
+		return allColumnTypeOptions;
+	}
+	return allColumnTypeOptions.filter((option) =>
+		compatibleTypes.includes(option.value as ColumnType),
+	);
+};
 
 const getTypeIcon = (type: ColumnType) => {
 	switch (type) {
@@ -187,11 +205,18 @@ const handleFileSelected = async (event: Event) => {
 		uploadedFileName.value = uploadResponse.originalName;
 		csvRowCount.value = uploadResponse.rowCount;
 		csvColumnCount.value = uploadResponse.columnCount;
-		csvColumns.value = uploadResponse.columns.map((col) => ({
-			name: col.name,
-			type: col.type as ColumnType,
-			error: validateColumnName(col.name),
-		}));
+		csvColumns.value = uploadResponse.columns.map((col) => {
+			const compatibleTypes = (col.compatibleTypes || [col.type]) as ColumnType[];
+			return {
+				name: col.name,
+				type: col.type as ColumnType,
+				compatibleTypes,
+				typeOptions: getColumnTypeOptions(compatibleTypes),
+				error: validateColumnName(col.name),
+			};
+		});
+
+		console.log('CSV Columns:', csvColumns.value);
 
 		// Set default table name from file name
 		if (!dataTableName.value) {
@@ -419,10 +444,16 @@ const redirectToDataTables = () => {
 											/>
 											<N8nSelect
 												v-model="column.type"
-												:options="columnTypeOptions"
 												:data-test-id="`column-type-${index}`"
 												:class="$style.typeSelect"
-											/>
+											>
+												<N8nOption
+													v-for="option in column.typeOptions"
+													:key="option.value"
+													:value="option.value"
+													:label="option.label"
+												/>
+											</N8nSelect>
 										</div>
 									</div>
 								</div>
