@@ -1,17 +1,19 @@
-import { describe, it, expect, vi } from 'vitest';
+import type { WorkflowState } from '@/composables/useWorkflowState';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestingPinia } from '@pinia/testing';
+import type { ITaskData } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { Router } from 'vue-router';
 import {
 	continueEvaluationLoop,
 	executionFinished,
 	type SimplifiedExecution,
 } from './executionFinished';
-import type { ITaskData } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
-import type { Router } from 'vue-router';
-import type { WorkflowState } from '@/composables/useWorkflowState';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
 
 const runWorkflow = vi.fn();
 
@@ -206,5 +208,218 @@ describe('executionFinished', () => {
 		);
 
 		expect(workflowState.executingNode.lastAddedExecutingNode).toBeNull();
+	});
+
+	describe('ready-to-run AI workflow tracking', () => {
+		it('should track successful execution of ready-to-run-ai-workflow', async () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = useWorkflowsStore();
+			const readyToRunStore = useReadyToRunStore();
+
+			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+				id: '1',
+				name: 'Test Workflow',
+				meta: { templateId: 'ready-to-run-ai-workflow' },
+			} as IWorkflowDb);
+
+			const trackExecuteAiWorkflowSuccess = vi.spyOn(
+				readyToRunStore,
+				'trackExecuteAiWorkflowSuccess',
+			);
+
+			const workflowState = mock<WorkflowState>({
+				executingNode: {
+					lastAddedExecutingNode: null,
+				},
+			});
+
+			await executionFinished(
+				{
+					type: 'executionFinished',
+					data: {
+						executionId: '123',
+						workflowId: '1',
+						status: 'success',
+					},
+				},
+				{
+					router: mock<Router>(),
+					workflowState,
+				},
+			);
+
+			expect(trackExecuteAiWorkflowSuccess).toHaveBeenCalled();
+		});
+
+		it('should track failed execution of ready-to-run-ai-workflow', async () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = useWorkflowsStore();
+			const readyToRunStore = useReadyToRunStore();
+
+			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+				id: '1',
+				name: 'Test Workflow',
+				meta: { templateId: 'ready-to-run-ai-workflow' },
+			} as IWorkflowDb);
+
+			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
+
+			const workflowState = mock<WorkflowState>({
+				executingNode: {
+					lastAddedExecutingNode: null,
+				},
+			});
+
+			await executionFinished(
+				{
+					type: 'executionFinished',
+					data: {
+						executionId: '123',
+						workflowId: '1',
+						status: 'error',
+					},
+				},
+				{
+					router: mock<Router>(),
+					workflowState,
+				},
+			);
+
+			expect(trackExecuteAiWorkflow).toHaveBeenCalledWith('error');
+		});
+
+		it('should track execution of ready-to-run-ai-workflow-v1', async () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = useWorkflowsStore();
+			const readyToRunStore = useReadyToRunStore();
+
+			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+				id: '1',
+				name: 'Test Workflow',
+				meta: { templateId: 'ready-to-run-ai-workflow-v1' },
+			} as IWorkflowDb);
+
+			const trackExecuteAiWorkflowSuccess = vi.spyOn(
+				readyToRunStore,
+				'trackExecuteAiWorkflowSuccess',
+			);
+
+			const workflowState = mock<WorkflowState>({
+				executingNode: {
+					lastAddedExecutingNode: null,
+				},
+			});
+
+			await executionFinished(
+				{
+					type: 'executionFinished',
+					data: {
+						executionId: '123',
+						workflowId: '1',
+						status: 'success',
+					},
+				},
+				{
+					router: mock<Router>(),
+					workflowState,
+				},
+			);
+
+			expect(trackExecuteAiWorkflowSuccess).toHaveBeenCalled();
+		});
+
+		it('should track execution of ready-to-run-ai-workflow-v4', async () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = useWorkflowsStore();
+			const readyToRunStore = useReadyToRunStore();
+
+			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+				id: '1',
+				name: 'Test Workflow',
+				meta: { templateId: 'ready-to-run-ai-workflow-v4' },
+			} as IWorkflowDb);
+
+			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
+
+			const workflowState = mock<WorkflowState>({
+				executingNode: {
+					lastAddedExecutingNode: null,
+				},
+			});
+
+			await executionFinished(
+				{
+					type: 'executionFinished',
+					data: {
+						executionId: '123',
+						workflowId: '1',
+						status: 'canceled',
+					},
+				},
+				{
+					router: mock<Router>(),
+					workflowState,
+				},
+			);
+
+			expect(trackExecuteAiWorkflow).toHaveBeenCalledWith('canceled');
+		});
+
+		it('should not track execution for non-ready-to-run workflows', async () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = useWorkflowsStore();
+			const readyToRunStore = useReadyToRunStore();
+
+			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+				id: '1',
+				name: 'Test Workflow',
+				meta: { templateId: 'some-other-template' },
+			} as IWorkflowDb);
+
+			const trackExecuteAiWorkflowSuccess = vi.spyOn(
+				readyToRunStore,
+				'trackExecuteAiWorkflowSuccess',
+			);
+			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
+
+			const workflowState = mock<WorkflowState>({
+				executingNode: {
+					lastAddedExecutingNode: null,
+				},
+			});
+
+			await executionFinished(
+				{
+					type: 'executionFinished',
+					data: {
+						executionId: '123',
+						workflowId: '1',
+						status: 'success',
+					},
+				},
+				{
+					router: mock<Router>(),
+					workflowState,
+				},
+			);
+
+			expect(trackExecuteAiWorkflowSuccess).not.toHaveBeenCalled();
+			expect(trackExecuteAiWorkflow).not.toHaveBeenCalled();
+		});
 	});
 });
