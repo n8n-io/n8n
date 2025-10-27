@@ -2,7 +2,7 @@ from typing import Any, TypedDict
 
 from src.message_types.broker import Items
 
-PrintArgs = list[list[Any]]
+PrintArgs = list[list[Any]] # Args to all `print()` calls in a Python code task
 
 
 class TaskErrorInfo(TypedDict):
