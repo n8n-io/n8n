@@ -47,15 +47,15 @@ export type CustomRegex = {
 export interface GuardrailsOptions {
 	keywords?: string;
 	jailbreak?: Value<{
-		prompt: string;
+		prompt?: string;
 		threshold: number;
 	}>;
 	nsfw?: Value<{
-		prompt: string;
+		prompt?: string;
 		threshold: number;
 	}>;
 	promptInjection?: Value<{
-		prompt: string;
+		prompt?: string;
 		threshold: number;
 	}>;
 	pii?: Value<{
@@ -75,7 +75,7 @@ export interface GuardrailsOptions {
 		permissiveness: 'strict' | 'balanced' | 'permissive';
 	}>;
 	topicalAlignment?: Value<{
-		prompt: string;
+		prompt?: string;
 		threshold: number;
 	}>;
 	custom?: {

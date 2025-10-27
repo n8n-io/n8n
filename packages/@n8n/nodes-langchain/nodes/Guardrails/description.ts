@@ -23,20 +23,31 @@ const THRESHOLD_OPTION: INodeProperties = {
 	hint: 'Inputs scoring less than this will be treated as violations',
 };
 
-const getPromptOption: (defaultPrompt: string, collapsed?: boolean) => INodeProperties = (
+const getPromptOption: (
 	defaultPrompt: string,
-	collapsed = true,
-) => ({
-	displayName: 'Prompt',
-	name: 'prompt',
-	type: 'string',
-	default: defaultPrompt,
-	description:
-		'The system prompt used by the guardrail. JSON output is enforced by the node automatically.',
-	typeOptions: {
-		rows: collapsed ? 1 : 6,
-	},
-});
+	collapsible?: boolean,
+	hint?: string,
+) => INodeProperties[] = (defaultPrompt, collapsible = true, hint) => {
+	const promptParameters: INodeProperties = {
+		displayName: 'Prompt',
+		name: 'prompt',
+		type: 'string',
+		default: defaultPrompt,
+		description:
+			'The system prompt used by the guardrail. JSON output is enforced by the node automatically.',
+		hint,
+		typeOptions: {
+			rows: 6,
+		},
+	};
+	if (collapsible) {
+		return [
+			{ displayName: 'Customize Prompt', name: 'customizePrompt', type: 'boolean', default: false },
+			{ ...promptParameters, displayOptions: { show: { customizePrompt: [true] } } },
+		];
+	}
+	return [promptParameters];
+};
 
 const wrapValue = (properties: INodeProperties[]) => ({
 	displayName: 'Value',
@@ -106,7 +117,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'sanitize',
 					action: 'Sanitize text',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period
-					description: 'Sanitize text to mask PII, secret keys, URLs, etc.',
+					description: 'Redact text to mask PII, secret keys, URLs, etc.',
 				},
 			],
 			default: 'classify',
@@ -168,7 +179,7 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to jailbreak or bypass AI safety measures',
-					options: [wrapValue([getPromptOption(JAILBREAK_PROMPT), THRESHOLD_OPTION])],
+					options: [wrapValue([...getPromptOption(JAILBREAK_PROMPT), THRESHOLD_OPTION])],
 					displayOptions: {
 						show: {
 							'/operation': ['classify'],
@@ -181,7 +192,7 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to generate NSFW content',
-					options: [wrapValue([getPromptOption(NSFW_SYSTEM_PROMPT), THRESHOLD_OPTION])],
+					options: [wrapValue([...getPromptOption(NSFW_SYSTEM_PROMPT), THRESHOLD_OPTION])],
 					displayOptions: {
 						show: {
 							'/operation': ['classify'],
@@ -265,7 +276,10 @@ export const versionDescription: INodeTypeDescription = {
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to inject prompt into the input text',
 					options: [
-						wrapValue([getPromptOption(PROMPT_INJECTION_DETECTION_CHECK_PROMPT), THRESHOLD_OPTION]),
+						wrapValue([
+							...getPromptOption(PROMPT_INJECTION_DETECTION_CHECK_PROMPT),
+							THRESHOLD_OPTION,
+						]),
 					],
 					displayOptions: {
 						show: {
@@ -309,10 +323,11 @@ export const versionDescription: INodeTypeDescription = {
 					description: 'Detects attempts to stray from the business scope',
 					options: [
 						wrapValue([
-							{
-								...getPromptOption(TOPICAL_ALIGNMENT_SYSTEM_PROMPT, false),
-								hint: 'Make sure you replace the placeholder.',
-							},
+							...getPromptOption(
+								TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
+								false,
+								'Make sure you replace the placeholder.',
+							),
 							THRESHOLD_OPTION,
 						]),
 					],
@@ -422,7 +437,7 @@ export const versionDescription: INodeTypeDescription = {
 									default: '',
 									description: 'Name of the custom guardrail',
 								},
-								getPromptOption('', false),
+								...getPromptOption('', false),
 								THRESHOLD_OPTION,
 							],
 						},

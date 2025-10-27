@@ -8,13 +8,18 @@ import { splitByComma } from '../helpers/common';
 import { mapGuardrailErrorsToMessage, mapGuardrailResultToUserResult } from '../helpers/mappers';
 import { createLLMCheckFn } from '../helpers/model';
 import { applyPreflightModifications } from '../helpers/preflight';
-import { createJailbreakCheckFn } from './checks/jailbreak';
 import { createKeywordsCheckFn } from './checks/keywords';
-import { createNSFWCheckFn } from './checks/nsfw';
+import { createNSFWCheckFn, NSFW_SYSTEM_PROMPT } from './checks/nsfw';
 import { createPiiCheckFn } from './checks/pii';
-import { createPromptInjectionCheckFn } from './checks/promptInjection';
+import {
+	createPromptInjectionCheckFn,
+	PROMPT_INJECTION_DETECTION_CHECK_PROMPT,
+} from './checks/promptInjection';
 import { createSecretKeysCheckFn } from './checks/secretKeys';
-import { createTopicalAlignmentCheckFn } from './checks/topicalAlignment';
+import {
+	createTopicalAlignmentCheckFn,
+	TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
+} from './checks/topicalAlignment';
 import { createUrlsCheckFn } from './checks/urls';
 import type {
 	GroupedGuardrailResults,
@@ -22,6 +27,7 @@ import type {
 	GuardrailUserResult,
 	StageGuardRails,
 } from './types';
+import { createJailbreakCheckFn, JAILBREAK_PROMPT } from './checks/jailbreak';
 
 interface Result {
 	checks: GuardrailUserResult[];
@@ -126,7 +132,7 @@ export async function process(
 			const { prompt, threshold } = guardrails.jailbreak.value;
 			stageGuardrails.input.push({
 				name: 'jailbreak',
-				check: createJailbreakCheckFn({ model, prompt, threshold }),
+				check: createJailbreakCheckFn({ model, prompt: prompt ?? JAILBREAK_PROMPT, threshold }),
 			});
 		}
 
@@ -134,7 +140,7 @@ export async function process(
 			const { prompt, threshold } = guardrails.nsfw.value;
 			stageGuardrails.input.push({
 				name: 'nsfw',
-				check: createNSFWCheckFn({ model, prompt, threshold }),
+				check: createNSFWCheckFn({ model, prompt: prompt ?? NSFW_SYSTEM_PROMPT, threshold }),
 			});
 		}
 
@@ -142,7 +148,11 @@ export async function process(
 			const { prompt, threshold } = guardrails.promptInjection.value;
 			stageGuardrails.input.push({
 				name: 'promptInjection',
-				check: createPromptInjectionCheckFn({ model, prompt, threshold }),
+				check: createPromptInjectionCheckFn({
+					model,
+					prompt: prompt ?? PROMPT_INJECTION_DETECTION_CHECK_PROMPT,
+					threshold,
+				}),
 			});
 		}
 
@@ -150,7 +160,11 @@ export async function process(
 			const { prompt, threshold } = guardrails.topicalAlignment.value;
 			stageGuardrails.input.push({
 				name: 'topicalAlignment',
-				check: createTopicalAlignmentCheckFn({ model, prompt, threshold }),
+				check: createTopicalAlignmentCheckFn({
+					model,
+					prompt: prompt ?? TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
+					threshold,
+				}),
 			});
 		}
 
