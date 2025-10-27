@@ -22,7 +22,7 @@ const i18n = useI18n();
 		</N8nInfoTip>
 		<N8nTooltip :content="i18n.baseText('settings.ai.button.tooltip')" :disabled="props.disabled">
 			<N8nLink
-				:to="{ name: VIEWS.AI_SETTINGS }"
+				:to="props.disabled ? undefined : { name: VIEWS.AI_SETTINGS }"
 				:aria-label="i18n.baseText('settings.ai.button.tooltip')"
 				:class="{ [$style.link]: true, [$style.disabled]: props.disabled }"
 			>
