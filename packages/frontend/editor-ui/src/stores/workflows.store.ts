@@ -199,6 +199,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return (
 			(node.type === WAIT_NODE_TYPE ||
 				node.type === FORM_NODE_TYPE ||
+				node.parameters?.sendAndWaitMode === true ||
 				node.parameters?.operation === SEND_AND_WAIT_OPERATION) &&
 			node.disabled !== true
 		);

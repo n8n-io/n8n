@@ -1,6 +1,20 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { type INodeProperties } from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
+import { getSendAndWaitProperties } from '../../../utils/sendAndWait/utils';
+
+const sendAndWaitProperties: INodeProperties[] = getSendAndWaitProperties(
+	[],
+	undefined,
+	undefined,
+	{
+		displayOptions: {
+			show: {
+				sendAndWaitMode: [true],
+			},
+		},
+	},
+).filter((p) => !['subject', 'message'].includes(p.name));
 
 const preBuiltAgentsCallout: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -162,6 +176,30 @@ export const mainProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				provideSslCertificates: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Send and Wait for Response',
+		name: 'sendAndWaitMode',
+		type: 'boolean',
+		default: false,
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				method: ['POST', 'PUT', 'PATCH'],
+			},
+		},
+	},
+	{
+		displayName:
+			'Use <strong>{n8n_send_and_wait_url}</strong> placeholder to indicate where the waiting <em>url</em> should be inserted in your request <em>body</em><br>In case <em>Approve adn Disprove</em> approval type is selected you will also need to insert <strong>{n8n_send_and_wait_decline_url}</strong><br>Lear more about how <em>Send and Wait</em> works <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait" target="_blank">here</a>',
+		name: 'sendAndWaitNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				sendAndWaitMode: [true],
 			},
 		},
 	},
@@ -663,6 +701,7 @@ export const mainProperties: INodeProperties[] = [
 		default: '',
 		placeholder: '',
 	},
+	...sendAndWaitProperties,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -1185,12 +1224,20 @@ export const mainProperties: INodeProperties[] = [
 					'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 			},
 		],
+		displayOptions: {
+			hide: {
+				sendAndWaitMode: [true],
+			},
+		},
 	},
 	...optimizeResponseProperties.map((prop) => ({
 		...prop,
 		displayOptions: {
 			...prop.displayOptions,
 			show: { ...prop.displayOptions?.show, '@tool': [true] },
+			hide: {
+				sendAndWaitMode: [true],
+			},
 		},
 	})),
 	{

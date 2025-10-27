@@ -432,7 +432,11 @@ export function getGenericHints({
 	}
 
 	// add sendAndWait hint
-	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
+	if (
+		hasMultipleInputItems &&
+		(workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION ||
+			workflowNode.parameters.sendAndWaitMode)
+	) {
 		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({

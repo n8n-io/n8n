@@ -11,6 +11,7 @@ import type {
 	IWebhookFunctions,
 	IDataObject,
 	FormFieldsParameter,
+	IDisplayOptions,
 } from 'n8n-workflow';
 
 import { limitWaitTimeProperties } from './descriptions';
@@ -82,6 +83,7 @@ export function getSendAndWaitProperties(
 		noButtonStyle?: boolean;
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
+		displayOptions?: IDisplayOptions;
 	},
 ) {
 	const buttonStyle: INodeProperties = {
@@ -312,7 +314,7 @@ export function getSendAndWaitProperties(
 	];
 
 	return updateDisplayOptions(
-		{
+		options?.displayOptions ?? {
 			show: {
 				resource: [resource],
 				operation: [SEND_AND_WAIT_OPERATION],

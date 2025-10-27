@@ -44,6 +44,16 @@ import {
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
+import {
+	getSendAndWaitConfig,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
+import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
+
+const CONFIRM_URL_PLACEHOLDER = '{n8n_send_and_wait_url}';
+const DECLINE_URL_PLACEHOLDER = '{n8n_send_and_wait_decline_url}';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -85,9 +95,13 @@ export class HttpRequestV3 implements INodeType {
 					},
 				},
 			},
+			waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
+			webhooks: sendAndWaitWebhooksDescription,
 			properties: mainProperties,
 		};
 	}
+
+	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -158,8 +172,10 @@ export class HttpRequestV3 implements INodeType {
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
+		const isSendAndWaitEnabled = this.getNodeParameter('sendAndWaitMode', 0, false) as boolean;
+		const itemsLength = isSendAndWaitEnabled ? 1 : items.length;
 
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		for (let itemIndex = 0; itemIndex < itemsLength; itemIndex++) {
 			try {
 				if (authentication === 'genericCredentialType') {
 					genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
@@ -633,6 +649,42 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
+				if (isSendAndWaitEnabled) {
+					const { options: configOptions } = getSendAndWaitConfig(this);
+					let confirmUrl = '';
+					let declineUrl = '';
+
+					for (const option of configOptions) {
+						if (option.url.includes('approved=true')) {
+							confirmUrl = option.url;
+							continue;
+						}
+
+						if (option.url.includes('approved=false')) {
+							declineUrl = option.url;
+						}
+					}
+
+					if (requestOptions.body) {
+						let stringifiedBody = '';
+						const bodyType = typeof requestOptions.body;
+
+						if (bodyType === 'string') {
+							stringifiedBody = requestOptions.body;
+						}
+
+						if (bodyType === 'object') {
+							stringifiedBody = JSON.stringify(requestOptions.body);
+						}
+
+						stringifiedBody = stringifiedBody.replaceAll(CONFIRM_URL_PLACEHOLDER, confirmUrl);
+						stringifiedBody = stringifiedBody.replaceAll(DECLINE_URL_PLACEHOLDER, declineUrl);
+
+						requestOptions.body =
+							bodyType === 'string' ? stringifiedBody : jsonParse(stringifiedBody);
+					}
+				}
+
 				requests.push({
 					options: requestOptions,
 					authKeys: authDataKeys,
@@ -1099,6 +1151,12 @@ export class HttpRequestV3 implements INodeType {
 
 				continue;
 			}
+		}
+
+		if (isSendAndWaitEnabled) {
+			const waitTill = configureWaitTillDate(this);
+			await this.putExecutionToWait(waitTill);
+			return [this.getInputData()];
 		}
 
 		returnItems = returnItems.map(replaceNullValues);
