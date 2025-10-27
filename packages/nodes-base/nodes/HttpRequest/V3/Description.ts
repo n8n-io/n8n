@@ -8,6 +8,8 @@ const sendAndWaitProperties: INodeProperties[] = getSendAndWaitProperties(
 	undefined,
 	undefined,
 	{
+		noButtonStyle: true,
+		noUiOptions: true,
 		displayOptions: {
 			show: {
 				sendAndWaitMode: [true],
