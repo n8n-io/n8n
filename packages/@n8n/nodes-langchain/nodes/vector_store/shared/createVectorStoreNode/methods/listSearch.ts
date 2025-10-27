@@ -81,7 +81,7 @@ export async function milvusCollectionsSearch(this: ILoadOptionsFunctions) {
 	const client = new MilvusClient({
 		address: credentials.baseUrl,
 		token: `${credentials.username}:${credentials.password}`,
-		database: credentials.databaseName,
+		database: credentials.databaseName ?? 'default',
 	});
 
 	const response = await client.listCollections();
