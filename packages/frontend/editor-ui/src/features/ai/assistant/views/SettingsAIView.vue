@@ -36,13 +36,6 @@ const aiSettingsDescription = computed(() => {
 	return i18n.baseText('settings.ai.description.both');
 });
 
-const efficiencyNotice = computed(() => {
-	if (isBulderEnabled.value) {
-		return i18n.baseText('settings.ai.efficiencyNotice.builderEnabled');
-	}
-	return i18n.baseText('settings.ai.efficiencyNotice.builderDisabled');
-});
-
 const confirmationMessage = computed(() => {
 	if (isBulderEnabled.value) {
 		return i18n.baseText('settings.ai.confirm.message.builderEnabled');
@@ -101,7 +94,7 @@ onMounted(async () => {
 				@update:model-value="onAllowSendingActualDataChange"
 			/>
 			<N8nNotice v-if="!allowSendingActualData" type="warning" :closable="false">
-				{{ efficiencyNotice }}
+				{{ i18n.baseText('settings.ai.efficiencyNotice') }}
 			</N8nNotice>
 		</div>
 	</div>
