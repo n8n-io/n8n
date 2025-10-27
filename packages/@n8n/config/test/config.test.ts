@@ -313,6 +313,7 @@ describe('GlobalConfig', () => {
 			disableBareRepos: false,
 		},
 		executions: {
+			mode: 'regular',
 			timeout: -1,
 			maxTimeout: 3600,
 			pruneData: true,

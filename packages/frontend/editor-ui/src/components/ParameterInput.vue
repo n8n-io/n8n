@@ -49,7 +49,7 @@ import {
 	isValidParameterOption,
 	parseFromExpression,
 	shouldSkipParamValidation,
-} from '@/utils/nodeSettingsUtils';
+} from '@/features/ndv/ndv.utils';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 
 import {
@@ -68,10 +68,10 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { useNodeSettingsParameters } from '@/features/ndv/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

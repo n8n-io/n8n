@@ -5,18 +5,18 @@ import Modal from '@/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubProvider } from '@n8n/api-types';
+import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 
 const props = defineProps<{
-	provider: ChatHubProvider;
+	provider: ChatHubLLMProvider;
 	initialValue: string | null;
 }>();
 
 const emit = defineEmits<{
-	select: [provider: ChatHubProvider, credentialId: string];
-	createNew: [provider: ChatHubProvider];
+	select: [provider: ChatHubLLMProvider, credentialId: string];
+	createNew: [provider: ChatHubLLMProvider];
 }>();
 
 const credentialsStore = useCredentialsStore();
