@@ -12,15 +12,15 @@ class TestTaskExecutorProcessExitHandling:
         process.is_alive.return_value = False
         process.exitcode = SIGTERM_EXIT_CODE
 
-        parent_conn = MagicMock()
-        child_conn = MagicMock()
-        parent_conn.fileno.return_value = 999
+        read_conn = MagicMock()
+        write_conn = MagicMock()
+        read_conn.fileno.return_value = 999
 
         with pytest.raises(TaskCancelledError):
             TaskExecutor.execute_process(
                 process=process,
-                parent_conn=parent_conn,
-                child_conn=child_conn,
+                read_conn=read_conn,
+                write_conn=write_conn,
                 task_timeout=60,
                 continue_on_fail=False,
             )
@@ -31,15 +31,15 @@ class TestTaskExecutorProcessExitHandling:
         process.exitcode = SIGKILL_EXIT_CODE
 
         # Create mock connections
-        parent_conn = MagicMock()
-        child_conn = MagicMock()
-        parent_conn.fileno.return_value = 999
+        read_conn = MagicMock()
+        write_conn = MagicMock()
+        read_conn.fileno.return_value = 999
 
         with pytest.raises(TaskKilledError):
             TaskExecutor.execute_process(
                 process=process,
-                parent_conn=parent_conn,
-                child_conn=child_conn,
+                read_conn=read_conn,
+                write_conn=write_conn,
                 task_timeout=60,
                 continue_on_fail=False,
             )
@@ -50,15 +50,15 @@ class TestTaskExecutorProcessExitHandling:
         process.exitcode = -1  # Some other error code
 
         # Create mock connections
-        parent_conn = MagicMock()
-        child_conn = MagicMock()
-        parent_conn.fileno.return_value = 999
+        read_conn = MagicMock()
+        write_conn = MagicMock()
+        read_conn.fileno.return_value = 999
 
         with pytest.raises(TaskSubprocessFailedError) as exc_info:
             TaskExecutor.execute_process(
                 process=process,
-                parent_conn=parent_conn,
-                child_conn=child_conn,
+                read_conn=read_conn,
+                write_conn=write_conn,
                 task_timeout=60,
                 continue_on_fail=False,
             )
@@ -72,15 +72,15 @@ class TestTaskExecutorProcessExitHandling:
         process.is_alive.return_value = False
         process.exitcode = 0
 
-        parent_conn = MagicMock()
-        child_conn = MagicMock()
-        parent_conn.fileno.return_value = 999
+        read_conn = MagicMock()
+        write_conn = MagicMock()
+        read_conn.fileno.return_value = 999
 
         with pytest.raises(TaskResultMissingError):
             TaskExecutor.execute_process(
                 process=process,
-                parent_conn=parent_conn,
-                child_conn=child_conn,
+                read_conn=read_conn,
+                write_conn=write_conn,
                 task_timeout=60,
                 continue_on_fail=False,
             )

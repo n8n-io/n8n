@@ -59,25 +59,25 @@ class TaskExecutor:
             else TaskExecutor._per_item
         )
 
-        parent_conn, child_conn = MULTIPROCESSING_CONTEXT.Pipe(duplex=False)
+        read_conn, write_conn = MULTIPROCESSING_CONTEXT.Pipe(duplex=False)
 
         process = MULTIPROCESSING_CONTEXT.Process(
             target=fn,
             args=(
                 code,
                 items,
-                child_conn,
+                write_conn,
                 security_config,
             ),
         )
 
-        return process, parent_conn, child_conn
+        return process, read_conn, write_conn
 
     @staticmethod
     def execute_process(
         process: ForkServerProcess,
-        parent_conn,
-        child_conn,
+        read_conn,
+        write_conn,
         task_timeout: int,
         continue_on_fail: bool,
     ) -> tuple[list, PrintArgs, int]:
@@ -86,7 +86,7 @@ class TaskExecutor:
         print_args: PrintArgs = []
 
         try:
-            read_fd = parent_conn.fileno()
+            read_fd = read_conn.fileno()
 
             result_data: list[dict] = []
             read_error: list[Exception] = []
@@ -104,17 +104,17 @@ class TaskExecutor:
                 except Exception as e:
                     read_error.append(e)
                 finally:
-                    parent_conn.close()
+                    read_conn.close()
 
             reader = threading.Thread(target=read_from_pipe, daemon=True)
             reader.start()
 
             try:
                 process.start()
-                child_conn.close()
+                write_conn.close()
             except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
                 logger.error(f"Failed to start child process: {e}")
-                child_conn.close()
+                write_conn.close()
                 raise TaskSubprocessFailedError(-1)
 
             process.join(timeout=task_timeout)
@@ -187,7 +187,7 @@ class TaskExecutor:
     def _all_items(
         raw_code: str,
         items: Items,
-        child_conn,
+        write_conn,
         security_config: SecurityConfig,
     ):
         """Execute a Python code task in all-items mode."""
@@ -213,18 +213,18 @@ class TaskExecutor:
             exec(compiled_code, globals)
 
             result = globals[EXECUTOR_USER_OUTPUT_KEY]
-            write_fd = child_conn.fileno()
+            write_fd = write_conn.fileno()
             TaskExecutor._put_result(write_fd, result, print_args)
 
         except BaseException as e:
-            write_fd = child_conn.fileno()
+            write_fd = write_conn.fileno()
             TaskExecutor._put_error(write_fd, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _per_item(
         raw_code: str,
         items: Items,
-        child_conn,
+        write_conn,
         security_config: SecurityConfig,
     ):
         """Execute a Python code task in per-item mode."""
@@ -268,11 +268,11 @@ class TaskExecutor:
 
                 result.append(item)
 
-            write_fd = child_conn.fileno()
+            write_fd = write_conn.fileno()
             TaskExecutor._put_result(write_fd, result, print_args)
 
         except BaseException as e:
-            write_fd = child_conn.fileno()
+            write_fd = write_conn.fileno()
             TaskExecutor._put_error(write_fd, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
