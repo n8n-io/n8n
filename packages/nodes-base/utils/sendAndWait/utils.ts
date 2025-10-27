@@ -467,18 +467,10 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 	const query = req.query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
-
-	let metadata;
-	const executionId = this.getExecutionId?.();
-	if (executionId && this.getExecutionDataById) {
-		const executionData = await this.getExecutionDataById(executionId);
-		const nodeName = this.getNode().name;
-		metadata = executionData?.resultData?.runData?.[nodeName]?.[0]?.metadata;
-	}
 	
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
-		workflowData: [[{ json: { data: { approved, metadata } } }]],
+		workflowData: [[{ json: { data: { approved, metadata: this.runExecutionData.metadata } } }]],
 	};
 }
 
