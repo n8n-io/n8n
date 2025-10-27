@@ -167,43 +167,43 @@ onMounted(async () => {
 				hoverable
 				@click="handleAgentCardClick(agent)"
 			>
-				<div :class="$style.cardContent">
-					<div :class="$style.cardHeader">
-						<N8nText tag="h3" size="medium" bold>{{ agent.name }}</N8nText>
-						<div :class="$style.cardActions" @click.stop>
-							<N8nIconButton
-								icon="pen"
-								type="tertiary"
-								size="small"
-								title="Edit agent"
-								@click="handleEditAgent(agent, $event)"
-							/>
-							<N8nIconButton
-								icon="trash-2"
-								type="tertiary"
-								size="small"
-								title="Delete agent"
-								@click="handleDeleteAgent(agent.id, $event)"
-							/>
-						</div>
+				<template #header>
+					<N8nText tag="h3" size="medium" bold>{{ agent.name }}</N8nText>
+					<div :class="$style.cardActions" @click.stop>
+						<N8nIconButton
+							icon="pen"
+							type="tertiary"
+							size="small"
+							title="Edit agent"
+							@click="handleEditAgent(agent, $event)"
+						/>
+						<N8nIconButton
+							icon="trash-2"
+							type="tertiary"
+							size="small"
+							title="Delete agent"
+							@click="handleDeleteAgent(agent.id, $event)"
+						/>
 					</div>
+				</template>
 
-					<N8nText v-if="agent.description" :class="$style.description" color="text-light">
+				<div :class="$style.descriptionContainer">
+					<N8nText :class="$style.description" color="text-light">
 						{{ agent.description }}
 					</N8nText>
-
-					<div :class="$style.metadata">
-						<N8nText size="xsmall" color="text-light">
-							<span v-if="agent.provider && agent.model">
-								{{ providerDisplayNames[agent.provider] }} • {{ agent.model }}
-							</span>
-							<span v-else>No model configured</span>
-						</N8nText>
-						<N8nText size="xsmall" color="text-light" :class="$style.lastUpdate">
-							Updated {{ formatDate(agent.updatedAt) }}
-						</N8nText>
-					</div>
 				</div>
+
+				<template #footer>
+					<N8nText size="xsmall" color="text-light">
+						<span v-if="agent.provider && agent.model">
+							{{ providerDisplayNames[agent.provider] }} • {{ agent.model }}
+						</span>
+						<span v-else>No model configured</span>
+					</N8nText>
+					<N8nText size="xsmall" color="text-light" :class="$style.lastUpdate">
+						Updated {{ formatDate(agent.updatedAt) }}
+					</N8nText>
+				</template>
 			</N8nCard>
 		</div>
 
@@ -265,35 +265,14 @@ onMounted(async () => {
 	}
 }
 
-.cardContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--sm);
-	min-width: 0;
-	overflow: hidden;
-}
-
-.cardHeader {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: var(--spacing--xs);
-	min-width: 0;
-
-	h3 {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		min-width: 0;
-		flex: 1;
-	}
-}
-
 .cardActions {
 	display: flex;
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
+}
+
+.descriptionContainer {
+	padding-block: var(--spacing--sm);
 }
 
 .description {
@@ -305,23 +284,6 @@ onMounted(async () => {
 	text-overflow: ellipsis;
 	min-height: 2.6em;
 	word-break: break-word;
-}
-
-.metadata {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: var(--spacing--xs);
-	padding-top: var(--spacing--xs);
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
-	min-width: 0;
-
-	span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		min-width: 0;
-	}
 }
 
 .lastUpdate {
