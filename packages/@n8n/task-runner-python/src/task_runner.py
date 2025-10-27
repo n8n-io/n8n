@@ -90,6 +90,7 @@ class TaskRunner:
             stdlib_allow=config.stdlib_allow,
             external_allow=config.external_allow,
             builtins_deny=config.builtins_deny,
+            runner_env_deny=config.env_deny,
         )
         self.analyzer = TaskAnalyzer(self.security_config)
         self.logger = logging.getLogger(__name__)

@@ -968,4 +968,110 @@ describe('N8nPromptInput', () => {
 			expect(disabledContainer).toBeTruthy();
 		});
 	});
+
+	describe('height adjustment optimization', () => {
+		it('should skip height adjustment when content fits within current height', async () => {
+			// Mock scrollHeight and clientHeight to simulate content that fits
+			const originalScrollHeightDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+			const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'clientHeight',
+			);
+
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get(this: HTMLTextAreaElement) {
+					return 72; // Content height
+				},
+			});
+
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'clientHeight', {
+				configurable: true,
+				get(this: HTMLTextAreaElement) {
+					return 72; // Container height (content fits perfectly)
+				},
+			});
+
+			try {
+				const wrapper = mount(N8nPromptInput, {
+					props: {
+						modelValue: 'Line 1\nLine 2\nLine 3\nLine 4',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
+
+				// Wait for initial mount to complete
+				await wrapper.vm.$nextTick();
+
+				const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+
+				// Start spying after mount
+				const setHeightSpy = vi.spyOn(textarea.style, 'height', 'set');
+
+				// Type some text that doesn't change the height requirement
+				await wrapper.setProps({ modelValue: 'Line 1\nLine 2\nLine 3\nLine 4a' });
+
+				// Wait for the watcher to trigger
+				await wrapper.vm.$nextTick();
+
+				// Since content fits, adjustHeight should return early without setting height to '0'
+				const heightCalls = setHeightSpy.mock.calls;
+				const hasZeroHeightCall = heightCalls.some((call) => call[0] === '0');
+
+				// If early return works, there should be no '0' height call after the prop update
+				expect(hasZeroHeightCall).toBe(false);
+
+				wrapper.unmount();
+			} finally {
+				// Restore original descriptors
+				if (originalScrollHeightDescriptor) {
+					Object.defineProperty(
+						HTMLTextAreaElement.prototype,
+						'scrollHeight',
+						originalScrollHeightDescriptor,
+					);
+				}
+				if (originalClientHeightDescriptor) {
+					Object.defineProperty(
+						HTMLTextAreaElement.prototype,
+						'clientHeight',
+						originalClientHeightDescriptor,
+					);
+				}
+			}
+		});
+
+		it('should use ScrollArea to constrain visible area', () => {
+			// This test verifies that the component uses N8nScrollArea with max-height
+			// to constrain the visible area, rather than capping the textarea height itself
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					modelValue: 'Line1\nLine2',
+					maxLinesBeforeScroll: 10,
+					minLines: 2,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: {
+							props: ['maxHeight', 'type'],
+							template: '<div class="scroll-area-stub"><slot /></div>',
+						},
+						N8nSendStopButton: true,
+					},
+				},
+			});
+
+			// Verify that N8nScrollArea is used in multiline mode
+			const scrollArea = wrapper.find('.scroll-area-stub');
+			expect(scrollArea.exists()).toBe(true);
+
+			wrapper.unmount();
+		});
+	});
 });
