@@ -82,7 +82,7 @@ export const useUsageStore = defineStore('usage', () => {
 	const activateLicense = async (activationKey: string, eulaUri?: string) => {
 		const data = await usageApi.activateLicenseKey(rootStore.restApiContext, {
 			activationKey,
-			...(eulaUri && { eulaUri }),
+			eulaUri,
 		});
 		setData(data);
 		await settingsStore.getSettings();
