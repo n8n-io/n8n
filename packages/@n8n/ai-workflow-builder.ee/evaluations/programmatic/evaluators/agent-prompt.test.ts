@@ -68,10 +68,10 @@ describe('evaluateAgentPrompt', () => {
 
 		expect(result.violations).toHaveLength(1);
 		expect(result.violations[0]).toEqual({
-			type: 'minor',
+			type: 'major',
 			description:
 				'Agent node "AI Agent" has no expression in its prompt field. This likely means it failed to use chatInput or dynamic context',
-			pointsDeducted: 15,
+			pointsDeducted: 20,
 		});
 	});
 
@@ -198,7 +198,7 @@ describe('evaluateAgentPrompt', () => {
 		const result = evaluateAgentPrompt(workflow);
 
 		expect(result.violations).toHaveLength(1);
-		expect(result.violations[0].pointsDeducted).toBe(15);
+		expect(result.violations[0].pointsDeducted).toBe(20);
 	});
 
 	it('should handle missing parameters gracefully', () => {
@@ -220,7 +220,7 @@ describe('evaluateAgentPrompt', () => {
 
 		// Should have violations for: no expression + no systemMessage
 		expect(result.violations.length).toBeGreaterThanOrEqual(1);
-		expect(result.violations.some((v) => v.type === 'minor')).toBe(true);
+		expect(result.violations.some((v) => v.type === 'major')).toBe(true);
 	});
 
 	it('should detect multiple agents with issues', () => {
