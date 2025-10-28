@@ -1,6 +1,15 @@
-import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
+import type {
+	ClientOAuth2Options,
+	OAuth2AuthenticationMethod,
+	OAuth2CredentialData,
+	OAuth2GrantType,
+	OAuthAuthorizationServerMetadata,
+} from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { GlobalConfig } from '@n8n/config';
 import { Get, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import axios from 'axios';
 import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
@@ -15,7 +24,9 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
 
 import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
 
@@ -48,6 +59,64 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			additionalData,
 		);
 
+		const toUpdate: ICredentialDataDecryptedObject = {};
+
+		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
+			const serverUrl = new URL(oauthCredentials.serverUrl);
+			const { data } = await axios.get<OAuthAuthorizationServerMetadata>(
+				`${serverUrl.origin}/.well-known/oauth-authorization-server`,
+			);
+			const { authorization_endpoint, token_endpoint, registration_endpoint } = data;
+			if (!authorization_endpoint || !token_endpoint || !registration_endpoint) {
+				throw new BadRequestError(
+					'The OAuth2 server does not support dynamic client registration. Missing endpoints in metadata.',
+				);
+			}
+
+			oauthCredentials.authUrl = authorization_endpoint;
+			oauthCredentials.accessTokenUrl = token_endpoint;
+			toUpdate.authUrl = authorization_endpoint;
+			toUpdate.accessTokenUrl = token_endpoint;
+
+			const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
+				data.grant_types_supported,
+				data.token_endpoint_auth_methods_supported,
+				data.code_challenge_methods_supported,
+			);
+			oauthCredentials.grantType = grantType;
+			toUpdate.grantType = grantType;
+			if (authentication) {
+				oauthCredentials.authentication = authentication;
+				toUpdate.authentication = authentication;
+			}
+
+			const instanceBaseUrl = Container.get(UrlService).getInstanceBaseUrl();
+			const restEndpoint = Container.get(GlobalConfig).endpoints.rest;
+			const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
+				grantType,
+				authentication,
+			);
+			const { data: registerResult } = await axios.post<{
+				client_id: string;
+				client_secret?: string;
+			}>(registration_endpoint, {
+				redirect_uris: [`${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`],
+				token_endpoint_auth_method,
+				grant_types,
+				response_types: ['code'],
+				client_name: 'n8n',
+				client_uri: 'https://n8n.io/',
+			});
+
+			const { client_id, client_secret } = registerResult;
+			oauthCredentials.clientId = client_id;
+			toUpdate.clientId = client_id;
+			if (client_secret) {
+				oauthCredentials.clientSecret = client_secret;
+				toUpdate.clientSecret = client_secret;
+			}
+		}
+
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const [csrfSecret, state] = this.createCsrfState(
 			credential.id,
@@ -65,7 +134,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const toUpdate: ICredentialDataDecryptedObject = { csrfSecret };
+		toUpdate.csrfSecret = csrfSecret;
 		if (oauthCredentials.grantType === 'pkce') {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -189,5 +258,63 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		}
 
 		return options;
+	}
+
+	private selectGrantTypeAndAuthenticationMethod(
+		grantTypes: string[],
+		tokenEndpointAuthMethods: string[],
+		codeChallengeMethods: string[],
+	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
+		if (grantTypes.includes('authorization_code') && grantTypes.includes('refresh_token')) {
+			if (codeChallengeMethods.includes('S256') && tokenEndpointAuthMethods.includes('none')) {
+				return { grantType: 'pkce' };
+			}
+
+			if (tokenEndpointAuthMethods.includes('client_secret_basic')) {
+				return { grantType: 'authorizationCode', authentication: 'header' };
+			}
+
+			if (tokenEndpointAuthMethods.includes('client_secret_post')) {
+				return { grantType: 'authorizationCode', authentication: 'body' };
+			}
+		}
+
+		if (grantTypes.includes('client_credentials')) {
+			if (tokenEndpointAuthMethods.includes('client_secret_basic')) {
+				return { grantType: 'clientCredentials', authentication: 'header' };
+			}
+
+			if (tokenEndpointAuthMethods.includes('client_secret_post')) {
+				return { grantType: 'clientCredentials', authentication: 'body' };
+			}
+		}
+
+		throw new BadRequestError('No supported grant type and authentication method found');
+	}
+
+	private mapGrantTypeAndAuthenticationMethod(
+		grantType: OAuth2GrantType,
+		authentication?: OAuth2AuthenticationMethod,
+	) {
+		if (grantType === 'pkce') {
+			return {
+				grant_types: ['authorization_code', 'refresh_token'],
+				token_endpoint_auth_method: 'none',
+			};
+		}
+
+		const tokenEndpointAuthMethod =
+			authentication === 'header' ? 'client_secret_basic' : 'client_secret_post';
+		if (grantType === 'authorizationCode') {
+			return {
+				grant_types: ['authorization_code', 'refresh_token'],
+				token_endpoint_auth_method: tokenEndpointAuthMethod,
+			};
+		}
+
+		return {
+			grant_types: ['client_credentials'],
+			token_endpoint_auth_method: tokenEndpointAuthMethod,
+		};
 	}
 }

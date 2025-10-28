@@ -1,23 +1,23 @@
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { READY_TO_RUN_V2_PART2_EXPERIMENT, VIEWS } from '@/constants';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { useLocalStorage } from '@vueuse/core';
 import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
-import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter, type RouteLocationNormalized } from 'vue-router';
+import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 import { READY_TO_RUN_WORKFLOW_V3 } from '../workflows/ai-workflow-v3';
 import { READY_TO_RUN_WORKFLOW_V4 } from '../workflows/ai-workflow-v4';
-import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 
 const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_V2_OPENAI_CREDENTIAL_ID';
 
@@ -35,26 +35,12 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const cloudPlanStore = useCloudPlanStore();
 		const workflowsStore = useWorkflowsStore();
 
-		const hasChosenHubSpot = computed(() => {
-			const selectedApps = cloudPlanStore.selectedApps;
-
-			if (!selectedApps?.length) {
-				return false;
-			}
-
-			return (
-				selectedApps.includes('n8n-nodes-base.hubspot') ||
-				selectedApps.includes('n8n-nodes-base.hubspotTrigger')
-			);
-		});
-
 		const isFeatureEnabled = computed(() => {
 			const variant = posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
 			return (
 				(variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3 ||
 					variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant4) &&
-				cloudPlanStore.userIsTrialing &&
-				!hasChosenHubSpot.value
+				cloudPlanStore.userIsTrialing
 			);
 		});
 
@@ -98,30 +84,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			telemetry.track('User executed ready to run AI workflow successfully', {
 				variant,
 			});
-		};
-
-		const trackExperimentParticipation = async () => {
-			if (settingsStore.isCloudDeployment && !cloudPlanStore.state.initialized) {
-				try {
-					await cloudPlanStore.initialize();
-				} catch (error) {
-					console.warn('Could not load cloud plan data for experiment tracking:', error);
-					return;
-				}
-			}
-
-			// Skip tracking if user has selected HubSpot nodes
-			if (hasChosenHubSpot.value) {
-				return;
-			}
-
-			const variant = posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
-			if (variant) {
-				telemetry.track('User is part of experiment', {
-					name: READY_TO_RUN_V2_PART2_EXPERIMENT.name,
-					variant,
-				});
-			}
 		};
 
 		const claimFreeAiCredits = async (projectId?: string) => {
@@ -238,18 +200,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const getSimplifiedLayoutVisibility = (route: RouteLocationNormalized, loading: boolean) => {
 			return shouldShowSimplifiedLayout(route, isFeatureEnabled.value, loading);
 		};
-
-		let hasTrackedExperiment = false;
-		watch(
-			isFeatureEnabled,
-			(enabled) => {
-				if (enabled && !hasTrackedExperiment) {
-					hasTrackedExperiment = true;
-					void trackExperimentParticipation();
-				}
-			},
-			{ immediate: true },
-		);
 
 		return {
 			isFeatureEnabled,

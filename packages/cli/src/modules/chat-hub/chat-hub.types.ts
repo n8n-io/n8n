@@ -19,7 +19,6 @@ export interface ModelWithCredentials {
 export interface BaseMessagePayload {
 	userId: string;
 	sessionId: ChatSessionId;
-	replyId: ChatMessageId;
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
 }
