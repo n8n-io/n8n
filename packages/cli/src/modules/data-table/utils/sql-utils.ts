@@ -387,19 +387,26 @@ export function resolvePath(
 	if (path !== undefined) {
 		const pathArray = parsePath(path);
 		if (dbType === 'postgres') {
-			const base = `${ref}${toPostgresPath(pathArray)}`;
-
+			let base = `${ref}${toPostgresPath(pathArray)}`;
+			let type = 'text';
 			if (typeof value === 'number') {
-				return `(${base})::numeric`;
+				type = 'numeric';
 			} else if (value instanceof Date) {
-				return `(${base})::timestamp`;
+				type = 'timestamp';
 			} else if (typeof value === 'boolean') {
-				return `(${base})::boolean`;
+				type = 'boolean';
 			} else if (typeof value === 'string') {
-				return `(${base})::text`;
+				type = 'text';
 			} else {
-				return base.replace('->>', '->');
+				type = 'json';
+				base = base.replace('->>', '->');
 			}
+			return `
+			CASE
+				WHEN pg_input_is_valid(${base}, ${type})
+				THEN ${base}::${type}
+				ELSE NULL
+			END`;
 		} else {
 			// this is mostly for sqlite, behavior in MariaDB and MySQL mostly aligns though there are subtle
 			// difference we don't care for in the face of imminent removal of support
