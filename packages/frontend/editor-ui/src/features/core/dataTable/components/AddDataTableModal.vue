@@ -191,6 +191,11 @@ const onColumnNameChange = (index: number) => {
 	});
 };
 
+const handleFileCancel = () => {
+	// User cancelled the file dialog, go back to select mode
+	creationMode.value = 'select';
+};
+
 const handleFileSelected = async (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const file = target.files?.[0];
@@ -382,6 +387,7 @@ const redirectToDataTables = () => {
 					accept=".csv"
 					style="display: none"
 					@change="handleFileSelected"
+					@cancel="handleFileCancel"
 					data-test-id="csv-file-input"
 				/>
 
