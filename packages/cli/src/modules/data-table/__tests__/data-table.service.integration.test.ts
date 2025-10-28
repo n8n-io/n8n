@@ -3584,7 +3584,12 @@ describe('dataTable', () => {
 
 				const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
 					name: 'dataStore',
-					columns: [{ name: 'c1', type: 'json' }],
+					columns: [], // [{ name: 'c1', type: 'json' }],
+				});
+
+				await dataTableService.addColumn(dataStoreId, project1.id, {
+					name: 'c1',
+					type: 'json',
 				});
 
 				// ACT
