@@ -1,8 +1,7 @@
-import { AIMessage } from '@langchain/core/messages';
 import type { EngineResponse } from 'n8n-workflow';
 
 import type { RequestResponseMetadata } from '../types';
-import { buildSteps } from './buildSteps';
+import { buildSteps } from '@utils/agent-execution';
 
 describe('buildSteps', () => {
 	it('should return empty array when no response is provided', () => {

@@ -2,7 +2,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 
-import { createEngineRequests } from './createEngineRequests';
+import { createEngineRequests } from '@utils/agent-execution';
 
 describe('createEngineRequests', () => {
 	it('should create engine request from tool call', async () => {

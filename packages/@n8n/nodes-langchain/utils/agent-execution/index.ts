@@ -11,6 +11,7 @@
 export { createEngineRequests } from './createEngineRequests';
 export { buildSteps } from './buildSteps';
 export { processEventStream } from './processEventStream';
+export { loadMemory, saveToMemory, saveToolResultsToMemory } from './memoryManager';
 export type {
 	ToolCallRequest,
 	ToolCallData,

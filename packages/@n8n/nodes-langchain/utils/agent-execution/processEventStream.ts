@@ -5,6 +5,7 @@ import type { ToolCall } from '@langchain/core/messages/tool';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import type { BaseChatMemory } from 'langchain/memory';
 
+import { saveToMemory, saveToolResultsToMemory } from './memoryManager';
 import type { AgentResult, ToolCallRequest } from './types';
 
 /**
@@ -117,6 +118,16 @@ export async function processEventStream(
 					);
 					if (matchingStep) {
 						matchingStep.observation = toolData.output || '';
+
+						// Save tool result to memory if configured
+						if (memory && matchingStep.observation && input) {
+							await saveToolResultsToMemory(memory, input, [
+								{
+									action: matchingStep.action,
+									observation: matchingStep.observation,
+								},
+							]);
+						}
 					}
 				}
 				break;
@@ -128,7 +139,7 @@ export async function processEventStream(
 
 	// Save conversation to memory if memory is connected
 	if (memory && input && agentResult.output) {
-		await memory.saveContext({ input }, { output: agentResult.output });
+		await saveToMemory(memory, input, agentResult.output);
 	}
 
 	// Include collected tool calls in the result

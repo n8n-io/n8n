@@ -7,10 +7,13 @@ import type { IExecuteFunctions, ISupplyDataFunctions, EngineResponse } from 'n8
 import type { AgentResult, RequestResponseMetadata } from '../types';
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { ItemContext } from './processItem';
-import { loadChatHistory } from './loadChatHistory';
-import { processEventStream } from './processEventStream';
-import { buildSteps } from './buildSteps';
-import { createEngineRequests } from './createEngineRequests';
+import {
+	loadMemory,
+	processEventStream,
+	buildSteps,
+	createEngineRequests,
+	saveToMemory,
+} from '@utils/agent-execution';
 
 type RunAgentResult =
 	| AgentResult
@@ -62,7 +65,7 @@ export async function runAgent(
 		let chatHistory: BaseMessage[] | undefined = undefined;
 		if (memory) {
 			// Load memory variables to respect context window length
-			chatHistory = await loadChatHistory(memory, model, options.maxTokensFromMemory);
+			chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
 		}
 		const eventStream = executor.streamEvents(
 			{
@@ -100,7 +103,7 @@ export async function runAgent(
 		let chatHistory: BaseMessage[] | undefined = undefined;
 		if (memory) {
 			// Load memory variables to respect context window length
-			chatHistory = await loadChatHistory(memory, model, options.maxTokensFromMemory);
+			chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
 		}
 		const modelResponse = await executor.invoke({
 			...invokeParams,
@@ -124,7 +127,7 @@ export async function runAgent(
 					fullOutput = `[Used tools: ${toolContext}] ${fullOutput}`;
 				}
 
-				await memory.saveContext({ input }, { output: fullOutput });
+				await saveToMemory(memory, input, fullOutput);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };

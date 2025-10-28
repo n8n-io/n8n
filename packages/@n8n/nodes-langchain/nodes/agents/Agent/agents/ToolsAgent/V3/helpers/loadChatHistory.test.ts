@@ -4,7 +4,7 @@ import { trimMessages } from '@langchain/core/messages';
 import { mock } from 'jest-mock-extended';
 import type { BaseChatMemory } from 'langchain/memory';
 
-import { loadChatHistory } from './loadChatHistory';
+import { loadMemory as loadChatHistory } from '@utils/agent-execution';
 
 jest.mock('@langchain/core/messages', () => ({
 	...jest.requireActual('@langchain/core/messages'),

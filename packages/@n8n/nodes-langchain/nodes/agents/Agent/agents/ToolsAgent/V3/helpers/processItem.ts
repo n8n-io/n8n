@@ -9,7 +9,7 @@ import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import { getTools, prepareMessages, preparePrompt } from '../../common';
 import type { AgentOptions, RequestResponseMetadata } from '../types';
-import { buildSteps, type ToolCallData } from './buildSteps';
+import { buildSteps, type ToolCallData } from '@utils/agent-execution';
 
 /**
  * Context specific to a single item's processing
