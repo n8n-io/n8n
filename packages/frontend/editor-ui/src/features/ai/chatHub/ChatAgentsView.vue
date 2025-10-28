@@ -12,7 +12,7 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
@@ -130,12 +130,15 @@ async function handleDeleteAgent(agentId: string) {
 	}
 }
 
-onMounted(async () => {
-	await Promise.all([
-		chatStore.fetchAgents(),
-		chatStore.fetchChatModels(credentialsByProvider.value),
-	]);
-});
+watch(
+	credentialsByProvider,
+	(credentials) => {
+		if (credentials) {
+			void Promise.all([chatStore.fetchAgents(), chatStore.fetchChatModels(credentials)]);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -202,6 +205,7 @@ onMounted(async () => {
 		</div>
 
 		<AgentEditorModal
+			v-if="credentialsByProvider"
 			:agent-id="editingAgentId"
 			:credentials="credentialsByProvider"
 			@create-agent="handleAgentCreatedOrUpdated"

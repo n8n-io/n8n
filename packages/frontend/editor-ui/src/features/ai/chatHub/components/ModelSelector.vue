@@ -20,7 +20,7 @@ const props = withDefaults(
 	defineProps<{
 		selectedModel: ChatHubConversationModel | null;
 		includeCustomAgents?: boolean;
-		credentials: CredentialsMap;
+		credentials: CredentialsMap | null;
 	}>(),
 	{
 		includeCustomAgents: true,
@@ -48,7 +48,7 @@ const credentialsStore = useCredentialsStore();
 
 const credentialsName = computed(() =>
 	props.selectedModel
-		? credentialsStore.getCredentialById(props.credentials[props.selectedModel.provider] ?? '')
+		? credentialsStore.getCredentialById(props.credentials?.[props.selectedModel.provider] ?? '')
 				?.name
 		: undefined,
 );
@@ -208,7 +208,9 @@ onClickOutside(
 watch(
 	() => props.credentials,
 	(credentials) => {
-		void chatStore.fetchChatModels(credentials);
+		if (credentials) {
+			void chatStore.fetchChatModels(credentials);
+		}
 	},
 	{ immediate: true },
 );
@@ -240,7 +242,7 @@ defineExpose({
 				v-if="credentialSelectorProvider"
 				:key="credentialSelectorProvider"
 				:provider="credentialSelectorProvider"
-				:initial-value="credentials[credentialSelectorProvider] ?? null"
+				:initial-value="credentials?.[credentialSelectorProvider] ?? null"
 				@select="handleSelectCredentials"
 				@create-new="handleCreateNewCredential"
 			/>

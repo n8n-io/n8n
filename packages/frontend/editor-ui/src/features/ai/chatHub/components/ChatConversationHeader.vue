@@ -10,7 +10,7 @@ import { useRouter } from 'vue-router';
 
 const { selectedModel, credentials } = defineProps<{
 	selectedModel: ChatHubConversationModel | null;
-	credentials: CredentialsMap;
+	credentials: CredentialsMap | null;
 }>();
 
 const emit = defineEmits<{

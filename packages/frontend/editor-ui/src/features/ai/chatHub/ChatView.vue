@@ -145,7 +145,7 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 			return {};
 		}
 
-		const credentialsId = credentialsByProvider.value[selectedModel.value.provider];
+		const credentialsId = credentialsByProvider.value?.[selectedModel.value.provider];
 
 		if (!credentialsId) {
 			return null;
@@ -440,6 +440,7 @@ function closeAgentEditor() {
 		/>
 
 		<AgentEditorModal
+			v-if="credentialsByProvider"
 			:agent-id="editingAgentId"
 			:credentials="credentialsByProvider"
 			@create-agent="handleSelectModel"
