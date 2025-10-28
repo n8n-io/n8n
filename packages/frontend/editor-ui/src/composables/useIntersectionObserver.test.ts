@@ -28,8 +28,12 @@ describe('useIntersectionObserver()', () => {
 	let mockCallback: ReturnType<typeof vi.fn>;
 	let mockRoot: Element;
 	let mockConstructor: MockIntersectionObserverConstructor;
+	let originalIntersectionObserver: typeof IntersectionObserver;
 
 	beforeEach(() => {
+		// Cache original IntersectionObserver
+		originalIntersectionObserver = global.IntersectionObserver;
+
 		// Mock IntersectionObserver
 		mockIntersectionObserver = {
 			observe: vi.fn(),
@@ -50,6 +54,8 @@ describe('useIntersectionObserver()', () => {
 	});
 
 	afterEach(() => {
+		// Restore original IntersectionObserver
+		global.IntersectionObserver = originalIntersectionObserver;
 		vi.restoreAllMocks();
 	});
 
