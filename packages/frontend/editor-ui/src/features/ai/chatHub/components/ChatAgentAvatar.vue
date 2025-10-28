@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { describeConversationModel } from '@/features/ai/chatHub/chat.utils';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import {
-	type ChatHubConversationModel,
-	type ChatHubLLMProvider,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
-} from '@n8n/api-types';
+import { type ChatHubConversationModel, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { N8nAvatar, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
-const { model, tooltip = false } = defineProps<{
+defineProps<{
 	model: ChatHubConversationModel;
 	size: 'sm' | 'md' | 'lg';
 	tooltip?: boolean;
@@ -30,7 +26,7 @@ const { model, tooltip = false } = defineProps<{
 		/>
 		<CredentialIcon
 			v-else
-			:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[model.provider as ChatHubLLMProvider]"
+			:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[model.provider]"
 			:size="size === 'sm' ? 16 : size === 'lg' ? 40 : 20"
 		/>
 	</N8nTooltip>
