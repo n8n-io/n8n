@@ -8,7 +8,6 @@ import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeOutputConfiguration,
-	IRunData,
 	IRunExecutionData,
 	ITaskMetadata,
 	NodeError,
@@ -270,26 +269,106 @@ const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
 });
 
+const isPaneTypeInput = computed(() => props.paneType === 'input');
+const isPaneTypeOutput = computed(() => props.paneType === 'output');
+
 const isSchemaView = computed(() => props.displayMode === 'schema');
 const isSearchInSchemaView = computed(() => isSchemaView.value && !!search.value);
-const hasMultipleInputNodes = computed(() => props.paneType === 'input' && props.nodes.length > 0);
+const hasMultipleInputNodes = computed(() => isPaneTypeInput.value && props.nodes.length > 0);
 const displaysMultipleNodes = computed(() => isSchemaView.value && hasMultipleInputNodes.value);
+const hasAnyUpstreamExecuted = computed(() => {
+	return (
+		hasMultipleInputNodes.value &&
+		props.nodes.some((inputNode) => nodeHelpers.hasNodeExecuted(inputNode.name))
+	);
+});
 
-const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
+const hasAnyDataAvailable = computed(() => {
+	return (
+		node.value?.disabled ||
+		hasPreviewSchema.value ||
+		hasAnyUpstreamExecuted.value ||
+		!!workflowsStore.lastSuccessfulExecution
+	);
+});
+const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
+const hasNode = computed(() => !!node.value);
+const hasBinaryData = computed(() => binaryData.value?.length > 0);
+const hasNoData = computed(() => !rawInputData.value.length && !pinnedData.hasData.value);
+const isReadOnly = computed(
+	() => isReadOnlyRoute.value || readOnlyEnv.value || isArchivedWorkflow.value,
+);
+
+const shouldShowSchemaView = computed(() => {
+	if (!isSchemaView.value) return false;
+	return (
+		hasNodeRun.value ||
+		hasPreviewSchema.value ||
+		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || workflowsStore.lastSuccessfulExecution))
+	);
+});
+
+// Helper: Get run data for current node (returns null if not available)
+const currentNodeRunData = computed(() => {
+	if (!hasNode.value || !workflowRunData.value) return null;
+	const nodeName = node.value!.name;
+	return workflowRunData.value.hasOwnProperty(nodeName) ? workflowRunData.value[nodeName] : null;
+});
+
+const shouldShowNodeNotRunState = computed(() => {
+	return !hasNodeRun.value && !(displaysMultipleNodes.value && hasAnyDataAvailable.value);
+});
+
+const shouldShowSubworkflowError = computed(() => {
+	return (
+		isPaneTypeOutput.value && hasSubworkflowExecutionError.value && subworkflowExecutionError.value
+	);
+});
+
+const shouldShowDisabledNodeHint = computed(() => {
+	return isPaneTypeInput.value && isSingleNodeView.value && node.value?.disabled;
+});
+
+const shouldShowNoDataInBranch = computed(() => {
+	return (
+		hasNodeRun.value &&
+		(!unfilteredDataCount.value || (search.value && !dataCount.value)) &&
+		isSingleNodeView.value &&
+		branches.value.length > 1
+	);
+});
+
+const shouldShowNoOutputData = computed(() => {
+	return hasNodeRun.value && !inputData.value.length && isSingleNodeView.value && !search.value;
+});
+
+const shouldShowBinaryOnlyHint = computed(() => {
+	return (
+		hasNodeRun.value &&
+		props.displayMode === 'table' &&
+		binaryData.value.length > 0 &&
+		inputData.value.length === 1 &&
+		Object.keys(jsonData.value[0] || {}).length === 0
+	);
+});
+
+const isTriggerNode = computed(
+	() => hasNode.value && nodeTypesStore.isTriggerNode(node.value.type),
+);
 
 const canPinData = computed(
 	() =>
-		!!node.value &&
+		hasNode.value &&
 		pinnedData.canPinNode(false, currentOutputIndex.value) &&
 		!isPaneTypeInput.value &&
 		pinnedData.isValidNodeType.value &&
-		!(binaryData.value && binaryData.value.length > 0),
+		!hasBinaryData.value,
 );
 
 const hasNodeRun = computed(() =>
 	Boolean(
 		!props.isExecuting &&
-			node.value &&
+			hasNode.value &&
 			((workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name)) ||
 				pinnedData.hasData.value),
 	),
@@ -300,7 +379,7 @@ const isArtificialRecoveredEventItem = computed(
 );
 
 const subworkflowExecutionError = computed(() => {
-	if (!node.value) return null;
+	if (!hasNode.value) return null;
 	return {
 		node: node.value,
 		messages: [workflowsStore.subWorkflowExecutionError?.message ?? ''],
@@ -309,24 +388,20 @@ const subworkflowExecutionError = computed(() => {
 
 const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflowExecutionError);
 
-// Sub-nodes may wish to display the parent node error as it can contain additional metadata
 const parentNodeError = computed(() => {
 	const parentNode = props.workflowObject.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
 	return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
 });
-const workflowRunErrorAsNodeError = computed(() => {
-	if (!node.value) {
-		return null;
-	}
 
-	// If the node is a sub-node, we need to get the parent node error to check for input errors
-	if (isSubNodeType.value && props.paneType === 'input') {
+const workflowRunErrorAsNodeError = computed(() => {
+	if (!hasNode.value) return null;
+	if (isSubNodeType.value && isPaneTypeInput.value) {
 		return parentNodeError.value;
 	}
 	return workflowRunData.value?.[node.value?.name]?.[props.runIndex]?.error as NodeError;
 });
 
-const hasRunError = computed(() => Boolean(node.value && workflowRunErrorAsNodeError.value));
+const hasRunError = computed(() => hasNode.value && !!workflowRunErrorAsNodeError.value);
 
 const executionHints = computed(() => {
 	if (hasNodeRun.value) {
@@ -364,61 +439,26 @@ const unfilteredDataCount = computed(() =>
 );
 const dataSizeInMB = computed(() => (dataSize.value / (1024 * 1024)).toFixed(1));
 const maxOutputIndex = computed(() => {
-	if (node.value === null || props.runIndex === undefined) {
-		return 0;
-	}
+	if (!hasNode.value || props.runIndex === undefined) return 0;
+	const nodeRunData = currentNodeRunData.value;
+	if (!nodeRunData || nodeRunData.length <= props.runIndex) return 0;
 
-	const runData: IRunData | null = workflowRunData.value;
-
-	if (!runData?.hasOwnProperty(node.value.name)) {
-		return 0;
-	}
-
-	if (runData[node.value.name].length < props.runIndex) {
-		return 0;
-	}
-
-	if (runData[node.value.name][props.runIndex]) {
-		const taskData = runData[node.value.name][props.runIndex].data;
-		if (taskData?.main) {
-			return taskData.main.length - 1;
-		}
-	}
-
-	return 0;
+	const taskData = nodeRunData[props.runIndex]?.data;
+	return taskData?.main ? taskData.main.length - 1 : 0;
 });
 const currentPageOffset = computed(() => pageSize.value * (currentPage.value - 1));
 const showBranchSwitch = computed(
-	() => maxOutputIndex.value > 0 && branches.value.length > 1 && !displaysMultipleNodes.value,
+	() => maxOutputIndex.value > 0 && branches.value.length > 1 && isSingleNodeView.value,
 );
+
 const maxRunIndex = computed(() => {
-	if (!node.value) {
-		return 0;
-	}
-
-	const runData: IRunData | null = workflowRunData.value;
-
-	if (!runData?.hasOwnProperty(node.value.name)) {
-		return 0;
-	}
-
-	if (runData[node.value.name].length) {
-		return runData[node.value.name].length - 1;
-	}
-
-	return 0;
+	const nodeRunData = currentNodeRunData.value;
+	return nodeRunData?.length ? nodeRunData.length - 1 : 0;
 });
 
 const runSelectorOptionsCount = computed(() => {
-	if (!node.value) {
-		return 0;
-	}
-
-	const runData: IRunData | null = workflowRunData.value;
-
-	if (!runData?.hasOwnProperty(node.value.name)) {
-		return 0;
-	}
+	const nodeRunData = currentNodeRunData.value;
+	if (!nodeRunData) return 0;
 
 	// If there is branch selector – we show all runs in the run selector
 	if (showBranchSwitch.value) {
@@ -426,9 +466,9 @@ const runSelectorOptionsCount = computed(() => {
 	}
 
 	// If there is only one branch - we show only the runs containing the data in the connected branch
-	return runData[node.value.name].filter((nodeRun) => {
+	return nodeRunData.filter((nodeRun) => {
 		const nodeOutput = nodeRun?.data?.[connectionType.value]?.[currentOutputIndex.value];
-		return nodeOutput && nodeOutput?.length > 0;
+		return nodeOutput?.length > 0;
 	}).length;
 });
 
@@ -508,9 +548,6 @@ const editMode = computed(() => {
 	return isPaneTypeInput.value ? { enabled: false, value: '' } : ndvStore.outputPanelEditMode;
 });
 
-const isPaneTypeInput = computed(() => props.paneType === 'input');
-const isPaneTypeOutput = computed(() => props.paneType === 'output');
-
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const showIOSearch = computed(
 	() =>
@@ -530,8 +567,7 @@ const inputSelectLocation = computed(() => {
 });
 
 const showIoSearchNoMatchContent = computed(
-	() =>
-		hasNodeRun.value && !inputData.value.length && !!search.value && !displaysMultipleNodes.value,
+	() => hasNodeRun.value && !inputData.value.length && !!search.value && isSingleNodeView.value,
 );
 
 const parentNodeOutputData = computed(() => {
@@ -556,35 +592,20 @@ const parentNodePinnedData = computed(() => {
 	return props.workflowObject.pinData?.[parentNode?.name || ''] ?? [];
 });
 
-const showPinButton = computed(() => {
-	if (props.disablePin) {
-		return false;
-	}
-	if (!rawInputData.value.length && !pinnedData.hasData.value) {
-		return false;
-	}
-	if (editMode.value.enabled) {
-		return false;
-	}
-	if (binaryData.value?.length) {
-		return isPaneTypeOutput.value;
-	}
-	return canPinData.value;
-});
+const showPinButton = computed(
+	() =>
+		!props.disablePin &&
+		!hasNoData.value &&
+		!editMode.value.enabled &&
+		(hasBinaryData.value ? isPaneTypeOutput.value : canPinData.value),
+);
 
 const pinButtonDisabled = computed(
-	() =>
-		(!rawInputData.value.length && !pinnedData.hasData.value) ||
-		!!binaryData.value?.length ||
-		isReadOnlyRoute.value ||
-		readOnlyEnv.value ||
-		isArchivedWorkflow.value,
+	() => hasNoData.value || hasBinaryData.value || isReadOnly.value,
 );
 
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
-	if (!node.value) {
-		return null;
-	}
+	if (!hasNode.value) return null;
 	const errorMetadata = parseErrorMetadata(workflowRunErrorAsNodeError.value);
 	if (errorMetadata !== undefined) {
 		return errorMetadata;
@@ -598,13 +619,11 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 		}
 	}
 
-	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
+	return workflowRunData.value?.[node.value!.name]?.[props.runIndex]?.metadata ?? null;
 });
 
 const hasInputOverwrite = computed((): boolean => {
-	if (!node.value) {
-		return false;
-	}
+	if (!hasNode.value) return false;
 	const taskData = nodeHelpers.getNodeTaskData(node.value.name, props.runIndex);
 	return Boolean(taskData?.inputOverride);
 });
@@ -1729,12 +1748,7 @@ defineExpose({ enterEditMode });
 				</div>
 			</div>
 
-			<div
-				v-else-if="
-					paneType === 'output' && hasSubworkflowExecutionError && subworkflowExecutionError
-				"
-				:class="$style.stretchVertically"
-			>
+			<div v-else-if="shouldShowSubworkflowError" :class="$style.stretchVertically">
 				<NodeErrorView
 					:compact="compact"
 					:error="subworkflowExecutionError"
@@ -1747,23 +1761,11 @@ defineExpose({ enterEditMode });
 				<slot name="node-waiting">xxx</slot>
 			</div>
 
-			<div
-				v-else-if="
-					!hasNodeRun &&
-					!(
-						displaysMultipleNodes &&
-						(node?.disabled || hasPreviewSchema || workflowsStore.lastSuccessfulExecution)
-					)
-				"
-				:class="$style.center"
-			>
+			<div v-else-if="shouldShowNodeNotRunState" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div
-				v-else-if="paneType === 'input' && !displaysMultipleNodes && node?.disabled"
-				:class="$style.center"
-			>
+			<div v-else-if="shouldShowDisabledNodeHint" :class="$style.center">
 				<N8nText>
 					{{ i18n.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
 					<N8nLink @click="enableNode">
@@ -1804,15 +1806,7 @@ defineExpose({ enterEditMode });
 				/>
 			</div>
 
-			<div
-				v-else-if="
-					hasNodeRun &&
-					(!unfilteredDataCount || (search && !dataCount)) &&
-					!displaysMultipleNodes &&
-					branches.length > 1
-				"
-				:class="$style.center"
-			>
+			<div v-else-if="shouldShowNoDataInBranch" :class="$style.center">
 				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
 					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 						<template #link>
@@ -1827,10 +1821,7 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div
-				v-else-if="hasNodeRun && !inputData.length && !displaysMultipleNodes && !search"
-				:class="$style.center"
-			>
+			<div v-else-if="shouldShowNoOutputData" :class="$style.center">
 				<slot name="no-output-data"></slot>
 			</div>
 
@@ -1865,16 +1856,7 @@ defineExpose({ enterEditMode });
 			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
 			<slot v-else-if="hasNodeRun && $slots['content']" name="content"></slot>
 
-			<div
-				v-else-if="
-					hasNodeRun &&
-					displayMode === 'table' &&
-					binaryData.length > 0 &&
-					inputData.length === 1 &&
-					Object.keys(jsonData[0] || {}).length === 0
-				"
-				:class="$style.center"
-			>
+			<div v-else-if="shouldShowBinaryOnlyHint" :class="$style.center">
 				<N8nText>
 					{{ i18n.baseText('runData.switchToBinary.info') }}
 					<a @click="switchToBinary">
@@ -1949,14 +1931,7 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<Suspense
-				v-else-if="
-					isSchemaView &&
-					((!hasNodeRun && workflowsStore.lastSuccessfulExecution) ||
-						hasNodeRun ||
-						hasPreviewSchema)
-				"
-			>
+			<Suspense v-else-if="shouldShowSchemaView">
 				<LazyRunDataSchema
 					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"
