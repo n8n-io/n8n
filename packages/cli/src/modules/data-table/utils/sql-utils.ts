@@ -381,7 +381,7 @@ export function toTableId(tableName: DataTableUserTableName) {
 export function resolvePath(
 	ref: string,
 	dbType: DataSourceOptions['type'],
-	value: unknown,
+	value: DataTableColumnJsType,
 	path?: string,
 ) {
 	if (path) {
@@ -390,17 +390,15 @@ export function resolvePath(
 			const base = `${ref}${toPostgresPath(pathArray)}`;
 			if (typeof value === 'number') {
 				return `(${base})::numeric`;
-			}
-			if (value instanceof Date) {
+			} else if (value instanceof Date) {
 				return `(${base})::timestamp`;
-			}
-			if (typeof value === 'boolean') {
+			} else if (typeof value === 'boolean') {
 				return `(${base})::boolean`;
+			} else if (typeof value === 'string') {
+				return `(${base})::text`;
+			} else {
+				return base.replace('->>', '->');
 			}
-
-			// by converting to text by default we end up with `true` for an equals NULL check
-			// both for cases where the key exists and is literally NULL and where it doesn't exist
-			return `(${base})::text`;
 		} else {
 			// this is mostly for sqlite, behavior in MariaDB and MySQL mostly aligns though there are subtle
 			// difference we don't care for in the face of imminent removal of support

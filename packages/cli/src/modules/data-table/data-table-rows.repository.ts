@@ -81,7 +81,7 @@ function getConditionAndParams(
 	// For filters, we let TypeORM handle date conversion through parameterized queries.
 	let value = filter.value;
 
-	if (dbType.startsWith('sqlite') && typeof value === 'object' && !(value instanceof Date)) {
+	if (typeof value === 'object' && !(value instanceof Date)) {
 		value = JSON.stringify(value);
 	}
 
