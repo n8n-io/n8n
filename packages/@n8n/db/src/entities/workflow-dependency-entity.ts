@@ -52,8 +52,8 @@ export class WorkflowDependency extends WithCreatedAt {
 	 * Additional information about the dependency, interpreted based on the type.
 	 * E.g., for 'nodeType' it could be the node ID, for 'webhookPath' the webhook ID.
 	 */
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	dependencyInfo: string | null;
+	@Column({ type: 'json', nullable: true })
+	dependencyInfo: Record<string, unknown> | null;
 
 	/**
 	 * The version of the index structure. Used for migrations and updates.
