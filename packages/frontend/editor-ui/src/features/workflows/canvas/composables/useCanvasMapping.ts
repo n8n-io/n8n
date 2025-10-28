@@ -367,9 +367,9 @@ export function useCanvasMapping({
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
-		nodeExecutionRunDataById,
-		(value) => {
-			nodeExecutionRunDataOutputMapById.value = Object.keys(value).reduce<
+		() => workflowsStore.getWorkflowRunData,
+		() => {
+			nodeExecutionRunDataOutputMapById.value = Object.keys(nodeExecutionRunDataById.value).reduce<
 				Record<string, ExecutionOutputMap>
 			>((acc, nodeId) => {
 				acc[nodeId] = {};
@@ -401,7 +401,7 @@ export function useCanvasMapping({
 				return acc;
 			}, {});
 		},
-		{ throttle: CANVAS_EXECUTION_DATA_THROTTLE_DURATION, immediate: true },
+		{ throttle: CANVAS_EXECUTION_DATA_THROTTLE_DURATION, immediate: true, deep: true },
 	);
 
 	const nodeExecutionErrorsById = computed(() =>
