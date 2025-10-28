@@ -38,7 +38,6 @@ from src.constants import (
     SIGKILL_EXIT_CODE,
     PIPE_MSG_PREFIX_LENGTH,
 )
-from typing import Any
 
 from multiprocessing.context import ForkServerProcess
 from multiprocessing.connection import Connection
@@ -98,7 +97,7 @@ class TaskExecutor:
         read_fd = read_conn.fileno()
         print_args: PrintArgs = []
 
-        # lists for reader-to-runner comms (each either 0 or 1 msg)
+        # lists for reader-to-runner communication (each either 0 or 1 msg)
         pipe_message_list: list[PipeMessage] = []
         message_size_list: list[int] = []
         read_error_list: list[Exception] = []
