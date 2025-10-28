@@ -246,7 +246,13 @@ describe('POST /data-tables/uploads', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty('message');
-			expect(response.body.message as string).toContain('remaining storage space');
+			// Error message can be either about remaining space or storage limit exceeded
+			const message = response.body.message as string;
+			expect(
+				message.includes('remaining storage space') || message.includes('Storage limit exceeded'),
+			).toBe(true);
+			// Verify the error message includes size units (B, KB, or MB)
+			expect(message).toMatch(/\d+(B|KB|MB)/);
 		});
 	});
 

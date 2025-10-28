@@ -17,7 +17,7 @@ import {
 	type MulterFilenameCallback,
 	type UploadMiddleware,
 } from './types';
-import { toMb } from './utils/size-utils';
+import { formatBytes } from './utils/size-utils';
 
 const UPLOADS_FOLDER_NAME = 'data-table-uploads';
 const ALLOWED_MIME_TYPES = ['text/csv'];
@@ -77,14 +77,17 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 					const sizeData = await this.sizeValidator.getCachedSizeData(async () => {
 						return await this.dataTableRepository.findDataTablesSize();
 					});
-					const remainingSpace = this.globalConfig.dataTable.maxSize - sizeData.totalBytes;
+					const remainingSpace = Math.max(
+						0,
+						this.globalConfig.dataTable.maxSize - sizeData.totalBytes,
+					);
 
 					if (fileSize > remainingSpace) {
-						cb(
-							new BadRequestError(
-								`File size exceeds remaining storage space. Available: ${toMb(remainingSpace)}MB, File: ${toMb(fileSize)}MB`,
-							),
-						);
+						const message =
+							remainingSpace === 0
+								? `Storage limit exceeded. Current usage: ${formatBytes(sizeData.totalBytes)}, Limit: ${formatBytes(this.globalConfig.dataTable.maxSize)}`
+								: `File size exceeds remaining storage space. Available: ${formatBytes(remainingSpace)}, File: ${formatBytes(fileSize)}`;
+						cb(new BadRequestError(message));
 						return;
 					}
 					cb(null, true);
