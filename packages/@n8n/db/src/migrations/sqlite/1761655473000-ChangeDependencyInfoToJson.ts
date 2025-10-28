@@ -12,7 +12,7 @@ export class ChangeDependencyInfoToJson1761655473000 implements IrreversibleMigr
 		// SQLite doesn't support ALTER COLUMN, so drop and recreate the column
 		await queryRunner.query(`ALTER TABLE "${tableName}" DROP COLUMN "dependencyInfo"`);
 		await queryRunner.query(
-			`ALTER TABLE "${tableName}" ADD COLUMN "dependencyInfo" TEXT CHECK("dependencyInfo" IS NULL OR json_valid("dependencyInfo"))`,
+			`ALTER TABLE "${tableName}" ADD COLUMN "dependencyInfo" TEXT CONSTRAINT workflow_dependency_chk_dependency_info_is_json CHECK("dependencyInfo" IS NULL OR json_valid("dependencyInfo"))`,
 		);
 	}
 }
