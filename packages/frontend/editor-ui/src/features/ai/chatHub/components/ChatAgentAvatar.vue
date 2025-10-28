@@ -17,12 +17,12 @@ const { model } = defineProps<{ model: ChatHubConversationModel; size: 'sm' | 'm
 		<N8nAvatar
 			v-if="model.provider === 'custom-agent'"
 			:first-name="model.name"
-			:size="size === 'lg' ? 'large' : size === 'sm' ? 'xxsmall' : 'xsmall'"
+			:size="size === 'lg' ? 'medium' : size === 'sm' ? 'xxsmall' : 'xsmall'"
 		/>
 		<N8nIcon
 			v-else-if="model.provider === 'n8n'"
 			icon="robot"
-			:size="size === 'lg' ? 'xlarge' : size === 'sm' ? 'large' : 'xlarge'"
+			:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
 		/>
 		<CredentialIcon
 			v-else
