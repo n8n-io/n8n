@@ -57,10 +57,10 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 const LazyFixedCollectionParameter = defineAsyncComponent(
-	async () => await import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
 );
 const LazyCollectionParameter = defineAsyncComponent(
-	async () => await import('./CollectionParameter.vue'),
+	async () => await import('./Collection/CollectionParameter.vue'),
 );
 
 // Parameter issues are displayed within the inputs themselves, but some parameters need to show them in the label UI

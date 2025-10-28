@@ -2,7 +2,7 @@
 import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
 import FixedCollectionParameterLegacy from './FixedCollectionParameterLegacy.vue';
-import FixedCollectionParameterNew from './FixedCollectionParameterNew/FixedCollectionParameterNew.vue';
+import FixedCollectionParameterNew from './FixedCollectionParameterNew.vue';
 
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 

@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import CollectionParameterNew, { type Props } from '@/components/CollectionParameterNew.vue';
+import CollectionParameterNew, { type Props } from './CollectionParameterNew.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';

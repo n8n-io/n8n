@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, nextTick, watch } from 'vue';
-import ParameterInputList from '@/components/ParameterInputList.vue';
+import ParameterInputList from '../ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {
@@ -14,7 +14,7 @@ import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-work
 
 import get from 'lodash/get';
 
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
@@ -258,6 +258,11 @@ function valueChanged(parameterData: IUpdateInformation) {
 }
 
 async function onHeaderAddClick() {
+	if (!isExpanded.value) {
+		isExpanded.value = true;
+		await nextTick();
+	}
+
 	if (addDropdownRef.value) {
 		// For new UI, open the dropdown and scroll into view
 		addDropdownRef.value.open();

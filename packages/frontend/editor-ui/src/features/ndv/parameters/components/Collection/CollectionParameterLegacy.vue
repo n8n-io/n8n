@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import ParameterInputList from '@/components/ParameterInputList.vue';
+import ParameterInputList from '../ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {
@@ -14,7 +14,7 @@ import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-work
 
 import get from 'lodash/get';
 
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';

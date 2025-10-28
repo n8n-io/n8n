@@ -5,7 +5,7 @@ import type { IUpdateInformation } from '@/Interface';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCollapsiblePanel, N8nHeaderAction } from '@n8n/design-system';
-import ParameterInputList from '@/components/ParameterInputList.vue';
+import ParameterInputList from '../ParameterInputList.vue';
 import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
 

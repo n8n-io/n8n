@@ -11,7 +11,7 @@ import get from 'lodash/get';
 import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useFixedCollectionItemState } from '@/composables/useFixedCollectionItemState';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
@@ -313,6 +313,11 @@ const onDragChange = (
 };
 
 const onHeaderAddClick = async () => {
+	if (!isWrapperExpanded.value) {
+		isWrapperExpanded.value = true;
+		await nextTick();
+	}
+
 	if (shouldShowSectionHeader.value && !multipleValues.value && addDropdownRef.value) {
 		addDropdownRef.value.open();
 		await nextTick();

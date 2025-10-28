@@ -13,10 +13,10 @@ import get from 'lodash/get';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import ParameterInputList from './ParameterInputList.vue';
+import ParameterInputList from '../ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 
