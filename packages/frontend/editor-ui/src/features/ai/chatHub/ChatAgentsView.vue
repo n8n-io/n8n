@@ -3,7 +3,15 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -14,6 +22,9 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { type ChatHubConversationModel } from '@n8n/api-types';
 import { filterAndSortAgents } from '@/features/ai/chatHub/chat.utils';
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
+import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
+import { useMediaQuery } from '@vueuse/core';
+import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
@@ -21,6 +32,8 @@ const workflowsStore = useWorkflowsStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
+const sidebar = useChatHubSidebarState();
+const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 
 const editingAgentId = ref<string | undefined>(undefined);
 
@@ -126,7 +139,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="[$style.container, { [$style.isMobileDevice]: isMobileDevice }]">
 		<div :class="$style.header">
 			<div :class="$style.headerContent">
 				<N8nText tag="h1" size="xlarge" bold>Custom Agents</N8nText>
@@ -194,6 +207,16 @@ onMounted(async () => {
 			@create-agent="handleAgentCreatedOrUpdated"
 			@close="handleCloseAgentEditor"
 		/>
+
+		<N8nIconButton
+			v-if="!sidebar.isStatic.value"
+			:class="$style.menuButton"
+			type="secondary"
+			icon="panel-left"
+			text
+			icon-size="large"
+			@click="sidebar.toggleOpen(true)"
+		/>
 	</div>
 </template>
 
@@ -207,6 +230,18 @@ onMounted(async () => {
 	padding: var(--spacing--xl);
 	gap: var(--spacing--xl);
 	overflow-y: auto;
+	position: relative;
+}
+
+.menuButton {
+	position: fixed;
+	top: 0;
+	left: 0;
+	margin: var(--spacing--sm);
+
+	.isMobileDevice & {
+		margin: var(--spacing--2xs);
+	}
 }
 
 .header {
