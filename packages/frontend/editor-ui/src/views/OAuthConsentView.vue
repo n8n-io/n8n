@@ -8,6 +8,9 @@ import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8
 import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
 import { useToast } from '@/composables/useToast';
 
+const ANTHROPIC_CLIENTS = ['claude', 'mcp inspector'];
+const LOVABLE_CLIENTS = ['lovable'];
+
 const consentStore = useConsentStore();
 
 const i18n = useI18n();
@@ -18,7 +21,18 @@ const error = computed(() => consentStore.error);
 
 const loading = computed(() => consentStore.isLoading);
 
-const clentDetails = computed<ConsentDetails>(() => consentStore.consentDetails);
+const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+
+const clientIcon = computed(() => {
+	const clientName = clentDetails.value?.clientName?.toLowerCase() ?? '';
+	if (ANTHROPIC_CLIENTS.some((name) => clientName.includes(name))) {
+		return 'anthropic';
+	} else if (LOVABLE_CLIENTS.some((name) => clientName.includes(name))) {
+		return 'lovable';
+	} else {
+		return 'mcp';
+	}
+});
 
 const handleAllow = async () => {
 	try {
@@ -59,14 +73,14 @@ onMounted(async () => {
 					<N8nIcon icon="arrow-right" size="large" color="text-light" />
 				</div>
 				<div :class="$style.logo">
-					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
+					<N8nIcon :icon="clientIcon" size="xlarge" color="text-dark" />
 				</div>
 			</header>
 			<div :class="$style.content">
 				<N8nHeading tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.heading', {
-							interpolate: { clientName: clentDetails.clientName ?? '' },
+							interpolate: { clientName: clentDetails?.clientName ?? '' },
 						})
 					}}
 				</N8nHeading>
@@ -74,7 +88,7 @@ onMounted(async () => {
 					<N8nText color="text-base" size="small">
 						{{
 							i18n.baseText('oauth.consentView.description', {
-								interpolate: { clientName: clentDetails.clientName ?? '' },
+								interpolate: { clientName: clentDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
