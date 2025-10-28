@@ -37,8 +37,6 @@ import {
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
-import { UrlService } from './url.service';
-
 export type PublicEnterpriseSettings = Pick<
 	IEnterpriseSettings,
 	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
