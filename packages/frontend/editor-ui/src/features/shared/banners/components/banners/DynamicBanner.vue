@@ -33,7 +33,7 @@ const props = defineProps<Props>();
 	em,
 	s,
 	a {
-		font-size: var(--font-size--sm);
+		font-size: var(--font-size--2xs);
 	}
 
 	p {
