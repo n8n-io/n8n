@@ -31,7 +31,7 @@ import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { defaultSettings } from '@/__tests__/defaults';
 import { usePostHog } from '@/stores/posthog.store';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
 const mockNode1 = createTestNode({
