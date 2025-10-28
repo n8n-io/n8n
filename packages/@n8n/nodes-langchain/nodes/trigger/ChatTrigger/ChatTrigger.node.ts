@@ -219,8 +219,8 @@ export class ChatTrigger extends Node {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3],
-		defaultVersion: 1.3,
+		version: [1, 1.1, 1.2, 1.3, 1.4],
+		defaultVersion: 1.4,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -391,6 +391,48 @@ export class ChatTrigger extends Node {
 				},
 				default: 'Hi there! 👋\nMy name is Nathan. How can I assist you today?',
 				description: 'Default messages shown at the start of the chat, one per line',
+			},
+			{
+				displayName: 'Make Available in Chat',
+				name: 'availableInChatHub',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether to make the chat available in the Chat Hub',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Agent Name',
+				name: 'agentName',
+				type: 'string',
+				default: '',
+				noDataExpression: true,
+				description: 'The name of the agent shown on the Chat',
+				displayOptions: {
+					show: {
+						availableInChatHub: [true],
+					},
+				},
+			},
+			{
+				displayName: 'Agent Description',
+				name: 'agentDescription',
+				type: 'string',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '',
+				noDataExpression: true,
+				description: 'The description of the agent shown on the Chat',
+				displayOptions: {
+					show: {
+						availableInChatHub: [true],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
