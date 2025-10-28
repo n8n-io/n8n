@@ -14,7 +14,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
 
-vi.mock('@/features/ndv/ndv.store', () => ({
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
 		activeNode: { type: 'n8n-nodes-base.test' },
 		setAutocompleteOnboarded: setAutocompleteOnboardedSpy,

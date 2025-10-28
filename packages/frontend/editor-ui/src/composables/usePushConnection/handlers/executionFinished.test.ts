@@ -13,6 +13,11 @@ import type { WorkflowState } from '@/composables/useWorkflowState';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
+const opts = {
+	workflowState: mock<WorkflowState>(),
+	router: mock<Router>(),
+};
+
 const runWorkflow = vi.fn();
 
 vi.mock('@/composables/useRunWorkflow', () => ({
@@ -62,7 +67,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).toHaveBeenCalledWith({
 			triggerNode: evalTriggerNodeName,
@@ -89,7 +94,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
@@ -107,7 +112,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
@@ -131,7 +136,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
@@ -172,7 +177,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});

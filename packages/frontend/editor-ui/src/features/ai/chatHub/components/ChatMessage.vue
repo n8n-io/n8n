@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nInput, N8nButton, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nButton, N8nTooltip, N8nAvatar } from '@n8n/design-system';
 import VueMarkdown from 'vue-markdown-render';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
@@ -13,6 +13,9 @@ import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/use
 import { useSpeechSynthesis } from '@vueuse/core';
 import type { ChatMessage } from '../chat.types';
 import type { ChatMessageId } from '@n8n/api-types';
+import { useChatStore } from '../chat.store';
+
+const chatStore = useChatStore();
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -48,10 +51,29 @@ const speech = useSpeechSynthesis(messageContent, {
 });
 
 const credentialTypeName = computed(() => {
-	if (message.type !== 'ai' || !message.provider || message.provider === 'n8n') {
+	if (
+		message.type !== 'ai' ||
+		!message.provider ||
+		message.provider === 'n8n' ||
+		message.provider === 'custom-agent'
+	) {
 		return null;
 	}
 	return PROVIDER_CREDENTIAL_TYPE_MAP[message.provider] ?? null;
+});
+
+const isCustomAgent = computed(() => message.type === 'ai' && message.provider === 'custom-agent');
+
+const agentName = computed(() => {
+	if (!isCustomAgent.value || !message.agentId) {
+		return null;
+	}
+
+	const agent = chatStore.getAgent(message.agentId);
+
+	// if agent was deleted, use cached name
+	// if agent was renamed, use updated name
+	return agent?.name ?? message.name;
 });
 
 async function handleCopy() {
@@ -140,6 +162,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
+			<N8nAvatar v-else-if="isCustomAgent" :first-name="agentName" size="xsmall" />
 			<N8nTooltip
 				v-else-if="message.type === 'ai' && credentialTypeName"
 				:show-after="100"
@@ -176,7 +199,11 @@ onBeforeMount(() => {
 					<VueMarkdown
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-						:source="message.content"
+						:source="
+							message.status === 'error' && !message.content
+								? 'Error: Unknown error occurred'
+								: message.content
+						"
 						:options="markdownOptions"
 						:plugins="[linksNewTabPlugin]"
 					/>
