@@ -226,7 +226,9 @@ function registerAuthenticationHooks() {
 	const RBACStore = useRBACStore();
 	const settingsStore = useSettingsStore();
 
-	usersStore.registerLoginHook((user) => {
+	usersStore.registerLoginHook(async (user) => {
+		await settingsStore.getSettings();
+
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
 		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
 		postHogStore.init(user.featureFlags);

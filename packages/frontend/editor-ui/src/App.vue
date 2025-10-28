@@ -3,7 +3,7 @@ import '@/polyfills';
 
 import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
-import BannerStack from '@/components/banners/BannerStack.vue';
+import BannerStack from '@/features/shared/banners/components/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
@@ -17,7 +17,7 @@ import {
 } from '@/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';

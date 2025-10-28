@@ -24,7 +24,7 @@ export async function searchModels(
 	const { data: models = [] } = await openai.models.list();
 
 	const url = baseURL && new URL(baseURL);
-	const isCustomAPI = !!(url && url.hostname !== 'api.openai.com');
+	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
 
 	const filteredModels = models.filter((model: { id: string }) => {
 		const includeModel = shouldIncludeModel(model.id, isCustomAPI);

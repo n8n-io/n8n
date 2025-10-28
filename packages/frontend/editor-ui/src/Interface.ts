@@ -1,7 +1,5 @@
-import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
-	BannerName,
 	FrontendSettings,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
@@ -115,7 +113,6 @@ declare global {
 			getVariant: (name: string) => string | boolean | undefined;
 			override: (name: string, value: string) => void;
 		};
-		Cypress: unknown;
 	}
 }
 
@@ -641,7 +638,6 @@ export interface NewCredentialsModal extends ModalState {
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
-export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
 	nodeName: string;
@@ -857,7 +853,8 @@ export type CloudUpdateLinkSourceType =
 	| 'insights'
 	| 'evaluations'
 	| 'ai-builder-sidebar'
-	| 'ai-builder-canvas';
+	| 'ai-builder-canvas'
+	| 'custom-roles';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -883,14 +880,8 @@ export type UTMCampaign =
 	| 'upgrade-debug'
 	| 'upgrade-insights'
 	| 'upgrade-evaluations'
-	| 'upgrade-builder';
-
-export type N8nBanners = {
-	[key in BannerName]: {
-		priority: number;
-		component: Component;
-	};
-};
+	| 'upgrade-builder'
+	| 'upgrade-custom-roles';
 
 export type AddedNode = {
 	type: string;
@@ -936,30 +927,10 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkerView'
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'
-	| 'EnforceMFA';
+	| 'EnforceMFA'
+	| 'Provisioning';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
-
-export type InputPanel = {
-	nodeName?: string;
-	run?: number;
-	branch?: number;
-	data: {
-		isEmpty: boolean;
-	};
-};
-
-export type OutputPanel = {
-	run?: number;
-	branch?: number;
-	data: {
-		isEmpty: boolean;
-	};
-	editMode: {
-		enabled: boolean;
-		value: string;
-	};
-};
 
 export type Draggable = {
 	isDragging: boolean;
@@ -968,17 +939,6 @@ export type Draggable = {
 	dimensions: DOMRect | null;
 	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 };
-
-export type MainPanelType = 'regular' | 'dragless' | 'inputless' | 'unknown' | 'wide';
-
-export type MainPanelDimensions = Record<
-	MainPanelType,
-	{
-		relativeLeft: number;
-		relativeRight: number;
-		relativeWidth: number;
-	}
->;
 
 export interface LlmTokenUsageData {
 	completionTokens: number;

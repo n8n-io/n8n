@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.116.0",
+  "version": "1.118.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -22,9 +22,6 @@
     "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "dev:fe": "run-p start \"dev:fe:editor --filter=@n8n/design-system\"",
     "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
-    "dev:e2e": "cd cypress && pnpm run test:e2e:dev",
-    "debug:flaky:e2e": "cd cypress && pnpm run test:flaky",
-    "dev:e2e:server": "run-p start dev:fe:editor",
     "clean": "turbo run clean",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
     "format": "turbo run format && node scripts/format.mjs",
@@ -44,6 +41,8 @@
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
+    "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**'",
+    "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**'",
     "test:affected": "turbo run test --affected --concurrency=1",
     "test:with:docker": "pnpm --filter=n8n-playwright test:container:standard",
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
@@ -89,6 +88,7 @@
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
+      "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",

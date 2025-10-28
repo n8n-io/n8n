@@ -237,6 +237,7 @@ export function createMockEnterpriseSettings(
 		ldap: false,
 		saml: false,
 		oidc: false,
+		provisioning: false,
 		mfaEnforcement: false,
 		logStreaming: false,
 		advancedExecutionFilters: false,
@@ -257,6 +258,7 @@ export function createMockEnterpriseSettings(
 				limit: 0,
 			},
 		},
+		customRoles: false,
 		...overrides, // Override with any passed properties
 	};
 }

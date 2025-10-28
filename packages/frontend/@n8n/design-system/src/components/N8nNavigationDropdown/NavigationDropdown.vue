@@ -3,6 +3,8 @@ import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-
 import { ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
+import type { IconSize } from '@n8n/design-system/types';
+
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -13,6 +15,8 @@ type BaseItem = {
 	title: string;
 	disabled?: boolean;
 	icon?: IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
+	iconSize?: IconSize;
+	iconMargin?: boolean;
 	route?: RouteLocationRaw;
 	isDivider?: false;
 };
@@ -45,6 +49,10 @@ defineSlots<{
 	[key: `item.append.${string}`]: (props: { item: Item }) => unknown;
 }>();
 
+const open = () => {
+	menuRef.value?.open(ROOT_MENU_INDEX);
+};
+
 const close = () => {
 	menuRef.value?.close(ROOT_MENU_INDEX);
 };
@@ -61,6 +69,7 @@ const onClose = (index: string) => {
 };
 
 defineExpose({
+	open,
 	close,
 });
 </script>
@@ -106,10 +115,14 @@ defineExpose({
 									<template v-if="item.icon">
 										<N8nIcon
 											v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
-											:class="$style.submenu__icon"
+											:class="{ [$style.submenu__icon]: item.iconMargin !== false }"
 											:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
+											:size="item.iconSize"
 										/>
-										<N8nText v-else-if="item.icon.type === 'emoji'" :class="$style.submenu__icon">
+										<N8nText
+											v-else-if="item.icon.type === 'emoji'"
+											:class="{ [$style.submenu__icon]: item.iconMargin !== false }"
+										>
 											{{ item.icon.value }}
 										</N8nText>
 									</template>
@@ -131,12 +144,13 @@ defineExpose({
 										<template v-if="subitem.icon">
 											<N8nIcon
 												v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
-												:class="$style.submenu__icon"
+												:class="{ [$style.submenu__icon]: subitem.iconMargin !== false }"
 												:icon="typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon"
+												:size="subitem.iconSize"
 											/>
 											<N8nText
 												v-else-if="subitem.icon.type === 'emoji'"
-												:class="$style.submenu__icon"
+												:class="{ [$style.submenu__icon]: subitem.iconMargin !== false }"
 											>
 												{{ subitem.icon.value }}
 											</N8nText>

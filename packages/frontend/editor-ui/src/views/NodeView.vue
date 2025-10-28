@@ -108,7 +108,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
@@ -151,10 +151,10 @@ const LazyNodeCreation = defineAsyncComponent(
 );
 
 const LazyNodeDetailsView = defineAsyncComponent(
-	async () => await import('@/components/NodeDetailsView.vue'),
+	async () => await import('@/features/ndv/shared/views/NodeDetailsView.vue'),
 );
 const LazyNodeDetailsViewV2 = defineAsyncComponent(
-	async () => await import('@/components/NodeDetailsViewV2.vue'),
+	async () => await import('@/features/ndv/shared/views/NodeDetailsViewV2.vue'),
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
@@ -498,6 +498,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			workflowData.homeProject,
 			workflowData.sharedWithProjects,
 		);
+		void workflowsStore.fetchLastSuccessfulExecution();
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
 			return await router.replace({
@@ -1450,6 +1451,7 @@ async function onSourceControlPull() {
 			environmentsStore.fetchAllVariables(),
 			tagsStore.fetchAll(),
 			loadCredentials(),
+			projectsStore.getAvailableProjects(),
 		]);
 
 		if (workflowId.value && !uiStore.stateIsDirty) {
