@@ -1,12 +1,12 @@
 import { type Router } from 'vue-router';
 import { VIEWS } from '@/constants';
-import { DataTableModule } from '@/features/dataTable/module.descriptor';
+import { DataTableModule } from '@/features/core/dataTable/module.descriptor';
 import { registerResource } from '@/moduleInitializer/resourceRegistry';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { InsightsModule } from '../features/insights/module.descriptor';
-import { MCPModule } from '../features/mcpAccess/module.descriptor';
-import { ChatModule } from '@/features/chatHub/module.descriptor';
+import { InsightsModule } from '@/features/execution/insights/module.descriptor';
+import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
+import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import type { FrontendModuleDescription } from '@/moduleInitializer/module.types';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
 

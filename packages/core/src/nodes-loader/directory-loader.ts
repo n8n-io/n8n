@@ -49,7 +49,7 @@ type Codex = {
 };
 
 export type Types = {
-	nodes: INodeTypeBaseDescription[];
+	nodes: INodeTypeDescription[];
 	credentials: ICredentialType[];
 };
 

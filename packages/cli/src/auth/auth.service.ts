@@ -47,6 +47,12 @@ interface CreateAuthMiddlewareOptions {
 	 * If true, authentication becomes optional in preview mode
 	 */
 	allowSkipPreviewAuth?: boolean;
+	/**
+	 * If true, the middleware will not throw an error if authentication fails
+	 * and will instead call next() regardless of authentication status.
+	 * Use this for endpoints that should return different data for authenticated vs unauthenticated users.
+	 */
+	allowUnauthenticated?: boolean;
 }
 
 @Service()
@@ -83,21 +89,32 @@ export class AuthService {
 		];
 	}
 
-	createAuthMiddleware({ allowSkipMFA, allowSkipPreviewAuth }: CreateAuthMiddlewareOptions) {
+	createAuthMiddleware({
+		allowSkipMFA,
+		allowSkipPreviewAuth,
+		allowUnauthenticated,
+	}: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			const token = req.cookies[AUTH_COOKIE_NAME];
+
 			if (token) {
 				try {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 					if (isInvalid) throw new AuthError('Unauthorized');
+
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
+
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
 						if (user.mfaEnabled) {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
 						} else {
+							if (allowUnauthenticated) {
+								return next();
+							}
+
 							// In this case we don't want to clear the cookie, to allow for MFA setup
 							res.status(401).json({ status: 'error', message: 'Unauthorized', mfaRequired: true });
 							return;
@@ -118,7 +135,7 @@ export class AuthService {
 			}
 
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
-			const shouldSkipAuth = allowSkipPreviewAuth && isPreviewMode;
+			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
 
 			if (req.user) next();
 			else if (shouldSkipAuth) next();

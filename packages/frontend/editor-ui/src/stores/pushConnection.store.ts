@@ -44,13 +44,13 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		};
 	};
 
-	const useWebSockets = settingsStore.pushBackend === 'websocket';
+	const useWebSockets = computed(() => settingsStore.pushBackend === 'websocket');
 
 	const getConnectionUrl = () => {
 		const restUrl = rootStore.restUrl;
 		const url = `/push?pushRef=${rootStore.pushRef}`;
 
-		if (useWebSockets) {
+		if (useWebSockets.value) {
 			const { protocol, host } = window.location;
 			const baseUrl = restUrl.startsWith('http')
 				? restUrl.replace(/^http/, 'ws')
@@ -88,13 +88,15 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	const url = getConnectionUrl();
 
-	const client = useWebSockets
-		? useWebSocketClient({ url, onMessage })
-		: useEventSourceClient({ url, onMessage });
+	const client = computed(() =>
+		useWebSockets.value
+			? useWebSocketClient({ url, onMessage })
+			: useEventSourceClient({ url, onMessage }),
+	);
 
 	function serializeAndSend(message: unknown) {
-		if (client.isConnected.value) {
-			client.sendMessage(JSON.stringify(message));
+		if (client.value.isConnected.value) {
+			client.value.sendMessage(JSON.stringify(message));
 		} else {
 			outgoingQueue.value.push(message);
 		}
@@ -102,34 +104,37 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	const pushConnect = () => {
 		isConnectionRequested.value = true;
-		client.connect();
+		client.value.connect();
 	};
 
 	const pushDisconnect = () => {
 		isConnectionRequested.value = false;
-		client.disconnect();
+		client.value.disconnect();
 	};
 
-	watch(client.isConnected, (didConnect) => {
-		if (!didConnect) {
-			return;
-		}
-
-		// Send any buffered messages
-		if (outgoingQueue.value.length) {
-			for (const message of outgoingQueue.value) {
-				serializeAndSend(message);
+	watch(
+		() => client.value.isConnected.value,
+		(didConnect) => {
+			if (!didConnect) {
+				return;
 			}
-			outgoingQueue.value = [];
-		}
-	});
+
+			// Send any buffered messages
+			if (outgoingQueue.value.length) {
+				for (const message of outgoingQueue.value) {
+					serializeAndSend(message);
+				}
+				outgoingQueue.value = [];
+			}
+		},
+	);
 
 	/** Removes all buffered messages from the sent queue */
 	const clearQueue = () => {
 		outgoingQueue.value = [];
 	};
 
-	const isConnected = computed(() => client.isConnected.value);
+	const isConnected = computed(() => client.value.isConnected.value);
 
 	return {
 		isConnected,

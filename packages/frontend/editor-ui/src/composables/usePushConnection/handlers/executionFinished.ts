@@ -1,4 +1,4 @@
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -19,12 +19,12 @@ import {
 	SampleTemplates,
 	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
-} from '@/features/templates/utils/workflowSamples';
+} from '@/features/workflows/templates/utils/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
-} from '@/utils/executionUtils';
+} from '@/features/execution/executions/executions.utils';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
@@ -40,12 +40,17 @@ export type SimplifiedExecution = Pick<
 	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
 >;
 
+export type ExecutionFinishedOptions = {
+	router: ReturnType<typeof useRouter>;
+	workflowState: WorkflowState;
+};
+
 /**
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
  */
 export async function executionFinished(
 	{ data }: ExecutionFinished,
-	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
+	options: ExecutionFinishedOptions,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
@@ -131,7 +136,7 @@ export async function executionFinished(
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);
 
-	continueEvaluationLoop(execution, options.router);
+	continueEvaluationLoop(execution, options);
 }
 
 /**
@@ -141,7 +146,7 @@ export async function executionFinished(
  */
 export function continueEvaluationLoop(
 	execution: SimplifiedExecution,
-	router: ReturnType<typeof useRouter>,
+	opts: ExecutionFinishedOptions,
 ) {
 	if (execution.status !== 'success' || execution.data?.startData?.destinationNode !== undefined) {
 		return;
@@ -163,7 +168,7 @@ export function continueEvaluationLoop(
 	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
 
 	if (rowsLeft && rowsLeft > 0) {
-		const { runWorkflow } = useRunWorkflow({ router });
+		const { runWorkflow } = useRunWorkflow(opts);
 		void runWorkflow({
 			triggerNode: evaluationTrigger.name,
 			// pass output of previous node run to trigger next run
@@ -421,7 +426,7 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers({ workflowState });
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 
