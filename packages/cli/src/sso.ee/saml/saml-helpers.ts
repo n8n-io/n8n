@@ -170,3 +170,49 @@ export function getMappedSamlAttributesFromFlowResult(
 export function isConnectionTestRequest(payload: SamlAcsDto): boolean {
 	return payload.RelayState === getServiceProviderConfigTestReturnUrl();
 }
+
+/**
+ * Sanitizes a redirect URL to prevent open redirect vulnerabilities.
+ * Allows relative paths and same-origin absolute URLs.
+ *
+ * @param redirectUrl - The URL to sanitize
+ * @param instanceBaseUrl - The instance base URL to validate against
+ * @param defaultRedirect - The default redirect if validation fails (default: '/')
+ * @returns A safe redirect URL
+ */
+export function sanitizeRedirectUrl(
+	redirectUrl: string | undefined,
+	instanceBaseUrl: string,
+	defaultRedirect: string = '/',
+): string {
+	// Return default if empty or not a string
+	if (!redirectUrl || typeof redirectUrl !== 'string') {
+		return defaultRedirect;
+	}
+
+	const trimmedUrl = redirectUrl.trim();
+
+	// Return default if empty after trim
+	if (trimmedUrl === '') {
+		return defaultRedirect;
+	}
+
+	// Allow local redirects (relative paths)
+	if (trimmedUrl.startsWith('/')) {
+		return trimmedUrl;
+	}
+
+	try {
+		// Only allow origin domain redirects
+		const redirectUrlObj = new URL(trimmedUrl);
+		const instanceUrlObj = new URL(instanceBaseUrl);
+
+		if (redirectUrlObj.origin === instanceUrlObj.origin) {
+			return trimmedUrl;
+		}
+	} catch {
+		// Invalid URL, fall through to return default
+	}
+
+	return defaultRedirect;
+}
