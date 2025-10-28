@@ -33,7 +33,7 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/components/Node/NodeCreator/composables/useActionsGeneration', () => ({
+vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({
 	useActionsGenerator: () => ({
 		generateMergedNodesAndActions: (
 			visibleNodeTypes: Array<{ name: string; displayName?: string }>,

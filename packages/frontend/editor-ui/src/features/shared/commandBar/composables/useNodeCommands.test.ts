@@ -38,7 +38,7 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 
 const mockGenerateMergedNodesAndActionsFn = vi.fn().mockReturnValue({ mergedNodes: [] });
 
-vi.mock('@/components/Node/NodeCreator/composables/useActionsGeneration', () => ({
+vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({
 	useActionsGenerator: () => ({
 		generateMergedNodesAndActions: mockGenerateMergedNodesAndActionsFn,
 	}),
