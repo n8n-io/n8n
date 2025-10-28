@@ -27,6 +27,7 @@ from src.message_types.pipe import (
     PipeResultMessage,
     PipeErrorMessage,
     TaskErrorInfo,
+    PrintArgs,
 )
 from src.constants import (
     EXECUTOR_CIRCULAR_REFERENCE_KEY,
@@ -49,8 +50,6 @@ MAX_PRINT_ARGS_ALLOWED = 100
 PIPE_READER_THREAD_JOIN_TIMEOUT = 3.0  # seconds
 
 type PipeConnection = Connection
-
-PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
 
 
 class TaskExecutor:
