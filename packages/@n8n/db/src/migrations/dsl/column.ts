@@ -7,6 +7,7 @@ export class Column {
 		| 'varchar'
 		| 'text'
 		| 'json'
+		| 'jsonb'
 		| 'timestamptz'
 		| 'timestamp'
 		| 'uuid'
@@ -70,6 +71,11 @@ export class Column {
 
 	get json() {
 		this.type = 'json';
+		return this;
+	}
+
+	get jsonb() {
+		this.type = 'jsonb';
 		return this;
 	}
 

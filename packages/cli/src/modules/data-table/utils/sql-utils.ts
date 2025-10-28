@@ -36,7 +36,7 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 			case 'date':
 				return name.timestampTimezone();
 			case 'json':
-				return name.json;
+				return name.jsonb;
 			default:
 				return name.text;
 		}
