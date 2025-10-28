@@ -87,7 +87,7 @@ const showActivationSuccess = () => {
 	});
 };
 
-const showActivationError = (error: Error) => {
+const showActivationError = (error: unknown) => {
 	toast.showError(error, locale.baseText('settings.usageAndPlan.license.activation.error.title'));
 };
 
@@ -117,11 +117,7 @@ const onLicenseActivation = async (eulaUri?: string) => {
 			return;
 		}
 
-		if (error instanceof Error) {
-			showActivationError(error);
-		} else {
-			showActivationError(new Error(String(error)));
-		}
+		showActivationError(error);
 	}
 };
 
@@ -132,9 +128,7 @@ const onEulaAccept = async () => {
 		// Error is already handled in onLicenseActivation
 		// This catch ensures modal errors don't break the UI
 		eulaModal.value = false;
-		if (error instanceof Error) {
-			showActivationError(error);
-		}
+		showActivationError(error);
 	}
 };
 
