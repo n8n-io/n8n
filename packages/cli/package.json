@@ -109,7 +109,7 @@
     "@n8n/task-runner": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "@n8n_io/ai-assistant-sdk": "catalog:",
-    "@n8n_io/license-sdk": "2.23.0",
+    "@n8n_io/license-sdk": "2.24.1",
     "@rudderstack/rudder-sdk-node": "2.1.4",
     "@parcel/watcher": "^2.5.1",
     "@sentry/node": "catalog:",

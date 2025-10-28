@@ -8,8 +8,8 @@ import {
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
 import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/constants';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 
 const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
