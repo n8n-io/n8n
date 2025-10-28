@@ -419,18 +419,18 @@ export function resolvePath(
 			const path = toSQLitePath(pathArray);
 			const base = `jsonb_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
 
-			if (typeof value === 'number') {
-				return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
-			}
-			if (value instanceof Date) {
-				return `CAST(${base} as ${dataTableColumnTypeToSql('date', dbType)})`;
-			}
-			if (typeof value === 'boolean') {
-				return `CAST(${base} as ${dbType.startsWith('sqlite') ? dataTableColumnTypeToSql('boolean', dbType) : 'SIGNED'})`;
-			}
-			if (typeof value === 'string') {
-				return `CAST(${base} AS ${dbType.startsWith('sqlite') ? dataTableColumnTypeToSql('string', dbType) : 'CHAR'})`;
-			}
+			// if (typeof value === 'number') {
+			// 	return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
+			// }
+			// if (value instanceof Date) {
+			// 	return `CAST(${base} as ${dataTableColumnTypeToSql('date', dbType)})`;
+			// }
+			// if (typeof value === 'boolean') {
+			// 	return `CAST(${base} as ${dbType.startsWith('sqlite') ? dataTableColumnTypeToSql('boolean', dbType) : 'SIGNED'})`;
+			// }
+			// if (typeof value === 'string') {
+			// 	return `CAST(${base} AS ${dbType.startsWith('sqlite') ? dataTableColumnTypeToSql('string', dbType) : 'CHAR'})`;
+			// }
 			// return `CAST(${base} AS ${dataTableColumnTypeToSql('string', dbType)})`;
 			return base;
 		}
