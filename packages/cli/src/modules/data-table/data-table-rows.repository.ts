@@ -79,7 +79,11 @@ function getConditionAndParams(
 	}
 
 	// For filters, we let TypeORM handle date conversion through parameterized queries.
-	const value = filter.value;
+	let value = filter.value;
+
+	if (dbType.startsWith('sqlite') && typeof value === 'object' && !(value instanceof Date)) {
+		value = JSON.stringify(value);
+	}
 
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {

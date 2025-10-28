@@ -3570,6 +3570,12 @@ describe('dataTable', () => {
 			[false, 0, 'eq', true],
 			[{ a: 3 }, { a: 3 }, 'eq', true],
 			[{ a: 3 }, { a: 4 }, 'neq', true],
+			[{ a: 3 }, '{"a":3}', 'eq', true],
+			[{ a: 3 }, '{ "a" : 3 }', 'eq', false],
+			[{ a: 3 }, '{"a":4}', 'neq', true],
+			[{ a: 3 }, '{a:3}', 'eq', false],
+			[{ a: 3 }, '{a:4}', 'neq', true],
+
 			[{}, {}, 'eq', true],
 		])(
 			'inserts json with input %p, filter %p, operator %p, expectPresent %p',
