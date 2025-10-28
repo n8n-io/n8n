@@ -292,7 +292,6 @@ const hasAnyDataAvailable = computed(() => {
 	);
 });
 const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
-const hasNode = computed(() => !!node.value);
 const hasBinaryData = computed(() => binaryData.value?.length > 0);
 const hasNoData = computed(() => !rawInputData.value.length && !pinnedData.hasData.value);
 const isReadOnly = computed(
@@ -310,19 +309,13 @@ const shouldShowSchemaView = computed(() => {
 
 // Helper: Get run data for current node (returns null if not available)
 const currentNodeRunData = computed(() => {
-	if (!hasNode.value || !workflowRunData.value) return null;
-	const nodeName = node.value!.name;
+	if (!node.value || !workflowRunData.value) return null;
+	const nodeName = node.value.name;
 	return workflowRunData.value.hasOwnProperty(nodeName) ? workflowRunData.value[nodeName] : null;
 });
 
 const shouldShowNodeNotRunState = computed(() => {
 	return !hasNodeRun.value && !(displaysMultipleNodes.value && hasAnyDataAvailable.value);
-});
-
-const shouldShowSubworkflowError = computed(() => {
-	return (
-		isPaneTypeOutput.value && hasSubworkflowExecutionError.value && subworkflowExecutionError.value
-	);
 });
 
 const shouldShowDisabledNodeHint = computed(() => {
@@ -352,13 +345,11 @@ const shouldShowBinaryOnlyHint = computed(() => {
 	);
 });
 
-const isTriggerNode = computed(
-	() => hasNode.value && nodeTypesStore.isTriggerNode(node.value.type),
-);
+const isTriggerNode = computed(() => node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const canPinData = computed(
 	() =>
-		hasNode.value &&
+		node.value &&
 		pinnedData.canPinNode(false, currentOutputIndex.value) &&
 		!isPaneTypeInput.value &&
 		pinnedData.isValidNodeType.value &&
@@ -368,7 +359,7 @@ const canPinData = computed(
 const hasNodeRun = computed(() =>
 	Boolean(
 		!props.isExecuting &&
-			hasNode.value &&
+			node.value &&
 			((workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name)) ||
 				pinnedData.hasData.value),
 	),
@@ -379,7 +370,7 @@ const isArtificialRecoveredEventItem = computed(
 );
 
 const subworkflowExecutionError = computed(() => {
-	if (!hasNode.value) return null;
+	if (!node.value) return null;
 	return {
 		node: node.value,
 		messages: [workflowsStore.subWorkflowExecutionError?.message ?? ''],
@@ -394,14 +385,14 @@ const parentNodeError = computed(() => {
 });
 
 const workflowRunErrorAsNodeError = computed(() => {
-	if (!hasNode.value) return null;
+	if (!node.value) return null;
 	if (isSubNodeType.value && isPaneTypeInput.value) {
 		return parentNodeError.value;
 	}
-	return workflowRunData.value?.[node.value?.name]?.[props.runIndex]?.error as NodeError;
+	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.error as NodeError;
 });
 
-const hasRunError = computed(() => hasNode.value && !!workflowRunErrorAsNodeError.value);
+const hasRunError = computed(() => node.value && !!workflowRunErrorAsNodeError.value);
 
 const executionHints = computed(() => {
 	if (hasNodeRun.value) {
@@ -439,7 +430,7 @@ const unfilteredDataCount = computed(() =>
 );
 const dataSizeInMB = computed(() => (dataSize.value / (1024 * 1024)).toFixed(1));
 const maxOutputIndex = computed(() => {
-	if (!hasNode.value || props.runIndex === undefined) return 0;
+	if (!node.value || props.runIndex === undefined) return 0;
 	const nodeRunData = currentNodeRunData.value;
 	if (!nodeRunData || nodeRunData.length <= props.runIndex) return 0;
 
@@ -570,6 +561,18 @@ const showIoSearchNoMatchContent = computed(
 	() => hasNodeRun.value && !inputData.value.length && !!search.value && isSingleNodeView.value,
 );
 
+const shouldShowDisplayModeSelect = computed(() => {
+	if (editMode.value.enabled) return false;
+	return (
+		hasAnyDataAvailable.value ||
+		(hasNodeRun.value &&
+			(inputData.value.length ||
+				binaryData.value.length ||
+				search.value ||
+				hasMultipleInputNodes.value))
+	);
+});
+
 const parentNodeOutputData = computed(() => {
 	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
 	let parentNodeData: INodeExecutionData[] = [];
@@ -605,7 +608,7 @@ const pinButtonDisabled = computed(
 );
 
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
-	if (!hasNode.value) return null;
+	if (!node.value) return null;
 	const errorMetadata = parseErrorMetadata(workflowRunErrorAsNodeError.value);
 	if (errorMetadata !== undefined) {
 		return errorMetadata;
@@ -619,11 +622,11 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 		}
 	}
 
-	return workflowRunData.value?.[node.value!.name]?.[props.runIndex]?.metadata ?? null;
+	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
 });
 
 const hasInputOverwrite = computed((): boolean => {
-	if (!hasNode.value) return false;
+	if (!node.value) return false;
 	const taskData = nodeHelpers.getNodeTaskData(node.value.name, props.runIndex);
 	return Boolean(taskData?.inputOverride);
 });
@@ -1512,12 +1515,7 @@ defineExpose({ enterEditMode });
 
 				<RunDataDisplayModeSelect
 					v-if="!disableDisplayModeSelection"
-					v-show="
-						hasPreviewSchema ||
-						(hasNodeRun &&
-							(inputData.length || binaryData.length || search || hasMultipleInputNodes) &&
-							!editMode.enabled)
-					"
+					v-show="shouldShowDisplayModeSelect"
 					:compact="props.compact"
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
@@ -1748,7 +1746,10 @@ defineExpose({ enterEditMode });
 				</div>
 			</div>
 
-			<div v-else-if="shouldShowSubworkflowError" :class="$style.stretchVertically">
+			<div
+				v-else-if="isPaneTypeOutput && hasSubworkflowExecutionError && subworkflowExecutionError"
+				:class="$style.stretchVertically"
+			>
 				<NodeErrorView
 					:compact="compact"
 					:error="subworkflowExecutionError"
@@ -1765,7 +1766,7 @@ defineExpose({ enterEditMode });
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div v-else-if="shouldShowDisabledNodeHint" :class="$style.center">
+			<div v-else-if="shouldShowDisabledNodeHint && node" :class="$style.center">
 				<N8nText>
 					{{ i18n.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
 					<N8nLink @click="enableNode">
