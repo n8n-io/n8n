@@ -10,13 +10,14 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { typeFromExpression } from './utils';
 import { useI18n } from '@n8n/i18n';
 import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import { removeExpressionPrefix } from '@/utils/expressions';
+import { typeFromExpression } from '../../utils/assignmentCollection.utils';
+
 interface Props {
 	path: string;
 	modelValue: AssignmentValue;

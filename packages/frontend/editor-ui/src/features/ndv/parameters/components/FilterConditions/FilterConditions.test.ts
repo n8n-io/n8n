@@ -1,15 +1,15 @@
 import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import * as workFlowHelpers from '@/composables/useWorkflowHelpers';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { cleanup, waitFor, within } from '@testing-library/vue';
 import get from 'lodash/get';
 import type { FilterOptionsValue, FilterTypeOptions, FilterValue } from 'n8n-workflow';
+import FilterConditions from './FilterConditions.vue';
 import { getFilterOperator } from './utils';
 
 vi.mock('vue-router');
