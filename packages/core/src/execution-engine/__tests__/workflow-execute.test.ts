@@ -1863,6 +1863,58 @@ describe('WorkflowExecute', () => {
 			await mockCleanupPromise;
 			expect(cleanupCalled).toBe(true);
 		});
+
+		test('should capture stoppedAt timestamp after all processing completes', async () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+
+			let cleanupExecuted = false;
+			let cleanupTimestamp: Date | null = null;
+			const closeFunction = new Promise<void>((resolve) => {
+				setTimeout(() => {
+					cleanupExecuted = true;
+					cleanupTimestamp = new Date();
+					resolve();
+				}, 50);
+			});
+
+			const result = await workflowExecute.processSuccessExecution(
+				startedAt,
+				workflow,
+				undefined,
+				closeFunction,
+			);
+
+			// Verify cleanup was executed
+			expect(cleanupExecuted).toBe(true);
+			// Verify stoppedAt is after cleanup completed
+			expect(result.stoppedAt!.getTime()).toBeGreaterThanOrEqual(cleanupTimestamp!.getTime());
+			// Verify stoppedAt is after startedAt
+			expect(result.stoppedAt!.getTime()).toBeGreaterThan(result.startedAt.getTime());
+		});
+
+		test('should use explicit stoppedAt when provided to getFullRunData', () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			const explicitStoppedAt = new Date('2023-01-01T00:00:05.500Z');
+
+			const result = workflowExecute.getFullRunData(startedAt, explicitStoppedAt);
+
+			expect(result.startedAt).toEqual(startedAt);
+			expect(result.stoppedAt).toEqual(explicitStoppedAt);
+			expect(result.stoppedAt!.getTime() - result.startedAt.getTime()).toBe(5500);
+		});
+
+		test('should default to current time when stoppedAt not provided to getFullRunData', () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			const currentTime = new Date('2023-01-01T00:00:03.250Z');
+			jest.useFakeTimers().setSystemTime(currentTime);
+
+			const result = workflowExecute.getFullRunData(startedAt);
+
+			expect(result.startedAt).toEqual(startedAt);
+			expect(result.stoppedAt).toEqual(currentTime);
+
+			jest.useRealTimers();
+		});
 	});
 
 	describe('assignPairedItems', () => {
