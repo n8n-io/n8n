@@ -2,16 +2,21 @@
 import { useConsentStore } from '@/stores/consent.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { ref, onMounted, computed } from 'vue';
+import { onMounted, computed } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
-import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
+import { useToast } from '@/composables/useToast';
 
 const consentStore = useConsentStore();
+
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
+const toast = useToast();
 
-const error = ref<string | null>(null);
+const error = computed(() => consentStore.error);
+
+const loading = computed(() => consentStore.isLoading);
 
 const clentDetails = computed<ConsentDetails>(
 	() =>
@@ -27,8 +32,7 @@ const handleAllow = async () => {
 		const response = await consentStore.approveConsent(true);
 		window.location.href = response.redirectUrl;
 	} catch (err) {
-		// Error is already set in the store
-		console.error('Failed to approve consent', err);
+		toast.showError(err, i18n.baseText('mcp.consentView.error.allow'));
 	}
 };
 
@@ -37,12 +41,12 @@ const handleDeny = async () => {
 		const response = await consentStore.approveConsent(false);
 		window.location.href = response.redirectUrl;
 	} catch (err) {
-		console.error('Failed to deny consent', err);
+		toast.showError(err, i18n.baseText('mcp.consentView.error.deny'));
 	}
 };
 
 onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.mcp'));
+	documentTitle.set(i18n.baseText('mcp.consentView.title'));
 	await consentStore.fetchConsentDetails();
 });
 </script>
@@ -96,12 +100,19 @@ onMounted(async () => {
 				</div>
 			</div>
 			<footer :class="$style.footer">
-				<!-- TODO: ADD notice for errror and warning -->
+				<N8nNotice
+					v-if="error"
+					theme="danger"
+					:data-test-id="'consent-error-notice'"
+					:content="error"
+				></N8nNotice>
 				<div :class="$style['button-group']">
 					<N8nButton
 						type="tertiary"
 						:data-test-id="'consent-deny-button'"
 						:size="'large'"
+						:loading="loading"
+						:disabled="loading || error !== null"
 						@click="handleDeny"
 					>
 						{{ i18n.baseText('generic.deny') }}
@@ -110,6 +121,8 @@ onMounted(async () => {
 						type="primary"
 						:data-test-id="'consent-allow-button'"
 						:size="'large'"
+						:loading="loading"
+						:disabled="loading || error !== null"
 						@click="handleAllow"
 					>
 						{{ i18n.baseText('generic.allow') }}
@@ -131,7 +144,6 @@ onMounted(async () => {
 	width: 100%;
 	height: 100%;
 	background-color: rgba(71, 69, 84, 0.75);
-	// TODO: Use a CSS variable for z-index values
 	z-index: 1000;
 }
 
@@ -198,7 +210,13 @@ onMounted(async () => {
 .footer {
 	width: 100%;
 	display: flex;
+	flex-direction: column;
 	justify-content: center;
+	gap: var(--spacing--sm);
+
+	:global(.notice) {
+		margin: 0;
+	}
 
 	.button-group {
 		display: flex;
