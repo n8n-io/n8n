@@ -125,8 +125,8 @@ class TaskExecutor:
         try:
             try:
                 process.start()
-            except Exception:
-                raise TaskSubprocessFailedError(-1)
+            except Exception as e:
+                raise TaskSubprocessFailedError(-1, e)
             finally:
                 write_conn.close()
 
