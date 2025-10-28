@@ -1,6 +1,6 @@
 import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowHistoryRepository } from '@n8n/db';
+import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
@@ -87,6 +87,47 @@ describe('Workflow History Manager', () => {
 		expect(
 			await repo.count({ where: { versionId: In(oldVersions.map((i) => i.versionId)) } }),
 		).toBe(0);
+	});
+
+	test('should not prune current versions', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+
+		const activeWorkflow = await createWorkflow({ active: true });
+		const inactiveWorkflow = await createWorkflow({ active: false });
+
+		// Create old history versions for the active workflow
+		const activeWorkflowVersions = await createManyWorkflowHistoryItems(
+			activeWorkflow.id,
+			5,
+			DateTime.now().minus({ days: 2 }).toJSDate(),
+		);
+
+		// Create old history versions for the inactive workflow
+		const inactiveWorkflowVersions = await createManyWorkflowHistoryItems(
+			inactiveWorkflow.id,
+			5,
+			DateTime.now().minus({ days: 2 }).toJSDate(),
+		);
+
+		// Set the current version for each workflow
+		activeWorkflow.versionId = activeWorkflowVersions[0].versionId;
+		inactiveWorkflow.versionId = inactiveWorkflowVersions[0].versionId;
+
+		const workflowRepo = Container.get(WorkflowRepository);
+		await workflowRepo.save([activeWorkflow, inactiveWorkflow]);
+
+		await manager.prune();
+
+		// Both workflows' current versions should still exist even though they are old
+		expect(await repo.count({ where: { versionId: activeWorkflow.versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: inactiveWorkflow.versionId } })).toBe(1);
+
+		// Other old versions should be deleted
+		const otherVersionIds = [
+			...activeWorkflowVersions.slice(1).map((i) => i.versionId),
+			...inactiveWorkflowVersions.slice(1).map((i) => i.versionId),
+		];
+		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
 	});
 
 	const createWorkflowHistory = async (ageInDays = 2) => {
