@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import type { AgentCardData } from '@/features/ai/chatHub/chat.types';
-import { N8nAvatar, N8nIconButton, N8nText } from '@n8n/design-system';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import { RouterLink } from 'vue-router';
-import { computed } from 'vue';
 import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
+import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import type { ChatHubAgentDto, ChatHubConversationModel } from '@n8n/api-types';
+import { N8nIconButton, N8nText } from '@n8n/design-system';
+import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 
-const props = defineProps<{
-	data: AgentCardData;
+const { model, agents } = defineProps<{
+	model: ChatHubConversationModel;
+	agents: ChatHubAgentDto[];
 }>();
 
 const emit = defineEmits<{
@@ -15,61 +17,40 @@ const emit = defineEmits<{
 	delete: [];
 }>();
 
-const isCustomAgent = computed(() => props.data.type === 'custom-agent');
-
-const name = computed(() => {
-	if (props.data.type === 'custom-agent') {
-		return props.data.agent.name;
-	}
-	return props.data.name;
-});
-
 const description = computed(() => {
-	if (props.data.type === 'custom-agent') {
-		return props.data.agent.description || 'No description';
+	if (model.provider === 'custom-agent') {
+		return agents.find((agent) => agent.id === model.agentId)?.description || 'No description';
 	}
-	return 'n8n workflow agent';
-});
 
-const provider = computed(() => {
-	if (props.data.type === 'custom-agent') {
-		return props.data.agent.provider;
+	if (model.provider === 'n8n') {
+		return 'n8n workflow';
 	}
-	return 'n8n';
-});
 
-const model = computed(() => {
-	if (props.data.type === 'custom-agent') {
-		return props.data.agent.model;
-	}
-	return null;
+	return '';
 });
 
 const metadata = computed(() => {
 	const parts = [];
 
-	if (props.data.type === 'custom-agent') {
-		parts.push(`${providerDisplayNames[provider.value]} • ${model.value}`);
+	if (model.provider === 'custom-agent') {
+		parts.push(providerDisplayNames[model.provider]);
+		parts.push(model.name);
 		parts.push('Private');
 	} else {
-		parts.push(`${providerDisplayNames[provider.value]} workflow`);
+		parts.push('n8n workflow');
 	}
 
 	return parts.join(' • ');
 });
-
-const avatarText = computed(() => {
-	return name.value.charAt(0).toUpperCase();
-});
 </script>
 
 <template>
-	<RouterLink :to="getAgentRoute(data)" :class="$style.card">
-		<N8nAvatar :class="$style.avatar" size="large">{{ avatarText }}</N8nAvatar>
+	<RouterLink :to="getAgentRoute(model)" :class="$style.card">
+		<ChatAgentAvatar :model="model" size="lg" />
 
 		<div :class="$style.content">
 			<N8nText tag="h3" size="medium" bold :class="$style.title">
-				{{ name }}
+				{{ model.name }}
 			</N8nText>
 			<N8nText size="small" color="text-light" :class="$style.description">
 				{{ description }}
@@ -79,7 +60,7 @@ const avatarText = computed(() => {
 			</N8nText>
 		</div>
 
-		<div v-if="isCustomAgent" :class="$style.actions">
+		<div v-if="model.provider === 'custom-agent'" :class="$style.actions">
 			<N8nIconButton
 				icon="pen"
 				type="tertiary"

@@ -14,6 +14,7 @@ import CredentialSelectorModal from './CredentialSelectorModal.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -51,8 +52,6 @@ const credentialsName = computed(() =>
 				?.name
 		: undefined,
 );
-
-const isCustomAgent = computed(() => props.selectedModel?.provider === 'custom-agent');
 
 const menu = computed(() => {
 	const agents = chatStore.models?.['custom-agent'].models;
@@ -246,18 +245,10 @@ defineExpose({
 				@create-new="handleCreateNewCredential"
 			/>
 
-			<N8nAvatar
-				v-if="isCustomAgent"
-				:first-name="selectedModel?.name"
-				size="xsmall"
-				:class="$style.icon"
-			/>
-			<CredentialIcon
-				v-else-if="selectedModel && selectedModel.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
-				:credential-type-name="
-					PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider as ChatHubLLMProvider]
-				"
-				:size="credentialsName ? 20 : 16"
+			<ChatAgentAvatar
+				v-if="selectedModel"
+				:model="selectedModel"
+				:size="credentialsName ? 'md' : 'sm'"
 				:class="$style.icon"
 			/>
 			<div :class="$style.selected">

@@ -3,9 +3,11 @@ import {
 	type ChatHubConversationModel,
 	type ChatModelsResponse,
 	type ChatHubSessionDto,
+	type ChatHubAgentDto,
 } from '@n8n/api-types';
-import type { AgentCardData, GroupedConversations } from './chat.types';
+import type { ChatMessage, GroupedConversations } from './chat.types';
 import { CHAT_VIEW } from './constants';
+import type { IWorkflowDb } from '@/Interface';
 
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
@@ -76,20 +78,84 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 	});
 }
 
-export function getAgentRoute(data: AgentCardData) {
-	if (data.type === 'n8n-workflow') {
+export function getAgentRoute(model: ChatHubConversationModel) {
+	if (model.provider === 'n8n') {
 		return {
 			name: CHAT_VIEW,
 			query: {
-				workflowId: data.workflowId,
+				workflowId: model.workflowId,
+			},
+		};
+	}
+
+	if (model.provider === 'custom-agent') {
+		return {
+			name: CHAT_VIEW,
+			query: {
+				agentId: model.agentId,
 			},
 		};
 	}
 
 	return {
 		name: CHAT_VIEW,
-		query: {
-			agentId: data.agent.id,
-		},
 	};
+}
+
+export function restoreConversationModelFromMessageOrSession(
+	messageOrSession: ChatHubSessionDto | ChatMessage,
+	agents: ChatHubAgentDto[],
+	workflowsById: Partial<Record<string, IWorkflowDb>>,
+): ChatHubConversationModel | null {
+	if (messageOrSession.provider === null) {
+		return null;
+	}
+
+	switch (messageOrSession.provider) {
+		case 'custom-agent':
+			if (!messageOrSession.agentId) {
+				return null;
+			}
+
+			return {
+				provider: 'custom-agent',
+				agentId: messageOrSession.agentId,
+				name:
+					agents.find((agent) => agent.id === messageOrSession.agentId)?.name ??
+					`Custom agent ${messageOrSession.agentId}`,
+			};
+		case 'n8n':
+			if (!messageOrSession.workflowId) {
+				return null;
+			}
+
+			return {
+				provider: 'n8n',
+				workflowId: messageOrSession.workflowId,
+				name:
+					workflowsById[messageOrSession.workflowId]?.name ??
+					`n8n workflow ${messageOrSession.workflowId}`,
+			};
+		default:
+			if (messageOrSession.model === null) {
+				return null;
+			}
+
+			return {
+				provider: messageOrSession.provider,
+				model: messageOrSession.model,
+				name: messageOrSession.model,
+			};
+	}
+}
+
+export function describeConversationModel(model: ChatHubConversationModel) {
+	switch (model.provider) {
+		case 'n8n':
+			return `n8n workflow ${model.name}`;
+		case 'custom-agent':
+			return `Custom agent ${model.name}`;
+		default:
+			return model.model;
+	}
 }

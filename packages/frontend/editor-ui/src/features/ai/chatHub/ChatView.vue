@@ -138,16 +138,17 @@ const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value)
 const isNewChat = computed(() => route.name === CHAT_VIEW);
 const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['credentials'] | null>(
 	() => {
-		const credentialsId = selectedModel.value
-			? credentialsByProvider.value[selectedModel.value.provider]
-			: undefined;
+		if (!selectedModel.value) {
+			return null;
+		}
 
-		if (
-			!selectedModel.value ||
-			!credentialsId ||
-			selectedModel.value.provider === 'custom-agent' ||
-			selectedModel.value.provider === 'n8n'
-		) {
+		if (selectedModel.value.provider === 'custom-agent' || selectedModel.value.provider === 'n8n') {
+			return {};
+		}
+
+		const credentialsId = credentialsByProvider.value[selectedModel.value.provider];
+
+		if (!credentialsId) {
 			return null;
 		}
 
@@ -159,13 +160,7 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 		};
 	},
 );
-const isMissingSelectedCredential = computed(
-	() =>
-		!!selectedModel.value &&
-		selectedModel.value.provider !== 'custom-agent' &&
-		selectedModel.value.provider !== 'n8n' &&
-		!credentialsForSelectedProvider.value,
-);
+const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
