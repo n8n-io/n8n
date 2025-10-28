@@ -1516,8 +1516,8 @@ importers:
         specifier: 'catalog:'
         version: 1.17.0
       '@n8n_io/license-sdk':
-        specifier: 2.23.0
-        version: 2.23.0
+        specifier: 2.24.1
+        version: 2.24.1
       '@parcel/watcher':
         specifier: ^2.5.1
         version: 2.5.1
@@ -6101,8 +6101,8 @@ packages:
     resolution: {integrity: sha512-Zwfgf9N4aK9klCVC15xHL8R5ID8h9f6OAlW6fPJRV00cmBjX2gD8ZYaX92A9iGiKpmW5YG3mxPU7XTFVexB7wQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.23.0':
-    resolution: {integrity: sha512-WsABHT9yDgz672It1T/B9jfl3EDcCQ7b68HaiB2q0k5u2vIKyDa9HYQQUlPbYoqhzj+kaEpaTVcQt734AvdxbQ==}
+  '@n8n_io/license-sdk@2.24.1':
+    resolution: {integrity: sha512-nrITEzOmFonFXD5XtzHjpY/s1kpKksYQoY5HBqhzRkGq3ldEO3nLKDl6RG9AEtkKKlKkid3lzviZJCIDINZlQw==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.1':
@@ -16896,6 +16896,10 @@ packages:
     resolution: {integrity: sha512-u5otvFBOBZvmdjWLVW+5DAc9Nkq8f24g0O9oY7qw2JVIF1VocIFoyz9JFkuVOS2j41AufeO0xnlweJ2RLT8nGw==}
     engines: {node: '>=20.18.1'}
 
+  undici@7.16.0:
+    resolution: {integrity: sha512-QEg3HPMll0o3t2ourKwOeUAZ159Kn9mx5pnzHRQO8+Wixmh88YdZRiIwat0iNzNNXn0yoEtXJqFpyW7eM8BV7g==}
+    engines: {node: '>=20.18.1'}
+
   unicode-canonical-property-names-ecmascript@2.0.1:
     resolution: {integrity: sha512-dA8WbNeb2a6oQzAQ55YlT5vQAWGV9WXOsi3SskE3bcCdM0P4SDd+24zS/OCacdRq5BkdsRj9q3Pg6YyQoxIGqg==}
     engines: {node: '>=4'}
@@ -21479,12 +21483,12 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.17.0': {}
 
-  '@n8n_io/license-sdk@2.23.0':
+  '@n8n_io/license-sdk@2.24.1':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
-      undici: 7.10.0
+      undici: 7.16.0
 
   '@n8n_io/riot-tmpl@4.0.1':
     dependencies:
@@ -34703,6 +34707,8 @@ snapshots:
   undici@6.21.3: {}
 
   undici@7.10.0: {}
+
+  undici@7.16.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
