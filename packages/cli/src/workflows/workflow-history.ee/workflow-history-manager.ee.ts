@@ -1,5 +1,5 @@
 import { Time } from '@n8n/constants';
-import { WorkflowHistoryRepository } from '@n8n/db';
+import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 
@@ -9,7 +9,10 @@ import { getWorkflowHistoryPruneTime } from './workflow-history-helper.ee';
 export class WorkflowHistoryManager {
 	pruneTimer?: NodeJS.Timeout;
 
-	constructor(private workflowHistoryRepo: WorkflowHistoryRepository) {}
+	constructor(
+		private workflowHistoryRepo: WorkflowHistoryRepository,
+		private workflowRepo: WorkflowRepository,
+	) {}
 
 	init() {
 		if (this.pruneTimer !== undefined) {
@@ -28,12 +31,15 @@ export class WorkflowHistoryManager {
 
 	async prune() {
 		const pruneHours = getWorkflowHistoryPruneTime();
-		// No prune time set
+		// No prune time set (infinite retention)
 		if (pruneHours === -1) {
 			return;
 		}
 		const pruneDateTime = DateTime.now().minus({ hours: pruneHours }).toJSDate();
 
-		await this.workflowHistoryRepo.deleteEarlierThan(pruneDateTime);
+		// Get active version IDs to exclude from pruning
+		const activeVersionIds = await this.workflowRepo.getActiveVersionIds();
+
+		await this.workflowHistoryRepo.deleteEarlierThanExcept(pruneDateTime, activeVersionIds);
 	}
 }
