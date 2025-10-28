@@ -19,4 +19,3 @@ docker/compose
 docker/**/Dockerfile
 .vscode
 packages/testing
-cypress
