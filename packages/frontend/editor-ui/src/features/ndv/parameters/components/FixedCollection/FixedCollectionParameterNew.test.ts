@@ -116,7 +116,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 			});
 
 			expect(rendered.getByText('Routing Rules')).toBeInTheDocument();
-			expect(rendered.getByTestId('fixed-collection-add-header-nested')).toBeInTheDocument();
+			expect(rendered.getByTestId('fixed-collection-add-nested-button')).toBeInTheDocument();
 		});
 
 		it('expands by default when isNewlyAdded is true', () => {
@@ -437,8 +437,8 @@ describe('FixedCollectionParameterNew.vue', () => {
 			expect(getByText('Option 1')).toBeInTheDocument();
 		});
 
-		it('disables add dropdown when all options are added', () => {
-			const { getByTestId } = renderComponent({
+		it('hides add dropdown when all options are added', () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...topLevelMultipleOptionsProps,
 					values: {
@@ -456,12 +456,11 @@ describe('FixedCollectionParameterNew.vue', () => {
 				},
 			});
 
-			const addDropdown = getByTestId('fixed-collection-add-top-level-dropdown');
-			expect(addDropdown).toBeInTheDocument();
+			expect(queryByTestId('fixed-collection-add-top-level-dropdown')).not.toBeInTheDocument();
 		});
 
-		it('shows correct tooltip when all options added', () => {
-			const { getByTestId } = renderComponent({
+		it('hides add controls when all options are added', () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...topLevelMultipleOptionsProps,
 					values: {
@@ -479,8 +478,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 				},
 			});
 
-			const addDropdown = getByTestId('fixed-collection-add-top-level-dropdown');
-			expect(addDropdown).toBeInTheDocument();
+			expect(queryByTestId('fixed-collection-add-top-level-dropdown')).not.toBeInTheDocument();
 		});
 
 		it('renders add dropdown at bottom for top-level multiple options', () => {

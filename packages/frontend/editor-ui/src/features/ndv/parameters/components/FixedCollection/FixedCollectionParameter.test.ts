@@ -69,15 +69,13 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 	});
 
 	it('renders legacy component when feature flag is disabled', () => {
-		mockedGetVariant.mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.variant);
+		mockedGetVariant.mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.control);
 
 		const { container } = renderComponent();
 
-		// Legacy component has specific padding-left style
 		const component = container.querySelector('[data-test-id="fixed-collection-rules"]');
 		expect(component).toBeInTheDocument();
 
-		// Legacy uses tertiary button for add (no icon)
 		const addButton = container.querySelector('[data-test-id="fixed-collection-add"]');
 		expect(addButton).toBeInTheDocument();
 	});
