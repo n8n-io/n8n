@@ -97,8 +97,8 @@ interface EulaErrorResponse {
 }
 
 const isEulaError = (error: unknown): error is EulaErrorResponse => {
-	const err = error as EulaErrorResponse;
-	return err.httpStatusCode === 400 && !!err.meta?.eulaUrl;
+	const e = error as EulaErrorResponse;
+	return e.httpStatusCode === 400 && !!e.meta?.eulaUrl;
 };
 
 const onLicenseActivation = async (eulaUri?: string) => {
