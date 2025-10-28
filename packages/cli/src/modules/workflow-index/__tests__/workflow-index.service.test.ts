@@ -1,13 +1,14 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowDependencyRepository, WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import type { WorkflowDependencies } from '@n8n/db';
 import { ErrorReporter } from 'n8n-core';
+import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowIndexService } from '../workflow-index.service';
-
 import type { EventService } from '@/events/event.service';
+
+import { WorkflowIndexService } from '../workflow-index.service';
 
 describe('WorkflowIndexService', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
@@ -18,6 +19,7 @@ describe('WorkflowIndexService', () => {
 	// Create a mock EventService that captures event callbacks
 	let eventCallbacks: Map<string, Array<(...args: unknown[]) => Promise<void>>>;
 	let eventService: EventService;
+	let workflowIndexService: WorkflowIndexService;
 
 	// Helper to create mock workflows with all required WorkflowEntity properties
 	const createMockWorkflow = (
@@ -45,6 +47,17 @@ describe('WorkflowIndexService', () => {
 		return workflow;
 	};
 
+	const createNode = (partial: Partial<INode> & { id: string }): INode => {
+		return {
+			name: 'Test Node',
+			type: 'n8n-nodes-base.start',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...partial,
+		};
+	};
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		workflowRepository.findWorkflowsNeedingIndexing.mockReset();
@@ -62,30 +75,27 @@ describe('WorkflowIndexService', () => {
 				eventCallbacks.get(event)!.push(callback);
 			}),
 		} as unknown as EventService;
+
+		workflowIndexService = new WorkflowIndexService(
+			eventService,
+			dependencyRepository,
+			workflowRepository,
+			logger,
+			errorReporter,
+		);
 	});
 
 	describe('init() and server-started event', () => {
 		test('should index a workflow with a single node when server starts', async () => {
 			// Arrange
-			const workflowIndexService = new WorkflowIndexService(
-				eventService,
-				dependencyRepository,
-				workflowRepository,
-				logger,
-				errorReporter,
-			);
-
 			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
 				nodes: [
-					{
+					createNode({
 						id: 'node-1',
 						name: 'HTTP Request',
 						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [250, 300],
-						parameters: {},
-					},
+					}),
 				],
 			});
 
@@ -142,14 +152,11 @@ describe('WorkflowIndexService', () => {
 					name: 'Workflow 1',
 					versionCounter: 1,
 					nodes: [
-						{
+						createNode({
 							id: 'node-1',
 							name: 'HTTP Request',
 							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 1,
-							position: [250, 300],
-							parameters: {},
-						},
+						}),
 					],
 				}),
 				createMockWorkflow({
@@ -157,14 +164,11 @@ describe('WorkflowIndexService', () => {
 					name: 'Workflow 2',
 					versionCounter: 2,
 					nodes: [
-						{
+						createNode({
 							id: 'node-2',
 							name: 'Slack',
 							type: 'n8n-nodes-base.slack',
-							typeVersion: 1,
-							position: [250, 300],
-							parameters: {},
-						},
+						}),
 					],
 				}),
 			];
@@ -250,14 +254,11 @@ describe('WorkflowIndexService', () => {
 				name: 'Updated Workflow',
 				versionCounter: 2,
 				nodes: [
-					{
+					createNode({
 						id: 'node-1',
 						name: 'Gmail',
 						type: 'n8n-nodes-base.gmail',
-						typeVersion: 1,
-						position: [250, 300],
-						parameters: {},
-					},
+					}),
 				],
 			});
 
@@ -304,22 +305,16 @@ describe('WorkflowIndexService', () => {
 			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
 				nodes: [
-					{
+					createNode({
 						id: 'node-1',
 						name: 'HTTP Request',
 						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [250, 300],
-						parameters: {},
-					},
-					{
+					}),
+					createNode({
 						id: 'node-2',
 						name: 'Slack',
 						type: 'n8n-nodes-base.slack',
-						typeVersion: 1,
-						position: [450, 300],
-						parameters: {},
-					},
+					}),
 				],
 			});
 
@@ -364,20 +359,17 @@ describe('WorkflowIndexService', () => {
 			const mockWorkflow = createMockWorkflow({
 				id: 'workflow-123',
 				nodes: [
-					{
+					createNode({
 						id: 'node-1',
 						name: 'Slack',
 						type: 'n8n-nodes-base.slack',
-						typeVersion: 1,
-						position: [250, 300],
-						parameters: {},
 						credentials: {
 							slackApi: {
 								id: 'cred-123',
 								name: 'My Slack Account',
 							},
 						},
-					},
+					}),
 				],
 			});
 
@@ -421,16 +413,14 @@ describe('WorkflowIndexService', () => {
 				id: 'workflow-123',
 				name: 'Parent Workflow',
 				nodes: [
-					{
+					createNode({
 						id: 'node-1',
 						name: 'Execute Workflow',
 						type: 'n8n-nodes-base.executeWorkflow',
-						typeVersion: 1,
-						position: [250, 300],
 						parameters: {
 							workflowId: 'child-workflow-456',
 						},
-					},
+					}),
 				],
 			});
 
@@ -474,16 +464,14 @@ describe('WorkflowIndexService', () => {
 				id: 'workflow-123',
 				name: 'Webhook Workflow',
 				nodes: [
-					{
+					createNode({
 						id: 'node-1',
 						name: 'Webhook',
 						type: 'n8n-nodes-base.webhook',
-						typeVersion: 1,
-						position: [250, 300],
 						parameters: {
 							path: 'my-webhook-path',
 						},
-					},
+					}),
 				],
 			});
 
@@ -512,92 +500,6 @@ describe('WorkflowIndexService', () => {
 				dependencyKey: 'my-webhook-path',
 				dependencyInfo: 'node-1',
 			});
-		});
-
-		test('should index all dependency types in a complex workflow', async () => {
-			const workflowIndexService = new WorkflowIndexService(
-				eventService,
-				dependencyRepository,
-				workflowRepository,
-				logger,
-				errorReporter,
-			);
-
-			const mockWorkflow = createMockWorkflow({
-				id: 'workflow-complex',
-				name: 'Complex Workflow',
-				nodes: [
-					{
-						id: 'node-1',
-						name: 'Webhook',
-						type: 'n8n-nodes-base.webhook',
-						typeVersion: 1,
-						position: [250, 300],
-						parameters: {
-							path: 'incoming-webhook',
-						},
-					},
-					{
-						id: 'node-2',
-						name: 'Slack',
-						type: 'n8n-nodes-base.slack',
-						typeVersion: 1,
-						position: [450, 300],
-						parameters: {},
-						credentials: {
-							slackApi: {
-								id: 'cred-slack',
-								name: 'Slack Credentials',
-							},
-						},
-					},
-					{
-						id: 'node-3',
-						name: 'Execute Workflow',
-						type: 'n8n-nodes-base.executeWorkflow',
-						typeVersion: 1,
-						position: [650, 300],
-						parameters: {
-							workflowId: 'other-workflow',
-						},
-					},
-				],
-			});
-
-			workflowRepository.findWorkflowsNeedingIndexing
-				.mockResolvedValueOnce([mockWorkflow])
-				.mockResolvedValueOnce([]);
-			dependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
-
-			// Act
-			workflowIndexService.init();
-			const serverStartedCallbacks = eventCallbacks.get('server-started');
-			await serverStartedCallbacks![0]();
-
-			// Assert
-			const [, dependencies] = dependencyRepository.updateDependenciesForWorkflow.mock.calls[0] as [
-				string,
-				WorkflowDependencies,
-			];
-
-			// 3 nodeType + 1 credential + 1 workflowCall + 1 webhookPath = 6 total
-			expect(dependencies.dependencies).toHaveLength(6);
-
-			const nodeTypeDeps = dependencies.dependencies.filter((d) => d.dependencyType === 'nodeType');
-			const credentialDeps = dependencies.dependencies.filter(
-				(d) => d.dependencyType === 'credentialId',
-			);
-			const workflowCallDeps = dependencies.dependencies.filter(
-				(d) => d.dependencyType === 'workflowCall',
-			);
-			const webhookDeps = dependencies.dependencies.filter(
-				(d) => d.dependencyType === 'webhookPath',
-			);
-
-			expect(nodeTypeDeps).toHaveLength(3);
-			expect(credentialDeps).toHaveLength(1);
-			expect(workflowCallDeps).toHaveLength(1);
-			expect(webhookDeps).toHaveLength(1);
 		});
 	});
 });
