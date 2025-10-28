@@ -199,9 +199,7 @@ export function useFixedCollectionItemState(
 	};
 
 	watch(wrapperExpanded, (newValue) => {
-		if (newValue) {
-			saveWrapperExpanded(newValue);
-		}
+		saveWrapperExpanded(newValue);
 	});
 
 	return {
