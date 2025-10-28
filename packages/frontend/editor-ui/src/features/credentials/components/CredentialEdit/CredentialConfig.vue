@@ -9,10 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { isCommunityPackageName } from 'n8n-workflow';
 
-import type { IUpdateInformation } from '@/Interface';
-import AuthTypeSelector from './AuthTypeSelector.vue';
+import Banner from '@/components/Banner.vue';
+import CopyInput from '@/components/CopyInput.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import { useI18n, addCredentialTranslation } from '@n8n/i18n';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
@@ -20,25 +20,25 @@ import {
 	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
-import type { PermissionsRecord } from '@n8n/permissions';
-import { useCredentialsStore } from '../../credentials.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import type { IUpdateInformation } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import Banner from '@/components/Banner.vue';
-import CopyInput from '@/components/CopyInput.vue';
+import { addCredentialTranslation, useI18n } from '@n8n/i18n';
+import type { PermissionsRecord } from '@n8n/permissions';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useCredentialsStore } from '../../credentials.store';
+import AuthTypeSelector from './AuthTypeSelector.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
-import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
 import {
-	N8nInlineAskAssistantButton,
 	N8nCallout,
 	N8nInfoTip,
+	N8nInlineAskAssistantButton,
 	N8nLink,
 	N8nNotice,
 	N8nText,
@@ -306,7 +306,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				@click="$emit('retest')"
 			/>
 
-			<template v-if="credentialPermissions.update">
+			<template
+				v-if="(credentialPermissions.create && isNewCredential) || credentialPermissions.update"
+			>
 				<N8nNotice v-if="documentationUrl && credentialProperties.length" theme="warning">
 					{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
@@ -363,7 +365,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</EnterpriseEdition>
 
 			<CredentialInputs
-				v-if="credentialType && credentialPermissions.update"
+				v-if="
+					credentialType &&
+					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
+				"
 				:credential-data="credentialData"
 				:credential-properties="credentialProperties"
 				:documentation-url="documentationUrl"
@@ -376,7 +381,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					isOAuthType &&
 					requiredPropertiesFilled &&
 					!isOAuthConnected &&
-					credentialPermissions.update
+					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
 				"
 				:is-google-o-auth-type="isGoogleOAuthType"
 				data-test-id="oauth-connect-button"

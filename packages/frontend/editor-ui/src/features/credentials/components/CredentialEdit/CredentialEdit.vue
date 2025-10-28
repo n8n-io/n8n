@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import type { IUpdateInformation } from '@/Interface';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 
-import CredentialIcon from '../CredentialIcon.vue';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -15,27 +14,28 @@ import type {
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
+import CredentialIcon from '../CredentialIcon.vue';
 
-import CredentialConfig from './CredentialConfig.vue';
-import CredentialInfo from './CredentialInfo.vue';
-import CredentialSharing from './CredentialSharing.ee.vue';
 import Modal from '@/components/Modal.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import { useMessage } from '@/composables/useMessage';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { useCredentialsStore } from '../../credentials.store';
+import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
+import { useCredentialsStore } from '../../credentials.store';
+import CredentialConfig from './CredentialConfig.vue';
+import CredentialInfo from './CredentialInfo.vue';
+import CredentialSharing from './CredentialSharing.ee.vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -51,6 +51,7 @@ import { useI18n } from '@n8n/i18n';
 import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 import {
 	N8nIconButton,
 	N8nInlineTextEdit,
@@ -58,7 +59,6 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 type Props = {
 	modalName: string;
@@ -1102,7 +1102,12 @@ const { width } = useElementSize(credNameRef);
 							:model-value="credentialName"
 							:max-width="width - 10"
 							:readonly="
-								!credentialPermissions.update || !credentialType || isEditingManagedCredential
+								!(
+									(credentialPermissions.create && props.mode === 'new') ||
+									credentialPermissions.update
+								) ||
+								!credentialType ||
+								isEditingManagedCredential
 							"
 							@update:model-value="onNameEdit"
 						/>
@@ -1142,8 +1147,8 @@ const { width } = useElementSize(credNameRef);
 				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
 					<N8nMenuItem
 						v-for="item in sidebarItems"
-						:item="item"
 						:key="item.id"
+						:item="item"
 						:active="activeTab === item.id"
 						@click="() => onTabSelect(item.id)"
 					/>
