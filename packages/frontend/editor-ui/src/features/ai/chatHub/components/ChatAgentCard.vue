@@ -82,17 +82,17 @@ const createdAt = computed(() => getTimestamp(model, 'createdAt', agents, workfl
 .card {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--md);
-	padding: var(--spacing--md);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	text-decoration: none;
 	color: inherit;
-	transition: border-color 0.2s ease;
+	transition: box-shadow 0.3s ease;
 
 	&:hover {
-		border-color: var(--color--primary);
+		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
 }
 
@@ -129,11 +129,11 @@ const createdAt = computed(() => getTimestamp(model, 'createdAt', agents, workfl
 		align-items: center;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		white-space: nowrap;
+		white-space: pre;
 	}
 
 	& > *:not(:last-child):after {
-		content: '•';
+		content: '|';
 		display: block;
 		padding-inline: var(--spacing--3xs);
 	}

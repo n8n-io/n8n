@@ -260,7 +260,7 @@ onMounted(async () => {
 
 .controls {
 	display: flex;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 
@@ -289,6 +289,6 @@ onMounted(async () => {
 .agentsGrid {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	gap: var(--spacing--2xs);
 }
 </style>
