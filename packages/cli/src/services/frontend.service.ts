@@ -273,7 +273,7 @@ export class FrontendService {
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
-				provisioning: false,
+				provisioning: true,
 				projects: {
 					team: {
 						limit: 0,
@@ -395,7 +395,7 @@ export class FrontendService {
 			saml: this.license.isSamlEnabled(),
 			oidc: this.licenseState.isOidcLicensed(),
 			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
-			provisioning: false, // temporarily disabled until this feature is ready for release
+			provisioning: true, // temporarily disabled until this feature is ready for release
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
 			variables: this.license.isVariablesEnabled(),
 			sourceControl: this.license.isSourceControlLicensed(),
