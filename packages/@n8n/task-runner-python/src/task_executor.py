@@ -154,7 +154,7 @@ class TaskExecutor:
                 )
 
             if read_error_list:
-                raise TaskResultReadError()
+                raise TaskResultReadError(read_error_list[0])
 
             if not pipe_message_list:
                 raise TaskResultMissingError()
