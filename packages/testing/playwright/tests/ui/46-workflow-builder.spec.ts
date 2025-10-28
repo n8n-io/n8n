@@ -1,70 +1,43 @@
+import { workflowBuilderEnabledRequirements } from '../../config/ai-builder-fixtures';
 import { test, expect } from '../../fixtures/base';
-import {
-	workflowBuilderEnabledRequirements,
-	workflowBuilderGenerationResponse,
-} from '../../config/ai-builder-fixtures';
+
+// Helper to get Anthropic API key from environment
+// For test:local - set N8N_AI_ANTHROPIC_KEY when starting n8n locally
+// For containerized tests - pass via N8N_TEST_ENV
+const getAnthropicKey = () => {
+	// Check if running in containerized mode
+	const testEnv = process.env.N8N_TEST_ENV;
+	if (testEnv) {
+		try {
+			const config = JSON.parse(testEnv);
+			return config.N8N_AI_ANTHROPIC_KEY;
+		} catch {
+			return undefined;
+		}
+	}
+	// For local testing, check the environment directly
+	return process.env.N8N_AI_ANTHROPIC_KEY;
+};
+
+// Pass the API key to the container if available (only works for containerized tests)
+const apiKey = getAnthropicKey();
+if (apiKey && !process.env.N8N_BASE_URL) {
+	test.use({
+		addContainerCapability: {
+			env: {
+				N8N_AI_ANTHROPIC_KEY: apiKey,
+			},
+		},
+	});
+}
 
 test.describe('Workflow Builder @auth:owner', () => {
-	test.beforeEach(async ({ n8n, setupRequirements }) => {
+	test.beforeEach(async ({ setupRequirements }) => {
 		await setupRequirements(workflowBuilderEnabledRequirements);
-
-		// Mock the builder credits endpoint
-		await n8n.page.route('**/rest/ai/build/credits', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({
-					creditsQuota: 100,
-					creditsClaimed: 0,
-				}),
-			});
-		});
-
-		// Mock the sessions metadata endpoint
-		await n8n.page.route('**/rest/ai/sessions/metadata', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({
-					hasMessages: false,
-				}),
-			});
-		});
-
-		// Mock the sessions endpoint
-		await n8n.page.route('**/rest/ai/sessions', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({
-					sessions: [],
-				}),
-			});
-		});
-
-		// Mock workflow save/create endpoint
-		await n8n.page.route('**/rest/workflows/**', async (route) => {
-			const method = route.request().method();
-			if (method === 'POST' || method === 'PATCH') {
-				// Return a mock workflow with an ID
-				await route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify({
-						id: 'test-workflow-123',
-						name: 'My workflow',
-						nodes: [],
-						connections: {},
-						active: false,
-						settings: {},
-						versionId: '1',
-					}),
-				});
-			} else {
-				await route.continue();
-			}
-		});
 	});
+
+	// Helper to check if Anthropic API key is available
+	const hasAnthropicKey = () => !!getAnthropicKey();
 
 	test('should show Build with AI button on empty canvas', async ({ n8n }) => {
 		await n8n.page.goto('/workflow/new');
@@ -89,146 +62,121 @@ test.describe('Workflow Builder @auth:owner', () => {
 		await expect(n8n.aiAssistant.getWorkflowSuggestions()).toBeVisible();
 
 		// Verify there are multiple suggestion pills (8 based on WORKFLOW_SUGGESTIONS constant)
-		// Wait for the first pill to be enabled before counting
 		await n8n.aiAssistant.getSuggestionPills().first().waitFor({ state: 'visible' });
 		const suggestions = n8n.aiAssistant.getSuggestionPills();
 		await expect(suggestions).toHaveCount(8);
 	});
 
-	test('should build workflow from suggested prompt', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
+	// Tests that require Anthropic API key (real AI workflow generation)
+	test.describe('AI Generation (requires N8N_AI_ANTHROPIC_KEY)', () => {
+		// Increase timeout for AI workflow generation tests (can take 5+ minutes)
+		test.setTimeout(360000); // 6 minutes
 
-		let builderRequestMade = false;
-
-		// Mock the workflow builder API response
-		await n8n.page.route('**/rest/ai/build', async (route) => {
-			builderRequestMade = true;
-			console.log('Builder API route hit!');
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(workflowBuilderGenerationResponse),
-			});
+		test.beforeEach(function () {
+			if (!hasAnthropicKey()) {
+				test.skip();
+			}
 		});
 
-		// Click the "Build with AI" button
-		await n8n.aiAssistant.getCanvasBuildWithAIButton().click();
+		test('should build workflow from suggested prompt', async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
 
-		// Wait for suggestions to be visible
-		await expect(n8n.aiAssistant.getWorkflowSuggestions()).toBeVisible();
+			// Click the "Build with AI" button
+			await n8n.aiAssistant.getCanvasBuildWithAIButton().click();
 
-		// Send a message directly instead of clicking a suggestion
-		await n8n.aiAssistant.sendMessage('Create a simple workflow with HTTP Request');
+			// Wait for chat to be ready
+			await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
 
-		// Wait a bit for the API call to be made
-		await n8n.page.waitForTimeout(3000);
+			// Wait for suggestions to be ready
+			await expect(n8n.aiAssistant.getWorkflowSuggestions()).toBeVisible();
 
-		// Check if the API was called
-		if (!builderRequestMade) {
-			throw new Error('Builder API was never called');
-		}
+			// Wait for at least one suggestion pill to be visible and enabled
+			const firstPill = n8n.aiAssistant.getSuggestionPills().first();
+			await firstPill.waitFor({ state: 'visible', timeout: 10000 });
 
-		// Wait for user message to appear
-		await expect(n8n.aiAssistant.getChatMessagesUser()).toHaveCount(1);
+			// Click the first suggestion to populate the input
+			await firstPill.click();
 
-		// Wait for assistant response
-		await expect(n8n.aiAssistant.getChatMessagesAssistant().first()).toBeVisible({
-			timeout: 10000,
+			// Press Enter to submit the message
+			await n8n.page.keyboard.press('Enter');
+
+			// Wait for user message to appear
+			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible({ timeout: 10000 });
+
+			// Wait for the builder to finish streaming chat messages
+			await n8n.aiAssistant.waitForStreamingComplete();
+
+			// Wait for the workflow building to complete (can take up to 5 minutes)
+			await n8n.aiAssistant.waitForWorkflowBuildComplete();
+
+			// Verify that nodes have been added to the canvas
+			await expect(n8n.canvas.getCanvasNodes().first()).toBeVisible({ timeout: 10000 });
+
+			// Verify we have at least one node on the canvas
+			const nodeCount = await n8n.canvas.getCanvasNodes().count();
+			expect(nodeCount).toBeGreaterThan(0);
 		});
 
-		// Verify that nodes have been added to the canvas
-		// The mock response includes 2 nodes: Manual Trigger and HTTP Request
-		await expect(n8n.canvas.nodeByName('Manual Trigger')).toBeVisible();
-		await expect(n8n.canvas.nodeByName('HTTP Request')).toBeVisible();
+		test('should display assistant messages during workflow generation', async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
 
-		// Verify there are exactly 2 nodes on the canvas
-		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
-	});
+			// Click the "Build with AI" button
+			await n8n.aiAssistant.getCanvasBuildWithAIButton().click();
 
-	test('should build workflow by clicking specific suggestion', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
+			// Wait for suggestions to be ready
+			await expect(n8n.aiAssistant.getWorkflowSuggestions()).toBeVisible();
 
-		// Mock the workflow builder API response
-		await n8n.page.route('**/rest/ai/build', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(workflowBuilderGenerationResponse),
-			});
+			// Wait for at least one suggestion pill to be visible and enabled
+			const firstPill = n8n.aiAssistant.getSuggestionPills().first();
+			await firstPill.waitFor({ state: 'visible', timeout: 10000 });
+
+			// Click the first suggestion to populate the input
+			await firstPill.click();
+
+			// Press Enter to submit the message
+			await n8n.page.keyboard.press('Enter');
+
+			// Wait for user message to appear first
+			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible({ timeout: 15000 });
+
+			// Wait for streaming to complete
+			await n8n.aiAssistant.waitForStreamingComplete();
+
+			// Verify that at least one assistant message is displayed
+			const assistantMessages = n8n.aiAssistant.getChatMessagesAssistant();
+			await expect(assistantMessages.first()).toBeVisible();
+
+			// Verify we have assistant messages (AI should respond)
+			const messageCount = await assistantMessages.count();
+			expect(messageCount).toBeGreaterThan(0);
 		});
 
-		// Click the "Build with AI" button
-		await n8n.aiAssistant.getCanvasBuildWithAIButton().click();
+		test('should show user message in chat after clicking suggestion', async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
 
-		// Wait for suggestions to be visible
-		await expect(n8n.aiAssistant.getWorkflowSuggestions()).toBeVisible();
+			// Click the "Build with AI" button
+			await n8n.aiAssistant.getCanvasBuildWithAIButton().click();
 
-		// Click a specific suggestion by text
-		await n8n.aiAssistant.clickSuggestionByText('Invoice processing pipeline');
+			// Wait for suggestions to be ready
+			await expect(n8n.aiAssistant.getWorkflowSuggestions()).toBeVisible();
 
-		// Wait for the builder to finish streaming
-		await n8n.aiAssistant.waitForStreamingComplete();
+			// Wait for at least one suggestion pill to be visible and enabled
+			const firstPill = n8n.aiAssistant.getSuggestionPills().first();
+			await firstPill.waitFor({ state: 'visible', timeout: 10000 });
 
-		// Verify workflow was created
-		await expect(n8n.canvas.nodeByName('Manual Trigger')).toBeVisible();
-		await expect(n8n.canvas.nodeByName('HTTP Request')).toBeVisible();
-	});
+			// Click the first suggestion to populate the input
+			await firstPill.click();
 
-	test('should display assistant messages during workflow generation', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
+			// Press Enter to submit the message
+			await n8n.page.keyboard.press('Enter');
 
-		// Mock the workflow builder API response
-		await n8n.page.route('**/rest/ai/build', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(workflowBuilderGenerationResponse),
-			});
+			// Verify user message appears
+			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible({ timeout: 15000 });
+
+			// Verify the user message has content (suggestion was sent)
+			const messageText = await n8n.aiAssistant.getChatMessagesUser().first().textContent();
+			expect(messageText?.trim().length).toBeGreaterThan(0);
 		});
-
-		// Click the "Build with AI" button
-		await n8n.aiAssistant.getCanvasBuildWithAIButton().click();
-
-		// Click a suggestion
-		await n8n.aiAssistant.getSuggestionPills().first().click();
-
-		// Wait for streaming to complete
-		await n8n.aiAssistant.waitForStreamingComplete();
-
-		// Verify that assistant messages are displayed
-		const assistantMessages = n8n.aiAssistant.getChatMessagesAssistant();
-		await expect(assistantMessages).toHaveCount(1);
-
-		// Verify the final assistant message content
-		await expect(assistantMessages.first()).toContainText(
-			"I've created a workflow with a Manual Trigger and an HTTP Request node",
-		);
-	});
-
-	test('should show user message in chat after clicking suggestion', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
-
-		// Mock the workflow builder API response
-		await n8n.page.route('**/rest/ai/build', async (route) => {
-			await route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify(workflowBuilderGenerationResponse),
-			});
-		});
-
-		// Click the "Build with AI" button
-		await n8n.aiAssistant.getCanvasBuildWithAIButton().click();
-
-		// Click a suggestion
-		await n8n.aiAssistant.getSuggestionPills().first().click();
-
-		// Verify user message appears
-		const userMessages = n8n.aiAssistant.getChatMessagesUser();
-		await expect(userMessages).toHaveCount(1);
-
-		// The user message should contain the prompt text from the suggestion
-		await expect(userMessages.first()).toContainText('Create an invoice parsing workflow');
 	});
 
 	test('should be able to close and reopen workflow builder', async ({ n8n }) => {

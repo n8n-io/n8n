@@ -146,5 +146,12 @@ export class AIAssistantPage extends BasePage {
 		);
 	}
 
+	async waitForWorkflowBuildComplete(options?: { timeout?: number }) {
+		const timeout = options?.timeout ?? 300000; // Default 5 minutes
+		// Wait for the "Working..." indicator to disappear from the canvas
+		// This indicates the workflow builder has finished creating and adding nodes
+		await this.page.getByText('Working...').waitFor({ state: 'hidden', timeout });
+	}
+
 	// #endregion
 }

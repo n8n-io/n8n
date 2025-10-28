@@ -14,6 +14,20 @@ const IS_CI = !!process.env.CI;
 const MACBOOK_WINDOW_SIZE = { width: 1536, height: 960 };
 
 const USER_FOLDER = path.join(os.tmpdir(), `n8n-main-${Date.now()}`);
+
+// Helper to get environment variables from N8N_TEST_ENV
+const getTestEnv = () => {
+	const testEnv = process.env.N8N_TEST_ENV;
+	if (testEnv) {
+		try {
+			return JSON.parse(testEnv);
+		} catch {
+			return {};
+		}
+	}
+	return {};
+};
+
 // Calculate workers based on environment
 // The amount of workers to run, limited to 6 as higher causes instability in the local server
 // Use half the CPUs in local, full in CI (CI has no other processes so we can use more)
@@ -48,6 +62,7 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 					N8N_LOG_LEVEL: 'debug',
 					N8N_METRICS: 'true',
 					N8N_ENABLED_MODULES: 'data-table', // Enable data-table module
+					...getTestEnv(),
 				},
 			}
 		: undefined,
