@@ -1,3 +1,4 @@
+/* eslint-disable id-denylist */
 import { InstanceSettingsConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
@@ -8,12 +9,15 @@ import path from 'path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { DataTableSizeValidator } from './data-table-size-validator.service';
+import { DataTableRepository } from './data-table.repository';
 import {
 	type AuthenticatedRequestWithFile,
 	type MulterDestinationCallback,
 	type MulterFilenameCallback,
 	type UploadMiddleware,
 } from './types';
+import { toMb } from './utils/size-utils';
 
 const UPLOADS_FOLDER_NAME = 'data-table-uploads';
 const ALLOWED_MIME_TYPES = ['text/csv'];
@@ -27,10 +31,11 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 	constructor(
 		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 		private readonly globalConfig: GlobalConfig,
+		private readonly sizeValidator: DataTableSizeValidator,
+		private readonly dataTableRepository: DataTableRepository,
 	) {
 		this.uploadDir = path.join(this.instanceSettingsConfig.n8nFolder, UPLOADS_FOLDER_NAME);
 
-		// Create the upload directory asynchronously during initialization
 		void this.ensureUploadDirExists();
 
 		const storage = multer.diskStorage({
@@ -46,9 +51,10 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 		this.upload = multer({
 			storage,
 			limits: {
-				fileSize: this.globalConfig.dataTable.uploadMaxFileSize,
+				fileSize:
+					this.globalConfig.dataTable.uploadMaxFileSize ?? this.globalConfig.dataTable.maxSize,
 			},
-			fileFilter: (_req, file, cb: multer.FileFilterCallback) => {
+			fileFilter: async (req, file, cb: multer.FileFilterCallback) => {
 				if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
 					cb(
 						new BadRequestError(
@@ -57,7 +63,34 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 					);
 					return;
 				}
-				cb(null, true);
+
+				const fileSize = parseInt(req.headers['content-length'] ?? '0', 10);
+
+				// If uploadMaxFileSize is set, multer's limits will handle the rejection
+				if (this.globalConfig.dataTable.uploadMaxFileSize) {
+					cb(null, true);
+					return;
+				}
+
+				// If uploadMaxFileSize is not set, check remaining space
+				try {
+					const sizeData = await this.sizeValidator.getCachedSizeData(async () => {
+						return await this.dataTableRepository.findDataTablesSize();
+					});
+					const remainingSpace = this.globalConfig.dataTable.maxSize - sizeData.totalBytes;
+
+					if (fileSize > remainingSpace) {
+						cb(
+							new BadRequestError(
+								`File size exceeds remaining storage space. Available: ${toMb(remainingSpace)}MB, File: ${toMb(fileSize)}MB`,
+							),
+						);
+						return;
+					}
+					cb(null, true);
+				} catch {
+					cb(new BadRequestError('Failed to validate file size'));
+				}
 			},
 		});
 	}

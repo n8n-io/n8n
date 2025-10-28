@@ -23,10 +23,11 @@ export class DataTableConfig {
 
 	/**
 	 * The maximum allowed file size (in bytes) for CSV uploads to data tables.
-	 * Defaults to 5MB if not explicitly set via environment variable.
+	 * If set, this is the hard limit for file uploads.
+	 * If not set, the upload limit will be the remaining available storage space.
 	 */
 	@Env('N8N_DATA_TABLES_UPLOAD_MAX_FILE_SIZE_BYTES')
-	uploadMaxFileSize: number = 5 * 1024 * 1024;
+	uploadMaxFileSize?: number;
 
 	/**
 	 * The interval in milliseconds at which orphaned uploaded files are cleaned up.

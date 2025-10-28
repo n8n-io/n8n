@@ -41,8 +41,8 @@ describe('POST /data-tables/uploads', () => {
 			expect(response.body.data).toHaveProperty('columnCount', 2);
 			expect(response.body.data).toHaveProperty('columns');
 			expect(response.body.data.columns).toEqual([
-				{ name: 'name', type: 'string' },
-				{ name: 'email', type: 'string' },
+				{ name: 'name', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'email', type: 'string', compatibleTypes: ['string'] },
 			]);
 		});
 
@@ -74,9 +74,9 @@ describe('POST /data-tables/uploads', () => {
 			expect(response.body.data).toHaveProperty('rowCount', 1);
 			expect(response.body.data).toHaveProperty('columnCount', 3);
 			expect(response.body.data.columns).toEqual([
-				{ name: 'a', type: 'number' },
-				{ name: 'b', type: 'number' },
-				{ name: 'c', type: 'number' },
+				{ name: 'a', type: 'number', compatibleTypes: ['number', 'string'] },
+				{ name: 'b', type: 'number', compatibleTypes: ['number', 'string'] },
+				{ name: 'c', type: 'number', compatibleTypes: ['number', 'string'] },
 			]);
 		});
 
@@ -118,10 +118,10 @@ describe('POST /data-tables/uploads', () => {
 			expect(response.body.data).toHaveProperty('rowCount', 2);
 			expect(response.body.data).toHaveProperty('columnCount', 4);
 			expect(response.body.data.columns).toEqual([
-				{ name: 'name', type: 'string' },
-				{ name: 'age', type: 'number' },
-				{ name: 'isActive', type: 'boolean' },
-				{ name: 'createdDate', type: 'date' },
+				{ name: 'name', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'age', type: 'number', compatibleTypes: ['number', 'string'] },
+				{ name: 'isActive', type: 'boolean', compatibleTypes: ['boolean', 'string'] },
+				{ name: 'createdDate', type: 'date', compatibleTypes: ['date', 'string'] },
 			]);
 		});
 	});
@@ -149,20 +149,6 @@ describe('POST /data-tables/uploads', () => {
 				.post('/data-tables/uploads')
 				.attach('wrongField', Buffer.from(csvContent), 'test.csv')
 				.expect(400);
-		});
-
-		test('should reject files exceeding size limit', async () => {
-			const globalConfig = Container.get(GlobalConfig);
-			const maxSize = globalConfig.dataTable.uploadMaxFileSize;
-
-			// Create content larger than the limit
-			const largeContent = 'a,b,c\n' + '1,2,3\n'.repeat(Math.ceil(maxSize / 6) + 1);
-
-			const response = await authOwnerAgent
-				.post('/data-tables/uploads')
-				.attach('file', Buffer.from(largeContent), 'large.csv');
-
-			expect(response.status).toBe(400);
 		});
 
 		test('should reject non-CSV files based on MIME type', async () => {
@@ -196,6 +182,74 @@ describe('POST /data-tables/uploads', () => {
 		});
 	});
 
+	describe('file size validation with uploadMaxFileSize', () => {
+		// Note: uploadMaxFileSize is set during multer initialization, so changing it
+		// at runtime won't affect the behavior. These tests verify the behavior
+		// when uploadMaxFileSize is configured via environment variable.
+
+		test('should accept small files when uploadMaxFileSize is set', async () => {
+			const smallContent = 'name,value\ntest,123\n';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(smallContent), 'small.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('originalName', 'small.csv');
+		});
+	});
+
+	describe('file size validation without uploadMaxFileSize', () => {
+		let globalConfig: GlobalConfig;
+		let originalUploadMaxFileSize: number | undefined;
+		let originalMaxSize: number;
+
+		beforeEach(() => {
+			globalConfig = Container.get(GlobalConfig);
+			originalUploadMaxFileSize = globalConfig.dataTable.uploadMaxFileSize;
+			originalMaxSize = globalConfig.dataTable.maxSize;
+
+			// Unset uploadMaxFileSize to trigger remaining space check
+			globalConfig.dataTable.uploadMaxFileSize = undefined;
+		});
+
+		afterEach(() => {
+			// Restore original values
+			globalConfig.dataTable.uploadMaxFileSize = originalUploadMaxFileSize;
+			globalConfig.dataTable.maxSize = originalMaxSize;
+		});
+
+		test('should accept small files when there is remaining storage space', async () => {
+			// Set max size to 50MB - in test environment, database is likely empty
+			globalConfig.dataTable.maxSize = 50 * 1024 * 1024;
+
+			const smallContent = 'name,value\ntest,123\n';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(smallContent), 'small.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('originalName', 'small.csv');
+		});
+
+		test('should reject files exceeding remaining storage space', async () => {
+			// Set a very small max size (1KB) to ensure the upload fails
+			globalConfig.dataTable.maxSize = 1024;
+
+			// Create content larger than 1KB
+			const largeContent = 'a,b,c\n' + '1,2,3\n'.repeat(200);
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(largeContent), 'large.csv');
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message');
+			expect(response.body.message as string).toContain('remaining storage space');
+		});
+	});
+
 	describe('edge cases', () => {
 		test('should handle CSV with only headers', async () => {
 			const csvContent = 'column1,column2,column3';
@@ -210,9 +264,9 @@ describe('POST /data-tables/uploads', () => {
 			expect(response.body.data).toHaveProperty('rowCount', 0);
 			expect(response.body.data).toHaveProperty('columnCount', 3);
 			expect(response.body.data.columns).toEqual([
-				{ name: 'column1', type: 'string' },
-				{ name: 'column2', type: 'string' },
-				{ name: 'column3', type: 'string' },
+				{ name: 'column1', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'column2', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'column3', type: 'string', compatibleTypes: ['string'] },
 			]);
 		});
 
@@ -287,9 +341,9 @@ describe('POST /data-tables/uploads', () => {
 			expect(response.body.data).toHaveProperty('columnCount', 3);
 			// First row values become column names
 			expect(response.body.data.columns).toEqual([
-				{ name: '1', type: 'number' },
-				{ name: '2', type: 'number' },
-				{ name: '3', type: 'number' },
+				{ name: '1', type: 'number', compatibleTypes: ['number', 'string'] },
+				{ name: '2', type: 'number', compatibleTypes: ['number', 'string'] },
+				{ name: '3', type: 'number', compatibleTypes: ['number', 'string'] },
 			]);
 		});
 	});
