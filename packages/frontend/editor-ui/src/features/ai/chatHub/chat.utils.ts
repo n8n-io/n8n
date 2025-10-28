@@ -4,7 +4,8 @@ import {
 	type ChatModelsResponse,
 	type ChatHubSessionDto,
 } from '@n8n/api-types';
-import type { GroupedConversations } from './chat.types';
+import type { AgentCardData, GroupedConversations } from './chat.types';
+import { CHAT_VIEW } from './constants';
 
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
@@ -73,4 +74,22 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 				]
 			: [];
 	});
+}
+
+export function getAgentRoute(data: AgentCardData) {
+	if (data.type === 'n8n-workflow') {
+		return {
+			name: CHAT_VIEW,
+			query: {
+				workflowId: data.workflowId,
+			},
+		};
+	}
+
+	return {
+		name: CHAT_VIEW,
+		query: {
+			agentId: data.agent.id,
+		},
+	};
 }

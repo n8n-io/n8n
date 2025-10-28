@@ -4,6 +4,7 @@ import {
 	type ChatMessageId,
 	type ChatHubSessionDto,
 	type ChatHubConversationDto,
+	type ChatHubAgentDto,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -62,3 +63,7 @@ export interface GroupedConversations {
 	group: string;
 	sessions: ChatHubSessionDto[];
 }
+
+export type AgentCardData =
+	| { type: 'custom-agent'; agent: ChatHubAgentDto }
+	| { type: 'n8n-workflow'; workflowId: string; name: string };

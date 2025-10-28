@@ -1,19 +1,54 @@
 <script setup lang="ts">
-import type { ChatHubAgentDto } from '@n8n/api-types';
+import type { AgentCardData } from '@/features/ai/chatHub/chat.types';
 import { N8nCard, N8nIconButton, N8nText } from '@n8n/design-system';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import { RouterLink } from 'vue-router';
-import type { RouteLocationRaw } from 'vue-router';
+import { computed } from 'vue';
+import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
 
-defineProps<{
-	agent: ChatHubAgentDto;
-	to: RouteLocationRaw;
+const props = defineProps<{
+	data: AgentCardData;
 }>();
 
 const emit = defineEmits<{
-	edit: [event: MouseEvent];
-	delete: [event: MouseEvent];
+	edit: [];
+	delete: [];
 }>();
+
+const name = computed(() => {
+	if (props.data.type === 'custom-agent') {
+		return props.data.agent.name;
+	}
+	return props.data.name;
+});
+
+const description = computed(() => {
+	if (props.data.type === 'custom-agent') {
+		return props.data.agent.description;
+	}
+	return 'n8n workflow agent';
+});
+
+const provider = computed(() => {
+	if (props.data.type === 'custom-agent') {
+		return props.data.agent.provider;
+	}
+	return 'n8n';
+});
+
+const model = computed(() => {
+	if (props.data.type === 'custom-agent') {
+		return props.data.agent.model;
+	}
+	return null;
+});
+
+const updatedAt = computed(() => {
+	if (props.data.type === 'custom-agent') {
+		return props.data.agent.updatedAt;
+	}
+	return null;
+});
 
 function formatDate(dateString: string): string {
 	const date = new Date(dateString);
@@ -39,43 +74,44 @@ function formatDate(dateString: string): string {
 	<N8nCard :class="$style.card" hoverable>
 		<template #header>
 			<N8nText tag="h3" size="medium" bold>
-				<RouterLink :to="to" :class="$style.cardLink">
-					{{ agent.name }}
+				<RouterLink :to="getAgentRoute(data)" :class="$style.cardLink">
+					{{ name }}
 				</RouterLink>
 			</N8nText>
-			<div :class="$style.cardActions">
+			<div v-if="data.type === 'custom-agent'" :class="$style.cardActions">
 				<N8nIconButton
 					icon="pen"
 					type="tertiary"
 					size="small"
 					title="Edit agent"
-					@click="emit('edit', $event)"
+					@click="emit('edit')"
 				/>
 				<N8nIconButton
 					icon="trash-2"
 					type="tertiary"
 					size="small"
 					title="Delete agent"
-					@click="emit('delete', $event)"
+					@click="emit('delete')"
 				/>
 			</div>
 		</template>
 
 		<div :class="$style.descriptionContainer">
 			<N8nText :class="$style.description" color="text-light">
-				{{ agent.description }}
+				{{ description }}
 			</N8nText>
 		</div>
 
 		<template #footer>
 			<N8nText size="xsmall" color="text-light">
-				<span v-if="agent.provider && agent.model">
-					{{ providerDisplayNames[agent.provider] }} • {{ agent.model }}
+				<span v-if="provider === 'n8n'"> {{ providerDisplayNames[provider] }} workflow </span>
+				<span v-else-if="provider && model">
+					{{ providerDisplayNames[provider] }} • {{ model }}
 				</span>
 				<span v-else>No model configured</span>
 			</N8nText>
-			<N8nText size="xsmall" color="text-light" :class="$style.lastUpdate">
-				Updated {{ formatDate(agent.updatedAt) }}
+			<N8nText v-if="updatedAt" size="xsmall" color="text-light" :class="$style.lastUpdate">
+				Updated {{ formatDate(updatedAt) }}
 			</N8nText>
 		</template>
 	</N8nCard>

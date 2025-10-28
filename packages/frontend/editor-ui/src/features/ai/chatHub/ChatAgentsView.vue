@@ -5,8 +5,7 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
-import type { ChatHubAgentDto } from '@n8n/api-types';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import type { AgentCardData } from '@/features/ai/chatHub/chat.types';
 import { useUIStore } from '@/stores/ui.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
@@ -19,19 +18,19 @@ const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
 
-const agents = computed(() => chatStore.agents);
 const editingAgentId = ref<string | undefined>(undefined);
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
-function getAgentRoute(agent: ChatHubAgentDto) {
-	return {
-		name: CHAT_VIEW,
-		query: {
-			agentId: agent.id,
-		},
-	};
-}
+const agents = computed(() =>
+	chatStore.agents
+		.map<AgentCardData>((agent) => ({ type: 'custom-agent', agent }))
+		.concat(
+			(chatStore.models?.n8n?.models ?? []).flatMap((model) =>
+				model.provider === 'n8n' ? [{ ...model, type: 'n8n-workflow' }] : [],
+			),
+		),
+);
 
 function handleCreateAgent() {
 	chatStore.currentEditingAgent = null;
@@ -39,15 +38,14 @@ function handleCreateAgent() {
 	uiStore.openModal('agentEditor');
 }
 
-async function handleEditAgent(agent: ChatHubAgentDto, event?: MouseEvent) {
-	// Prevent card click when clicking action buttons
-	if (event) {
-		event.stopPropagation();
+async function handleEditAgent(data: AgentCardData) {
+	if (data.type !== 'custom-agent') {
+		return;
 	}
 
 	try {
-		await chatStore.fetchAgent(agent.id);
-		editingAgentId.value = agent.id;
+		await chatStore.fetchAgent(data.agent.id);
+		editingAgentId.value = data.agent.id;
 		uiStore.openModal('agentEditor');
 	} catch (error) {
 		toast.showError(error, 'Failed to load agent');
@@ -63,11 +61,7 @@ async function handleAgentCreatedOrUpdated() {
 	editingAgentId.value = undefined;
 }
 
-async function handleDeleteAgent(agentId: string, event?: MouseEvent) {
-	// Prevent card click when clicking delete button
-	if (event) {
-		event.stopPropagation();
-	}
+async function handleDeleteAgent(agentId: string) {
 	const confirmed = await message.confirm(
 		'Are you sure you want to delete this agent?',
 		'Delete agent',
@@ -90,7 +84,10 @@ async function handleDeleteAgent(agentId: string, event?: MouseEvent) {
 }
 
 onMounted(async () => {
-	await chatStore.fetchAgents();
+	await Promise.all([
+		chatStore.fetchAgents(),
+		chatStore.fetchChatModels(credentialsByProvider.value),
+	]);
 });
 </script>
 
@@ -100,7 +97,8 @@ onMounted(async () => {
 			<div :class="$style.headerContent">
 				<N8nText tag="h1" size="xlarge" bold>Custom Agents</N8nText>
 				<N8nText color="text-light">
-					Create and manage custom AI agents with specific instructions and behaviors
+					Use n8n workflow agents or create custom AI agents with specific instructions and
+					behaviors
 				</N8nText>
 			</div>
 			<N8nButton icon="plus" type="primary" size="large" @click="handleCreateAgent">
@@ -110,18 +108,17 @@ onMounted(async () => {
 
 		<div v-if="agents.length === 0" :class="$style.empty">
 			<N8nText color="text-light" size="medium">
-				No custom agents yet. Create your first agent to get started.
+				No agents available. Create your first custom agent to get started.
 			</N8nText>
 		</div>
 
 		<div v-else :class="$style.agentsGrid">
 			<ChatAgentCard
 				v-for="agent in agents"
-				:key="agent.id"
-				:agent="agent"
-				:to="getAgentRoute(agent)"
-				@edit="handleEditAgent(agent, $event)"
-				@delete="handleDeleteAgent(agent.id, $event)"
+				:key="agent.type === 'custom-agent' ? agent.agent.id : agent.workflowId"
+				:data="agent"
+				@edit="handleEditAgent(agent)"
+				@delete="agent.type === 'custom-agent' ? handleDeleteAgent(agent.agent.id) : undefined"
 			/>
 		</div>
 

@@ -256,21 +256,45 @@ watch(
 	{ immediate: true },
 );
 
-// Handle agent pre-selection from URL query parameter
+// TODO: wait for agents to be fetched
+// Handle agent/workflow pre-selection from URL query parameters
 watch(
-	() => route.query.agentId,
-	async (agentId) => {
-		const agent = agentId ? chatStore.agents.find((a) => a.id === agentId) : undefined;
-
-		if (!isNewSession.value || !agent) {
+	() => [route.query.agentId, route.query.workflowId],
+	async ([agentId, workflowId]) => {
+		if (!isNewSession.value) {
 			return;
 		}
 
-		await handleSelectModel({
-			provider: 'custom-agent',
-			agentId: agent.id,
-			name: agent.name,
-		});
+		// If both are specified, remove both query params
+		if (agentId && workflowId) {
+			await router.replace({ query: {} });
+			return;
+		}
+
+		// Handle custom agent selection
+		if (agentId) {
+			const agent = chatStore.agents.find((a) => a.id === agentId);
+
+			if (agent) {
+				await handleSelectModel({
+					provider: 'custom-agent',
+					agentId: agent.id,
+					name: agent.name,
+				});
+			}
+			return;
+		}
+
+		// Handle n8n workflow selection
+		if (typeof workflowId === 'string') {
+			const n8nModel = chatStore.models?.n8n?.models.find(
+				(m) => m.provider === 'n8n' && m.workflowId === workflowId,
+			);
+
+			if (n8nModel) {
+				await handleSelectModel(n8nModel);
+			}
+		}
 	},
 	{ immediate: true },
 );
