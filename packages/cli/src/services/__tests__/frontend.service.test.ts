@@ -45,7 +45,7 @@ describe('FrontendService', () => {
 		license: { tenantId: 1 },
 		mfa: { enabled: false },
 		deployment: { type: 'default' },
-		workflowHistory: { enabled: false },
+		workflowHistory: { pruneTime: 24 },
 		path: '',
 		sso: {
 			ldap: { loginEnabled: false },

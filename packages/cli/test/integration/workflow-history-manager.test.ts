@@ -27,10 +27,8 @@ describe('Workflow History Manager', () => {
 		await testDb.truncate(['WorkflowEntity']);
 		jest.clearAllMocks();
 
-		globalConfig.workflowHistory.enabled = true;
 		globalConfig.workflowHistory.pruneTime = -1;
 
-		license.isWorkflowHistoryLicensed.mockReturnValue(true);
 		license.getWorkflowHistoryPruneLimit.mockReturnValue(-1);
 	});
 
@@ -55,18 +53,6 @@ describe('Workflow History Manager', () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		pruneSpy.mockRestore();
-	});
-
-	test('should not prune when not licensed', async () => {
-		license.isWorkflowHistoryLicensed.mockReturnValue(false);
-		await createWorkflowHistory();
-		await pruneAndAssertCount();
-	});
-
-	test('should not prune when licensed but disabled', async () => {
-		globalConfig.workflowHistory.enabled = false;
-		await createWorkflowHistory();
-		await pruneAndAssertCount();
 	});
 
 	test('should not prune when both prune times are -1 (infinite)', async () => {

@@ -3,10 +3,7 @@ import { WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import {
-	getWorkflowHistoryPruneTime,
-	isWorkflowHistoryEnabled,
-} from './workflow-history-helper.ee';
+import { getWorkflowHistoryPruneTime } from './workflow-history-helper.ee';
 
 @Service()
 export class WorkflowHistoryManager {
@@ -30,10 +27,6 @@ export class WorkflowHistoryManager {
 	}
 
 	async prune() {
-		if (!isWorkflowHistoryEnabled()) {
-			return;
-		}
-
 		const pruneHours = getWorkflowHistoryPruneTime();
 		// No prune time set
 		if (pruneHours === -1) {

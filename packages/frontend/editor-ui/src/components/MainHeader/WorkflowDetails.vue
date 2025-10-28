@@ -259,7 +259,8 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 });
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
+	// Workflow history is now enabled for all users
+	return true;
 });
 
 const workflowTagIds = computed(() => {

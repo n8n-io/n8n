@@ -21,13 +21,6 @@ const testUser = Object.assign(new User(), {
 	firstName: 'John',
 	lastName: 'Doe',
 });
-let isWorkflowHistoryEnabled = true;
-
-jest.mock('@/workflows/workflow-history.ee/workflow-history-helper.ee', () => {
-	return {
-		isWorkflowHistoryEnabled: jest.fn(() => isWorkflowHistoryEnabled),
-	};
-});
 
 describe('WorkflowHistoryService', () => {
 	beforeEach(() => {
@@ -35,9 +28,8 @@ describe('WorkflowHistoryService', () => {
 	});
 
 	describe('saveVersion', () => {
-		it('should save a new version when workflow history is enabled and nodes and connections are present', async () => {
+		it('should save a new version when nodes and connections are present', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.connections = {};
@@ -57,25 +49,8 @@ describe('WorkflowHistoryService', () => {
 			});
 		});
 
-		it('should not save a new version when workflow history is disabled', async () => {
-			// Arrange
-			isWorkflowHistoryEnabled = false;
-			const workflow = getWorkflow({ addNodeWithoutCreds: true });
-			const workflowId = '123';
-			workflow.connections = {};
-			workflow.id = workflowId;
-			workflow.versionId = '456';
-
-			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
-
-			// Assert
-			expect(workflowHistoryRepository.insert).not.toHaveBeenCalled();
-		});
-
 		it('should not save a new version when nodes or connections are missing', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.id = workflowId;
@@ -91,7 +66,6 @@ describe('WorkflowHistoryService', () => {
 
 		it('should log an error when failed to save workflow history version', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.connections = {};

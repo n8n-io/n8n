@@ -8,7 +8,6 @@ import { ensureError } from 'n8n-workflow';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 
-import { isWorkflowHistoryEnabled } from './workflow-history-helper.ee';
 import { WorkflowFinderService } from '../workflow-finder.service';
 
 @Service()
@@ -69,7 +68,7 @@ export class WorkflowHistoryService {
 		// On some update scenarios, `nodes` and `connections` are missing, such as when
 		// changing workflow settings or renaming. In these cases, we don't want to save
 		// a new version
-		if (isWorkflowHistoryEnabled() && workflow.nodes && workflow.connections) {
+		if (workflow.nodes && workflow.connections) {
 			try {
 				await this.workflowHistoryRepository.insert({
 					authors: user.firstName + ' ' + user.lastName,
