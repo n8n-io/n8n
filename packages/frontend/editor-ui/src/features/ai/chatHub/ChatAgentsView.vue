@@ -10,40 +10,19 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useUIStore } from '@/stores/ui.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
-import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
-import { chatHubProviderSchema, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
-const credentialsStore = useCredentialsStore();
 const toast = useToast();
 const message = useMessage();
+const usersStore = useUsersStore();
 
 const agents = computed(() => chatStore.agents);
 const editingAgentId = ref<string | undefined>(undefined);
 
-const autoSelectCredentials = computed<CredentialsMap>(() =>
-	Object.fromEntries(
-		chatHubProviderSchema.options.map((provider) => {
-			if (provider === 'n8n' || provider === 'custom-agent') {
-				return [provider, null];
-			}
-
-			const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-			if (!credentialType) {
-				return [provider, null];
-			}
-
-			const lastCreatedCredential =
-				credentialsStore
-					.getCredentialsByType(credentialType)
-					.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
-
-			return [provider, lastCreatedCredential];
-		}),
-	),
-);
+const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
 function getAgentRoute(agent: ChatHubAgentDto) {
 	return {
@@ -111,11 +90,7 @@ async function handleDeleteAgent(agentId: string, event?: MouseEvent) {
 }
 
 onMounted(async () => {
-	await Promise.all([
-		chatStore.fetchAgents(),
-		credentialsStore.fetchCredentialTypes(false),
-		credentialsStore.fetchAllCredentials(),
-	]);
+	await chatStore.fetchAgents();
 });
 </script>
 
@@ -152,7 +127,7 @@ onMounted(async () => {
 
 		<AgentEditorModal
 			:agent-id="editingAgentId"
-			:credentials="autoSelectCredentials"
+			:credentials="credentialsByProvider"
 			@create-agent="handleAgentCreatedOrUpdated"
 			@close="handleCloseAgentEditor"
 		/>
