@@ -12,9 +12,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 	constructor(private readonly config: BinaryDataConfig) {}
 
+	id: string = 'binary-data-storage-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'binary-data-storage-v2',
 			version: 'v2',
 			title: 'Disable binary data in-memory mode by default',
 			description:

@@ -17,9 +17,10 @@ export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 		'n8n-nodes-base.localFileTrigger',
 	];
 
+	id: string = 'disabled-nodes-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'disabled-nodes-v2',
 			version: 'v2',
 			title: 'Disable ExecuteCommand and LocalFileTrigger nodes by default',
 			description:

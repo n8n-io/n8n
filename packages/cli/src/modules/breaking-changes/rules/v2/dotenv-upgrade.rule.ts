@@ -12,9 +12,9 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 
 @Service()
 export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
+	id: string = 'dotenv-upgrade-v2';
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'dotenv-upgrade-v2',
 			version: 'v2',
 			title: 'Upgrade dotenv',
 			description:

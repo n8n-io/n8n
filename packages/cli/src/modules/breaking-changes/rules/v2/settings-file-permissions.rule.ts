@@ -12,9 +12,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 export class SettingsFilePermissionsRule implements IBreakingChangeInstanceRule {
 	constructor(private readonly instanceSettingsConfig: InstanceSettingsConfig) {}
 
+	id: string = 'settings-file-permissions-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'settings-file-permissions-v2',
 			version: 'v2',
 			title: 'Enforce settings file permissions',
 			description:

@@ -9,9 +9,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 
 @Service()
 export class OAuthCallbackAuthRule implements IBreakingChangeInstanceRule {
+	id: string = 'oauth-callback-auth-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'oauth-callback-auth-v2',
 			version: 'v2',
 			title: 'Require auth on OAuth callback URLs by default',
 			description:

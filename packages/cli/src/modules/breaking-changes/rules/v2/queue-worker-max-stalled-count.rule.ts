@@ -12,9 +12,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRule {
 	constructor(private readonly globalConfig: GlobalConfig) {}
 
+	id: string = 'queue-worker-max-stalled-count-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'queue-worker-max-stalled-count-v2',
 			version: 'v2',
 			title: 'Remove QUEUE_WORKER_MAX_STALLED_COUNT',
 			description:

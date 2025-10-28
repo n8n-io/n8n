@@ -12,9 +12,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 export class TaskRunnersRule implements IBreakingChangeInstanceRule {
 	constructor(private readonly taskRunnersConfig: TaskRunnersConfig) {}
 
+	id: string = 'task-runners-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'task-runners-v2',
 			version: 'v2',
 			title: 'Enable Task Runners by default',
 			description:

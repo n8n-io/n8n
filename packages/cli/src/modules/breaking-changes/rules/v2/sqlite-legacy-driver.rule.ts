@@ -12,9 +12,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 export class SqliteLegacyDriverRule implements IBreakingChangeInstanceRule {
 	constructor(private readonly globalConfig: GlobalConfig) {}
 
+	id: string = 'sqlite-legacy-driver-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'sqlite-legacy-driver-v2',
 			version: 'v2',
 			title: 'Remove SQLite legacy driver',
 			description:

@@ -9,9 +9,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 
 @Service()
 export class TunnelOptionRule implements IBreakingChangeInstanceRule {
+	id: string = 'tunnel-option-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'tunnel-option-v2',
 			version: 'v2',
 			title: 'Remove n8n --tunnel option',
 			description: 'The --tunnel CLI option has been removed and will be ignored',

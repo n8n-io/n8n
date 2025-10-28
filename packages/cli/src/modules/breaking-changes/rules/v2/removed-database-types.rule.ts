@@ -12,9 +12,10 @@ import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../.
 export class RemovedDatabaseTypesRule implements IBreakingChangeInstanceRule {
 	constructor(private readonly globalConfig: GlobalConfig) {}
 
+	id: string = 'removed-database-types-v2';
+
 	getMetadata(): BreakingChangeMetadata {
 		return {
-			id: 'removed-database-types-v2',
 			version: 'v2',
 			title: 'MySQL/MariaDB database types removed',
 			description:
