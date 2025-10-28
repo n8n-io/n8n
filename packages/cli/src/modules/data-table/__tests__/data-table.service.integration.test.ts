@@ -3555,6 +3555,19 @@ describe('dataTable', () => {
 			[11, 3, 'lt', false],
 			[11, '3', 'gt', false],
 			[11, '3', 'lt', true],
+			[true, true, 'eq', true],
+			[true, false, 'eq', false],
+			[true, false, 'neq', true],
+			['string', 'string', 'eq', true],
+			['string', 'different', 'eq', false],
+			['string', 'different', 'neq', true],
+			['string', 'string', 'neq', false],
+			[{}, 0, 'eq', true],
+			[{}, 0, 'neq', false],
+			[{}, null, 'eq', false],
+			[{ key: 'value' }, 0, 'eq', true],
+			[true, 1, 'eq', true],
+			[false, 0, 'eq', true],
 		])(
 			'inserts json with input %p, filter %p, operator %p, expectPresent %p',
 			async (input, filter, operator, expectPresent) => {
@@ -3642,46 +3655,5 @@ describe('dataTable', () => {
 				]);
 			}
 		});
-
-		// it.each<[DataTableFilterConditionType, DataTableColumnJsType, boolean]>([['eq', null, true]])(
-		// 	'handles absence operator %p, value %p',
-		// 	async (operator, value, expectPresent) => {
-		// 		// ARRANGE
-		// 		const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
-		// 			name: 'dataStore',
-		// 			columns: [{ name: 'c1', type: 'json' }],
-		// 		});
-
-		// 		// ACT
-		// 		const rows = [{ c1: { a: null } }];
-		// 		await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
-
-		// 		// ASSERT
-
-		// 		{
-		// 			const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
-		// 				filter: {
-		// 					type: 'and',
-		// 					filters: [
-		// 						{
-		// 							columnName: 'c1',
-		// 							condition: 'eq',
-		// 							value: 3,
-		// 							path,
-		// 						},
-		// 					],
-		// 				},
-		// 			});
-		// 			expect(data).toEqual([
-		// 				{
-		// 					c1: { [input]: 3 },
-		// 					id: 1,
-		// 					createdAt: expect.any(Date),
-		// 					updatedAt: expect.any(Date),
-		// 				},
-		// 			]);
-		// 		}
-		// 	},
-		// );
 	});
 });
