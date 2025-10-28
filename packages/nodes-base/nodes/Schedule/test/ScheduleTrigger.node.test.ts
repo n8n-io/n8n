@@ -10,6 +10,8 @@ describe('ScheduleTrigger', () => {
 	});
 
 	const HOUR = 60 * 60 * 1000;
+	const MINUTE = 60 * 1000;
+	const DAY = 24 * HOUR;
 	const mockDate = new Date('2023-12-28 12:34:56.789Z');
 	const timezone = 'Europe/Berlin';
 
@@ -26,12 +28,9 @@ describe('ScheduleTrigger', () => {
 				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
 				workflowStaticData: { recurrenceRules: [] },
 			});
-
 			expect(emit).not.toHaveBeenCalled();
-
 			jest.advanceTimersByTime(HOUR);
 			expect(emit).not.toHaveBeenCalled();
-
 			jest.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
@@ -54,9 +53,202 @@ describe('ScheduleTrigger', () => {
 
 			jest.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
-
 			jest.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('should emit when minutes interval is 60', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 60 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+			expect(emit).not.toHaveBeenCalled();
+			jest.advanceTimersByTime(60 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+			jest.advanceTimersByTime(60 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(2);
+
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-28T14:34:56.789+01:00',
+				}),
+			);
+			const secondTriggerData = emit.mock.calls[1][0][0][0];
+			expect(secondTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-28T15:34:56.789+01:00',
+				}),
+			);
+		});
+
+		it('should emit when minutes interval is more than 60', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 65 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+			expect(emit).not.toHaveBeenCalled();
+			jest.advanceTimersByTime(65 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+			jest.advanceTimersByTime(65 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(2);
+			jest.advanceTimersByTime(65 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(3);
+
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-28T14:39:56.789+01:00',
+				}),
+			);
+
+			const secondTriggerData = emit.mock.calls[1][0][0][0];
+
+			expect(secondTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-28T15:44:56.789+01:00',
+				}),
+			);
+		});
+
+		it('should emit when minutes interval is more than a day', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: {
+					parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 25 * 60 + 7 }] } },
+				},
+				workflowStaticData: { recurrenceRules: [] },
+			});
+			expect(emit).not.toHaveBeenCalled();
+			jest.advanceTimersByTime(25 * HOUR + 7 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+			jest.advanceTimersByTime(25 * HOUR + 7 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(2);
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-29T14:41:56.789+01:00',
+				}),
+			);
+
+			const secondTriggerData = emit.mock.calls[1][0][0][0];
+			expect(secondTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-30T15:48:56.789+01:00',
+				}),
+			);
+		});
+
+		it('should emit when hours interval is exactly 24', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 24 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+			expect(emit).not.toHaveBeenCalled();
+			jest.advanceTimersByTime(24 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+			jest.advanceTimersByTime(24 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-29T13:34:56.789+01:00',
+				}),
+			);
+
+			const secondTriggerData = emit.mock.calls[1][0][0][0];
+			expect(secondTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-30T13:34:56.789+01:00',
+				}),
+			);
+		});
+
+		it('should emit when hours interval is more than 24', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 25 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+			expect(emit).not.toHaveBeenCalled();
+			jest.advanceTimersByTime(25 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+			jest.advanceTimersByTime(25 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-29T14:34:56.789+01:00',
+				}),
+			);
+
+			const secondTriggerData = emit.mock.calls[1][0][0][0];
+			expect(secondTriggerData.json).toEqual(
+				expect.objectContaining({
+					timestamp: '2023-12-30T15:34:56.789+01:00',
+				}),
+			);
+		});
+
+		it('should emit when days interval is 5', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'days', daysInterval: 5 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+			expect(emit).not.toHaveBeenCalled();
+			jest.advanceTimersByTime(5 * DAY);
+			expect(emit).toHaveBeenCalledTimes(1);
+			jest.advanceTimersByTime(5 * DAY);
+			expect(emit).toHaveBeenCalledTimes(2);
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual(
+				expect.objectContaining({
+					'Day of month': '29',
+					Month: 'December',
+				}),
+			);
+
+			const secondTriggerData = emit.mock.calls[1][0][0][0];
+			expect(secondTriggerData.json).toEqual(
+				expect.objectContaining({
+					'Day of month': '03',
+					Month: 'January',
+				}),
+			);
+		});
+
+		it('should emit when days interval is 1', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'days', daysInterval: 1 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+			expect(emit).not.toHaveBeenCalled();
+			jest.advanceTimersByTime(1 * DAY);
+			expect(emit).toHaveBeenCalledTimes(1);
+			jest.advanceTimersByTime(1 * DAY);
+			expect(emit).toHaveBeenCalledTimes(2);
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual(
+				expect.objectContaining({
+					'Day of month': '29',
+					Month: 'December',
+				}),
+			);
+
+			const secondTriggerData = emit.mock.calls[1][0][0][0];
+			expect(secondTriggerData.json).toEqual(
+				expect.objectContaining({
+					'Day of month': '30',
+					Month: 'December',
+				}),
+			);
 		});
 
 		it('should emit on schedule defined as a cron expression', async () => {

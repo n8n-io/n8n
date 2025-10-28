@@ -1,15 +1,15 @@
 import { sendAt } from 'cron';
 import moment from 'moment-timezone';
 import type {
-	ITriggerFunctions,
+	Cron,
 	INodeType,
 	INodeTypeDescription,
+	ITriggerFunctions,
 	ITriggerResponse,
-	Cron,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { intervalToRecurrence, recurrenceCheck, toCronExpression } from './GenericFunctions';
+import { intervalToRecurrence, recurrenceCheck, toTimeSource } from './GenericFunctions';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 
 export class ScheduleTrigger implements INodeType {
@@ -445,15 +445,15 @@ export class ScheduleTrigger implements INodeType {
 
 		const rules = intervals.map((interval, i) => ({
 			interval,
-			cronExpression: toCronExpression(interval),
+			timeSource: toTimeSource(interval, timezone),
 			recurrence: intervalToRecurrence(interval, i),
 		}));
 
 		if (this.getMode() !== 'manual') {
-			for (const { interval, cronExpression, recurrence } of rules) {
+			for (const { interval, timeSource, recurrence } of rules) {
 				try {
 					const cron: Cron = {
-						expression: cronExpression,
+						expression: timeSource,
 						recurrence,
 					};
 					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
@@ -470,14 +470,18 @@ export class ScheduleTrigger implements INodeType {
 			return {};
 		} else {
 			const manualTriggerFunction = async () => {
-				const { interval, cronExpression, recurrence } = rules[0];
+				const { interval, timeSource, recurrence } = rules[0];
 				if (interval.field === 'cronExpression') {
 					try {
-						sendAt(cronExpression);
+						sendAt(timeSource.getTimeSource());
 					} catch (error) {
-						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
-							description: 'More information on how to build them at https://crontab.guru/',
-						});
+						if (timeSource.type === 'cron') {
+							throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
+								description: 'More information on how to build them at https://crontab.guru/',
+							});
+						} else {
+							throw error;
+						}
 					}
 				}
 				executeTrigger(recurrence);

@@ -1,7 +1,13 @@
 import * as n8nWorkflow from 'n8n-workflow';
 
-import { intervalToRecurrence, recurrenceCheck, toCronExpression } from '../GenericFunctions';
-import type { IRecurrenceRule } from '../SchedulerInterface';
+import {
+	intervalToRecurrence,
+	recurrenceCheck,
+	toCronExpression,
+	toTimeSource,
+} from '../GenericFunctions';
+import { ScheduleTimeSource } from '../helpers/ScheduleTimeSource';
+import type { IRecurrenceRule, ScheduleInterval } from '../SchedulerInterface';
 
 describe('toCronExpression', () => {
 	Object.defineProperty(n8nWorkflow, 'randomInt', {
@@ -254,5 +260,34 @@ describe('intervalToRecurrence', () => {
 			intervalSize: 3,
 			typeInterval: 'months',
 		});
+	});
+});
+
+describe('toTimeSource', () => {
+	it('should return ScheduleTimeSource for cron interval', () => {
+		const result = toTimeSource(
+			{
+				field: 'cronExpression',
+				expression: '1 2 3 * * *',
+			},
+			'UTC',
+		);
+		expect(result).toBeInstanceOf(ScheduleTimeSource);
+		expect(result.type).toBe('cron');
+		expect(result.getTimeSource()).toBe('1 2 3 * * *');
+	});
+
+	it.each([
+		{ field: 'seconds', secondsInterval: 60 },
+		{ field: 'seconds', secondsInterval: 65 },
+		{ field: 'minutes', minutesInterval: 60 },
+		{ field: 'minutes', minutesInterval: 65 },
+		{ field: 'hours', hoursInterval: 24 },
+		{ field: 'hours', hoursInterval: 25 },
+	])('should return ScheduleTimeSource for irregular $field interval', (data) => {
+		const result = toTimeSource(data as ScheduleInterval, 'UTC');
+		expect(result).toBeInstanceOf(ScheduleTimeSource);
+		expect(result.type).toBe('irregular');
+		expect(result.getTimeSource()).toBeInstanceOf(Date);
 	});
 });

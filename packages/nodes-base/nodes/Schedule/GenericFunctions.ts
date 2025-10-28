@@ -1,6 +1,8 @@
+import type { Duration } from 'moment-timezone';
 import moment from 'moment-timezone';
 import { type CronExpression, randomInt } from 'n8n-workflow';
 
+import { ScheduleTimeSource } from './helpers/ScheduleTimeSource';
 import type { IRecurrenceRule, ScheduleInterval } from './SchedulerInterface';
 
 export function recurrenceCheck(
@@ -49,6 +51,47 @@ export function recurrenceCheck(
 	}
 	return false;
 }
+
+export const isIrregularInterval = (interval: ScheduleInterval): boolean => {
+	if (interval.field === 'seconds' && interval.secondsInterval >= 60) return true;
+	if (interval.field === 'minutes' && interval.minutesInterval >= 60) return true;
+	if (interval.field === 'hours' && interval.hoursInterval >= 24) return true;
+	// days and weeks are handled by recurrenceCheck so we don't consider them irregular
+	return false;
+};
+
+export const intervalToDuration = (interval: ScheduleInterval): Duration => {
+	switch (interval.field) {
+		case 'seconds':
+			return moment.duration(interval.secondsInterval, 'seconds');
+		case 'minutes':
+			return moment.duration(interval.minutesInterval, 'minutes');
+		case 'hours':
+			return moment.duration(interval.hoursInterval, 'hours');
+		case 'days':
+			return moment.duration(interval.daysInterval, 'days');
+		case 'weeks':
+			return moment.duration(interval.weeksInterval, 'weeks');
+		case 'months':
+			return moment.duration(interval.monthsInterval, 'months');
+		default:
+			throw new Error(`Invalid interval: ${interval.field}`);
+	}
+};
+
+export const toTimeSource = (interval: ScheduleInterval, timezone: string): ScheduleTimeSource => {
+	if (isIrregularInterval(interval)) {
+		return new ScheduleTimeSource({
+			type: 'irregular',
+			start: moment.tz(timezone),
+			interval: intervalToDuration(interval),
+		});
+	}
+	return new ScheduleTimeSource({
+		type: 'cron',
+		cronExpression: toCronExpression(interval),
+	});
+};
 
 export const toCronExpression = (interval: ScheduleInterval): CronExpression => {
 	if (interval.field === 'cronExpression') return interval.expression;

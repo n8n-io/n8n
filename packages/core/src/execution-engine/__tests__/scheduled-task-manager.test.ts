@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
-import type { CronContext, Workflow } from 'n8n-workflow';
+import moment from 'moment-timezone';
+import type { CronContext, ITimeSource, Workflow } from 'n8n-workflow';
 
 import type { InstanceSettings } from '@/instance-settings';
 
@@ -143,5 +144,50 @@ describe('ScheduledTaskManager', () => {
 
 		// @ts-expect-error Private property
 		expect(manager.logInterval).toBeUndefined();
+	});
+
+	it('should register CronJobs with cron TimeSource', () => {
+		const timeSource: ITimeSource = {
+			getTimeSource: () => everyMinute,
+			updateTimeSource: () => {},
+			toString: () => everyMinute,
+		};
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'test-node-id',
+				timezone: workflow.timezone,
+				expression: timeSource,
+			},
+			onTick,
+		);
+
+		expect(onTick).not.toHaveBeenCalled();
+		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+		expect(onTick).toHaveBeenCalledTimes(10);
+	});
+
+	it('should register CronJobs with date TimeSource', () => {
+		const date = moment().add(1, 'minute');
+		const timeSource: ITimeSource = {
+			getTimeSource: jest.fn(() => date.toDate()),
+			updateTimeSource: jest.fn(() => date.add(1, 'minute')),
+			toString: () => 'string',
+		};
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'test-node-id',
+				timezone: workflow.timezone,
+				expression: timeSource,
+			},
+			onTick,
+		);
+
+		expect(onTick).not.toHaveBeenCalled();
+		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+		expect(onTick).toHaveBeenCalledTimes(10);
+		expect(timeSource.getTimeSource).toHaveBeenCalledTimes(11);
+		expect(timeSource.updateTimeSource).toHaveBeenCalledTimes(10);
 	});
 });

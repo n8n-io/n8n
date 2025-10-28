@@ -861,11 +861,17 @@ export type CronContext = {
 	nodeId: string;
 	workflowId: string;
 	timezone: string;
-	expression: CronExpression;
+	expression: CronExpression | ITimeSource;
 	recurrence?: CronRecurrenceRule;
 };
 
-export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
+export interface ITimeSource {
+	getTimeSource(): string | Date;
+	updateTimeSource(): void;
+	toString(): string;
+}
+
+export type Cron = { expression: CronExpression | ITimeSource; recurrence?: CronRecurrenceRule };
 
 export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: () => void): void;

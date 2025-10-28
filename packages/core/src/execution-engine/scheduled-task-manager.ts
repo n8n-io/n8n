@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { CronLoggingConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { CronJob } from 'cron';
+import { CronJob, CronTime } from 'cron';
 import type { CronContext, Workflow } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors';
@@ -49,10 +49,10 @@ export class ScheduledTaskManager {
 
 	registerCron(ctx: CronContext, onTick: () => void) {
 		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
-
+		const cronDescription = typeof expression === 'string' ? expression : expression.toString();
 		const summary = recurrence?.activated
-			? `${expression} (every ${recurrence.intervalSize} ${recurrence.typeInterval})`
-			: expression;
+			? `${cronDescription} (every ${recurrence.intervalSize} ${recurrence.typeInterval})`
+			: cronDescription;
 
 		const workflowCrons = this.cronsByWorkflow.get(workflowId);
 		const key = this.toCronKey({ workflowId, nodeId, expression, timezone, recurrence });
@@ -73,7 +73,7 @@ export class ScheduledTaskManager {
 		}
 
 		const job = new CronJob(
-			expression,
+			typeof expression === 'string' ? expression : expression.getTimeSource(),
 			() => {
 				if (!this.instanceSettings.isLeader) return;
 
@@ -85,6 +85,12 @@ export class ScheduledTaskManager {
 				});
 
 				onTick();
+
+				if (typeof expression !== 'string') {
+					expression.updateTimeSource();
+					job.setTime(new CronTime(expression.getTimeSource(), timezone));
+					job.start();
+				}
 			},
 			undefined,
 			true,
