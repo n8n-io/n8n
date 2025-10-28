@@ -355,7 +355,6 @@ describe('GlobalConfig', () => {
 			disabled: false,
 		},
 		workflowHistory: {
-			enabled: true,
 			pruneTime: -1,
 		},
 		sso: {

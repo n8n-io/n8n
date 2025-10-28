@@ -1,9 +1,9 @@
-import { N8N_VERSION } from '@/constants';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
+import { N8N_VERSION } from '@/constants';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -99,7 +99,6 @@ describe('FrontendService', () => {
 		isExternalSecretsEnabled: jest.fn().mockReturnValue(false),
 		isLicensed: jest.fn().mockReturnValue(false),
 		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
-		isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
 		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
 		isApiKeyScopesEnabled: jest.fn().mockReturnValue(false),

@@ -34,7 +34,6 @@ export const defaultSettings: FrontendSettings = {
 		sourceControl: false,
 		auditLogs: false,
 		showNonProdBanner: false,
-		workflowHistory: false,
 		binaryDataS3: false,
 		externalSecrets: false,
 		workerView: false,

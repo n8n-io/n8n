@@ -268,7 +268,6 @@ export class FrontendService {
 				showNonProdBanner: false,
 				debugInEditor: false,
 				binaryDataS3: false,
-				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,

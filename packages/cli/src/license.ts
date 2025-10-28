@@ -301,11 +301,6 @@ export class License implements LicenseProvider {
 		return this.isLicensed(LICENSE_FEATURES.EXTERNAL_SECRETS);
 	}
 
-	/** @deprecated Use `LicenseState.isWorkflowHistoryLicensed` instead. */
-	isWorkflowHistoryLicensed() {
-		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_HISTORY);
-	}
-
 	/** @deprecated Use `LicenseState.isAPIDisabled` instead. */
 	isAPIDisabled() {
 		return this.isLicensed(LICENSE_FEATURES.API_DISABLED);
