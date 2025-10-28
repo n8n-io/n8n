@@ -403,8 +403,8 @@ export function resolvePath(
 			}
 			return `
 			CASE
-				WHEN pg_input_is_valid(${base}, ${type})
-				THEN ${base}::${type}
+				WHEN pg_input_is_valid((${base}), '${type}')
+				THEN (${base})::${type}
 				ELSE NULL
 			END`;
 		} else {
