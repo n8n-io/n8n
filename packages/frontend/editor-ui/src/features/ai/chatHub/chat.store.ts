@@ -619,6 +619,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			provider: 'custom-agent' as const,
 			agentId: agent.id,
 			name: agent.name,
+			description: agent.description ?? null,
 		};
 		models.value?.['custom-agent'].models.push(model);
 
