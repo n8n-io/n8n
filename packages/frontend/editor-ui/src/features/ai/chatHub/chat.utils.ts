@@ -5,7 +5,7 @@ import {
 	type ChatHubSessionDto,
 	type ChatHubAgentDto,
 } from '@n8n/api-types';
-import type { ChatMessage, GroupedConversations } from './chat.types';
+import type { ChatMessage, GroupedConversations, ChatAgentFilter } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -158,4 +158,70 @@ export function describeConversationModel(model: ChatHubConversationModel) {
 		default:
 			return model.model;
 	}
+}
+
+export function getTimestamp(
+	model: ChatHubConversationModel,
+	type: 'createdAt' | 'updatedAt',
+	agents: ChatHubAgentDto[],
+	workflowsById: Partial<Record<string, IWorkflowDb>>,
+): number | null {
+	if (model.provider === 'custom-agent') {
+		const agent = agents.find((a) => a.id === model.agentId);
+		return agent?.[type] ? Date.parse(agent[type]) : null;
+	}
+
+	if (model.provider === 'n8n') {
+		const workflow = workflowsById[model.workflowId];
+		return workflow?.[type]
+			? typeof workflow[type] === 'string'
+				? Date.parse(workflow[type])
+				: workflow[type]
+			: null;
+	}
+
+	return null;
+}
+
+export function filterAndSortAgents(
+	models: ChatHubConversationModel[],
+	filter: ChatAgentFilter,
+	agents: ChatHubAgentDto[],
+	workflowsById: Partial<Record<string, IWorkflowDb>>,
+): ChatHubConversationModel[] {
+	let filtered = models;
+
+	// Apply search filter
+	if (filter.search.trim()) {
+		const query = filter.search.toLowerCase();
+		filtered = filtered.filter((model) => model.name.toLowerCase().includes(query));
+	}
+
+	// Apply provider filter
+	if (filter.provider !== '') {
+		filtered = filtered.filter((model) => model.provider === filter.provider);
+	}
+
+	// Apply sorting
+	filtered = [...filtered].sort((a, b) => {
+		const dateA = getTimestamp(a, filter.sortBy, agents, workflowsById);
+		const dateB = getTimestamp(b, filter.sortBy, agents, workflowsById);
+
+		// Sort by dates (newest first)
+		if (dateA && dateB) {
+			return dateB - dateA;
+		}
+
+		// Items without dates go to the end
+		if (dateA && !dateB) {
+			return -1;
+		}
+		if (!dateA && dateB) {
+			return 1;
+		}
+
+		return 0;
+	});
+
+	return filtered;
 }

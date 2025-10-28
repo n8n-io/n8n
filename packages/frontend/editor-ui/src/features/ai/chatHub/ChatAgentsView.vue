@@ -3,26 +3,36 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { type ChatHubConversationModel } from '@n8n/api-types';
+import { filterAndSortAgents } from '@/features/ai/chatHub/chat.utils';
+import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
 
 const editingAgentId = ref<string | undefined>(undefined);
 
+const agentFilter = ref<ChatAgentFilter>({
+	search: '',
+	provider: '',
+	sortBy: 'updatedAt',
+});
+
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
-const models = computed(() =>
+const allModels = computed(() =>
 	chatStore.agents
 		.map<ChatHubConversationModel>((agent) => ({
 			provider: 'custom-agent',
@@ -35,6 +45,26 @@ const models = computed(() =>
 			),
 		),
 );
+
+const models = computed(() => {
+	return filterAndSortAgents(
+		allModels.value,
+		agentFilter.value,
+		chatStore.agents,
+		workflowsStore.workflowsById, // TODO: ensure workflows are fetched
+	);
+});
+
+const providerOptions = [
+	{ label: 'All', value: '' },
+	{ label: 'Custom agents', value: 'custom-agent' },
+	{ label: 'n8n workflows', value: 'n8n' },
+] as const;
+
+const sortOptions = [
+	{ label: 'Sort by last updated', value: 'updatedAt' },
+	{ label: 'Sort by created', value: 'createdAt' },
+];
 
 function handleCreateAgent() {
 	chatStore.currentEditingAgent = null;
@@ -110,10 +140,40 @@ onMounted(async () => {
 			</N8nButton>
 		</div>
 
-		<div v-if="models.length === 0" :class="$style.empty">
+		<div v-if="allModels.length > 0" :class="$style.controls">
+			<N8nInput v-model="agentFilter.search" :class="$style.search" placeholder="Search" clearable>
+				<template #prefix>
+					<N8nIcon icon="search" />
+				</template>
+			</N8nInput>
+
+			<N8nSelect v-model="agentFilter.provider" :class="$style.filter">
+				<N8nOption
+					v-for="option in providerOptions"
+					:key="String(option.value)"
+					:label="option.label"
+					:value="option.value"
+				/>
+			</N8nSelect>
+
+			<N8nSelect v-model="agentFilter.sortBy" :class="$style.sort" placeholder="Sort by">
+				<N8nOption
+					v-for="option in sortOptions"
+					:key="option.value"
+					:label="option.label"
+					:value="option.value"
+				/>
+			</N8nSelect>
+		</div>
+
+		<div v-if="allModels.length === 0" :class="$style.empty">
 			<N8nText color="text-light" size="medium">
 				No agents available. Create your first custom agent to get started.
 			</N8nText>
+		</div>
+
+		<div v-else-if="models.length === 0" :class="$style.empty">
+			<N8nText color="text-light" size="medium"> No agents match your search criteria. </N8nText>
 		</div>
 
 		<div v-else :class="$style.agentsGrid">
@@ -122,6 +182,7 @@ onMounted(async () => {
 				:key="`${model.provider}::${model.provider === 'custom-agent' ? model.agentId : model.provider === 'n8n' ? model.workflowId : model.model}`"
 				:model="model"
 				:agents="chatStore.agents"
+				:workflows-by-id="workflowsStore.workflowsById"
 				@edit="handleEditAgent(model)"
 				@delete="model.provider === 'custom-agent' ? handleDeleteAgent(model.agentId) : undefined"
 			/>
@@ -160,6 +221,25 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+}
+
+.controls {
+	display: flex;
+	gap: var(--spacing--sm);
+	align-items: center;
+}
+
+.search {
+	flex: 1;
+	min-width: 200px;
+}
+
+.filter {
+	width: 200px;
+}
+
+.sort {
+	width: 200px;
 }
 
 .empty {
