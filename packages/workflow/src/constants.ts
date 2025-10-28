@@ -41,6 +41,7 @@ export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+export const RESPOND_TO_CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
@@ -86,6 +87,7 @@ export const MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain
 export const AGENT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const CHAIN_LLM_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
 export const OPENAI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
+export const OPENAI_CHAT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
 export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
 export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';

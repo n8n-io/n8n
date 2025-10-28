@@ -2,12 +2,7 @@ import {
 	ABOUT_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
-	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
-	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 	CONTACT_PROMPT_MODAL_KEY,
-	CREDENTIAL_EDIT_MODAL_KEY,
-	CREDENTIAL_SELECT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
@@ -22,10 +17,8 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
-	DEBUG_PAYWALL_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	PROJECT_MOVE_RESOURCE_MODAL,
 	NEW_ASSISTANT_SESSION_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
@@ -39,23 +32,34 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	VARIABLE_MODAL_KEY,
 } from '@/constants';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/communityPlus/communityPlus.constants';
+import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
+import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
+} from '@/features/credentials/credentials.constants';
 import {
 	DELETE_USER_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
-} from '@/features/users/users.constants';
+} from '@/features/settings/users/users.constants';
 import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
-} from '@/features/folders/folders.constants';
+} from '@/features/core/folders/folders.constants';
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
-} from '@/features/sourceControl.ee/sourceControl.constants';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/apiKeys/apiKeys.constants';
+} from '@/features/integrations/sourceControl.ee/sourceControl.constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
+import {
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+} from '@/features/settings/communityNodes/communityNodes.constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,
@@ -80,7 +84,7 @@ import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
 import * as modalRegistry from '@/moduleInitializer/modalRegistry';
 import { useTelemetry } from '@/composables/useTelemetry';

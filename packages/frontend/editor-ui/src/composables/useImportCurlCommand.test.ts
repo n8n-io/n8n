@@ -1,4 +1,8 @@
-import { toHttpNodeParameters, useImportCurlCommand } from '@/composables/useImportCurlCommand';
+import {
+	sanitizeCurlUrlPlaceholders,
+	toHttpNodeParameters,
+	useImportCurlCommand,
+} from '@/composables/useImportCurlCommand';
 
 const showToast = vi.fn();
 
@@ -568,5 +572,79 @@ describe('useImportCurlCommand', () => {
 			const curl = 'curl -X POST -d "key=value"';
 			expect(() => toHttpNodeParameters(curl)).toThrow('no URL specified!');
 		});
+	});
+});
+
+describe('sanitizeCurlUrlPlaceholders', () => {
+	test('should replace angle-bracket placeholders in URL', () => {
+		const curl = 'curl https://api.openai.com/v1/agents/<AGENT_ID>/runs';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe('curl https://api.openai.com/v1/agents/{AGENT_ID}/runs');
+	});
+
+	test('should handle multiple placeholders in URL', () => {
+		const curl = 'curl https://example.com/<USER_ID>/files/<FILE_ID>';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe('curl https://example.com/{USER_ID}/files/{FILE_ID}');
+	});
+
+	test('should not modify body containing <html> tags', () => {
+		const curl = "curl https://example.com -d '<div>Hello <b>World</b></div>'";
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe(curl);
+	});
+
+	test('should handle quoted URLs correctly', () => {
+		const curl = 'curl "https://api.test.com/<PLACEHOLDER>"';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe('curl "https://api.test.com/{PLACEHOLDER}"');
+	});
+
+	test('should leave URLs without placeholders untouched', () => {
+		const curl = 'curl https://example.com/v1/data';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe(curl);
+	});
+
+	test('should not crash on malformed curl commands without URLs', () => {
+		const curl = 'curl -X POST -d "key=value"';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe(curl);
+	});
+
+	test('should handle URLs with query parameters and placeholders', () => {
+		const curl = 'curl https://example.com/<ID>?a=1&b=<B>';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe('curl https://example.com/{ID}?a=1&b={B}');
+	});
+
+	test('should not alter JSON body containing HTML tags', () => {
+		const curl =
+			'curl https://example.com -H "Content-Type: application/json" -d \'{"message": "<b>Hello</b>"}\'';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe(curl);
+	});
+
+	test('should not alter JSON body with HTML in nested properties', () => {
+		const curl =
+			'curl https://example.com/api -H "Content-Type: application/json" -d \'{"user": {"bio": "<div>Hi <i>there</i></div>"}}\'';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe(curl);
+	});
+
+	test('should not alter JSON body where key names contain HTML', () => {
+		const curl =
+			'curl https://example.com -H "Content-Type: application/json" -d \'{"<html>key</html>": "value"}\'';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe(curl);
+	});
+
+	test('should sanitize URL but keep HTML in JSON body intact', () => {
+		const curl =
+			'curl https://api.example.com/<USER_ID> -H "Content-Type: application/json" -d \'{"content": "<div><b>Text</b></div>"}\'';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe(
+			'curl https://api.example.com/{USER_ID} -H "Content-Type: application/json" -d \'{"content": "<div><b>Text</b></div>"}\'',
+		);
 	});
 });

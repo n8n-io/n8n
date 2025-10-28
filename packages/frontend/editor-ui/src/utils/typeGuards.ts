@@ -6,8 +6,6 @@ import type {
 import { nodeConnectionTypes } from 'n8n-workflow';
 import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import type {
-	IExecutionResponse,
-	ICredentialsResponse,
 	NewCredentialsModal,
 	CredentialsResource,
 	FolderResource,
@@ -15,14 +13,16 @@ import type {
 	VariableResource,
 	WorkflowResource,
 	WorkflowListItem,
+	WorkflowListResource,
 } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
-import type { CanvasConnectionMode } from '@/features/canvas/canvas.types';
-import { canvasConnectionModes } from '@/features/canvas/canvas.types';
+import type { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
+import { canvasConnectionModes } from '@/features/workflows/canvas/canvas.types';
 import type { ComponentPublicInstance } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import type { WorkflowListResource } from '@/Interface';
 
 /*
 	Type guards used in editor-ui project
@@ -150,9 +150,7 @@ export function isBaseTextKey(key: string): key is BaseTextKey {
 
 // Type guard to check if a string is a valid ProjectRole
 export function isProjectRole(role: string): role is ProjectRole {
-	return ['project:admin', 'project:editor', 'project:viewer', 'project:personalOwner'].includes(
-		role,
-	);
+	return role.startsWith('project:');
 }
 
 // Type guard to check if a role is a valid TeamProjectRole (ProjectRole excluding personalOwner)

@@ -1,9 +1,9 @@
 import { ref } from 'vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeConnections } from '@/composables/useNodeConnections';
-import type { CanvasNodeData } from '@/features/canvas/canvas.types';
-import { CanvasConnectionMode } from '@/features/canvas/canvas.types';
-import { createCanvasConnectionHandleString } from '@/features/canvas/canvas.utils';
+import type { CanvasNodeData } from '@/features/workflows/canvas/canvas.types';
+import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
+import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 
 describe('useNodeConnections', () => {
 	const defaultConnections = {

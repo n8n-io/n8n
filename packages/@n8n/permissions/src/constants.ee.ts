@@ -27,6 +27,7 @@ export const RESOURCES = {
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
+	provisioning: ['manage'] as const,
 	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	workflowTags: ['update', 'list'] as const,
@@ -34,6 +35,7 @@ export const RESOURCES = {
 	mcp: ['manage'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,
+	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

@@ -819,6 +819,11 @@ export interface RequestHelperFunctions {
 		requestOptions: IRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	refreshOAuth2Token(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		oAuth2Options?: IOAuth2Options,
+	): Promise<any>;
 }
 
 export type SSHCredentials = {
@@ -1014,8 +1019,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 					inputData: INodeExecutionData[],
 					options: { itemData: IPairedItemData | IPairedItemData[] },
 				): NodeExecutionWithMetadata[];
-				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
-				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+				assertBinaryData(itemIndex: number, parameterData: string | IBinaryData): IBinaryData;
+				getBinaryDataBuffer(
+					itemIndex: number,
+					parameterData: string | IBinaryData,
+				): Promise<Buffer>;
 				detectBinaryEncoding(buffer: Buffer): string;
 				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
@@ -1068,6 +1076,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string): void;
+		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
 			runIndex: number;
 			inputData: INodeExecutionData[][];
@@ -1355,6 +1364,7 @@ export type SQLDialect =
 	| 'StandardSQL'
 	| 'PostgreSQL'
 	| 'MySQL'
+	| 'OracleDB'
 	| 'MariaSQL'
 	| 'MSSQL'
 	| 'SQLite'
@@ -1707,6 +1717,7 @@ export interface SupplyData {
 	metadata?: IDataObject;
 	response: unknown;
 	closeFunction?: CloseFunction;
+	hints?: NodeExecutionHint[];
 }
 
 export type NodeOutput =
@@ -2876,6 +2887,7 @@ export interface INodeGraphItem {
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	is_streaming?: boolean; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
+	use_responses_api?: boolean; //@n8n/n8n-nodes-langchain.lmChatOpenAi
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
