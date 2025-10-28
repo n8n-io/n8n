@@ -1,4 +1,7 @@
+import path from 'node:path';
+
 import { Config, Env } from '../decorators';
+import { getN8nFolder } from '../utils/utils';
 
 @Config
 export class DataTableConfig {
@@ -43,4 +46,17 @@ export class DataTableConfig {
 	 */
 	@Env('N8N_DATA_TABLES_FILE_MAX_AGE_MS')
 	fileMaxAgeMs: number = 2 * 60 * 1000;
+
+	/**
+	 * The directory path where uploaded CSV files are temporarily stored before being imported.
+	 * Files in this directory are automatically cleaned up after a configurable period (fileMaxAgeMs).
+	 * Computed as: <n8n-folder>/dataTableUploads
+	 * Example: /home/user/.n8n/dataTableUploads
+	 */
+	readonly uploadDir: string;
+
+	constructor() {
+		const n8nFolder = getN8nFolder();
+		this.uploadDir = path.join(n8nFolder, 'dataTableUploads');
+	}
 }

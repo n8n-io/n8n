@@ -1,9 +1,7 @@
-import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
+import type { GlobalConfig } from '@n8n/config';
 import { promises as fs } from 'fs';
-import path from 'path';
 
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
-import { DATA_TABLE_UPLOADS_FOLDER_NAME } from 'n8n-workflow';
 
 jest.mock('fs', () => ({
 	promises: {
@@ -14,21 +12,17 @@ jest.mock('fs', () => ({
 }));
 
 describe('DataTableFileCleanupService', () => {
-	const mockN8nFolder = '/mock/n8n/folder';
-	const uploadDir = path.join(mockN8nFolder, DATA_TABLE_UPLOADS_FOLDER_NAME);
-
-	const instanceSettingsConfig = {
-		n8nFolder: mockN8nFolder,
-	} as InstanceSettingsConfig;
+	const uploadDir = '/mock/n8n/dataTableUploads';
 
 	const globalConfig = {
 		dataTable: {
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 2 * 60 * 1000,
+			uploadDir,
 		},
 	} as GlobalConfig;
 
-	const service = new DataTableFileCleanupService(instanceSettingsConfig, globalConfig);
+	const service = new DataTableFileCleanupService(globalConfig);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -42,7 +36,7 @@ describe('DataTableFileCleanupService', () => {
 	describe('deleteFile', () => {
 		it('should delete a file successfully', async () => {
 			const fileId = 'test-file-123';
-			const expectedPath = path.join(uploadDir, fileId);
+			const expectedPath = `${uploadDir}/${fileId}`;
 
 			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
 
@@ -132,8 +126,8 @@ describe('DataTableFileCleanupService', () => {
 
 			expect(fs.readdir).toHaveBeenCalledWith(uploadDir);
 			expect(fs.stat).toHaveBeenCalledTimes(2);
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile1));
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile2));
+			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${oldFile1}`);
+			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${oldFile2}`);
 		});
 
 		it('should not delete files newer than 2 minutes', async () => {
@@ -174,8 +168,8 @@ describe('DataTableFileCleanupService', () => {
 			await flushPromises();
 
 			expect(fs.unlink).toHaveBeenCalledTimes(1);
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile));
-			expect(fs.unlink).not.toHaveBeenCalledWith(path.join(uploadDir, newFile));
+			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${oldFile}`);
+			expect(fs.unlink).not.toHaveBeenCalledWith(`${uploadDir}/${newFile}`);
 		});
 
 		it('should handle empty upload directory', async () => {
@@ -231,7 +225,7 @@ describe('DataTableFileCleanupService', () => {
 			await flushPromises();
 
 			// Should still delete file2 even though file1 failed
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file2));
+			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${file2}`);
 			expect(fs.unlink).toHaveBeenCalledTimes(1);
 		});
 
@@ -253,8 +247,8 @@ describe('DataTableFileCleanupService', () => {
 			await flushPromises();
 
 			// Should attempt to delete both files
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file1));
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file2));
+			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${file1}`);
+			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${file2}`);
 			expect(fs.unlink).toHaveBeenCalledTimes(2);
 		});
 

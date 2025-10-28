@@ -1,12 +1,10 @@
 /* eslint-disable id-denylist */
-import { InstanceSettingsConfig, GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
 import { mkdir } from 'fs/promises';
 import multer from 'multer';
-import { DATA_TABLE_UPLOADS_FOLDER_NAME } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import path from 'path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -29,15 +27,11 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 	private readonly uploadDir: string;
 
 	constructor(
-		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly sizeValidator: DataTableSizeValidator,
 		private readonly dataTableRepository: DataTableRepository,
 	) {
-		this.uploadDir = path.join(
-			this.instanceSettingsConfig.n8nFolder,
-			DATA_TABLE_UPLOADS_FOLDER_NAME,
-		);
+		this.uploadDir = this.globalConfig.dataTable.uploadDir;
 
 		void this.ensureUploadDirExists();
 
