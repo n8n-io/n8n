@@ -33,8 +33,11 @@ export class DataTableUploadsController {
 			throw new BadRequestError('No file uploaded');
 		}
 
+		// Extract hasHeaders parameter from request body (multer parses form fields to body), default to true
+		const hasHeaders = (req.body as { hasHeaders?: string }).hasHeaders === 'false' ? false : true;
+
 		// Parse CSV file to extract metadata
-		const metadata = await this.csvParserService.parseFile(req.file.filename);
+		const metadata = await this.csvParserService.parseFile(req.file.filename, hasHeaders);
 
 		return {
 			originalName: req.file.originalname,

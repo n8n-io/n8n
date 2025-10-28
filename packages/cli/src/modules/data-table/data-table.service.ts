@@ -72,7 +72,7 @@ export class DataTableService {
 		// If fileId is provided, import data from the CSV file
 		if (dto.fileId) {
 			try {
-				await this.importDataFromFile(projectId, result.id, dto.fileId);
+				await this.importDataFromFile(projectId, result.id, dto.fileId, dto.hasHeaders ?? true);
 				// Delete the CSV file after successful import
 				await this.fileCleanupService.deleteFile(dto.fileId);
 			} catch (error) {
@@ -87,13 +87,18 @@ export class DataTableService {
 		return result;
 	}
 
-	private async importDataFromFile(projectId: string, dataTableId: string, fileId: string) {
+	private async importDataFromFile(
+		projectId: string,
+		dataTableId: string,
+		fileId: string,
+		hasHeaders: boolean,
+	) {
 		try {
 			// Get the table columns to create a mapping
 			const tableColumns = await this.getColumns(dataTableId, projectId);
 
 			// Parse the CSV file to get metadata with original column names
-			const csvMetadata = await this.csvParserService.parseFile(fileId);
+			const csvMetadata = await this.csvParserService.parseFile(fileId, hasHeaders);
 
 			// Create a mapping from CSV column names to table column names (by index)
 			const columnMapping = new Map<string, string>();
@@ -104,7 +109,7 @@ export class DataTableService {
 			});
 
 			// Parse the CSV file to get all rows
-			const csvRows = await this.csvParserService.parseFileData(fileId);
+			const csvRows = await this.csvParserService.parseFileData(fileId, hasHeaders);
 
 			// Transform rows to use table column names
 			const transformedRows = csvRows.map((csvRow) => {

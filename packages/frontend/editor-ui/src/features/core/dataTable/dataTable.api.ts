@@ -40,6 +40,7 @@ export const createDataTableApi = async (
 	projectId: string,
 	columns?: DataTableColumnCreatePayload[],
 	fileId?: string,
+	hasHeaders: boolean = true,
 ) => {
 	return await makeRestApiRequest<DataTable>(
 		context,
@@ -48,6 +49,7 @@ export const createDataTableApi = async (
 		{
 			name,
 			columns: columns ?? [],
+			hasHeaders,
 			...(fileId ? { fileId } : {}),
 		},
 	);
@@ -220,9 +222,14 @@ export const fetchDataTableGlobalLimitInBytes = async (context: IRestApiContext)
 	);
 };
 
-export const uploadCsvFileApi = async (context: IRestApiContext, file: File) => {
+export const uploadCsvFileApi = async (
+	context: IRestApiContext,
+	file: File,
+	hasHeaders: boolean = true,
+) => {
 	const formData = new FormData();
 	formData.append('file', file);
+	formData.append('hasHeaders', String(hasHeaders));
 
 	return await makeRestApiRequest<{
 		originalName: string;

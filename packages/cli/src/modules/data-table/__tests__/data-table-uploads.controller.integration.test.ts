@@ -126,6 +126,75 @@ describe('POST /data-tables/uploads', () => {
 		});
 	});
 
+	describe('header handling', () => {
+		test('should use first row as headers when hasHeaders=true (default)', async () => {
+			const csvContent = 'FirstName,LastName,Age\nJohn,Doe,30\nJane,Smith,25';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.field('hasHeaders', 'true')
+				.attach('file', Buffer.from(csvContent), 'with-headers.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('rowCount', 2);
+			expect(response.body.data).toHaveProperty('columnCount', 3);
+			expect(response.body.data.columns).toEqual([
+				{ name: 'FirstName', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'LastName', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'Age', type: 'number', compatibleTypes: ['number', 'string'] },
+			]);
+		});
+
+		test('should generate column names when hasHeaders=false', async () => {
+			const csvContent = 'John,Doe,30\nJane,Smith,25\nBob,Johnson,35';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.field('hasHeaders', 'false')
+				.attach('file', Buffer.from(csvContent), 'no-headers.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('rowCount', 3);
+			expect(response.body.data).toHaveProperty('columnCount', 3);
+			expect(response.body.data.columns).toEqual([
+				{ name: 'Column_1', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'Column_2', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'Column_3', type: 'number', compatibleTypes: ['number', 'string'] },
+			]);
+		});
+
+		test('should include all rows in count when hasHeaders=false', async () => {
+			const csvContent = '100,200,300\n400,500,600';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.field('hasHeaders', 'false')
+				.attach('file', Buffer.from(csvContent), 'no-headers-numbers.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('rowCount', 2); // Both rows counted as data
+			expect(response.body.data).toHaveProperty('columnCount', 3);
+			expect(response.body.data.columns).toEqual([
+				{ name: 'Column_1', type: 'number', compatibleTypes: ['number', 'string'] },
+				{ name: 'Column_2', type: 'number', compatibleTypes: ['number', 'string'] },
+				{ name: 'Column_3', type: 'number', compatibleTypes: ['number', 'string'] },
+			]);
+		});
+
+		test('should default to hasHeaders=true when field not provided', async () => {
+			const csvContent = 'col1,col2\nval1,val2';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(csvContent), 'default.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('rowCount', 1);
+			expect(response.body.data.columns[0].name).toBe('col1');
+			expect(response.body.data.columns[1].name).toBe('col2');
+		});
+	});
+
 	describe('authentication', () => {
 		test('should reject unauthenticated requests', async () => {
 			const csvContent = 'name,value\ntest,123';

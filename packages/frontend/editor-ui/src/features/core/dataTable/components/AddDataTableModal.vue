@@ -19,12 +19,15 @@ import {
 	N8nIcon,
 } from '@n8n/design-system';
 import Modal from '@/components/Modal.vue';
+import { ElUpload, ElIcon } from 'element-plus';
+import type { UploadFile } from 'element-plus';
+import { UploadFilled } from '@element-plus/icons-vue';
 
 type Props = {
 	modalName: string;
 };
 
-type CreationMode = 'select' | 'scratch' | 'import';
+type CreationMode = 'select' | 'scratch' | 'import' | 'file-selected';
 type ColumnType = 'string' | 'number' | 'boolean' | 'date';
 
 interface CsvColumn {
@@ -49,7 +52,6 @@ const telemetry = useTelemetry();
 const creationMode = ref<CreationMode>('select');
 const dataTableName = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
-const fileInputRef = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
 const uploadedFileId = ref<string | null>(null);
 const uploadedFileName = ref<string>('');
@@ -57,6 +59,7 @@ const csvColumns = ref<CsvColumn[]>([]);
 const csvRowCount = ref<number>(0);
 const csvColumnCount = ref<number>(0);
 const isUploading = ref(false);
+const hasHeaders = ref(true);
 
 const allColumnTypeOptions = [
 	{ label: 'String', value: 'string' },
@@ -153,10 +156,7 @@ const selectFromScratch = () => {
 };
 
 const selectImportCsv = () => {
-	creationMode.value = 'import';
-	setTimeout(() => {
-		fileInputRef.value?.click();
-	}, 0);
+	creationMode.value = 'file-selected';
 };
 
 const onColumnNameChange = (index: number) => {
@@ -191,21 +191,21 @@ const onColumnNameChange = (index: number) => {
 	});
 };
 
-const handleFileCancel = () => {
-	// User cancelled the file dialog, go back to select mode
-	creationMode.value = 'select';
+const handleFileChange = (uploadFile: UploadFile) => {
+	// Called by el-upload when file is selected or dropped
+	if (uploadFile.raw) {
+		selectedFile.value = uploadFile.raw;
+	}
 };
 
-const handleFileSelected = async (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	const file = target.files?.[0];
-	if (!file) return;
+const uploadFile = async () => {
+	if (!selectedFile.value) return;
 
-	selectedFile.value = file;
 	isUploading.value = true;
+	creationMode.value = 'import';
 
 	try {
-		const uploadResponse = await dataTableStore.uploadCsvFile(file);
+		const uploadResponse = await dataTableStore.uploadCsvFile(selectedFile.value, hasHeaders.value);
 		uploadedFileId.value = uploadResponse.id;
 		uploadedFileName.value = uploadResponse.originalName;
 		csvRowCount.value = uploadResponse.rowCount;
@@ -224,7 +224,7 @@ const handleFileSelected = async (event: Event) => {
 
 		// Set default table name from file name
 		if (!dataTableName.value) {
-			const fileName = file.name.replace(/\.csv$/i, '');
+			const fileName = selectedFile.value.name.replace(/\.csv$/i, '');
 			dataTableName.value = fileName;
 		}
 	} catch (error) {
@@ -250,6 +250,7 @@ const onSubmit = async () => {
 				route.params.projectId as string,
 				csvColumns.value.map((col) => ({ name: col.name, type: col.type })),
 				uploadedFileId.value,
+				hasHeaders.value,
 			);
 		}
 
@@ -298,9 +299,6 @@ const resetToSelect = () => {
 	csvRowCount.value = 0;
 	csvColumnCount.value = 0;
 	creationMode.value = 'select';
-	if (fileInputRef.value) {
-		fileInputRef.value.value = '';
-	}
 };
 
 const goBack = () => {
@@ -380,18 +378,49 @@ const redirectToDataTables = () => {
 				</N8nInputLabel>
 			</div>
 
+			<!-- Step 2.5: File Selected - Configure Upload -->
+			<div v-else-if="creationMode === 'file-selected'" :class="$style.content">
+				<div :class="$style.fileSelectedContainer">
+					<ElUpload
+						:class="$style.uploadDemo"
+						drag
+						:auto-upload="false"
+						:show-file-list="false"
+						accept=".csv"
+						:on-change="handleFileChange"
+					>
+						<ElIcon :class="$style.uploadIcon">
+							<UploadFilled />
+						</ElIcon>
+						<div :class="$style.uploadText">
+							<span v-if="selectedFile" :class="$style.fileName">{{ selectedFile?.name }}</span>
+							<span v-else>
+								{{ i18n.baseText('dataTable.upload.dropOrClick') }}
+							</span>
+						</div>
+						<template #tip>
+							<div :class="$style.uploadTip">
+								{{ i18n.baseText('dataTable.upload.csvOnly') }}
+							</div>
+						</template>
+					</ElUpload>
+
+					<div :class="$style.checkboxContainer">
+						<label :class="$style.checkboxLabel">
+							<input
+								v-model="hasHeaders"
+								type="checkbox"
+								:class="$style.checkbox"
+								data-test-id="has-headers-checkbox"
+							/>
+							<span>{{ i18n.baseText('dataTable.upload.hasHeaders') }}</span>
+						</label>
+					</div>
+				</div>
+			</div>
+
 			<!-- Step 3: Import CSV -->
 			<div v-else-if="creationMode === 'import'" :class="$style.content">
-				<input
-					ref="fileInputRef"
-					type="file"
-					accept=".csv"
-					style="display: none"
-					@change="handleFileSelected"
-					@cancel="handleFileCancel"
-					data-test-id="csv-file-input"
-				/>
-
 				<div v-if="isUploading" :class="$style.uploadingMessage">
 					{{ i18n.baseText('dataTable.upload.uploading') }}
 				</div>
@@ -495,8 +524,27 @@ const redirectToDataTables = () => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
+				<!-- File Selected Step Buttons -->
 				<N8nButton
-					v-if="creationMode !== 'select'"
+					v-if="creationMode === 'file-selected'"
+					type="secondary"
+					size="large"
+					:label="i18n.baseText('generic.cancel')"
+					data-test-id="cancel-file-button"
+					@click="resetToSelect"
+				/>
+				<N8nButton
+					v-if="creationMode === 'file-selected'"
+					size="large"
+					:disabled="!selectedFile"
+					:label="i18n.baseText('dataTable.upload.uploadButton')"
+					data-test-id="upload-csv-button"
+					@click="uploadFile"
+				/>
+
+				<!-- Other Modes Buttons -->
+				<N8nButton
+					v-if="creationMode !== 'select' && creationMode !== 'file-selected'"
 					type="secondary"
 					size="large"
 					:label="i18n.baseText('generic.back')"
@@ -504,7 +552,7 @@ const redirectToDataTables = () => {
 					@click="goBack"
 				/>
 				<N8nButton
-					v-if="creationMode !== 'select'"
+					v-if="creationMode !== 'select' && creationMode !== 'file-selected'"
 					size="large"
 					:disabled="isCreateDisabled"
 					:label="i18n.baseText('generic.create')"
@@ -708,5 +756,91 @@ const redirectToDataTables = () => {
 	gap: var(--spacing--2xs);
 	justify-content: flex-end;
 	margin-top: var(--spacing--lg);
+}
+
+.fileSelectedContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	padding: var(--spacing--lg) 0;
+}
+
+.uploadDemo {
+	width: 100%;
+
+	:global(.el-upload) {
+		width: 100%;
+		border-radius: var(--radius--lg);
+	}
+
+	:global(.el-upload-dragger) {
+		width: 100%;
+		padding: var(--spacing--2xl) var(--spacing--lg);
+		border: 2px dashed var(--color--foreground);
+		background-color: var(--color--foreground);
+		border-radius: var(--radius--lg);
+		transition: all 0.2s ease;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+
+		&:hover {
+			border-color: var(--color--primary);
+			background-color: var(--color--foreground--shade-1);
+		}
+	}
+
+	// Hide the default file input button
+	:global(input[type='file']) {
+		display: none !important;
+	}
+}
+
+.uploadIcon {
+	font-size: 48px;
+	color: var(--color--primary);
+	margin-bottom: var(--spacing--sm);
+}
+
+.uploadText {
+	font-size: var(--font-size--md);
+	color: var(--color--text);
+	line-height: var(--line-height--lg);
+	text-align: center;
+}
+
+.fileName {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--primary);
+}
+
+.uploadTip {
+	font-size: var(--font-size--xs);
+	color: var(--color--text--tint-1);
+	margin-top: var(--spacing--xs);
+	line-height: var(--line-height--lg);
+}
+
+.checkboxContainer {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--sm) 0;
+}
+
+.checkboxLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	cursor: pointer;
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	user-select: none;
+}
+
+.checkbox {
+	width: 18px;
+	height: 18px;
+	cursor: pointer;
 }
 </style>

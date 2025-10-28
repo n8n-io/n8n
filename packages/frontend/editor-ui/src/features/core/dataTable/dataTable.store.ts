@@ -68,6 +68,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		projectId: string,
 		columns?: DataTableColumnCreatePayload[],
 		fileId?: string,
+		hasHeaders: boolean = true,
 	) => {
 		const newTable = await createDataTableApi(
 			rootStore.restApiContext,
@@ -75,6 +76,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			projectId,
 			columns,
 			fileId,
+			hasHeaders,
 		);
 		if (!newTable.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
@@ -87,8 +89,8 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return newTable;
 	};
 
-	const uploadCsvFile = async (file: File) => {
-		return await uploadCsvFileApi(rootStore.restApiContext, file);
+	const uploadCsvFile = async (file: File, hasHeaders: boolean = true) => {
+		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
 	};
 
 	const deleteDataTable = async (dataTableId: string, projectId: string) => {

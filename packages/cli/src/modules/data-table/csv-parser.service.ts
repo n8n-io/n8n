@@ -25,9 +25,10 @@ export class CsvParserService {
 
 	/**
 	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types
-	 * Assumes the first row always contains column names
+	 * @param fileId - The uploaded file ID
+	 * @param hasHeaders - Whether the CSV file contains a header row (default: true)
 	 */
-	async parseFile(fileId: string): Promise<CsvMetadata> {
+	async parseFile(fileId: string, hasHeaders: boolean = true): Promise<CsvMetadata> {
 		const filePath = path.join(this.uploadDir, fileId);
 		let rowCount = 0;
 		let firstDataRow: Record<string, string> | null = null;
@@ -35,18 +36,35 @@ export class CsvParserService {
 
 		return await new Promise((resolve, reject) => {
 			const parser = parse({
-				columns: (header: string[]) => {
-					columnNames = header;
-					return header;
-				},
+				columns: hasHeaders
+					? (header: string[]) => {
+							columnNames = header;
+							return header;
+						}
+					: false,
 				skip_empty_lines: true,
 			});
 
 			createReadStream(filePath)
 				.pipe(parser)
-				.on('data', (row: Record<string, string>) => {
+				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
-					firstDataRow ??= row;
+
+					// If no headers, row is an array, convert to object and generate column names
+					if (!hasHeaders && Array.isArray(row)) {
+						if (columnNames.length === 0) {
+							// Generate column names on first row
+							columnNames = row.map((_, index) => `Column_${index + 1}`);
+						}
+						// Convert array to object for type inference
+						const rowObject: Record<string, string> = {};
+						row.forEach((value, index) => {
+							rowObject[columnNames[index]] = value;
+						});
+						firstDataRow ??= rowObject;
+					} else {
+						firstDataRow ??= row as Record<string, string>;
+					}
 				})
 				.on('end', () => {
 					const columns = columnNames.map((columnName) => {
@@ -70,23 +88,42 @@ export class CsvParserService {
 
 	/**
 	 * Parses a CSV file and returns all rows as an array of objects
-	 * Assumes the first row always contains column names
+	 * @param fileId - The uploaded file ID
+	 * @param hasHeaders - Whether the CSV file contains a header row (default: true)
 	 */
-	async parseFileData(fileId: string): Promise<Array<Record<string, string>>> {
+	async parseFileData(
+		fileId: string,
+		hasHeaders: boolean = true,
+	): Promise<Array<Record<string, string>>> {
 		const filePath = path.join(this.uploadDir, fileId);
 
 		const rows: Array<Record<string, string>> = [];
+		let columnNames: string[] = [];
 
 		return await new Promise((resolve, reject) => {
 			const parser = parse({
-				columns: true,
+				columns: hasHeaders ? true : false,
 				skip_empty_lines: true,
 			});
 
 			createReadStream(filePath)
 				.pipe(parser)
-				.on('data', (row: Record<string, string>) => {
-					rows.push(row);
+				.on('data', (row: Record<string, string> | string[]) => {
+					// If no headers, row is an array, convert to object
+					if (!hasHeaders && Array.isArray(row)) {
+						if (columnNames.length === 0) {
+							// Generate column names on first row
+							columnNames = row.map((_, index) => `Column_${index + 1}`);
+						}
+						// Convert array to object
+						const rowObject: Record<string, string> = {};
+						row.forEach((value, index) => {
+							rowObject[columnNames[index]] = value;
+						});
+						rows.push(rowObject);
+					} else {
+						rows.push(row as Record<string, string>);
+					}
 				})
 				.on('end', () => {
 					resolve(rows);

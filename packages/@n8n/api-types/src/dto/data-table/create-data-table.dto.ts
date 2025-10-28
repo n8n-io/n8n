@@ -8,4 +8,5 @@ export class CreateDataTableDto extends Z.class({
 	name: dataTableNameSchema,
 	columns: z.array(CreateDataTableColumnDto),
 	fileId: z.string().optional(),
+	hasHeaders: z.boolean().optional(),
 }) {}
