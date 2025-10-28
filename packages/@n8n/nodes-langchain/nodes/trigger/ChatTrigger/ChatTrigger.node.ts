@@ -393,12 +393,13 @@ export class ChatTrigger extends Node {
 				description: 'Default messages shown at the start of the chat, one per line',
 			},
 			{
-				displayName: 'Make Available in Chat',
-				name: 'availableInChatHub',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Make Available in n8n Chat',
+				name: 'availableInChat',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether to make the agent available in the Chat view',
+				description: 'Whether to make the agent available in n8n Chat',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.4 } }],
@@ -411,10 +412,10 @@ export class ChatTrigger extends Node {
 				type: 'string',
 				default: '',
 				noDataExpression: true,
-				description: 'The name of the agent shown on the Chat view',
+				description: 'The name of the agent on n8n Chat',
 				displayOptions: {
 					show: {
-						availableInChatHub: [true],
+						availableInChat: [true],
 					},
 				},
 			},
@@ -427,10 +428,10 @@ export class ChatTrigger extends Node {
 				},
 				default: '',
 				noDataExpression: true,
-				description: 'The description of the agent shown on the Chat view',
+				description: 'The description of the agent on n8n Chat',
 				displayOptions: {
 					show: {
-						availableInChatHub: [true],
+						availableInChat: [true],
 					},
 				},
 			},

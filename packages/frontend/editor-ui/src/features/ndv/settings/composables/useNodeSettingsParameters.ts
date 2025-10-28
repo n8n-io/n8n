@@ -206,7 +206,7 @@ export function useNodeSettingsParameters() {
 
 		// Hide chat hub toggle on chat trigger when module isn't enabled.
 		// Remove this check when feature is generally available.
-		if (nodeType?.name === CHAT_TRIGGER_NODE_TYPE && parameter.name === 'availableInChatHub') {
+		if (nodeType?.name === CHAT_TRIGGER_NODE_TYPE && parameter.name === 'availableInChat') {
 			if (!settingsStore.isChatFeatureEnabled) {
 				return false;
 			}

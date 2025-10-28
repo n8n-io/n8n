@@ -336,7 +336,7 @@ export class ChatHubService {
 						return [];
 					}
 
-					if (chatTrigger.parameters.availableInChatHub !== true) {
+					if (chatTrigger.parameters.availableInChat !== true) {
 						return [];
 					}
 
