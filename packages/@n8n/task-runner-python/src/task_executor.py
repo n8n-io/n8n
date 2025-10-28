@@ -40,12 +40,15 @@ from src.constants import (
 from typing import Any
 
 from multiprocessing.context import ForkServerProcess
+from multiprocessing.connection import Connection
 
 logger = logging.getLogger(__name__)
 
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
 PIPE_READER_THREAD_JOIN_TIMEOUT = 3.0  # seconds
+
+type PipeConnection = Connection
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
 
@@ -59,7 +62,7 @@ class TaskExecutor:
         node_mode: NodeMode,
         items: Items,
         security_config: SecurityConfig,
-    ):
+    ) -> tuple[ForkServerProcess, PipeConnection, PipeConnection]:
         """Create a subprocess for executing a Python code task and a pipe for communication."""
 
         fn = (
@@ -86,8 +89,8 @@ class TaskExecutor:
     @staticmethod
     def execute_process(
         process: ForkServerProcess,
-        read_conn,
-        write_conn,
+        read_conn: PipeConnection,
+        write_conn: PipeConnection,
         task_timeout: int,
         continue_on_fail: bool,
     ) -> tuple[Items, PrintArgs, int]:
