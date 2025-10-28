@@ -1,79 +1,63 @@
 // Should be semantic
 // We should avoid semantic naming that can become counterintuitive in dark mode "light" and naming that can conflict in dark mode
 
+/* stylelint-disable */
 @mixin theme {
-	// Action primary
-	--color--action--primary: black;
-	--color--action--primary--hover: black;
-	--color--action--primary--active: black;
-	--color--action--primary--focus: black;
-	--color--action--primary--disabled: black;
+	// Brand
+	--background--brand: color;
+	--background--brand--hover: color;
+	--background--brand--active: color;
+	--background--brand--focus: color;
+	--background--brand--disabled: color;
 
-	// Action secondary
-	--color--action--secondary: black;
-	--color--action--secondary--hover: black;
-	--color--action--secondary--active: black;
-	--color--action--secondary--focus: black;
-	--color--action--secondary--disabled: black;
+	// Secondary
+	--background--secondary: color;
+	--background--secondary--hover: color;
+	--background--secondary--active: color;
+	--background--secondary--focus: color;
+	--background--secondary--disabled: color;
 
-	// Surface 1
-	--color--surface--1: black;
-	--color--surface--1--hover: black;
-	--color--surface--1--active: black;
-	--color--surface--1--focus: black;
-	--color--surface--1--disabled: black;
-
-	// Surface 2
-	// ...
-
-	// Surface 2
-	// ...
+	// Default surface color, add more surface colors via components
+	--background--surface: color;
+	--background--surface--hover: color;
+	--background--surface--active: color;
+	--background--surface--focus: color;
+	--background--surface--disabled: color;
 
 	// Border max 5
-	// --border--color: var(); <- ?
-	// --border--color--normal: var();
-	// --border--color--subtle: var(); // J +1 to the semantic naming. Avoid  "light" and naming that can conflict in dark mode
+	--border-color--subtle: color;
+	--border-color: color;
+	--border-color--strong: color;
+
+	// Border max 5
+	--icon-color--subtle: color;
+	--icon-color: color;
+	--icon-color--strong: color;
 
 	// Text
-	// --text--color: var();
+	--text-color: color;
+	--text-color--subtle: color;
+	--text-color--subtler: color;
 
 	// Feedback - Success
+	--background--success: color;
+	--border-color--success: color;
+	--text-color--success: color;
 
 	// Feedback - Warning
+	--background--warning: color;
+	--border-color--warning: color;
+	--text-color--warning: color;
 
 	// Feedback - Danger
+	--background--danger: color;
+	--border-color--danger: color;
+	--text-color--danger: color;
 
-	// perplexity
-	/*
-    --background-underlay-color: var(--light-background-underlay-color);
-    --background-base-color: var(--light-background-base-color);
-    --background-subtle-color: var(--light-background-subtle-color);
-    --background-subtler-color: var(--light-background-subtler-color);
-    --background-subtlest-color: var(--light-background-subtlest-color);
-    --background-raised-color: var(--light-background-raised-color);
-    --background-inverse-color: var(--light-background-inverse-color);
-    --foreground-color: var(--light-foreground-color);
-    --foreground-quiet-color: var(--light-foreground-quiet-color);
-    --foreground-quieter-color: var(--light-foreground-quieter-color);
-    --foreground-quietest-color: var(--light-foreground-quietest-color);
-    --foreground-subtle-color: var(--light-foreground-subtle-color);
-    --foreground-subtler-color: var(--light-foreground-subtler-color);
-    --foreground-subtlest-color: var(--light-foreground-subtlest-color);
-    --foreground-inverse-color: var(--light-foreground-inverse-color);
-	*/
-
-	// Notion
-	/*
-	  --ca-bacSecTra: rgba(66, 35, 3, .031);
-    --cd-bacEleTra: #fff;
-    --ca-bacTerTra: #2a1c0012;
-    --c-bacPri: #fff;
-    --c-bacSec: #f9f8f7;
-    --c-bacTer: #f0efed;
-    --c-bacEle: #fff;
-    --c-bacAccPri: #2c2c2b;
-    --c-bacAccSec: #989590;
-	*/
+	// Feedback - Info
+	--background--info: color;
+	--border-color--info: color;
+	--text-color--info: color;
 }
 
 :root {
