@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
 import { mkdir } from 'fs/promises';
 import multer from 'multer';
+import { DATA_TABLE_UPLOADS_FOLDER_NAME } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import path from 'path';
 
@@ -19,7 +20,6 @@ import {
 } from './types';
 import { formatBytes } from './utils/size-utils';
 
-const UPLOADS_FOLDER_NAME = 'data-table-uploads';
 const ALLOWED_MIME_TYPES = ['text/csv'];
 
 @Service()
@@ -34,7 +34,10 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 		private readonly sizeValidator: DataTableSizeValidator,
 		private readonly dataTableRepository: DataTableRepository,
 	) {
-		this.uploadDir = path.join(this.instanceSettingsConfig.n8nFolder, UPLOADS_FOLDER_NAME);
+		this.uploadDir = path.join(
+			this.instanceSettingsConfig.n8nFolder,
+			DATA_TABLE_UPLOADS_FOLDER_NAME,
+		);
 
 		void this.ensureUploadDirExists();
 

@@ -1,9 +1,8 @@
 import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { promises as fs } from 'fs';
+import { DATA_TABLE_UPLOADS_FOLDER_NAME } from 'n8n-workflow';
 import path from 'path';
-
-const UPLOADS_FOLDER_NAME = 'data-table-uploads';
 
 @Service()
 export class DataTableFileCleanupService {
@@ -15,7 +14,10 @@ export class DataTableFileCleanupService {
 		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 		private readonly globalConfig: GlobalConfig,
 	) {
-		this.uploadDir = path.join(this.instanceSettingsConfig.n8nFolder, UPLOADS_FOLDER_NAME);
+		this.uploadDir = path.join(
+			this.instanceSettingsConfig.n8nFolder,
+			DATA_TABLE_UPLOADS_FOLDER_NAME,
+		);
 	}
 
 	async start() {

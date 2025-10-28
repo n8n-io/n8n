@@ -1,8 +1,9 @@
-import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
+import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { promises as fs } from 'fs';
 import path from 'path';
 
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
+import { DATA_TABLE_UPLOADS_FOLDER_NAME } from 'n8n-workflow';
 
 jest.mock('fs', () => ({
 	promises: {
@@ -14,7 +15,7 @@ jest.mock('fs', () => ({
 
 describe('DataTableFileCleanupService', () => {
 	const mockN8nFolder = '/mock/n8n/folder';
-	const uploadDir = path.join(mockN8nFolder, 'data-table-uploads');
+	const uploadDir = path.join(mockN8nFolder, DATA_TABLE_UPLOADS_FOLDER_NAME);
 
 	const instanceSettingsConfig = {
 		n8nFolder: mockN8nFolder,

@@ -2,9 +2,8 @@ import { InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { parse } from 'csv-parse';
 import { createReadStream } from 'fs';
+import { DATA_TABLE_UPLOADS_FOLDER_NAME } from 'n8n-workflow';
 import path from 'path';
-
-const UPLOADS_FOLDER_NAME = 'data-table-uploads';
 
 export interface CsvColumnMetadata {
 	name: string;
@@ -22,7 +21,10 @@ export class CsvParserService {
 	private readonly uploadDir: string;
 
 	constructor(private readonly instanceSettingsConfig: InstanceSettingsConfig) {
-		this.uploadDir = path.join(this.instanceSettingsConfig.n8nFolder, UPLOADS_FOLDER_NAME);
+		this.uploadDir = path.join(
+			this.instanceSettingsConfig.n8nFolder,
+			DATA_TABLE_UPLOADS_FOLDER_NAME,
+		);
 	}
 
 	/**
