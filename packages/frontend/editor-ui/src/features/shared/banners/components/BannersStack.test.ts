@@ -10,20 +10,22 @@ import BannerStack from './BannerStack.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useBannersStore } from '@/stores/banners.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import DynamicBanner from './banners/DynamicBanner.vue';
 import type { Component } from 'vue';
 import { markRaw } from 'vue';
 
-let uiStore: ReturnType<typeof useUIStore>;
+let bannersStore: ReturnType<typeof useBannersStore>;
 
 const initialState = {
 	[STORES.SETTINGS]: {
 		settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
 	},
-	[STORES.UI]: {
+	[STORES.BANNERS]: {
 		bannerStack: ['TRIAL_OVER', 'V1', 'NON_PRODUCTION_LICENSE', 'EMAIL_CONFIRMATION'],
+		dynamicBanners: [],
+		dynamicBannersMap: {},
 	},
 	[STORES.USERS]: {
 		currentUserId: 'aaa-bbb',
@@ -38,10 +40,6 @@ const initialState = {
 			},
 		},
 	},
-	[STORES.DYNAMIC_BANNERS]: {
-		items: [],
-		itemsMap: {},
-	},
 };
 
 const defaultRenderOptions: RenderOptions<typeof BannerStack> = {
@@ -52,7 +50,7 @@ const renderComponent = createComponentRenderer(BannerStack, defaultRenderOption
 
 describe('BannerStack', () => {
 	beforeEach(() => {
-		uiStore = useUIStore();
+		bannersStore = useBannersStore();
 	});
 
 	afterEach(() => {
@@ -71,7 +69,9 @@ describe('BannerStack', () => {
 
 	it('should dismiss banner on click', async () => {
 		const { getByTestId } = renderComponent();
-		const dismissBannerSpy = vi.spyOn(uiStore, 'dismissBanner').mockImplementation(async () => {});
+		const dismissBannerSpy = vi
+			.spyOn(bannersStore, 'dismissBanner')
+			.mockImplementation(async () => {});
 		expect(getByTestId('banners-V1')).toBeInTheDocument();
 		const closeTrialBannerButton = getByTestId('banner-V1-close');
 		expect(closeTrialBannerButton).toBeInTheDocument();
@@ -81,7 +81,9 @@ describe('BannerStack', () => {
 
 	it('should permanently dismiss banner on click', async () => {
 		const { getByTestId } = renderComponent();
-		const dismissBannerSpy = vi.spyOn(uiStore, 'dismissBanner').mockImplementation(async () => {});
+		const dismissBannerSpy = vi
+			.spyOn(bannersStore, 'dismissBanner')
+			.mockImplementation(async () => {});
 
 		const permanentlyDismissBannerLink = getByTestId('banner-confirm-v1');
 		expect(permanentlyDismissBannerLink).toBeInTheDocument();
@@ -107,8 +109,10 @@ describe('BannerStack', () => {
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
-					[STORES.UI]: {
+					[STORES.BANNERS]: {
 						bannerStack: ['EMAIL_CONFIRMATION'],
+						dynamicBanners: [],
+						dynamicBannersMap: {},
 					},
 				},
 			}),
@@ -127,8 +131,10 @@ describe('BannerStack', () => {
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
-					[STORES.UI]: {
+					[STORES.BANNERS]: {
 						bannerStack: ['EMAIL_CONFIRMATION'],
+						dynamicBanners: [],
+						dynamicBannersMap: {},
 					},
 				},
 			}),
@@ -150,8 +156,10 @@ describe('BannerStack', () => {
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
-					[STORES.UI]: {
+					[STORES.BANNERS]: {
 						bannerStack: [],
+						dynamicBanners: [],
+						dynamicBannersMap: {},
 					},
 				},
 			}),
@@ -165,11 +173,9 @@ describe('BannerStack', () => {
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
-					[STORES.UI]: {
+					[STORES.BANNERS]: {
 						bannerStack: [dynamicBannerId],
-					},
-					[STORES.DYNAMIC_BANNERS]: {
-						items: [
+						dynamicBanners: [
 							{
 								id: dynamicBannerId,
 								priority: 200,
@@ -179,7 +185,7 @@ describe('BannerStack', () => {
 								component: markRaw(DynamicBanner as Component),
 							},
 						],
-						itemsMap: {
+						dynamicBannersMap: {
 							[dynamicBannerId]: {
 								id: dynamicBannerId,
 								priority: 200,
@@ -208,11 +214,9 @@ describe('BannerStack', () => {
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
-					[STORES.UI]: {
+					[STORES.BANNERS]: {
 						bannerStack: [dynamicBannerId],
-					},
-					[STORES.DYNAMIC_BANNERS]: {
-						items: [
+						dynamicBanners: [
 							{
 								id: dynamicBannerId,
 								priority: 200,
@@ -222,7 +226,7 @@ describe('BannerStack', () => {
 								component: markRaw(DynamicBanner as Component),
 							},
 						],
-						itemsMap: {
+						dynamicBannersMap: {
 							[dynamicBannerId]: {
 								id: dynamicBannerId,
 								priority: 200,
@@ -258,11 +262,9 @@ describe('BannerStack', () => {
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
-					[STORES.UI]: {
+					[STORES.BANNERS]: {
 						bannerStack: ['V1', dynamicBannerId],
-					},
-					[STORES.DYNAMIC_BANNERS]: {
-						items: [
+						dynamicBanners: [
 							{
 								id: dynamicBannerId,
 								priority: 500, // Higher than V1 (350)
@@ -272,7 +274,7 @@ describe('BannerStack', () => {
 								component: markRaw(DynamicBanner as Component),
 							},
 						],
-						itemsMap: {
+						dynamicBannersMap: {
 							[dynamicBannerId]: {
 								id: dynamicBannerId,
 								priority: 500,
@@ -299,11 +301,9 @@ describe('BannerStack', () => {
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
-					[STORES.UI]: {
+					[STORES.BANNERS]: {
 						bannerStack: ['V1', dynamicBannerId],
-					},
-					[STORES.DYNAMIC_BANNERS]: {
-						items: [
+						dynamicBanners: [
 							{
 								id: dynamicBannerId,
 								priority: 100, // Lower than V1 (350)
@@ -313,7 +313,7 @@ describe('BannerStack', () => {
 								component: markRaw(DynamicBanner as Component),
 							},
 						],
-						itemsMap: {
+						dynamicBannersMap: {
 							[dynamicBannerId]: {
 								id: dynamicBannerId,
 								priority: 100,

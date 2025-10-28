@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useUIStore } from '@/stores/ui.store';
+import { useBannersStore } from '@/stores/banners.store';
 import { computed, useSlots } from 'vue';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -17,7 +17,7 @@ interface Props {
 
 const i18n = useI18n();
 
-const uiStore = useUIStore();
+const bannersStore = useBannersStore();
 const slots = useSlots();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -36,7 +36,10 @@ const hasTrailingContent = computed(() => {
 });
 
 async function onCloseClick() {
-	await uiStore.dismissBanner(props.name, props.dismissPermanently ? 'permanent' : 'temporary');
+	await bannersStore.dismissBanner(
+		props.name,
+		props.dismissPermanently ? 'permanent' : 'temporary',
+	);
 	emit('close');
 }
 </script>

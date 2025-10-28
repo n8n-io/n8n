@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { BannerName } from '@n8n/api-types';
-import { useDynamicBannersStore } from '@/stores/dynamic-banners.store';
+import { useBannersStore } from '@/stores/banners.store';
 import NonProductionLicenseBanner from './banners/NonProductionLicenseBanner.vue';
 import TrialOverBanner from './banners/TrialOverBanner.vue';
 import TrialBanner from './banners/TrialBanner.vue';
@@ -12,7 +12,7 @@ import type { Component } from 'vue';
 import type { N8nBanners } from '../banners.types';
 
 // All banners that can be shown in the app should be registered here.
-// This component renders the banner with the highest priority from the banner stack, located in the UI store.
+// This component renders the banner with the highest priority from the banner stack, located in the banners store.
 // When registering a new banner, please consult this document to determine it's priority:
 // https://www.notion.so/n8n/Banner-stack-60948c4167c743718fde80d6745258d5
 export const N8N_BANNERS: N8nBanners = {
@@ -33,29 +33,27 @@ export const N8N_BANNERS: N8nBanners = {
 </script>
 
 <script setup lang="ts">
-import { useUIStore } from '@/stores/ui.store';
 import { computed, onMounted } from 'vue';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
 
-const uiStore = useUIStore();
-const dynamicBannersStore = useDynamicBannersStore();
+const bannersStore = useBannersStore();
 
 async function updateCurrentBannerHeight() {
 	const bannerHeight = await getBannerRowHeight();
-	uiStore.updateBannersHeight(bannerHeight);
+	bannersStore.updateBannersHeight(bannerHeight);
 }
 
 const getBannerForName = (bannerName: BannerName) => {
-	return N8N_BANNERS[bannerName] || dynamicBannersStore.itemsMap[bannerName];
+	return N8N_BANNERS[bannerName] || bannersStore.dynamicBannersMap[bannerName];
 };
 
 const currentlyShownBanner = computed(() => {
 	void updateCurrentBannerHeight();
-	if (uiStore.bannerStack.length === 0) return null;
+	if (bannersStore.bannerStack.length === 0) return null;
 	// Find the banner with the highest priority
-	let currentBanner = getBannerForName(uiStore.bannerStack[0]);
-	let currentBannerName = uiStore.bannerStack[0];
-	uiStore.bannerStack.forEach((bannerName, index) => {
+	let currentBanner = getBannerForName(bannersStore.bannerStack[0]);
+	let currentBannerName = bannersStore.bannerStack[0];
+	bannersStore.bannerStack.forEach((bannerName, index) => {
 		if (index === 0) return;
 		const bannerToCompare = getBannerForName(bannerName);
 		if (bannerToCompare.priority > currentBanner.priority) {
