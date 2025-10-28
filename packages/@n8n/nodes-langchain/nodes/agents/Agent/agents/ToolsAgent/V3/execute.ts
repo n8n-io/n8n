@@ -85,6 +85,16 @@ async function createEngineRequests(
 }
 
 /**
+ * Uses provided tools and tried to get tools from model metadata
+ * Some chat model nodes can define built-in tools in their metadata
+ */
+function getAllTools(model: BaseChatModel, tools: Array<DynamicStructuredTool | Tool>) {
+	const modelTools = (model.metadata?.tools as Tool[]) ?? [];
+	const allTools = [...tools, ...modelTools];
+	return allTools;
+}
+
+/**
  * Creates an agent executor with the given configuration
  */
 function createAgentSequence(
@@ -98,7 +108,7 @@ function createAgentSequence(
 ) {
 	const agent = createToolCallingAgent({
 		llm: model,
-		tools,
+		tools: getAllTools(model, tools),
 		prompt,
 		streamRunnable: false,
 	});
@@ -107,7 +117,7 @@ function createAgentSequence(
 	if (fallbackModel) {
 		fallbackAgent = createToolCallingAgent({
 			llm: fallbackModel,
-			tools,
+			tools: getAllTools(fallbackModel, tools),
 			prompt,
 			streamRunnable: false,
 		});
