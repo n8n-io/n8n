@@ -2715,7 +2715,8 @@ export type WorkflowExecuteMode =
 	| 'retry'
 	| 'trigger'
 	| 'webhook'
-	| 'evaluation';
+	| 'evaluation'
+	| 'chat';
 
 export type WorkflowActivateMode =
 	| 'init'

@@ -59,7 +59,6 @@ import type {
 	ModelWithCredentials,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatHubSessionRepository } from './chat-session.repository';
 import { getMaxContextWindowTokens } from './context-limits';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 
@@ -73,6 +72,7 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { ChatHubSessionRepository } from './chat-session.repository';
 
 const providerNodeTypeMapping: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {
@@ -787,6 +787,8 @@ export class ChatHubService {
 			throw new BadRequestError('Workflow must have exactly one chat trigger');
 		}
 
+		const chatTrigger = chatTriggers[0];
+
 		const chatResponseNodes = workflowEntity.nodes.filter(
 			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
 		);
@@ -797,21 +799,12 @@ export class ChatHubService {
 			);
 		}
 
-		// const agents = workflowEntity.nodes.filter((node) => node.type === AGENT_LANGCHAIN_NODE_TYPE);
-		// if (agents.length !== 1) {
-		// 	throw new BadRequestError('Workflow must have exactly one AI Agent node');
-		// }
-
 		return {
 			workflowData: {
 				...workflowEntity,
-				// Since this mechanism executes workflows as manual one-off executions
-				// we need to clear any pinData the WF might have.
-				// TODO: Implement a separate execution mode for chats to avoid such workarounds.
-				pinData: {},
 			},
 			triggerToStartFrom: {
-				name: chatTriggers[0].name,
+				name: chatTrigger.name,
 				data: {
 					startTime: Date.now(),
 					executionTime: 0,
@@ -988,16 +981,14 @@ export class ChatHubService {
 		stream.writeHead(200, JSONL_STREAM_HEADERS);
 		stream.flushHeaders();
 
-		const execution = await this.workflowExecutionService.executeManually(
-			{
-				workflowData,
-				triggerToStartFrom,
-			},
+		const execution = await this.workflowExecutionService.executeChatWorkflow(
+			workflowData,
+			triggerToStartFrom,
 			user,
-			undefined,
-			true,
 			stream,
+			true,
 		);
+
 		executionId = execution.executionId;
 
 		if (!executionId) {

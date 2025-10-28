@@ -17,6 +17,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	ITaskData,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
@@ -226,6 +227,64 @@ export class WorkflowExecutionService {
 			};
 		}
 
+		const executionId = await this.workflowRunner.run(data);
+
+		return {
+			executionId,
+		};
+	}
+
+	async executeChatWorkflow(
+		workflowData: IWorkflowBase,
+		triggerToStartFrom: {
+			name: string;
+			data?: ITaskData;
+		},
+		user: User,
+		httpResponse: Response,
+		streamingEnabled: boolean = true,
+	) {
+		// TODO: does this matter?
+		workflowData.active = false;
+
+		// Start the workflow
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'chat',
+			workflowData,
+			userId: user.id,
+			triggerToStartFrom,
+			streamingEnabled,
+			httpResponse,
+		};
+
+		/**
+		 * (Comment copied from executeManually method. Decide how to handle this later.)
+		 * Historically, manual executions in scaling mode ran in the main process,
+		 * so some execution details were never persisted in the database.
+		 *
+		 * Currently, manual executions in scaling mode are offloaded to workers,
+		 * so we persist all details to give workers full access to them.
+		 */
+		if (
+			this.globalConfig.executions.mode === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+		) {
+			data.executionData = {
+				startData: {
+					startNodes: data.startNodes,
+				},
+				resultData: {
+					// @ts-expect-error CAT-752
+					runData: undefined,
+				},
+				manualData: {
+					userId: data.userId,
+					triggerToStartFrom,
+				},
+			};
+		}
+
+		// TODO: enable realtime mode?
 		const executionId = await this.workflowRunner.run(data);
 
 		return {
