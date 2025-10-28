@@ -390,7 +390,7 @@ export function resolvePath(
 			let base = `${ref}${toPostgresPath(pathArray)}`;
 			let type = 'text';
 			if (typeof value === 'number') {
-				type = 'double precision';
+				type = 'number';
 			} else if (value instanceof Date) {
 				type = 'timestamp';
 			} else if (typeof value === 'boolean') {
@@ -403,8 +403,8 @@ export function resolvePath(
 			}
 
 			return `CASE
-				WHEN json_typeof((${base.replace('->>', '->')})) = '${type}'
-				THEN (${base})::${type}
+				WHEN jsonb_typeof((${base.replace('->>', '->')})) = '${type}'
+				THEN (${base})::${type === 'number' ? 'double precision' : type}
 				ELSE NULL
 			END`;
 		} else {
