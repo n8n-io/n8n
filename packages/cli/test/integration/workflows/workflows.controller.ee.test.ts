@@ -753,7 +753,7 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('Should not create workflow history version when not licensed', async () => {
+	test('Should always create workflow history version', async () => {
 		license.disable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
@@ -791,7 +791,7 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(0);
+		).toBe(1);
 	});
 });
 
@@ -1332,7 +1332,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(historyVersion!.nodes).toEqual(payload.nodes);
 		});
 
-		test('Should not create workflow history version when not licensed', async () => {
+		test('Should always create workflow history version', async () => {
 			license.disable('feat:workflowHistory');
 			const workflow = await createWorkflow({}, owner);
 			const payload = {
@@ -1379,7 +1379,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(id).toBe(workflow.id);
 			expect(
 				await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-			).toBe(0);
+			).toBe(1);
 		});
 	});
 
