@@ -18,7 +18,6 @@ export class McpOAuthController {
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
 	) {
-		console.log(this.urlService.baseUrl);
 		this.logger.info('McpOAuthController initialized');
 	}
 
@@ -129,6 +128,7 @@ export class McpOAuthController {
 			resource: `${this.urlService.getInstanceBaseUrl()}/mcp-server/http`,
 			bearer_methods_supported: ['header'],
 			authorization_servers: [`${this.urlService.getInstanceBaseUrl()}`],
+			scopes_supported: ['tool:listWorkflow'],
 			// scopes_supported: ['mcp:read', 'mcp:write', 'mcp:execute'],
 		});
 	}

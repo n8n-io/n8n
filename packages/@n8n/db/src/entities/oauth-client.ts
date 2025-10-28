@@ -40,4 +40,7 @@ export class OAuthClient extends WithTimestamps {
 
 	@Column({ type: 'int', nullable: true })
 	clientSecretExpiresAt: number | null;
+
+	@Column({ type: 'text', nullable: false })
+	scopes: string;
 }

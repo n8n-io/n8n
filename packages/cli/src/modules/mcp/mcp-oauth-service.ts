@@ -24,6 +24,8 @@ import { UserConsentRepository } from './oauth-user-consent.repository';
 // eslint-disable-next-line import-x/extensions
 import { AuthService } from '@/auth/auth.service';
 
+type OAuthClientInformationFullWithScopes = OAuthClientInformationFull & {};
+
 @Service()
 export class McpOAuthService implements OAuthServerProvider {
 	constructor(
@@ -37,7 +39,9 @@ export class McpOAuthService implements OAuthServerProvider {
 	) {}
 	get clientsStore(): OAuthRegisteredClientsStore {
 		return {
-			getClient: async (clientId: string): Promise<OAuthClientInformationFull | undefined> => {
+			getClient: async (
+				clientId: string,
+			): Promise<OAuthClientInformationFullWithScopes | undefined> => {
 				const client = await this.oauthClientRepository.findOne({ where: { id: clientId } });
 				if (!client) {
 					return undefined;
@@ -56,7 +60,7 @@ export class McpOAuthService implements OAuthServerProvider {
 						client_secret_expires_at: client.clientSecretExpiresAt,
 					}),
 					response_types: ['code'],
-					scope: 'claudeai', // TODO: Implement scopes support
+					scope: client.scopes,
 				};
 			},
 			registerClient: async (
@@ -64,16 +68,23 @@ export class McpOAuthService implements OAuthServerProvider {
 			): Promise<OAuthClientInformationFull> => {
 				console.log('Registering new OAuth client', JSON.stringify(client, undefined, 2));
 
-				await this.oauthClientRepository.save({
-					id: client.client_id,
-					name: client.client_name,
-					redirectUris: client.redirect_uris,
-					grantTypes: client.grant_types,
-					clientSecret: client.client_secret ?? null,
-					clientSecretExpiresAt: client.client_secret_expires_at ?? null,
-					tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
-					scopes: ['claudeai'], // TODO: Implement scopes support
-				});
+				try {
+					await this.oauthClientRepository.save({
+						id: client.client_id,
+						name: client.client_name,
+						redirectUris: client.redirect_uris,
+						grantTypes: client.grant_types,
+						clientSecret: client.client_secret ?? null,
+						clientSecretExpiresAt: client.client_secret_expires_at ?? null,
+						tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
+						scopes: client.scope ?? '',
+					});
+				} catch (error) {
+					this.logger.error('Error registering OAuth client', {
+						error,
+						clientId: client.client_id,
+					});
+				}
 
 				this.logger.info('OAuth client registered', { clientId: client.client_id });
 				return client;
@@ -184,6 +195,7 @@ export class McpOAuthService implements OAuthServerProvider {
 
 			res.redirect('/oauth/consent');
 		} catch (error) {
+			console.log(error);
 			this.logger.error('Error in authorize method', { error, clientId: client.client_id });
 			res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
 		}

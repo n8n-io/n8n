@@ -11,6 +11,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 			column('clientSecret').varchar(255),
 			column('clientSecretExpiresAt').int,
 			column('tokenEndpointAuthMethod').varchar(255).notNull.default("'none'"),
+			column('scopes').text.notNull,
 		).withTimestamps;
 
 		// Create oauth_authorization_codes table
