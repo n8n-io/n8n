@@ -18,7 +18,6 @@ const POLL_DELAY_MS = 1000;
  */
 interface MindeeV2UIParams {
 	modelId: string;
-	alias?: string;
 	rag: string;
 	polygon: string;
 	confidence: string;
@@ -153,14 +152,12 @@ export function readUIParams(ctx: IExecuteFunctions, index: number): MindeeV2UIP
 	const binaryPropertyName = ctx.getNodeParameter('binaryPropertyName', index, '');
 	const options = ctx.getNodeParameter('options', index, {});
 
-	const alias = (options.alias as string) ?? '';
 	const rag = (options.rag as string) ?? 'default';
 	const polygon = (options.polygon as string) ?? 'default';
 	const confidence = (options.confidence as string) ?? 'default';
 	const rawText = (options.rawText as string) ?? 'default';
 	return {
 		modelId,
-		alias,
 		rag,
 		polygon,
 		confidence,
@@ -191,9 +188,6 @@ export async function buildRequestBody(
 	}
 
 	form.append('model_id', uiParams.modelId);
-	if (uiParams.alias && uiParams.alias.length > 0) {
-		form.append('alias', uiParams.alias);
-	}
 	if (uiParams.rag !== 'default') form.append('rag', uiParams.rag);
 	if (uiParams.polygon !== 'default') form.append('polygon', uiParams.polygon);
 	if (uiParams.confidence !== 'default') form.append('confidence', uiParams.confidence);

@@ -5,7 +5,6 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	type JsonObject,
 	NodeConnectionTypes,
 	NodeApiError,
 	NodeOperationError,
@@ -66,26 +65,15 @@ export class MindeeV2 implements INodeType {
 				displayOptions: { show: { resource: ['document'] } },
 				options: [
 					{
-						name: 'Enqueue And Get Inference',
-						value: 'enqueueAndGetInference',
-						description: 'Upload a file and run a model, poll the server and retrieve the result',
-						action: 'Upload a document and get the result',
-					},
-					{
-						name: 'Enqueue',
-						value: 'enqueue',
-						description: 'Upload a file and run a model',
-						hint: 'You will probably want to retrieve the result',
-						action: 'Upload a document',
-					},
-					{
-						name: 'Get Inference',
-						value: 'getInference',
-						description: 'Retrieve an uploaded inference',
-						action: 'Get result from an uploaded document',
+						name: 'Document Data Extraction',
+						value: 'fileEnqueueAndPoll',
+						description:
+							'Extract data from a document file and return the result.' +
+							" Use any of the models you've built on Mindee.",
+						action: 'Extract Document Data',
 					},
 				],
-				default: 'enqueueAndGetInference',
+				default: 'fileEnqueueAndPoll',
 			},
 			{
 				displayName: 'Binary Property Name',
@@ -97,7 +85,7 @@ export class MindeeV2 implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['document'],
-						operation: ['enqueue', 'enqueueAndGetInference'],
+						operation: ['fileEnqueueAndPoll'],
 					},
 				},
 			},
@@ -115,7 +103,7 @@ export class MindeeV2 implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['document'],
-						operation: ['enqueue', 'enqueueAndGetInference'],
+						operation: ['fileEnqueueAndPoll'],
 					},
 				},
 				modes: [
@@ -138,19 +126,6 @@ export class MindeeV2 implements INodeType {
 				],
 			},
 			{
-				displayName: 'Inference ID',
-				name: 'jobId',
-				type: 'string',
-				default: '',
-				description: 'ID of the queue to poll',
-				displayOptions: {
-					show: {
-						resource: ['document'],
-						operation: ['getInference'],
-					},
-				},
-			},
-			{
 				displayName: 'Polling Timeout (Seconds)',
 				name: 'pollingTimeoutCount',
 				type: 'number',
@@ -161,7 +136,7 @@ export class MindeeV2 implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['document'],
-						operation: ['enqueueAndGetInference', 'getInference'],
+						operation: ['fileEnqueueAndPoll'],
 					},
 				},
 				default: 180,
@@ -177,17 +152,10 @@ export class MindeeV2 implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['document'],
-						operation: ['enqueue', 'enqueueAndGetInference'],
+						operation: ['fileEnqueueAndPoll'],
 					},
 				},
 				options: [
-					{
-						displayName: 'File Alias',
-						name: 'alias',
-						type: 'string',
-						default: '',
-						description: 'Alias for the file',
-					},
 					{
 						displayName: 'Enable Confidence Scores',
 						name: 'confidence',
@@ -286,7 +254,6 @@ export class MindeeV2 implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				let result: IDataObject[] | undefined = undefined;
-				const operation = this.getNodeParameter('operation', i);
 				const resource = this.getNodeParameter('resource', i);
 
 				if (resource === 'document') {
@@ -297,20 +264,9 @@ export class MindeeV2 implements INodeType {
 						...form.getHeaders?.(),
 						'User-Agent': `mindee-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
 					} as IDataObject;
-					if (operation === 'enqueueAndGetInference') {
-						const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
-						const pollingUrl = extractPollingUrl(this, enqueue);
-						result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
-					}
-					if (operation === 'enqueue') {
-						const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
-						result = [enqueue as JsonObject];
-					}
-					if (operation === 'getInference') {
-						const jobId = this.getNodeParameter('jobId', i, '') as string;
-						const pollingUrl = `${ROOT_URL}/jobs/${jobId}`;
-						result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
-					}
+					const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
+					const pollingUrl = extractPollingUrl(this, enqueue);
+					result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
 				}
 				if (!result) {
 					throw new NodeOperationError(this.getNode(), 'Unknown operation', {

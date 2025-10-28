@@ -35,7 +35,7 @@ function setupNocks(): Scope[] {
 	return [fileScope, mindee];
 }
 
-for (const wf of ['workflow.json', 'workflow2.json']) {
+for (const wf of ['workflow.json']) {
 	describe(`MindeeV2 – ${wf}`, () => {
 		let scopes: Scope[];
 
