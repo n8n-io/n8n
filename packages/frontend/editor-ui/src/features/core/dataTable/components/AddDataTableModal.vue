@@ -322,6 +322,7 @@ const redirectToDataTables = () => {
 		:name="props.modalName"
 		:center="true"
 		:width="creationMode === 'import' && uploadedFileId ? '700px' : '540px'"
+		:min-height="creationMode === 'import' && uploadedFileId ? '600px' : undefined"
 		:before-close="redirectToDataTables"
 	>
 		<template #header>
@@ -438,6 +439,7 @@ const redirectToDataTables = () => {
 											:placeholder="i18n.baseText('dataTable.import.columnNamePlaceholder')"
 											:data-test-id="`column-name-${index}`"
 											:class="{ [$style.inputError]: column.error }"
+											size="small"
 											@update:model-value="onColumnNameChange(index)"
 										/>
 										<div v-if="column.error" :class="$style.errorMessage">
@@ -455,6 +457,7 @@ const redirectToDataTables = () => {
 												v-model="column.type"
 												:data-test-id="`column-type-${index}`"
 												:class="$style.typeSelect"
+												size="small"
 											>
 												<N8nOption
 													v-for="option in column.typeOptions"
@@ -495,12 +498,14 @@ const redirectToDataTables = () => {
 				<N8nButton
 					v-if="creationMode !== 'select'"
 					type="secondary"
+					size="large"
 					:label="i18n.baseText('generic.back')"
 					data-test-id="back-button"
 					@click="goBack"
 				/>
 				<N8nButton
 					v-if="creationMode !== 'select'"
+					size="large"
 					:disabled="isCreateDisabled"
 					:label="i18n.baseText('generic.create')"
 					data-test-id="confirm-add-data-table-button"
@@ -621,16 +626,17 @@ const redirectToDataTables = () => {
 	background-color: var(--color--foreground--shade-1);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 }
 
 .columnNameHeader,
 .columnTypeHeader {
 	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
 }
 
 .columnsScrollableContainer {
-	max-height: 200px;
+	max-height: 300px;
 	overflow-y: auto;
 	overflow-x: hidden;
 }
