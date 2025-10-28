@@ -3,7 +3,10 @@ import type { VersionNode } from '@n8n/rest-api-client/api/versions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
 import { getThemedValue } from './nodeTypesUtils';
-import { isNodePreviewKey, removePreviewToken } from '../components/Node/NodeCreator/utils';
+import {
+	isNodePreviewKey,
+	removePreviewToken,
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 type NodeIconSourceIcon = { type: 'icon'; name: string; color?: string };
