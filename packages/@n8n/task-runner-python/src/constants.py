@@ -48,6 +48,7 @@ PIPE_MSG_PREFIX_LENGTH = 4  # bytes
 PIPE_MSG_MAX_SIZE = (
     2 ** (PIPE_MSG_PREFIX_LENGTH * 8) - 1
 )  # bytes (~4 GiB with 4-byte prefix)
+PIPE_READER_JOIN_TIMEOUT = 3.0  # seconds
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -101,6 +102,11 @@ LOG_TASK_CANCEL_UNKNOWN = (
 )
 LOG_TASK_CANCEL_WAITING = "Cancelled task {task_id} (waiting for settings)"
 LOG_SENTRY_MISSING = "Sentry is enabled but sentry-sdk is not installed. Install with: uv sync --all-extras"
+LOG_PIPE_READER_TIMEOUT = (
+    "Pipe reader thread did not finish within {timeout}s timeout. "
+    "Thread is still running but will be orphaned. "
+    "This may indicate a stuck subprocess or too short timeout."
+)
 
 # RPC
 RPC_BROWSER_CONSOLE_LOG_METHOD = "logNodeOutput"

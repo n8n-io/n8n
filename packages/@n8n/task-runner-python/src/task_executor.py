@@ -37,6 +37,8 @@ from src.constants import (
     SIGTERM_EXIT_CODE,
     SIGKILL_EXIT_CODE,
     PIPE_MSG_PREFIX_LENGTH,
+    PIPE_READER_JOIN_TIMEOUT,
+    LOG_PIPE_READER_TIMEOUT,
 )
 
 from multiprocessing.context import ForkServerProcess
@@ -46,7 +48,6 @@ logger = logging.getLogger(__name__)
 
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
-PIPE_READER_THREAD_JOIN_TIMEOUT = 3.0  # seconds
 
 type PipeConnection = Connection
 
@@ -145,7 +146,12 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            pipe_reader.join(timeout=PIPE_READER_THREAD_JOIN_TIMEOUT)
+            pipe_reader.join(timeout=PIPE_READER_JOIN_TIMEOUT)
+
+            if pipe_reader.is_alive():
+                logger.warning(
+                    LOG_PIPE_READER_TIMEOUT.format(timeout=PIPE_READER_JOIN_TIMEOUT)
+                )
 
             if read_error_list:
                 raise TaskResultReadError()
