@@ -1,4 +1,4 @@
-import { removePreviewToken } from '@/components/Node/NodeCreator/utils';
+import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -35,7 +35,7 @@ vi.mock('@n8n/i18n', () => ({
 	})),
 }));
 
-vi.mock('@/components/Node/NodeCreator/utils', () => ({
+vi.mock('@/features/shared/nodeCreator/nodeCreator.utils', () => ({
 	removePreviewToken: vi.fn((key: string) => key.replace('preview:', '')),
 }));
 

@@ -18,7 +18,7 @@ import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/histor
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createTestNode,
 	createTestWorkflow,
@@ -30,7 +30,7 @@ import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';

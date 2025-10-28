@@ -34,7 +34,7 @@ import type {
 
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { AddedNode, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import type { NodePanelType } from '@/features/ndv/ndv.types';
+import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
