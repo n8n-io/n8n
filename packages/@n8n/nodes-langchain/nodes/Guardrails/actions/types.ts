@@ -22,6 +22,7 @@ export interface GuardrailResult<TInfo extends Record<string, unknown> = Record<
 
 export type LLMConfig = {
 	model: BaseChatModel;
+	systemMessage?: string;
 	prompt: string;
 	threshold: number;
 };
@@ -57,9 +58,6 @@ export interface GuardrailsOptions {
 	pii?: Value<{
 		type: 'all' | 'selected';
 		entities?: PIIEntity[];
-		customRegex?: {
-			regex: CustomRegex[];
-		};
 	}>;
 	urls?: Value<{
 		allowedUrls: string;
@@ -80,6 +78,9 @@ export interface GuardrailsOptions {
 			prompt: string;
 			threshold: number;
 		}>;
+	};
+	customRegex?: {
+		regex: CustomRegex[];
 	};
 }
 

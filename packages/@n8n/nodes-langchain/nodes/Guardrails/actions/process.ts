@@ -2,8 +2,6 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { getPromptInputByType } from '@utils/helpers';
-
 import { runStageGuardrails } from '../helpers/base';
 import { splitByComma } from '../helpers/common';
 import { mapGuardrailErrorsToMessage, mapGuardrailResultToUserResult } from '../helpers/mappers';
@@ -12,7 +10,7 @@ import { applyPreflightModifications } from '../helpers/preflight';
 import { createJailbreakCheckFn, JAILBREAK_PROMPT } from './checks/jailbreak';
 import { createKeywordsCheckFn } from './checks/keywords';
 import { createNSFWCheckFn, NSFW_SYSTEM_PROMPT } from './checks/nsfw';
-import { createPiiCheckFn } from './checks/pii';
+import { createCustomRegexCheckFn, createPiiCheckFn } from './checks/pii';
 import { createSecretKeysCheckFn } from './checks/secretKeys';
 import {
 	createTopicalAlignmentCheckFn,
@@ -30,6 +28,10 @@ interface Result {
 	checks: GuardrailUserResult[];
 }
 
+interface Options {
+	systemMessage?: string;
+}
+
 export async function process(
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -39,12 +41,8 @@ export async function process(
 	passed: Result | null;
 	failed: Result | null;
 }> {
-	const inputText = getPromptInputByType({
-		ctx: this,
-		i: itemIndex,
-		inputKey: 'text',
-		promptTypeKey: 'promptType',
-	});
+	const inputText = this.getNodeParameter('text', itemIndex) as string;
+	const options = this.getNodeParameter('options', itemIndex, {}) as Options;
 	const operation = this.getNodeParameter('operation', 0) as 'classify' | 'sanitize';
 	const guardrails = this.getNodeParameter('guardrails', itemIndex) as GuardrailsOptions;
 	const failedChecks: GuardrailUserResult[] = [];
@@ -82,12 +80,20 @@ export async function process(
 	};
 
 	if (guardrails.pii?.value) {
-		const { entities, customRegex } = guardrails.pii.value;
+		const { entities } = guardrails.pii.value;
 		stageGuardrails.preflight.push({
-			name: 'pii',
+			name: 'personalData',
 			check: createPiiCheckFn({
 				entities,
-				customRegex: customRegex?.regex,
+			}),
+		});
+	}
+
+	if (guardrails.customRegex?.regex) {
+		stageGuardrails.preflight.push({
+			name: 'customRegex',
+			check: createCustomRegexCheckFn({
+				customRegex: guardrails.customRegex.regex,
 			}),
 		});
 	}
@@ -129,7 +135,12 @@ export async function process(
 			const { prompt, threshold } = guardrails.jailbreak.value;
 			stageGuardrails.input.push({
 				name: 'jailbreak',
-				check: createJailbreakCheckFn({ model, prompt: prompt ?? JAILBREAK_PROMPT, threshold }),
+				check: createJailbreakCheckFn({
+					model,
+					prompt: prompt ?? JAILBREAK_PROMPT,
+					threshold,
+					systemMessage: options.systemMessage,
+				}),
 			});
 		}
 
@@ -137,7 +148,12 @@ export async function process(
 			const { prompt, threshold } = guardrails.nsfw.value;
 			stageGuardrails.input.push({
 				name: 'nsfw',
-				check: createNSFWCheckFn({ model, prompt: prompt ?? NSFW_SYSTEM_PROMPT, threshold }),
+				check: createNSFWCheckFn({
+					model,
+					prompt: prompt ?? NSFW_SYSTEM_PROMPT,
+					threshold,
+					systemMessage: options.systemMessage,
+				}),
 			});
 		}
 
@@ -148,6 +164,7 @@ export async function process(
 				check: createTopicalAlignmentCheckFn({
 					model,
 					prompt: prompt ?? TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
+					systemMessage: options.systemMessage,
 					threshold,
 				}),
 			});
@@ -158,7 +175,12 @@ export async function process(
 				const { prompt, threshold, name } = customGuardrail;
 				stageGuardrails.input.push({
 					name,
-					check: createLLMCheckFn(name, { model, prompt, threshold }),
+					check: createLLMCheckFn(name, {
+						model,
+						prompt,
+						threshold,
+						systemMessage: options.systemMessage,
+					}),
 				});
 			}
 		}

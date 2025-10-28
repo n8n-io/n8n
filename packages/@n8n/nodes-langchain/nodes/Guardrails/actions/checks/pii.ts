@@ -85,6 +85,10 @@ export type PIIConfig = {
 	customRegex?: CustomRegex[];
 };
 
+export type CustomRegexConfig = {
+	customRegex: CustomRegex[];
+};
+
 /**
  * Internal result structure for PII detection.
  */
@@ -223,7 +227,9 @@ function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 	const analyzerResults: PiiAnalyzerResult[] = [];
 
 	const matchAgainstPattern = (name: string, pattern: RegExp) => {
-		const regex = new RegExp(pattern.source, pattern.flags);
+		// make sure to add the global flag to the regex, otherwise while() will never end
+		const flags = pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g';
+		const regex = new RegExp(pattern.source, flags);
 		let match;
 		while ((match = regex.exec(text)) !== null) {
 			const entityType = name;
@@ -267,8 +273,23 @@ export const createPiiCheckFn: CreateCheckFn<PIIConfig> = (config) => {
 		const detection = detectPii(input, config);
 		const piiFound = detection.mapping && Object.keys(detection.mapping).length > 0;
 		return {
-			guardrailName: 'pii',
+			guardrailName: 'personalData',
 			tripwireTriggered: piiFound,
+			info: {
+				maskEntities: detection.mapping,
+				analyzerResults: detection.analyzerResults,
+			},
+		};
+	};
+};
+
+export const createCustomRegexCheckFn: CreateCheckFn<CustomRegexConfig> = (config) => {
+	return (input: string) => {
+		const detection = detectPii(input, { customRegex: config.customRegex, entities: [] });
+		const customRegexFound = detection.mapping && Object.keys(detection.mapping).length > 0;
+		return {
+			guardrailName: 'customRegex',
+			tripwireTriggered: customRegexFound,
 			info: {
 				maskEntities: detection.mapping,
 				analyzerResults: detection.analyzerResults,

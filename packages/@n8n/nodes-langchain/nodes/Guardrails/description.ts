@@ -1,10 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	promptTypeOptions,
-	textFromGuardrailsNode,
-	textFromPreviousNode,
-	textInput,
-} from '@utils/descriptions';
 import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 
 import { JAILBREAK_PROMPT } from './actions/checks/jailbreak';
@@ -12,6 +6,7 @@ import { NSFW_SYSTEM_PROMPT } from './actions/checks/nsfw';
 import { PII_NAME_MAP, PIIEntity } from './actions/checks/pii';
 import { TOPICAL_ALIGNMENT_SYSTEM_PROMPT } from './actions/checks/topicalAlignment';
 import { configureNodeInputs } from './helpers/configureNodeInputs';
+import { LLM_SYSTEM_RULES } from './helpers/model';
 
 const THRESHOLD_OPTION: INodeProperties = {
 	displayName: 'Threshold',
@@ -94,7 +89,7 @@ export const versionDescription: INodeTypeDescription = {
 	properties: [
 		{
 			displayName:
-				'Use guardrails to validate text against a set of policies (e.g. NSFW, prompt injection) or to sanitize it (e.g. PII, secret keys)',
+				'Use guardrails to validate text against a set of policies (e.g. NSFW, prompt injection) or to sanitize it (e.g. personal data, secret keys)',
 			name: 'guardrailsUsage',
 			type: 'notice',
 			default: '',
@@ -116,38 +111,17 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'sanitize',
 					action: 'Sanitize text',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period
-					description: 'Redact text to mask PII, secret keys, URLs, etc.',
+					description: 'Redact text to mask personal data, secret keys, URLs, etc.',
 				},
 			],
 			default: 'classify',
 		},
-		promptTypeOptions,
 		{
-			...textFromPreviousNode,
-			displayName: 'Text to check',
-			displayOptions: {
-				show: {
-					promptType: ['auto'],
-				},
-			},
-		},
-		{
-			...textFromGuardrailsNode,
-			displayName: 'Text to check',
-			displayOptions: {
-				show: {
-					promptType: ['guardrails'],
-				},
-			},
-		},
-		{
-			...textInput,
-			displayName: 'Text to check',
-			displayOptions: {
-				show: {
-					promptType: ['define'],
-				},
-			},
+			displayName: 'Text To Check',
+			name: 'text',
+			type: 'string',
+			required: true,
+			default: '',
 			typeOptions: {
 				rows: 1,
 			},
@@ -178,7 +152,7 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to jailbreak or bypass AI safety measures',
-					options: [wrapValue([...getPromptOption(JAILBREAK_PROMPT), THRESHOLD_OPTION])],
+					options: [wrapValue([THRESHOLD_OPTION, ...getPromptOption(JAILBREAK_PROMPT)])],
 					displayOptions: {
 						show: {
 							'/operation': ['classify'],
@@ -191,7 +165,7 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'fixedCollection',
 					default: { value: { threshold: 0.7 } },
 					description: 'Detects attempts to generate NSFW content',
-					options: [wrapValue([...getPromptOption(NSFW_SYSTEM_PROMPT), THRESHOLD_OPTION])],
+					options: [wrapValue([THRESHOLD_OPTION, ...getPromptOption(NSFW_SYSTEM_PROMPT)])],
 					displayOptions: {
 						show: {
 							'/operation': ['classify'],
@@ -199,11 +173,11 @@ export const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'PII',
+					displayName: 'Personal Data (PII)',
 					name: 'pii',
 					type: 'fixedCollection',
 					default: { value: { type: 'all' } },
-					description: 'Detects attempts to use PII content',
+					description: 'Detects attempts to use personal data content',
 					options: [
 						wrapValue([
 							{
@@ -231,40 +205,6 @@ export const versionDescription: INodeTypeDescription = {
 									value: entity,
 								})),
 							},
-							{
-								displayName: 'Custom Regex',
-								name: 'customRegex',
-								type: 'fixedCollection',
-								typeOptions: {
-									sortable: true,
-									multipleValues: true,
-								},
-								placeholder: 'Add Custom Regex',
-								default: { regex: [] },
-								options: [
-									{
-										displayName: 'Regex',
-										name: 'regex',
-										values: [
-											{
-												displayName: 'Name',
-												name: 'name',
-												type: 'string',
-												default: '',
-												description: 'Name of the custom regex. Will be used for replacement.',
-											},
-											{
-												displayName: 'Regex',
-												name: 'value',
-												type: 'string',
-												default: '',
-												description: 'Regex to match the input text',
-												placeholder: '/text/gi',
-											},
-										],
-									},
-								],
-							},
 						]),
 					],
 				},
@@ -273,7 +213,8 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'secretKeys',
 					type: 'fixedCollection',
 					default: { value: { permissiveness: 'balanced' } },
-					description: 'Detects attempts to use secret keys in the input text',
+					description:
+						'Detects attempts to use secret keys in the input text. Scans text for common patterns, applies entropy analysis to detect random-looking strings.',
 					options: [
 						wrapValue([
 							{
@@ -285,11 +226,19 @@ export const versionDescription: INodeTypeDescription = {
 									{
 										name: 'Strict',
 										value: 'strict',
+										description:
+											'Most sensitive, may have more false positives (commonly flag high entropy filenames or code)',
 									},
-									{ name: 'Balanced', value: 'balanced' },
+									{
+										name: 'Balanced',
+										value: 'balanced',
+										description: 'Balanced between sensitivity and specificity',
+									},
 									{
 										name: 'Permissive',
 										value: 'permissive',
+										description:
+											'Least sensitive, may miss some secret keys (but also reduces false positives)',
 									},
 								],
 							},
@@ -304,12 +253,12 @@ export const versionDescription: INodeTypeDescription = {
 					description: 'Detects attempts to stray from the business scope',
 					options: [
 						wrapValue([
+							THRESHOLD_OPTION,
 							...getPromptOption(
 								TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
 								false,
 								'Make sure you replace the placeholder.',
 							),
-							THRESHOLD_OPTION,
 						]),
 					],
 					displayOptions: {
@@ -327,12 +276,13 @@ export const versionDescription: INodeTypeDescription = {
 					options: [
 						wrapValue([
 							{
-								displayName: 'Allowed URLs',
+								displayName: 'Block All URLs Except',
 								name: 'allowedUrls',
 								type: 'string',
 								// keep placeholder to avoid limitation that removes collections with unchanged default values
 								default: 'PLACEHOLDER',
-								description: 'Multiple URLs can be added separated by comma',
+								description:
+									'Multiple URLs can be added separated by comma. Leave empty to block all URLs.',
 							},
 							{
 								displayName: 'Allowed Schemes',
@@ -418,8 +368,8 @@ export const versionDescription: INodeTypeDescription = {
 									default: '',
 									description: 'Name of the custom guardrail',
 								},
-								...getPromptOption('', false),
 								THRESHOLD_OPTION,
+								...getPromptOption('', false),
 							],
 						},
 					],
@@ -427,6 +377,62 @@ export const versionDescription: INodeTypeDescription = {
 						show: {
 							'/operation': ['classify'],
 						},
+					},
+				},
+				{
+					displayName: 'Custom Regex',
+					name: 'customRegex',
+					type: 'fixedCollection',
+					typeOptions: {
+						sortable: true,
+						multipleValues: true,
+					},
+					placeholder: 'Add Custom Regex',
+					default: {},
+					options: [
+						{
+							displayName: 'Regex',
+							name: 'regex',
+							values: [
+								{
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+									description:
+										'Name of the custom regex. Will be used for replacement when sanitizing.',
+								},
+								{
+									displayName: 'Regex',
+									name: 'value',
+									type: 'string',
+									default: '',
+									description: 'Regex to match the input text',
+									placeholder: '/text/gi',
+								},
+							],
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Options',
+			name: 'options',
+			placeholder: 'Add Option',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					displayName: 'System Message',
+					name: 'systemMessage',
+					type: 'string',
+					description:
+						'The system message used by the guardrail to enforce JSON output according to schema',
+					hint: 'This message is appended after prompts defined by guardrails',
+					default: LLM_SYSTEM_RULES,
+					typeOptions: {
+						rows: 6,
 					},
 				},
 			],
