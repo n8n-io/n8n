@@ -7,6 +7,18 @@ interface MockIntersectionObserverConstructor {
 	new (callback: IntersectionObserverCallback): IntersectionObserver;
 }
 
+function createMockEntry(element: Element, isIntersecting: boolean): IntersectionObserverEntry {
+	return {
+		isIntersecting,
+		target: element,
+		boundingClientRect: {} as DOMRectReadOnly,
+		intersectionRatio: isIntersecting ? 1 : 0,
+		intersectionRect: {} as DOMRectReadOnly,
+		rootBounds: null,
+		time: Date.now(),
+	};
+}
+
 describe('useIntersectionObserver()', () => {
 	let mockIntersectionObserver: {
 		observe: ReturnType<typeof vi.fn>;
@@ -74,10 +86,7 @@ describe('useIntersectionObserver()', () => {
 		// Simulate intersection
 		const callback = mockConstructor.__callback;
 		if (callback) {
-			callback(
-				[{ isIntersecting: true, target: element }] as IntersectionObserverEntry[],
-				{} as IntersectionObserver,
-			);
+			callback([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
 
 		expect(mockCallback).toHaveBeenCalledTimes(1);
@@ -96,10 +105,7 @@ describe('useIntersectionObserver()', () => {
 		// Simulate no intersection
 		const callback = mockConstructor.__callback;
 		if (callback) {
-			callback(
-				[{ isIntersecting: false, target: element }] as IntersectionObserverEntry[],
-				{} as IntersectionObserver,
-			);
+			callback([createMockEntry(element, false)], {} as IntersectionObserver);
 		}
 
 		expect(mockCallback).not.toHaveBeenCalled();
@@ -118,10 +124,7 @@ describe('useIntersectionObserver()', () => {
 		// Simulate intersection
 		const callback = mockConstructor.__callback;
 		if (callback) {
-			callback(
-				[{ isIntersecting: true, target: element }] as IntersectionObserverEntry[],
-				{} as IntersectionObserver,
-			);
+			callback([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
 
 		expect(mockIntersectionObserver.disconnect).toHaveBeenCalledTimes(1);
@@ -141,10 +144,7 @@ describe('useIntersectionObserver()', () => {
 		// Simulate intersection
 		const callback = mockConstructor.__callback;
 		if (callback) {
-			callback(
-				[{ isIntersecting: true, target: element }] as IntersectionObserverEntry[],
-				{} as IntersectionObserver,
-			);
+			callback([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
 
 		expect(mockIntersectionObserver.disconnect).not.toHaveBeenCalled();
