@@ -404,7 +404,7 @@ export function resolvePath(
 
 			return `CASE
 				WHEN json_typeof(${base.replace('->>', '->')}) = '${type}'
-				THEN ${base}::${type}
+				THEN ${base.replace('->>', '->')}::${type}
 				ELSE NULL
 			END`;
 		} else {
