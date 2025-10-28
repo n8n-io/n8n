@@ -6,11 +6,10 @@ import axios, { AxiosError } from 'axios';
 import { ensureError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
-
-type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',
@@ -110,13 +109,38 @@ export class LicenseService {
 		return this.license.getManagementJwt();
 	}
 
-	async activateLicense(activationKey: string) {
+	async activateLicense(activationKey: string, eulaUri?: string) {
 		try {
-			await this.license.activate(activationKey);
+			await this.license.activate(activationKey, eulaUri);
 		} catch (e) {
-			const message = this.mapErrorMessage(e as LicenseError, 'activate');
+			// Check if this is a EULA_REQUIRED error from license server
+			if (this.isEulaRequiredError(e)) {
+				throw new LicenseEulaRequiredError('License activation requires EULA acceptance', {
+					eulaUrl: e.info.eula.uri,
+				});
+			}
+
+			const message = this.mapErrorMessage(ensureError(e), 'activate');
 			throw new BadRequestError(message);
 		}
+	}
+
+	private isEulaRequiredError(
+		error: unknown,
+	): error is Error & { errorId: string; info: { eula: { uri: string } } } {
+		return (
+			error instanceof Error &&
+			'errorId' in error &&
+			error.errorId === 'EULA_REQUIRED' &&
+			'info' in error &&
+			typeof error.info === 'object' &&
+			error.info !== null &&
+			'eula' in error.info &&
+			typeof error.info.eula === 'object' &&
+			error.info.eula !== null &&
+			'uri' in error.info.eula &&
+			typeof error.info.eula.uri === 'string'
+		);
 	}
 
 	async renewLicense() {
@@ -125,7 +149,7 @@ export class LicenseService {
 		try {
 			await this.license.renew();
 		} catch (e) {
-			const message = this.mapErrorMessage(e as LicenseError, 'renew');
+			const message = this.mapErrorMessage(ensureError(e), 'renew');
 
 			this.eventService.emit('license-renewal-attempted', { success: false });
 			throw new BadRequestError(message);
@@ -134,12 +158,21 @@ export class LicenseService {
 		this.eventService.emit('license-renewal-attempted', { success: true });
 	}
 
-	private mapErrorMessage(error: LicenseError, action: 'activate' | 'renew') {
-		let message = error.errorId && LicenseErrors[error.errorId];
+	private mapErrorMessage(error: Error, action: 'activate' | 'renew') {
+		let message: string | undefined;
+
+		if (this.isLicenseError(error) && error.errorId in LicenseErrors) {
+			message = LicenseErrors[error.errorId as keyof typeof LicenseErrors];
+		}
+
 		if (!message) {
 			message = `Failed to ${action} license: ${error.message}`;
 			this.logger.error(message, { stack: error.stack ?? 'n/a' });
 		}
 		return message;
+	}
+
+	private isLicenseError(error: Error): error is Error & { errorId: string } {
+		return 'errorId' in error && typeof error.errorId === 'string';
 	}
 }

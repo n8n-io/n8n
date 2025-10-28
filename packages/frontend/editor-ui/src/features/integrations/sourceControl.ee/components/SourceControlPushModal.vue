@@ -97,6 +97,13 @@ async function loadSourceControlStatus() {
 		}
 
 		status.value = freshStatus;
+
+		// Auto-select all credentials by default (only once on load)
+		freshStatus.forEach((file) => {
+			if (file.type === 'credential') {
+				selectedCredentials.add(file.id);
+			}
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 		close();

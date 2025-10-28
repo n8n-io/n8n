@@ -225,7 +225,7 @@ export declare namespace NodeRequest {
 // ----------------------------------
 
 export declare namespace LicenseRequest {
-	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string; eulaUri?: string }, {}>;
 }
 
 // ----------------------------------
