@@ -25,7 +25,7 @@ const handleAllow = async () => {
 		const response = await consentStore.approveConsent(true);
 		window.location.href = response.redirectUrl;
 	} catch (err) {
-		toast.showError(err, i18n.baseText('mcp.consentView.error.allow'));
+		toast.showError(err, i18n.baseText('oauth.consentView.error.allow'));
 	}
 };
 
@@ -34,16 +34,16 @@ const handleDeny = async () => {
 		const response = await consentStore.approveConsent(false);
 		window.location.href = response.redirectUrl;
 	} catch (err) {
-		toast.showError(err, i18n.baseText('mcp.consentView.error.deny'));
+		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
 	}
 };
 
 onMounted(async () => {
-	documentTitle.set(i18n.baseText('mcp.consentView.title'));
+	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
 		await consentStore.fetchConsentDetails();
 	} catch (err) {
-		toast.showError(err, i18n.baseText('mcp.consentView.error.fetchDetails'));
+		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
 	}
 });
 </script>
@@ -65,7 +65,7 @@ onMounted(async () => {
 			<div :class="$style.content">
 				<N8nHeading tag="h2" size="large" :bold="true">
 					{{
-						i18n.baseText('mcp.consentView.heading', {
+						i18n.baseText('oauth.consentView.heading', {
 							interpolate: { clientName: clentDetails.clientName },
 						})
 					}}
@@ -73,20 +73,20 @@ onMounted(async () => {
 				<div :class="$style['text-content']">
 					<N8nText color="text-base" size="small">
 						{{
-							i18n.baseText('mcp.consentView.description', {
+							i18n.baseText('oauth.consentView.description', {
 								interpolate: { clientName: clentDetails.clientName },
 							})
 						}}
 					</N8nText>
 					<ul :class="$style['permission-list']">
-						<li>{{ i18n.baseText('mcp.consentView.action.listWorkflows') }}</li>
-						<li>{{ i18n.baseText('mcp.consentView.action.workflowDetails') }}</li>
-						<li>{{ i18n.baseText('mcp.consentView.action.executeWorkflow') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflow') }}</li>
 					</ul>
 					<p :class="$style['docs-link']">
 						<span
 							v-n8n-html="
-								i18n.baseText('mcp.consentView.readMore', {
+								i18n.baseText('oauth.consentView.readMore', {
 									interpolate: {
 										docsUrl: MCP_DOCS_PAGE_URL,
 									},
