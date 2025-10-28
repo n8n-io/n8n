@@ -3,6 +3,10 @@ name: Playwright Tests - Reusable
 on:
   workflow_call:
     inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        type: string
       test-mode:
         description: 'Test mode: local (pnpm start from local), docker-build, or docker-pull'
         required: false
@@ -60,6 +64,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+          ref: ${{ inputs.branch || github.ref }}
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs-blacksmith

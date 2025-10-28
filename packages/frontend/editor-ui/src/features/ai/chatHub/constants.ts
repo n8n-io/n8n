@@ -10,6 +10,8 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	openai: 'OpenAI',
 	anthropic: 'Anthropic',
 	google: 'Google',
+	n8n: 'n8n',
+	'custom-agent': 'Custom Agent',
 };
 
 export const MOBILE_MEDIA_QUERY = '(max-width: 768px)';

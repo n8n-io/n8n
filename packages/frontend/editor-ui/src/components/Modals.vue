@@ -77,7 +77,7 @@ import DeleteUserModal from '@/features/settings/users/components/DeleteUserModa
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
-import ImportCurlModal from '@/components/ImportCurlModal.vue';
+import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
 import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
 import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';

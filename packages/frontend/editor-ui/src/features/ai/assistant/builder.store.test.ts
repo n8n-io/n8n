@@ -19,11 +19,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/stores/posthog.store.test';
-import {
-	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
-	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
-	DEFAULT_NEW_WORKFLOW_NAME,
-} from '@/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
@@ -442,70 +438,16 @@ describe('AI Builder store', () => {
 			const settingsStore = useSettingsStore();
 
 			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(false);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
 
 			expect(builderStore.isAIBuilderEnabled).toBe(false);
 		});
 
-		it('should return true when license has aiBuilder and release experiment is set to variant', () => {
+		it('should return true when license has aiBuilder feature', () => {
 			const builderStore = useBuilderStore();
 			const settingsStore = useSettingsStore();
 
 			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control; // deprecated should be control
-			});
-			expect(builderStore.isAIBuilderEnabled).toBe(true);
-		});
 
-		it('should return true when license has aiBuilder and release experiment is control but deprecated experiment is variant', () => {
-			const builderStore = useBuilderStore();
-			const settingsStore = useSettingsStore();
-
-			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
-			});
-			expect(builderStore.isAIBuilderEnabled).toBe(true);
-		});
-
-		it('should return false when license has aiBuilder but both experiments are set to control', () => {
-			const builderStore = useBuilderStore();
-			const settingsStore = useSettingsStore();
-
-			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
-			expect(builderStore.isAIBuilderEnabled).toBe(false);
-		});
-
-		it('should prioritize release experiment over deprecated experiment when license has aiBuilder', () => {
-			const builderStore = useBuilderStore();
-			const settingsStore = useSettingsStore();
-
-			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				// Even if deprecated is control, release variant should win
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
 			expect(builderStore.isAIBuilderEnabled).toBe(true);
 		});
 	});
@@ -787,8 +729,6 @@ describe('AI Builder store', () => {
 			// Verify the API was called with correct parameters
 			expect(apiSpy).toHaveBeenCalled();
 			const callArgs = apiSpy.mock.calls[0];
-			expect(callArgs).toHaveLength(7); // Should have 7 arguments
-
 			const signal = callArgs[5]; // The 6th argument is the abort signal
 			expect(signal).toBeDefined();
 			expect(signal).toBeInstanceOf(AbortSignal);
@@ -1229,92 +1169,6 @@ describe('AI Builder store', () => {
 		});
 	});
 
-	describe('useDeprecatedCredentials logic in sendChatMessage', () => {
-		it('should set useDeprecatedCredentials to true when release experiment is control and deprecated experiment is variant', () => {
-			const builderStore = useBuilderStore();
-
-			// Mock posthog to return control for release and variant for deprecated
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
-			});
-
-			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
-
-			builderStore.sendChatMessage({ text: 'test message' });
-
-			// Verify chatWithBuilder was called with useDeprecatedCredentials = true
-			expect(apiSpy).toHaveBeenCalledWith(
-				expect.anything(), // rootStore.restApiContext
-				expect.anything(), // payload
-				expect.anything(), // onMessage callback
-				expect.anything(), // onDone callback
-				expect.anything(), // onError callback
-				expect.anything(), // abort signal
-				true, // useDeprecatedCredentials
-			);
-		});
-
-		it('should set useDeprecatedCredentials to false when release experiment is variant', () => {
-			const builderStore = useBuilderStore();
-
-			// Mock posthog to return variant for release (regardless of deprecated)
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
-			});
-
-			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
-
-			builderStore.sendChatMessage({ text: 'test message' });
-
-			// Verify chatWithBuilder was called with useDeprecatedCredentials = false
-			expect(apiSpy).toHaveBeenCalledWith(
-				expect.anything(), // rootStore.restApiContext
-				expect.anything(), // payload
-				expect.anything(), // onMessage callback
-				expect.anything(), // onDone callback
-				expect.anything(), // onError callback
-				expect.anything(), // abort signal
-				false, // useDeprecatedCredentials
-			);
-		});
-
-		it('should set useDeprecatedCredentials to false when both experiments are control', () => {
-			const builderStore = useBuilderStore();
-
-			// Mock posthog to return control for both experiments
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
-
-			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
-
-			builderStore.sendChatMessage({ text: 'test message' });
-
-			// Verify chatWithBuilder was called with useDeprecatedCredentials = false
-			expect(apiSpy).toHaveBeenCalledWith(
-				expect.anything(), // rootStore.restApiContext
-				expect.anything(), // payload
-				expect.anything(), // onMessage callback
-				expect.anything(), // onDone callback
-				expect.anything(), // onError callback
-				expect.anything(), // abort signal
-				false, // useDeprecatedCredentials
-			);
-		});
-	});
-
 	describe('Credits management', () => {
 		it('should update builder credits correctly', () => {
 			const builderStore = useBuilderStore();
@@ -1462,16 +1316,12 @@ describe('AI Builder store', () => {
 			mockGetBuilderCredits.mockClear();
 		});
 
-		it('should fetch and update credits when release experiment is variant', async () => {
+		it('should fetch and update credits when AI builder is enabled', async () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
 
-			// Mock posthog to return variant for release experiment
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
+			// Mock AI builder as enabled
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 
 			// Mock API response
 			mockGetBuilderCredits.mockResolvedValueOnce({
@@ -1486,16 +1336,12 @@ describe('AI Builder store', () => {
 			expect(builderStore.creditsRemaining).toBe(150);
 		});
 
-		it('should not fetch credits when release experiment is not variant', async () => {
+		it('should not fetch credits when AI builder is not enabled', async () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
 
-			// Mock posthog to return control for release experiment
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
-			});
+			// Mock AI builder as disabled
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(false);
 
 			await builderStore.fetchBuilderCredits();
 
@@ -1506,14 +1352,10 @@ describe('AI Builder store', () => {
 
 		it('should handle API errors gracefully', async () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
 
-			// Mock posthog to return variant for release experiment
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
+			// Mock AI builder as enabled
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 
 			// Mock API to throw error
 			mockGetBuilderCredits.mockRejectedValueOnce(new Error('API error'));
@@ -1529,14 +1371,10 @@ describe('AI Builder store', () => {
 		it('should call fetchBuilderCredits when opening chat', async () => {
 			const builderStore = useBuilderStore();
 			const chatPanelStore = useChatPanelStore();
+			const settingsStore = useSettingsStore();
 
-			// Mock posthog to return variant for release experiment
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
+			// Mock AI builder as enabled
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 
 			// Mock API response
 			mockGetBuilderCredits.mockResolvedValueOnce({

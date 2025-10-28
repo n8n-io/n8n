@@ -40,12 +40,17 @@ export type SimplifiedExecution = Pick<
 	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
 >;
 
+export type ExecutionFinishedOptions = {
+	router: ReturnType<typeof useRouter>;
+	workflowState: WorkflowState;
+};
+
 /**
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
  */
 export async function executionFinished(
 	{ data }: ExecutionFinished,
-	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
+	options: ExecutionFinishedOptions,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
@@ -82,7 +87,9 @@ export async function executionFinished(
 			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
 		} else if (
 			templateId === 'ready-to-run-ai-workflow-v1' ||
-			templateId === 'ready-to-run-ai-workflow-v2'
+			templateId === 'ready-to-run-ai-workflow-v2' ||
+			templateId === 'ready-to-run-ai-workflow-v3' ||
+			templateId === 'ready-to-run-ai-workflow-v4'
 		) {
 			if (data.status === 'success') {
 				readyToRunWorkflowsV2Store.trackExecuteAiWorkflowSuccess();
@@ -131,7 +138,7 @@ export async function executionFinished(
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);
 
-	continueEvaluationLoop(execution, options.router);
+	continueEvaluationLoop(execution, options);
 }
 
 /**
@@ -141,7 +148,7 @@ export async function executionFinished(
  */
 export function continueEvaluationLoop(
 	execution: SimplifiedExecution,
-	router: ReturnType<typeof useRouter>,
+	opts: ExecutionFinishedOptions,
 ) {
 	if (execution.status !== 'success' || execution.data?.startData?.destinationNode !== undefined) {
 		return;
@@ -163,7 +170,7 @@ export function continueEvaluationLoop(
 	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
 
 	if (rowsLeft && rowsLeft > 0) {
-		const { runWorkflow } = useRunWorkflow({ router });
+		const { runWorkflow } = useRunWorkflow(opts);
 		void runWorkflow({
 			triggerNode: evaluationTrigger.name,
 			// pass output of previous node run to trigger next run
