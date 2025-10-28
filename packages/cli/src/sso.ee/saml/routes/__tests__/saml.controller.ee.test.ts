@@ -394,7 +394,6 @@ describe('initSsoGet - Redirect URL Sanitization', () => {
 			context: {
 				context: 'http://idp.example.com/sso',
 				id: 'test-entity',
-				// type: 'SAMLRequest',
 			},
 		});
 
