@@ -17,10 +17,11 @@ import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/stores/settings.store';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useIntersectionObserver } from '@/composables/useIntersectionObserver';
 
 import { ElCheckbox } from 'element-plus';
 import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
-type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
+type AutoScrollDeps = { activeExecutionSet: boolean; scroll: boolean };
 
 const props = defineProps<{
 	workflow?: IWorkflowDb;
@@ -45,15 +46,19 @@ const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-const mountedItems = ref<string[]>([]);
 const autoScrollDeps = ref<AutoScrollDeps>({
 	activeExecutionSet: false,
-	cardsMounted: false,
 	scroll: true,
 });
 const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
 const sidebarContainerRef = ref<HTMLElement | null>(null);
 const executionListRef = ref<HTMLElement | null>(null);
+
+const { observe: observeForLoadMore } = useIntersectionObserver({
+	root: executionListRef,
+	threshold: 0.01,
+	onIntersect: () => emit('loadMore', 20),
+});
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
@@ -102,14 +107,16 @@ function addCurrentWorkflowExecutionsCardRef(
 }
 
 function onItemMounted(id: string): void {
-	mountedItems.value.push(id);
-	if (mountedItems.value.length === props.executions.length) {
-		autoScrollDeps.value.cardsMounted = true;
-		checkListSize();
-	}
+	const index = props.executions.findIndex((execution) => execution.id === id);
 
 	if (executionsStore.activeExecution?.id === id) {
 		autoScrollDeps.value.activeExecutionSet = true;
+	}
+
+	// Observe the last item to trigger loading more executions
+	if (index === props.executions.length - 1 && !props.loading && !props.loadingMore) {
+		const cardElement = currentWorkflowExecutionsCardRefs.value[id]?.$el;
+		observeForLoadMore(cardElement);
 	}
 }
 
@@ -133,29 +140,12 @@ function onRetryExecution(payload: { execution: ExecutionSummary; command: strin
 function onFilterChanged(filter: ExecutionFilterType) {
 	autoScrollDeps.value.activeExecutionSet = false;
 	autoScrollDeps.value.scroll = true;
-	mountedItems.value = [];
 	emit('filterUpdated', filter);
 }
 
 function onAutoRefreshChange(enabled: string | number | boolean) {
 	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
 	emit('update:autoRefresh', boolValue);
-}
-
-function checkListSize(): void {
-	// Find out how many execution card can fit into list
-	// and load more if needed
-	const cards = Object.values(currentWorkflowExecutionsCardRefs.value);
-	if (sidebarContainerRef.value && cards.length) {
-		const cardElement = cards[0].$el as HTMLElement;
-		const listCapacity = Math.ceil(
-			sidebarContainerRef.value.clientHeight / cardElement.clientHeight,
-		);
-
-		if (listCapacity > props.executions.length) {
-			emit('loadMore', listCapacity - props.executions.length);
-		}
-	}
 }
 
 function scrollToActiveCard(): void {
