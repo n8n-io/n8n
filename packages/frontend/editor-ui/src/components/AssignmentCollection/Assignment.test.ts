@@ -1,14 +1,16 @@
-import { computed, nextTick, ref } from 'vue';
-import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
-import { createTestingPinia } from '@pinia/testing';
-import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
-import Assignment from './Assignment.vue';
 import { defaultSettings } from '@/__tests__/defaults';
-import { STORES } from '@n8n/stores';
-import merge from 'lodash/merge';
+import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import * as useResolvedExpression from '@/composables/useResolvedExpression';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import { STORES } from '@n8n/stores';
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
+import merge from 'lodash/merge';
+import { computed, nextTick, ref } from 'vue';
+import Assignment from './Assignment.vue';
+
+vi.mock('vue-router');
 
 const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 	pinia: createTestingPinia({
@@ -29,6 +31,8 @@ const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 const renderComponent = createComponentRenderer(Assignment, DEFAULT_SETUP);
 
 describe('Assignment.vue', () => {
+	beforeEach(cleanup);
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -119,35 +123,58 @@ describe('Assignment.vue', () => {
 	});
 
 	it('should auto-change type when dropping a value', async () => {
-		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
 
-		const { getByTestId, emitted } = renderComponent();
-
-		const valueInput = getByTestId('assignment-value');
-		valueInput.dispatchEvent(new Event('drop'));
-
-		await waitFor(() => {
-			const events = emitted('update:model-value') ?? [];
-			const lastEvent = events[events.length - 1] as [{ type: string }];
-			expect(lastEvent[0].type).toBe('number');
+		const { emitted } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				disableType: false,
+			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+							emit('blur');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
 		});
+
+		const events = emitted('update:model-value');
+		const lastEvent = events.at(-1);
+		expect(lastEvent).toContainEqual(expect.objectContaining({ type: 'number' }));
+
+		spy.mockRestore();
 	});
 
 	it('should not auto-change type when disableType is true', async () => {
-		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
 
-		const { getByTestId, emitted } = renderComponent({
+		const { emitted } = renderComponent({
 			props: {
 				...DEFAULT_SETUP.props,
 				disableType: true,
 			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+							emit('blur');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
 		});
 
-		const valueInput = getByTestId('assignment-value');
-		valueInput.dispatchEvent(new Event('drop'));
+		const events = emitted('update:model-value');
+		const lastEvent = events.at(-1);
+		expect(lastEvent).not.toContainEqual(expect.objectContaining({ type: 'number' }));
 
-		await nextTick();
-
-		expect(emitted('update:model-value')).toBeUndefined();
+		spy.mockRestore();
 	});
 });
