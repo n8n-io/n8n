@@ -83,7 +83,7 @@ describe('WorkflowIndexService Integration', () => {
 					email: owner.email,
 					firstName: owner.firstName,
 					lastName: owner.lastName,
-					role: { slug: owner.role },
+					role: { slug: owner.role.slug },
 				},
 				workflow: savedWorkflow,
 				publicApi: false,

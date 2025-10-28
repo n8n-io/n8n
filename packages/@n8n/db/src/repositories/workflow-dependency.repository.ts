@@ -72,20 +72,19 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			// Set a busy_timeout - otherwise the query will fail immediately if the database is locked.
 			await queryRunner.query('PRAGMA busy_timeout = 5000');
 
-			// Start an immediate transaction to acquire a RESERVED lock.
+			// Start an immediate transaction FIRST to acquire a RESERVED lock.
 			// NOTE: in the typical case where we're updating an existing workflow, this would happen
 			// anyway when we delete the existing dependencies. We lock explicitly to make it clearer,
 			// and ensure nothing weird happens when there are no existing dependencies.
-			await queryRunner.startTransaction();
 			await queryRunner.query('BEGIN IMMEDIATE TRANSACTION');
 
 			// Perform the update using queryRunner.manager
 			const result = await this.executeUpdate(workflowId, dependencies, queryRunner.manager);
 
-			await queryRunner.commitTransaction();
+			await queryRunner.query('COMMIT');
 			return result;
 		} catch (error) {
-			await queryRunner.rollbackTransaction();
+			await queryRunner.query('ROLLBACK');
 			throw error;
 		} finally {
 			await queryRunner.release();
