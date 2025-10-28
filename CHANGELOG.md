@@ -1,3 +1,13 @@
+## [1.117.3](https://github.com/n8n-io/n8n/compare/n8n@1.117.2...n8n@1.117.3) (2025-10-28)
+
+
+### Bug Fixes
+
+* **core:** Harden security restrictions in native Python runner ([#21263](https://github.com/n8n-io/n8n/issues/21263)) ([9b54326](https://github.com/n8n-io/n8n/commit/9b54326f1a322842a62654598f33e44d1092333d))
+* **editor:** Fix `Cannot read properties of undefined` error in evaluation loop ([#21225](https://github.com/n8n-io/n8n/issues/21225)) ([052ca78](https://github.com/n8n-io/n8n/commit/052ca78632780ac591c7335872b9b36075192d82))
+
+
+
 ## [1.117.2](https://github.com/n8n-io/n8n/compare/n8n@1.117.1...n8n@1.117.2) (2025-10-27)
 
 
