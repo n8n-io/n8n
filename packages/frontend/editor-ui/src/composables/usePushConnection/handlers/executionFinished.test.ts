@@ -15,6 +15,11 @@ import {
 	type SimplifiedExecution,
 } from './executionFinished';
 
+const opts = {
+	workflowState: mock<WorkflowState>(),
+	router: mock<Router>(),
+};
+
 const runWorkflow = vi.fn();
 
 vi.mock('@/composables/useRunWorkflow', () => ({
@@ -64,7 +69,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).toHaveBeenCalledWith({
 			triggerNode: evalTriggerNodeName,
@@ -91,7 +96,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
@@ -109,7 +114,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
@@ -133,7 +138,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
@@ -174,7 +179,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, mock<Router>());
+		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});

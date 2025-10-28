@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CssEditor from '@/features/shared/editors/components/CssEditor/CssEditor.vue';
-import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
+import ExpressionEditorModalInput from '@/features/ndv/parameters/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import HtmlEditor from '@/features/shared/editors/components/HtmlEditor/HtmlEditor.vue';
 import JsEditor from '@/features/shared/editors/components/JsEditor/JsEditor.vue';
 import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEditor.vue';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
-import ParameterOptions from '@/components/ParameterOptions.vue';
+import ParameterOptions from '@/features/ndv/parameters/components/ParameterOptions.vue';
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -17,10 +17,10 @@ import {
 	getParameterTypeOption,
 	isValidParameterOption,
 	parseFromExpression,
-} from '@/features/ndv/ndv.utils';
+} from '@/features/ndv/shared/ndv.utils';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useNodeSettingsParameters } from '@/features/ndv/composables/useNodeSettingsParameters';
+import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import {
@@ -42,7 +42,7 @@ import { useExecutionData } from '@/features/execution/executions/composables/us
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';

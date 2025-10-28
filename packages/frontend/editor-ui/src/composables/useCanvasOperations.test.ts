@@ -18,7 +18,7 @@ import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/histor
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createTestNode,
 	createTestWorkflow,
