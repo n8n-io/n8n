@@ -1,14 +1,14 @@
 <script setup lang="ts">
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
 import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubSessionDto } from '@n8n/api-types';
-import { N8nIcon, N8nInput, N8nAvatar } from '@n8n/design-system';
+import { type ChatHubSessionDto } from '@n8n/api-types';
+import { N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useChatStore } from '../chat.store';
-
-const chatStore = useChatStore();
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
 
 const { session, isRenaming, active } = defineProps<{
 	session: ChatHubSessionDto;
@@ -23,22 +23,20 @@ const emit = defineEmits<{
 	delete: [sessionId: string];
 }>();
 
+const chatStore = useChatStore();
+const workflowsStore = useWorkflowsStore();
 const input = useTemplateRef('input');
 const editedLabel = ref('');
 
 type SessionAction = 'rename' | 'delete';
 
-const agentName = computed(() => {
-	if (!session.agentId) {
-		return null;
-	}
-
-	const agent = chatStore.getAgent(session.agentId);
-
-	// if agent was deleted, use cached name
-	// if agent was renamed, use updated name
-	return agent?.name ?? session.agentName;
-});
+const model = computed(() =>
+	restoreConversationModelFromMessageOrSession(
+		session,
+		chatStore.agents,
+		workflowsStore.workflowsById,
+	),
+);
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 	{
@@ -117,21 +115,7 @@ watch(
 			/>
 		</template>
 		<template #icon>
-			<N8nIcon
-				v-if="session.provider === null || session.provider === 'n8n'"
-				size="medium"
-				icon="message-circle"
-			/>
-			<N8nAvatar
-				v-else-if="session.provider === 'custom-agent'"
-				:first-name="agentName"
-				size="xsmall"
-			/>
-			<CredentialIcon
-				v-else
-				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[session.provider]"
-				:size="16"
-			/>
+			<ChatAgentAvatar v-if="model" :model="model" size="sm" />
 		</template>
 	</ChatSidebarLink>
 </template>
