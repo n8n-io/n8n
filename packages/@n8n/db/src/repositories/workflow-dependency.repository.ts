@@ -159,8 +159,17 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		}
 		// For Postgres and MySQL we lock on the workflow row, and only then check the dependency table.
 		// This prevents a race between two concurrent updates.
-		await tx.query('SELECT id FROM workflow WHERE id = ? FOR UPDATE', [workflowId]);
+		const placeholder = this.databaseConfig.type === 'postgresdb' ? '$1' : '?';
+		const tableName = this.getTableName('workflow_entity');
+		await tx.query(`SELECT id FROM ${tableName} WHERE id = ${placeholder} FOR UPDATE`, [
+			workflowId,
+		]);
 		const count = await tx.count(WorkflowDependency, { where: { workflowId } });
 		return count > 0;
+	}
+
+	private getTableName(name: string): string {
+		const { tablePrefix } = this.databaseConfig;
+		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
 	}
 }
