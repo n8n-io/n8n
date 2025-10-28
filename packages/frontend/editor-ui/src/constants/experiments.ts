@@ -58,7 +58,8 @@ export const TEMPLATE_RECO_V2 = {
 export const TEMPLATES_DATA_GATHERING_EXPERIMENT = {
 	name: '046_templates_data_gathering',
 	control: 'control',
-	variant: 'variant',
+	variant1: 'variant-batch-1',
+	variant2: 'variant-batch-2',
 };
 
 export const READY_TO_RUN_V2_EXPERIMENT = {

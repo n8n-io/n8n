@@ -3,7 +3,8 @@ import { TEMPLATES_DATA_GATHERING_EXPERIMENT, VIEWS } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { defineStore } from 'pinia';
-import templateIds from '../data/templateIds.json';
+import batch1TemplateIds from '../data/batch1TemplateIds.json';
+import templateIdsBatch2 from '../data/batch2TemplateIds.json';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export const useTemplatesDataGatheringStore = defineStore('templatesDataGathering', () => {
@@ -15,8 +16,10 @@ export const useTemplatesDataGatheringStore = defineStore('templatesDataGatherin
 	const isFeatureEnabled = () => {
 		return (
 			settingsStore.isTemplatesEnabled &&
-			posthogStore.getVariant(TEMPLATES_DATA_GATHERING_EXPERIMENT.name) ===
-				TEMPLATES_DATA_GATHERING_EXPERIMENT.variant
+			(posthogStore.getVariant(TEMPLATES_DATA_GATHERING_EXPERIMENT.name) ===
+				TEMPLATES_DATA_GATHERING_EXPERIMENT.variant1 ||
+				posthogStore.getVariant(TEMPLATES_DATA_GATHERING_EXPERIMENT.name) ===
+					TEMPLATES_DATA_GATHERING_EXPERIMENT.variant2)
 		);
 	};
 
@@ -29,7 +32,11 @@ export const useTemplatesDataGatheringStore = defineStore('templatesDataGatherin
 	}
 
 	function getRandomTemplateIds(): number[] {
-		const ids = templateIds;
+		const ids =
+			posthogStore.getVariant(TEMPLATES_DATA_GATHERING_EXPERIMENT.name) ===
+			TEMPLATES_DATA_GATHERING_EXPERIMENT.variant1
+				? batch1TemplateIds
+				: templateIdsBatch2;
 		const result: number[] = [];
 		const picked = new Set<number>();
 		const count = Math.min(6, ids.length);
