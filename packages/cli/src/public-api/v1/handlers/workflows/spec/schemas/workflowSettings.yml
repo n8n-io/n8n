@@ -25,3 +25,13 @@ properties:
   executionOrder:
     type: string
     example: v1
+  callerPolicy:
+    type: string
+    enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']
+  callerIds:
+    type: string
+  timeSavedPerExecution:
+    type: number
+    description: Estimated time saved per execution in minutes
+  availableInMCP:
+    type: boolean
