@@ -3568,6 +3568,9 @@ describe('dataTable', () => {
 			[{ key: 'value' }, 0, 'eq', true],
 			[true, 1, 'eq', true],
 			[false, 0, 'eq', true],
+			[{ a: 3 }, { a: 3 }, 'eq', true],
+			[{ a: 3 }, { a: 4 }, 'neq', true],
+			[{}, {}, 'eq', true],
 		])(
 			'inserts json with input %p, filter %p, operator %p, expectPresent %p',
 			async (input, filter, operator, expectPresent) => {
@@ -3648,6 +3651,43 @@ describe('dataTable', () => {
 				expect(data).toEqual([
 					{
 						c1: { [input]: 3 },
+						id: 1,
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+					},
+				]);
+			}
+		});
+		it('handles object comparison', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'c1', type: 'json' }],
+			});
+
+			// ACT
+			const rows = [{ c1: { a: { b: 4 } } }];
+			await dataTableService.insertRows(dataStoreId, project1.id, rows, 'id');
+
+			// ASSERT
+
+			{
+				const { data } = await dataTableService.getManyRowsAndCount(dataStoreId, project1.id, {
+					filter: {
+						type: 'and',
+						filters: [
+							{
+								columnName: 'c1',
+								condition: 'eq',
+								value: { a: { b: 4 } },
+								path: '',
+							},
+						],
+					},
+				});
+				expect(data).toEqual([
+					{
+						c1: { a: { b: 4 } },
 						id: 1,
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
