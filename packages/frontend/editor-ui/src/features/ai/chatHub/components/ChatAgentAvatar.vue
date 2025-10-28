@@ -8,11 +8,15 @@ import {
 } from '@n8n/api-types';
 import { N8nAvatar, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
-const { model } = defineProps<{ model: ChatHubConversationModel; size: 'sm' | 'md' | 'lg' }>();
+const { model, tooltip = false } = defineProps<{
+	model: ChatHubConversationModel;
+	size: 'sm' | 'md' | 'lg';
+	tooltip?: boolean;
+}>();
 </script>
 
 <template>
-	<N8nTooltip :show-after="100" placement="left">
+	<N8nTooltip :show-after="100" placement="left" :disabled="!tooltip">
 		<template #content>{{ describeConversationModel(model) }}</template>
 		<N8nAvatar
 			v-if="model.provider === 'custom-agent'"
