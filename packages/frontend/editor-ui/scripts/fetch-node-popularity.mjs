@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const POPULARITY_ENDPOINT =
 	process.env.NODE_POPULARITY_ENDPOINT ||
-	'https://internal.users.n8n.cloud/webhook/nodes-popularity-scores';
+	'https://internal-production.app.n8n.cloud/webhook/nodes-popularity-scores';
 const FAIL_ON_ERROR = process.env.N8N_FAIL_ON_POPULARITY_FETCH_ERROR === 'true';
 const BUILD_DIR = path.join(__dirname, '..', '.build');
 const OUTPUT_FILE = path.join(BUILD_DIR, 'node-popularity.json');
