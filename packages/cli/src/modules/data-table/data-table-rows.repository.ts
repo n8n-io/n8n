@@ -81,9 +81,12 @@ function getConditionAndParams(
 
 	// For filters, we let TypeORM handle date conversion through parameterized queries.
 	let value = filter.value;
-
+	let postfix = '';
 	if (typeof value === 'object' && !(value instanceof Date)) {
 		value = JSON.stringify(value);
+		if (dbType === 'postgres') {
+			postfix = '::jsonb';
+		}
 	}
 
 	// Handle operators that map directly to SQL operators
@@ -97,7 +100,7 @@ function getConditionAndParams(
 
 	if (operators[filter.condition]) {
 		const result = [
-			`${columnRef} ${operators[filter.condition]} :${paramName}`,
+			`${columnRef} ${operators[filter.condition]} :${paramName}${postfix}`,
 			{ [paramName]: value },
 		];
 		console.log('result', result);

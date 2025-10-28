@@ -70,7 +70,7 @@ export function dataTableColumnTypeToSql(
 			}
 			return 'DATETIME';
 		case 'json':
-			return 'JSON';
+			return 'JSONB';
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
@@ -390,7 +390,7 @@ export function resolvePath(
 			let base = `${ref}${toPostgresPath(pathArray)}`;
 			let type = 'text';
 			if (typeof value === 'number') {
-				type = 'number';
+				type = 'double precision';
 			} else if (value instanceof Date) {
 				type = 'timestamp';
 			} else if (typeof value === 'boolean') {
@@ -398,7 +398,7 @@ export function resolvePath(
 			} else if (typeof value === 'string') {
 				type = 'text';
 			} else {
-				type = 'json';
+				type = 'jsonb';
 				base = base.replace('->>', '->');
 			}
 
