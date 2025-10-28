@@ -1,11 +1,17 @@
-import type { ToolCallData } from './helpers/buildSteps';
-import type { ToolCallRequest } from './helpers/createEngineRequests';
+import type {
+	ToolCallData,
+	ToolCallRequest,
+	AgentResult,
+	RequestResponseMetadata as SharedRequestResponseMetadata,
+} from '@utils/agent-execution';
 
-export type RequestResponseMetadata = {
-	itemIndex?: number;
-	previousRequests: ToolCallData[];
-};
+// Re-export shared types for backwards compatibility
+export type { ToolCallData, ToolCallRequest, AgentResult };
 
+// Use the shared metadata type directly (it already includes previousRequests)
+export type RequestResponseMetadata = SharedRequestResponseMetadata;
+
+// Keep the IntermediateStep type for compatibility
 export type IntermediateStep = {
 	action: {
 		tool: string;
@@ -16,12 +22,6 @@ export type IntermediateStep = {
 		type: string;
 	};
 	observation?: string;
-};
-
-export type AgentResult = {
-	output: string;
-	intermediateSteps?: IntermediateStep[];
-	toolCalls?: ToolCallRequest[];
 };
 
 export type AgentOptions = {
