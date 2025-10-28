@@ -417,7 +417,7 @@ export function resolvePath(
 			// this is mostly for sqlite, behavior in MariaDB and MySQL mostly aligns though there are subtle
 			// difference we don't care for in the face of imminent removal of support
 			const path = toSQLitePath(pathArray);
-			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
+			const base = `jsonb_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
 
 			if (typeof value === 'number') {
 				return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
