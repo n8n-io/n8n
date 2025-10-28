@@ -66,7 +66,7 @@ onMounted(async () => {
 				<N8nHeading tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.heading', {
-							interpolate: { clientName: clentDetails.clientName },
+							interpolate: { clientName: clentDetails.clientName ?? '' },
 						})
 					}}
 				</N8nHeading>
@@ -74,7 +74,7 @@ onMounted(async () => {
 					<N8nText color="text-base" size="small">
 						{{
 							i18n.baseText('oauth.consentView.description', {
-								interpolate: { clientName: clentDetails.clientName },
+								interpolate: { clientName: clentDetails.clientName ?? '' },
 							})
 						}}
 					</N8nText>

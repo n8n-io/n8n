@@ -1720,7 +1720,7 @@
 	"oauth.consentView.action.executeWorkflow": "Execute a workflow",
 	"oauth.consentView.readMore": "Read more <a href='{docsUrl}' target='_blank'>here</a>",
 	"oauth.consentView.error.deny": "Error denying access",
-	"oauth.consentView.error.allow": "Error allow access",
+	"oauth.consentView.error.allow": "Error allowing access”",
 	"oauth.consentView.error.fetchDetails": "Error fetching client details",
 	"parameterInput.expressionResult": "e.g. {result}",
 	"parameterInput.tip": "Tip",
