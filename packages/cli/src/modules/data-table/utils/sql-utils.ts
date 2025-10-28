@@ -384,10 +384,12 @@ export function resolvePath(
 	value: DataTableColumnJsType,
 	path?: string,
 ) {
-	if (path) {
+	if (path !== undefined) {
 		const pathArray = parsePath(path);
 		if (dbType === 'postgres') {
 			const base = `${ref}${toPostgresPath(pathArray)}`;
+			return `(${base})::text`;
+
 			if (typeof value === 'number') {
 				return `(${base})::numeric`;
 			} else if (value instanceof Date) {
