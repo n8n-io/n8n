@@ -89,7 +89,7 @@ const onItemMounted = ({
 		index === props.items.length - 1 &&
 		props.lastReceivedItemsLength === props.requestNumberOfItems
 	) {
-		observeForLoadMore(listElement.value?.children[index] as Element);
+		observeForLoadMore(listElement.value?.children[index]);
 	}
 };
 </script>
