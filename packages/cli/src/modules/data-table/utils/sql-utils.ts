@@ -401,10 +401,10 @@ export function resolvePath(
 				type = 'json';
 				base = base.replace('->>', '->');
 			}
-			return `
-			CASE
-				WHEN pg_input_is_valid((${base}), '${type}')
-				THEN (${base})::${type}
+
+			return `CASE
+				WHEN json_typeof(${base.replace('->>', '->')}) = '${type}'
+				THEN ${base}::${type}
 				ELSE NULL
 			END`;
 		} else {
