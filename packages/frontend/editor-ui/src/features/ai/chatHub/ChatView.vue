@@ -135,7 +135,6 @@ const { credentialsByProvider, selectCredential } = useChatCredentials(
 );
 
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
-const isNewChat = computed(() => route.name === CHAT_VIEW);
 const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['credentials'] | null>(
 	() => {
 		if (!selectedModel.value) {
@@ -211,7 +210,7 @@ watch(
 	(models) => {
 		const selected = selectedModel.value;
 
-		if (!models || selected !== null) {
+		if (!models || selected !== null || !isNewSession.value) {
 			return;
 		}
 
@@ -425,7 +424,7 @@ function closeAgentEditor() {
 		:class="[
 			$style.component,
 			{
-				[$style.isNewChat]: isNewChat,
+				[$style.isNewSession]: isNewSession,
 				[$style.isMobileDevice]: isMobileDevice,
 			},
 		]"
@@ -455,7 +454,11 @@ function closeAgentEditor() {
 			:class="$style.scrollArea"
 		>
 			<div :class="$style.scrollable" ref="scrollable">
-				<ChatStarter v-if="isNewChat" :class="$style.starter" :is-mobile-device="isMobileDevice" />
+				<ChatStarter
+					v-if="isNewSession"
+					:class="$style.starter"
+					:is-mobile-device="isMobileDevice"
+				/>
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
@@ -483,7 +486,7 @@ function closeAgentEditor() {
 
 				<div :class="$style.promptContainer">
 					<N8nIconButton
-						v-if="!arrivedState.bottom && !isNewChat"
+						v-if="!arrivedState.bottom && !isNewSession"
 						type="secondary"
 						icon="arrow-down"
 						:class="$style.scrollToBottomButton"
@@ -497,6 +500,7 @@ function closeAgentEditor() {
 						:is-responding="isResponding"
 						:selected-model="selectedModel"
 						:is-missing-credentials="isMissingSelectedCredential"
+						:is-new-session="isNewSession"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
@@ -540,7 +544,7 @@ function closeAgentEditor() {
 	justify-content: start;
 	gap: var(--spacing--2xl);
 
-	.isNewChat & {
+	.isNewSession & {
 		justify-content: center;
 	}
 }
@@ -580,7 +584,7 @@ function closeAgentEditor() {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.component:not(.isNewChat) & {
+	.component:not(.isNewSession) & {
 		position: absolute;
 		bottom: 0;
 		left: 0;

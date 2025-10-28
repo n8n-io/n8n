@@ -8,6 +8,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 
 const { selectedModel, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
+	isNewSession: boolean;
 	selectedModel: ChatHubConversationModel | null;
 	isMissingCredentials: boolean;
 }>();
@@ -104,18 +105,36 @@ defineExpose({
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
 			<N8nText v-if="!selectedModel" :class="$style.callout">
-				Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
-				conversation
+				<template v-if="isNewSession">
+					Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
+					conversation
+				</template>
+				<template v-else>
+					Please <a href="" @click.prevent="emit('selectModel')">reselect a model</a> to continue
+					the conversation
+				</template>
 			</N8nText>
 			<N8nText v-else-if="isMissingCredentials" :class="$style.callout">
-				Please
-				<a
-					href=""
-					@click.prevent="emit('setCredentials', selectedModel.provider as ChatHubLLMProvider)"
-				>
-					set credentials
-				</a>
-				for {{ providerDisplayNames[selectedModel.provider] }} to start a conversation
+				<template v-if="isNewSession">
+					Please
+					<a
+						href=""
+						@click.prevent="emit('setCredentials', selectedModel.provider as ChatHubLLMProvider)"
+					>
+						set credentials
+					</a>
+					for {{ providerDisplayNames[selectedModel.provider] }} to start a conversation
+				</template>
+				<template v-else>
+					Please
+					<a
+						href=""
+						@click.prevent="emit('setCredentials', selectedModel.provider as ChatHubLLMProvider)"
+					>
+						set credentials
+					</a>
+					for {{ providerDisplayNames[selectedModel.provider] }} to continue the conversation
+				</template>
 			</N8nText>
 			<N8nInput
 				ref="inputRef"
