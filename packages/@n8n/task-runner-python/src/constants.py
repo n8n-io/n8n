@@ -112,6 +112,8 @@ BLOCKED_NAMES = {
     "__loader__",
     "__builtins__",
     "__globals__",
+    "__spec__",
+    "__name__",
 }
 BLOCKED_ATTRIBUTES = {
     # runtime attributes
