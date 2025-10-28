@@ -388,23 +388,29 @@ export function resolvePath(
 		const pathArray = parsePath(path);
 		if (dbType === 'postgres') {
 			let base = `${ref}${toPostgresPath(pathArray)}`;
-			let type = 'text';
+			let typeofReturn = '';
+			let type = '';
 			if (typeof value === 'number') {
-				type = 'number';
+				typeofReturn = 'number';
+				type = dataTableColumnTypeToSql('number', dbType);
 			} else if (value instanceof Date) {
-				type = 'timestamp';
+				typeofReturn = 'timestamp';
+				type = dataTableColumnTypeToSql('date', dbType);
 			} else if (typeof value === 'boolean') {
-				type = 'boolean';
+				typeofReturn = 'boolean';
+				type = dataTableColumnTypeToSql('boolean', dbType);
 			} else if (typeof value === 'string') {
-				type = 'text';
+				typeofReturn = 'string';
+				type = dataTableColumnTypeToSql('string', dbType);
 			} else {
-				type = 'jsonb';
+				typeofReturn = 'object';
+				type = dataTableColumnTypeToSql('json', dbType);
 				base = base.replace('->>', '->');
 			}
 
 			return `CASE
-				WHEN jsonb_typeof((${base.replace('->>', '->')})) = '${type}'
-				THEN (${base})::${type === 'number' ? 'double precision' : type}
+				WHEN jsonb_typeof((${base.replace('->>', '->')})) = '${typeofReturn}'
+				THEN (${base})::${type}
 				ELSE NULL
 			END`;
 		} else {
