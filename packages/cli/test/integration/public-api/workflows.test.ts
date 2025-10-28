@@ -913,7 +913,7 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should not create workflow history version when not licensed', async () => {
+	test('should always create workflow history version', async () => {
 		license.disable('feat:workflowHistory');
 		const payload = {
 			name: 'testing',
@@ -948,7 +948,7 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(0);
+		).toBe(1);
 	});
 
 	test('should not add a starting node if the payload has no starting nodes', async () => {
@@ -1162,7 +1162,7 @@ describe('PUT /workflows/:id', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should not create workflow history when not licensed', async () => {
+	test('should always create workflow history version', async () => {
 		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, member);
 		const payload = {
@@ -1206,7 +1206,7 @@ describe('PUT /workflows/:id', () => {
 		expect(id).toBe(workflow.id);
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(0);
+		).toBe(1);
 	});
 
 	test('should update non-owned workflow if owner', async () => {
