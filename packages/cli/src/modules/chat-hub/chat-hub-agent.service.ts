@@ -1,14 +1,14 @@
+import { ChatModelsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import type { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
-import { ChatModelsResponse } from '@n8n/api-types';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import type { User } from '@n8n/db';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
 export class ChatHubAgentService {
@@ -26,6 +26,7 @@ export class ChatHubAgentService {
 				provider: 'custom-agent',
 				name: agent.name,
 				agentId: agent.id,
+				description: agent.description ?? null,
 			})),
 		};
 	}

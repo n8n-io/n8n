@@ -319,16 +319,46 @@ export class ChatHubService {
 		user: User,
 	): Promise<ChatModelsResponse[ChatHubProvider]> {
 		const nodeTypes = [CHAT_TRIGGER_NODE_TYPE];
-		const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(user, nodeTypes);
+		const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(
+			user,
+			nodeTypes,
+			true,
+		);
 
 		return {
 			models: workflows
+				// Ensure the user has at least read access to the workflow
+				.filter((workflow) => workflow.scopes.includes('workflow:read'))
 				.filter((workflow) => workflow.active)
-				.map((workflow) => ({
-					provider: 'n8n',
-					name: workflow.name ?? 'Unnamed workflow',
-					workflowId: workflow.id,
-				})),
+				.flatMap((workflow) => {
+					const chatTrigger = workflow.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+					if (!chatTrigger) {
+						return [];
+					}
+
+					if (chatTrigger.parameters.availableInChatHub !== true) {
+						return [];
+					}
+
+					const name =
+						typeof chatTrigger.parameters.agentName === 'string' &&
+						chatTrigger.parameters.agentName.length > 0
+							? chatTrigger.parameters.agentName
+							: workflow.name;
+
+					return [
+						{
+							provider: 'n8n',
+							name: name ?? 'Unknown Agent',
+							workflowId: workflow.id,
+							description:
+								typeof chatTrigger.parameters.agentDescription === 'string' &&
+								chatTrigger.parameters.agentDescription.length > 0
+									? chatTrigger.parameters.agentDescription
+									: null,
+						},
+					];
+				}),
 		};
 	}
 

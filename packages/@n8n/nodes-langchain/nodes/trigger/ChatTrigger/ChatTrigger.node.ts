@@ -398,7 +398,7 @@ export class ChatTrigger extends Node {
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether to make the chat available in the Chat Hub',
+				description: 'Whether to make the agent available in the Chat view',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.4 } }],
@@ -411,7 +411,7 @@ export class ChatTrigger extends Node {
 				type: 'string',
 				default: '',
 				noDataExpression: true,
-				description: 'The name of the agent shown on the Chat',
+				description: 'The name of the agent shown on the Chat view',
 				displayOptions: {
 					show: {
 						availableInChatHub: [true],
@@ -427,7 +427,7 @@ export class ChatTrigger extends Node {
 				},
 				default: '',
 				noDataExpression: true,
-				description: 'The description of the agent shown on the Chat',
+				description: 'The description of the agent shown on the Chat view',
 				displayOptions: {
 					show: {
 						availableInChatHub: [true],

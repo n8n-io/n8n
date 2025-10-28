@@ -53,12 +53,14 @@ const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
 	name: z.string(),
 	workflowId: z.string(),
+	description: z.string().nullable(),
 });
 
 const chatAgentSchema = z.object({
 	provider: z.literal('custom-agent'),
 	name: z.string(),
 	agentId: z.string(),
+	description: z.string().nullable(),
 });
 
 export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
