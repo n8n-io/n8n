@@ -21,7 +21,7 @@ import { useIntersectionObserver } from '@/composables/useIntersectionObserver';
 
 import { ElCheckbox } from 'element-plus';
 import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
-type AutoScrollDeps = { activeExecutionSet: boolean; scroll: boolean };
+type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
 	workflow?: IWorkflowDb;
@@ -48,6 +48,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const autoScrollDeps = ref<AutoScrollDeps>({
 	activeExecutionSet: false,
+	cardsMounted: false,
 	scroll: true,
 });
 const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
@@ -111,6 +112,7 @@ function onItemMounted(id: string): void {
 
 	if (executionsStore.activeExecution?.id === id) {
 		autoScrollDeps.value.activeExecutionSet = true;
+		autoScrollDeps.value.cardsMounted = true;
 	}
 
 	// Observe the last item to trigger loading more executions
@@ -139,6 +141,7 @@ function onRetryExecution(payload: { execution: ExecutionSummary; command: strin
 
 function onFilterChanged(filter: ExecutionFilterType) {
 	autoScrollDeps.value.activeExecutionSet = false;
+	autoScrollDeps.value.cardsMounted = false;
 	autoScrollDeps.value.scroll = true;
 	emit('filterUpdated', filter);
 }
