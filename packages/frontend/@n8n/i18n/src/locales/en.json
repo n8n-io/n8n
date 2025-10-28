@@ -1167,6 +1167,7 @@
 	"mcp.consentView.readMore": "Read more <a href='{docsUrl}' target='_blank'>here</a>",
 	"mcp.consentView.error.deny": "Error denying access",
 	"mcp.consentView.error.allow": "Error allow access",
+	"mcp.consentView.error.fetchDetails": "Error fetching client details",
 	"mcp.workflowNotEligable.description": "Only active, webhook-triggered workflows can be accessible through MCP",
 	"mcp.workflowDeactivated.title": "MCP Access Disabled",
 	"mcp.productionCheklist.title": "Enable MCP access",

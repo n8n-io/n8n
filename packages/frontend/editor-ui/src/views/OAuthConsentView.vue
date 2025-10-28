@@ -18,14 +18,7 @@ const error = computed(() => consentStore.error);
 
 const loading = computed(() => consentStore.isLoading);
 
-const clentDetails = computed<ConsentDetails>(
-	() =>
-		consentStore.consentDetails ?? {
-			clientName: 'Test Client',
-			clientId: 'test-client-id',
-			scopes: [],
-		},
-);
+const clentDetails = computed<ConsentDetails>(() => consentStore.consentDetails);
 
 const handleAllow = async () => {
 	try {
@@ -47,7 +40,11 @@ const handleDeny = async () => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('mcp.consentView.title'));
-	await consentStore.fetchConsentDetails();
+	try {
+		await consentStore.fetchConsentDetails();
+	} catch (err) {
+		toast.showError(err, i18n.baseText('mcp.consentView.error.fetchDetails'));
+	}
 });
 </script>
 
@@ -61,7 +58,7 @@ onMounted(async () => {
 				<div :class="$style.arrow">
 					<N8nIcon icon="arrow-right" size="large" color="text-light" />
 				</div>
-				<div :class="[$style.logo, $style.n8n]">
+				<div :class="$style.logo">
 					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
 				</div>
 			</header>
@@ -74,7 +71,7 @@ onMounted(async () => {
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText color="text-base" size="medium">
+					<N8nText color="text-base" size="small">
 						{{
 							i18n.baseText('mcp.consentView.description', {
 								interpolate: { clientName: clentDetails.clientName },
@@ -152,7 +149,8 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	width: 500px;
+	min-width: 500px;
+	max-width: 70%;
 	padding: var(--spacing--lg);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
@@ -173,7 +171,11 @@ onMounted(async () => {
 	height: var(--spacing--2xl);
 	border: var(--border);
 	border-radius: var(--radius);
-	padding: var(--spacing--2xs);
+
+	&.n8n > div {
+		position: relative;
+		bottom: var(--spacing--5xs);
+	}
 }
 
 .content {
@@ -193,18 +195,18 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	padding-left: var(--spacing--md);
+	padding-left: var(--spacing--lg);
 	list-style-type: disc;
 
 	li {
 		color: var(--color--text);
-		font-size: var(--font-size--xs);
+		font-size: var(--font-size--2xs);
 	}
 }
 
 .docs-link {
 	color: var(--color--text);
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
 }
 
 .footer {
