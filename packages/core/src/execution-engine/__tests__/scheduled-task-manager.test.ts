@@ -190,4 +190,31 @@ describe('ScheduledTaskManager', () => {
 		expect(timeSource.getTimeSource).toHaveBeenCalledTimes(11);
 		expect(timeSource.updateTimeSource).toHaveBeenCalledTimes(10);
 	});
+
+	it('should register CronJobs with date TimeSource when onTick throws', () => {
+		const date = moment().add(1, 'minute');
+		const timeSource: ITimeSource = {
+			getTimeSource: jest.fn(() => date.toDate()),
+			updateTimeSource: jest.fn(() => date.add(1, 'minute')),
+			toString: () => 'string',
+		};
+		const onTickFailing = jest.fn(() => {
+			throw new Error('onTick failed');
+		});
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'test-node-id',
+				timezone: workflow.timezone,
+				expression: timeSource,
+			},
+			onTickFailing,
+		);
+
+		expect(onTickFailing).not.toHaveBeenCalled();
+		try {
+			jest.advanceTimersByTime(10 * 60 * 1000);
+		} catch (e) {}
+		expect(onTickFailing).toHaveBeenCalledTimes(10);
+	});
 });

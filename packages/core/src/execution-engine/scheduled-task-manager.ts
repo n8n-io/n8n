@@ -83,13 +83,14 @@ export class ScheduledTaskManager {
 					cron: summary,
 					instanceRole: this.instanceSettings.instanceRole,
 				});
-
-				onTick();
-
-				if (typeof expression !== 'string') {
-					expression.updateTimeSource();
-					job.setTime(new CronTime(expression.getTimeSource(), timezone));
-					job.start();
+				try {
+					onTick();
+				} finally {
+					if (typeof expression !== 'string') {
+						expression.updateTimeSource();
+						job.setTime(new CronTime(expression.getTimeSource(), timezone));
+						job.start();
+					}
 				}
 			},
 			undefined,
