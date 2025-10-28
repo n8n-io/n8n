@@ -85,7 +85,7 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 );
 
 const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
-const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
+const evaluatedPruneDays = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
 const sendTelemetry = (event: string) => {
 	telemetry.track(event, {
@@ -365,7 +365,7 @@ watchEffect(async () => {
 				:actions="actions"
 				:request-number-of-items="requestNumberOfItems"
 				:should-upgrade="workflowHistoryStore.shouldUpgrade"
-				:evaluated-prune-time="evaluatedPruneTime"
+				:evaluated-prune-days="evaluatedPruneDays"
 				:is-list-loading="isListLoading"
 				@action="onAction"
 				@preview="onPreview"

@@ -19,7 +19,7 @@ const props = defineProps<{
 	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
-	evaluatedPruneTime: number;
+	evaluatedPruneDays: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
 }>();
@@ -140,7 +140,7 @@ const onItemMounted = ({
 			<span>
 				{{
 					i18n.baseText('workflowHistory.limit', {
-						interpolate: { evaluatedPruneTime: String(props.evaluatedPruneTime) },
+						interpolate: { days: String(props.evaluatedPruneDays) },
 					})
 				}}
 			</span>

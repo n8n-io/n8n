@@ -77,7 +77,6 @@ const initialState = {
 		settings: {
 			enterprise: {
 				[EnterpriseEditionFeature.Sharing]: true,
-				[EnterpriseEditionFeature.WorkflowHistory]: true,
 				projects: {
 					team: {
 						limit: -1,

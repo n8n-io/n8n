@@ -54,6 +54,7 @@ export const LICENSE_QUOTAS = {
 } as const;
 
 export const UNLIMITED_LICENSE_QUOTA = -1;
+export const DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT = 24;
 
 export type BooleanLicenseFeature = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 export type NumericLicenseFeature = (typeof LICENSE_QUOTAS)[keyof typeof LICENSE_QUOTAS];

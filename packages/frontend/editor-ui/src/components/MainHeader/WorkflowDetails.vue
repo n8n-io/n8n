@@ -258,11 +258,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	return actions;
 });
 
-const isWorkflowHistoryFeatureEnabled = computed(() => {
-	// Workflow history is now enabled for all users
-	return true;
-});
-
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
@@ -669,10 +664,6 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
 
-function goToWorkflowHistoryUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
-}
-
 function getPersonalProjectToastContent() {
 	const title = locale.baseText('workflows.create.personal.toast.title');
 	if (!props.currentFolder) {
@@ -924,12 +915,7 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
-				<WorkflowHistoryButton
-					:workflow-id="props.id"
-					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
-					:is-new-workflow="isNewWorkflow"
-					@upgrade="goToWorkflowHistoryUpgrade"
-				/>
+				<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
