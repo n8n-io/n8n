@@ -156,7 +156,7 @@ const selectImportCsv = () => {
 	creationMode.value = 'import';
 	setTimeout(() => {
 		fileInputRef.value?.click();
-	}, 100);
+	}, 0);
 };
 
 const onColumnNameChange = (index: number) => {
@@ -341,7 +341,7 @@ const redirectToDataTables = () => {
 						</div>
 					</button>
 					<button
-						:class="[$style.optionCard, $style.importCard]"
+						:class="$style.optionCard"
 						@click="selectImportCsv"
 						data-test-id="import-csv-option"
 					>
@@ -387,6 +387,10 @@ const redirectToDataTables = () => {
 
 				<div v-if="isUploading" :class="$style.uploadingMessage">
 					{{ i18n.baseText('dataTable.upload.uploading') }}
+				</div>
+
+				<div v-else-if="!uploadedFileId" :class="$style.uploadingMessage">
+					{{ i18n.baseText('dataTable.upload.selectFile') }}
 				</div>
 
 				<div v-else-if="uploadedFileId && csvColumns.length > 0">
@@ -548,15 +552,6 @@ const redirectToDataTables = () => {
 	&:focus {
 		outline: 2px solid var(--color--primary);
 		outline-offset: 2px;
-	}
-}
-
-.importCard {
-	border-color: var(--color--foreground);
-
-	&:hover {
-		background-color: var(--color--foreground--shade-1);
-		border-color: var(--color--primary);
 	}
 }
 

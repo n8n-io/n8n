@@ -3111,6 +3111,7 @@
 	"dataTable.add.input.name.placeholder": "Enter data table name",
 	"dataTable.add.error": "Error creating data table",
 	"dataTable.upload.uploading": "Uploading and processing CSV file...",
+	"dataTable.upload.selectFile": "Waiting for file selection...",
 	"dataTable.upload.success": "'{fileName}' has been uploaded successfully. We found {columnCount} column and {rowCount} row | '{fileName}' has been uploaded successfully. We found {columnCount} columns and {rowCount} rows",
 	"dataTable.upload.error": "Error uploading CSV file",
 	"dataTable.import.columnsFound": "Columns found",
