@@ -3,7 +3,6 @@ packages:
   - packages/@n8n/*
   - packages/frontend/**
   - packages/extensions/**
-  - cypress
   - packages/testing/**
 
 minimumReleaseAge: 2880 # 2 days
