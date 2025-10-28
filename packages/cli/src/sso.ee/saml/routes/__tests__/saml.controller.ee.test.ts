@@ -320,6 +320,19 @@ describe('initSsoGet - Redirect URL Sanitization', () => {
 		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
 	});
 
+	test('Should sanitize malicious redirect Protocol-relative URL from query params', async () => {
+		const req = mock<AuthlessRequest>({
+			query: { redirect: '//evil.com/phishing' },
+			headers: {},
+		});
+		const res = mock<Response>();
+
+		await controller.initSsoGet(req, res);
+
+		// Should call getLoginRequestUrl with default '/' instead of malicious URL
+		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
+	});
+
 	test('Should allow valid relative URL from query params', async () => {
 		const req = mock<AuthlessRequest>({
 			query: { redirect: '/workflows/123' },

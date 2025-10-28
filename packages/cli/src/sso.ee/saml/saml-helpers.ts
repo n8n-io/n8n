@@ -197,8 +197,8 @@ export function sanitizeRedirectUrl(
 		return defaultRedirect;
 	}
 
-	// Allow local redirects (relative paths)
-	if (trimmedUrl.startsWith('/')) {
+	// Allow local redirects (relative paths), but reject protocol-relative URLs (//evil.com)
+	if (trimmedUrl.startsWith('/') && !trimmedUrl.startsWith('//')) {
 		return trimmedUrl;
 	}
 
