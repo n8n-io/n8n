@@ -1,43 +1,45 @@
 <script setup lang="ts">
 import { useConsentStore } from '@/stores/consent.store';
-import { ref, onMounted } from 'vue';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useI18n } from '@n8n/i18n';
+import { onMounted, computed } from 'vue';
+import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
+import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
+import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
+import { useToast } from '@/composables/useToast';
 
-// Reactive state
-const error = ref<string | null>(null);
+const ANTHROPIC_CLIENTS = ['claude', 'mcp inspector'];
+const LOVABLE_CLIENTS = ['lovable'];
 
 const consentStore = useConsentStore();
 
-// Hardcoded permissions
-const permissions = [
-	{
-		id: 'workflows',
-		title: 'Access your n8n workflows',
-		description: 'View, create, and modify workflows in your n8n instance',
-	},
-	{
-		id: 'credentials',
-		title: 'Manage workflow credentials',
-		description: 'Access and use credentials configured in your workflows',
-	},
-	{
-		id: 'execute',
-		title: 'Execute workflows and nodes',
-		description: 'Run workflows and see their execution results',
-	},
-	{
-		id: 'tools',
-		title: 'Use n8n as an AI tool',
-		description: 'Allow the AI to interact with your n8n instance to perform automations',
-	},
-];
+const i18n = useI18n();
+const documentTitle = useDocumentTitle();
+const toast = useToast();
+
+const error = computed(() => consentStore.error);
+
+const loading = computed(() => consentStore.isLoading);
+
+const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+
+const clientIcon = computed(() => {
+	const clientName = clentDetails.value?.clientName?.toLowerCase() ?? '';
+	if (ANTHROPIC_CLIENTS.some((name) => clientName.includes(name))) {
+		return 'anthropic';
+	} else if (LOVABLE_CLIENTS.some((name) => clientName.includes(name))) {
+		return 'lovable';
+	} else {
+		return 'mcp';
+	}
+});
 
 const handleAllow = async () => {
 	try {
 		const response = await consentStore.approveConsent(true);
 		window.location.href = response.redirectUrl;
 	} catch (err) {
-		// Error is already set in the store
-		console.error('Failed to approve consent', err);
+		toast.showError(err, i18n.baseText('oauth.consentView.error.allow'));
 	}
 };
 
@@ -46,312 +48,196 @@ const handleDeny = async () => {
 		const response = await consentStore.approveConsent(false);
 		window.location.href = response.redirectUrl;
 	} catch (err) {
-		console.error('Failed to deny consent', err);
+		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
 	}
 };
 
-// Lifecycle
 onMounted(async () => {
-	await consentStore.fetchConsentDetails();
+	documentTitle.set(i18n.baseText('oauth.consentView.title'));
+	try {
+		await consentStore.fetchConsentDetails();
+	} catch (err) {
+		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
+	}
 });
 </script>
 
 <template>
-	<!-- Same template as before -->
-	<div class="consent-container">
-		<!-- Logo Section -->
-		<div class="logo-section">
-			<div class="logo-box n8n-logo">n8n</div>
-			<div class="arrow">→</div>
-			<div class="logo-box mcp-logo">🔌</div>
-		</div>
-
-		<!-- Title -->
-		<div class="title-section">
-			<h1>
-				<span class="client-name">{{ consentStore.consentDetails.clientName }}</span> wants to
-				access your n8n MCP Server
-			</h1>
-		</div>
-
-		<!-- Error Message -->
-		<div v-if="error" class="error-message">
-			{{ consentStore.error }}
-		</div>
-
-		<!-- Description -->
-		<p class="description">
-			This will allow <strong>{{ consentStore.consentDetails.clientName }}</strong> to access the
-			following resources and capabilities:
-		</p>
-
-		<!-- Permissions List -->
-		<div class="permissions-section">
-			<div v-for="permission in permissions" :key="permission.id" class="permission-item">
-				<input type="checkbox" class="permission-checkbox" checked disabled />
-				<div class="permission-content">
-					<div class="permission-title">{{ permission.title }}</div>
-					<div class="permission-desc">{{ permission.description }}</div>
+	<div :class="$style.overlay">
+		<div :class="$style['consent-dialog']">
+			<header :class="$style.header">
+				<div :class="[$style.logo, $style.n8n]">
+					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
+				</div>
+				<div :class="$style.arrow">
+					<N8nIcon icon="arrow-right" size="large" color="text-light" />
+				</div>
+				<div :class="$style.logo">
+					<N8nIcon :icon="clientIcon" size="xlarge" color="text-dark" />
+				</div>
+			</header>
+			<div :class="$style.content">
+				<N8nHeading tag="h2" size="large" :bold="true">
+					{{
+						i18n.baseText('oauth.consentView.heading', {
+							interpolate: { clientName: clentDetails?.clientName ?? '' },
+						})
+					}}
+				</N8nHeading>
+				<div :class="$style['text-content']">
+					<N8nText color="text-base" size="small">
+						{{
+							i18n.baseText('oauth.consentView.description', {
+								interpolate: { clientName: clentDetails?.clientName ?? '' },
+							})
+						}}
+					</N8nText>
+					<ul :class="$style['permission-list']">
+						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflow') }}</li>
+					</ul>
+					<p :class="$style['docs-link']">
+						<span
+							v-n8n-html="
+								i18n.baseText('oauth.consentView.readMore', {
+									interpolate: {
+										docsUrl: MCP_DOCS_PAGE_URL,
+									},
+								})
+							"
+						></span>
+					</p>
 				</div>
 			</div>
-		</div>
-
-		<!-- Warning Box -->
-		<div class="warning-box">
-			<p>
-				<span class="warning-icon">⚠️</span>
-				<strong>Important:</strong> Make sure you trust
-				{{ consentStore.consentDetails.clientName }}. You may be sharing sensitive workflow data and
-				automation capabilities with this application.
-			</p>
-		</div>
-
-		<!-- Legal Text -->
-		<p class="legal-text">
-			The {{ consentStore.consentDetails.clientName }} <a href="#">terms of service</a> and
-			<a href="#">privacy policy</a> that you agreed to with them govern their use of your data.
-		</p>
-
-		<!-- Buttons -->
-		<div class="button-container">
-			<button
-				@click="handleDeny"
-				:disabled="consentStore.isLoading || !!consentStore.error"
-				class="btn btn-deny"
-			>
-				Deny
-			</button>
-			<button
-				@click="handleAllow"
-				:disabled="consentStore.isLoading || !!consentStore.error"
-				class="btn btn-allow"
-			>
-				<span v-if="consentStore.isLoading" class="loading-spinner"></span>
-				{{ consentStore.isLoading ? 'Authorizing...' : 'Allow' }}
-			</button>
+			<footer :class="$style.footer">
+				<N8nNotice
+					v-if="error"
+					theme="danger"
+					:data-test-id="'consent-error-notice'"
+					:content="error"
+				></N8nNotice>
+				<div :class="$style['button-group']">
+					<N8nButton
+						type="tertiary"
+						:data-test-id="'consent-deny-button'"
+						:size="'large'"
+						:loading="loading"
+						:disabled="loading || error !== null"
+						@click="handleDeny"
+					>
+						{{ i18n.baseText('generic.deny') }}
+					</N8nButton>
+					<N8nButton
+						type="primary"
+						:data-test-id="'consent-allow-button'"
+						:size="'large'"
+						:loading="loading"
+						:disabled="loading || error !== null"
+						@click="handleAllow"
+					>
+						{{ i18n.baseText('generic.allow') }}
+					</N8nButton>
+				</div>
+			</footer>
 		</div>
 	</div>
 </template>
 
-<style scoped>
-/* Same styles as before */
-.consent-container {
-	background: white;
-	border-radius: 8px;
-	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
-	max-width: 520px;
-	width: 90%;
-	padding: 32px;
-	margin: 0 auto;
+<style module lang="scss">
+.overlay {
+	position: fixed;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(71, 69, 84, 0.75);
+	z-index: 1000;
 }
 
-.logo-section {
+.consent-dialog {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 500px;
+	max-width: 70%;
+	padding: var(--spacing--lg);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+}
+
+.header {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	gap: 16px;
-	margin-bottom: 28px;
+	gap: var(--spacing--xs);
 }
 
-.logo-box {
-	width: 56px;
-	height: 56px;
-	border-radius: 10px;
+.logo {
 	display: flex;
+	justify-content: center;
 	align-items: center;
-	justify-content: center;
-	font-size: 24px;
-	font-weight: bold;
+	width: var(--spacing--2xl);
+	height: var(--spacing--2xl);
+	border: var(--border);
+	border-radius: var(--radius);
+
+	&.n8n > div {
+		position: relative;
+		bottom: var(--spacing--5xs);
+	}
 }
 
-.n8n-logo {
-	background: #ea4b71;
-	color: white;
-}
-
-.mcp-logo {
-	background: #e8e8e8;
-	font-size: 28px;
-}
-
-.arrow {
-	color: #999;
-	font-size: 18px;
-}
-
-.title-section {
-	text-align: center;
-	margin-bottom: 24px;
-}
-
-.title-section h1 {
-	font-size: 22px;
-	font-weight: 600;
-	color: #2a2a2a;
-	line-height: 1.3;
-}
-
-.client-name {
-	color: #ea4b71;
-}
-
-.description {
-	color: #666;
-	font-size: 14px;
-	line-height: 1.5;
-	margin-bottom: 24px;
-}
-
-.permissions-section {
-	margin-bottom: 24px;
-}
-
-.permission-item {
+.content {
+	padding: var(--spacing--lg);
 	display: flex;
-	align-items: flex-start;
-	margin-bottom: 16px;
-	gap: 12px;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
-.permission-checkbox {
-	width: 20px;
-	height: 20px;
-	min-width: 20px;
-	margin-top: 2px;
-	accent-color: #ea4b71;
-	pointer-events: none;
-}
-
-.permission-content {
-	flex: 1;
-}
-
-.permission-title {
-	font-weight: 600;
-	color: #2a2a2a;
-	margin-bottom: 2px;
-	font-size: 14px;
-}
-
-.permission-desc {
-	color: #666;
-	font-size: 13px;
-	line-height: 1.4;
-}
-
-.warning-box {
-	background: #fffbf0;
-	border-left: 3px solid #f0b429;
-	padding: 12px;
-	margin-bottom: 24px;
-	border-radius: 4px;
-}
-
-.warning-box p {
-	color: #975a16;
-	font-size: 13px;
-	line-height: 1.5;
-}
-
-.warning-box strong {
-	color: #744210;
-}
-
-.warning-icon {
-	color: #f0b429;
-	margin-right: 8px;
-}
-
-.legal-text {
-	text-align: center;
-	color: #666;
-	font-size: 12px;
-	line-height: 1.5;
-	margin-bottom: 24px;
-}
-
-.legal-text a {
-	color: #ea4b71;
-	text-decoration: none;
-}
-
-.legal-text a:hover {
-	text-decoration: underline;
-}
-
-.button-container {
+.text-content {
 	display: flex;
-	gap: 16px;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
+.permission-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding-left: var(--spacing--lg);
+	list-style-type: disc;
+
+	li {
+		color: var(--color--text);
+		font-size: var(--font-size--2xs);
+	}
+}
+
+.docs-link {
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
+}
+
+.footer {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
 	justify-content: center;
-}
+	gap: var(--spacing--sm);
 
-.btn {
-	padding: 12px 32px;
-	border-radius: 6px;
-	font-size: 14px;
-	font-weight: 600;
-	cursor: pointer;
-	transition: all 0.2s ease;
-	border: none;
-	min-width: 110px;
-}
+	:global(.notice) {
+		margin: 0;
+	}
 
-.btn-deny {
-	background: white;
-	color: #666;
-	border: 2px solid #ddd;
-}
-
-.btn-deny:hover {
-	background: #f5f5f5;
-	border-color: #bbb;
-}
-
-.btn-allow {
-	background: #ea4b71;
-	color: white;
-}
-
-.btn-allow:hover {
-	background: #d63861;
-	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(234, 75, 113, 0.3);
-}
-
-.btn:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-.btn:disabled:hover {
-	transform: none;
-	box-shadow: none;
-}
-
-.loading-spinner {
-	display: inline-block;
-	width: 14px;
-	height: 14px;
-	border: 2px solid #ffffff;
-	border-radius: 50%;
-	border-top-color: transparent;
-	animation: spin 0.8s linear infinite;
-	margin-right: 8px;
-}
-
-.error-message {
-	background: #fee;
-	border-left: 3px solid #f44;
-	color: #c00;
-	padding: 12px;
-	margin-bottom: 20px;
-	border-radius: 4px;
-	font-size: 14px;
-}
-
-@keyframes spin {
-	to {
-		transform: rotate(360deg);
+	.button-group {
+		display: flex;
+		justify-content: center;
+		gap: var(--spacing--2xs);
 	}
 }
 </style>
