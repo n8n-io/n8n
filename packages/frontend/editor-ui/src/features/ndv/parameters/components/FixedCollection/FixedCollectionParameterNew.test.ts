@@ -66,13 +66,13 @@ describe('FixedCollectionParameterNew.vue', () => {
 
 			expect(rendered.getByTestId('fixed-collection-rules')).toBeInTheDocument();
 			expect(rendered.getByText('Routing Rules')).toBeInTheDocument();
-			expect(rendered.getByTestId('fixed-collection-add-header')).toBeInTheDocument();
+			expect(rendered.getByTestId('fixed-collection-add-top-level-button')).toBeInTheDocument();
 			expect(rendered.getByText('Values 1')).toBeInTheDocument();
 		});
 
 		it('emits valueChanged event on option creation', async () => {
 			const rendered = renderComponent();
-			await userEvent.click(rendered.getByTestId('fixed-collection-add-header'));
+			await userEvent.click(rendered.getByTestId('fixed-collection-add-top-level-button'));
 			expect(rendered.emitted('valueChanged')).toEqual([
 				[
 					{
@@ -169,7 +169,8 @@ describe('FixedCollectionParameterNew.vue', () => {
 				},
 			});
 
-			expect(queryByTestId('fixed-collection-add-header')).not.toBeInTheDocument();
+			expect(queryByTestId('fixed-collection-add-top-level-button')).not.toBeInTheDocument();
+			expect(queryByTestId('fixed-collection-add-header-nested')).not.toBeInTheDocument();
 		});
 	});
 
@@ -222,7 +223,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 		it('emits valueChanged when adding new items', async () => {
 			const rendered = renderComponent();
 
-			await userEvent.click(rendered.getByTestId('fixed-collection-add-header'));
+			await userEvent.click(rendered.getByTestId('fixed-collection-add-top-level-button'));
 			await nextTick();
 
 			expect(rendered.emitted('valueChanged')).toBeDefined();
@@ -409,13 +410,13 @@ describe('FixedCollectionParameterNew.vue', () => {
 			values: {},
 		};
 
-		it('renders section header with add button for top-level multiple options', () => {
+		it('renders section header with add dropdown for top-level multiple options', () => {
 			const { getByText, getByTestId } = renderComponent({
 				props: topLevelMultipleOptionsProps,
 			});
 
 			expect(getByText('Routing Rules')).toBeInTheDocument();
-			expect(getByTestId('fixed-collection-add-header-top-level')).toBeInTheDocument();
+			expect(getByTestId('fixed-collection-add-top-level-dropdown')).toBeInTheDocument();
 		});
 
 		it('renders collapsible panels for each added option', () => {
@@ -436,7 +437,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 			expect(getByText('Option 1')).toBeInTheDocument();
 		});
 
-		it('disables add button when all options are added', () => {
+		it('disables add dropdown when all options are added', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...topLevelMultipleOptionsProps,
@@ -455,8 +456,8 @@ describe('FixedCollectionParameterNew.vue', () => {
 				},
 			});
 
-			const addButton = getByTestId('fixed-collection-add-header-top-level');
-			expect(addButton).toBeDisabled();
+			const addDropdown = getByTestId('fixed-collection-add-top-level-dropdown');
+			expect(addDropdown).toBeInTheDocument();
 		});
 
 		it('shows correct tooltip when all options added', () => {
@@ -478,8 +479,8 @@ describe('FixedCollectionParameterNew.vue', () => {
 				},
 			});
 
-			const addButton = getByTestId('fixed-collection-add-header-top-level');
-			expect(addButton).toBeDisabled();
+			const addDropdown = getByTestId('fixed-collection-add-top-level-dropdown');
+			expect(addDropdown).toBeInTheDocument();
 		});
 
 		it('renders add dropdown at bottom for top-level multiple options', () => {

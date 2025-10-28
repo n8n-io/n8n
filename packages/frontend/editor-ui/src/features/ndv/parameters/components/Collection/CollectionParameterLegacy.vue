@@ -19,7 +19,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
-import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { isPresent } from '@/utils/typesUtils';
 
 const selectedOption = ref<string | undefined>(undefined);
@@ -221,14 +221,31 @@ function valueChanged(parameterData: IUpdateInformation) {
 				/>
 			</Suspense>
 
-			<div v-if="!isReadOnly && parameterOptions.length > 0" :class="$style.paramOptions">
-				<div :class="$style.addOption">
+			<div v-if="!isReadOnly" :class="$style.paramOptions">
+				<N8nButton
+					v-if="parameterOptions.length === 1"
+					type="tertiary"
+					block
+					:label="getPlaceholderText"
+					data-test-id="collection-parameter-add"
+					@click="optionSelected(parameterOptions[0].name)"
+				/>
+				<N8nButton
+					v-else-if="(parameter.options ?? []).length === 1"
+					type="tertiary"
+					block
+					:label="getPlaceholderText"
+					:disabled="true"
+					data-test-id="collection-parameter-add"
+				/>
+				<div v-else :class="$style.addOption">
 					<N8nSelect
 						ref="addSelectRef"
 						v-model="selectedOption"
 						:placeholder="getPlaceholderText"
 						size="small"
 						filterable
+						:disabled="parameterOptions.length === 0"
 						@update:model-value="optionSelected"
 					>
 						<N8nOption

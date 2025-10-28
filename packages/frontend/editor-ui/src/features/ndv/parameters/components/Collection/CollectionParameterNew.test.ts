@@ -77,16 +77,16 @@ describe('CollectionParameterNew.vue', () => {
 			expect(getByTestId('collection-parameter-add-header')).toBeInTheDocument();
 		});
 
-		it('does not render section header when nested', () => {
-			const { queryByText } = renderComponent({
+		it('does not render section header add button when nested', () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...baseProps,
 					isNested: true,
 				},
 			});
-			// Should not have section header
-			const headers = queryByText('Additional Fields');
-			expect(headers).not.toBeInTheDocument();
+			// When nested, uses collapsible panel instead of section header
+			// Section header has the add button with this test ID
+			expect(queryByTestId('collection-parameter-add-header')).not.toBeInTheDocument();
 		});
 
 		it('renders dropdown for adding new items', () => {
@@ -96,7 +96,7 @@ describe('CollectionParameterNew.vue', () => {
 	});
 
 	describe('Collections with values', () => {
-		it('renders collapsible panels for collection items', () => {
+		it('renders parameters from collection items', () => {
 			const { getByText } = renderComponent({
 				props: {
 					...baseProps,
@@ -113,10 +113,10 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			expect(getByText('Field 1')).toBeInTheDocument();
+			expect(getByText('Value 1')).toBeInTheDocument();
 		});
 
-		it('renders multiple collections correctly', () => {
+		it('renders parameters from multiple collections correctly', () => {
 			const { getByText } = renderComponent({
 				props: {
 					...baseProps,
@@ -135,8 +135,8 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			expect(getByText('Field 1')).toBeInTheDocument();
-			expect(getByText('Field 2')).toBeInTheDocument();
+			expect(getByText('Value 1')).toBeInTheDocument();
+			expect(getByText('Value 2')).toBeInTheDocument();
 		});
 	});
 
@@ -170,7 +170,7 @@ describe('CollectionParameterNew.vue', () => {
 	});
 
 	describe('Deleting items', () => {
-		it('shows delete action in collection panel', () => {
+		it('renders collection parameters correctly', () => {
 			const { getByText, getAllByRole } = renderComponent({
 				props: {
 					...baseProps,
@@ -187,8 +187,7 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			expect(getByText('Field 1')).toBeInTheDocument();
-			// Check that actions button exists (the collapsible panel should have action buttons)
+			expect(getByText('Value 1')).toBeInTheDocument();
 			const buttons = getAllByRole('button');
 			expect(buttons.length).toBeGreaterThan(0);
 		});
@@ -208,7 +207,7 @@ describe('CollectionParameterNew.vue', () => {
 		});
 
 		it('does not show delete actions when isReadOnly is true', () => {
-			const { queryByText } = renderComponent({
+			const { getByText } = renderComponent({
 				props: {
 					...baseProps,
 					isReadOnly: true,
@@ -225,13 +224,13 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			// Verify the field is rendered
-			expect(queryByText('Field 1')).toBeInTheDocument();
+			// Verify the parameter is rendered
+			expect(getByText('Value 1')).toBeInTheDocument();
 		});
 	});
 
 	describe('Sortable collections', () => {
-		it('renders drag handles when sortable and multiple items exist', () => {
+		it('renders parameters when sortable and multiple items exist', () => {
 			const { getByText } = renderComponent({
 				props: {
 					...baseProps,
@@ -256,9 +255,9 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			// Just verify collections are rendered - drag functionality tested separately
-			expect(getByText('Field 1')).toBeInTheDocument();
-			expect(getByText('Field 2')).toBeInTheDocument();
+			// Verify parameters from collections are rendered
+			expect(getByText('Value 1')).toBeInTheDocument();
+			expect(getByText('Value 2')).toBeInTheDocument();
 		});
 
 		it('respects sortable: false option', () => {
@@ -284,12 +283,12 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			expect(getByText('Field 1')).toBeInTheDocument();
+			expect(getByText('Value 1')).toBeInTheDocument();
 		});
 	});
 
 	describe('Expanded state', () => {
-		it('initializes expanded state for collections', () => {
+		it('renders collection parameters', () => {
 			const { getByText } = renderComponent({
 				props: {
 					...baseProps,
@@ -306,8 +305,8 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			// Verify collection is rendered
-			expect(getByText('Field 1')).toBeInTheDocument();
+			// Verify parameter is rendered
+			expect(getByText('Value 1')).toBeInTheDocument();
 		});
 	});
 
