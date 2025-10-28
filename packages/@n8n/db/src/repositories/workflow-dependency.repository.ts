@@ -19,7 +19,7 @@ export class WorkflowDependencies {
 	add(dependency: {
 		dependencyType: string;
 		dependencyKey: string | null;
-		dependencyInfo: Record<string, unknown> | null;
+		dependencyInfo: unknown;
 	}) {
 		const dep = new WorkflowDependency();
 		Object.assign(dep, dependency);
@@ -80,14 +80,16 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			// NOTE: we use raw SQL here because TypeORM does not support specifying the transaction type.
 			await queryRunner.query('BEGIN IMMEDIATE TRANSACTION');
 
-			// Perform the update using queryRunner.manager
-			const result = await this.executeUpdate(workflowId, dependencies, queryRunner.manager);
+			try {
+				// Perform the update using queryRunner.manager
+				const result = await this.executeUpdate(workflowId, dependencies, queryRunner.manager);
 
-			await queryRunner.query('COMMIT');
-			return result;
-		} catch (error) {
-			await queryRunner.query('ROLLBACK');
-			throw error;
+				await queryRunner.query('COMMIT');
+				return result;
+			} catch (error) {
+				await queryRunner.query('ROLLBACK');
+				throw error;
+			}
 		} finally {
 			await queryRunner.release();
 		}
@@ -106,7 +108,9 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		// If we deleted something, the incoming version is newer - proceed with insert
 		if (deleteResult.affected && deleteResult.affected > 0) {
 			const entities = dependencies.dependencies.map((dep) => this.create(dep));
-			await tx.save(WorkflowDependency, entities);
+			// NOTE: we cast to any[] because TypeORM doesn't like the JSON column.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			await tx.insert(WorkflowDependency, entities as any[]);
 			return true;
 		}
 
@@ -116,9 +120,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		const hasData = await this.hasExistingData(workflowId, tx);
 
 		if (!hasData) {
-			// There's no existing data, so we can
+			// There's no existing data, so we can safely insert the new dependencies.
 			const entities = dependencies.dependencies.map((dep) => this.create(dep));
-			await tx.save(WorkflowDependency, entities);
+			// NOTE: we cast to any[] because TypeORM doesn't like the JSON column.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			await tx.insert(WorkflowDependency, entities as any[]);
 			return true;
 		}
 
