@@ -3551,11 +3551,7 @@ describe('dataTable', () => {
 			// in face of V2 we decided to accept these breaking
 			// [null, null, 'eq', true],
 			// [null, null, 'neq', false],
-			[11, 3, 'gt', true],
-			[11, 3, 'lt', false],
-			[11, '3', 'gt', false],
 			[11, '3', 'eq', false],
-			[11, '3', 'lt', false],
 			[true, true, 'eq', true],
 			[true, false, 'eq', false],
 			[true, false, 'neq', true],

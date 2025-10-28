@@ -22,7 +22,10 @@ import type { DataTableUserTableName } from '../data-table.types';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { parsePath, toPostgresPath, toSQLitePath } from './path-utils';
 
-export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
+export function toDslColumns(
+	columns: DataTableCreateColumnSchema[],
+	dbType: DataSourceOptions['type'],
+): DslColumn[] {
 	return columns.map((col) => {
 		const name = new DslColumn(col.name.trim());
 
@@ -36,7 +39,10 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 			case 'date':
 				return name.timestampTimezone();
 			case 'json':
-				return name.jsonb;
+				if (dbType === 'postgres') {
+					return name.jsonb;
+				}
+				return name.json;
 			default:
 				return name.text;
 		}
@@ -70,7 +76,10 @@ export function dataTableColumnTypeToSql(
 			}
 			return 'DATETIME';
 		case 'json':
-			return 'JSONB';
+			if (dbType === 'postgres') {
+				return 'JSONB';
+			}
+			return 'JSON';
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
@@ -417,7 +426,7 @@ export function resolvePath(
 			// this is mostly for sqlite, behavior in MariaDB and MySQL mostly aligns though there are subtle
 			// difference we don't care for in the face of imminent removal of support
 			const path = toSQLitePath(pathArray);
-			const base = `jsonb_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
+			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
 
 			// if (typeof value === 'number') {
 			// 	return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;

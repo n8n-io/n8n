@@ -24,7 +24,10 @@ export class DataTableDDLService {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
+			const dslColumns = [
+				new DslColumn('id').int.autoGenerate2.primary,
+				...toDslColumns(columns, this.dataSource.options.type),
+			];
 			const createTable = new CreateTable(toTableName(dataTableId), '', em.queryRunner).withColumns(
 				...dslColumns,
 			).withTimestamps;

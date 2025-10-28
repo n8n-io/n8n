@@ -80,12 +80,14 @@ function getConditionAndParams(
 	}
 
 	// For filters, we let TypeORM handle date conversion through parameterized queries.
-	const value = filter.value;
+	let value = filter.value;
 	let postfix = '';
 	if (typeof value === 'object' && !(value instanceof Date)) {
 		// value = JSON.stringify(value);
 		if (dbType === 'postgres') {
 			postfix = '::jsonb';
+		} else {
+			value = JSON.stringify(value);
 		}
 	}
 
