@@ -60,7 +60,7 @@ function getConditionAndParams(
 	tableReference?: string,
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
-	console.log('filterValue', filter.value);
+	console.log('filterValue', filter.value, typeof filter.value);
 	const columnRef = resolvePath(
 		tableReference
 			? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`

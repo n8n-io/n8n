@@ -388,7 +388,6 @@ export function resolvePath(
 		const pathArray = parsePath(path);
 		if (dbType === 'postgres') {
 			const base = `${ref}${toPostgresPath(pathArray)}`;
-			return `(${base})::text`;
 
 			if (typeof value === 'number') {
 				return `(${base})::numeric`;
@@ -406,6 +405,7 @@ export function resolvePath(
 			// difference we don't care for in the face of imminent removal of support
 			const path = toSQLitePath(pathArray);
 			const base = `json_extract(${ref}, '${path.replaceAll("'", "\\'")}')`;
+
 			if (typeof value === 'number') {
 				return `CAST(${base} as ${dataTableColumnTypeToSql('number', dbType)})`;
 			}
