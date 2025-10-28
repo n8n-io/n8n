@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AgentCardData } from '@/features/ai/chatHub/chat.types';
-import { N8nCard, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nAvatar, N8nIconButton, N8nText } from '@n8n/design-system';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import { RouterLink } from 'vue-router';
 import { computed } from 'vue';
@@ -15,6 +15,8 @@ const emit = defineEmits<{
 	delete: [];
 }>();
 
+const isCustomAgent = computed(() => props.data.type === 'custom-agent');
+
 const name = computed(() => {
 	if (props.data.type === 'custom-agent') {
 		return props.data.agent.name;
@@ -24,7 +26,7 @@ const name = computed(() => {
 
 const description = computed(() => {
 	if (props.data.type === 'custom-agent') {
-		return props.data.agent.description;
+		return props.data.agent.description || 'No description';
 	}
 	return 'n8n workflow agent';
 });
@@ -43,128 +45,110 @@ const model = computed(() => {
 	return null;
 });
 
-const updatedAt = computed(() => {
+const metadata = computed(() => {
+	const parts = [];
+
 	if (props.data.type === 'custom-agent') {
-		return props.data.agent.updatedAt;
+		parts.push(`${providerDisplayNames[provider.value]} • ${model.value}`);
+		parts.push('Private');
+	} else {
+		parts.push(`${providerDisplayNames[provider.value]} workflow`);
 	}
-	return null;
+
+	return parts.join(' • ');
 });
 
-function formatDate(dateString: string): string {
-	const date = new Date(dateString);
-	const now = new Date();
-	const diffInMs = now.getTime() - date.getTime();
-	const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-	if (diffInDays === 0) {
-		return 'Today';
-	}
-	if (diffInDays === 1) {
-		return 'Yesterday';
-	}
-	if (diffInDays < 7) {
-		return `${diffInDays} days ago`;
-	}
-
-	return date.toLocaleDateString();
-}
+const avatarText = computed(() => {
+	return name.value.charAt(0).toUpperCase();
+});
 </script>
 
 <template>
-	<N8nCard :class="$style.card" hoverable>
-		<template #header>
-			<N8nText tag="h3" size="medium" bold>
-				<RouterLink :to="getAgentRoute(data)" :class="$style.cardLink">
-					{{ name }}
-				</RouterLink>
-			</N8nText>
-			<div v-if="data.type === 'custom-agent'" :class="$style.cardActions">
-				<N8nIconButton
-					icon="pen"
-					type="tertiary"
-					size="small"
-					title="Edit agent"
-					@click="emit('edit')"
-				/>
-				<N8nIconButton
-					icon="trash-2"
-					type="tertiary"
-					size="small"
-					title="Delete agent"
-					@click="emit('delete')"
-				/>
-			</div>
-		</template>
+	<RouterLink :to="getAgentRoute(data)" :class="$style.card">
+		<N8nAvatar :class="$style.avatar" size="large">{{ avatarText }}</N8nAvatar>
 
-		<div :class="$style.descriptionContainer">
-			<N8nText :class="$style.description" color="text-light">
+		<div :class="$style.content">
+			<N8nText tag="h3" size="medium" bold :class="$style.title">
+				{{ name }}
+			</N8nText>
+			<N8nText size="small" color="text-light" :class="$style.description">
 				{{ description }}
+			</N8nText>
+			<N8nText size="small" color="text-light" :class="$style.metadata">
+				{{ metadata }}
 			</N8nText>
 		</div>
 
-		<template #footer>
-			<N8nText size="xsmall" color="text-light">
-				<span v-if="provider === 'n8n'"> {{ providerDisplayNames[provider] }} workflow </span>
-				<span v-else-if="provider && model">
-					{{ providerDisplayNames[provider] }} • {{ model }}
-				</span>
-				<span v-else>No model configured</span>
-			</N8nText>
-			<N8nText v-if="updatedAt" size="xsmall" color="text-light" :class="$style.lastUpdate">
-				Updated {{ formatDate(updatedAt) }}
-			</N8nText>
-		</template>
-	</N8nCard>
+		<div v-if="isCustomAgent" :class="$style.actions">
+			<N8nIconButton
+				icon="pen"
+				type="tertiary"
+				size="medium"
+				title="Edit"
+				@click.prevent="emit('edit')"
+			/>
+			<N8nIconButton
+				icon="trash-2"
+				type="tertiary"
+				size="medium"
+				title="More options"
+				@click.prevent="emit('delete')"
+			/>
+		</div>
+	</RouterLink>
 </template>
 
 <style lang="scss" module>
 .card {
-	position: relative;
-	cursor: pointer;
-	transition: transform 0.2s ease;
-
-	& > div {
-		height: 100%;
-	}
-}
-
-.cardLink {
-	color: inherit;
-	text-decoration: none;
-
-	&::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-	}
-}
-
-.cardActions {
 	display: flex;
-	gap: var(--spacing--4xs);
+	align-items: center;
+	gap: var(--spacing--md);
+	padding: var(--spacing--md);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	text-decoration: none;
+	color: inherit;
+	transition: border-color 0.2s ease;
+
+	&:hover {
+		border-color: var(--color--primary);
+	}
+}
+
+.avatar {
 	flex-shrink: 0;
-	position: relative;
-	z-index: 1;
 }
 
-.descriptionContainer {
-	padding-block: var(--spacing--sm);
+.content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	flex: 1;
+	min-width: 0;
 }
 
-.description {
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	word-break: break-word;
-}
-
-.lastUpdate {
+.title {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	min-width: 0;
+}
+
+.description {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.metadata {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.actions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 </style>

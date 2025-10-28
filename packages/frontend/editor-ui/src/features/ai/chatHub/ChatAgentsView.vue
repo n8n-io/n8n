@@ -137,6 +137,7 @@ onMounted(async () => {
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
+	max-width: var(--content-container-width);
 	padding: var(--spacing--xl);
 	gap: var(--spacing--xl);
 	overflow-y: auto;
@@ -166,8 +167,8 @@ onMounted(async () => {
 }
 
 .agentsGrid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	display: flex;
+	flex-direction: column;
 	gap: var(--spacing--lg);
 }
 </style>
