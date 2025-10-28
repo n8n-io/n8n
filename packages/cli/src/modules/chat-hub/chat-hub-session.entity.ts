@@ -81,6 +81,21 @@ export class ChatHubSession extends WithTimestamps {
 	@JoinColumn({ name: 'workflowId' })
 	workflow?: WorkflowEntity | null;
 
+	/*
+	 * ID of the custom agent to use (if applicable).
+	 * Only set when provider is 'custom-agent'.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	agentId: string | null;
+
+	/*
+	 * Cached name of the custom agent to use (if applicable).
+	 * In case agent gets deleted
+	 * Only set when provider is 'custom-agent'.
+	 */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	agentName: string | null;
+
 	/**
 	 * All messages that belong to this chat session.
 	 */
