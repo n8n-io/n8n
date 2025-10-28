@@ -60,6 +60,7 @@ function getConditionAndParams(
 	tableReference?: string,
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
+	console.log('filterValue', filter.value);
 	const columnRef = resolvePath(
 		tableReference
 			? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
@@ -81,7 +82,7 @@ function getConditionAndParams(
 	// For filters, we let TypeORM handle date conversion through parameterized queries.
 	let value = filter.value;
 
-	if (typeof value === 'object' && !(value instanceof Date)) {
+	if (dbType.startsWith('sqlite') && typeof value === 'object' && !(value instanceof Date)) {
 		value = JSON.stringify(value);
 	}
 
@@ -95,7 +96,12 @@ function getConditionAndParams(
 	};
 
 	if (operators[filter.condition]) {
-		return [`${columnRef} ${operators[filter.condition]} :${paramName}`, { [paramName]: value }];
+		const result = [
+			`${columnRef} ${operators[filter.condition]} :${paramName}`,
+			{ [paramName]: value },
+		];
+		console.log('result', result);
+		return result as never;
 	}
 
 	// Special handling for neq to include NULL values (only if value is not null!)
