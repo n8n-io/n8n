@@ -3,9 +3,6 @@
 // They can be only mapped to tokens.
 // Tokens should be used instead in components and other UI elements
 
-// ! To dos:
-// - Tweak the hue and saturation of grayscale
-
 @mixin primitives {
 	// White
 	--color--white-alpha-100: hsla(220, 1%, 100%, 0.1);

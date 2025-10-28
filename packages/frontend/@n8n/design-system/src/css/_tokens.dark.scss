@@ -69,10 +69,10 @@
 
 	// Canvas
 	--canvas--color--background: var(--color--gray-950);
-	--canvas--color--background--h: 220;
-	--canvas--color--background--s: 1%;
-	--canvas--color--background--l: 18%;
-	--canvas--dot--color: var(--color--gray-700);
+	--canvas--color--background--h: 0;
+	--canvas--color--background--s: 0%;
+	--canvas--color--background--l: 9%;
+	--canvas--dot--color: var(--color--gray-800);
 	--canvas--read-only-line--color: var(--color--gray-900);
 	--canvas--color--selected: var(--color--white-alpha-400);
 	--canvas--color--selected-transparent: var(--canvas--color--selected);
