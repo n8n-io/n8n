@@ -12,8 +12,6 @@ import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'v
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
@@ -36,8 +34,6 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
-const chatStore = useChatStore();
-const workflowsStore = useWorkflowsStore();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -51,13 +47,7 @@ const speech = useSpeechSynthesis(messageContent, {
 	volume: 1,
 });
 
-const model = computed(() =>
-	restoreConversationModelFromMessageOrSession(
-		message,
-		chatStore.agents,
-		workflowsStore.workflowsById,
-	),
-);
+const model = computed(() => restoreConversationModelFromMessageOrSession(message));
 
 async function handleCopy() {
 	const text = message.content;
