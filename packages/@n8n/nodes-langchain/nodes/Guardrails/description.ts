@@ -423,6 +423,11 @@ export const versionDescription: INodeTypeDescription = {
 				'Whether to customize the system message used by the guardrail to specify the output format',
 			type: 'boolean',
 			default: false,
+			displayOptions: {
+				show: {
+					'/operation': ['classify'],
+				},
+			},
 		},
 		{
 			displayName: 'System Message',

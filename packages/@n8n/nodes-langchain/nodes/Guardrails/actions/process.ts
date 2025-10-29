@@ -40,11 +40,9 @@ export async function process(
 	const inputText = this.getNodeParameter('text', itemIndex) as string;
 	const operation = this.getNodeParameter('operation', 0) as 'classify' | 'sanitize';
 	const guardrails = this.getNodeParameter('guardrails', itemIndex) as GuardrailsOptions;
-	const customizeSystemMessage = this.getNodeParameter(
-		'customizeSystemMessage',
-		itemIndex,
-		false,
-	) as boolean;
+	const customizeSystemMessage =
+		operation === 'classify' &&
+		(this.getNodeParameter('customizeSystemMessage', itemIndex, false) as boolean);
 	const systemMessage = customizeSystemMessage
 		? (this.getNodeParameter('systemMessage', itemIndex) as string)
 		: undefined;

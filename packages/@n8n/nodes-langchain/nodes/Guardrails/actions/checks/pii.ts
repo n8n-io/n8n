@@ -213,7 +213,10 @@ const DEFAULT_PII_PATTERNS: Record<PIIEntity, RegExp> = {
  */
 function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 	if (!text) {
-		throw new Error('Text cannot be empty or null');
+		return {
+			mapping: {},
+			analyzerResults: [],
+		};
 	}
 
 	const grouped: Record<string, string[]> = {};
