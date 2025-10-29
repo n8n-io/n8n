@@ -585,16 +585,6 @@ export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
 }
 
-export interface ITagRow {
-	tag?: ITag;
-	usage?: string;
-	create?: boolean;
-	disable?: boolean;
-	update?: boolean;
-	delete?: boolean;
-	canDelete?: boolean;
-}
-
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
 	pinnedDataLastUpdatedAt?: number;
@@ -608,13 +598,6 @@ export interface NodeMetadataMap {
 
 export interface CommunityPackageMap {
 	[name: string]: PublicInstalledPackage;
-}
-
-export interface ITagsState {
-	tags: { [id: string]: ITag };
-	loading: boolean;
-	fetchedAll: boolean;
-	fetchedUsageCount: boolean;
 }
 
 export type Modals = {

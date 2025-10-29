@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import TagsDropdown from '@/components/TagsDropdown.vue';
+import TagsDropdown from './TagsDropdown.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useTagsStore } from '@/stores/tags.store';
-import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
+import { useAnnotationTagsStore } from '../tags.store';
+import { ANNOTATION_TAGS_MANAGER_MODAL_KEY } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';
 
 interface TagsDropdownWrapperProps {
@@ -16,7 +16,7 @@ interface TagsDropdownWrapperProps {
 const props = withDefaults(defineProps<TagsDropdownWrapperProps>(), {
 	placeholder: '',
 	modelValue: () => [],
-	createEnabled: true,
+	createEnabled: false,
 	eventBus: null,
 });
 
@@ -26,7 +26,7 @@ const emit = defineEmits<{
 	blur: [];
 }>();
 
-const tagsStore = useTagsStore();
+const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
 
 const selectedTags = computed({
@@ -43,7 +43,7 @@ async function createTag(name: string) {
 }
 
 function handleManageTags() {
-	uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
+	uiStore.openModal(ANNOTATION_TAGS_MANAGER_MODAL_KEY);
 }
 
 function handleEsc() {

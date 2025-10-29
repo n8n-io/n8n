@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import TagsContainer from './TagsContainer.vue';
-import { useTagsStore } from '@/stores/tags.store';
+import { useTagsStore } from '../tags.store';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 
 interface Props {
