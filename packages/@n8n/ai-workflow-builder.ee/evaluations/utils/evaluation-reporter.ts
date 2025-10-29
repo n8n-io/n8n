@@ -53,6 +53,7 @@ export function generateMarkdownReport(
 - Connections: ${formatPercentage(categoryAverages.connections)}
 - Expressions: ${formatPercentage(categoryAverages.expressions)}
 - Node Configuration: ${formatPercentage(categoryAverages.nodeConfiguration)}
+- Best Practices: ${formatPercentage(categoryAverages.bestPractices ?? 0)}
 
 ## Violations Summary
 - Critical: ${violationCounts.critical}
@@ -79,21 +80,23 @@ export function generateMarkdownReport(
 `;
 
 	results.forEach((result) => {
+		const techniques = result.evaluationResult.bestPractices.techniques ?? [];
+		const techniquesDisplay = techniques.length > 0 ? techniques.join(', ') : 'None identified';
+
 		report += `### ${result.testCase.name} (${result.testCase.id})
 - **Score**: ${formatPercentage(result.evaluationResult.overallScore)}
 - **Generation Time**: ${result.generationTime}ms
 - **Nodes Generated**: ${result.generatedWorkflow.nodes.length}
+- **Techniques**: ${techniquesDisplay}
 - **Summary**: ${result.evaluationResult.summary}
+
 `;
 
 		// Add cache stats for this test if available
 		if (result.cacheStats) {
 			const formatted = formatCacheStats(result.cacheStats);
-			report += `- **Cache Hit Rate**: ${formatted.cacheHitRate}
-`;
+			report += `- **Cache Hit Rate**: ${formatted.cacheHitRate}`;
 		}
-
-		report += '\n';
 
 		if (
 			result.evaluationResult.criticalIssues &&
@@ -122,6 +125,10 @@ export function generateMarkdownReport(
 			...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
 				...v,
 				category: 'Node Configuration',
+			})),
+			...result.evaluationResult.bestPractices.violations.map((v) => ({
+				...v,
+				category: 'Best Practices',
 			})),
 		];
 
@@ -165,6 +172,26 @@ export function displayTestResults(
 			console.log(
 				`     LLM Score: ${llmScore} | Prog Score: ${progScore} | Nodes: ${result.generatedWorkflow?.nodes?.length} | Time: ${result.generationTime}ms`,
 			);
+
+			// Display techniques if available
+			if (
+				!result.error &&
+				result.evaluationResult.bestPractices.techniques &&
+				result.evaluationResult.bestPractices.techniques.length > 0
+			) {
+				const techniques = result.evaluationResult.bestPractices.techniques.join(', ');
+				console.log(`     ${pc.dim('Techniques:')} ${pc.cyan(techniques)}`);
+			}
+
+			// Display best practices score
+			if (!result.error) {
+				const bpScore = formatColoredScore(result.evaluationResult.bestPractices.score);
+				const bpViolations = result.evaluationResult.bestPractices.violations.length;
+				console.log(
+					`     ${pc.dim('Best Practices:')} ${bpScore} ${pc.dim(`(${bpViolations} violations)`)}`,
+				);
+			}
+
 			if (result.error) {
 				console.log(`     ${pc.red('Error:')} ${pc.dim(result.error)}`);
 			}
@@ -212,6 +239,7 @@ export function displaySummaryTable(metrics: {
 		['  Connections', formatColoredScore(categoryAverages.connections)],
 		['  Expressions', formatColoredScore(categoryAverages.expressions)],
 		['  Node Config', formatColoredScore(categoryAverages.nodeConfiguration)],
+		['  Best Practices', formatColoredScore(categoryAverages.bestPractices ?? 0)],
 		['  Violations', ''],
 		[
 			'    Critical',
@@ -348,6 +376,11 @@ export function displayViolationsDetail(results: TestResult[]): void {
 				})),
 				...result.evaluationResult.nodeConfiguration.violations.map((violation: Violation) => ({
 					violation: { ...violation, category: 'Node Config' },
+					testName: result.testCase.name,
+					source: 'llm' as const,
+				})),
+				...result.evaluationResult.bestPractices.violations.map((v) => ({
+					violation: { ...v, category: 'Best Practices' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),

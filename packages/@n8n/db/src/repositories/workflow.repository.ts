@@ -756,7 +756,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		);
 	}
 
-	async findWorkflowsWithNodeType(nodeTypes: string[]) {
+	async findWorkflowsWithNodeType(nodeTypes: string[], includeNodes: boolean = false) {
 		if (!nodeTypes?.length) return [];
 
 		const qb = this.createQueryBuilder('workflow');
@@ -766,8 +766,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			this.globalConfig.database.type,
 		);
 
-		const workflows: Array<{ id: string; name: string; active: boolean }> = await qb
-			.select(['workflow.id', 'workflow.name', 'workflow.active'])
+		const workflows: Array<
+			Pick<WorkflowEntity, 'id' | 'name' | 'active'> & Partial<Pick<WorkflowEntity, 'nodes'>>
+		> = await qb
+			.select([
+				'workflow.id',
+				'workflow.name',
+				'workflow.active',
+				...(includeNodes ? ['workflow.nodes'] : []),
+			])
 			.where(whereClause, parameters)
 			.getMany();
 

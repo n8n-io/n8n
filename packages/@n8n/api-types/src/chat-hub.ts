@@ -1,3 +1,4 @@
+import type { StructuredChunk } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -32,31 +33,26 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
  */
 const openAIModelSchema = z.object({
 	provider: z.literal('openai'),
-	name: z.string(),
 	model: z.string(),
 });
 
 const anthropicModelSchema = z.object({
 	provider: z.literal('anthropic'),
-	name: z.string(),
 	model: z.string(),
 });
 
 const googleModelSchema = z.object({
 	provider: z.literal('google'),
-	name: z.string(),
 	model: z.string(),
 });
 
 const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
-	name: z.string(),
 	workflowId: z.string(),
 });
 
 const chatAgentSchema = z.object({
 	provider: z.literal('custom-agent'),
-	name: z.string(),
 	agentId: z.string(),
 });
 
@@ -68,6 +64,11 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	chatAgentSchema,
 ]);
 
+export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
+export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
+export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
+export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
+export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
 
 /**
@@ -80,13 +81,19 @@ export const chatModelsRequestSchema = z.object({
 
 export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 
+export interface ChatModelDto {
+	model: ChatHubConversationModel;
+	name: string;
+	description: string | null;
+}
+
 /**
  * Response type for fetching available chat models
  */
 export type ChatModelsResponse = Record<
 	ChatHubProvider,
 	{
-		models: ChatHubConversationModel[];
+		models: ChatModelDto[];
 		error?: string;
 	}
 >;
@@ -94,7 +101,6 @@ export type ChatModelsResponse = Record<
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
-	replyId: z.string().uuid(),
 	message: z.string(),
 	model: chatHubConversationModelSchema,
 	previousMessageId: z.string().uuid().nullable(),
@@ -107,7 +113,6 @@ export class ChatHubSendMessageRequest extends Z.class({
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
-	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
 		z.object({
@@ -120,7 +125,6 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 export class ChatHubEditMessageRequest extends Z.class({
 	message: z.string(),
 	messageId: z.string().uuid(),
-	replyId: z.string().uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
 		z.object({
@@ -137,7 +141,6 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 	model: z.string().max(64).optional(),
 	workflowId: z.string().max(36).optional(),
 	agentId: z.string().uuid().optional(),
-	agentName: z.string().max(128).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -222,3 +225,11 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
 }) {}
+
+export interface EnrichedStructuredChunk extends StructuredChunk {
+	metadata: StructuredChunk['metadata'] & {
+		messageId: ChatMessageId;
+		previousMessageId: ChatMessageId | null;
+		retryOfMessageId: ChatMessageId | null;
+	};
+}

@@ -70,7 +70,7 @@ import {
 	WorkflowStateKey,
 } from '@/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
 	jsonParse,
@@ -108,7 +108,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
@@ -147,14 +147,14 @@ defineOptions({
 });
 
 const LazyNodeCreation = defineAsyncComponent(
-	async () => await import('@/components/Node/NodeCreation.vue'),
+	async () => await import('@/features/shared/nodeCreator/views/NodeCreation.vue'),
 );
 
 const LazyNodeDetailsView = defineAsyncComponent(
-	async () => await import('@/features/ndv/views/NodeDetailsView.vue'),
+	async () => await import('@/features/ndv/shared/views/NodeDetailsView.vue'),
 );
 const LazyNodeDetailsViewV2 = defineAsyncComponent(
-	async () => await import('@/features/ndv/views/NodeDetailsViewV2.vue'),
+	async () => await import('@/features/ndv/shared/views/NodeDetailsViewV2.vue'),
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
@@ -23,7 +22,6 @@ const emit = defineEmits<{
 }>();
 
 const sidebar = useChatHubSidebarState();
-const chatStore = useChatStore();
 const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
 
@@ -65,7 +63,6 @@ defineExpose({
 			/>
 			<ModelSelector
 				ref="modelSelectorRef"
-				:models="chatStore.models ?? null"
 				:selected-model="selectedModel"
 				:credentials="credentials"
 				@change="onModelChange"
@@ -105,6 +102,9 @@ defineExpose({
 
 .grow {
 	flex-grow: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .title {

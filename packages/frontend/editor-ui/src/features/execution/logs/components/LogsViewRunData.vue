@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import RunData from '@/features/ndv/components/runData/RunData.vue';
+import RunData from '@/features/ndv/runData/components/RunData.vue';
 import { type LogEntry } from '@/features/execution/logs/logs.types';
 import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode } from '@/Interface';
-import type { NodePanelType } from '@/features/ndv/ndv.types';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
-import RunDataItemCount from '@/features/ndv/components/runData/RunDataItemCount.vue';
+import RunDataItemCount from '@/features/ndv/runData/components/RunDataItemCount.vue';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
-import NDVEmptyState from '@/features/ndv/components/panel/NDVEmptyState.vue';
+import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{

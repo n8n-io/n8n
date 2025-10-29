@@ -5,6 +5,7 @@ import type { ChatHubConversationModel, ChatHubLLMProvider } from '@n8n/api-type
 import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import { useChatStore } from '../chat.store';
 
 const { selectedModel, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const message = ref('');
+const chatStore = useChatStore();
 
 const toast = useToast();
 
@@ -30,12 +32,17 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
+const selected = computed(() => {
+	if (!selectedModel || !chatStore.models) return null;
+	return chatStore.getModel(selectedModel) ?? null;
+});
+
 const placeholder = computed(() => {
 	if (!selectedModel) {
 		return 'Select a model';
 	}
 
-	return `Message ${selectedModel.name}`;
+	return `Message ${selected.value?.name ?? 'a model'}...`;
 });
 
 function onMic() {

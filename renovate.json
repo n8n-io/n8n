@@ -60,7 +60,6 @@
 			"matchPackageNames": [
 				"*vitest*",
 				"*playwright*",
-				"*cypress*",
 				"@testing-library/**",
 				"*jest*"
 			],
