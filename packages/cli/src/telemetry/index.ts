@@ -235,6 +235,27 @@ export class Telemetry {
 			context: {},
 		};
 
+		// Check payload size (32 KB limit)
+		const payloadSize = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+		const maxPayloadSize = 32 * 1024; // 32 KB in bytes
+
+		if (payloadSize > maxPayloadSize) {
+			this.errorReporter.error(
+				new Error(
+					`Telemetry event "${eventName}" payload size (${payloadSize} bytes) exceeds limit (${maxPayloadSize} bytes)`,
+				),
+				{
+					extra: {
+						eventName,
+						payloadSize,
+						maxPayloadSize,
+						userId: payload.userId,
+					},
+				},
+			);
+			return;
+		}
+
 		this.postHog?.track(payload);
 
 		return this.rudderStack.track({
