@@ -1,0 +1,1348 @@
+
+> n8n-monorepo@1.118.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162
+> turbo run build
+
+turbo 2.5.4
+
+• Packages in scope: @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/chat, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/codemirror-lang-sql, @n8n/composables, @n8n/config, @n8n/constants, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/design-system, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/eslint-plugin-community-nodes, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/scan-community-package, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/task-runner, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-editor-ui, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow
+• Running build in 45 packages
+• Remote caching disabled
+n8n-editor-ui:popularity-cache-marker: cache bypass, force executing e70e148717c9891d
+@n8n/n8n-benchmark:build: cache miss, executing 8215a6ca45cbb816
+@n8n/di:build: cache miss, executing 7c19bc1d8307d574
+@n8n/errors:build: cache miss, executing 05fb3c5c367d7257
+@n8n/json-schema-to-zod:build: cache miss, executing e5f1cc64c444a17a
+@n8n/extension-sdk:build: cache miss, executing a5a16fea48e3a2a4
+@n8n/codemirror-lang:build: cache miss, executing bfe654f81d464bc6
+@n8n/permissions:build: cache miss, executing dea0e340b2b989a6
+@n8n/client-oauth2:build: cache miss, executing f5815389f7e26acd
+@n8n/vitest-config:build: cache miss, executing 3e708fa2dce74330
+n8n-editor-ui:popularity-cache-marker: 
+n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.118.0 popularity-cache-marker /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/editor-ui
+n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
+n8n-editor-ui:popularity-cache-marker: 
+@n8n/n8n-benchmark:build: 
+@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.28.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/benchmark
+@n8n/n8n-benchmark:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/n8n-benchmark:build: 
+@n8n/errors:build: 
+@n8n/errors:build: > @n8n/errors@0.5.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/errors
+@n8n/errors:build: > tsc -p tsconfig.build.json
+@n8n/errors:build: 
+@n8n/stylelint-config:build: cache miss, executing 65f15659d7b12025
+@n8n/codemirror-lang:build: 
+@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang:build: 
+@n8n/client-oauth2:build: 
+@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/client-oauth2
+@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
+@n8n/client-oauth2:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
+@n8n/extension-sdk:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
+@n8n/json-schema-to-zod:build: 
+@n8n/vitest-config:build: 
+@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/vitest-config
+@n8n/vitest-config:build: > tsc -p tsconfig.build.json
+@n8n/vitest-config:build: 
+@n8n/di:build: 
+@n8n/di:build: > @n8n/di@0.9.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/di
+@n8n/di:build: > tsc -p tsconfig.build.json
+@n8n/di:build: 
+@n8n/permissions:build: 
+@n8n/permissions:build: > @n8n/permissions@0.40.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/permissions
+@n8n/permissions:build: > tsc -p tsconfig.build.json
+@n8n/permissions:build: 
+@n8n/stylelint-config:build: 
+@n8n/stylelint-config:build: > @n8n/stylelint-config@0.0.1 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/stylelint-config
+@n8n/stylelint-config:build: > tsc
+@n8n/stylelint-config:build: 
+@n8n/constants:build: cache miss, executing fe88ca983cb5cad3
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:types /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.types.json
+@n8n/json-schema-to-zod:build: 
+n8n-editor-ui:fetch-popularity: cache miss, executing ece3d3537f79a839
+@n8n/constants:build: 
+@n8n/constants:build: > @n8n/constants@0.13.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/constants
+@n8n/constants:build: > tsc -p tsconfig.build.json
+@n8n/constants:build: 
+@n8n/codemirror-lang-sql:build: cache miss, executing ce52ed1c49db4742
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: > n8n-editor-ui@1.118.0 fetch-popularity /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/editor-ui
+n8n-editor-ui:fetch-popularity: > node scripts/fetch-node-popularity.mjs
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://internal-production.app.n8n.cloud/webhook/nodes-popularity-scores
+@n8n/config:build: cache miss, executing d2a155554574115f
+@n8n/codemirror-lang-sql:build: 
+@n8n/codemirror-lang-sql:build: > @n8n/codemirror-lang-sql@1.2.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/codemirror-lang-sql
+@n8n/codemirror-lang-sql:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang-sql:build: 
+@n8n/config:build: 
+@n8n/config:build: > @n8n/config@1.60.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/config
+@n8n/config:build: > tsc -p tsconfig.build.json
+@n8n/config:build: 
+n8n-editor-ui:fetch-popularity: Successfully fetched popularity data for 1000 nodes
+n8n-editor-ui:fetch-popularity: Saved popularity data to /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/editor-ui/.build/node-popularity.json with 1000 nodes
+@n8n/eslint-config:build: cache miss, executing 7e2076553e165a7d
+@n8n/imap:build: cache miss, executing 260aef97659dac81
+@n8n/eslint-plugin-community-nodes:build: cache miss, executing 81953eee986e9a80
+@n8n/eslint-plugin-community-nodes:build: 
+@n8n/eslint-plugin-community-nodes:build: > @n8n/eslint-plugin-community-nodes@0.6.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/eslint-plugin-community-nodes
+@n8n/eslint-plugin-community-nodes:build: > tsc --project tsconfig.build.json
+@n8n/eslint-plugin-community-nodes:build: 
+@n8n/imap:build: 
+@n8n/imap:build: > @n8n/imap@0.15.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/imap
+@n8n/imap:build: > tsc -p tsconfig.build.json
+@n8n/imap:build: 
+@n8n/eslint-config:build: 
+@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/eslint-config
+@n8n/eslint-config:build: > tsc
+@n8n/eslint-config:build: 
+n8n-workflow:build: cache miss, executing a7947780ea2c9c27
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 clean /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > rimraf dist
+@n8n/extension-sdk:build: 
+n8n-workflow:build: 
+n8n-workflow:build: > n8n-workflow@1.115.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/workflow
+n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+n8n-workflow:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.cjs.json && node postcjs.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/node-cli:build: cache miss, executing 2f930f4d4c9eaa58
+@n8n/extension-sdk:build: [34mℹ[39m tsdown [2mv0.15.6[22m powered by rolldown [2mv1.0.0-beta.9-commit.d91dfb5[22m
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.14.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/node-cli
+@n8n/node-cli:build: > tsc -p tsconfig.build.json && pnpm copy-templates
+@n8n/node-cli:build: 
+@n8n/extension-sdk:build: [34mℹ[39m Using tsdown config: [4m/Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/extension-sdk/tsdown.config.ts[24m
+@n8n/extension-sdk:build: [34mℹ[39m entry: [34msrc/backend/define.ts, src/backend/index.ts, src/backend/types.ts[39m
+@n8n/extension-sdk:build: [34mℹ[39m entry: [34msrc/frontend/define.ts, src/frontend/index.ts, src/frontend/types.ts[39m
+@n8n/extension-sdk:build: [34mℹ[39m entry: [34msrc/index.ts, src/schema.ts[39m
+@n8n/extension-sdk:build: [34mℹ[39m tsconfig: [34mtsconfig.backend.json[39m
+@n8n/extension-sdk:build: [34mℹ[39m tsconfig: [34mtsconfig.frontend.json[39m
+@n8n/extension-sdk:build: [34mℹ[39m tsconfig: [34mtsconfig.common.json[39m
+@n8n/extension-sdk:build: [34mℹ[39m Build start
+@n8n/utils:build: cache miss, executing b7a8627832578733
+@n8n/composables:build: cache miss, executing 2375483c57237be9
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/utils:build: 
+@n8n/utils:build: > @n8n/utils@1.18.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/utils
+@n8n/utils:build: > tsdown
+@n8n/utils:build: 
+@n8n/composables:build: 
+@n8n/composables:build: > @n8n/composables@1.12.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/composables
+@n8n/composables:build: > tsdown
+@n8n/composables:build: 
+@n8n/utils:build: [34mℹ[39m tsdown [2mv0.15.6[22m powered by rolldown [2mv1.0.0-beta.9-commit.d91dfb5[22m
+@n8n/utils:build: [34mℹ[39m Using tsdown config: [4m/Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/utils/tsdown.config.ts[24m
+@n8n/composables:build: [34mℹ[39m tsdown [2mv0.15.6[22m powered by rolldown [2mv1.0.0-beta.9-commit.d91dfb5[22m
+@n8n/utils:build: [34mℹ[39m entry: [34msrc/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts, src/sort/sortByProperty.ts, src/string/truncate.ts[39m
+@n8n/utils:build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/utils:build: [34mℹ[39m Build start
+@n8n/utils:build: Warning validate input options.
+@n8n/utils:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/utils:build: Warning validate input options.
+@n8n/utils:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/composables:build: [34mℹ[39m Using tsdown config: [4m/Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/composables/tsdown.config.ts[24m
+@n8n/composables:build: [34mℹ[39m entry: [34msrc/useDeviceSupport.ts, src/useShortKeyPress.ts, src/useThrottleWithReactiveDelay.ts[39m
+@n8n/composables:build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/composables:build: [34mℹ[39m Build start
+@n8n/composables:build: Warning validate input options.
+@n8n/composables:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/composables:build: Warning validate input options.
+@n8n/composables:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.esm.json && node postesm.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.14.0 copy-templates /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/node-cli
+@n8n/node-cli:build: > node scripts/copy-templates.mjs
+@n8n/node-cli:build: 
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msearch/sublimeSearch.cjs[22m            [2m 5.65 kB[22m [2m│ gzip: 1.81 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mretry.cjs[22m                           [2m 1.48 kB[22m [2m│ gzip: 0.67 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mstring/truncate.cjs[22m                 [2m 1.44 kB[22m [2m│ gzip: 0.63 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mevent-queue.cjs[22m                     [2m 1.01 kB[22m [2m│ gzip: 0.48 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mevent-bus.cjs[22m                       [2m 1.01 kB[22m [2m│ gzip: 0.45 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msearch/reRankSearchResults.cjs[22m      [2m 0.60 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msort/sortByProperty.cjs[22m             [2m 0.39 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mnumber/smartDecimal.cjs[22m             [2m 0.34 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1massert.cjs[22m                          [2m 0.24 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msearch/sublimeSearch.cjs.map        [2m12.38 kB[22m [2m│ gzip: 4.07 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-bus.cjs.map                   [2m 2.96 kB[22m [2m│ gzip: 1.00 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mretry.cjs.map                       [2m 2.49 kB[22m [2m│ gzip: 1.09 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mstring/truncate.cjs.map             [2m 2.41 kB[22m [2m│ gzip: 1.03 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-queue.cjs.map                 [2m 1.82 kB[22m [2m│ gzip: 0.85 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msearch/reRankSearchResults.cjs.map  [2m 1.45 kB[22m [2m│ gzip: 0.66 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msort/sortByProperty.cjs.map         [2m 0.73 kB[22m [2m│ gzip: 0.44 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mnumber/smartDecimal.cjs.map         [2m 0.66 kB[22m [2m│ gzip: 0.38 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22massert.cjs.map                      [2m 0.49 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m 18 files, total: 37.54 kB
+@n8n/utils:build: Warning validate input options.
+@n8n/utils:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msearch/sublimeSearch.js[22m            [2m 5.61 kB[22m [2m│ gzip: 1.80 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mretry.js[22m                           [2m 1.47 kB[22m [2m│ gzip: 0.67 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mstring/truncate.js[22m                 [2m 1.40 kB[22m [2m│ gzip: 0.63 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mevent-bus.js[22m                       [2m 1.00 kB[22m [2m│ gzip: 0.45 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mevent-queue.js[22m                     [2m 1.00 kB[22m [2m│ gzip: 0.47 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msearch/reRankSearchResults.js[22m      [2m 0.58 kB[22m [2m│ gzip: 0.30 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msort/sortByProperty.js[22m             [2m 0.37 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mnumber/smartDecimal.js[22m             [2m 0.32 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1massert.js[22m                          [2m 0.23 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msearch/sublimeSearch.js.map        [2m12.38 kB[22m [2m│ gzip: 4.07 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-bus.js.map                   [2m 2.96 kB[22m [2m│ gzip: 1.00 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mretry.js.map                       [2m 2.49 kB[22m [2m│ gzip: 1.09 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mstring/truncate.js.map             [2m 2.41 kB[22m [2m│ gzip: 1.03 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-queue.js.map                 [2m 1.82 kB[22m [2m│ gzip: 0.85 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msearch/reRankSearchResults.js.map  [2m 1.44 kB[22m [2m│ gzip: 0.65 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msort/sortByProperty.js.map         [2m 0.73 kB[22m [2m│ gzip: 0.43 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mnumber/smartDecimal.js.map         [2m 0.66 kB[22m [2m│ gzip: 0.38 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22massert.js.map                      [2m 0.49 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mevent-bus.d.ts[22m[39m                     [2m 0.98 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msearch/sublimeSearch.d.ts[22m[39m          [2m 0.38 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msearch/reRankSearchResults.d.ts[22m[39m    [2m 0.36 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mretry.d.ts[22m[39m                         [2m 0.28 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mstring/truncate.d.ts[22m[39m               [2m 0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mevent-queue.d.ts[22m[39m                   [2m 0.23 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msort/sortByProperty.d.ts[22m[39m           [2m 0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mnumber/smartDecimal.d.ts[22m[39m           [2m 0.19 kB[22m [2m│ gzip: 0.14 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1massert.d.ts[22m[39m                        [2m 0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m 27 files, total: 40.43 kB
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mevent-bus.d.cts[22m[39m                   [2m0.98 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msearch/sublimeSearch.d.cts[22m[39m        [2m0.38 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msearch/reRankSearchResults.d.cts[22m[39m  [2m0.36 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mretry.d.cts[22m[39m                       [2m0.28 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mstring/truncate.d.cts[22m[39m             [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mevent-queue.d.cts[22m[39m                 [2m0.23 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msort/sortByProperty.d.cts[22m[39m         [2m0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mnumber/smartDecimal.d.cts[22m[39m         [2m0.19 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1massert.d.cts[22m[39m                      [2m0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m 9 files, total: 3.10 kB
+@n8n/utils:build: [32m✔[39m Build complete in [32m2874ms[39m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museDeviceSupport.cjs[22m                  [2m1.84 kB[22m [2m│ gzip: 0.75 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museShortKeyPress.cjs[22m                  [2m0.78 kB[22m [2m│ gzip: 0.38 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museThrottleWithReactiveDelay.cjs[22m      [2m0.71 kB[22m [2m│ gzip: 0.37 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22museDeviceSupport.cjs.map              [2m2.66 kB[22m [2m│ gzip: 1.08 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22museShortKeyPress.cjs.map              [2m1.35 kB[22m [2m│ gzip: 0.66 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mchunk-CUT6urMc.cjs                    [2m1.09 kB[22m [2m│ gzip: 0.54 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22museThrottleWithReactiveDelay.cjs.map  [2m0.96 kB[22m [2m│ gzip: 0.51 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m 7 files, total: 9.39 kB
+@n8n/composables:build: Warning validate input options.
+@n8n/composables:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museDeviceSupport.js[22m                  [2m1.68 kB[22m [2m│ gzip: 0.69 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museShortKeyPress.js[22m                  [2m0.61 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museThrottleWithReactiveDelay.js[22m      [2m0.56 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22museDeviceSupport.js.map              [2m2.66 kB[22m [2m│ gzip: 1.08 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22museShortKeyPress.js.map              [2m1.35 kB[22m [2m│ gzip: 0.65 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22museThrottleWithReactiveDelay.js.map  [2m0.95 kB[22m [2m│ gzip: 0.51 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museDeviceSupport.d.ts[22m[39m                [2m0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museShortKeyPress.d.ts[22m[39m                [2m0.41 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museThrottleWithReactiveDelay.d.ts[22m[39m    [2m0.30 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/composables:build: [34mℹ[39m [34m[ESM][39m 9 files, total: 8.98 kB
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museDeviceSupport.d.cts[22m[39m              [2m0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museShortKeyPress.d.cts[22m[39m              [2m0.41 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museThrottleWithReactiveDelay.d.cts[22m[39m  [2m0.30 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/composables:build: [34mℹ[39m [33m[CJS][39m 3 files, total: 1.18 kB
+@n8n/composables:build: [32m✔[39m Build complete in [32m3296ms[39m
+@n8n/design-system:build: cache miss, executing 79e5e9d0dbbc36d9
+@n8n/design-system:build: 
+@n8n/design-system:build: > @n8n/design-system@1.105.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/design-system
+@n8n/design-system:build: > vite build
+@n8n/design-system:build: 
+@n8n/i18n:build: cache miss, executing 7cc49f72ef3874bb
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mschema.cjs[22m               [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mschema-Bxx2Q2hV.cjs.map  [2m2.63 kB[22m [2m│ gzip: 0.87 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mschema-Bxx2Q2hV.cjs      [2m1.89 kB[22m [2m│ gzip: 0.81 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 4 files, total: 4.78 kB
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/api-types:build: cache miss, executing 326f18f64e0e939e
+@n8n/decorators:build: cache miss, executing 58819701d38a3dae
+@n8n/stores:build: cache miss, executing 56994c48f8906469
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mdefine.cjs[22m               [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mindex.cjs[22m                [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mtypes.cjs[22m                [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22mdefine-DIbMcH8i.cjs.map  [2m0.38 kB[22m [2m│ gzip: 0.24 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22mdefine-DIbMcH8i.cjs      [2m0.30 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 5 files, total: 0.94 kB
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mdefine.cjs[22m               [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mindex.cjs[22m                [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mtypes.cjs[22m                [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mdefine-CF1KLowA.cjs.map  [2m0.37 kB[22m [2m│ gzip: 0.24 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mdefine-CF1KLowA.cjs      [2m0.30 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 5 files, total: 0.93 kB
+@n8n/extension-sdk:build: Warning validate input options.
+@n8n/extension-sdk:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mdefine.js[22m               [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mindex.js[22m                [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mtypes.js[22m                [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mdefine-CIn4Njli.js.map  [2m0.37 kB[22m [2m│ gzip: 0.24 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mdefine-CIn4Njli.js      [2m0.19 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mindex.d.ts[22m[39m              [2m0.30 kB[22m [2m│ gzip: 0.14 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mtypes.d.ts[22m[39m              [2m0.18 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mdefine.d.ts[22m[39m             [2m0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32mtypes-DYTQLeZP.d.ts[39m     [2m0.36 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32mdefine-CiP4WnNX.d.ts[39m    [2m0.30 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m 10 files, total: 2.05 kB
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.js[22m                [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mschema.js[22m               [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mschema-DzHGdlMR.js.map  [2m2.60 kB[22m [2m│ gzip: 0.87 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mschema-DzHGdlMR.js      [2m0.70 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.ts[22m[39m              [2m0.17 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mschema.d.ts[22m[39m             [2m0.17 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mschema-BvnfPehp.d.ts[39m    [2m2.39 kB[22m [2m│ gzip: 0.49 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m 7 files, total: 6.23 kB
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m            [2m0.14 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mschema.d.cts[22m[39m           [2m0.14 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mschema-DthLbnxJ.d.cts[39m  [2m2.36 kB[22m [2m│ gzip: 0.49 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 3 files, total: 2.64 kB
+@n8n/extension-sdk:build: [32m✔[39m Build complete in [32m6574ms[39m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mdefine.js[22m               [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mindex.js[22m                [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mtypes.js[22m                [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22mdefine-CpvnL3-j.js.map  [2m0.37 kB[22m [2m│ gzip: 0.24 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22mdefine-CpvnL3-j.js      [2m0.19 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mindex.d.ts[22m[39m              [2m0.31 kB[22m [2m│ gzip: 0.14 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mtypes.d.ts[22m[39m              [2m0.19 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mdefine.d.ts[22m[39m             [2m0.16 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32mtypes-BkLz6u8x.d.ts[39m     [2m0.57 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32mdefine-DFUZJgKw.d.ts[39m    [2m0.31 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m 10 files, total: 2.30 kB
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mindex.d.cts[22m[39m            [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mtypes.d.cts[22m[39m            [2m0.19 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mdefine.d.cts[22m[39m           [2m0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32mtypes-Cfug_5tl.d.cts[39m   [2m0.57 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32mdefine-ZL_u7zV_.d.cts[39m  [2m0.28 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 5 files, total: 1.45 kB
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mindex.d.cts[22m[39m            [2m0.27 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mtypes.d.cts[22m[39m            [2m0.18 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mdefine.d.cts[22m[39m           [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32mtypes-BfwxaaeH.d.cts[39m   [2m0.36 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32mdefine-Ct6bwMfq.d.cts[39m  [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 5 files, total: 1.22 kB
+@n8n/extension-sdk:build: [32m✔[39m Build complete in [32m6590ms[39m
+@n8n/extension-sdk:build: [32m✔[39m Build complete in [32m6591ms[39m
+@n8n/api-types:build: 
+@n8n/api-types:build: > @n8n/api-types@0.52.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/api-types
+@n8n/api-types:build: > tsc -p tsconfig.build.json
+@n8n/api-types:build: 
+@n8n/i18n:build: 
+@n8n/i18n:build: > @n8n/i18n@1.22.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/i18n
+@n8n/i18n:build: > tsdown
+@n8n/i18n:build: 
+@n8n/decorators:build: 
+@n8n/decorators:build: > @n8n/decorators@0.28.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/decorators
+@n8n/decorators:build: > tsc -p tsconfig.build.json
+@n8n/decorators:build: 
+@n8n/stores:build: 
+@n8n/stores:build: > @n8n/stores@1.25.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/stores
+@n8n/stores:build: > tsdown
+@n8n/stores:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 create-json-schema /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > tsx scripts/create-json-schema.ts
+@n8n/extension-sdk:build: 
+@n8n/i18n:build: [34mℹ[39m tsdown [2mv0.15.6[22m powered by rolldown [2mv1.0.0-beta.9-commit.d91dfb5[22m
+@n8n/stores:build: [34mℹ[39m tsdown [2mv0.15.6[22m powered by rolldown [2mv1.0.0-beta.9-commit.d91dfb5[22m
+@n8n/i18n:build: [34mℹ[39m Using tsdown config: [4m/Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/i18n/tsdown.config.ts[24m
+@n8n/i18n:build: [34mℹ[39m entry: [34msrc/index.ts, src/types.ts, src/utils.ts[39m
+@n8n/i18n:build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/i18n:build: [34mℹ[39m Build start
+@n8n/stores:build: [34mℹ[39m Using tsdown config: [4m/Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/stores/tsdown.config.ts[24m
+@n8n/stores:build: [34mℹ[39m entry: [34msrc/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts[39m
+@n8n/stores:build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/stores:build: [34mℹ[39m Build start
+@n8n/i18n:build: Warning validate input options.
+@n8n/i18n:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/i18n:build: Warning validate input options.
+@n8n/i18n:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/stores:build: Warning validate input options.
+@n8n/stores:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/stores:build: Warning validate input options.
+@n8n/stores:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/design-system:build: rolldown-vite v7.1.16 building for production...
+@n8n/n8n-extension-insights:build: cache miss, executing c18cc364605570af
+@n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/extensions/insights
+@n8n/n8n-extension-insights:build: > pnpm cleanup && pnpm run "/^build:.*/"
+@n8n/n8n-extension-insights:build: 
+@n8n/backend-common:build: cache miss, executing d88a5ec9c4d9e2af
+@n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 cleanup /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/extensions/insights
+@n8n/n8n-extension-insights:build: > rimraf dist
+@n8n/n8n-extension-insights:build: 
+@n8n/backend-common:build: 
+@n8n/backend-common:build: > @n8n/backend-common@0.28.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/backend-common
+@n8n/backend-common:build: > tsc -p tsconfig.build.json
+@n8n/backend-common:build: 
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museRootStore.cjs[22m                [2m 5.83 kB[22m [2m│ gzip: 1.32 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museAgentRequestStore.cjs[22m        [2m 2.03 kB[22m [2m│ gzip: 0.61 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mmetaTagConfig.cjs[22m               [2m 0.24 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mconstants.cjs[22m                   [2m 0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                       [2m 0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22museRootStore.cjs.map            [2m10.57 kB[22m [2m│ gzip: 2.24 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22museAgentRequestStore.cjs.map    [2m 3.91 kB[22m [2m│ gzip: 1.22 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mconstants-Vhqx0P2m.cjs.map      [2m 1.97 kB[22m [2m│ gzip: 0.94 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mmetaTagConfig-BXmWZqFY.cjs.map  [2m 1.92 kB[22m [2m│ gzip: 0.77 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mconstants-Vhqx0P2m.cjs          [2m 1.46 kB[22m [2m│ gzip: 0.79 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mmetaTagConfig-BXmWZqFY.cjs      [2m 1.38 kB[22m [2m│ gzip: 0.53 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mchunk-CUT6urMc.cjs              [2m 1.09 kB[22m [2m│ gzip: 0.54 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m 12 files, total: 30.60 kB
+@n8n/stores:build: Warning validate input options.
+@n8n/stores:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museRootStore.js[22m                [2m 5.43 kB[22m [2m│ gzip: 1.26 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museAgentRequestStore.js[22m        [2m 1.88 kB[22m [2m│ gzip: 0.56 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mmetaTagConfig.js[22m               [2m 0.16 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mconstants.js[22m                   [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.js[22m                       [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22museRootStore.js.map            [2m10.55 kB[22m [2m│ gzip: 2.23 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22museAgentRequestStore.js.map    [2m 3.91 kB[22m [2m│ gzip: 1.22 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mconstants-eiLVq61a.js.map      [2m 1.96 kB[22m [2m│ gzip: 0.93 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mmetaTagConfig-AMMUarR2.js.map  [2m 1.92 kB[22m [2m│ gzip: 0.77 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mconstants-eiLVq61a.js          [2m 1.37 kB[22m [2m│ gzip: 0.72 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mmetaTagConfig-AMMUarR2.js      [2m 1.15 kB[22m [2m│ gzip: 0.47 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museRootStore.d.ts[22m[39m              [2m 7.43 kB[22m [2m│ gzip: 0.92 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museAgentRequestStore.d.ts[22m[39m      [2m 2.51 kB[22m [2m│ gzip: 0.49 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mmetaTagConfig.d.ts[22m[39m             [2m 0.31 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mconstants.d.ts[22m[39m                 [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.ts[22m[39m                     [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mconstants-kdasrIpn.d.ts[39m        [2m 1.81 kB[22m [2m│ gzip: 0.75 kB[22m
+@n8n/stores:build: [34mℹ[39m [34m[ESM][39m 17 files, total: 40.68 kB
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museRootStore.d.cts[22m[39m          [2m7.43 kB[22m [2m│ gzip: 0.92 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museAgentRequestStore.d.cts[22m[39m  [2m2.51 kB[22m [2m│ gzip: 0.50 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mmetaTagConfig.d.cts[22m[39m         [2m0.31 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mconstants.d.cts[22m[39m             [2m0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                 [2m0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mconstants-vBJHMyi-.d.cts[39m    [2m1.80 kB[22m [2m│ gzip: 0.74 kB[22m
+@n8n/stores:build: [34mℹ[39m [33m[CJS][39m 6 files, total: 12.18 kB
+@n8n/stores:build: [32m✔[39m Build complete in [32m5331ms[39m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m               [2m615.38 kB[22m [2m│ gzip: 114.74 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mutils.cjs[22m               [2m  0.30 kB[22m [2m│ gzip:   0.16 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mtypes.cjs[22m               [2m  0.00 kB[22m [2m│ gzip:   0.02 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mindex.cjs.map           [2m389.12 kB[22m [2m│ gzip:  83.89 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mutils-p9ioSiTo.cjs.map  [2m  3.66 kB[22m [2m│ gzip:   1.41 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mutils-p9ioSiTo.cjs      [2m  2.79 kB[22m [2m│ gzip:   1.05 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m 6 files, total: 1011.24 kB
+@n8n/i18n:build: Warning validate input options.
+@n8n/i18n:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.js[22m               [2m613.96 kB[22m [2m│ gzip: 114.25 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mutils.js[22m               [2m  0.20 kB[22m [2m│ gzip:   0.13 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mtypes.js[22m               [2m  0.00 kB[22m [2m│ gzip:   0.02 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mindex.js.map           [2m389.09 kB[22m [2m│ gzip:  83.88 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mutils-BJm12gqs.js.map  [2m  3.65 kB[22m [2m│ gzip:   1.41 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mutils-BJm12gqs.js      [2m  2.34 kB[22m [2m│ gzip:   0.97 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.ts[22m[39m             [2m199.38 kB[22m [2m│ gzip:  27.13 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mutils.d.ts[22m[39m             [2m  0.46 kB[22m [2m│ gzip:   0.25 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mtypes.d.ts[22m[39m             [2m  0.19 kB[22m [2m│ gzip:   0.12 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtypes-GPs-6KhR.d.ts[39m    [2m188.52 kB[22m [2m│ gzip:  26.11 kB[22m
+@n8n/i18n:build: [34mℹ[39m [34m[ESM][39m 10 files, total: 1397.80 kB
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m           [2m199.39 kB[22m [2m│ gzip: 27.13 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mutils.d.cts[22m[39m           [2m  0.46 kB[22m [2m│ gzip:  0.25 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mtypes.d.cts[22m[39m           [2m  0.19 kB[22m [2m│ gzip:  0.12 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtypes-BfxTQQAI.d.cts[39m  [2m188.52 kB[22m [2m│ gzip: 26.12 kB[22m
+@n8n/i18n:build: [34mℹ[39m [33m[CJS][39m 4 files, total: 388.55 kB
+@n8n/i18n:build: [32m✔[39m Build complete in [32m6109ms[39m
+@n8n/rest-api-client:build: cache miss, executing da88517b77240fc5
+@n8n/rest-api-client:build: 
+@n8n/rest-api-client:build: > @n8n/rest-api-client@1.21.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/rest-api-client
+@n8n/rest-api-client:build: > tsdown
+@n8n/rest-api-client:build: 
+@n8n/ai-workflow-builder:build: cache miss, executing 1214080f4bb48a7c
+n8n-core:build: cache miss, executing cabbe93f23817e12
+@n8n/rest-api-client:build: [34mℹ[39m tsdown [2mv0.15.6[22m powered by rolldown [2mv1.0.0-beta.9-commit.d91dfb5[22m
+@n8n/rest-api-client:build: [34mℹ[39m Using tsdown config: [4m/Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/rest-api-client/tsdown.config.ts[24m
+@n8n/rest-api-client:build: [34mℹ[39m entry: [34msrc/index.ts, src/types.ts, src/utils.ts, src/api/api-keys.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/ctas.ts, src/api/dynamic-banners.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/externalSecrets.ee.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/prompts.ts, src/api/provisioning.ts, src/api/roles.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/third-party-licenses.ts, src/api/ui.ts, src/api/usage.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts[39m
+@n8n/rest-api-client:build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/rest-api-client:build: [34mℹ[39m Build start
+@n8n/ai-workflow-builder:build: 
+@n8n/ai-workflow-builder:build: > @n8n/ai-workflow-builder@0.28.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/ai-workflow-builder.ee
+@n8n/ai-workflow-builder:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/ai-workflow-builder:build: 
+n8n-core:build: 
+n8n-core:build: > n8n-core@1.117.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/core
+n8n-core:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+n8n-core:build: 
+@n8n/rest-api-client:build: Warning validate input options.
+@n8n/rest-api-client:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/rest-api-client:build: Warning validate input options.
+@n8n/rest-api-client:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
+@n8n/design-system:build: rendering chunks...
+@n8n/design-system:build: computing gzip size...
+@n8n/design-system:build: [2mdist/[22m[35mdesign-system.css        [39m[1m[2m  114.11 kB[22m[22m[2m │ gzip:  18.17 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36men-BIzD-hdW.js           [39m[1m[2m    0.08 kB[22m[22m[2m │ gzip:   0.08 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36men-DaqoBz3R.js           [39m[1m[2m    4.79 kB[22m[22m[2m │ gzip:   1.71 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.es.js  [39m[1m[33m1,776.70 kB[39m[22m[2m │ gzip: 442.74 kB[22m
+@n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
+@n8n/design-system:build: rendering chunks...
+@n8n/design-system:build: computing gzip size...
+@n8n/design-system:build: [2mdist/[22m[35mdesign-system.css         [39m[1m[2m  114.11 kB[22m[22m[2m │ gzip:  18.17 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.umd.js  [39m[1m[33m1,325.84 kB[39m[22m[2m │ gzip: 387.90 kB[22m
+@n8n/design-system:build: ✓ built in 13.12s
+@n8n/chat:build: cache miss, executing a746505515735710
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                              [2m 9.43 kB[22m [2m│ gzip: 2.04 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/index.cjs[22m                          [2m 8.87 kB[22m [2m│ gzip: 1.91 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/users.cjs[22m                          [2m 1.21 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/nodeTypes.cjs[22m                      [2m 0.88 kB[22m [2m│ gzip: 0.26 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/externalSecrets.ee.cjs[22m             [2m 0.70 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mutils.cjs[22m                              [2m 0.62 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/eventbus.ee.cjs[22m                    [2m 0.57 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/sso.cjs[22m                            [2m 0.55 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/templates.cjs[22m                      [2m 0.53 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/communityNodes.cjs[22m                 [2m 0.50 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/cloudPlans.cjs[22m                     [2m 0.44 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/usage.cjs[22m                          [2m 0.39 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ldap.cjs[22m                           [2m 0.38 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/mfa.cjs[22m                            [2m 0.37 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/roles.cjs[22m                          [2m 0.37 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/api-keys.cjs[22m                       [2m 0.37 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/dynamic-banners.cjs[22m                [2m 0.35 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/provisioning.cjs[22m                   [2m 0.26 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/workflowHistory.cjs[22m                [2m 0.26 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/versions.cjs[22m                       [2m 0.22 kB[22m [2m│ gzip: 0.14 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/prompts.cjs[22m                        [2m 0.21 kB[22m [2m│ gzip: 0.14 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/third-party-licenses.cjs[22m           [2m 0.20 kB[22m [2m│ gzip: 0.14 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/module-settings.cjs[22m                [2m 0.18 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/orchestration.cjs[22m                  [2m 0.18 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/npsSurvey.cjs[22m                      [2m 0.17 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ui.cjs[22m                             [2m 0.16 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ctas.cjs[22m                           [2m 0.15 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/events.cjs[22m                         [2m 0.15 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/settings.cjs[22m                       [2m 0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/webhooks.cjs[22m                       [2m 0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/execution.cjs[22m                      [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/tags.cjs[22m                           [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/workflows.cjs[22m                      [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mtypes.cjs[22m                              [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mutils-CNgpgrgz.cjs.map                 [2m13.47 kB[22m [2m│ gzip: 4.25 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22musers-CrF0uoJe.cjs.map                 [2m 9.39 kB[22m [2m│ gzip: 2.00 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mutils-CNgpgrgz.cjs                     [2m 8.77 kB[22m [2m│ gzip: 2.81 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mtemplates-ChUKolRB.cjs.map             [2m 6.70 kB[22m [2m│ gzip: 1.78 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22musers-CrF0uoJe.cjs                     [2m 5.41 kB[22m [2m│ gzip: 0.87 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mnodeTypes-CQynwUHJ.cjs.map             [2m 4.97 kB[22m [2m│ gzip: 1.38 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mnodeTypes-CQynwUHJ.cjs                 [2m 3.80 kB[22m [2m│ gzip: 0.86 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msso-iSDCciQn.cjs.map                   [2m 2.97 kB[22m [2m│ gzip: 0.81 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mexternalSecrets.ee-Bo24_wAg.cjs.map    [2m 2.78 kB[22m [2m│ gzip: 0.73 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mldap-xBlTgNmE.cjs.map                  [2m 2.71 kB[22m [2m│ gzip: 0.92 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22meventbus.ee-DKmOvCC2.cjs.map           [2m 2.58 kB[22m [2m│ gzip: 0.84 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mtemplates-ChUKolRB.cjs                 [2m 2.55 kB[22m [2m│ gzip: 0.62 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msso-iSDCciQn.cjs                       [2m 2.53 kB[22m [2m│ gzip: 0.50 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mcloudPlans-DU69DjTN.cjs.map            [2m 2.36 kB[22m [2m│ gzip: 0.87 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mexternalSecrets.ee-Bo24_wAg.cjs        [2m 2.33 kB[22m [2m│ gzip: 0.47 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mcommunityNodes-IfHVbGtZ.cjs.map        [2m 2.24 kB[22m [2m│ gzip: 0.85 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mversions-C1pf36Kf.cjs.map              [2m 2.16 kB[22m [2m│ gzip: 0.80 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22meventbus.ee-DKmOvCC2.cjs               [2m 2.00 kB[22m [2m│ gzip: 0.54 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mmfa-zzDYtiEs.cjs.map                   [2m 1.99 kB[22m [2m│ gzip: 0.65 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22musage-DUBSX6Bc.cjs.map                 [2m 1.94 kB[22m [2m│ gzip: 0.67 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mroles-Ch6BJlWh.cjs.map                 [2m 1.89 kB[22m [2m│ gzip: 0.65 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mapi-keys-DTq25CM2.cjs.map              [2m 1.89 kB[22m [2m│ gzip: 0.63 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mcommunityNodes-IfHVbGtZ.cjs            [2m 1.85 kB[22m [2m│ gzip: 0.61 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mworkflowHistory-B04ow7Mm.cjs.map       [2m 1.77 kB[22m [2m│ gzip: 0.66 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mmfa-zzDYtiEs.cjs                       [2m 1.65 kB[22m [2m│ gzip: 0.43 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22musage-DUBSX6Bc.cjs                     [2m 1.53 kB[22m [2m│ gzip: 0.43 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mroles-Ch6BJlWh.cjs                     [2m 1.50 kB[22m [2m│ gzip: 0.44 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mldap-xBlTgNmE.cjs                      [2m 1.48 kB[22m [2m│ gzip: 0.41 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mcloudPlans-DU69DjTN.cjs                [2m 1.44 kB[22m [2m│ gzip: 0.42 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mapi-keys-DTq25CM2.cjs                  [2m 1.42 kB[22m [2m│ gzip: 0.40 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mprompts-BSGfxkwN.cjs.map               [2m 1.23 kB[22m [2m│ gzip: 0.55 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mprovisioning-kw96XftP.cjs.map          [2m 1.18 kB[22m [2m│ gzip: 0.50 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mversions-C1pf36Kf.cjs                  [2m 0.97 kB[22m [2m│ gzip: 0.41 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mprompts-BSGfxkwN.cjs                   [2m 0.89 kB[22m [2m│ gzip: 0.40 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mworkflowHistory-B04ow7Mm.cjs           [2m 0.85 kB[22m [2m│ gzip: 0.36 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mapi/dynamic-banners.cjs.map            [2m 0.80 kB[22m [2m│ gzip: 0.46 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mwebhooks-BT5E9VZi.cjs.map              [2m 0.79 kB[22m [2m│ gzip: 0.44 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mprovisioning-kw96XftP.cjs              [2m 0.75 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mui-86HlREZm.cjs.map                    [2m 0.74 kB[22m [2m│ gzip: 0.42 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mnpsSurvey-CoinCJ2M.cjs.map             [2m 0.60 kB[22m [2m│ gzip: 0.35 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mthird-party-licenses-BYY8q7VZ.cjs.map  [2m 0.58 kB[22m [2m│ gzip: 0.37 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mmodule-settings-BKgv8Zzg.cjs.map       [2m 0.58 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22morchestration-D_bsxDsG.cjs.map         [2m 0.58 kB[22m [2m│ gzip: 0.36 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msettings-BHKYo7Pz.cjs.map              [2m 0.54 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mctas-Cg7X2XSI.cjs.map                  [2m 0.50 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mthird-party-licenses-BYY8q7VZ.cjs      [2m 0.48 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22morchestration-D_bsxDsG.cjs             [2m 0.48 kB[22m [2m│ gzip: 0.32 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mevents-e_xpHzpQ.cjs.map                [2m 0.48 kB[22m [2m│ gzip: 0.32 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mui-86HlREZm.cjs                        [2m 0.46 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mnpsSurvey-CoinCJ2M.cjs                 [2m 0.44 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mctas-Cg7X2XSI.cjs                      [2m 0.42 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mmodule-settings-BKgv8Zzg.cjs           [2m 0.42 kB[22m [2m│ gzip: 0.28 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mwebhooks-BT5E9VZi.cjs                  [2m 0.41 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mevents-e_xpHzpQ.cjs                    [2m 0.40 kB[22m [2m│ gzip: 0.28 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msettings-BHKYo7Pz.cjs                  [2m 0.38 kB[22m [2m│ gzip: 0.27 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mapi-B5ImKaJs.cjs                       [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m 90 files, total: 145.04 kB
+@n8n/rest-api-client:build: Warning validate input options.
+@n8n/rest-api-client:build: - For the "tsconfig". Invalid key: Expected never but received "tsconfig". 
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.63.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/chat
+@n8n/chat:build: > pnpm build:vite && pnpm build:bundle
+@n8n/chat:build: 
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                          [2m7.92 kB[22m [2m│ gzip: 2.09 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/index.d.cts[22m[39m                      [2m7.56 kB[22m [2m│ gzip: 1.95 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/users.d.cts[22m[39m                      [2m1.23 kB[22m [2m│ gzip: 0.32 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/templates.d.cts[22m[39m                  [2m1.05 kB[22m [2m│ gzip: 0.27 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/nodeTypes.d.cts[22m[39m                  [2m0.59 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/dynamic-banners.d.cts[22m[39m            [2m0.50 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/eventbus.ee.d.cts[22m[39m                [2m0.46 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/externalSecrets.ee.d.cts[22m[39m         [2m0.42 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/sso.d.cts[22m[39m                        [2m0.41 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/workflowHistory.d.cts[22m[39m            [2m0.39 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mutils.d.cts[22m[39m                          [2m0.39 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ldap.d.cts[22m[39m                       [2m0.34 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/cloudPlans.d.cts[22m[39m                 [2m0.33 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/communityNodes.d.cts[22m[39m             [2m0.32 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/mfa.d.cts[22m[39m                        [2m0.28 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/usage.d.cts[22m[39m                      [2m0.27 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/roles.d.cts[22m[39m                      [2m0.25 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/versions.d.cts[22m[39m                   [2m0.24 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/workflows.d.cts[22m[39m                  [2m0.23 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/api-keys.d.cts[22m[39m                   [2m0.23 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/provisioning.d.cts[22m[39m               [2m0.22 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/prompts.d.cts[22m[39m                    [2m0.18 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/third-party-licenses.d.cts[22m[39m       [2m0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/orchestration.d.cts[22m[39m              [2m0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ui.d.cts[22m[39m                         [2m0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/module-settings.d.cts[22m[39m            [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/npsSurvey.d.cts[22m[39m                  [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ctas.d.cts[22m[39m                       [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/events.d.cts[22m[39m                     [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/settings.d.cts[22m[39m                   [2m0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/webhooks.d.cts[22m[39m                   [2m0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mtypes.d.cts[22m[39m                          [2m0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/tags.d.cts[22m[39m                       [2m0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/execution.d.cts[22m[39m                  [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32musers-qIU9n-he.d.cts[39m                 [2m5.37 kB[22m [2m│ gzip: 1.20 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtemplates-B7XqphoH.d.cts[39m             [2m4.17 kB[22m [2m│ gzip: 1.06 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mutils-k1-dXWoN.d.cts[39m                 [2m2.16 kB[22m [2m│ gzip: 0.78 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mnodeTypes-BeTjB1ic.d.cts[39m             [2m2.02 kB[22m [2m│ gzip: 0.57 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mldap-C5SIAiZv.d.cts[39m                  [2m1.68 kB[22m [2m│ gzip: 0.60 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mcloudPlans-aeUnb8AK.d.cts[39m            [2m1.58 kB[22m [2m│ gzip: 0.65 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msso-B1c4jiwR.d.cts[39m                   [2m1.34 kB[22m [2m│ gzip: 0.44 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mversions-Dkx5pbFT.d.cts[39m              [2m1.29 kB[22m [2m│ gzip: 0.51 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32meventbus.ee-CDH8lYuD.d.cts[39m           [2m1.27 kB[22m [2m│ gzip: 0.42 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mexternalSecrets.ee-BUBiX9hA.d.cts[39m    [2m1.27 kB[22m [2m│ gzip: 0.39 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mworkflowHistory-C62HH4KF.d.cts[39m       [2m1.09 kB[22m [2m│ gzip: 0.45 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mworkflows-BEpE4ZKs.d.cts[39m             [2m1.09 kB[22m [2m│ gzip: 0.43 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mmfa-us0uJ4bp.d.cts[39m                   [2m0.92 kB[22m [2m│ gzip: 0.37 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mapi-keys-C7iAKd7S.d.cts[39m              [2m0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mcommunityNodes-BUH-39qi.d.cts[39m        [2m0.90 kB[22m [2m│ gzip: 0.36 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32musage-D4tFCrhs.d.cts[39m                 [2m0.90 kB[22m [2m│ gzip: 0.36 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mroles-DuQpUe-R.d.cts[39m                 [2m0.85 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mprovisioning-C230Wb8r.d.cts[39m          [2m0.72 kB[22m [2m│ gzip: 0.32 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mprompts-B6mJdfEH.d.cts[39m               [2m0.52 kB[22m [2m│ gzip: 0.27 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mwebhooks--yHzhEmb.d.cts[39m              [2m0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mui-pGYj__59.d.cts[39m                    [2m0.37 kB[22m [2m│ gzip: 0.26 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mmodule-settings-DEV8RDBw.d.cts[39m       [2m0.35 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mnpsSurvey-DQ7fZryy.d.cts[39m             [2m0.34 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msettings-CU3m0ObQ.d.cts[39m              [2m0.31 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mthird-party-licenses-C0Nz4RHq.d.cts[39m  [2m0.29 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32morchestration-Dw-hy172.d.cts[39m         [2m0.27 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mctas-BPu87721.d.cts[39m                  [2m0.26 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mevents-B-t6a3G2.d.cts[39m                [2m0.25 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtags-CAqCzyzW.d.cts[39m                  [2m0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtypes-CGd0oIFw.d.cts[39m                 [2m0.18 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mindex-CPiw-gXy.d.cts[39m                 [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [33m[CJS][39m 65 files, total: 58.46 kB
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.js[22m                              [2m 5.74 kB[22m [2m│ gzip: 1.70 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/index.js[22m                          [2m 5.45 kB[22m [2m│ gzip: 1.59 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/users.js[22m                          [2m 0.77 kB[22m [2m│ gzip: 0.26 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/nodeTypes.js[22m                      [2m 0.59 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/externalSecrets.ee.js[22m             [2m 0.42 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/eventbus.ee.js[22m                    [2m 0.38 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mutils.js[22m                              [2m 0.36 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/sso.js[22m                            [2m 0.35 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/templates.js[22m                      [2m 0.33 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/communityNodes.js[22m                 [2m 0.32 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/dynamic-banners.js[22m                [2m 0.31 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/cloudPlans.js[22m                     [2m 0.28 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/usage.js[22m                          [2m 0.27 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ldap.js[22m                           [2m 0.26 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/roles.js[22m                          [2m 0.24 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/mfa.js[22m                            [2m 0.24 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/api-keys.js[22m                       [2m 0.23 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/provisioning.js[22m                   [2m 0.18 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/workflowHistory.js[22m                [2m 0.17 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/versions.js[22m                       [2m 0.16 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/prompts.js[22m                        [2m 0.15 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/third-party-licenses.js[22m           [2m 0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/orchestration.js[22m                  [2m 0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ui.js[22m                             [2m 0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/module-settings.js[22m                [2m 0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/npsSurvey.js[22m                      [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ctas.js[22m                           [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/events.js[22m                         [2m 0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/settings.js[22m                       [2m 0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/webhooks.js[22m                       [2m 0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/execution.js[22m                      [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/tags.js[22m                           [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/workflows.js[22m                      [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mtypes.js[22m                              [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mutils-llN2nknz.js.map                 [2m13.41 kB[22m [2m│ gzip: 4.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22musers-F6rNjBAH.js.map                 [2m 9.39 kB[22m [2m│ gzip: 2.00 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mtemplates-BLsiiJSD.js.map             [2m 6.69 kB[22m [2m│ gzip: 1.78 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mutils-llN2nknz.js                     [2m 6.36 kB[22m [2m│ gzip: 2.28 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mnodeTypes-B1vgUTXW.js.map             [2m 4.97 kB[22m [2m│ gzip: 1.38 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22musers-F6rNjBAH.js                     [2m 3.01 kB[22m [2m│ gzip: 0.70 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msso-DXxdd2b6.js.map                   [2m 2.97 kB[22m [2m│ gzip: 0.81 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mexternalSecrets.ee-DdV1WqhY.js.map    [2m 2.78 kB[22m [2m│ gzip: 0.73 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mldap-dr5UnoKs.js.map                  [2m 2.71 kB[22m [2m│ gzip: 0.92 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22meventbus.ee-DgMlbgQX.js.map           [2m 2.58 kB[22m [2m│ gzip: 0.84 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mnodeTypes-B1vgUTXW.js                 [2m 2.40 kB[22m [2m│ gzip: 0.72 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mcloudPlans-Bek7FfI2.js.map            [2m 2.36 kB[22m [2m│ gzip: 0.87 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mcommunityNodes-DzE9_Iri.js.map        [2m 2.20 kB[22m [2m│ gzip: 0.84 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mversions-BVJ5TMFg.js.map              [2m 2.11 kB[22m [2m│ gzip: 0.79 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mmfa-BDbRuueq.js.map                   [2m 1.99 kB[22m [2m│ gzip: 0.65 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22musage-BjFB2tGd.js.map                 [2m 1.94 kB[22m [2m│ gzip: 0.67 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mroles-CKfq4sJR.js.map                 [2m 1.89 kB[22m [2m│ gzip: 0.65 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mapi-keys-aFy04fA4.js.map              [2m 1.89 kB[22m [2m│ gzip: 0.62 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mworkflowHistory-DDDWbJii.js.map       [2m 1.77 kB[22m [2m│ gzip: 0.66 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mtemplates-BLsiiJSD.js                 [2m 1.66 kB[22m [2m│ gzip: 0.52 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msso-DXxdd2b6.js                       [2m 1.43 kB[22m [2m│ gzip: 0.38 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mexternalSecrets.ee-DdV1WqhY.js        [2m 1.42 kB[22m [2m│ gzip: 0.37 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22meventbus.ee-DgMlbgQX.js               [2m 1.22 kB[22m [2m│ gzip: 0.44 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mprompts-DJJ0_A_d.js.map               [2m 1.20 kB[22m [2m│ gzip: 0.54 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mcommunityNodes-DzE9_Iri.js            [2m 1.19 kB[22m [2m│ gzip: 0.50 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mprovisioning-Wba0FVc2.js.map          [2m 1.18 kB[22m [2m│ gzip: 0.49 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mmfa-BDbRuueq.js                       [2m 0.93 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22musage-BjFB2tGd.js                     [2m 0.91 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mroles-CKfq4sJR.js                     [2m 0.89 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mldap-dr5UnoKs.js                      [2m 0.86 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mapi-keys-aFy04fA4.js                  [2m 0.82 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mcloudPlans-Bek7FfI2.js                [2m 0.80 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mapi/dynamic-banners.js.map            [2m 0.79 kB[22m [2m│ gzip: 0.46 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mwebhooks-59yywY6t.js.map              [2m 0.79 kB[22m [2m│ gzip: 0.44 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mui-LehpJIpX.js.map                    [2m 0.74 kB[22m [2m│ gzip: 0.42 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mversions-BVJ5TMFg.js                  [2m 0.67 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mnpsSurvey-D9d_9Lqx.js.map             [2m 0.59 kB[22m [2m│ gzip: 0.35 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mworkflowHistory-DDDWbJii.js           [2m 0.59 kB[22m [2m│ gzip: 0.28 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mprompts-DJJ0_A_d.js                   [2m 0.59 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mthird-party-licenses-wADLuGCr.js.map  [2m 0.58 kB[22m [2m│ gzip: 0.36 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mmodule-settings-DutK0FBY.js.map       [2m 0.58 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22morchestration-DF1NxQM1.js.map         [2m 0.58 kB[22m [2m│ gzip: 0.36 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msettings-B6vcP8W8.js.map              [2m 0.54 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mctas-CGP55wK9.js.map                  [2m 0.50 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mprovisioning-Wba0FVc2.js              [2m 0.50 kB[22m [2m│ gzip: 0.26 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mevents-DkTV5u8K.js.map                [2m 0.48 kB[22m [2m│ gzip: 0.32 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22morchestration-DF1NxQM1.js             [2m 0.37 kB[22m [2m│ gzip: 0.26 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mthird-party-licenses-wADLuGCr.js      [2m 0.35 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mui-LehpJIpX.js                        [2m 0.34 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mnpsSurvey-D9d_9Lqx.js                 [2m 0.32 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mmodule-settings-DutK0FBY.js           [2m 0.31 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mwebhooks-59yywY6t.js                  [2m 0.30 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mctas-CGP55wK9.js                      [2m 0.29 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mevents-DkTV5u8K.js                    [2m 0.29 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msettings-B6vcP8W8.js                  [2m 0.28 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mapi-B5jseM89.js                       [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.ts[22m[39m                            [2m10.66 kB[22m [2m│ gzip: 2.57 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/index.d.ts[22m[39m                        [2m10.10 kB[22m [2m│ gzip: 2.39 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/users.d.ts[22m[39m                        [2m 1.64 kB[22m [2m│ gzip: 0.43 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/templates.d.ts[22m[39m                    [2m 1.19 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/nodeTypes.d.ts[22m[39m                    [2m 0.89 kB[22m [2m│ gzip: 0.28 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/eventbus.ee.d.ts[22m[39m                  [2m 0.63 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/externalSecrets.ee.d.ts[22m[39m           [2m 0.62 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mutils.d.ts[22m[39m                            [2m 0.59 kB[22m [2m│ gzip: 0.26 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/sso.d.ts[22m[39m                          [2m 0.58 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/dynamic-banners.d.ts[22m[39m              [2m 0.50 kB[22m [2m│ gzip: 0.30 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/communityNodes.d.ts[22m[39m               [2m 0.45 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ldap.d.ts[22m[39m                         [2m 0.45 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/cloudPlans.d.ts[22m[39m                   [2m 0.44 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/workflowHistory.d.ts[22m[39m              [2m 0.44 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/usage.d.ts[22m[39m                        [2m 0.38 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/mfa.d.ts[22m[39m                          [2m 0.38 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/roles.d.ts[22m[39m                        [2m 0.35 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/api-keys.d.ts[22m[39m                     [2m 0.32 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/versions.d.ts[22m[39m                     [2m 0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/provisioning.d.ts[22m[39m                 [2m 0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/workflows.d.ts[22m[39m                    [2m 0.23 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/prompts.d.ts[22m[39m                      [2m 0.23 kB[22m [2m│ gzip: 0.13 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/third-party-licenses.d.ts[22m[39m         [2m 0.17 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ui.d.ts[22m[39m                           [2m 0.16 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/orchestration.d.ts[22m[39m                [2m 0.15 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/npsSurvey.d.ts[22m[39m                    [2m 0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/module-settings.d.ts[22m[39m              [2m 0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ctas.d.ts[22m[39m                         [2m 0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/events.d.ts[22m[39m                       [2m 0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/settings.d.ts[22m[39m                     [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/webhooks.d.ts[22m[39m                     [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mtypes.d.ts[22m[39m                            [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/tags.d.ts[22m[39m                         [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/execution.d.ts[22m[39m                    [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32musers-Cee-mbih.d.ts[39m                   [2m 5.79 kB[22m [2m│ gzip: 1.28 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtemplates-C_mGfydg.d.ts[39m               [2m 4.32 kB[22m [2m│ gzip: 1.08 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mutils-CxB6j6Zt.d.ts[39m                   [2m 2.36 kB[22m [2m│ gzip: 0.82 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mnodeTypes-B6jgJI7n.d.ts[39m               [2m 2.31 kB[22m [2m│ gzip: 0.61 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mldap-BLSxJIqQ.d.ts[39m                    [2m 1.79 kB[22m [2m│ gzip: 0.62 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mcloudPlans-Dqrz4RvF.d.ts[39m              [2m 1.70 kB[22m [2m│ gzip: 0.67 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msso-0w5bDYjp.d.ts[39m                     [2m 1.51 kB[22m [2m│ gzip: 0.48 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mexternalSecrets.ee-LqzkA1ks.d.ts[39m      [2m 1.46 kB[22m [2m│ gzip: 0.41 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32meventbus.ee-CVK75MYy.d.ts[39m             [2m 1.44 kB[22m [2m│ gzip: 0.45 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mversions-DyXskKmK.d.ts[39m                [2m 1.34 kB[22m [2m│ gzip: 0.52 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mworkflowHistory-Dvp_IHeF.d.ts[39m         [2m 1.14 kB[22m [2m│ gzip: 0.45 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mworkflows-BcSwqS1l.d.ts[39m               [2m 1.09 kB[22m [2m│ gzip: 0.43 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mcommunityNodes-B7ZYiH6_.d.ts[39m          [2m 1.03 kB[22m [2m│ gzip: 0.39 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mmfa-DA5rcWv6.d.ts[39m                     [2m 1.02 kB[22m [2m│ gzip: 0.40 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32musage-DBta7_Km.d.ts[39m                   [2m 1.01 kB[22m [2m│ gzip: 0.39 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mapi-keys-Bn7XGsXg.d.ts[39m                [2m 0.99 kB[22m [2m│ gzip: 0.38 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mroles-DqgBmebA.d.ts[39m                   [2m 0.95 kB[22m [2m│ gzip: 0.36 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mprovisioning-BCBivk9R.d.ts[39m            [2m 0.77 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mprompts-BM4l6PYM.d.ts[39m                 [2m 0.56 kB[22m [2m│ gzip: 0.28 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mwebhooks-F-LbqPEN.d.ts[39m                [2m 0.49 kB[22m [2m│ gzip: 0.30 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mui-COOgh12z.d.ts[39m                      [2m 0.40 kB[22m [2m│ gzip: 0.26 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mmodule-settings-D0T4bPbZ.d.ts[39m         [2m 0.37 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mnpsSurvey-CNoyKP4K.d.ts[39m               [2m 0.36 kB[22m [2m│ gzip: 0.24 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msettings-jG2KtLU6.d.ts[39m                [2m 0.32 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mthird-party-licenses-DeRyZKbh.d.ts[39m    [2m 0.32 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32morchestration-Cp9w3qep.d.ts[39m           [2m 0.29 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mctas-EN-bnoWu.d.ts[39m                    [2m 0.28 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mevents-DKJuaV7j.d.ts[39m                  [2m 0.27 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtags-BmQjq4MC.d.ts[39m                    [2m 0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtypes-DhrOsni7.d.ts[39m                   [2m 0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mindex-ij9f8GAA.d.ts[39m                   [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+@n8n/rest-api-client:build: [34mℹ[39m [34m[ESM][39m 155 files, total: 186.81 kB
+@n8n/rest-api-client:build: [32m✔[39m Build complete in [32m6156ms[39m
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.63.0 build:vite /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env vite build
+@n8n/chat:build: 
+@n8n/db:build: cache miss, executing 97ebd9d8c0f82f27
+@n8n/task-runner:build: cache miss, executing 5f28205fc5c9463c
+n8n-nodes-base:build: cache miss, executing 4a60c1a3fc08d869
+n8n-node-dev:build: cache miss, executing 7e8adc9d809a7d79
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.116.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/nodes-base
+n8n-nodes-base:build: > tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
+n8n-nodes-base:build: 
+@n8n/db:build: 
+@n8n/db:build: > @n8n/db@0.29.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/db
+@n8n/db:build: > tsc -p tsconfig.build.json
+@n8n/db:build: 
+@n8n/chat:build: rolldown-vite v7.1.16 building for production...
+n8n-node-dev:build: 
+n8n-node-dev:build: > n8n-node-dev@1.116.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/node-dev
+n8n-node-dev:build: > tsc --noEmit
+n8n-node-dev:build: 
+@n8n/task-runner:build: 
+@n8n/task-runner:build: > @n8n/task-runner@1.54.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/task-runner
+@n8n/task-runner:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/task-runner:build: 
+@n8n/backend-test-utils:build: cache miss, executing 5451397ee796c764
+@n8n/backend-test-utils:build: 
+@n8n/backend-test-utils:build: > @n8n/backend-test-utils@0.21.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/backend-test-utils
+@n8n/backend-test-utils:build: > tsc -p tsconfig.build.json
+@n8n/backend-test-utils:build: 
+@n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+@n8n/chat:build: 
+@n8n/chat:build: [7m36[0m const slots = useSlots();
+@n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
+@n8n/chat:build: 
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: [plugin builtin:reporter] 
+@n8n/chat:build: (!) /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: [vite:dts] Declaration files built in 28923ms.
+@n8n/chat:build: 
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css    [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.es.js  [39m[1m[33m945.26 kB[39m[22m[2m │ gzip: 245.32 kB[22m
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css     [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.umd.js  [39m[1m[33m690.96 kB[39m[22m[2m │ gzip: 214.84 kB[22m
+@n8n/chat:build: ✓ built in 38.50s
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.63.0 build:bundle /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env INCLUDE_VUE=true vite build
+@n8n/chat:build: 
+@n8n/chat:build: rolldown-vite v7.1.16 building for production...
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.116.0 copy-nodes-json /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/nodes-base
+n8n-nodes-base:build: > node scripts/copy-nodes-json.js .
+n8n-nodes-base:build: 
+@n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+@n8n/chat:build: 
+@n8n/chat:build: [7m36[0m const slots = useSlots();
+@n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
+@n8n/chat:build: 
+n8n-nodes-base:build: Default locale set to: [35men[0m
+n8n-nodes-base:build: No translation required - Skipping translations build...
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: [plugin builtin:reporter] 
+@n8n/chat:build: (!) /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: [vite:dts] Declaration files built in 17519ms.
+@n8n/chat:build: 
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css           [39m[1m[2m   63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.bundle.es.js  [39m[1m[33m1,030.05 kB[39m[22m[2m │ gzip: 272.96 kB[22m
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css            [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.bundle.umd.js  [39m[1m[33m696.26 kB[39m[22m[2m │ gzip: 235.25 kB[22m
+@n8n/chat:build: ✓ built in 25.41s
+n8n-editor-ui:build: cache miss, executing 4a64751d0fa4add8
+n8n-editor-ui:build: 
+n8n-editor-ui:build: > n8n-editor-ui@1.118.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/editor-ui
+n8n-editor-ui:build: > cross-env VUE_APP_PUBLIC_PATH="/{{BASE_PATH}}/" NODE_OPTIONS="--max-old-space-size=8192" vite build
+n8n-editor-ui:build: 
+n8n-editor-ui:build: You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rollupOptions` instead.
+n8n-editor-ui:build: rolldown-vite v7.1.16 building for production...
+n8n-editor-ui:build: <script src="/{{BASE_PATH}}/static/base-path.js"> in "/index.html" can't be bundled without type="module" attribute
+n8n-editor-ui:build: <script src="/{{BASE_PATH}}/static/posthog.init.js"> in "/index.html" can't be bundled without type="module" attribute
+n8n-editor-ui:build: 
+n8n-editor-ui:build: /{{BASE_PATH}}/static/prefers-color-scheme.css doesn't exist at build time, it will remain unchanged to be resolved at runtime
+n8n-editor-ui:build: [plugin builtin:import-glob] Invalid glob pattern: `@n8n/i18n/locales/*.json` in file 'src/dev/i18nHmr.ts'. Glob patterns must start with:
+n8n-editor-ui:build:   • '/' for absolute paths from project root
+n8n-editor-ui:build:   • './' or '../' for relative paths
+n8n-editor-ui:build:   • '**/' for recursive matching from project root
+n8n-editor-ui:build:   • '#' for subpath imports (with '*' wildcard)
+n8n-editor-ui:build: [plugin rolldown:vite-resolve] Module "os" has been externalized for browser compatibility, imported by "/Users/csaba/Downloads/n8n-worktrees/pay-3162/node_modules/.pnpm/recast@0.22.0/node_modules/recast/lib/util.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+@n8n/n8n-nodes-langchain:build: cache miss, executing 2613730c29c87095
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.117.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.117.0 copy-nodes-json /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node ../../nodes-base/scripts/copy-nodes-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.117.0 copy-tokenizer-json /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node scripts/copy-tokenizer-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
+n8n-editor-ui:build: [2Kn8n-editor-ui:build: transforming...[32m✓[39m 6439 modules transformed.
+n8n-editor-ui:build: rendering chunks...
+n8n-editor-ui:build: [plugin builtin:reporter] 
+n8n-editor-ui:build: (!) /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/editor-ui/src/features/ndv/parameters/components/CollectionParameter.vue is dynamically imported by /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue?vue&type=script&setup=true&lang.ts but also statically imported by /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/frontend/editor-ui/src/features/ndv/parameters/components/MultipleParameter.vue?vue&type=script&setup=true&lang.ts, dynamic import will not move module into another chunk.
+n8n-editor-ui:build: 
+n8n-editor-ui:build: [plugin vite:legacy-generate-polyfill-chunk] Error: This plugin assigns to bundle variable. This is discouraged by Rollup and is not supported by Rolldown. This will be ignored. https://rollupjs.org/plugin-development/#generatebundle:~:text=DANGER,this.emitFile.
+n8n-editor-ui:build:     at Object.set (file:///Users/csaba/Downloads/n8n-worktrees/pay-3162/node_modules/.pnpm/rolldown@1.0.0-beta.42/node_modules/rolldown/dist/shared/src-CUdyD4rb.mjs:2905:18)
+n8n-editor-ui:build:     at buildPolyfillChunk (file:///Users/csaba/Downloads/n8n-worktrees/pay-3162/node_modules/.pnpm/@vitejs+plugin-legacy@6.0.2_rolldown-vite@7.1.16_@types+node@20.19.21_esbuild@0.25.10_j_37f577dbec79d3131c40095589331fae/node_modules/@vitejs/plugin-legacy/dist/index.mjs:731:34)
+n8n-editor-ui:build: [vite-plugin-static-copy] Copied 2 items.
+n8n-editor-ui:build: computing gzip size...
+n8n-editor-ui:build: [2mdist/[22m[32mindex.html                                                     [39m[1m[2m   14.17 kB[22m[22m[2m │ gzip:   2.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32msqlite3-opfs-async-proxy-vVtmDGHX.js                    [39m[1m[2m   15.79 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32melement-icons-B-tDfklg.woff                             [39m[1m[2m   28.20 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32melement-icons-_lZGOqcG.ttf                              [39m[1m[2m   55.95 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mCommitMonoVariable-ytizKI8U.woff2                       [39m[1m[2m   86.76 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mdoppler-B__k0MeW.webp                                   [39m[1m[2m  315.06 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mInterVariable-DiVDrmQJ.woff2                            [39m[1m[2m  352.24 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32msqlite3-worker1-bundler-friendly-BOYmhhGN.js            [39m[1m[2m  362.94 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mworker-DYbBH4SI.js                                      [39m[1m[2m  377.11 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mInterVariable-Italic-FCBEiFp6.woff2                     [39m[1m[2m  387.97 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32msqlite3-DBpDb1lf.wasm                                   [39m[1m[2m  856.44 kB[22m[22m[2m │ gzip: 396.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mtypescript.worker-CkR7RUha.js                           [39m[1m[2m7,973.55 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectRolesView-Bpk_JP1z.css                           [39m[1m[2m    0.18 kB[22m[22m[2m │ gzip:   0.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mEntityNotFound-DfstTvbZ.css                             [39m[1m[2m    0.19 kB[22m[22m[2m │ gzip:   0.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mEntityUnAuthorised-C6EIQ1Pq.css                         [39m[1m[2m    0.19 kB[22m[22m[2m │ gzip:   0.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNDVEmptyState-Hm1vFJ4i.css                              [39m[1m[2m    0.46 kB[22m[22m[2m │ gzip:   0.26 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mAnimatedSpinner-ChSRgyeI.css                            [39m[1m[2m    0.57 kB[22m[22m[2m │ gzip:   0.19 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectRoleView-Cewy9KCA.css                            [39m[1m[2m    0.87 kB[22m[22m[2m │ gzip:   0.42 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataHtml-Bu3RZcuV.css                                [39m[1m[2m    2.53 kB[22m[22m[2m │ gzip:   0.46 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCredentialIcon-bZrcXcyJ.css                             [39m[1m[2m    2.56 kB[22m[22m[2m │ gzip:   0.47 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeIcon-C-Ise6x6.css                                   [39m[1m[2m    2.57 kB[22m[22m[2m │ gzip:   0.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mModalDrawer-B-12esvU.css                                [39m[1m[2m    2.58 kB[22m[22m[2m │ gzip:   0.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTextWithHighlights-BgbTzzK2.css                         [39m[1m[2m    2.63 kB[22m[22m[2m │ gzip:   0.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mKeyboardShortcutTooltip-pRLqnHdh.css                    [39m[1m[2m    2.65 kB[22m[22m[2m │ gzip:   0.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataJsonActions-CZx7rSSE.css                         [39m[1m[2m    2.65 kB[22m[22m[2m │ gzip:   0.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mInsightsPaywall-CE5W3W4m.css                            [39m[1m[2m    2.70 kB[22m[22m[2m │ gzip:   0.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mDraggable-DfBtatxg.css                                  [39m[1m[2m    2.72 kB[22m[22m[2m │ gzip:   0.55 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mVariablesUsageBadge-CQU1F9NU.css                        [39m[1m[2m    2.72 kB[22m[22m[2m │ gzip:   0.54 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mAddDataTableModal-BzS5Yqag.css                          [39m[1m[2m    2.73 kB[22m[22m[2m │ gzip:   0.55 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mExternalSecretsProviderConnectionSwitch-Df3YK0La.css    [39m[1m[2m    2.74 kB[22m[22m[2m │ gzip:   0.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSaveButton-Dc01Y2MA.css                                 [39m[1m[2m    2.86 kB[22m[22m[2m │ gzip:   0.61 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mPageViewLayout-BIiboMgG.css                             [39m[1m[2m    2.90 kB[22m[22m[2m │ gzip:   0.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mErrorView-D2OMvGTk.css                                  [39m[1m[2m    2.93 kB[22m[22m[2m │ gzip:   0.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeCreation-CKa3G1zA.css                               [39m[1m[2m    2.93 kB[22m[22m[2m │ gzip:   0.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSelectedItemsInfo-DDbNnY7M.css                          [39m[1m[2m    2.96 kB[22m[22m[2m │ gzip:   0.64 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowExecutionsLandingPage-DMldlKod.css              [39m[1m[2m    2.97 kB[22m[22m[2m │ gzip:   0.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplatesCollectionView-klb8FT9y.css                    [39m[1m[2m    3.06 kB[22m[22m[2m │ gzip:   0.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSigninView-BQgsTN8o.css                                 [39m[1m[2m    3.07 kB[22m[22m[2m │ gzip:   0.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSetupWorkflowFromTemplateView-CU2iGJTa.css              [39m[1m[2m    3.10 kB[22m[22m[2m │ gzip:   0.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsExternalSecrets-CaiOf7cD.css                    [39m[1m[2m    3.10 kB[22m[22m[2m │ gzip:   0.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35museCommandBar-eK4Fv9lH.css                              [39m[1m[2m    3.12 kB[22m[22m[2m │ gzip:   0.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowPreview-Bt03akXc.css                            [39m[1m[2m    3.17 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsLdapView-KgMO_1GA.css                           [39m[1m[2m    3.26 kB[22m[22m[2m │ gzip:   0.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectBreadcrumb-CAEDvzuN.css                          [39m[1m[2m    3.27 kB[22m[22m[2m │ gzip:   0.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mDataTableView-ByKnlVtU.css                              [39m[1m[2m    3.28 kB[22m[22m[2m │ gzip:   0.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplatesWorkflowView-CBjRBbmw.css                      [39m[1m[2m    3.29 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataSearch-BvNE3iVy.css                              [39m[1m[2m    3.29 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectCardBadge-B_wj_mAB.css                           [39m[1m[2m    3.32 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowExecutionsInfoAccordion-CEOvJ-SX.css            [39m[1m[2m    3.32 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mMainSidebarUserArea-yJKeCkOz.css                        [39m[1m[2m    3.33 kB[22m[22m[2m │ gzip:   0.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mInsightsTableWorkflows-D20Yb7ZW.css                     [39m[1m[2m    3.35 kB[22m[22m[2m │ gzip:   0.77 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35museTelemetryContext-BpnKRIT7.css                        [39m[1m[2m    3.38 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsSso-w7Iz4Luy.css                                [39m[1m[2m    3.39 kB[22m[22m[2m │ gzip:   0.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mPrebuiltAgentTemplatesView-jF7HvWnL.css                 [39m[1m[2m    3.40 kB[22m[22m[2m │ gzip:   0.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectIcon-DT95ZcDW.css                                [39m[1m[2m    3.50 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsPersonalView-D6LtKnaF.css                       [39m[1m[2m    3.57 kB[22m[22m[2m │ gzip:   0.84 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsProvisioningView-Dhfda99J.css                   [39m[1m[2m    3.60 kB[22m[22m[2m │ gzip:   0.76 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCopyInput-CwgZTYF4.css                                  [39m[1m[2m    3.73 kB[22m[22m[2m │ gzip:   0.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataParsedAiContent-CvjNCtpG.css                     [39m[1m[2m    3.95 kB[22m[22m[2m │ gzip:   0.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mevaluation-CGxdCHrN.css                                 [39m[1m[2m    4.12 kB[22m[22m[2m │ gzip:   0.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsSourceControl-DEs9MNB6.css                      [39m[1m[2m    4.19 kB[22m[22m[2m │ gzip:   0.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTagsDropdown-2j57MEiW.css                               [39m[1m[2m    4.57 kB[22m[22m[2m │ gzip:   1.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mFixedCollectionParameter-DsuMMCUp.css                   [39m[1m[2m    5.10 kB[22m[22m[2m │ gzip:   0.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mInsightsDashboard-CXRybzGm.css                          [39m[1m[2m    5.35 kB[22m[22m[2m │ gzip:   1.40 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplateDetails-DfyKyMyy.css                            [39m[1m[2m    5.40 kB[22m[22m[2m │ gzip:   0.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mbanners-BYKc2-7k.css                                    [39m[1m[2m    5.44 kB[22m[22m[2m │ gzip:   0.67 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCommunityNodeUpdateInfo-kPDiipF5.css                    [39m[1m[2m    5.52 kB[22m[22m[2m │ gzip:   0.69 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mVariablesView-PPP4k5c3.css                              [39m[1m[2m    5.66 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mAuthView-Dg9ZkCud.css                                   [39m[1m[2m    5.80 kB[22m[22m[2m │ gzip:   0.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mInsightsSummary-BazqPYQ0.css                            [39m[1m[2m    5.88 kB[22m[22m[2m │ gzip:   1.28 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mModal-C6HnfA6j.css                                      [39m[1m[2m    5.89 kB[22m[22m[2m │ gzip:   0.81 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplatesView-BgdyYmrL.css                              [39m[1m[2m    5.92 kB[22m[22m[2m │ gzip:   0.82 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsView-6sirGv9l.css                               [39m[1m[2m    6.01 kB[22m[22m[2m │ gzip:   0.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsLogStreamingView-xo-rTSA0.css                   [39m[1m[2m    6.02 kB[22m[22m[2m │ gzip:   0.91 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCredentialsView-BDOl2A0w.css                            [39m[1m[2m    6.03 kB[22m[22m[2m │ gzip:   0.90 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectVariables-Cw92ZPKE.css                           [39m[1m[2m    6.14 kB[22m[22m[2m │ gzip:   0.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectSharing-DsD3YT5P.css                             [39m[1m[2m    6.18 kB[22m[22m[2m │ gzip:   0.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectHeader-CY-3wSig.css                              [39m[1m[2m    6.47 kB[22m[22m[2m │ gzip:   1.01 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsCommunityNodesView-m7kLUpJK.css                 [39m[1m[2m    6.49 kB[22m[22m[2m │ gzip:   0.98 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsApiView-Dtl_N9mK.css                            [39m[1m[2m    6.64 kB[22m[22m[2m │ gzip:   1.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mChatAgentsView-nmVuYzlZ.css                             [39m[1m[2m    7.25 kB[22m[22m[2m │ gzip:   1.17 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataJson-LufoUTRy.css                                [39m[1m[2m    7.26 kB[22m[22m[2m │ gzip:   1.10 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataTable-CnUH-sL_.css                               [39m[1m[2m    7.71 kB[22m[22m[2m │ gzip:   1.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowActivator-BNp0duVE.css                          [39m[1m[2m    8.03 kB[22m[22m[2m │ gzip:   0.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeDetailsViewV2-rAVfbsOa.css                          [39m[1m[2m    8.21 kB[22m[22m[2m │ gzip:   1.43 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTestRunDetailView-DkQcfFP4.css                          [39m[1m[2m    8.39 kB[22m[22m[2m │ gzip:   1.49 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35museChatCredentials-AjXB38tk.css                         [39m[1m[2m    8.91 kB[22m[22m[2m │ gzip:   0.98 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsUsersView-CfJcVjkl.css                          [39m[1m[2m    9.32 kB[22m[22m[2m │ gzip:   1.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectSettings-BQOluc3A.css                            [39m[1m[2m    9.71 kB[22m[22m[2m │ gzip:   1.17 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsUsageAndPlan-CTDerWRW.css                       [39m[1m[2m    9.83 kB[22m[22m[2m │ gzip:   1.22 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mExecutionsTime-qhi9xQEs.css                             [39m[1m[2m    9.95 kB[22m[22m[2m │ gzip:   1.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mVirtualSchema-B0hneN4T.css                              [39m[1m[2m   10.01 kB[22m[22m[2m │ gzip:   2.19 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mChatSidebar-DGlWPwKB.css                                [39m[1m[2m   10.01 kB[22m[22m[2m │ gzip:   1.30 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplateList-CNUtq0N7.css                               [39m[1m[2m   10.03 kB[22m[22m[2m │ gzip:   1.21 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mExecutionsView-f-kKRR2k.css                             [39m[1m[2m   11.05 kB[22m[22m[2m │ gzip:   1.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsMCPView-BBO_ZyBU.css                            [39m[1m[2m   11.83 kB[22m[22m[2m │ gzip:   1.46 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mEvaluationsView-DsfXDJ-U.css                            [39m[1m[2m   12.06 kB[22m[22m[2m │ gzip:   1.28 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mEvaluationsRootView-BVNlhh2l.css                        [39m[1m[2m   12.34 kB[22m[22m[2m │ gzip:   1.29 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35museLogsTreeExpand-BT6XJR8J.css                          [39m[1m[2m   12.44 kB[22m[22m[2m │ gzip:   1.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSetupTemplateFormStep-She0GnTz.css                      [39m[1m[2m   13.55 kB[22m[22m[2m │ gzip:   0.99 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mResourcesListLayout-B8d0Asrt.css                        [39m[1m[2m   13.56 kB[22m[22m[2m │ gzip:   1.50 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeDetailsView-DKKIPSTh.css                            [39m[1m[2m   13.82 kB[22m[22m[2m │ gzip:   1.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowHistory-BmerBiKz.css                            [39m[1m[2m   14.41 kB[22m[22m[2m │ gzip:   1.59 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowExecutionsPreview-BkXT82z5.css                  [39m[1m[2m   15.45 kB[22m[22m[2m │ gzip:   1.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowExecutionsView-Bn93rzj7.css                     [39m[1m[2m   16.57 kB[22m[22m[2m │ gzip:   1.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeView-KpAB56Z3.css                                   [39m[1m[2m   18.84 kB[22m[22m[2m │ gzip:   2.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplatesSearchView-BfT0LMil.css                        [39m[1m[2m   19.49 kB[22m[22m[2m │ gzip:   1.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mMainHeader-QMv9Ba5g.css                                 [39m[1m[2m   19.86 kB[22m[22m[2m │ gzip:   1.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkerView-4m_NaoAx.css                                 [39m[1m[2m   20.16 kB[22m[22m[2m │ gzip:   1.38 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mMainSidebar-BqoiqeXY.css                                [39m[1m[2m   23.02 kB[22m[22m[2m │ gzip:   2.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTriggerPanel-D0liQAa5.css                               [39m[1m[2m   25.10 kB[22m[22m[2m │ gzip:   2.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mChatView-CaHdZvGA.css                                   [39m[1m[2m   25.44 kB[22m[22m[2m │ gzip:   2.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mDataTableDetailsView-CxS46D7a.css                       [39m[1m[2m   29.73 kB[22m[22m[2m │ gzip:   2.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeCreator-C-oYFkbs.css                                [39m[1m[2m   35.65 kB[22m[22m[2m │ gzip:   3.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowsView-2XTsT7zB.css                              [39m[1m[2m   36.17 kB[22m[22m[2m │ gzip:   2.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mItemsRenderer-B89wKDHQ.css                              [39m[1m[2m   39.11 kB[22m[22m[2m │ gzip:   2.45 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeSettings-Cfc_4VtB.css                               [39m[1m[2m   39.74 kB[22m[22m[2m │ gzip:   3.61 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35misEmpty-CoE8jc_S.css                                    [39m[1m[2m   47.94 kB[22m[22m[2m │ gzip:   4.03 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mLogsPanel-K1M_gOCT.css                                  [39m[1m[2m   77.83 kB[22m[22m[2m │ gzip:   5.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCanvas-Bn6gWZ4a.css                                     [39m[1m[2m  109.65 kB[22m[22m[2m │ gzip:   6.61 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mParameterInputList-CVmXLal8.css                         [39m[1m[2m  169.76 kB[22m[22m[2m │ gzip:  11.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35msrc-sI-DsSQQ.css                                        [39m[1m[2m  388.75 kB[22m[22m[2m │ gzip:  26.44 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mindex-BrPz_nma.css                                      [39m[1m[2m  665.90 kB[22m[22m[2m │ gzip:  65.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36men-CPX7bHht.js                                          [39m[1m[2m    0.08 kB[22m[22m[2m │ gzip:   0.08 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msourceControl.eventBus-CmuY-IKD.js                      [39m[1m[2m    0.14 kB[22m[22m[2m │ gzip:   0.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mcore-CNVnxHHH.js                                        [39m[1m[2m    0.20 kB[22m[22m[2m │ gzip:   0.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36m_plugin-vue_export-helper-BwBpWJRZ.js                   [39m[1m[2m    0.22 kB[22m[22m[2m │ gzip:   0.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msmartDecimal-BitNC0jz.js                                [39m[1m[2m    0.23 kB[22m[22m[2m │ gzip:   0.17 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mauth.eventBus-DKXcFQXp.js                               [39m[1m[2m    0.27 kB[22m[22m[2m │ gzip:   0.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msortByProperty-0UtqPmvJ.js                              [39m[1m[2m    0.28 kB[22m[22m[2m │ gzip:   0.20 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataHtml-X9lzUZaX.js                                 [39m[1m[2m    0.31 kB[22m[22m[2m │ gzip:   0.21 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mconstants-CPQyU8WO.js                                   [39m[1m[2m    0.48 kB[22m[22m[2m │ gzip:   0.28 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36muniqBy-LkGsKtxm.js                                      [39m[1m[2m    0.49 kB[22m[22m[2m │ gzip:   0.29 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museProjectPages-BmYpxCx0.js                             [39m[1m[2m    0.64 kB[22m[22m[2m │ gzip:   0.34 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mretry-sDkwzrPY.js                                       [39m[1m[2m    0.68 kB[22m[22m[2m │ gzip:   0.35 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36morderBy-B-FaHm7x.js                                     [39m[1m[2m    0.73 kB[22m[22m[2m │ gzip:   0.37 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museIntersectionObserver-BiHBDBg3.js                     [39m[1m[2m    0.77 kB[22m[22m[2m │ gzip:   0.36 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVueMarkdown-Ccy8YV0t.js                                 [39m[1m[2m    0.85 kB[22m[22m[2m │ gzip:   0.46 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEnterpriseEdition.ee-Chra1XtM.js                        [39m[1m[2m    0.86 kB[22m[22m[2m │ gzip:   0.47 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mpickBy-Ct8doLxh.js                                      [39m[1m[2m    0.88 kB[22m[22m[2m │ gzip:   0.42 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museExecutionData-DcrmYCHu.js                            [39m[1m[2m    0.89 kB[22m[22m[2m │ gzip:   0.40 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museExternalHooks-DnkWm96A.js                            [39m[1m[2m    0.89 kB[22m[22m[2m │ gzip:   0.43 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mPageViewLayout-CCwb27rd.js                              [39m[1m[2m    0.95 kB[22m[22m[2m │ gzip:   0.46 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataParsedAiContent-BlkcJpkb.js                      [39m[1m[2m    0.96 kB[22m[22m[2m │ gzip:   0.47 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museMcp-CSHjioRx.js                                      [39m[1m[2m    1.06 kB[22m[22m[2m │ gzip:   0.54 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSignoutView-CqekWS94.js                                 [39m[1m[2m    1.25 kB[22m[22m[2m │ gzip:   0.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museBeforeUnload-DpfxSy0e.js                             [39m[1m[2m    1.35 kB[22m[22m[2m │ gzip:   0.59 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataHtml-DdtrEw19.js                                 [39m[1m[2m    1.43 kB[22m[22m[2m │ gzip:   0.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEmptySharedSectionActionBox-DGVP-Seo.js                 [39m[1m[2m    1.49 kB[22m[22m[2m │ gzip:   0.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museClipboard-JhWbDDwo.js                                [39m[1m[2m    1.52 kB[22m[22m[2m │ gzip:   0.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museTelemetryContext-BnR6yhqT.js                         [39m[1m[2m    1.60 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVariablesUsageBadge-CfH9RRJY.js                         [39m[1m[2m    1.61 kB[22m[22m[2m │ gzip:   0.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVirtualSchema-lBVSwXML.js                               [39m[1m[2m    1.64 kB[22m[22m[2m │ gzip:   0.76 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mAnimatedSpinner-DRB4A7Dx.js                             [39m[1m[2m    1.69 kB[22m[22m[2m │ gzip:   0.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartFailed-6xI5A5LN.js                         [39m[1m[2m    1.80 kB[22m[22m[2m │ gzip:   0.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mPushConnectionTracker-DzGu3cI-.js                       [39m[1m[2m    1.80 kB[22m[22m[2m │ gzip:   0.82 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mchunk-6z4oVpB-.js                                       [39m[1m[2m    1.87 kB[22m[22m[2m │ gzip:   0.83 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mapiKeys.store-BBNv6kTU.js                               [39m[1m[2m    1.90 kB[22m[22m[2m │ gzip:   0.67 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mKeyboardShortcutTooltip-Ce1o49R_.js                     [39m[1m[2m    1.92 kB[22m[22m[2m │ gzip:   0.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartTotal-DyTYTl6u.js                          [39m[1m[2m    1.96 kB[22m[22m[2m │ gzip:   0.89 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdateFormatter-C1IDxXju.js                               [39m[1m[2m    1.98 kB[22m[22m[2m │ gzip:   0.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36minsights.constants-NogjFJ3a.js                          [39m[1m[2m    2.00 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartFailureRate-CUDfoH_D.js                    [39m[1m[2m    2.03 kB[22m[22m[2m │ gzip:   0.95 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mroles.store-obdlD5Ne.js                                 [39m[1m[2m    2.11 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mpreload-helper-CR0ecmWK.js                              [39m[1m[2m    2.13 kB[22m[22m[2m │ gzip:   1.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowTagsDropdown-DaDngaoy.js                        [39m[1m[2m    2.14 kB[22m[22m[2m │ gzip:   0.88 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtemplateTransforms-D2GQx8lu.js                          [39m[1m[2m    2.15 kB[22m[22m[2m │ gzip:   0.64 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mLogsPanel-Cyf-Nh1y.js                                   [39m[1m[2m    2.18 kB[22m[22m[2m │ gzip:   0.97 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mAnnotationTagsDropdown.ee-CLvnMuxU.js                   [39m[1m[2m    2.20 kB[22m[22m[2m │ gzip:   0.90 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCollectionParameter-D-LgrL7C.js                         [39m[1m[2m    2.21 kB[22m[22m[2m │ gzip:   0.98 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartAverageRuntime-DnTkHcQW.js                 [39m[1m[2m    2.24 kB[22m[22m[2m │ gzip:   1.03 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36musePageRedirectionHelper-Dc5CEPCf.js                    [39m[1m[2m    2.29 kB[22m[22m[2m │ gzip:   0.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartTimeSaved-BI7ugWpG.js                      [39m[1m[2m    2.33 kB[22m[22m[2m │ gzip:   1.08 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowOnboardingView-BCtNEzt0.js                      [39m[1m[2m    2.40 kB[22m[22m[2m │ gzip:   0.95 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mnodeTransforms-DzljdLgQ.js                              [39m[1m[2m    2.46 kB[22m[22m[2m │ gzip:   0.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectIcon-C-0d8fNU.js                                 [39m[1m[2m    2.49 kB[22m[22m[2m │ gzip:   1.01 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSelectedItemsInfo-BQ_Bh5Bu.js                           [39m[1m[2m    2.56 kB[22m[22m[2m │ gzip:   0.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSamlOnboarding-Bki2GdKf.js                              [39m[1m[2m    2.58 kB[22m[22m[2m │ gzip:   1.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36minsights.store-BL_xe3vS.js                              [39m[1m[2m    2.59 kB[22m[22m[2m │ gzip:   0.77 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36minsights.utils-Dl5I6vew.js                              [39m[1m[2m    2.60 kB[22m[22m[2m │ gzip:   0.84 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mnodeIcon-CzTJyxeo.js                                    [39m[1m[2m    2.64 kB[22m[22m[2m │ gzip:   0.81 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSetupWorkflowCredentialsButton-CMDGzCjc.js              [39m[1m[2m    2.72 kB[22m[22m[2m │ gzip:   1.14 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDemoFooter-BL41s7HY.js                                  [39m[1m[2m    2.74 kB[22m[22m[2m │ gzip:   1.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museKeybindings-BJZe7tZY.js                              [39m[1m[2m    2.84 kB[22m[22m[2m │ gzip:   1.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mErrorView-sBSm4dwp.js                                   [39m[1m[2m    2.84 kB[22m[22m[2m │ gzip:   1.13 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsPaywall-mTWnw6mr.js                             [39m[1m[2m    2.84 kB[22m[22m[2m │ gzip:   1.10 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mmcp.store-BXiQjMOf.js                                   [39m[1m[2m    2.86 kB[22m[22m[2m │ gzip:   0.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDataTableActions-CcBy8Jsc.js                            [39m[1m[2m    2.87 kB[22m[22m[2m │ gzip:   1.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEntityUnAuthorised-CmCJFoZi.js                          [39m[1m[2m    2.94 kB[22m[22m[2m │ gzip:   1.23 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeIcon-MlFbU01g.js                                    [39m[1m[2m    2.98 kB[22m[22m[2m │ gzip:   1.04 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplatesView-D3I92h_d.js                               [39m[1m[2m    2.98 kB[22m[22m[2m │ gzip:   0.99 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtemplateActions-C17V3c3H.js                             [39m[1m[2m    2.98 kB[22m[22m[2m │ gzip:   1.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTextWithHighlights-BD4mPeAU.js                          [39m[1m[2m    3.03 kB[22m[22m[2m │ gzip:   1.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCopyInput-1nlEbJ87.js                                   [39m[1m[2m    3.13 kB[22m[22m[2m │ gzip:   1.20 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEntityNotFound-ByTKF2qr.js                              [39m[1m[2m    3.15 kB[22m[22m[2m │ gzip:   1.14 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCredentialIcon-DNlgIZyi.js                              [39m[1m[2m    3.18 kB[22m[22m[2m │ gzip:   1.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSaveButton-BFZi5Vb1.js                                  [39m[1m[2m    3.20 kB[22m[22m[2m │ gzip:   1.13 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museExecutionHelpers-Cy_v4z85.js                         [39m[1m[2m    3.24 kB[22m[22m[2m │ gzip:   1.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mForgotMyPasswordView-M9LWdAJQ.js                        [39m[1m[2m    3.43 kB[22m[22m[2m │ gzip:   1.38 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSetupView-DadGv3Vq.js                                   [39m[1m[2m    3.44 kB[22m[22m[2m │ gzip:   1.31 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectBreadcrumb-Lx2wuNve.js                           [39m[1m[2m    3.69 kB[22m[22m[2m │ gzip:   1.30 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mschemaPreview.store-Cibk-2xr.js                         [39m[1m[2m    3.72 kB[22m[22m[2m │ gzip:   1.43 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mFileSaver.min-DaytN8ae.js                               [39m[1m[2m    3.82 kB[22m[22m[2m │ gzip:   1.59 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mnpsSurvey.store-uUbEORie.js                             [39m[1m[2m    3.84 kB[22m[22m[2m │ gzip:   1.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museWorkflowActivate-CFsSgpzg.js                         [39m[1m[2m    3.98 kB[22m[22m[2m │ gzip:   1.26 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36musage.store-Bz8BTIWS.js                                 [39m[1m[2m    4.08 kB[22m[22m[2m │ gzip:   1.23 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mexternalSecrets.ee.store-4gvShwPY.js                    [39m[1m[2m    4.19 kB[22m[22m[2m │ gzip:   1.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTimeAgo-CWvccXDo.js                                     [39m[1m[2m    4.26 kB[22m[22m[2m │ gzip:   1.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mchartjs.utils-iY-EfkDX.js                               [39m[1m[2m    4.29 kB[22m[22m[2m │ gzip:   1.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mchatPanel.store-CBhHrrKB.js                             [39m[1m[2m    4.34 kB[22m[22m[2m │ gzip:   1.28 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mMainSidebarUserArea-62Sps_kY.js                         [39m[1m[2m    4.35 kB[22m[22m[2m │ gzip:   1.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mcol-HYKKU_HG.js                                         [39m[1m[2m    4.40 kB[22m[22m[2m │ gzip:   1.37 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSignupView--cVx1p_H.js                                  [39m[1m[2m    4.45 kB[22m[22m[2m │ gzip:   1.61 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDraggable-DkzyZG0c.js                                   [39m[1m[2m    4.53 kB[22m[22m[2m │ gzip:   1.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museRecentResources-BHXGobxT.js                          [39m[1m[2m    4.54 kB[22m[22m[2m │ gzip:   1.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mAuthView-CCZhOR-Q.js                                    [39m[1m[2m    4.58 kB[22m[22m[2m │ gzip:   1.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdist-BXXSERFe.js                                        [39m[1m[2m    4.60 kB[22m[22m[2m │ gzip:   1.53 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museExecutionDebugging-lL29R7eo.js                       [39m[1m[2m    4.84 kB[22m[22m[2m │ gzip:   1.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36men-BYTsM8fR.js                                          [39m[1m[2m    4.85 kB[22m[22m[2m │ gzip:   1.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mChangePasswordView-VQTJzVV4.js                          [39m[1m[2m    4.91 kB[22m[22m[2m │ gzip:   1.73 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowExecutionsLandingPage-CJwmOWaa.js               [39m[1m[2m    4.91 kB[22m[22m[2m │ gzip:   1.69 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mAddDataTableModal-BvgsgBb-.js                           [39m[1m[2m    5.05 kB[22m[22m[2m │ gzip:   1.82 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdateformat-D7TIhVd4.js                                  [39m[1m[2m    5.28 kB[22m[22m[2m │ gzip:   1.98 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museWorkflowsCache-ChtS_GRc.js                           [39m[1m[2m    5.30 kB[22m[22m[2m │ gzip:   1.44 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msso.store-DO0VwTnx.js                                   [39m[1m[2m    5.56 kB[22m[22m[2m │ gzip:   1.36 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataSearch-B0iIkdHT.js                               [39m[1m[2m    5.57 kB[22m[22m[2m │ gzip:   2.03 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museDebounce-BtMgbs_x.js                                 [39m[1m[2m    5.60 kB[22m[22m[2m │ gzip:   1.76 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mcloudPlan.store-CxlPiHnu.js                             [39m[1m[2m    5.67 kB[22m[22m[2m │ gzip:   1.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36moverlay-DZ5zqnac.js                                     [39m[1m[2m    5.73 kB[22m[22m[2m │ gzip:   1.97 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplateDetails-Dre9ncCV.js                             [39m[1m[2m    6.58 kB[22m[22m[2m │ gzip:   1.82 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mlogStreaming.store-DNinM9m3.js                          [39m[1m[2m    6.71 kB[22m[22m[2m │ gzip:   1.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mbanners.store-CwJ5qrqy.js                               [39m[1m[2m    6.89 kB[22m[22m[2m │ gzip:   2.22 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdataTable.store-BXfAAT1S.js                             [39m[1m[2m    6.92 kB[22m[22m[2m │ gzip:   1.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mModal-ik4hotJW.js                                       [39m[1m[2m    7.02 kB[22m[22m[2m │ gzip:   2.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mPrebuiltAgentTemplatesView-CjGTaXZ0.js                  [39m[1m[2m    7.20 kB[22m[22m[2m │ gzip:   1.87 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mexecutions.store-BFacjGLb.js                            [39m[1m[2m    7.21 kB[22m[22m[2m │ gzip:   1.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowPreview-Cocuy03M.js                             [39m[1m[2m    7.24 kB[22m[22m[2m │ gzip:   2.11 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mversions.store-lyBZMAyS.js                              [39m[1m[2m    7.53 kB[22m[22m[2m │ gzip:   2.26 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplatesWorkflowView-Blv2GeDM.js                       [39m[1m[2m    7.61 kB[22m[22m[2m │ gzip:   2.39 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataParsedAiContent-DmlV3Ms7.js                      [39m[1m[2m    7.81 kB[22m[22m[2m │ gzip:   2.54 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsSummary-CeF2QhbK.js                             [39m[1m[2m    7.83 kB[22m[22m[2m │ gzip:   2.41 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplatesCollectionView-CCvw1i8c.js                     [39m[1m[2m    7.99 kB[22m[22m[2m │ gzip:   2.49 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36musePinnedData-Y01-VaXn.js                               [39m[1m[2m    8.04 kB[22m[22m[2m │ gzip:   2.35 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTagsDropdown-BmwWW19a.js                                [39m[1m[2m    8.08 kB[22m[22m[2m │ gzip:   2.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectCardBadge-DOjisR3t.js                            [39m[1m[2m    8.14 kB[22m[22m[2m │ gzip:   2.17 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mfolders.store-Odx8utpU.js                               [39m[1m[2m    8.23 kB[22m[22m[2m │ gzip:   2.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mfocusPanel.store-v9V3Gqhl.js                            [39m[1m[2m    8.35 kB[22m[22m[2m │ gzip:   2.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowExecutionsInfoAccordion-CuY0QkHc.js             [39m[1m[2m    8.67 kB[22m[22m[2m │ gzip:   2.32 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mModalDrawer-EqD-WYwE.js                                 [39m[1m[2m    8.91 kB[22m[22m[2m │ gzip:   2.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataJson-BJxqmpeN.js                                 [39m[1m[2m    9.25 kB[22m[22m[2m │ gzip:   2.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mradio-BNNHEXjN.js                                       [39m[1m[2m    9.43 kB[22m[22m[2m │ gzip:   2.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsView-Uk17q5gx.js                                [39m[1m[2m    9.55 kB[22m[22m[2m │ gzip:   2.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsTableWorkflows-CR0Lewh7.js                      [39m[1m[2m    9.71 kB[22m[22m[2m │ gzip:   3.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectRolesView-BU0iT0ck.js                            [39m[1m[2m    9.81 kB[22m[22m[2m │ gzip:   2.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museActions-BjnSCMnV.js                                  [39m[1m[2m    9.89 kB[22m[22m[2m │ gzip:   2.88 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mpath-browserify-DsmB_HMK.js                             [39m[1m[2m   10.17 kB[22m[22m[2m │ gzip:   2.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museWorkflowSaving-DOkHRJ_c.js                           [39m[1m[2m   10.51 kB[22m[22m[2m │ gzip:   2.90 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectSharing-Dbd8CkM_.js                              [39m[1m[2m   10.83 kB[22m[22m[2m │ gzip:   2.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeCreation-e2meoxuv.js                                [39m[1m[2m   11.26 kB[22m[22m[2m │ gzip:   3.55 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsExternalSecrets-D96Bi---.js                     [39m[1m[2m   11.28 kB[22m[22m[2m │ gzip:   3.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mevaluation.constants-CyNMtlOj.js                        [39m[1m[2m   11.39 kB[22m[22m[2m │ gzip:   3.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mpersonalizedTemplatesV3.store--eRLJ30C.js               [39m[1m[2m   11.84 kB[22m[22m[2m │ gzip:   3.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museBugReporting-BU3wIaad.js                             [39m[1m[2m   11.86 kB[22m[22m[2m │ gzip:   3.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCommunityNodeUpdateInfo-B479ikX8.js                     [39m[1m[2m   11.87 kB[22m[22m[2m │ gzip:   3.27 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDataTableView-C3L0gC9k.js                               [39m[1m[2m   12.11 kB[22m[22m[2m │ gzip:   3.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSetupWorkflowFromTemplateView-CALSiFhS.js               [39m[1m[2m   12.15 kB[22m[22m[2m │ gzip:   3.40 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtemplates.store-IiQB4crk.js                             [39m[1m[2m   12.54 kB[22m[22m[2m │ gzip:   3.01 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplateList-DWVQyy1K.js                                [39m[1m[2m   12.69 kB[22m[22m[2m │ gzip:   3.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsProvisioningView-DFEGkcQ5.js                    [39m[1m[2m   12.86 kB[22m[22m[2m │ gzip:   2.83 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSigninView-COY227Ys.js                                  [39m[1m[2m   13.64 kB[22m[22m[2m │ gzip:   3.95 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdialog-CSXAze8s.js                                      [39m[1m[2m   13.71 kB[22m[22m[2m │ gzip:   4.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsApiView-DmoJNtrY.js                             [39m[1m[2m   14.05 kB[22m[22m[2m │ gzip:   3.91 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mreadyToRunWorkflowsV2.store-BTjutLJX.js                 [39m[1m[2m   14.79 kB[22m[22m[2m │ gzip:   4.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mChatSidebar-lxEMuKQv.js                                 [39m[1m[2m   14.96 kB[22m[22m[2m │ gzip:   4.21 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mFixedCollectionParameter-BUdKIjUL.js                    [39m[1m[2m   15.01 kB[22m[22m[2m │ gzip:   4.23 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mChatAgentsView-BcDstSZo.js                              [39m[1m[2m   15.03 kB[22m[22m[2m │ gzip:   3.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museToast-BxGwe0ls.js                                    [39m[1m[2m   16.36 kB[22m[22m[2m │ gzip:   5.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsPersonalView-DRqD8GeP.js                        [39m[1m[2m   16.70 kB[22m[22m[2m │ gzip:   4.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectRoleView-CbXibTTG.js                             [39m[1m[2m   16.73 kB[22m[22m[2m │ gzip:   4.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mExternalSecretsProviderConnectionSwitch.ee-wDfM6HZ7.js  [39m[1m[2m   16.88 kB[22m[22m[2m │ gzip:   8.21 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsCommunityNodesView-B7Tf0M2q.js                  [39m[1m[2m   17.20 kB[22m[22m[2m │ gzip:   4.36 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowActivator-DH300Wo7.js                           [39m[1m[2m   17.30 kB[22m[22m[2m │ gzip:   4.58 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsLogStreamingView-DSp6kJ1O.js                    [39m[1m[2m   17.52 kB[22m[22m[2m │ gzip:   4.57 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSetupTemplateFormStep-BWmOAFTO.js                       [39m[1m[2m   18.16 kB[22m[22m[2m │ gzip:   4.45 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTestRunDetailView-B1uImUGG.js                           [39m[1m[2m   18.19 kB[22m[22m[2m │ gzip:   4.55 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsUsageAndPlan-pHFJLUSp.js                        [39m[1m[2m   18.31 kB[22m[22m[2m │ gzip:   4.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEvaluationsView-Ccxl13Lr.js                             [39m[1m[2m   18.67 kB[22m[22m[2m │ gzip:   4.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVariablesView-B4b5O4AY.js                               [39m[1m[2m   18.96 kB[22m[22m[2m │ gzip:   5.22 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36micon-REe3T54_.js                                        [39m[1m[2m   19.52 kB[22m[22m[2m │ gzip:   4.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectVariables-Bc9ZYZxh.js                            [39m[1m[2m   20.74 kB[22m[22m[2m │ gzip:   5.60 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCredentialsView-DNsOS-6M.js                             [39m[1m[2m   21.04 kB[22m[22m[2m │ gzip:   5.88 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36musePushConnection-DSHpEAI9.js                           [39m[1m[2m   21.87 kB[22m[22m[2m │ gzip:   5.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museMessage-kp72Fj61.js                                  [39m[1m[2m   22.49 kB[22m[22m[2m │ gzip:   5.87 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsDashboard-DPpnG8NO.js                           [39m[1m[2m   22.91 kB[22m[22m[2m │ gzip:   6.04 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mExecutionsTime-1NZ4KV_D.js                              [39m[1m[2m   22.97 kB[22m[22m[2m │ gzip:   4.67 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectHeader-BZNzCj_E.js                               [39m[1m[2m   23.14 kB[22m[22m[2m │ gzip:   5.47 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkerView-4V3KA-Wf.js                                  [39m[1m[2m   23.80 kB[22m[22m[2m │ gzip:   5.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsSso-Blm4QjPS.js                                 [39m[1m[2m   23.95 kB[22m[22m[2m │ gzip:   5.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEvaluationsRootView-C-XnZhFJ.js                         [39m[1m[2m   23.96 kB[22m[22m[2m │ gzip:   5.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mbuttons.esm-Euf82NbC.js                                 [39m[1m[2m   24.60 kB[22m[22m[2m │ gzip:   7.53 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museChatCredentials-Crcf70TB.js                          [39m[1m[2m   24.78 kB[22m[22m[2m │ gzip:   5.77 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsSourceControl-CLpUe5G3.js                       [39m[1m[2m   24.99 kB[22m[22m[2m │ gzip:   4.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museChatHubSidebarState-BQm4ArkK.js                      [39m[1m[2m   25.07 kB[22m[22m[2m │ gzip:   5.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mvue-json-pretty-BltKoWq2.js                             [39m[1m[2m   25.13 kB[22m[22m[2m │ gzip:   6.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsMCPView-DqjMNaua.js                             [39m[1m[2m   25.30 kB[22m[22m[2m │ gzip:   5.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mmerge-Dkygvg18.js                                       [39m[1m[2m   27.11 kB[22m[22m[2m │ gzip:   5.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataTable-B4dyTV-r.js                                [39m[1m[2m   27.33 kB[22m[22m[2m │ gzip:   6.67 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowExecutionsPreview-DLDjO-am.js                   [39m[1m[2m   28.11 kB[22m[22m[2m │ gzip:   6.06 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowHistory-D5Up7ru6.js                             [39m[1m[2m   30.00 kB[22m[22m[2m │ gzip:   7.06 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsUsersView-4lm5P_G7.js                           [39m[1m[2m   31.28 kB[22m[22m[2m │ gzip:   7.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mResourcesListLayout-GYwQ_B1V.js                         [39m[1m[2m   32.78 kB[22m[22m[2m │ gzip:   7.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowExecutionsView-CDUduC52.js                      [39m[1m[2m   34.07 kB[22m[22m[2m │ gzip:   7.91 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mExecutionsView-1xKQ60QM.js                              [39m[1m[2m   36.20 kB[22m[22m[2m │ gzip:   7.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museLogsTreeExpand-BwHCeGRu.js                           [39m[1m[2m   36.87 kB[22m[22m[2m │ gzip:   9.41 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museRunWorkflow-7PNHp3B3.js                              [39m[1m[2m   36.99 kB[22m[22m[2m │ gzip:   9.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mItemsRenderer-C1nBOF7g.js                               [39m[1m[2m   37.65 kB[22m[22m[2m │ gzip:   8.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mxml-CcxXd9zY.js                                         [39m[1m[2m   37.98 kB[22m[22m[2m │ gzip:   7.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectSettings-isWIDVz4.js                             [39m[1m[2m   38.13 kB[22m[22m[2m │ gzip:   8.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mcore-CIkXL_1D.js                                        [39m[1m[2m   38.30 kB[22m[22m[2m │ gzip:  10.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeDetailsViewV2-BvaVemvl.js                           [39m[1m[2m   39.23 kB[22m[22m[2m │ gzip:   9.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mChatView-B92By6rg.js                                    [39m[1m[2m   39.69 kB[22m[22m[2m │ gzip:   9.37 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36massistant.store-CUrMAn_6.js                             [39m[1m[2m   41.03 kB[22m[22m[2m │ gzip:   9.33 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplatesSearchView-pOQXCiCg.js                         [39m[1m[2m   44.35 kB[22m[22m[2m │ gzip:  10.50 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeDetailsView-DQmcjiFZ.js                             [39m[1m[2m   44.39 kB[22m[22m[2m │ gzip:  10.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mMainSidebar-D2Ej4EKx.js                                 [39m[1m[2m   44.85 kB[22m[22m[2m │ gzip:   9.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msemver-BiHuG0Gv.js                                      [39m[1m[2m   50.96 kB[22m[22m[2m │ gzip:  11.18 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTriggerPanel-DJupnKbU.js                                [39m[1m[2m   54.95 kB[22m[22m[2m │ gzip:  11.83 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mreadyToRunWorkflows.store-CsMxgB8q.js                   [39m[1m[2m   59.50 kB[22m[22m[2m │ gzip:  14.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mexports-D2D_Xd3F.js                                     [39m[1m[2m   61.43 kB[22m[22m[2m │ gzip:  15.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mrouter-BYQfQoOB.js                                      [39m[1m[2m   62.92 kB[22m[22m[2m │ gzip:  15.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeCreator-BmJy3dVN.js                                 [39m[1m[2m   63.34 kB[22m[22m[2m │ gzip:  14.19 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museCommandBar-C7pxkKE7.js                               [39m[1m[2m   64.96 kB[22m[22m[2m │ gzip:  12.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mMainHeader-CwbehJLU.js                                  [39m[1m[2m   66.95 kB[22m[22m[2m │ gzip:  16.18 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsLdapView-Dv4V0xzf.js                            [39m[1m[2m   70.68 kB[22m[22m[2m │ gzip:  14.35 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museCanvasOperations-BMn0Kz-x.js                         [39m[1m[2m   70.77 kB[22m[22m[2m │ gzip:  15.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeSettings-Ds-23Bo2.js                                [39m[1m[2m   81.89 kB[22m[22m[2m │ gzip:  17.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVirtualSchema-wW9qRlbg.js                               [39m[1m[2m   84.98 kB[22m[22m[2m │ gzip:  22.42 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mempty-BuGRxzl4.js                                       [39m[1m[2m   89.28 kB[22m[22m[2m │ gzip:  18.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mLogsPanel-CGoTCIs5.js                                   [39m[1m[2m  100.98 kB[22m[22m[2m │ gzip:  22.89 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeView-yjz1ew_a.js                                    [39m[1m[2m  104.23 kB[22m[22m[2m │ gzip:  23.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mnodeCreator.store-CntugQm2.js                           [39m[1m[2m  124.12 kB[22m[22m[2m │ gzip:  23.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowsView-CDAb6Gkm.js                               [39m[1m[2m  131.26 kB[22m[22m[2m │ gzip:  24.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtable-mOihGHhY.js                                       [39m[1m[2m  137.67 kB[22m[22m[2m │ gzip:  33.64 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtruncate-Dm6UyhWV.js                                    [39m[1m[2m  137.94 kB[22m[22m[2m │ gzip:  34.84 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mvue-LyXhKoPx.js                                         [39m[1m[2m  154.13 kB[22m[22m[2m │ gzip:  38.44 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdate-picker-CEqSrAlE.js                                 [39m[1m[2m  157.50 kB[22m[22m[2m │ gzip:  32.34 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataJsonActions-BOxgiS2g.js                          [39m[1m[2m  178.82 kB[22m[22m[2m │ gzip:  38.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mvue.runtime.esm-bundler-DDuXT-9r.js                     [39m[1m[2m  274.44 kB[22m[22m[2m │ gzip:  69.13 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museImportCurlCommand-Dok6pTSQ.js                        [39m[1m[2m  313.74 kB[22m[22m[2m │ gzip:  63.45 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mlanguageModules-B8UNBljm.js                             [39m[1m[2m  323.45 kB[22m[22m[2m │ gzip:  89.88 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mchart-BI8B7UPV.js                                       [39m[1m[2m  348.73 kB[22m[22m[2m │ gzip:  86.01 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msanitize-html-BuXr7o4T.js                               [39m[1m[2m  365.28 kB[22m[22m[2m │ gzip:  94.76 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCanvas-lBmIz96W.js                                      [39m[1m[2m  440.19 kB[22m[22m[2m │ gzip: 100.06 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36m_MapCache-ClppVWhd.js                                   [39m[1m[2m  497.19 kB[22m[22m[2m │ gzip: 112.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNDVEmptyState-DejfTazy.js                               [39m[1m[33m  727.35 kB[39m[22m[2m │ gzip: 183.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museTelemetry-WeGr9cxZ.js                                [39m[1m[33m1,010.29 kB[39m[22m[2m │ gzip: 239.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mindex-BJd_WhiO.js                                       [39m[1m[33m1,069.79 kB[39m[22m[2m │ gzip: 226.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mes-BazDU8Wd.js                                          [39m[1m[33m1,227.54 kB[39m[22m[2m │ gzip: 335.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36misEmpty-BkQcllWC.js                                     [39m[1m[33m1,337.51 kB[39m[22m[2m │ gzip: 333.30 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mParameterInputList-9HxUoviq.js                          [39m[1m[33m1,396.50 kB[39m[22m[2m │ gzip: 346.31 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDataTableDetailsView-DATOuOLD.js                        [39m[1m[33m1,584.98 kB[39m[22m[2m │ gzip: 354.23 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msrc-B3V2DHW7.js                                         [39m[1m[33m1,805.91 kB[39m[22m[2m │ gzip: 391.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mconstants-BM30KbGn.js                                   [39m[1m[33m2,623.15 kB[39m[22m[2m │ gzip: 506.53 kB[22m
+n8n-editor-ui:build: [33m[EVAL] Warning:[0m Use of `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+n8n-editor-ui:build:       [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js:1195:37 [38;5;246m][0m
+n8n-editor-ui:build:       [38;5;246m│[0m
+n8n-editor-ui:build:  [38;5;246m1195 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mA[0m[38;5;249mS[0m[38;5;249mM[0m[38;5;249m_[0m[38;5;249mC[0m[38;5;249mO[0m[38;5;249mN[0m[38;5;249mS[0m[38;5;249mT[0m[38;5;249mS[0m[38;5;249m[[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m][0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249mf[0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m)[0m[38;5;249m;[0m
+n8n-editor-ui:build:  [38;5;240m     │[0m                                     ──┬─  
+n8n-editor-ui:build:  [38;5;240m     │[0m                                       ╰─── Use of `eval` function here.
+n8n-editor-ui:build: [38;5;246m──────╯[0m
+n8n-editor-ui:build: 
+n8n-editor-ui:build: [33m[EVAL] Warning:[0m Use of `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+n8n-editor-ui:build:       [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js:1221:39 [38;5;246m][0m
+n8n-editor-ui:build:       [38;5;246m│[0m
+n8n-editor-ui:build:  [38;5;246m1221 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249mu[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249mE[0m[38;5;249mx[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249ms[0m[38;5;249m[[0m[38;5;249mn[0m[38;5;249ma[0m[38;5;249mm[0m[38;5;249me[0m[38;5;249m][0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249mf[0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m)[0m[38;5;249m;[0m
+n8n-editor-ui:build:  [38;5;240m     │[0m                                       ──┬─  
+n8n-editor-ui:build:  [38;5;240m     │[0m                                         ╰─── Use of `eval` function here.
+n8n-editor-ui:build: [38;5;246m──────╯[0m
+n8n-editor-ui:build: 
+n8n-editor-ui:build: ✓ built in 1m 37s
+n8n:build: cache miss, executing eda91df31ff21467
+n8n:build: 
+n8n:build: > n8n@1.118.0 build /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/cli
+n8n:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
+n8n:build: 
+n8n:build: 
+n8n:build: > n8n@1.118.0 build:data /Users/csaba/Downloads/n8n-worktrees/pay-3162/packages/cli
+n8n:build: > node scripts/build.mjs
+n8n:build: 
+
+ Tasks:    41 successful, 41 total
+Cached:    0 cached, 41 total
+  Time:    4m20.642s 
+
