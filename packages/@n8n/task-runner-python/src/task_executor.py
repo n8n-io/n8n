@@ -483,6 +483,10 @@ class TaskExecutor:
 
     @staticmethod
     def _read_exact_bytes(fd: int, n: int) -> bytes:
+        """Read exactly n bytes from file descriptor.
+
+        Uses os.read() instead of Connection.recv() because recv() pickles.
+        """
         result = b""
         while len(result) < n:
             chunk = os.read(fd, n - len(result))
