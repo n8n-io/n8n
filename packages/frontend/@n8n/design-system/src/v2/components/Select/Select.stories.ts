@@ -133,10 +133,13 @@ export const WithIcons = {
 		components: { Select },
 		setup() {
 			const value = ref(args.modelValue);
-			const icon = computed(
-				// @ts-expect-error TS2322
-				() => (args.items as SelectItem[])?.find((item) => item.value === value.value)?.icon,
-			);
+			const icon = computed(() => {
+				const items = Array.isArray(args.items) ? args.items : [];
+				const foundItem = items.find((item) => 
+					typeof item === 'object' && item !== null && 'value' in item && item.value === value.value
+				);
+				return foundItem && typeof foundItem === 'object' && 'icon' in foundItem ? foundItem.icon : undefined;
+			});
 			return { args, value, icon };
 		},
 		template: `

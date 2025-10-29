@@ -23,6 +23,7 @@ export type SelectItemProps = {
 	icon?: IconName;
 	class?: VueCssClass;
 	strokeWidth?: number;
+	selectedIcon?: IconName;
 	[key: string]: unknown;
 };
 
@@ -66,6 +67,8 @@ export type SelectProps<
 
 	/** Icon to be displayed in the trigger */
 	icon?: IconName;
+	/** Icon to be displayed for selected items */
+	selectedIcon?: IconName;
 };
 
 export type SelectEmits<

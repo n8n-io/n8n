@@ -43,7 +43,7 @@ const trailingProps = computed(() => ({
 
 		<slot name="item-trailing" :item="props" :ui="trailingProps" />
 		<SelectItemIndicator as-child>
-			<Icon icon="check" :class="$style.ItemIndicator" />
+			<Icon :icon="props.selectedIcon || 'check'" :class="$style.ItemIndicator" />
 		</SelectItemIndicator>
 	</SelectItem>
 </template>
