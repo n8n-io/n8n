@@ -330,7 +330,12 @@ export class KafkaTriggerV2 implements INodeType {
 
 					if (options.onlyMessage) {
 						// When onlyMessage is true, replace the entire data object with just the value
-						data = value as IDataObject;
+						if (typeof value === 'object' && value !== null) {
+							data = value;
+						} else {
+							// If value is a string or other primitive, wrap it in an object
+							data = { value };
+						}
 					}
 
 					let responsePromise = undefined;

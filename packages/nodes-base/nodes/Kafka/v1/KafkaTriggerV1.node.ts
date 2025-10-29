@@ -259,10 +259,22 @@ export class KafkaTriggerV1 implements INodeType {
 					}
 
 					if (useSchemaRegistry) {
+						if (!message.value) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Cannot decode message from topic '${messageTopic}' at offset ${message.offset}: message value is null or undefined`,
+							);
+						}
 						try {
 							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
-							value = await registry.decode(message.value as Buffer);
-						} catch (error) {}
+							value = await registry.decode(message.value);
+						} catch (error) {
+							const errorMessage = error instanceof Error ? error.message : String(error);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Failed to decode message from topic '${messageTopic}' at offset ${message.offset}: ${errorMessage}`,
+							);
+						}
 					}
 
 					if (options.returnHeaders && message.headers) {
@@ -278,8 +290,13 @@ export class KafkaTriggerV1 implements INodeType {
 					data.topic = messageTopic;
 
 					if (options.onlyMessage) {
-						//@ts-ignore
-						data = value;
+						// When onlyMessage is true, replace the entire data object with just the value
+						if (typeof value === 'object' && value !== null) {
+							data = value;
+						} else {
+							// If value is a string or other primitive, wrap it in an object
+							data = { value };
+						}
 					}
 					let responsePromise = undefined;
 					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
