@@ -2402,8 +2402,13 @@ export class WorkflowExecute {
 				error: executionError,
 				workflowId: workflow.id,
 			});
-			if (executionError.message?.includes('canceled')) {
+			if (
+				executionError.message?.includes('canceled') ||
+				executionError.name?.includes('Cancelled')
+			) {
 				this.status = 'canceled';
+			} else {
+				this.status = 'error';
 			}
 		} else if (this.runExecutionData.waitTill) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -2448,7 +2453,7 @@ export class WorkflowExecute {
 				...executionError,
 				message: executionError.message,
 				stack: executionError.stack,
-			} as ExecutionBaseError;
+			} satisfies ExecutionBaseError;
 		} else if (this.runExecutionData.waitTill) {
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
