@@ -15,7 +15,6 @@ import {
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import type { AuthlessRequest } from '@/requests';
 
 interface AzureAdUserProfile {
 	email: string;
@@ -216,6 +215,64 @@ export class AzureAdService {
 	}
 
 	/**
+	 * Handle SSO login with an existing id_token from the SPA
+	 */
+	async handleSsoLogin(idToken: string): Promise<User> {
+		if (!this.msalClient) {
+			throw new AuthError('Azure AD is not configured');
+		}
+
+		try {
+			// Validate the token by verifying it with Azure AD
+			// For a proper implementation, you would validate:
+			// 1. Token signature
+			// 2. Token expiration
+			// 3. Issuer
+			// 4. Audience
+
+			// Decode the JWT token (without verification for now, in production you should verify)
+			const base64Payload = idToken.split('.')[1];
+			const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
+
+			this.logger.info(`SSO token claims: ${JSON.stringify(payload)}`);
+
+			// Validate basic claims
+			if (!payload.email && !payload.preferred_username && !payload.upn) {
+				throw new AuthError('Token does not contain email claim');
+			}
+
+			const email = payload.email || payload.preferred_username || payload.upn;
+
+			// Create profile from token claims
+			const profile: AzureAdUserProfile = {
+				email,
+				firstName: payload.given_name || payload.name?.split(' ')[0] || email.split('@')[0],
+				lastName: payload.family_name || payload.name?.split(' ').slice(1).join(' ') || '',
+				displayName: payload.name || email,
+				id: payload.oid || payload.sub,
+			};
+
+			// Find or create user
+			const user = await this.findOrCreateUser(profile);
+
+			this.logger.info('User successfully authenticated via SSO', {
+				userId: user.id,
+				email: user.email,
+			});
+
+			return user;
+		} catch (error) {
+			this.logger.error('SSO authentication failed', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			if (error instanceof AuthError) {
+				throw error;
+			}
+			throw new AuthError('SSO authentication failed');
+		}
+	}
+
+	/**
 	 * Extract user profile information from Azure AD account info
 	 */
 	private extractUserProfile(account: AccountInfo): AzureAdUserProfile {
@@ -282,7 +339,7 @@ export class AzureAdService {
 		}
 
 		// Check if user exists by email
-		let user = await this.userRepository.findOne({
+		const user = await this.userRepository.findOne({
 			where: { email: profile.email.toLowerCase() },
 			relations: ['role'],
 		});

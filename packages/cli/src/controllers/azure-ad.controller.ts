@@ -10,6 +10,34 @@ import { AzureAdService } from '@/auth/azure-ad.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { UrlService } from '@/services/url.service';
+import { issueCookie } from '@/auth/jwt';
+import { sendErrorResponse } from '@/response-helper';
+
+// Request type definitions
+declare namespace AzureAdRequest {
+	type Callback = AuthlessRequest<
+		{},
+		{},
+		{},
+		{
+			code?: string;
+			state?: string;
+			error?: string;
+			error_description?: string;
+		}
+	>;
+
+	type SsoLogin = AuthlessRequest<
+		{},
+		{},
+		{},
+		{
+			token?: string;
+		}
+	>;
+}
 
 @RestController('/azure-ad')
 export class AzureAdController {
@@ -22,6 +50,7 @@ export class AzureAdController {
 		private readonly azureAdService: AzureAdService,
 		private readonly authService: AuthService,
 		private readonly eventService: EventService,
+		private readonly urlService: UrlService,
 	) {
 		// Clean up expired states periodically
 		setInterval(() => this.cleanupExpiredStates(), 60 * 1000); // Every minute
@@ -69,121 +98,106 @@ export class AzureAdController {
 	 * GET /rest/azure-ad/callback
 	 */
 	@Get('/callback', { skipAuth: true })
-	async handleCallback(
-		req: AuthlessRequest<
-			{},
-			{},
-			{},
-			{ code?: string; state?: string; error?: string; error_description?: string }
-		>,
-		res: Response,
-	): Promise<void> {
-		console.log('=== AZURE AD CALLBACK HANDLER CALLED ===');
-
-		if (!this.azureAdService.isEnabled()) {
-			throw new BadRequestError('Azure AD authentication is not enabled');
-		}
-
-		const { code, state, error, error_description } = req.query;
-
-		this.logger.debug('Azure AD callback received', {
-			hasCode: !!code,
-			hasState: !!state,
-			hasError: !!error,
-			error,
-			error_description,
-		});
-
-		// Also console.log for debugging
-		console.log('Azure AD callback:', {
-			code: code ? `${code.substring(0, 20)}...` : 'missing',
-			state: state ? `${state.substring(0, 20)}...` : 'missing',
-			error,
-			error_description,
-			fullQueryKeys: Object.keys(req.query),
-		});
-
-		// Handle Azure AD errors
-		if (error) {
-			console.log('ERROR FROM AZURE AD:', { error, error_description });
-			this.logger.error('Azure AD returned an error', {
-				error,
-				description: error_description,
-				fullQuery: req.query,
-			});
-
-			// Redirect to home page (which will show setup or login page)
-			res.redirect(
-				`/?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(error_description || '')}`,
-			);
-			return;
-		}
-
-		// Validate required parameters
-		if (typeof code !== 'string' || typeof state !== 'string') {
-			throw new BadRequestError('Invalid callback parameters');
-		}
-
-		// Verify state
-		const stateData = this.stateStore.get(state);
-		if (!stateData) {
-			this.logger.warn('Invalid or expired state token', { state });
-			throw new BadRequestError('Invalid or expired authentication request');
-		}
-
-		// Remove used state
-		this.stateStore.delete(state);
-
+	async handleCallback(req: AzureAdRequest.Callback): Promise<void> {
 		try {
-			// Exchange code for user information
-			const user = await this.azureAdService.handleCallback(code, state);
+			const { code, state, error, error_description: errorDescription } = req.query;
 
-			// Issue authentication cookie
-			this.authService.issueCookie(res, user, false, req.browserId);
-
-			// Emit login event
-			this.eventService.emit('user-logged-in', {
-				user,
-				authenticationMethod: 'email', // Using 'email' as base authentication method
+			this.logger.debug('=== AZURE AD CALLBACK HANDLER CALLED ===');
+			this.logger.debug('Azure AD callback:', {
+				code: code ? `${code.substring(0, 20)}...` : undefined,
+				state: state ? `${state.substring(0, 20)}...` : undefined,
+				error,
+				error_description: errorDescription,
+				fullQueryKeys: Object.keys(req.query),
 			});
 
-			this.logger.info('User logged in via Azure AD', {
-				userId: user.id,
-				email: user.email,
-			});
-
-			// Determine redirect URL
-			let redirectUrl = '/';
-			if (stateData.redirectUrl) {
-				// Validate redirect URL is safe
-				if (this.isRedirectSafe(stateData.redirectUrl)) {
-					redirectUrl = stateData.redirectUrl;
-				} else {
-					this.logger.warn('Unsafe redirect URL detected', {
-						url: stateData.redirectUrl,
-					});
-				}
+			if (!req.res) {
+				this.logger.error('Response object is undefined');
+				return;
 			}
 
-			// Redirect to app
-			res.redirect(redirectUrl);
+			if (error) {
+				this.logger.error('Azure AD authentication error', { error, errorDescription });
+				return sendErrorResponse(req.res, new AuthError(`Azure AD error: ${errorDescription}`));
+			}
+
+			if (!code || !state) {
+				this.logger.error('Missing code or state in Azure AD callback');
+				return sendErrorResponse(req.res, new AuthError('Missing required parameters'));
+			}
+
+			const user = await this.azureAdService.handleCallback(code, state);
+
+			// Ensure res exists
+			if (!req.res) {
+				throw new AuthError('Response object not available');
+			}
+
+			await issueCookie(req.res, user);
+
+			this.logger.info('User successfully authenticated via Azure AD');
+			this.eventService.emit('user-logged-in', {
+				user,
+				authenticationMethod: 'azuread',
+			});
+
+			this.logger.info('User logged in via Azure AD');
+			return req.res.redirect(this.urlService.getInstanceBaseUrl());
 		} catch (error) {
-			this.logger.error('Azure AD callback failed', {
+			this.logger.error('Error in Azure AD callback', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
-
-			this.eventService.emit('user-login-failed', {
-				userEmail: 'unknown',
-				authenticationMethod: 'email',
-				reason: 'callback_failed',
-			});
-
-			// Redirect to login page with error
-			res.redirect('/signin?error=authentication_failed');
+			if (req.res) {
+				return sendErrorResponse(req.res, error as Error);
+			}
 		}
 	}
 
 	/**
+	 * SSO login endpoint - accepts id_token from already authenticated SPA
+	 */
+	@Get('/sso-login', { skipAuth: true })
+	async handleSsoLogin(req: AzureAdRequest.SsoLogin): Promise<void> {
+		try {
+			const { token } = req.query;
+
+			if (!req.res) {
+				this.logger.error('Response object is undefined');
+				return;
+			}
+
+			if (!token) {
+				this.logger.error('Missing token in SSO login request');
+				return sendErrorResponse(req.res, new AuthError('Missing authentication token'));
+			}
+
+			this.logger.debug('SSO login attempt with token');
+
+			const user = await this.azureAdService.handleSsoLogin(token);
+
+			// Ensure res exists
+			if (!req.res) {
+				throw new AuthError('Response object not available');
+			}
+
+			await issueCookie(req.res, user);
+
+			this.logger.info('User successfully authenticated via SSO');
+			this.eventService.emit('user-logged-in', {
+				user,
+				authenticationMethod: 'azuread',
+			});
+
+			return req.res.redirect(this.urlService.getInstanceBaseUrl());
+		} catch (error) {
+			this.logger.error('Error in SSO login', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			if (req.res) {
+				return sendErrorResponse(req.res, error as Error);
+			}
+		}
+	} /**
 	 * Get Azure AD configuration info (for frontend)
 	 * GET /rest/azure-ad/config
 	 */

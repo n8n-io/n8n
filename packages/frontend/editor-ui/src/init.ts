@@ -78,6 +78,7 @@ export async function initializeCore() {
 			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
 			ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
 			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
+			azureAd: true, // Azure AD is always available (not an enterprise feature)
 		},
 	});
 
