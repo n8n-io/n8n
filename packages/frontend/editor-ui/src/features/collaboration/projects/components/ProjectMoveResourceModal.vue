@@ -62,6 +62,7 @@ const projectId = ref<string | null>(null);
 const shareUsedCredentials = ref(false);
 const usedCredentials = ref<IUsedCredential[]>([]);
 const allCredentials = ref<ICredentialsResponse[]>([]);
+const loading = ref(false);
 const shareableCredentials = computed(() =>
 	allCredentials.value.filter(
 		(credential) =>
@@ -133,7 +134,9 @@ const setFilter = (query: string) => {
 };
 
 const moveResource = async () => {
-	if (!selectedProject.value) return;
+	if (!selectedProject.value || loading.value) return;
+
+	loading.value = true;
 	try {
 		await projectsStore.moveResourceToProject(
 			props.data.resourceType,
@@ -183,6 +186,8 @@ const moveResource = async () => {
 				},
 			}),
 		);
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -337,11 +342,12 @@ onMounted(async () => {
 		</template>
 		<template #footer>
 			<div :class="$style.buttons">
-				<N8nButton type="secondary" text class="mr-2xs" @click="closeModal">
+				<N8nButton type="secondary" text class="mr-2xs" :disabled="loading" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton
-					:disabled="!projectId"
+					:loading="loading"
+					:disabled="!projectId || loading"
 					type="primary"
 					data-test-id="project-move-resource-modal-button"
 					@click="moveResource"
