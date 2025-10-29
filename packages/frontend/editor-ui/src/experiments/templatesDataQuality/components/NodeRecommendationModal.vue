@@ -52,7 +52,7 @@ onMounted(async () => {
 		<template #header>
 			<div :class="$style.header">
 				<N8nText tag="h2" size="large" :bold="true">{{
-					locale.baseText('generic.templates')
+					locale.baseText('experiments.templatesDataQuality.modalTitle')
 				}}</N8nText>
 			</div>
 		</template>

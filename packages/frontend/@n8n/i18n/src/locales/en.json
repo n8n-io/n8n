@@ -809,6 +809,7 @@
 	"experiments.personalizedTemplatesV3.loadingTemplates": "Loading recommendations...",
 	"experiments.personalizedTemplatesV3.recommendationTooltip": "Recommended workflows for you",
 	"experiments.personalizedTemplatesV3.recommendedForYou": "Recommended for you",
+	"experiments.templatesDataQuality.modalTitle": "Featured templates",
 	"error": "Error",
 	"error.goBack": "Go back",
 	"error.pageNotFound": "Oops, couldn’t find that",

@@ -37,7 +37,7 @@ const handleUseTemplate = async () => {
 </script>
 
 <template>
-	<N8nCard :class="$style.suggestion">
+	<N8nCard :class="$style.suggestion" @click="handleUseTemplate">
 		<div>
 			<div v-if="templateNodes.length > 0" :class="[$style.nodes, 'mb-s']">
 				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
@@ -81,6 +81,7 @@ const handleUseTemplate = async () => {
 	flex-direction: column;
 	justify-content: space-between;
 	min-width: 200px;
+	cursor: pointer;
 }
 
 .actions {
