@@ -14,7 +14,6 @@ import {
 } from '@n8n/design-system';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
@@ -28,7 +27,6 @@ import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
@@ -50,14 +48,7 @@ const allModels = computed(() =>
 	chatStore.agents.n8n.models.concat(chatStore.agents['custom-agent'].models),
 );
 
-const agents = computed(() => {
-	return filterAndSortAgents(
-		allModels.value,
-		agentFilter.value,
-		chatStore.customAgents,
-		workflowsStore.workflowsById, // TODO: ensure workflows are fetched
-	);
-});
+const agents = computed(() => filterAndSortAgents(allModels.value, agentFilter.value));
 
 const providerOptions = [
 	{ label: 'All', value: '' },
@@ -194,8 +185,6 @@ onMounted(() => {
 				v-for="agent in agents"
 				:key="stringifyModel(agent.model)"
 				:agent="agent"
-				:agents="chatStore.customAgents"
-				:workflows-by-id="workflowsStore.workflowsById"
 				@edit="handleEditAgent(agent.model)"
 				@delete="
 					agent.model.provider === 'custom-agent'

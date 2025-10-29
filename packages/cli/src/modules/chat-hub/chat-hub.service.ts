@@ -192,12 +192,14 @@ export class ChatHubService {
 
 		return {
 			models: resourceLocatorResults.results.map((result) => ({
-				name: String(result.value),
-				description: null,
+				name: result.name,
+				description: result.description ?? null,
 				model: {
 					provider: 'openai',
 					model: String(result.value),
 				},
+				createdAt: null,
+				updatedAt: null,
 			})),
 		};
 	}
@@ -217,12 +219,14 @@ export class ChatHubService {
 
 		return {
 			models: resourceLocatorResults.results.map((result) => ({
-				name: String(result.value),
-				description: null,
+				name: result.name,
+				description: result.description ?? null,
 				model: {
 					provider: 'anthropic',
 					model: String(result.value),
 				},
+				createdAt: null,
+				updatedAt: null,
 			})),
 		};
 	}
@@ -281,11 +285,13 @@ export class ChatHubService {
 		return {
 			models: results.map((result) => ({
 				name: String(result.value),
-				description: null,
+				description: result.description ?? null,
 				model: {
 					provider: 'google',
 					model: String(result.value),
 				},
+				createdAt: null,
+				updatedAt: null,
 			})),
 		};
 	}
@@ -331,6 +337,8 @@ export class ChatHubService {
 								provider: 'n8n',
 								workflowId: workflow.id,
 							},
+							createdAt: workflow.createdAt ? workflow.createdAt.toISOString() : null,
+							updatedAt: workflow.updatedAt ? workflow.updatedAt.toISOString() : null,
 						},
 					];
 				}),
