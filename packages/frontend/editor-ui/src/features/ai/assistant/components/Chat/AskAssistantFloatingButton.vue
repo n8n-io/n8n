@@ -75,7 +75,7 @@ const onClick = async () => {
 	position: absolute;
 	right: var(--spacing--sm);
 	bottom: var(--ask-assistant--floating-button--margin-bottom, --spacing--2xl);
-	z-index: var(--ask-assistant--floating-button--z);
+	z-index: var(--ask-assistant-floating-button--z);
 }
 
 .tooltip {
