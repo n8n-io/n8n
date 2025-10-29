@@ -134,4 +134,97 @@ describe('Test Webhook Node', () => {
 			});
 		});
 	});
+
+	describe('header redaction', () => {
+		const node = new Webhook();
+		const context = mock<IWebhookFunctions>({
+			nodeHelpers: mock(),
+		});
+
+		beforeEach(() => {
+			context.getNodeParameter.calledWith('options').mockReturnValue({});
+			context.getNodeParameter
+				.calledWith('responseMode', 'onReceived')
+				.mockReturnValue('onReceived');
+			context.getNode.calledWith().mockReturnValue({
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2.2,
+				name: 'Webhook',
+			} as any);
+			context.getNodeParameter.calledWith('authentication').mockReturnValue('none');
+			context.getChildNodes.mockReturnValue([]);
+			context.getRequestObject.mockReturnValue({
+				method: 'POST',
+				headers: {
+					authorization: 'Bearer secret-token',
+					'x-api-key': 'secret-api-key',
+					'content-type': 'application/json',
+					'user-agent': 'Mozilla/5.0',
+				},
+				params: {},
+				query: {},
+				body: { test: 'data' },
+			} as any);
+			context.getResponseObject.mockReturnValue({
+				writeHead: jest.fn(),
+				end: jest.fn(),
+			} as any);
+		});
+
+		it('should redact sensitive headers in webhook response', async () => {
+			const returnData = await node.webhook(context);
+
+			expect(returnData.workflowData?.[0][0].json.headers).toEqual({
+				authorization: '**hidden**',
+				'x-api-key': '**hidden**',
+				'content-type': 'application/json',
+				'user-agent': 'Mozilla/5.0',
+			});
+		});
+
+		it('should redact sensitive headers in form data response', async () => {
+			context.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType: 'multipart/form-data',
+				headers: {
+					authorization: 'Bearer secret-token',
+					cookie: 'session=abc123',
+					'content-type': 'multipart/form-data',
+				},
+				params: {},
+				query: {},
+				body: {
+					data: { test: 'data' },
+					files: {},
+				},
+			} as any);
+
+			const returnData = await node.webhook(context);
+
+			expect(returnData.workflowData?.[0][0].json.headers).toEqual({
+				authorization: '**hidden**',
+				cookie: '**hidden**',
+				'content-type': 'multipart/form-data',
+			});
+		});
+
+		it('should redact sensitive headers in binary data response', async () => {
+			// Test the redaction function directly since binary data handling is complex to mock
+			const { redactSensitiveHeaders } = await import('../utils');
+
+			const headers = {
+				'x-auth-token': 'secret-token',
+				'proxy-authorization': 'Basic dXNlcjpwYXNz',
+				'content-type': 'application/octet-stream',
+			};
+
+			const redactedHeaders = redactSensitiveHeaders(headers, 'x-auth-token, proxy-authorization');
+
+			expect(redactedHeaders).toEqual({
+				'x-auth-token': '**hidden**',
+				'proxy-authorization': '**hidden**',
+				'content-type': 'application/octet-stream',
+			});
+		});
+	});
 });
