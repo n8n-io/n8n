@@ -1819,10 +1819,7 @@ watch(
 			draggable: false,
 		};
 
-		fallbackNodes.value =
-			builderStore.isAIBuilderEnabled && builderStore.assistantMessages.length === 0
-				? [choicePromptItem]
-				: [addNodesItem];
+		fallbackNodes.value = builderStore.isAIBuilderEnabled ? [choicePromptItem] : [addNodesItem];
 	},
 );
 
