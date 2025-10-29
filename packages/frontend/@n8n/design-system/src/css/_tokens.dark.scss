@@ -8,8 +8,8 @@
 	--color--text--shade-1: var(--color--gray-125);
 	--color--text: var(--color--gray-250);
 	--color--text--tint-1: var(--color--gray-300);
-	--color--text--tint-2: var(--color--gray-850);
-	--color--text--tint-3: var(--color--gray-950);
+	--color--text--tint-2: var(--color--gray-600);
+	--color--text--tint-3: var(--color--gray-800);
 	--color--text--danger: var(--color--red-400);
 
 	// Foreground
@@ -219,7 +219,7 @@
 	--button--color--background--highlight--hover: var(--color--gray-700);
 	--button--color--background--highlight--active-focus: var(--color--gray-700);
 	--button--outline-color--highlight--focus: var(--color--gray-700);
-	--button--color--text--highlight--disabled: var(--color--white-alpha-100);
+	--button--color--text--highlight--disabled: var(--color--white-gray-600);
 	--button--border-color--highlight--disabled: transparent;
 
 	// Button success, warning, danger
