@@ -91,7 +91,7 @@ export async function initializeCore() {
 	) {
 		banners.push('V1');
 	}
-	bannersStore.initialize({
+	bannersStore.loadStaticBanners({
 		banners,
 	});
 
@@ -234,6 +234,7 @@ function registerAuthenticationHooks() {
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();
+		void bannersStore.loadDynamicBanners();
 	});
 
 	usersStore.registerLogoutHook(() => {

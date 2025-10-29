@@ -160,7 +160,7 @@ describe('Init', () => {
 
 			await initializeCore();
 
-			expect(bannersStore.initialize).toHaveBeenCalledWith({
+			expect(bannersStore.loadStaticBanners).toHaveBeenCalledWith({
 				banners: ['NON_PRODUCTION_LICENSE', 'V1'],
 			});
 		});
