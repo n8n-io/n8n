@@ -445,6 +445,7 @@ describe('Logger', () => {
 	});
 
 	describe('production debug logging without color codes', () => {
+		// eslint-disable-next-line no-control-regex
 		const ANSI_COLOR_PATTERN = /\x1b\[\d+m/g; // Pattern to match ANSI color escape codes
 
 		afterEach(() => {
@@ -545,7 +546,7 @@ describe('Logger', () => {
 			}
 
 			// Verify output is valid JSON (our format configuration)
-			const parsed = JSON.parse(output);
+			const parsed = JSON.parse(output) as { message: string; metadata: { operation: string } };
 			expect(parsed.message).toBe(testMessage);
 			expect(parsed.metadata.operation).toBe('database_query');
 
