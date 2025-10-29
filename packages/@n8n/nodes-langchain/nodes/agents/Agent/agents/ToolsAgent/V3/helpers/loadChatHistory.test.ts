@@ -12,7 +12,6 @@ jest.mock('@langchain/core/messages', () => ({
 }));
 
 describe('loadChatHistory', () => {
-	const mockMemory = mock<BaseChatMemory>();
 	const mockModel = mock<BaseChatModel>();
 
 	beforeEach(() => {
@@ -25,8 +24,10 @@ describe('loadChatHistory', () => {
 			new AIMessage({ content: 'Hi there!' }),
 		];
 
-		mockMemory.loadMemoryVariables = jest.fn().mockResolvedValue({
-			chat_history: mockHistory,
+		const mockMemory = mock<BaseChatMemory>({
+			loadMemoryVariables: jest.fn().mockResolvedValue({
+				chat_history: mockHistory,
+			}),
 		});
 
 		const result = await loadChatHistory(mockMemory, mockModel);
@@ -44,14 +45,16 @@ describe('loadChatHistory', () => {
 			new AIMessage({ content: 'I am doing well!' }),
 		];
 
+		const mockMemory = mock<BaseChatMemory>({
+			loadMemoryVariables: jest.fn().mockResolvedValue({
+				chat_history: mockHistory,
+			}),
+		});
+
 		const trimmedHistory: BaseMessage[] = [
 			new HumanMessage({ content: 'How are you?' }),
 			new AIMessage({ content: 'I am doing well!' }),
 		];
-
-		mockMemory.loadMemoryVariables = jest.fn().mockResolvedValue({
-			chat_history: mockHistory,
-		});
 
 		(trimMessages as jest.Mock).mockResolvedValue(trimmedHistory);
 
@@ -70,8 +73,10 @@ describe('loadChatHistory', () => {
 	});
 
 	it('should handle empty chat history', async () => {
-		mockMemory.loadMemoryVariables = jest.fn().mockResolvedValue({
-			chat_history: [],
+		const mockMemory = mock<BaseChatMemory>({
+			loadMemoryVariables: jest.fn().mockResolvedValue({
+				chat_history: [],
+			}),
 		});
 
 		const result = await loadChatHistory(mockMemory, mockModel);
@@ -86,8 +91,10 @@ describe('loadChatHistory', () => {
 			new AIMessage({ content: 'Test response 1' }),
 		];
 
-		mockMemory.loadMemoryVariables = jest.fn().mockResolvedValue({
-			chat_history: mockHistory,
+		const mockMemory = mock<BaseChatMemory>({
+			loadMemoryVariables: jest.fn().mockResolvedValue({
+				chat_history: mockHistory,
+			}),
 		});
 
 		(trimMessages as jest.Mock).mockResolvedValue(mockHistory);
@@ -113,8 +120,10 @@ describe('loadChatHistory', () => {
 			new AIMessage({ content: 'Hi there!' }),
 		];
 
-		mockMemory.loadMemoryVariables = jest.fn().mockResolvedValue({
-			chat_history: mockHistory,
+		const mockMemory = mock<BaseChatMemory>({
+			loadMemoryVariables: jest.fn().mockResolvedValue({
+				chat_history: mockHistory,
+			}),
 		});
 
 		const result = await loadChatHistory(mockMemory, mockModel, 0);
@@ -127,8 +136,10 @@ describe('loadChatHistory', () => {
 	it('should pass through the model to trimMessages for token counting', async () => {
 		const mockHistory: BaseMessage[] = [new HumanMessage({ content: 'Test message' })];
 
-		mockMemory.loadMemoryVariables = jest.fn().mockResolvedValue({
-			chat_history: mockHistory,
+		const mockMemory = mock<BaseChatMemory>({
+			loadMemoryVariables: jest.fn().mockResolvedValue({
+				chat_history: mockHistory,
+			}),
 		});
 
 		(trimMessages as jest.Mock).mockResolvedValue(mockHistory);

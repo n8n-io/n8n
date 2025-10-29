@@ -6,6 +6,7 @@ import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+
 import { fixEmptyContentMessage, getAgentStepsParser } from '../../common';
 
 /**

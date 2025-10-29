@@ -1,3 +1,6 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AgentRunnableSequence } from 'langchain/agents';
+import type { BaseChatMemory } from 'langchain/memory';
 import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -8,15 +11,12 @@ import type {
 } from 'n8n-workflow';
 
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
-import type { AgentRunnableSequence } from 'langchain/agents';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseChatMemory } from 'langchain/memory';
 
 import type { RequestResponseMetadata, AgentResult } from '../types';
-import { processItem } from './processItem';
 import { createAgentSequence } from './createAgentSequence';
-import { runAgent } from './runAgent';
 import { finalizeResult } from './finalizeResult';
+import { processItem } from './processItem';
+import { runAgent } from './runAgent';
 
 type BatchResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 /**

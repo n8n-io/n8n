@@ -1,15 +1,15 @@
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, ISupplyDataFunctions, EngineResponse } from 'n8n-workflow';
-import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 
+import { buildSteps, type ToolCallData } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import { getTools, prepareMessages, preparePrompt } from '../../common';
 import type { AgentOptions, RequestResponseMetadata } from '../types';
-import { buildSteps, type ToolCallData } from '@utils/agent-execution';
 
 /**
  * Context specific to a single item's processing

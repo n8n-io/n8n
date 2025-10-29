@@ -1,12 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { createToolCallingAgent } from 'langchain/agents';
 import { mock } from 'jest-mock-extended';
+import { createToolCallingAgent } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
 
-import * as commonHelpers from '../../common';
 import { createAgentSequence } from './createAgentSequence';
+import * as commonHelpers from '../../common';
 
 jest.mock('langchain/agents', () => ({
 	createToolCallingAgent: jest.fn(),
@@ -78,7 +78,7 @@ describe('createAgentSequence', () => {
 		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
-		const result = createAgentSequence(
+		createAgentSequence(
 			mockModel,
 			[mockTool],
 			mockPrompt,

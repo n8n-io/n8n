@@ -1,9 +1,10 @@
+import type { BaseChatMemory } from 'langchain/memory';
 import omit from 'lodash/omit';
 import { jsonParse } from 'n8n-workflow';
 import type { INodeExecutionData } from 'n8n-workflow';
-import type { BaseChatMemory } from 'langchain/memory';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+
 import type { AgentResult } from '../types';
 
 /**
@@ -24,7 +25,7 @@ export function finalizeResult(
 ): INodeExecutionData {
 	// If memory and outputParser are connected, parse the output.
 	if (memory && outputParser) {
-		const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(result.output as string);
+		const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(result.output);
 		// Type assertion needed because parsedOutput can be various types
 		result.output = (parsedOutput?.output ?? parsedOutput) as unknown as string;
 	}

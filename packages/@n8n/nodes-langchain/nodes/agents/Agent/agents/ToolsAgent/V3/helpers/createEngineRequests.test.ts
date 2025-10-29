@@ -1,6 +1,6 @@
-import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { createEngineRequests } from '@utils/agent-execution';
 

@@ -1,10 +1,11 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AgentRunnableSequence } from 'langchain/agents';
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
+import type { AgentRunnableSequence } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
+import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 
 import * as agentExecution from '@utils/agent-execution';
+
 import type { RequestResponseMetadata } from '../types';
 import type { ItemContext } from './processItem';
 import { runAgent } from './runAgent';
@@ -28,7 +29,20 @@ beforeEach(() => {
 
 describe('runAgent - iteration count tracking', () => {
 	it('should set iteration count to 1 on first call (no response)', async () => {
-		const mockExecutor = mock<AgentRunnableSequence>();
+		const mockExecutor = mock<AgentRunnableSequence>({
+			invoke: jest.fn().mockResolvedValue([
+				{
+					toolCalls: [
+						{
+							id: 'call_123',
+							name: 'TestTool',
+							args: { input: 'test' },
+							type: 'tool_call',
+						},
+					],
+				},
+			]),
+		});
 		const mockModel = mock<BaseChatModel>();
 		const mockTool = mock<Tool>();
 		mockTool.name = 'TestTool';
@@ -46,20 +60,6 @@ describe('runAgent - iteration count tracking', () => {
 			},
 			outputParser: undefined,
 		};
-
-		// Mock the agent to return tool calls
-		mockExecutor.invoke = jest.fn().mockResolvedValue([
-			{
-				toolCalls: [
-					{
-						id: 'call_123',
-						name: 'TestTool',
-						args: { input: 'test' },
-						type: 'tool_call',
-					},
-				],
-			},
-		]);
 
 		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		jest.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
@@ -84,7 +84,20 @@ describe('runAgent - iteration count tracking', () => {
 	});
 
 	it('should increment iteration count when response is provided', async () => {
-		const mockExecutor = mock<AgentRunnableSequence>();
+		const mockExecutor = mock<AgentRunnableSequence>({
+			invoke: jest.fn().mockResolvedValue([
+				{
+					toolCalls: [
+						{
+							id: 'call_456',
+							name: 'TestTool',
+							args: { input: 'test2' },
+							type: 'tool_call',
+						},
+					],
+				},
+			]),
+		});
 		const mockModel = mock<BaseChatModel>();
 		const mockTool = mock<Tool>();
 		mockTool.name = 'TestTool';
@@ -107,20 +120,6 @@ describe('runAgent - iteration count tracking', () => {
 			actionResponses: [],
 			metadata: { itemIndex: 0, previousRequests: [], iterationCount: 2 },
 		};
-
-		// Mock the agent to return tool calls
-		mockExecutor.invoke = jest.fn().mockResolvedValue([
-			{
-				toolCalls: [
-					{
-						id: 'call_456',
-						name: 'TestTool',
-						args: { input: 'test2' },
-						type: 'tool_call',
-					},
-				],
-			},
-		]);
 
 		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		jest.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
@@ -152,7 +151,10 @@ describe('runAgent - iteration count tracking', () => {
 	});
 
 	it('should set iteration count to 1 in streaming mode on first call', async () => {
-		const mockExecutor = mock<AgentRunnableSequence>();
+		const mockEventStream = (async function* () {})();
+		const mockExecutor = mock<AgentRunnableSequence>({
+			streamEvents: jest.fn().mockReturnValue(mockEventStream),
+		});
 		const mockModel = mock<BaseChatModel>();
 		const mockTool = mock<Tool>();
 		mockTool.name = 'TestTool';
@@ -172,7 +174,11 @@ describe('runAgent - iteration count tracking', () => {
 			outputParser: undefined,
 		};
 
-		mockContext.isStreaming = jest.fn().mockReturnValue(true);
+		const mockContext = mock<IExecuteFunctions>({
+			getNode: jest.fn().mockReturnValue(mockNode),
+			isStreaming: jest.fn().mockReturnValue(true),
+			getExecutionCancelSignal: jest.fn().mockReturnValue(new AbortController().signal),
+		});
 		mockNode.typeVersion = 2.1;
 
 		// Mock streaming to return tool calls
@@ -200,11 +206,6 @@ describe('runAgent - iteration count tracking', () => {
 			},
 		]);
 
-		const mockEventStream = (async function* () {})();
-		mockExecutor.streamEvents = jest.fn().mockReturnValue(mockEventStream);
-
-		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
-
 		const result = await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
 
 		expect(result).toHaveProperty('actions');
@@ -213,7 +214,13 @@ describe('runAgent - iteration count tracking', () => {
 	});
 
 	it('should not include iteration count when returning final result', async () => {
-		const mockExecutor = mock<AgentRunnableSequence>();
+		const mockExecutor = mock<AgentRunnableSequence>({
+			invoke: jest.fn().mockResolvedValue({
+				returnValues: {
+					output: 'Final answer',
+				},
+			}),
+		});
 		const mockModel = mock<BaseChatModel>();
 
 		const itemContext: ItemContext = {
@@ -230,12 +237,6 @@ describe('runAgent - iteration count tracking', () => {
 		};
 
 		// Mock the agent to return a final result (no tool calls)
-		mockExecutor.invoke = jest.fn().mockResolvedValue({
-			returnValues: {
-				output: 'Final answer',
-			},
-		});
-
 		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
 

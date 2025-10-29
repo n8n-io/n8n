@@ -1,8 +1,8 @@
-import { NodeConnectionTypes } from 'n8n-workflow';
-import type { IDataObject } from 'n8n-workflow';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { EngineRequest, IDataObject } from 'n8n-workflow';
 
-import type { ToolCallRequest } from './types';
+import type { RequestResponseMetadata, ToolCallRequest } from './types';
 
 /**
  * Creates engine requests from tool calls.
@@ -21,7 +21,7 @@ export async function createEngineRequests(
 	toolCalls: ToolCallRequest[],
 	itemIndex: number,
 	tools: Array<DynamicStructuredTool | Tool>,
-) {
+): Promise<EngineRequest<RequestResponseMetadata>['actions']> {
 	return toolCalls
 		.map((toolCall) => {
 			// First try to get from metadata (for toolkit tools)
@@ -41,7 +41,7 @@ export async function createEngineRequests(
 
 			return {
 				actionType: 'ExecutionNodeAction' as const,
-				nodeName: nodeName as string,
+				nodeName,
 				input: input as IDataObject,
 				type: NodeConnectionTypes.AiTool,
 				id: toolCall.toolCallId,

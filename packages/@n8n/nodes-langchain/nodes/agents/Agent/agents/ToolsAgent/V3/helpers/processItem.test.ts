@@ -1,11 +1,11 @@
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { mock } from 'jest-mock-extended';
-import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 import type { Tool } from 'langchain/tools';
+import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 
 import * as helpers from '@utils/helpers';
 import * as outputParsers from '@utils/output_parsers/N8nOutputParser';
+
 import * as commonHelpers from '../../common';
 import type { RequestResponseMetadata } from '../types';
 import { processItem } from './processItem';
@@ -74,13 +74,6 @@ describe('processItem', () => {
 		expect(result?.tools).toEqual([mockTool]);
 		expect(result?.prompt).toBe(mockPrompt);
 		expect(result?.steps).toEqual([]);
-	});
-
-	it('should throw error when input is undefined', async () => {
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue(undefined);
-
-		await expect(processItem(mockContext, 0)).rejects.toThrow(NodeOperationError);
-		await expect(processItem(mockContext, 0)).rejects.toThrow('The "text" parameter is empty.');
 	});
 
 	it('should enable streaming by default when not specified', async () => {

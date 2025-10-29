@@ -3,8 +3,8 @@ import { mock } from 'jest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
-import * as commonHelpers from '../../common';
 import { buildExecutionContext } from './buildExecutionContext';
+import * as commonHelpers from '../../common';
 
 jest.mock('../../common', () => ({
 	getChatModel: jest.fn(),
@@ -126,7 +126,7 @@ describe('buildExecutionContext', () => {
 		const mockInputData: INodeExecutionData[] = [{ json: { text: 'input 1' } }];
 
 		mockContext.getInputData.mockReturnValue(mockInputData);
-		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+		mockContext.getNodeParameter.mockImplementation((_param, _i, defaultValue) => {
 			return defaultValue;
 		});
 
@@ -144,7 +144,7 @@ describe('buildExecutionContext', () => {
 		const mockMemory = mock<any>();
 
 		mockContext.getInputData.mockReturnValue(mockInputData);
-		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+		mockContext.getNodeParameter.mockImplementation((_param, _i, defaultValue) => {
 			return defaultValue;
 		});
 

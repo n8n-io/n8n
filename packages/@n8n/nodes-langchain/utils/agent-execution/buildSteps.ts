@@ -25,7 +25,7 @@ export function buildSteps(
 		const responses = response?.actionResponses ?? [];
 
 		if (response.metadata?.previousRequests) {
-			steps.push(...response.metadata.previousRequests);
+			steps.push.apply(steps, response.metadata.previousRequests);
 		}
 
 		for (const tool of responses) {

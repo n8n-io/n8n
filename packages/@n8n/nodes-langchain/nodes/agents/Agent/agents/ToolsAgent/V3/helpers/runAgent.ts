@@ -1,12 +1,13 @@
-import type { BaseMessage } from '@langchain/core/messages';
-import type { AgentRunnableSequence } from 'langchain/agents';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AgentRunnableSequence } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
-import type { IExecuteFunctions, ISupplyDataFunctions, EngineResponse } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+	EngineResponse,
+	EngineRequest,
+} from 'n8n-workflow';
 
-import type { AgentResult, RequestResponseMetadata } from '../types';
-import { SYSTEM_MESSAGE } from '../../prompt';
-import type { ItemContext } from './processItem';
 import {
 	loadMemory,
 	processEventStream,
@@ -15,13 +16,11 @@ import {
 	saveToMemory,
 } from '@utils/agent-execution';
 
-type RunAgentResult =
-	| AgentResult
-	| {
-			actions: Awaited<ReturnType<typeof createEngineRequests>>;
-			metadata: { previousRequests: ReturnType<typeof buildSteps> };
-	  };
+import { SYSTEM_MESSAGE } from '../../prompt';
+import type { AgentResult, RequestResponseMetadata } from '../types';
+import type { ItemContext } from './processItem';
 
+type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 /**
  * Runs the agent for a single item, choosing between streaming or non-streaming execution.
  * Handles both regular execution and execution after tool calls.
@@ -124,7 +123,7 @@ export async function runAgent(
 					fullOutput = `[Used tools: ${toolContext}] ${fullOutput}`;
 				}
 
-				await saveToMemory(memory, input, fullOutput);
+				await saveToMemory(input, fullOutput, memory);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };

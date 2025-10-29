@@ -1,24 +1,16 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk } from '@langchain/core/messages';
-import type { ChatPromptTemplate } from '@langchain/core/prompts';
-import { RunnableSequence } from '@langchain/core/runnables';
-import { createToolCallingAgent } from 'langchain/agents';
-import type { Tool } from 'langchain/tools';
 import { mock } from 'jest-mock-extended';
 import {
 	NodeOperationError,
+	sleep,
 	type IExecuteFunctions,
 	type INode,
 	type EngineRequest,
 	type EngineResponse,
-	type INodeExecutionData,
 } from 'n8n-workflow';
 
-import * as helpers from '../../agents/ToolsAgent/V3/helpers';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V3/execute';
 import type { RequestResponseMetadata } from '../../agents/ToolsAgent/V3/execute';
-import * as commonHelpers from '../../agents/ToolsAgent/common';
-import * as utilHelpers from '@utils/helpers';
+import * as helpers from '../../agents/ToolsAgent/V3/helpers';
 
 // Mock the helper modules
 jest.mock('../../agents/ToolsAgent/V3/helpers', () => ({
@@ -35,6 +27,11 @@ jest.mock('@langchain/core/runnables', () => ({
 	RunnableSequence: {
 		from: jest.fn(),
 	},
+}));
+
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn(),
 }));
 
 const mockContext = mock<IExecuteFunctions>();
@@ -246,7 +243,8 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 	});
 
 	it('should apply delay between batches when configured', async () => {
-		const sleepSpy = jest.spyOn(require('n8n-workflow'), 'sleep').mockResolvedValue(undefined);
+		const sleepMock = sleep as jest.MockedFunction<typeof sleep>;
+		sleepMock.mockResolvedValue(undefined);
 
 		const mockExecutionContext = {
 			items: [{ json: { text: 'test input 1' } }, { json: { text: 'test input 2' } }],
@@ -268,14 +266,13 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 
 		await toolsAgentExecute.call(mockContext);
 
-		expect(sleepSpy).toHaveBeenCalledWith(1000);
-		expect(sleepSpy).toHaveBeenCalledTimes(1); // Only between batches, not after the last one
-
-		sleepSpy.mockRestore();
+		expect(sleepMock).toHaveBeenCalledWith(1000);
+		expect(sleepMock).toHaveBeenCalledTimes(1); // Only between batches, not after the last one
 	});
 
 	it('should not apply delay after last batch', async () => {
-		const sleepSpy = jest.spyOn(require('n8n-workflow'), 'sleep').mockResolvedValue(undefined);
+		const sleepMock = sleep as jest.MockedFunction<typeof sleep>;
+		sleepMock.mockResolvedValue(undefined);
 
 		const mockExecutionContext = {
 			items: [{ json: { text: 'test input 1' } }],
@@ -297,9 +294,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 
 		await toolsAgentExecute.call(mockContext);
 
-		expect(sleepSpy).not.toHaveBeenCalled();
-
-		sleepSpy.mockRestore();
+		expect(sleepMock).not.toHaveBeenCalled();
 	});
 
 	it('should pass response parameter to executeBatch', async () => {

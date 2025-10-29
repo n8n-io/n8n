@@ -1,7 +1,8 @@
 import type { EngineResponse } from 'n8n-workflow';
 
-import type { RequestResponseMetadata } from '../types';
 import { buildSteps } from '@utils/agent-execution';
+
+import type { RequestResponseMetadata } from '../types';
 
 describe('buildSteps', () => {
 	it('should return empty array when no response is provided', () => {
@@ -276,7 +277,7 @@ describe('buildSteps', () => {
 					},
 					data: {
 						data: {
-							ai_tool: undefined, // No tool data
+							ai_tool: [null], // No tool data
 						},
 						executionTime: 0,
 						startTime: 0,

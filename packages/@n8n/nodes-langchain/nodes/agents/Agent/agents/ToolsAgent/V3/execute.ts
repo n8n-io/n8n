@@ -64,14 +64,14 @@ export async function toolsAgentExecute(
 		);
 
 		// Collect results from batch
-		returnData.push(...batchReturnData);
+		returnData.push.apply(returnData, batchReturnData);
 
 		// Collect requests from batch
 		if (batchRequest) {
 			if (!request) {
 				request = batchRequest;
 			} else {
-				request.actions.push(...batchRequest.actions);
+				request.actions.push.apply(request.actions, batchRequest.actions);
 			}
 		}
 
