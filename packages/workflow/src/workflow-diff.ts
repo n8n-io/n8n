@@ -1,5 +1,5 @@
-import isEqual from 'lodash-es/isEqual';
-import pick from 'lodash-es/pick';
+import isEqual from 'lodash/isEqual';
+import pick from 'lodash/pick';
 
 export const enum NodeDiffStatus {
 	Eq = 'equal',
