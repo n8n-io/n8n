@@ -134,10 +134,9 @@ function checkMergeNodeConnections(
 function checkSubNodeRootConnections(
 	workflow: SimpleWorkflow,
 	nodeInfo: NodeResolvedConnectionTypesInfo,
-	nodeTypeMap: Map<string, INodeTypeDescription>,
 	nodesByName: Map<string, SimpleWorkflow['nodes'][number]>,
-): SingleEvaluatorResult['violations'] {
-	const issues: SingleEvaluatorResult['violations'] = [];
+): ProgrammaticViolation[] {
+	const issues: ProgrammaticViolation[] = [];
 
 	const { node, nodeType, resolvedOutputs } = nodeInfo;
 
@@ -160,18 +159,9 @@ function checkSubNodeRootConnections(
 	for (const outputType of aiOutputs) {
 		const connectionsForType = nodeConnections?.[outputType];
 
-		const hasRootConnection =
-			connectionsForType?.some((connectionGroup) =>
-				connectionGroup?.some((connection) => {
-					const targetNode = connection?.node ? nodesByName.get(connection.node) : undefined;
-					if (!targetNode) return false;
-
-					const targetNodeType = nodeTypeMap.get(targetNode.type);
-					if (!targetNodeType) return false;
-
-					return !isSubNode(targetNodeType, targetNode);
-				}),
-			) ?? false;
+		const hasRootConnection = connectionsForType?.some((connectionGroup) =>
+			connectionGroup?.some((connection) => connection?.node && nodesByName.has(connection.node)),
+		);
 
 		if (!hasRootConnection) {
 			issues.push({
@@ -236,7 +226,7 @@ export function validateConnections(
 
 		violations.push(...checkMergeNodeConnections(nodeInfo, nodeConnections));
 
-		violations.push(...checkSubNodeRootConnections(workflow, nodeInfo, nodeTypeMap, nodesByName));
+		violations.push(...checkSubNodeRootConnections(workflow, nodeInfo, nodesByName));
 	}
 
 	return violations;
