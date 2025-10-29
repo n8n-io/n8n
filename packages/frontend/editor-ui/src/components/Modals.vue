@@ -124,7 +124,15 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		</ModalRoot>
 
 		<ModalRoot :name="API_KEY_CREATE_OR_EDIT_MODAL_KEY">
-			<template #default="{ modalName, data: { mode, activeId } }">
+			<template
+				#default="{
+					modalName,
+					data: { mode, activeId },
+				}: {
+					modalName: string;
+					data: { mode: 'new' | 'edit'; activeId: string };
+				}"
+			>
 				<ApiKeyCreateOrEditModal :modal-name="modalName" :mode="mode" :active-id="activeId" />
 			</template>
 		</ModalRoot>
@@ -234,7 +242,15 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		</ModalRoot>
 
 		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
-			<template #default="{ modalName, data }">
+			<template
+				#default="{
+					modalName,
+					data,
+				}: {
+					modalName: string;
+					data: { destination: Object; isNew: boolean; eventBus: EventBus };
+				}"
+			>
 				<EventDestinationSettingsModal
 					:modal-name="modalName"
 					:destination="data.destination"
@@ -379,7 +395,7 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		</ModalRoot>
 
 		<ModalRoot :name="VARIABLE_MODAL_KEY">
-			<template #default="{ data }">
+			<template #default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any } }">
 				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
 			</template>
 		</ModalRoot>
