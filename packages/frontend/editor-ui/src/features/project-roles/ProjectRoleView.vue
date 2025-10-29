@@ -113,9 +113,9 @@ const scopeTypes = [
 	'folder',
 	'workflow',
 	'credential',
-	'sourceControl',
 	'dataTable',
 	'projectVariable',
+	'sourceControl',
 ] as const;
 
 const scopes = {
