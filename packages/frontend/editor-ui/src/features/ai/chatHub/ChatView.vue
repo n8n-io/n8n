@@ -77,10 +77,30 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
+const modelFromQuery = computed<ChatHubConversationModel | null>(() => {
+	const agentId = route.query.agentId;
+	const workflowId = route.query.workflowId;
+
+	if (!isNewSession.value || (!agentId && !workflowId)) {
+		return null;
+	}
+
+	return (
+		chatStore.allModels.find(
+			(model) =>
+				(model.provider === 'custom-agent' && model.agentId === agentId) ||
+				(model.provider === 'n8n' && model.workflowId === workflowId),
+		) ?? null
+	);
+});
 
 const selectedModel = computed<ChatHubConversationModel | null>(() => {
 	if (!chatStore.modelsReady) {
 		return null;
+	}
+
+	if (modelFromQuery.value) {
+		return modelFromQuery.value;
 	}
 
 	let model: ChatHubConversationModel | null = null;
@@ -258,49 +278,6 @@ watch(
 	currentConversationTitle,
 	(title) => {
 		documentTitle.set(title ?? 'Chat');
-	},
-	{ immediate: true },
-);
-
-// TODO: wait for agents to be fetched
-// Handle agent/workflow pre-selection from URL query parameters
-watch(
-	() => [route.query.agentId, route.query.workflowId],
-	async ([agentId, workflowId]) => {
-		if (!isNewSession.value) {
-			return;
-		}
-
-		// If both are specified, remove both query params
-		if (agentId && workflowId) {
-			await router.replace({ query: {} });
-			return;
-		}
-
-		// Handle custom agent selection
-		if (agentId) {
-			const agent = chatStore.agents.find((a) => a.id === agentId);
-
-			if (agent) {
-				await handleSelectModel({
-					provider: 'custom-agent',
-					agentId: agent.id,
-					name: agent.name,
-				});
-			}
-			return;
-		}
-
-		// Handle n8n workflow selection
-		if (typeof workflowId === 'string') {
-			const n8nModel = chatStore.models.n8n.models.find(
-				(m) => m.provider === 'n8n' && m.workflowId === workflowId,
-			);
-
-			if (n8nModel) {
-				await handleSelectModel(n8nModel);
-			}
-		}
 	},
 	{ immediate: true },
 );

@@ -653,6 +653,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	return {
+		allModels: computed(() => Object.values(models.value ?? {}).flatMap(({ models }) => models)),
 		models: computed(() => models.value ?? emptyChatModelsResponse),
 		modelsReady: computed(() => models.value !== undefined),
 		sessions: computed(() => sessions.value ?? []),
