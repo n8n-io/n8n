@@ -38,7 +38,7 @@ Leverage AI for unstructured data using nodes like Information Extractor or Summ
 
 ## Recommended Nodes
 
-### Extract From File
+### Extract From File (n8n-nodes-base.extractFromFile)
 
 Purpose: Converts binary data from CSV, Excel, PDF, and text files to JSON for processing
 
@@ -47,15 +47,15 @@ Pitfalls:
 - Ensure the correct binary field name is specified in the node configuration
 - Verify file format compatibility before extraction
 
-### HTML Extract
+### HTML Extract (n8n-nodes-base.htmlExtract)
 
 Purpose: Scrapes data from web pages using CSS selectors
 
-### Split Out
+### Split Out (n8n-nodes-base.splitOut)
 
 Purpose: Processes arrays of items individually for sequential operations
 
-### Set
+### Edit Fields (Set) (n8n-nodes-base.set)
 
 Purpose: Data transformation and mapping to normalize structure
 
@@ -64,11 +64,7 @@ Pitfalls:
 - Enable "Include Other Input Fields" to preserve binary data
 - Pay attention to data types - mixing types causes unexpected failures
 
-### Edit Fields
-
-Purpose: Organizes and restructures data for better visibility and processing
-
-### Information Extractor
+### Information Extractor (@n8n/n8n-nodes-langchain.informationExtractor)
 
 Purpose: AI-powered extraction of structured data from unstructured text
 
@@ -76,7 +72,7 @@ Pitfalls:
 
 - Requires proper schema definition for extraction
 
-### Summarization Chain
+### Summarization Chain (@n8n/n8n-nodes-langchain.chainSummarization)
 
 Purpose: Summarizes large text blocks using AI for condensed information extraction
 
@@ -85,11 +81,11 @@ Pitfalls:
 - Context window limits may truncate very long documents
 - Verify summary quality matches requirements
 
-### HTTP Request
+### HTTP Request (n8n-nodes-base.httpRequest)
 
 Purpose: Fetches data from APIs or web pages for extraction
 
-### Code
+### Code (n8n-nodes-base.code)
 
 Purpose: Custom logic for complex data transformations
 

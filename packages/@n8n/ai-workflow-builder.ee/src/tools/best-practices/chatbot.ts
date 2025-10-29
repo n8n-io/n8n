@@ -49,7 +49,7 @@ often be called "Append n8n Attribution" for nodes that support it, add this set
 
 ## Recommended Nodes
 
-### Chat Trigger
+### Chat Trigger (@n8n/n8n-nodes-langchain.chatTrigger)
 
 Purpose: Entry point for user messages in n8n-hosted chat interfaces
 
@@ -57,31 +57,49 @@ Pitfalls:
 
 - Most production chatbots use external platforms (Slack, Telegram) rather than n8n's chat interface
 
-### AI Agent
+### AI Agent (@n8n/n8n-nodes-langchain.agent)
 
 Purpose: Orchestrates logic, tool use, and LLM calls for intelligent responses
 
-### Chat Model Nodes (OpenAI, Google Gemini, xAI Grok, DeepSeek)
+### Chat Model Nodes
+
+- OpenAI Chat Model (@n8n/n8n-nodes-langchain.lmChatOpenAi)
+- Google Gemini Chat Model (@n8n/n8n-nodes-langchain.lmChatGoogleGemini)
+- xAI Grok Chat Model (@n8n/n8n-nodes-langchain.lmChatXAiGrok)
+- DeepSeek Chat Model (@n8n/n8n-nodes-langchain.lmChatDeepSeek)
 
 Purpose: Connect to LLMs for natural, context-aware responses
 
-### Simple Memory
+### Simple Memory (@n8n/n8n-nodes-langchain.memoryBufferWindow)
 
 Purpose: Maintains short-term conversation history for context continuity
 
-### HTTP Request
+### HTTP Request (n8n-nodes-base.httpRequest)
 
 Purpose: Fetches external data to enrich chatbot responses with real-time or organizational information
 
-### Database Nodes (Postgres, MySQL, MongoDB) & Google Sheets
+### Database Nodes & Google Sheets
+
+- Postgres (n8n-nodes-base.postgres)
+- MySQL (n8n-nodes-base.mySql)
+- MongoDB (n8n-nodes-base.mongoDb)
+- Google Sheets (n8n-nodes-base.googleSheets)
 
 Purpose: Store conversation logs, retrieve structured data, or maintain user preferences
 
 ### IF / Switch
 
+- If (n8n-nodes-base.if)
+- Switch (n8n-nodes-base.switch)
+
 Purpose: Conditional logic and error handling for routing messages or managing conversation state
 
-### Integration Nodes (Slack, Telegram, WhatsApp, Discord)
+### Integration Nodes
+
+- Slack (n8n-nodes-base.slack)
+- Telegram (n8n-nodes-base.telegram)
+- WhatsApp Business Cloud (n8n-nodes-base.whatsApp)
+- Discord (n8n-nodes-base.discord)
 
 Purpose: Multi-channel support for deploying chatbots on popular messaging platforms
 

@@ -17,15 +17,15 @@ For text generation, validate and sanitize input/output to avoid malformed data.
 
 ## Recommended Nodes
 
-### OpenAI
+### OpenAI (@n8n/n8n-nodes-langchain.openAi)
 
 Purpose: GPT-based text generation, DALL-E image generation, text-to-speech (TTS), and audio transcription
 
-### xAI Grok Chat Model
+### xAI Grok Chat Model (@n8n/n8n-nodes-langchain.lmChatXAiGrok)
 
 Purpose: Conversational AI and text generation
 
-### Google Gemini
+### Google Gemini Chat Model (@n8n/n8n-nodes-langchain.lmChatGoogleGemini)
 
 Purpose: Image analysis and generation, video generation from text prompts, multimodal content creation
 
@@ -33,11 +33,13 @@ Purpose: Image analysis and generation, video generation from text prompts, mult
 
 Purpose: Natural-sounding AI voice generation
 
-### HTTP Request
+Note: Use HTTP Request node or a community node to integrate with ElevenLabs API
+
+### HTTP Request (n8n-nodes-base.httpRequest)
 
 Purpose: Integrating with other LLM and content generation APIs (e.g., Jasper, Writesonic, Anthropic, HuggingFace)
 
-### Edit Image
+### Edit Image (n8n-nodes-base.editImage)
 
 Purpose: Manipulating images - resize, crop, rotate, and format conversion
 
@@ -46,11 +48,11 @@ Pitfalls:
 - Ensure input is valid binary image data
 - Check output format compatibility with downstream nodes
 
-### Markdown
+### Markdown (n8n-nodes-base.markdown)
 
 Purpose: Formatting and converting text to HTML or Markdown reports
 
-### Facebook Graph API
+### Facebook Graph API (n8n-nodes-base.facebookGraphApi)
 
 Purpose: Uploading videos and images to Instagram and Facebook
 
@@ -59,7 +61,7 @@ Pitfalls:
 - Use binary data fields rather than URLs for media uploads to prevent "media type" errors
 - Verify page IDs and access tokens have correct permissions
 
-### Wait
+### Wait (n8n-nodes-base.wait)
 
 Purpose: Handling delays in video processing/uploading and respecting API rate limits
 

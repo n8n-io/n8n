@@ -66,7 +66,7 @@ an error message to guide the user to correct their submission. This prevents ba
 
 ## Recommended Nodes
 
-### n8n Form Trigger
+### n8n Form Trigger (n8n-nodes-base.formTrigger)
 
 Purpose: Starts the workflow and displays the first form page to the user
 
@@ -75,7 +75,7 @@ Pitfalls:
 - Use the Production URL for live forms; the Test URL is for development and debugging only
 - Ensure the form trigger is properly configured before sharing URLs with users
 
-### n8n Form
+### n8n Form (n8n-nodes-base.form)
 
 Purpose: Displays form pages in multi-step form sequences
 
@@ -87,13 +87,14 @@ Pitfalls:
 
 ### Storage Nodes
 
-Purpose: Persist raw form data to a storage destination
+Purpose: Persist raw form data to a storage destination, preference should be for built-in n8n tables
+but use the most applicable node depending on the user's request.
 
 Required nodes (use at least one):
-- Google Sheets: Best for simple spreadsheet storage
-- Airtable: Best for structured database with relationships
-- Data Tables: Built-in n8n storage for quick setup
-- PostgreSQL/MySQL/MongoDB: For production database storage
+- Data table (n8n-nodes-base.dataTable): Built-in n8n storage for quick setup
+- Google Sheets (n8n-nodes-base.googleSheets): Best for simple spreadsheet storage
+- Airtable (n8n-nodes-base.airtable): Best for structured database with relationships
+- Postgres (n8n-nodes-base.postgres) / MySQL (n8n-nodes-base.mySql) / MongoDB (n8n-nodes-base.mongoDb): For production database storage
 
 Pitfalls:
 
@@ -101,15 +102,15 @@ Pitfalls:
 - Set and Merge nodes alone are NOT sufficient - they only transform data in memory
 - The storage node should be placed immediately after the form trigger (single-step) or after data aggregation (multi-step)
 
-### Code
+### Code (n8n-nodes-base.code)
 
 Purpose: Processes form data, generates dynamic form definitions, or implements custom validation logic
 
-### Set
+### Edit Fields (Set) (n8n-nodes-base.set)
 
 Purpose: Aggregates and transforms form data between steps (NOT for storage - use a storage node)
 
-### Merge
+### Merge (n8n-nodes-base.merge)
 
 Purpose: Combines data from multiple form steps into a single dataset (NOT for storage - use a storage node)
 
@@ -119,11 +120,11 @@ Pitfalls:
 - Use appropriate merge modes (append, merge by key, etc.) for your use case
 - Remember: Merge prepares data but does not store it - add a storage node after Merge
 
-### IF
+### If (n8n-nodes-base.if)
 
 Purpose: Routes users to different form pages based on their previous answers
 
-### Switch
+### Switch (n8n-nodes-base.switch)
 
 Purpose: Implements multi-path conditional routing in complex forms
 

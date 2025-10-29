@@ -27,7 +27,7 @@ run indexes to maintain state across loop cycles.
 
 ## Recommended Nodes
 
-### HTTP Request
+### HTTP Request (n8n-nodes-base.httpRequest)
 
 Purpose: Fetches web pages or API data for scraping and research workflows
 
@@ -43,7 +43,7 @@ Pitfalls:
 Fail" feature
 - Refresh expired tokens, verify API keys, and ensure correct permissions to avoid authentication failures
 
-### HTML Extract
+### HTML Extract (n8n-nodes-base.htmlExtract)
 
 Purpose: Parses HTML and extracts data using CSS selectors for web scraping
 
@@ -53,14 +53,14 @@ Pitfalls:
 browser automation tools or APIs if the HTML appears empty
 - Validate that the CSS selectors match the actual page structure to avoid extraction failures
 
-### Split Out
+### Split Out (n8n-nodes-base.splitOut)
 
 Purpose: Processes lists of items one by one for sequential operations
 
 Pitfalls:
 - Can cause performance issues with very large datasets - consider using Split In Batches instead
 
-### Split In Batches
+### Loop Over Items (Split in Batches) (n8n-nodes-base.splitInBatches)
 
 Purpose: Processes lists of items in batches to manage memory and performance
 
@@ -70,11 +70,11 @@ Pitfalls:
 is the connection that loops.
 - Use appropriate batch sizes (e.g., 200 rows) to balance memory usage and performance
 
-### Set
+### Edit Fields (Set) (n8n-nodes-base.set)
 
 Purpose: Manipulates data, sets variables for loop control and state management
 
-### Code
+### Code (n8n-nodes-base.code)
 
 Purpose: Implements custom logic for complex data transformations or pagination
 
@@ -83,36 +83,40 @@ Pitfalls:
 - Prefer built-in nodes over custom code to reduce memory usage and improve maintainability
 - Avoid processing very large datasets in a single code execution - use batching
 
-### IF
+### If (n8n-nodes-base.if)
 
 Purpose: Adds conditional logic for error handling, loop control, or data filtering
 
 Pitfalls:
 - Validate expressions carefully to avoid unexpected branching behavior
 
-### Wait
+### Wait (n8n-nodes-base.wait)
 
 Purpose: Introduces delays to respect rate limits and avoid overloading servers
 
-### Google Sheets
+### Google Sheets (n8n-nodes-base.googleSheets)
 
 Purpose: Stores scraped data in spreadsheets for easy access and sharing
 
-### Microsoft Excel
+### Microsoft Excel 365 (n8n-nodes-base.microsoftExcel)
 
 Purpose: Stores scraped data in Excel files for offline analysis
 
-### Airtable
+### Airtable (n8n-nodes-base.airtable)
 
 Purpose: Saves structured data to a database with rich data types and relationships
 
-### AI Agent
+### AI Agent (@n8n/n8n-nodes-langchain.agent)
 
 Purpose: For research, summarization, and advanced data extraction. AI agents can autonomously gather information
 from websites, analyze content, and organize findings into structured formats, integrating tools for web scraping,
 content analysis, and database storage
 
-### Scraping nodes (Apify, BrightData, PhantomBuster)
+### Scraping Nodes
+
+- Phantombuster (n8n-nodes-base.phantombuster)
+- Apify (use HTTP Request or community node)
+- BrightData (use HTTP Request or community node)
 
 Purpose: If the user wishes to scrap data from sites like LinkedIn, Facebook, Instagram, Twitter/X, Indeed, Glassdoor
 or any other service similar to these large providers it is better to use a node designed for this. The scraping
