@@ -235,14 +235,14 @@ export class Telemetry {
 			context: {},
 		};
 
-		// Check payload size (32 KB limit)
+		// Limiting payload size to 32 KB
 		const payloadSize = Buffer.byteLength(JSON.stringify(payload), 'utf8');
-		const maxPayloadSize = 32 * 1024; // 32 KB in bytes
+		const maxPayloadSize = 32 << 10; // 32 KB
 
 		if (payloadSize > maxPayloadSize) {
-			this.errorReporter.error(
+			this.errorReporter.warn(
 				new Error(
-					`Telemetry event "${eventName}" payload size (${payloadSize} bytes) exceeds limit (${maxPayloadSize} bytes)`,
+					`Telemetry event "${eventName}" payload size (${payloadSize} bytes) exceeds limit (${maxPayloadSize} bytes). Skipping event.`,
 				),
 				{
 					extra: {
