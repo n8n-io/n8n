@@ -486,14 +486,17 @@ class TaskExecutor:
         """Read exactly n bytes from file descriptor.
 
         Uses os.read() instead of Connection.recv() because recv() pickles.
+        Preallocates bytearray to avoid repeated reallocation.
         """
-        result = b""
-        while len(result) < n:
-            chunk = os.read(fd, n - len(result))
+        result = bytearray(n)
+        offset = 0
+        while offset < n:
+            chunk = os.read(fd, n - offset)
             if not chunk:
                 raise EOFError("Pipe closed before reading all data")
-            result += chunk
-        return result
+            result[offset : offset + len(chunk)] = chunk
+            offset += len(chunk)
+        return bytes(result)
 
     @staticmethod
     def _write_bytes(fd: int, data: bytes):
