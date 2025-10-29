@@ -292,6 +292,7 @@ const resetForm = () => {
 };
 
 const resetToSelect = () => {
+	dataTableName.value = '';
 	selectedFile.value = null;
 	uploadedFileId.value = null;
 	uploadedFileName.value = '';
