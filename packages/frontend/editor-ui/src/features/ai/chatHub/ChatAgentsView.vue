@@ -12,7 +12,7 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
@@ -43,7 +43,7 @@ const agentFilter = ref<ChatAgentFilter>({
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
-const readyToShowList = computed(() => chatStore.customAgentsReady && chatStore.agentsReady);
+const readyToShowList = computed(() => chatStore.agentsReady);
 const allModels = computed(() =>
 	chatStore.agents.n8n.models.concat(chatStore.agents['custom-agent'].models),
 );
@@ -86,7 +86,6 @@ function handleCloseAgentEditor() {
 }
 
 async function handleAgentCreatedOrUpdated() {
-	await chatStore.fetchCustomAgents();
 	editingAgentId.value = undefined;
 }
 
@@ -121,10 +120,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-onMounted(() => {
-	void chatStore.fetchCustomAgents();
-});
 </script>
 
 <template>
