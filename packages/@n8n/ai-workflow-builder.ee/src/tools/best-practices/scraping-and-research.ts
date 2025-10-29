@@ -65,7 +65,9 @@ Pitfalls:
 Purpose: Processes lists of items in batches to manage memory and performance
 
 Pitfalls:
-- Ensure proper loop configuration to avoid infinite loops or skipped data
+- Ensure proper loop configuration to avoid infinite loops or skipped data. The index 0
+(first connection) of the loop is treated as the done state, while the index 1 (second connection)
+is the connection that loops.
 - Use appropriate batch sizes (e.g., 200 rows) to balance memory usage and performance
 
 ### Set

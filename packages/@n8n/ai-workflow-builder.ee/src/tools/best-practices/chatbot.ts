@@ -65,7 +65,7 @@ Purpose: Orchestrates logic, tool use, and LLM calls for intelligent responses
 
 Purpose: Connect to LLMs for natural, context-aware responses
 
-### Window Buffer Memory
+### Simple Memory
 
 Purpose: Maintains short-term conversation history for context continuity
 
