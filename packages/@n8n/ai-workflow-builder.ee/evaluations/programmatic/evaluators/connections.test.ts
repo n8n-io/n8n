@@ -332,6 +332,32 @@ describe('evaluateConnections', () => {
 				}),
 			);
 		});
+
+		it('should detect AI sub-node not connected to a root node', () => {
+			const workflow = mock<SimpleWorkflow>({
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Chat Model',
+						type: 'n8n-nodes-test.chatOpenAi',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			});
+
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description: expect.stringContaining(
+						'Sub-node Chat Model (n8n-nodes-test.chatOpenAi) provides ai_languageModel but is not connected to a root node.',
+					),
+				}),
+			);
+		});
 	});
 
 	describe('dynamic input/output resolution', () => {
