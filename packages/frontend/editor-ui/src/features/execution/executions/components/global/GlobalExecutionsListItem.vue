@@ -263,7 +263,12 @@ async function handleActionItemClick(commandData: Command) {
 			</span>
 		</td>
 		<td>
-			<N8nIcon v-if="execution.mode === 'manual'" icon="flask-conical" />
+			<N8nTooltip v-if="execution.mode === 'manual'" content="Manual Execution" placement="top">
+				<N8nIcon icon="flask-conical" />
+			</N8nTooltip>
+			<N8nTooltip v-else-if="execution.mode === 'chat'" content="Chat Execution" placement="top">
+				<N8nIcon icon="messages-square" />
+			</N8nTooltip>
 		</td>
 		<td>
 			<N8nButton

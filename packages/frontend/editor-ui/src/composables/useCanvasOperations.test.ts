@@ -7,7 +7,7 @@ import type {
 	INodeConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
@@ -58,7 +58,6 @@ import {
 	type WorkflowState,
 } from '@/composables/useWorkflowState';
 
-import { TelemetryHelpers } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 
@@ -68,7 +67,8 @@ const mockRoute = reactive({
 
 const mockRouterReplace = vi.fn();
 
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
 	useRoute: () => mockRoute,
 	useRouter: () => ({
 		replace: mockRouterReplace,

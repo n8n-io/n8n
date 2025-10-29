@@ -833,6 +833,8 @@ describe('POST /workflows', () => {
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
 				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 
@@ -1072,6 +1074,8 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 
@@ -1241,6 +1245,8 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 

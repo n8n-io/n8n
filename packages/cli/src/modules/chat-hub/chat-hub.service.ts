@@ -36,32 +36,16 @@ import {
 	type IConnections,
 	type INode,
 	type INodeCredentials,
-	type INodeTypeNameVersion,
-	type ITaskData,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
 	type IRun,
 	jsonParse,
 	StructuredChunk,
 	RESPOND_TO_CHAT_NODE_TYPE,
+	IExecuteData,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
-
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import type { ChatHubMessage } from './chat-hub-message.entity';
-import { CONVERSATION_TITLE_GENERATION_PROMPT } from './chat-hub.constants';
-import type {
-	HumanMessagePayload,
-	RegenerateMessagePayload,
-	EditMessagePayload,
-	MessageRecord,
-	ModelWithCredentials,
-} from './chat-hub.types';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatHubSessionRepository } from './chat-session.repository';
-import { getMaxContextWindowTokens } from './context-limits';
-import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -74,39 +58,26 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-const providerNodeTypeMapping: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
-	openai: {
-		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-		version: 1.2,
-	},
-	anthropic: {
-		name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-		version: 1.3,
-	},
-	google: {
-		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-		version: 1.2,
-	},
-};
-
-const NODE_NAMES = {
-	CHAT_TRIGGER: 'When chat message received',
-	REPLY_AGENT: 'AI Agent',
-	TITLE_GENERATOR_AGENT: 'Title Generator Agent',
-	CHAT_MODEL: 'Chat Model',
-	MEMORY: 'Memory',
-	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
-	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
-} as const;
-
-/* eslint-disable @typescript-eslint/naming-convention */
-const JSONL_STREAM_HEADERS = {
-	'Content-Type': 'application/json-lines; charset=utf-8',
-	'Transfer-Encoding': 'chunked',
-	'Cache-Control': 'no-cache',
-	Connection: 'keep-alive',
-};
-/* eslint-enable @typescript-eslint/naming-convention */
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import type { ChatHubMessage } from './chat-hub-message.entity';
+import {
+	CONVERSATION_TITLE_GENERATION_PROMPT,
+	JSONL_STREAM_HEADERS,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+} from './chat-hub.constants';
+import type {
+	HumanMessagePayload,
+	RegenerateMessagePayload,
+	EditMessagePayload,
+	MessageRecord,
+	ModelWithCredentials,
+} from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
+import { getMaxContextWindowTokens } from './context-limits';
+import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 
 @Service()
 export class ChatHubService {
@@ -205,7 +176,7 @@ export class ChatHubService {
 			case 'google':
 				return await this.fetchGoogleModels(credentials, additionalData);
 			case 'n8n':
-				return await this.fetchCustomAgentWorkflows(user);
+				return await this.fetchAgentWorkflowsAsModels(user);
 			case 'custom-agent':
 				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
 		}
@@ -214,21 +185,24 @@ export class ChatHubService {
 	private async fetchOpenAiModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<ChatModelsResponse[ChatHubProvider]> {
+	): Promise<ChatModelsResponse['openai']> {
 		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
 			'searchModels',
 			'parameters.model',
 			additionalData,
-			providerNodeTypeMapping.openai,
+			PROVIDER_NODE_TYPE_MAP.openai,
 			{},
 			credentials,
 		);
 
 		return {
 			models: resourceLocatorResults.results.map((result) => ({
-				provider: 'openai',
 				name: String(result.value),
-				model: String(result.value),
+				description: null,
+				model: {
+					provider: 'openai',
+					model: String(result.value),
+				},
 			})),
 		};
 	}
@@ -236,21 +210,24 @@ export class ChatHubService {
 	private async fetchAnthropicModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<ChatModelsResponse[ChatHubProvider]> {
+	): Promise<ChatModelsResponse['anthropic']> {
 		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
 			'searchModels',
 			'parameters.model',
 			additionalData,
-			providerNodeTypeMapping.anthropic,
+			PROVIDER_NODE_TYPE_MAP.anthropic,
 			{},
 			credentials,
 		);
 
 		return {
 			models: resourceLocatorResults.results.map((result) => ({
-				provider: 'anthropic',
 				name: String(result.value),
-				model: String(result.value),
+				description: null,
+				model: {
+					provider: 'anthropic',
+					model: String(result.value),
+				},
 			})),
 		};
 	}
@@ -258,7 +235,7 @@ export class ChatHubService {
 	private async fetchGoogleModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<ChatModelsResponse[ChatHubProvider]> {
+	): Promise<ChatModelsResponse['google']> {
 		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				// From Gemini node
@@ -301,38 +278,72 @@ export class ChatHubService {
 				},
 			},
 			additionalData,
-			providerNodeTypeMapping.google,
+			PROVIDER_NODE_TYPE_MAP.google,
 			{},
 			credentials,
 		);
 
 		return {
 			models: results.map((result) => ({
-				provider: 'google',
 				name: String(result.value),
-				model: String(result.value),
+				description: null,
+				model: {
+					provider: 'google',
+					model: String(result.value),
+				},
 			})),
 		};
 	}
 
-	private async fetchCustomAgentWorkflows(
-		user: User,
-	): Promise<ChatModelsResponse[ChatHubProvider]> {
+	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelsResponse['n8n']> {
 		const nodeTypes = [CHAT_TRIGGER_NODE_TYPE];
-		const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(user, nodeTypes);
+		const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(
+			user,
+			nodeTypes,
+			true,
+		);
 
 		return {
 			models: workflows
+				// Ensure the user has at least read access to the workflow
+				.filter((workflow) => workflow.scopes.includes('workflow:read'))
 				.filter((workflow) => workflow.active)
-				.map((workflow) => ({
-					provider: 'n8n',
-					name: workflow.name ?? 'Unnamed workflow',
-					workflowId: workflow.id,
-				})),
+				.flatMap((workflow) => {
+					const chatTrigger = workflow.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+					if (!chatTrigger) {
+						return [];
+					}
+
+					if (chatTrigger.parameters.availableInChat !== true) {
+						return [];
+					}
+
+					const name =
+						typeof chatTrigger.parameters.agentName === 'string' &&
+						chatTrigger.parameters.agentName.length > 0
+							? chatTrigger.parameters.agentName
+							: workflow.name;
+
+					return [
+						{
+							name: name ?? 'Unknown Agent',
+							description:
+								typeof chatTrigger.parameters.agentDescription === 'string' &&
+								chatTrigger.parameters.agentDescription.length > 0
+									? chatTrigger.parameters.agentDescription
+									: null,
+							model: {
+								provider: 'n8n',
+								workflowId: workflow.id,
+							},
+						},
+					];
+				}),
 		};
 	}
 
 	private async createChatWorkflow(
+		user: User,
 		sessionId: ChatSessionId,
 		projectId: string,
 		history: ChatHubMessage[],
@@ -342,12 +353,10 @@ export class ChatHubService {
 		generateConversationTitle: boolean,
 		trx?: EntityManager,
 		systemMessage?: string,
-	): Promise<{
-		workflowData: IWorkflowBase;
-		triggerToStartFrom: { name: string; data: ITaskData };
-	}> {
+	) {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
-			const { nodes, connections, triggerToStartFrom } = this.prepareChatWorkflow({
+			const { nodes, connections, executionData } = this.prepareChatWorkflow({
+				user,
 				sessionId,
 				history,
 				humanMessage,
@@ -374,14 +383,16 @@ export class ChatHubService {
 				}),
 			);
 
+			const workflowData = {
+				...workflow,
+				nodes,
+				connections,
+				versionId: uuidv4(),
+			};
+
 			return {
-				workflowData: {
-					...workflow,
-					nodes,
-					connections,
-					versionId: uuidv4(),
-				},
-				triggerToStartFrom,
+				workflowData,
+				executionData,
 			};
 		});
 	}
@@ -443,59 +454,66 @@ export class ChatHubService {
 		const { sessionId, messageId, message, model, credentials, previousMessageId } = payload;
 		const provider = payload.model.provider;
 
-		const selectedModel: ModelWithCredentials = {
-			...payload.model,
-			credentialId: provider !== 'n8n' ? this.pickCredentialId(provider, credentials) : null,
-		};
+		const selectedModel = this.getModelWithCredentials(model, credentials);
 
-		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
-			await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
-			const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-			const history = this.buildMessageHistory(messages, previousMessageId);
+		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
+			async (trx) => {
+				const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
+				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
+				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+				const history = this.buildMessageHistory(messages, previousMessageId);
 
-			await this.saveHumanMessage(payload, user, previousMessageId, selectedModel, undefined, trx);
-
-			// generate title on receiving the first human message only
-			const generateTitle = previousMessageId === null;
-
-			if (provider === 'n8n') {
-				return await this.prepareCustomAgentWorkflow(
+				await this.saveHumanMessage(
+					payload,
 					user,
-					sessionId,
-					payload.model.workflowId,
-					message,
+					previousMessageId,
+					selectedModel,
+					undefined,
+					trx,
 				);
-			}
 
-			if (provider === 'custom-agent') {
-				return await this.prepareChatAgentWorkflow(
-					payload.model.agentId,
+				// generate title on receiving the first human message only
+				const generateTitle = previousMessageId === null;
+
+				if (provider === 'n8n') {
+					return await this.prepareCustomAgentWorkflow(
+						user,
+						sessionId,
+						payload.model.workflowId,
+						message,
+					);
+				}
+
+				if (provider === 'custom-agent') {
+					return await this.prepareChatAgentWorkflow(
+						payload.model.agentId,
+						user,
+						sessionId,
+						history,
+						message,
+						generateTitle,
+						trx,
+					);
+				}
+
+				return await this.prepareBaseChatWorkflow(
 					user,
 					sessionId,
+					credentials,
+					model,
 					history,
 					message,
 					generateTitle,
 					trx,
 				);
-			}
-
-			return await this.prepareBaseChatWorkflow(
-				user,
-				sessionId,
-				credentials,
-				model,
-				history,
-				message,
-				generateTitle,
-				trx,
-			);
-		});
+			},
+		);
 
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
-			workflow,
+			workflowData,
+			executionData,
 			sessionId,
 			messageId,
 			selectedModel,
@@ -507,7 +525,7 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, message, model, credentials } = payload;
 		const provider = payload.model.provider;
 
-		const selectedModel: ModelWithCredentials = this.getModelWithCredentials(model, credentials);
+		const selectedModel = this.getModelWithCredentials(model, credentials);
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
 			const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
@@ -578,10 +596,13 @@ export class ChatHubService {
 			return;
 		}
 
+		const { workflowData, executionData } = workflow;
+
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
-			workflow,
+			workflowData,
+			executionData,
 			sessionId,
 			messageId,
 			selectedModel,
@@ -593,85 +614,83 @@ export class ChatHubService {
 		const { sessionId, retryId, model, credentials } = payload;
 		const provider = payload.model.provider;
 
-		const selectedModel: ModelWithCredentials = {
-			...payload.model,
-			credentialId:
-				payload.model.provider !== 'n8n'
-					? this.pickCredentialId(payload.model.provider, payload.credentials)
-					: null,
-		};
+		const selectedModel = this.getModelWithCredentials(model, credentials);
 
-		const { workflow, retryOfMessageId, previousMessageId } =
-			await this.messageRepository.manager.transaction(async (trx) => {
-				const session = await this.getChatSession(user, sessionId, undefined, false, trx);
-				const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
+		const {
+			workflow: { workflowData, executionData },
+			retryOfMessageId,
+			previousMessageId,
+		} = await this.messageRepository.manager.transaction(async (trx) => {
+			const session = await this.getChatSession(user, sessionId, undefined, false, trx);
+			const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
 
-				if (messageToRetry.type !== 'ai') {
-					throw new BadRequestError('Can only retry AI messages');
-				}
+			if (messageToRetry.type !== 'ai') {
+				throw new BadRequestError('Can only retry AI messages');
+			}
 
-				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-				const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
+			const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+			const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
 
-				const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
-				if (!lastHumanMessage) {
-					throw new BadRequestError('No human message found to base the retry on');
-				}
+			const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
+			if (!lastHumanMessage) {
+				throw new BadRequestError('No human message found to base the retry on');
+			}
 
-				// Remove any (AI) messages that came after the last human message
-				const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
-				if (lastHumanMessageIndex !== -1) {
-					history.splice(lastHumanMessageIndex + 1);
-				}
+			// Remove any (AI) messages that came after the last human message
+			const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
+			if (lastHumanMessageIndex !== -1) {
+				history.splice(lastHumanMessageIndex + 1);
+			}
 
-				// Rerun the workflow, replaying the last human message
+			// Rerun the workflow, replaying the last human message
 
-				// If the message being retried is itself a retry, we want to point to the original message
-				const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
-				const message = lastHumanMessage ? lastHumanMessage.content : '';
+			// If the message being retried is itself a retry, we want to point to the original message
+			const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
+			const message = lastHumanMessage ? lastHumanMessage.content : '';
 
-				let workflow;
-				if (provider === 'n8n') {
-					workflow = await this.prepareCustomAgentWorkflow(
-						user,
-						sessionId,
-						payload.model.workflowId,
-						message,
-					);
-				} else if (provider === 'custom-agent') {
-					workflow = await this.prepareChatAgentWorkflow(
-						payload.model.agentId,
-						user,
-						sessionId,
-						history,
-						message,
-						false,
-						trx,
-					);
-				} else {
-					workflow = await this.prepareBaseChatWorkflow(
-						user,
-						sessionId,
-						credentials,
-						model,
-						history,
-						message,
-						false,
-						trx,
-					);
-				}
+			let workflow;
+			if (provider === 'n8n') {
+				workflow = await this.prepareCustomAgentWorkflow(
+					user,
+					sessionId,
+					payload.model.workflowId,
+					message,
+				);
+			} else if (provider === 'custom-agent') {
+				workflow = await this.prepareChatAgentWorkflow(
+					payload.model.agentId,
+					user,
+					sessionId,
+					history,
+					message,
+					false,
+					trx,
+				);
+			} else {
+				workflow = await this.prepareBaseChatWorkflow(
+					user,
+					sessionId,
+					credentials,
+					model,
+					history,
+					message,
+					false,
+					trx,
+				);
+			}
 
-				return {
-					workflow,
-					previousMessageId: lastHumanMessage.id,
-					retryOfMessageId,
-				};
-			});
+			return {
+				workflow,
+				previousMessageId: lastHumanMessage.id,
+				retryOfMessageId,
+			};
+		});
 
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
-			workflow,
+			workflowData,
+			executionData,
 			sessionId,
 			previousMessageId,
 			selectedModel,
@@ -694,6 +713,7 @@ export class ChatHubService {
 		const credential = await this.ensureCredentials(user, model, credentials, trx);
 
 		return await this.createChatWorkflow(
+			user,
 			sessionId,
 			credential.projectId,
 			history,
@@ -739,7 +759,6 @@ export class ChatHubService {
 		const model: ChatHubConversationModel = {
 			provider: agent.provider,
 			model: agent.model,
-			name: agent.model,
 		};
 
 		const credentials: INodeCredentials = {
@@ -787,6 +806,8 @@ export class ChatHubService {
 			throw new BadRequestError('Workflow must have exactly one chat trigger');
 		}
 
+		const chatTriggerNode = chatTriggers[0];
+
 		const chatResponseNodes = workflowEntity.nodes.filter(
 			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
 		);
@@ -797,42 +818,48 @@ export class ChatHubService {
 			);
 		}
 
-		// const agents = workflowEntity.nodes.filter((node) => node.type === AGENT_LANGCHAIN_NODE_TYPE);
-		// if (agents.length !== 1) {
-		// 	throw new BadRequestError('Workflow must have exactly one AI Agent node');
-		// }
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node: chatTriggerNode,
+				data: {
+					main: [
+						[
+							{
+								json: {
+									sessionId,
+									action: 'sendMessage',
+									chatInput: message,
+								},
+							},
+						],
+					],
+				},
+				source: null,
+			},
+		];
+
+		const executionData: IRunExecutionData = {
+			startData: {},
+			resultData: {
+				runData: {},
+			},
+			executionData: {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack,
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+			manualData: {
+				userId: user.id,
+			},
+		};
 
 		return {
 			workflowData: {
 				...workflowEntity,
-				// Since this mechanism executes workflows as manual one-off executions
-				// we need to clear any pinData the WF might have.
-				// TODO: Implement a separate execution mode for chats to avoid such workarounds.
-				pinData: {},
 			},
-			triggerToStartFrom: {
-				name: chatTriggers[0].name,
-				data: {
-					startTime: Date.now(),
-					executionTime: 0,
-					executionIndex: 0,
-					executionStatus: 'success',
-					data: {
-						main: [
-							[
-								{
-									json: {
-										sessionId,
-										action: 'sendMessage',
-										chatInput: message,
-									},
-								},
-							],
-						],
-					},
-					source: [null],
-				} satisfies ITaskData,
-			},
+			executionData,
 		};
 	}
 
@@ -882,17 +909,13 @@ export class ChatHubService {
 	private async executeChatWorkflow(
 		res: Response,
 		user: User,
-		workflow: {
-			workflowData: IWorkflowBase;
-			triggerToStartFrom: { name: string; data?: ITaskData };
-		},
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
 		selectedModel: ModelWithCredentials,
 		retryOfMessageId: ChatMessageId | null = null,
 	) {
-		const { workflowData, triggerToStartFrom } = workflow;
-
 		this.logger.debug(
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
 		);
@@ -988,16 +1011,14 @@ export class ChatHubService {
 		stream.writeHead(200, JSONL_STREAM_HEADERS);
 		stream.flushHeaders();
 
-		const execution = await this.workflowExecutionService.executeManually(
-			{
-				workflowData,
-				triggerToStartFrom,
-			},
+		const execution = await this.workflowExecutionService.executeChatWorkflow(
+			workflowData,
+			executionData,
 			user,
-			undefined,
-			true,
 			stream,
+			true,
 		);
+
 		executionId = execution.executionId;
 
 		if (!executionId) {
@@ -1049,10 +1070,8 @@ export class ChatHubService {
 	private async executeChatWorkflowWithCleanup(
 		res: Response,
 		user: User,
-		workflow: {
-			workflowData: IWorkflowBase;
-			triggerToStartFrom: { name: string; data?: ITaskData };
-		},
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
 		selectedModel: ModelWithCredentials,
@@ -1063,7 +1082,8 @@ export class ChatHubService {
 			await this.executeChatWorkflow(
 				res,
 				user,
-				workflow,
+				workflowData,
+				executionData,
 				sessionId,
 				previousMessageId,
 				selectedModel,
@@ -1071,16 +1091,13 @@ export class ChatHubService {
 			);
 		} finally {
 			if (provider !== 'n8n') {
-				// TODO: If we don't wait for a bit then a followup workflow insights query
-				// that happens after executions might fail to find the workflow.
-				// Once/if we add the new workflow flag to keep these WFs around this wouldn't be needed.
-				await new Promise((resolve) => setTimeout(resolve, 3000));
-				await this.deleteChatWorkflow(workflow.workflowData.id);
+				await this.deleteChatWorkflow(workflowData.id);
 			}
 		}
 	}
 
 	private prepareChatWorkflow({
+		user,
 		sessionId,
 		history,
 		humanMessage,
@@ -1089,6 +1106,7 @@ export class ChatHubService {
 		generateConversationTitle,
 		systemMessage,
 	}: {
+		user: User;
 		sessionId: ChatSessionId;
 		history: ChatHubMessage[];
 		humanMessage: string;
@@ -1097,20 +1115,18 @@ export class ChatHubService {
 		generateConversationTitle: boolean;
 		systemMessage?: string;
 	}) {
+		const chatTriggerNode: INode = {
+			parameters: {},
+			type: CHAT_TRIGGER_NODE_TYPE,
+			typeVersion: 1.3,
+			position: [0, 0],
+			id: uuidv4(),
+			name: NODE_NAMES.CHAT_TRIGGER,
+			webhookId: uuidv4(),
+		};
+
 		const nodes: INode[] = [
-			{
-				parameters: {
-					public: true,
-					mode: 'webhook',
-					options: { responseMode: 'streaming' },
-				},
-				type: CHAT_TRIGGER_NODE_TYPE,
-				typeVersion: 1.3,
-				position: [0, 0],
-				id: uuidv4(),
-				name: NODE_NAMES.CHAT_TRIGGER,
-				webhookId: uuidv4(),
-			},
+			chatTriggerNode,
 			{
 				parameters: {
 					promptType: 'define',
@@ -1251,16 +1267,9 @@ export class ChatHubService {
 			},
 		};
 
-		const triggerToStartFrom: {
-			name: string;
-			data: ITaskData;
-		} = {
-			name: NODE_NAMES.CHAT_TRIGGER,
-			data: {
-				startTime: Date.now(),
-				executionTime: 0,
-				executionIndex: 0,
-				executionStatus: 'success',
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node: chatTriggerNode,
 				data: {
 					main: [
 						[
@@ -1274,11 +1283,28 @@ export class ChatHubService {
 						],
 					],
 				},
-				source: [null],
+				source: null,
+			},
+		];
+
+		const executionData: IRunExecutionData = {
+			startData: {},
+			resultData: {
+				runData: {},
+			},
+			executionData: {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack,
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+			manualData: {
+				userId: user.id,
 			},
 		};
 
-		return { nodes, connections, triggerToStartFrom };
+		return { nodes, connections, executionData };
 	}
 
 	private async saveHumanMessage(
@@ -1344,17 +1370,10 @@ export class ChatHubService {
 		credentials: INodeCredentials,
 	) {
 		const provider = selectedModel.provider;
-		const agentId = selectedModel?.provider === 'custom-agent' ? selectedModel.agentId : undefined;
-		const agentName =
-			selectedModel?.provider === 'custom-agent' && 'name' in selectedModel
-				? selectedModel.name
-				: undefined;
 
 		const modelWithCredentials: ModelWithCredentials = {
 			...selectedModel,
 			credentialId: provider !== 'n8n' ? this.pickCredentialId(provider, credentials) : null,
-			agentId,
-			agentName, // used for sessions
 		};
 
 		return modelWithCredentials;
@@ -1374,11 +1393,49 @@ export class ChatHubService {
 			throw new NotFoundError('Chat session not found');
 		}
 
+		let agentName: string | undefined = undefined;
+
+		if (selectedModel?.provider === 'custom-agent') {
+			// Find the agent to get its name
+			const agent = await this.chatHubAgentService.getAgentById(selectedModel.agentId!, user.id);
+			if (!agent) {
+				throw new BadRequestError('Agent not found for chat session initialization');
+			}
+			agentName = agent.name;
+		}
+
+		if (selectedModel?.provider === 'n8n') {
+			// Find the workflow to get its name
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				selectedModel.workflowId!,
+				user,
+				['workflow:read'],
+				{ includeTags: false, includeParentFolder: false },
+			);
+
+			if (!workflow) {
+				throw new BadRequestError('Workflow not found for chat session initialization');
+			}
+
+			const chatTrigger = workflow.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+			if (!chatTrigger) {
+				throw new BadRequestError(
+					'Chat trigger not found in workflow for chat session initialization',
+				);
+			}
+			agentName =
+				typeof chatTrigger.parameters.agentName === 'string' &&
+				chatTrigger.parameters.agentName.length > 0
+					? chatTrigger.parameters.agentName
+					: workflow.name;
+		}
+
 		return await this.sessionRepository.createChatSession(
 			{
 				id: sessionId,
 				ownerId: user.id,
 				title: 'New Chat',
+				agentName,
 				...selectedModel,
 			},
 			trx,
@@ -1410,10 +1467,10 @@ export class ChatHubService {
 		const common = {
 			position: [600, 500] as [number, number],
 			id: uuidv4(),
-			name: 'Chat Model',
+			name: NODE_NAMES.CHAT_MODEL,
 			credentials,
-			type: providerNodeTypeMapping[provider].name,
-			typeVersion: providerNodeTypeMapping[provider].version,
+			type: PROVIDER_NODE_TYPE_MAP[provider].name,
+			typeVersion: PROVIDER_NODE_TYPE_MAP[provider].version,
 		};
 
 		switch (provider) {
@@ -1571,7 +1628,7 @@ export class ChatHubService {
 	 * Updates a session with the provided fields
 	 */
 	async updateSession(
-		userId: string,
+		user: User,
 		sessionId: ChatSessionId,
 		updates: {
 			title?: string;
@@ -1580,13 +1637,52 @@ export class ChatHubService {
 			model?: string | null;
 			workflowId?: string | null;
 			agentId?: string | null;
-			agentName?: string;
+			agentName?: string | null;
 		},
 	) {
-		const session = await this.sessionRepository.getOneById(sessionId, userId);
+		const session = await this.sessionRepository.getOneById(sessionId, user.id);
 
 		if (!session) {
 			throw new NotFoundError('Session not found');
+		}
+
+		if (updates.workflowId) {
+			// Validate the workflow exists and is accessible
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				updates.workflowId,
+				user,
+				['workflow:read'],
+				{ includeTags: false, includeParentFolder: false },
+			);
+
+			if (!workflow) {
+				throw new BadRequestError('Workflow not found');
+			}
+
+			const chatTriggers = workflow.nodes.filter((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+
+			if (chatTriggers.length !== 1) {
+				throw new BadRequestError('Workflow must have exactly one chat trigger');
+			}
+
+			const chatTrigger = chatTriggers[0];
+
+			updates.agentName =
+				typeof chatTrigger.parameters.agentName === 'string' &&
+				chatTrigger.parameters.agentName.length > 0
+					? chatTrigger.parameters.agentName
+					: workflow.name;
+		}
+
+		if (updates.agentId) {
+			// Validate the agent exists and is accessible
+			const agent = await this.chatHubAgentService.getAgentById(updates.agentId, user.id);
+
+			if (!agent) {
+				throw new BadRequestError('Agent not found');
+			}
+
+			updates.agentName = agent.name;
 		}
 
 		if (updates.provider === 'n8n') {
@@ -1594,9 +1690,15 @@ export class ChatHubService {
 			updates.model = null;
 			updates.credentialId = null;
 			updates.agentId = null;
-		} else if (updates.provider) {
-			// Other providers can't have workflowId
+		} else if (updates.provider === 'custom-agent') {
+			// custom-agent provider only stores agentId & Agent name
+			updates.model = null;
+			updates.credentialId = null;
 			updates.workflowId = null;
+		} else if (updates.provider) {
+			updates.workflowId = null;
+			updates.agentId = null;
+			updates.agentName = null;
 		}
 
 		return await this.sessionRepository.updateChatSession(sessionId, updates);

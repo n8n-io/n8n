@@ -135,9 +135,6 @@ const tag = computed(() => {
 	if (description.value.toLowerCase().includes('deprecated')) {
 		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
 	}
-	if (props.nodeType.name.includes('dataTable')) {
-		return { text: i18n.baseText('nodeCreator.nodeItem.beta'), type: 'info' };
-	}
 	return undefined;
 });
 
