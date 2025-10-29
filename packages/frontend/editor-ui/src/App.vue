@@ -132,7 +132,7 @@ watch(
 	{ immediate: true },
 );
 
-useExposeCssVar('--toast--margin-bottom', toastBottomOffset);
+useExposeCssVar('--toast--offset', toastBottomOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
 
