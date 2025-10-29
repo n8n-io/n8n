@@ -459,7 +459,7 @@ const runSelectorOptionsCount = computed(() => {
 	// If there is only one branch - we show only the runs containing the data in the connected branch
 	return nodeRunData.filter((nodeRun) => {
 		const nodeOutput = nodeRun?.data?.[connectionType.value]?.[currentOutputIndex.value];
-		return nodeOutput?.length > 0;
+		return nodeOutput && nodeOutput.length > 0;
 	}).length;
 });
 
