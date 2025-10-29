@@ -3,20 +3,27 @@ import { describeConversationModel } from '@/features/ai/chatHub/chat.utils';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { type ChatHubConversationModel, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { N8nAvatar, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useChatStore } from '../chat.store';
+import { computed } from 'vue';
 
-defineProps<{
+const props = defineProps<{
 	model: ChatHubConversationModel;
 	size: 'sm' | 'md' | 'lg';
 	tooltip?: boolean;
 }>();
+
+const chatStore = useChatStore();
+const modelDto = computed(() => {
+	return chatStore.getModel(props.model) ?? null;
+});
 </script>
 
 <template>
 	<N8nTooltip :show-after="100" placement="left" :disabled="!tooltip">
-		<template #content>{{ describeConversationModel(model) }}</template>
+		<template v-if="modelDto" #content>{{ describeConversationModel(modelDto) }}</template>
 		<N8nAvatar
 			v-if="model.provider === 'custom-agent'"
-			:first-name="model.name"
+			:first-name="modelDto?.name"
 			:size="size === 'lg' ? 'medium' : size === 'sm' ? 'xxsmall' : 'xsmall'"
 		/>
 		<N8nIcon

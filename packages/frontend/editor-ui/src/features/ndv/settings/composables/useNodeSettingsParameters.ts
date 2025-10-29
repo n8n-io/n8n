@@ -25,18 +25,20 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import {
 	getMainAuthField,
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
@@ -200,6 +202,14 @@ export function useNodeSettingsParameters() {
 			(parameter.name === mainNodeAuthField.name || shouldHideAuthRelatedParameter)
 		) {
 			return false;
+		}
+
+		// Hide chat hub toggle on chat trigger when module isn't enabled.
+		// Remove this check when feature is generally available.
+		if (nodeType?.name === CHAT_TRIGGER_NODE_TYPE && parameter.name === 'availableInChat') {
+			if (!settingsStore.isChatFeatureEnabled) {
+				return false;
+			}
 		}
 
 		if (parameter[displayKey] === undefined) {
