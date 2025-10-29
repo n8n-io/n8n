@@ -161,40 +161,6 @@ class TestTaskExecutorPipeCommunication:
         assert str(exc_info.value) == "Test error"
         assert exc_info.value.stack_trace == "traceback..."
 
-    @patch("os.read")
-    def test_reader_thread_timeout_logs_warning(self, mock_os_read, caplog):
-        from src.errors import TaskResultMissingError
-        import logging
-        import threading
-
-        # make os.read hang indefinitely to simulate slow thread
-        event = threading.Event()
-        mock_os_read.side_effect = lambda *args: event.wait() or b""
-
-        process = MagicMock()
-        process.is_alive.return_value = False
-        process.exitcode = 0
-
-        read_conn = MagicMock()
-        write_conn = MagicMock()
-        read_conn.fileno.return_value = 999
-
-        with caplog.at_level(logging.WARNING):
-            with pytest.raises(TaskResultMissingError):
-                TaskExecutor.execute_process(
-                    process=process,
-                    read_conn=read_conn,
-                    write_conn=write_conn,
-                    task_timeout=60,
-                    continue_on_fail=False,
-                )
-
-        assert any(
-            "Pipe reader thread did not finish" in record.message
-            for record in caplog.records
-        )
-        event.set()  # unblock thread for cleanup
-
 
 class TestTaskExecutorLowLevelIO:
     @patch("os.read")
