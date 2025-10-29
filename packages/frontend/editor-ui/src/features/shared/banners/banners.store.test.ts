@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useBannersStore } from '@/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as dynamicBannersApi from '@n8n/rest-api-client/api/dynamic-banners';
 

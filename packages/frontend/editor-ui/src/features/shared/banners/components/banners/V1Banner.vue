@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import BaseBanner from './BaseBanner.vue';
 import { i18n as locale } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useBannersStore } from '@/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 
 const bannersStore = useBannersStore();
 

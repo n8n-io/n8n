@@ -6,7 +6,7 @@ import {
 	BREAKPOINT_LG,
 	BREAKPOINT_XL,
 } from '@/constants/breakpoints';
-import { useBannersStore } from '@/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
 import { useDebounce } from '@/composables/useDebounce';
 

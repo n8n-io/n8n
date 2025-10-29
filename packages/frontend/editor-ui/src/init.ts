@@ -22,7 +22,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
-import { useBannersStore } from '@/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
