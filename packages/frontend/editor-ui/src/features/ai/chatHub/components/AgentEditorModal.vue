@@ -139,13 +139,13 @@ async function onSave() {
 		};
 
 		if (isEditMode.value && props.agentId) {
-			await chatStore.updateCustomAgent(props.agentId, payload);
+			await chatStore.updateCustomAgent(props.agentId, payload, props.credentials);
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
 				type: 'success',
 			});
 		} else {
-			const agent = await chatStore.createCustomAgent(payload);
+			const agent = await chatStore.createCustomAgent(payload, props.credentials);
 			emit('createCustomAgent', agent);
 
 			toast.showMessage({
@@ -180,7 +180,7 @@ async function onDelete() {
 
 	isDeleting.value = true;
 	try {
-		await chatStore.deleteCustomAgent(props.agentId);
+		await chatStore.deleteCustomAgent(props.agentId, props.credentials);
 		toast.showMessage({
 			title: i18n.baseText('chatHub.agent.editor.success.delete'),
 			type: 'success',

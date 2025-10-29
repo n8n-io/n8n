@@ -609,7 +609,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
-	async function createCustomAgent(payload: ChatHubCreateAgentRequest): Promise<ChatModelDto> {
+	async function createCustomAgent(
+		payload: ChatHubCreateAgentRequest,
+		credentials: CredentialsMap,
+	): Promise<ChatModelDto> {
 		const agent = await createAgentApi(rootStore.restApiContext, payload);
 		customAgents.value = [...(customAgents.value ?? []), agent];
 		const agentModel = {
@@ -622,12 +625,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
 
+		await fetchAgents(credentials);
+
 		return agentModel;
 	}
 
 	async function updateCustomAgent(
 		agentId: string,
 		payload: ChatHubUpdateAgentRequest,
+		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
 		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
 		customAgents.value = customAgents.value?.map((a) => (a.id === agentId ? agent : a));
@@ -639,10 +645,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			);
 		}
 
+		await fetchAgents(credentials);
+
 		return agent;
 	}
 
-	async function deleteCustomAgent(agentId: string) {
+	async function deleteCustomAgent(agentId: string, credentials: CredentialsMap) {
 		await deleteAgentApi(rootStore.restApiContext, agentId);
 		customAgents.value = customAgents.value?.filter((a) => a.id !== agentId);
 
@@ -652,6 +660,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				(model) => !('agentId' in model) || model.agentId !== agentId,
 			);
 		}
+
+		await fetchAgents(credentials);
 	}
 
 	function getAgent(model: ChatHubConversationModel) {

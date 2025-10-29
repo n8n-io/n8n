@@ -109,12 +109,12 @@ async function handleDeleteAgent(agentId: string) {
 		},
 	);
 
-	if (confirmed !== MODAL_CONFIRM) {
+	if (confirmed !== MODAL_CONFIRM || !credentialsByProvider.value) {
 		return;
 	}
 
 	try {
-		await chatStore.deleteCustomAgent(agentId);
+		await chatStore.deleteCustomAgent(agentId, credentialsByProvider.value);
 		toast.showMessage({ type: 'success', title: 'Agent deleted successfully' });
 	} catch (error) {
 		toast.showError(error, 'Could not delete the agent');
