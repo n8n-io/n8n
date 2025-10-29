@@ -31,8 +31,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
-import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
-import { removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
+import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;

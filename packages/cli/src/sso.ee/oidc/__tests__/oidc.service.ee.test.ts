@@ -1,3 +1,4 @@
+import type { OidcConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
@@ -5,20 +6,24 @@ import type { AuthIdentityRepository, SettingsRepository, UserRepository } from 
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
-
 import * as client from 'openid-client';
-
-import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import { EnvHttpProxyAgent } from 'undici';
 
 import * as ssoHelpers from '../../sso-helpers';
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
 import { OidcService } from '../oidc.service.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { OidcConfigDto } from '@n8n/api-types';
-import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { JwtService } from '@/services/jwt.service';
+import type { UrlService } from '@/services/url.service';
+
+jest.mock('undici', () => ({
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	EnvHttpProxyAgent: jest.fn().mockImplementation(() => ({})),
+}));
 
 describe('OidcService', () => {
 	let oidcService: OidcService;
@@ -535,6 +540,88 @@ describe('OidcService', () => {
 			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
+		});
+	});
+
+	describe('proxy configuration', () => {
+		const originalEnv = process.env;
+
+		// Helper function to create a proper mock Response
+		const createMockResponse = () => {
+			const mockData = {
+				issuer: 'https://example.com',
+				authorization_endpoint: 'https://example.com/auth',
+				token_endpoint: 'https://example.com/token',
+				userinfo_endpoint: 'https://example.com/userinfo',
+				jwks_uri: 'https://example.com/jwks',
+			};
+			return new Response(JSON.stringify(mockData), {
+				status: 200,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				headers: { 'content-type': 'application/json' },
+			});
+		};
+
+		beforeEach(() => {
+			// Reset environment before each test
+			process.env = { ...originalEnv };
+			// Reset the mock between tests
+			(EnvHttpProxyAgent as unknown as jest.Mock).mockClear();
+		});
+
+		afterEach(() => {
+			// Restore original environment after each test
+			process.env = originalEnv;
+		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])('should instantiate EnvHttpProxyAgent when $envVar is set', async ({ envVar, value }) => {
+			// Set proxy environment variable
+			process.env[envVar] = value;
+
+			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+			const clientId = 'test-client';
+			const clientSecret = 'test-secret';
+
+			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+			// Call the private method directly using type assertion
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			);
+
+			// Verify EnvHttpProxyAgent was instantiated
+			expect(EnvHttpProxyAgent).toHaveBeenCalled();
+		});
+
+		it('should not instantiate EnvHttpProxyAgent when no proxy env vars are set', async () => {
+			// Ensure no proxy env vars are set
+			delete process.env.HTTP_PROXY;
+			delete process.env.HTTPS_PROXY;
+			delete process.env.ALL_PROXY;
+
+			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+			const clientId = 'test-client';
+			const clientSecret = 'test-secret';
+
+			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+			// Call the private method directly
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			);
+
+			// Should not instantiate EnvHttpProxyAgent when no proxy is configured
+			expect(EnvHttpProxyAgent).not.toHaveBeenCalled();
 		});
 	});
 });

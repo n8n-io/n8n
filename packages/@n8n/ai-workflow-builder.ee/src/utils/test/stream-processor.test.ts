@@ -155,6 +155,35 @@ describe('stream-processor', () => {
 
 				expect(result).toBeNull();
 			});
+
+			it('should return null for chunks with invalid structure', () => {
+				const chunk = {
+					invalid: 'structure',
+					random: 'data',
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for null chunks', () => {
+				const result = processStreamChunk('updates', null);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for undefined chunks', () => {
+				const result = processStreamChunk('updates', undefined);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for primitive chunks', () => {
+				expect(processStreamChunk('updates', 'string')).toBeNull();
+				expect(processStreamChunk('updates', 123)).toBeNull();
+				expect(processStreamChunk('updates', true)).toBeNull();
+			});
 		});
 
 		describe('custom mode', () => {
@@ -190,6 +219,28 @@ describe('stream-processor', () => {
 				const result = processStreamChunk('custom', chunk);
 
 				expect(result).toBeNull();
+			});
+
+			it('should return null for chunks missing type property', () => {
+				const chunk = {
+					id: 'tool-1',
+					toolName: 'add_nodes',
+				};
+
+				const result = processStreamChunk('custom', chunk);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for null chunks in custom mode', () => {
+				const result = processStreamChunk('custom', null);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for primitive values in custom mode', () => {
+				expect(processStreamChunk('custom', 'string')).toBeNull();
+				expect(processStreamChunk('custom', 123)).toBeNull();
 			});
 		});
 
