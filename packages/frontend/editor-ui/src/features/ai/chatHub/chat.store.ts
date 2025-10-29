@@ -653,34 +653,49 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	return {
+		/**
+		 * models and agents
+		 */
 		allModels: computed(() => Object.values(models.value ?? {}).flatMap(({ models }) => models)),
 		models: computed(() => models.value ?? emptyChatModelsResponse),
 		modelsReady: computed(() => models.value !== undefined),
-		sessions: computed(() => sessions.value ?? []),
-		sessionsReady: computed(() => sessions.value !== undefined),
 		agents: computed(() => agents.value ?? []),
 		agentsReady: computed(() => agents.value !== undefined),
 		currentEditingAgent,
-		isResponding,
-		getAgent,
-		lastMessage,
 		fetchChatModels,
-		updateSessionModel,
-		sendMessage,
-		editMessage,
-		regenerateMessage,
-		stopStreamingMessage,
-		fetchSessions,
-		fetchMessages,
-		renameSession,
-		deleteSession,
-		getConversation,
-		getActiveMessages,
-		switchAlternative,
+		getAgent,
 		fetchAgents,
 		fetchAgent,
 		createAgent,
 		updateAgent,
 		deleteAgent,
+
+		/**
+		 * conversations
+		 */
+		sessions: computed(() => sessions.value ?? []),
+		sessionsReady: computed(() => sessions.value !== undefined),
+		fetchSessions,
+		renameSession,
+		updateSessionModel,
+		deleteSession,
+
+		/**
+		 * conversation
+		 */
+		getConversation,
+		fetchMessages,
+		getActiveMessages,
+		switchAlternative,
+		lastMessage,
+
+		/**
+		 * messaging
+		 */
+		isResponding,
+		sendMessage,
+		editMessage,
+		regenerateMessage,
+		stopStreamingMessage,
 	};
 });
