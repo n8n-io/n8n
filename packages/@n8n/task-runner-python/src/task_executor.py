@@ -325,8 +325,11 @@ class TaskExecutor:
         write_fd: int,
         e: BaseException,
         stderr: str = "",
-        print_args: PrintArgs = [],
+        print_args: PrintArgs | None = None,
     ):
+        if print_args is None:
+            print_args = []
+
         task_error_info: TaskErrorInfo = {
             "message": f"Process exited with code {e.code}"
             if isinstance(e, SystemExit)
