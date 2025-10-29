@@ -61,7 +61,7 @@ export const versionDescription: INodeTypeDescription = {
 		name: 'Guardrails',
 	},
 	codex: {
-		alias: ['LangChain', 'Guardrails', 'PII', 'Secret', 'Injection'],
+		alias: ['LangChain', 'Guardrails', 'PII', 'Secret', 'Injection', 'Sanitize'],
 		categories: ['AI'],
 		subcategories: {
 			AI: ['Agents', 'Miscellaneous', 'Root Nodes'],
