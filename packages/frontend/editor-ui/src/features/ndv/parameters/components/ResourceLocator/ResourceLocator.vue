@@ -44,6 +44,7 @@ import {
 	watch,
 } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import ModelBrowser from './ModelBrowser.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import {
@@ -181,6 +182,8 @@ const selectedMode = computed(() => {
 });
 
 const isListMode = computed(() => selectedMode.value === 'list');
+
+const isBrowseMode = computed(() => currentMode.value.type === 'browse');
 
 /**
  * Check if the current response contains an error that indicates a credential issue.
@@ -471,13 +474,18 @@ watch(
 	},
 );
 
-watch(currentMode, (mode) => {
+watch(currentMode, (mode, oldMode) => {
 	if (
 		mode.extractValue?.regex &&
 		isResourceLocatorValue(props.modelValue) &&
 		props.modelValue.__regex !== mode.extractValue.regex
 	) {
 		emit('update:modelValue', { ...props.modelValue, __regex: mode.extractValue.regex as string });
+	}
+
+	// Load resources when switching to browse mode
+	if (mode.type === 'browse' && oldMode?.type !== 'browse') {
+		void loadInitialResources();
 	}
 });
 
@@ -948,7 +956,23 @@ function removeOverride() {
 		class="resource-locator"
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
+		<!-- Browse Mode -->
+		<ModelBrowser
+			v-if="isBrowseMode"
+			:models="currentQueryResults"
+			:loading="currentQueryLoading"
+			:filter="searchFilter"
+			:has-more="currentQueryHasMore"
+			:selected-value="modelValue?.value"
+			:width="width"
+			@select="onListItemSelected"
+			@filter="onSearchFilter"
+			@load-more="loadResourcesDebounced"
+		/>
+
+		<!-- Standard List/ID/URL Modes -->
 		<ResourceLocatorDropdown
+			v-else
 			ref="dropdownRef"
 			:model-value="modelValue"
 			:show="resourceDropdownVisible"

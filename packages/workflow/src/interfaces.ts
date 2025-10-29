@@ -1417,6 +1417,7 @@ export interface INodePropertyTypeOptions {
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
 	editorIsReadOnly?: boolean; // Supported by: string
+	showModelMeta?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
@@ -1585,7 +1586,7 @@ export interface INodePropertyModeTypeOptions {
 export interface INodePropertyMode {
 	displayName: string;
 	name: string;
-	type: 'string' | 'list';
+	type: 'string' | 'list' | 'browse';
 	hint?: string;
 	validation?: Array<
 		INodePropertyModeValidation | { (this: IExecuteSingleFunctions, value: string): void }
@@ -1636,9 +1637,33 @@ export interface INodePropertyOptions {
 	disabledOptions?: undefined;
 }
 
+export interface IModelMetadata {
+	name: string;
+	shortName?: string;
+	provider: string;
+	pricing: {
+		promptPerMilTokenUsd: number;
+		completionPerMilTokenUsd: number;
+	};
+	contextLength: number;
+	maxOutputTokens?: number;
+	capabilities: {
+		functionCalling?: boolean;
+		structuredOutput?: boolean;
+		vision?: boolean;
+		imageGeneration?: boolean;
+		audio?: boolean;
+	};
+	inputModalities?: string[];
+	outputModalities?: string[];
+	intelligenceScore?: number;
+	description?: string;
+}
+
 export interface INodeListSearchItems extends INodePropertyOptions {
 	icon?: string;
 	url?: string;
+	metadata?: IModelMetadata;
 }
 
 export interface INodeListSearchResult {

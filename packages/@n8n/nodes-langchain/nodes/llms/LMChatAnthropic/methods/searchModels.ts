@@ -3,6 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { mapAnthropicModel } from '@utils/modelMetadataMapper';
 
 export interface AnthropicModel {
 	id: string;
@@ -34,6 +35,7 @@ export async function searchModels(
 				results.push({
 					name: model.display_name,
 					value: model.id,
+					metadata: mapAnthropicModel(model),
 				});
 			}
 		}
@@ -41,6 +43,7 @@ export async function searchModels(
 		results = models.map((model) => ({
 			name: model.display_name,
 			value: model.id,
+			metadata: mapAnthropicModel(model),
 		}));
 	}
 

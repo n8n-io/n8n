@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 
 import { shouldIncludeModel } from '../../../vendors/OpenAi/helpers/modelFiltering';
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { mapOpenAIModel } from '@utils/modelMetadataMapper';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
@@ -37,9 +38,10 @@ export async function searchModels(
 	filteredModels.sort((a, b) => a.id.localeCompare(b.id));
 
 	return {
-		results: filteredModels.map((model: { id: string }) => ({
+		results: filteredModels.map((model: { id: string; created?: number; owned_by?: string }) => ({
 			name: model.id,
 			value: model.id,
+			metadata: mapOpenAIModel({ id: model.id, created: model.created, owned_by: model.owned_by }),
 		})),
 	};
 }
