@@ -7,20 +7,28 @@ import { isValueExpression as isValueExpressionUtil } from '@/utils/nodeTypesUti
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
 	INodeParameterResourceLocator,
+	INodeParameters,
 	INodeProperties,
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
 import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
+
+const LazyFixedCollectionParameter = defineAsyncComponent(
+	async () => await import('./FixedCollectionParameter.vue'),
+);
+
 type Props = {
 	parameter: INodeProperties;
 	value: NodeParameterValueType;
+	// TODO: better name and maybe type
+	values?: Record<string, INodeParameters[]>;
 	showValidationWarnings?: boolean;
 	documentationUrl?: string;
 	eventSource?: string;
@@ -29,6 +37,9 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
+	values: () => ({}),
+	documentationUrl: undefined,
+	eventSource: undefined,
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
@@ -84,6 +95,10 @@ const isValueExpression = computed(() => {
 	);
 });
 
+const isFixedCollectionType = computed(() => {
+	return props.parameter.type === 'fixedCollection';
+});
+
 function onFocus() {
 	focused.value = true;
 }
@@ -102,7 +117,16 @@ function optionSelected(command: string) {
 }
 
 function valueChanged(parameterData: IUpdateInformation) {
-	emit('update', parameterData);
+	let name = parameterData.name;
+	// for fixed collection, we need to keep the full path
+	if (!isFixedCollectionType.value) {
+		name = name.split('.').pop() ?? name;
+	}
+
+	emit('update', {
+		name,
+		value: parameterData.value,
+	});
 }
 
 function onDocumentationUrlClick(): void {
@@ -129,13 +153,25 @@ function onDocumentationUrlClick(): void {
 				:parameter="parameter"
 				:value="value"
 				:is-read-only="false"
-				:show-options="true"
+				:show-options="!isFixedCollectionType"
+				:show-expression-selector="!isFixedCollectionType"
 				:is-value-expression="isValueExpression"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
+		<!-- FIXME: cast -->
+		<div v-if="isFixedCollectionType" class="fixed-collection-wrapper">
+			<LazyFixedCollectionParameter
+				:parameter="parameter"
+				:values="value as Record<string, INodeParameters[]>"
+				:node-values="values"
+				:path="parameter.name"
+				@value-changed="valueChanged"
+			/>
+		</div>
 		<ParameterInputWrapper
+			v-else
 			ref="param"
 			input-size="large"
 			:parameter="parameter"
@@ -176,5 +212,27 @@ function onDocumentationUrlClick(): void {
 }
 .hint {
 	margin-top: var(--spacing--4xs);
+}
+</style>
+
+<style lang="scss">
+.fixed-collection-wrapper {
+	.icon-button {
+		position: absolute;
+		opacity: 0;
+		top: -3px;
+		left: calc(-0.5 * var(--spacing--xs));
+		transition: opacity 100ms ease-in;
+		Button {
+			color: var(--icon--color);
+		}
+	}
+	.icon-button > Button:hover {
+		color: var(--icon--color--hover);
+	}
+
+	.fixed-collection-wrapper:hover .icon-button {
+		opacity: 1;
+	}
 }
 </style>

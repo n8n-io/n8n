@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
 	ICredentialDataDecryptedObject,
+	INodeParameters,
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
@@ -27,12 +28,7 @@ const emit = defineEmits<{
 }>();
 
 function valueChanged(parameterData: IUpdateInformation) {
-	const name = parameterData.name.split('.').pop() ?? parameterData.name;
-
-	emit('update', {
-		name,
-		value: parameterData.value,
-	});
+	emit('update', parameterData);
 }
 </script>
 
@@ -47,10 +43,12 @@ function valueChanged(parameterData: IUpdateInformation) {
 		>
 			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
 			<N8nNotice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
+			<!-- FIXME: type cast -->
 			<ParameterInputExpanded
 				v-else
 				:parameter="parameter"
 				:value="credentialDataValues[parameter.name]"
+				:values="credentialDataValues as Record<string, INodeParameters[]>"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
 				:label="{ size: 'medium' }"
