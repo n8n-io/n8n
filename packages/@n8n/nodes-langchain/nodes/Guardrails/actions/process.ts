@@ -28,10 +28,6 @@ interface Result {
 	checks: GuardrailUserResult[];
 }
 
-interface Options {
-	systemMessage?: string;
-}
-
 export async function process(
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -42,9 +38,16 @@ export async function process(
 	failed: Result | null;
 }> {
 	const inputText = this.getNodeParameter('text', itemIndex) as string;
-	const options = this.getNodeParameter('options', itemIndex, {}) as Options;
 	const operation = this.getNodeParameter('operation', 0) as 'classify' | 'sanitize';
 	const guardrails = this.getNodeParameter('guardrails', itemIndex) as GuardrailsOptions;
+	const customizeSystemMessage = this.getNodeParameter(
+		'customizeSystemMessage',
+		itemIndex,
+		false,
+	) as boolean;
+	const systemMessage = customizeSystemMessage
+		? (this.getNodeParameter('systemMessage', itemIndex) as string)
+		: undefined;
 	const failedChecks: GuardrailUserResult[] = [];
 	const passedChecks: GuardrailUserResult[] = [];
 
@@ -139,7 +142,7 @@ export async function process(
 					model,
 					prompt: prompt?.trim() || JAILBREAK_PROMPT,
 					threshold,
-					systemMessage: options.systemMessage,
+					systemMessage,
 				}),
 			});
 		}
@@ -152,7 +155,7 @@ export async function process(
 					model,
 					prompt: prompt?.trim() || NSFW_SYSTEM_PROMPT,
 					threshold,
-					systemMessage: options.systemMessage,
+					systemMessage,
 				}),
 			});
 		}
@@ -164,7 +167,7 @@ export async function process(
 				check: createTopicalAlignmentCheckFn({
 					model,
 					prompt: prompt?.trim() || TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
-					systemMessage: options.systemMessage,
+					systemMessage,
 					threshold,
 				}),
 			});
@@ -179,7 +182,7 @@ export async function process(
 						model,
 						prompt,
 						threshold,
-						systemMessage: options.systemMessage,
+						systemMessage,
 					}),
 				});
 			}

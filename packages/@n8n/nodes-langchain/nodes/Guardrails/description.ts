@@ -417,25 +417,29 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Options',
-			name: 'options',
-			placeholder: 'Add Option',
-			type: 'collection',
-			default: {},
-			options: [
-				{
-					displayName: 'System Message',
-					name: 'systemMessage',
-					type: 'string',
-					description:
-						'The system message used by the guardrail to enforce JSON output according to schema',
-					hint: 'This message is appended after prompts defined by guardrails',
-					default: LLM_SYSTEM_RULES,
-					typeOptions: {
-						rows: 6,
-					},
+			displayName: 'Customize System Message',
+			name: 'customizeSystemMessage',
+			description:
+				'Whether to customize the system message used by the guardrail to specify the output format',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'System Message',
+			name: 'systemMessage',
+			type: 'string',
+			description:
+				'The system message used by the guardrail to enforce JSON output according to schema',
+			hint: 'This message is appended after prompts defined by guardrails',
+			default: LLM_SYSTEM_RULES,
+			typeOptions: {
+				rows: 6,
+			},
+			displayOptions: {
+				show: {
+					'/customizeSystemMessage': [true],
 				},
-			],
+			},
 		},
 	],
 };
