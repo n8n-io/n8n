@@ -199,7 +199,7 @@ export class Logger implements LoggerType {
 		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp(),
-			this.color(),
+			winston.format.uncolorize(),
 			this.scopeFilter(),
 			winston.format.printf(({ level, message, timestamp, metadata: rawMetadata }) => {
 				const metadata = this.toPrintable(rawMetadata);
