@@ -18,23 +18,23 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-
-import { saveCredential } from '../shared/db/credentials';
-import { assignTagToWorkflow, createTag } from '../shared/db/tags';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
-import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { createFolder } from '@test-integration/db/folders';
+
+import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
+import { assignTagToWorkflow, createTag } from '../shared/db/tags';
+import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;
@@ -107,7 +107,7 @@ describe('POST /workflows', () => {
 		expect(pinData).toBeNull();
 	});
 
-	test.skip('should return scopes on created workflow', async () => {
+	test('should return scopes on created workflow', async () => {
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -154,7 +154,7 @@ describe('POST /workflows', () => {
 		);
 	});
 
-	test.skip('should create workflow with uiContext parameter', async () => {
+	test('should create workflow with uiContext parameter', async () => {
 		const payload = {
 			name: 'testing with context',
 			nodes: [
@@ -367,7 +367,7 @@ describe('POST /workflows', () => {
 		expect(response.body.data.shared).toBeUndefined();
 	});
 
-	test.skip('does not create the workflow in a specific project if the user is not part of the project', async () => {
+	test('does not create the workflow in a specific project if the user is not part of the project', async () => {
 		//
 		// ARRANGE
 		//
@@ -395,7 +395,7 @@ describe('POST /workflows', () => {
 			});
 	});
 
-	test.skip('does not create the workflow in a specific project if the user does not have the right role to do so', async () => {
+	test('does not create the workflow in a specific project if the user does not have the right role to do so', async () => {
 		//
 		// ARRANGE
 		//
@@ -696,7 +696,7 @@ describe('GET /workflows', () => {
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
-	test.skip('should return workflows with scopes when ?includeScopes=true', async () => {
+	test('should return workflows with scopes when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
 			role: { slug: 'global:member' },
 		});
@@ -972,7 +972,7 @@ describe('GET /workflows', () => {
 			expect(response3.body.data).toHaveLength(2);
 		});
 
-		test.skip('should filter by personal project and return only workflows where the user is member', async () => {
+		test('should filter by personal project and return only workflows where the user is member', async () => {
 			const workflow = await createWorkflow({ name: 'First' }, member);
 			const workflow2 = await createWorkflow({ name: 'Second' }, owner);
 			await shareWorkflowWithUsers(workflow2, [member]);
@@ -2453,8 +2453,6 @@ describe('PATCH /workflows/:workflowId', () => {
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-		console.log(response.body);
 
 		const {
 			data: { id },
