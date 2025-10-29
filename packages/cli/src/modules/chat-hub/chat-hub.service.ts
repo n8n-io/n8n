@@ -1658,7 +1658,7 @@ export class ChatHubService {
 	 * Updates a session with the provided fields
 	 */
 	async updateSession(
-		userId: string,
+		user: User,
 		sessionId: ChatSessionId,
 		updates: {
 			title?: string;
@@ -1667,13 +1667,52 @@ export class ChatHubService {
 			model?: string | null;
 			workflowId?: string | null;
 			agentId?: string | null;
-			agentName?: string;
+			agentName?: string | null;
 		},
 	) {
-		const session = await this.sessionRepository.getOneById(sessionId, userId);
+		const session = await this.sessionRepository.getOneById(sessionId, user.id);
 
 		if (!session) {
 			throw new NotFoundError('Session not found');
+		}
+
+		if (updates.workflowId) {
+			// Validate the workflow exists and is accessible
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				updates.workflowId,
+				user,
+				['workflow:read'],
+				{ includeTags: false, includeParentFolder: false },
+			);
+
+			if (!workflow) {
+				throw new BadRequestError('Workflow not found');
+			}
+
+			const chatTriggers = workflow.nodes.filter((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+
+			if (chatTriggers.length !== 1) {
+				throw new BadRequestError('Workflow must have exactly one chat trigger');
+			}
+
+			const chatTrigger = chatTriggers[0];
+
+			updates.agentName =
+				typeof chatTrigger.parameters.agentName === 'string' &&
+				chatTrigger.parameters.agentName.length > 0
+					? chatTrigger.parameters.agentName
+					: workflow.name;
+		}
+
+		if (updates.agentId) {
+			// Validate the agent exists and is accessible
+			const agent = await this.chatHubAgentService.getAgentById(updates.agentId, user.id);
+
+			if (!agent) {
+				throw new BadRequestError('Agent not found');
+			}
+
+			updates.agentName = agent.name;
 		}
 
 		if (updates.provider === 'n8n') {
@@ -1681,9 +1720,15 @@ export class ChatHubService {
 			updates.model = null;
 			updates.credentialId = null;
 			updates.agentId = null;
-		} else if (updates.provider) {
-			// Other providers can't have workflowId
+		} else if (updates.provider === 'custom-agent') {
+			// custom-agent provider only stores agentId & Agent name
+			updates.model = null;
+			updates.credentialId = null;
 			updates.workflowId = null;
+		} else if (updates.provider) {
+			updates.workflowId = null;
+			updates.agentId = null;
+			updates.agentName = null;
 		}
 
 		return await this.sessionRepository.updateChatSession(sessionId, updates);

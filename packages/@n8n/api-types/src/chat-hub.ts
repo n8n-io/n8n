@@ -141,7 +141,6 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 	model: z.string().max(64).optional(),
 	workflowId: z.string().max(36).optional(),
 	agentId: z.string().uuid().optional(),
-	agentName: z.string().max(128).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
