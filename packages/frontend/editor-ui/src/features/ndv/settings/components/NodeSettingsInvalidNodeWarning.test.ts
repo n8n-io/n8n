@@ -4,7 +4,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';

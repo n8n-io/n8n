@@ -613,14 +613,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	): Promise<ChatHubConversationModel> {
 		const agent = await createAgentApi(rootStore.restApiContext, payload);
 		agents.value = [...(agents.value ?? []), agent];
-		const model = {
-			provider: 'custom-agent' as const,
-			agentId: agent.id,
+		const agentModel = {
+			model: {
+				provider: 'custom-agent' as const,
+				agentId: agent.id,
+			},
 			name: agent.name,
+			description: agent.description ?? null,
 		};
-		models.value?.['custom-agent'].models.push(model);
+		models.value?.['custom-agent'].models.push(agentModel);
 
-		return model;
+		return agentModel.model;
 	}
 
 	async function updateAgent(
@@ -652,6 +655,20 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
+	function getModel(identifier: ChatHubConversationModel) {
+		if (!models.value) return;
+
+		return models.value[identifier.provider].models.find((m) => {
+			if (identifier.provider === 'n8n') {
+				return m.model.provider === 'n8n' && m.model.workflowId === identifier.workflowId;
+			} else if (identifier.provider === 'custom-agent') {
+				return m.model.provider === 'custom-agent' && m.model.agentId === identifier.agentId;
+			} else {
+				return m.model.provider === identifier.provider && m.model.model === identifier.model;
+			}
+		});
+	}
+
 	return {
 		/**
 		 * models and agents
@@ -662,6 +679,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		agents: computed(() => agents.value ?? []),
 		agentsReady: computed(() => agents.value !== undefined),
 		currentEditingAgent,
+		getModel,
 		fetchChatModels,
 		getAgent,
 		fetchAgents,

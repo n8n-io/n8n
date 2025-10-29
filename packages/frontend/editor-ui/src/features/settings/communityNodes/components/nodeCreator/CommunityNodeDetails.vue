@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 import { computed } from 'vue';
-import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import {
 	prepareCommunityNodeDetailsViewStack,
 	removePreviewToken,
-} from '@/components/Node/NodeCreator/utils';
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 const {

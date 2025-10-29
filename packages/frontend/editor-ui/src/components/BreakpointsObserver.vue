@@ -6,7 +6,7 @@ import {
 	BREAKPOINT_LG,
 	BREAKPOINT_XL,
 } from '@/constants/breakpoints';
-import { useUIStore } from '@/stores/ui.store';
+import { useBannersStore } from '@/stores/banners.store';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
 import { useDebounce } from '@/composables/useDebounce';
 
@@ -30,7 +30,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const { callDebounced } = useDebounce();
-const uiStore = useUIStore();
+const bannersStore = useBannersStore();
 
 const width = ref(window.innerWidth);
 
@@ -78,7 +78,7 @@ const onResizeEnd = async () => {
 	await nextTick();
 
 	const bannerHeight = await getBannerRowHeight();
-	uiStore.updateBannersHeight(bannerHeight);
+	bannersStore.updateBannersHeight(bannerHeight);
 };
 
 onMounted(() => {
