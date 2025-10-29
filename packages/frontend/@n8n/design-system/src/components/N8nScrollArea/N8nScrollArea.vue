@@ -6,7 +6,7 @@ import {
 	ScrollAreaThumb,
 	ScrollAreaViewport,
 } from 'reka-ui';
-import { computed } from 'vue';
+import { computed, ref, nextTick, type Ref } from 'vue';
 
 export interface Props {
 	/**
@@ -58,6 +58,13 @@ const props = withDefaults(defineProps<Props>(), {
 	asChild: false,
 });
 
+// Type for the ScrollAreaRoot instance with the viewport property
+interface ScrollAreaRootWithViewport {
+	viewport?: Ref<HTMLElement | undefined> | HTMLElement;
+}
+
+const rootRef = ref<ScrollAreaRootWithViewport>();
+
 const viewportStyle = computed(() => {
 	const style: Record<string, string> = {};
 	if (props.maxHeight) {
@@ -68,10 +75,96 @@ const viewportStyle = computed(() => {
 	}
 	return style;
 });
+
+/**
+ * Gets the viewport element from the root ref
+ */
+function getViewportElement(): HTMLElement | undefined {
+	if (!rootRef.value?.viewport) return undefined;
+
+	const viewport = rootRef.value.viewport;
+
+	// If it's a Vue ref, unwrap it
+	if (typeof viewport === 'object' && 'value' in viewport) {
+		return viewport.value;
+	}
+
+	// If it's already an HTMLElement, use it directly
+	if (viewport instanceof HTMLElement) {
+		return viewport;
+	}
+
+	return undefined;
+}
+
+/**
+ * Scrolls the viewport to the bottom
+ * @param options - Options for controlling scroll behavior
+ */
+async function scrollToBottom(options: { smooth?: boolean } = {}) {
+	// Wait for DOM updates to ensure content is fully rendered
+	await nextTick();
+
+	const viewport = getViewportElement();
+
+	if (viewport && typeof viewport.scrollTo === 'function') {
+		viewport.scrollTo({
+			top: viewport.scrollHeight,
+			behavior: options.smooth ? 'smooth' : 'auto',
+		});
+	} else if (viewport) {
+		// Fallback for test environments or browsers that don't support scrollTo
+		viewport.scrollTop = viewport.scrollHeight;
+	}
+}
+
+/**
+ * Scrolls the viewport to the top
+ * @param options - Options for controlling scroll behavior
+ */
+async function scrollToTop(options: { smooth?: boolean } = {}) {
+	await nextTick();
+
+	const viewport = getViewportElement();
+
+	if (viewport && typeof viewport.scrollTo === 'function') {
+		viewport.scrollTo({
+			top: 0,
+			behavior: options.smooth ? 'smooth' : 'auto',
+		});
+	} else if (viewport) {
+		// Fallback for test environments or browsers that don't support scrollTo
+		viewport.scrollTop = 0;
+	}
+}
+
+/**
+ * Gets the current scroll position
+ */
+function getScrollPosition() {
+	const viewport = getViewportElement();
+
+	if (viewport) {
+		return {
+			top: viewport.scrollTop,
+			left: viewport.scrollLeft,
+			height: viewport.scrollHeight,
+			width: viewport.scrollWidth,
+		};
+	}
+	return null;
+}
+
+defineExpose({
+	scrollToBottom,
+	scrollToTop,
+	getScrollPosition,
+});
 </script>
 
 <template>
 	<ScrollAreaRoot
+		ref="rootRef"
 		:type="type"
 		:dir="dir"
 		:scroll-hide-delay="scrollHideDelay"
@@ -107,7 +200,6 @@ const viewportStyle = computed(() => {
 	overflow: hidden;
 	width: 100%;
 	height: 100%;
-	--scrollbar-size: 10px;
 }
 
 .viewport {
@@ -120,56 +212,56 @@ const viewportStyle = computed(() => {
 	display: flex;
 	user-select: none;
 	touch-action: none;
-	padding: var(--spacing-5xs);
+	padding: var(--spacing--5xs);
 	background: transparent;
 	transition: background 160ms ease-out;
 	pointer-events: none;
 
 	&:hover {
-		background: var(--color-foreground-light);
+		background: var(--color--foreground--tint-1);
 	}
 
 	&[data-orientation='vertical'] {
-		width: var(--spacing-xs);
+		width: var(--spacing--xs);
 	}
 
 	&[data-orientation='horizontal'] {
-		height: var(--spacing-xs);
+		height: var(--spacing--xs);
 		flex-direction: row;
 	}
 }
 
 .thumb {
 	flex: 1;
-	background: var(--color-foreground-base);
+	background: var(--color--foreground);
 	border-radius: 4px;
 	position: relative;
 	pointer-events: auto;
 
 	&:hover {
-		background: var(--color-foreground-dark);
+		background: var(--color--foreground--shade-1);
 	}
 
 	&:active {
-		background: var(--color-foreground-xdark);
+		background: var(--color--foreground--shade-2);
 	}
 }
 
 // Style the scrollbar when type is 'always' to be more subtle
 .scrollAreaRoot[data-type='always'] {
 	.scrollbar {
-		background: var(--color-foreground-xlight);
+		background: var(--color--foreground--tint-2);
 
 		&:hover {
-			background: var(--color-foreground-light);
+			background: var(--color--foreground--tint-1);
 		}
 	}
 
 	.thumb {
-		background: var(--color-foreground-light);
+		background: var(--color--foreground--tint-1);
 
 		&:hover {
-			background: var(--color-foreground-base);
+			background: var(--color--foreground);
 		}
 	}
 }

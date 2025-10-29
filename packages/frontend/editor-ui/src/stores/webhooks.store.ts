@@ -1,9 +1,9 @@
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNDVStore } from './ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from './ui.store';
-import { useUsersStore } from './users.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
 

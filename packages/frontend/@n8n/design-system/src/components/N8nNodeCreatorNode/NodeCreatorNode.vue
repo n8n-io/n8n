@@ -75,24 +75,24 @@ const { t } = useI18n();
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
-	padding: var(--spacing-xs) var(--spacing-2xs) var(--spacing-xs) 0;
+	padding: var(--spacing--xs) var(--spacing--2xs) var(--spacing--xs) 0;
 
 	&.hasAction {
 		user-select: none;
 	}
 }
 .creatorNode:hover .panelIcon {
-	color: var(--action-arrow-color-hover, var(--color-text-light));
+	color: var(--action--arrow--color--hover, var(--color--text--tint-1));
 }
 :root .tag {
-	margin-left: var(--spacing-2xs);
-	line-height: var(--font-size-3xs);
-	font-size: var(--font-size-3xs);
-	padding: 0.1875rem var(--spacing-3xs) var(--spacing-4xs) var(--spacing-3xs);
+	margin-left: var(--spacing--2xs);
+	line-height: var(--font-size--3xs);
+	font-size: var(--font-size--3xs);
+	padding: 0.1875rem var(--spacing--3xs) var(--spacing--4xs) var(--spacing--3xs);
 	height: auto;
 
 	span {
-		font-size: var(--font-size-2xs) !important;
+		font-size: var(--font-size--2xs) !important;
 	}
 }
 .panelIcon {
@@ -100,50 +100,50 @@ const { t } = useI18n();
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-	margin-left: var(--spacing-2xs);
-	color: var(--action-arrow-color, var(--color-text-lighter));
+	margin-left: var(--spacing--2xs);
+	color: var(--action--arrow--color, var(--color--text--tint-2));
 	cursor: pointer;
 	background: transparent;
 	border: none;
 }
 .tooltipIcon {
-	margin-left: var(--spacing-3xs);
-	color: var(--color-text-base);
-	font-size: var(--font-size-2xs);
+	margin-left: var(--spacing--3xs);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
 }
 .details {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 .nodeIcon {
 	display: flex;
-	margin-right: var(--node-icon-margin-right, var(--spacing-s));
+	margin-right: var(--node--icon--margin-right, var(--spacing--sm));
 }
 .name {
-	font-weight: var(--node-creator-name-weight, var(--font-weight-medium));
-	font-size: var(--node-creator-name-size, var(--font-size-s));
+	font-weight: var(--node-creator--name--font-weight, var(--font-weight--medium));
+	font-size: var(--node-creator--name--font-size, var(--font-size--sm));
 	line-height: 1.115rem;
 }
 .description {
-	margin-top: var(--spacing-5xs);
-	font-size: var(--font-size-2xs);
+	margin-top: var(--spacing--5xs);
+	font-size: var(--font-size--2xs);
 	line-height: 1rem;
-	font-weight: var(--font-weight-regular);
-	color: var(--node-creator-description-colos, var(--color-text-base));
+	font-weight: var(--font-weight--regular);
+	color: var(--node-creator--description--color, var(--color--text));
 }
 
 .aiIcon {
-	color: var(--color-secondary);
+	color: var(--color--secondary);
 }
 
 .triggerIcon {
-	color: var(--color-primary);
+	color: var(--color--primary);
 }
 </style>
 
 <style lang="scss" scoped>
 .el-tooltip svg {
-	color: var(--color-foreground-xdark);
+	color: var(--color--foreground--shade-2);
 }
 </style>

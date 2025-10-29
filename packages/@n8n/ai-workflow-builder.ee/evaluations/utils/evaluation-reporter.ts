@@ -1,6 +1,9 @@
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
+import type { ProgrammaticViolation } from '@/validation/types';
+
+import { aggregateCacheStats, formatCacheStats } from './cache-analyzer.js';
 import {
 	formatColoredScore,
 	formatHeader,
@@ -10,7 +13,7 @@ import {
 	formatViolationType,
 } from './evaluation-helpers.js';
 import type { Violation } from '../types/evaluation.js';
-import type { TestResult } from '../types/test-result.js';
+import type { TestResult, CacheStatistics } from '../types/test-result.js';
 
 /**
  * Generates a markdown report from evaluation results
@@ -29,6 +32,13 @@ export function generateMarkdownReport(
 	},
 ): string {
 	const { totalTests, successfulTests, averageScore, categoryAverages, violationCounts } = metrics;
+
+	// Calculate aggregate cache statistics
+	const cacheStats = results
+		.map((r) => r.cacheStats)
+		.filter((r): r is CacheStatistics => r !== undefined);
+
+	const aggregateCache = cacheStats.length > 0 ? aggregateCacheStats(cacheStats) : null;
 
 	let report = `# AI Workflow Builder Evaluation Report
 
@@ -49,7 +59,22 @@ export function generateMarkdownReport(
 - Major: ${violationCounts.major}
 - Minor: ${violationCounts.minor}
 
-## Detailed Results
+`;
+
+	// Add cache statistics section if available
+	if (aggregateCache) {
+		const formatted = formatCacheStats(aggregateCache);
+		report += `## Prompt Caching Statistics
+- Input Tokens: ${formatted.inputTokens}
+- Output Tokens: ${formatted.outputTokens}
+- Cache Creation Tokens: ${formatted.cacheCreationTokens}
+- Cache Read Tokens: ${formatted.cacheReadTokens}
+- Cache Hit Rate: ${formatted.cacheHitRate}
+
+`;
+	}
+
+	report += `## Detailed Results
 
 `;
 
@@ -59,8 +84,16 @@ export function generateMarkdownReport(
 - **Generation Time**: ${result.generationTime}ms
 - **Nodes Generated**: ${result.generatedWorkflow.nodes.length}
 - **Summary**: ${result.evaluationResult.summary}
-
 `;
+
+		// Add cache stats for this test if available
+		if (result.cacheStats) {
+			const formatted = formatCacheStats(result.cacheStats);
+			report += `- **Cache Hit Rate**: ${formatted.cacheHitRate}
+`;
+		}
+
+		report += '\n';
 
 		if (
 			result.evaluationResult.criticalIssues &&
@@ -141,21 +174,17 @@ export function displayTestResults(
 
 /**
  * Displays the evaluation summary table
- * @param results - Array of test results
  * @param metrics - Calculated metrics
  */
-export function displaySummaryTable(
-	_results: TestResult[],
-	metrics: {
-		totalTests: number;
-		successfulTests: number;
-		averageScore: number;
-		categoryAverages: Record<string, number>;
-		violationCounts: { critical: number; major: number; minor: number };
-		programmaticAverages?: Record<string, number>;
-		programmaticViolationCounts?: { critical: number; major: number; minor: number };
-	},
-): void {
+export function displaySummaryTable(metrics: {
+	totalTests: number;
+	successfulTests: number;
+	averageScore: number;
+	categoryAverages: Record<string, number>;
+	violationCounts: { critical: number; major: number; minor: number };
+	programmaticAverages?: Record<string, number>;
+	programmaticViolationCounts?: { critical: number; major: number; minor: number };
+}): void {
 	const {
 		totalTests,
 		successfulTests,
@@ -226,6 +255,67 @@ export function displaySummaryTable(
 }
 
 /**
+ * Displays cache statistics table
+ * @param results - Array of test results
+ */
+export function displayCacheStatistics(results: TestResult[]): void {
+	const resultsWithCache = results.filter((r) => r.cacheStats !== undefined);
+
+	if (resultsWithCache.length === 0) return;
+
+	const cacheStats = resultsWithCache.map((r) => r.cacheStats!);
+	const aggregateCache = aggregateCacheStats(cacheStats);
+	const formatted = formatCacheStats(aggregateCache);
+
+	console.log();
+	console.log(formatHeader('Prompt Caching Statistics', 70));
+
+	// Determine cache quality color function
+	const hitRateColor = (rate: number) => (rate > 0.6 ? pc.green : rate > 0.3 ? pc.yellow : pc.red);
+
+	// Aggregate statistics table
+	const aggregateTable = new Table({
+		head: ['Aggregate Metric', 'Value'],
+		style: { head: ['cyan'] },
+	});
+
+	aggregateTable.push(
+		['Input Tokens', formatted.inputTokens],
+		['Output Tokens', formatted.outputTokens],
+		['Cache Creation', formatted.cacheCreationTokens],
+		['Cache Read', formatted.cacheReadTokens],
+		[pc.dim('─'.repeat(25)), pc.dim('─'.repeat(25))],
+		['Cache Hit Rate', hitRateColor(aggregateCache.cacheHitRate)(formatted.cacheHitRate)],
+	);
+
+	console.log(aggregateTable.toString());
+
+	// Per-test breakdown table
+	console.log();
+	console.log(pc.cyan('Per-Test Breakdown:'));
+
+	const perTestTable = new Table({
+		head: ['Test Name', 'Hit Rate', 'Cache Reads'],
+		style: { head: ['cyan'] },
+	});
+
+	resultsWithCache.forEach((result) => {
+		const stats = result.cacheStats!;
+		const testName =
+			result.testCase.name.length > 30
+				? result.testCase.name.substring(0, 27) + '...'
+				: result.testCase.name;
+		const hitRate = (stats.cacheHitRate * 100).toFixed(1) + '%';
+		const hitRateColored = hitRateColor(stats.cacheHitRate)(hitRate);
+		const cacheReads = stats.cacheReadTokens.toLocaleString();
+
+		perTestTable.push([testName, hitRateColored, cacheReads]);
+	});
+
+	console.log(perTestTable.toString());
+}
+
+/**
  * Displays detailed violations grouped by severity
  * @param results - Array of test results
  */
@@ -241,23 +331,23 @@ export function displayViolationsDetail(results: TestResult[]): void {
 		if (!result.error) {
 			// LLM evaluation violations
 			const llmViolations = [
-				...result.evaluationResult.functionality.violations.map((v) => ({
-					violation: { ...v, category: 'Functionality' },
+				...result.evaluationResult.functionality.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Functionality' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
-				...result.evaluationResult.connections.violations.map((v) => ({
-					violation: { ...v, category: 'Connections (LLM)' },
+				...result.evaluationResult.connections.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Connections (LLM)' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
-				...result.evaluationResult.expressions.violations.map((v) => ({
-					violation: { ...v, category: 'Expressions' },
+				...result.evaluationResult.expressions.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Expressions' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
-				...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
-					violation: { ...v, category: 'Node Config' },
+				...result.evaluationResult.nodeConfiguration.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Node Config' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),
@@ -265,31 +355,41 @@ export function displayViolationsDetail(results: TestResult[]): void {
 
 			// Programmatic evaluation violations
 			const progViolations = [
-				...result.programmaticEvaluationResult.connections.violations.map((v) => ({
-					violation: { ...v, category: 'Connections' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
-				...result.programmaticEvaluationResult.trigger.violations.map((v) => ({
-					violation: { ...v, category: 'Trigger' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
-				...result.programmaticEvaluationResult.agentPrompt.violations.map((v) => ({
-					violation: { ...v, category: 'Agent Prompt' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
-				...result.programmaticEvaluationResult.tools.violations.map((v) => ({
-					violation: { ...v, category: 'Tools' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
-				...result.programmaticEvaluationResult.fromAi.violations.map((v) => ({
-					violation: { ...v, category: 'FromAI' },
-					testName: result.testCase.name,
-					source: 'programmatic' as const,
-				})),
+				...result.programmaticEvaluationResult.connections.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Connections' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.trigger.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Trigger' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.agentPrompt.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Agent Prompt' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.tools.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Tools' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.fromAi.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'FromAI' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
 			];
 
 			allViolations.push(...llmViolations, ...progViolations);

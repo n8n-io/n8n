@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const POPULARITY_ENDPOINT =
 	process.env.NODE_POPULARITY_ENDPOINT ||
-	'https://internal.users.n8n.cloud/webhook/nodes-popularity-scores';
+	'https://internal-production.app.n8n.cloud/webhook/nodes-popularity-scores';
+const FAIL_ON_ERROR = process.env.N8N_FAIL_ON_POPULARITY_FETCH_ERROR === 'true';
 const BUILD_DIR = path.join(__dirname, '..', '.build');
 const OUTPUT_FILE = path.join(BUILD_DIR, 'node-popularity.json');
 
@@ -76,12 +77,23 @@ async function main() {
 			// Save the fresh data
 			await savePopularityData(freshData);
 		} else {
-			// Fetching failed, check if we have existing data
+			// Fetching failed
+			if (FAIL_ON_ERROR) {
+				console.error('N8N_FAIL_ON_POPULARITY_FETCH_ERROR is set - failing build');
+				process.exit(1);
+			}
+
+			// Check if we have existing data
 			console.log('API unavailable, checking for existing cached data');
 			await fallbackToExistingData();
 		}
 	} catch (error) {
 		console.error('Error in fetch-node-popularity script:', error);
+
+		if (FAIL_ON_ERROR) {
+			console.error('N8N_FAIL_ON_POPULARITY_FETCH_ERROR is set - failing build');
+			process.exit(1);
+		}
 
 		await fallbackToExistingData();
 	}

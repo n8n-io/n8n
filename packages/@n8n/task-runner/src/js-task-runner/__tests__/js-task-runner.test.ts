@@ -131,6 +131,26 @@ describe('JsTaskRunner', () => {
 		});
 	};
 
+	describe('Buffer security', () => {
+		it('should redirect Buffer.allocUnsafe to Buffer.alloc', async () => {
+			const outcome = await executeForAllItems({
+				code: 'const buf = Buffer.allocUnsafe(10); return [{ json: { allZeros: buf.every(b => b === 0) } }]',
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should redirect Buffer.allocUnsafeSlow to Buffer.alloc', async () => {
+			const outcome = await executeForAllItems({
+				code: 'const buf = Buffer.allocUnsafeSlow(10); return [{ json: { allZeros: buf.every(b => b === 0) } }]',
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+	});
+
 	describe('console', () => {
 		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
 			'should make an rpc call for console log in %s mode',
@@ -883,6 +903,42 @@ describe('JsTaskRunner', () => {
 						settings: { continueOnFail: false },
 					}),
 				).rejects.toThrow('Error message');
+			});
+
+			it('should not duplicate binary data in json property when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } } }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
+			});
+
+			it('should not include metadata properties in json when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } }, pairedItem: 1 }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
 			});
 		});
 

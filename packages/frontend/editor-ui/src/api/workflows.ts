@@ -1,15 +1,13 @@
 import type {
-	ChangeLocationSearchResponseItem,
-	FolderCreateResponse,
-	FolderTreeResponseItem,
-	IExecutionResponse,
-	IExecutionsCurrentSummaryExtended,
-	IUsedCredential,
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
 	WorkflowResource,
 } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+} from '@/features/execution/executions/executions.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
@@ -36,11 +34,17 @@ export async function getWorkflow(context: IRestApiContext, id: string) {
 	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`);
 }
 
-export async function getWorkflows(context: IRestApiContext, filter?: object, options?: object) {
+export async function getWorkflows(
+	context: IRestApiContext,
+	filter?: object,
+	options?: object,
+	select?: string[],
+) {
 	return await getFullApiResponse<IWorkflowDb[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
 		...(filter ? { filter } : {}),
 		...(options ? options : {}),
+		...(select ? { select: JSON.stringify(select) } : {}),
 	});
 }
 
@@ -101,115 +105,13 @@ export async function getExecutionData(context: IRestApiContext, executionId: st
 	);
 }
 
-export async function createFolder(
+export async function getLastSuccessfulExecution(
 	context: IRestApiContext,
-	projectId: string,
-	name: string,
-	parentFolderId?: string,
-): Promise<FolderCreateResponse> {
-	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/folders`, {
-		name,
-		parentFolderId,
-	});
-}
-
-export async function getFolderPath(
-	context: IRestApiContext,
-	projectId: string,
-	folderId: string,
-): Promise<FolderTreeResponseItem[]> {
-	return await makeRestApiRequest(
+	workflowId: string,
+): Promise<IExecutionResponse | null> {
+	return await makeRestApiRequest<IExecutionResponse | null>(
 		context,
 		'GET',
-		`/projects/${projectId}/folders/${folderId}/tree`,
+		`/workflows/${workflowId}/executions/last-successful`,
 	);
-}
-
-export async function deleteFolder(
-	context: IRestApiContext,
-	projectId: string,
-	folderId: string,
-	transferToFolderId?: string,
-): Promise<void> {
-	return await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/folders/${folderId}`, {
-		transferToFolderId,
-	});
-}
-
-export async function renameFolder(
-	context: IRestApiContext,
-	projectId: string,
-	folderId: string,
-	name: string,
-): Promise<void> {
-	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/folders/${folderId}`, {
-		name,
-	});
-}
-
-export async function getProjectFolders(
-	context: IRestApiContext,
-	projectId: string,
-	options?: {
-		skip?: number;
-		take?: number;
-		sortBy?: string;
-	},
-	filter?: {
-		excludeFolderIdAndDescendants?: string;
-		name?: string;
-	},
-	select?: string[],
-): Promise<{ data: ChangeLocationSearchResponseItem[]; count: number }> {
-	const res = await getFullApiResponse<ChangeLocationSearchResponseItem[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/folders`,
-		{
-			...(filter ? { filter } : {}),
-			...(options ? options : {}),
-			...(select ? { select: JSON.stringify(select) } : {}),
-		},
-	);
-	return {
-		data: res.data,
-		count: res.count,
-	};
-}
-
-export async function getFolderUsedCredentials(
-	context: IRestApiContext,
-	projectId: string,
-	folderId: string,
-): Promise<IUsedCredential[]> {
-	const res = await getFullApiResponse<IUsedCredential[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/folders/${folderId}/credentials`,
-	);
-	return res.data;
-}
-
-export async function moveFolder(
-	context: IRestApiContext,
-	projectId: string,
-	folderId: string,
-	parentFolderId?: string,
-): Promise<void> {
-	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/folders/${folderId}`, {
-		parentFolderId,
-	});
-}
-
-export async function getFolderContent(
-	context: IRestApiContext,
-	projectId: string,
-	folderId: string,
-): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
-	const res = await getFullApiResponse<{ totalSubFolders: number; totalWorkflows: number }>(
-		context,
-		'GET',
-		`/projects/${projectId}/folders/${folderId}/content`,
-	);
-	return res.data;
 }

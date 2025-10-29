@@ -31,6 +31,7 @@ import {
 } from '../sso-helpers';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 import { OnPubSubEvent } from '@n8n/decorators';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientId: '',
@@ -66,6 +67,7 @@ export class OidcService {
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly provisioningService: ProvisioningService,
 	) {}
 
 	async init() {
@@ -176,10 +178,20 @@ export class OidcService {
 
 		const prompt = this.oidcConfig.prompt;
 
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const provisioningEnabled =
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles;
+
+		// Include the custom n8n scope if provisioning is enabled
+		const scope = provisioningEnabled
+			? `openid email profile ${provisioningConfig.scopesName}`
+			: 'openid email profile';
+
 		const authorizationURL = client.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
-			scope: 'openid email profile',
+			scope,
 			prompt,
 			state: state.plaintext,
 			nonce: nonce.plaintext,
@@ -243,6 +255,8 @@ export class OidcService {
 		});
 
 		if (openidUser) {
+			await this.applySsoProvisioning(openidUser.user, claims);
+
 			return openidUser.user;
 		}
 
@@ -263,6 +277,7 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
+			await this.applySsoProvisioning(foundUser, claims);
 
 			return foundUser;
 		}
@@ -288,8 +303,26 @@ export class OidcService {
 				}),
 			);
 
+			await this.applySsoProvisioning(user, claims);
+
 			return user;
 		});
+	}
+
+	private async applySsoProvisioning(user: User, claims: any) {
+		const provisioningConfig = await this.provisioningService.getConfig();
+		if (await this.provisioningService.isInstanceRoleProvisioningEnabled()) {
+			await this.provisioningService.provisionInstanceRoleForUser(
+				user,
+				claims[provisioningConfig.scopesInstanceRoleClaimName],
+			);
+		}
+		if (await this.provisioningService.isProjectRolesProvisioningEnabled()) {
+			await this.provisioningService.provisionProjectRolesForUser(
+				user.id,
+				claims[provisioningConfig.scopesProjectsRolesClaimName],
+			);
+		}
 	}
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {

@@ -19,10 +19,8 @@ import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
-import { IncomingMessage, Agent as HttpAgent } from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { type AgentOptions, Agent as HttpsAgent } from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import { IncomingMessage } from 'http';
+import { type AgentOptions } from 'https';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
@@ -63,10 +61,10 @@ import type {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-import proxyFromEnv from 'proxy-from-env';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
+import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
@@ -89,95 +87,63 @@ axios.defaults.proxy = false;
 
 function validateUrl(url?: string): boolean {
 	if (!url) return false;
-
 	try {
 		new URL(url);
 		return true;
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }
 
 function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
 	if (typeof proxyConfig === 'string') {
-		if (!validateUrl(proxyConfig)) {
-			return null;
-		}
-		return proxyConfig;
+		return validateUrl(proxyConfig) ? proxyConfig : null;
 	}
 
-	if (!proxyConfig?.host) {
-		return null;
-	}
+	if (!proxyConfig?.host) return null;
 
 	const { protocol, host, port, auth } = proxyConfig;
-	const safeProtocol = protocol?.endsWith(':') ? protocol.replace(':', '') : (protocol ?? 'http');
+	const safeProtocol = protocol?.endsWith(':') ? protocol.slice(0, -1) : (protocol ?? 'http');
 
 	try {
 		const url = new URL(`${safeProtocol}://${host}`);
-
-		if (port !== undefined) {
-			url.port = String(port);
-		}
-
+		if (port !== undefined) url.port = String(port);
 		if (auth?.username) {
 			url.username = auth.username;
 			url.password = auth.password ?? '';
 		}
-
 		return url.href;
-	} catch (error) {
+	} catch {
 		return null;
 	}
 }
 
-function getTargetUrlFromAxiosConfig(axiosConfig: AxiosRequestConfig): string {
-	const { url, baseURL } = axiosConfig;
+function buildTargetUrl(url?: string, baseURL?: string): string | undefined {
+	if (!url) return undefined;
 
 	try {
-		return new URL(url ?? '', baseURL).href;
+		return baseURL ? new URL(url, baseURL).href : url;
 	} catch {
-		return '';
+		return undefined;
 	}
 }
 
-type AgentInfo = { protocol: 'http' | 'https'; agent: HttpAgent };
-
-export function getAgentWithProxy({
-	agentOptions,
-	proxyConfig,
-	targetUrl,
-}: {
-	agentOptions?: AgentOptions;
-	proxyConfig?: IHttpRequestOptions['proxy'] | string;
-	targetUrl: string;
-}): AgentInfo {
-	// If no proxy is set in config, use HTTP_PROXY/HTTPS_PROXY/ALL_PROXY from env depending on target URL
-	// Also respect NO_PROXY to disable the proxy for certain hosts
-	const proxyUrl = getUrlFromProxyConfig(proxyConfig) ?? proxyFromEnv.getProxyForUrl(targetUrl);
-	const protocol = targetUrl.startsWith('https://') ? 'https' : 'http';
-
-	if (proxyUrl) {
-		const ProxyAgent = protocol === 'http' ? HttpProxyAgent : HttpsProxyAgent;
-		return { protocol, agent: new ProxyAgent(proxyUrl, agentOptions) };
-	}
-
-	const Agent = protocol === 'http' ? HttpAgent : HttpsAgent;
-	return { protocol, agent: new Agent(agentOptions) };
-}
-
-const applyAgentToAxiosConfig = (
+function setAxiosAgents(
 	config: AxiosRequestConfig,
-	{ agent, protocol }: AgentInfo,
-): AxiosRequestConfig => {
-	if (protocol === 'http') {
-		config.httpAgent = agent;
-	} else {
-		config.httpsAgent = agent;
-	}
+	agentOptions?: AgentOptions,
+	proxyConfig?: IHttpRequestOptions['proxy'] | string,
+): void {
+	if (config.httpAgent || config.httpsAgent) return;
 
-	return config;
-};
+	const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
+
+	const targetUrl = buildTargetUrl(config.url, config.baseURL);
+
+	if (!targetUrl) return;
+
+	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, agentOptions);
+	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
+}
 
 axios.interceptors.request.use((config) => {
 	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
@@ -185,13 +151,7 @@ axios.interceptors.request.use((config) => {
 		config.headers.setContentType(false, false);
 	}
 
-	if (!config.httpsAgent && !config.httpAgent) {
-		const agent = getAgentWithProxy({
-			targetUrl: getTargetUrlFromAxiosConfig(config),
-		});
-
-		applyAgentToAxiosConfig(config, agent);
-	}
+	setAxiosAgents(config);
 
 	return config;
 });
@@ -230,22 +190,21 @@ const getBeforeRedirectFn =
 	(redirectedRequest: Record<string, any>) => {
 		const redirectAgentOptions = {
 			...agentOptions,
-
 			servername: redirectedRequest.hostname,
 		};
-		const redirectAgent = getAgentWithProxy({
-			agentOptions: redirectAgentOptions,
-			proxyConfig,
-			targetUrl: redirectedRequest.href,
-		});
+		const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
 
-		redirectedRequest.agent = redirectAgent.agent;
-		if (redirectAgent.protocol === 'http') {
-			redirectedRequest.agents.http = redirectAgent.agent;
-		} else {
-			redirectedRequest.agents.https = redirectAgent.agent;
-		}
+		// Create both agents and set them
+		const targetUrl = redirectedRequest.href;
+		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, redirectAgentOptions);
+		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, redirectAgentOptions);
 
+		redirectedRequest.agent = redirectedRequest.href.startsWith('https://')
+			? httpsAgent
+			: httpAgent;
+		redirectedRequest.agents = { http: httpAgent, https: httpsAgent };
+
+		// Copy auth headers
 		if (axiosConfig.headers?.Authorization) {
 			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
 		}
@@ -613,13 +572,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		axiosConfig.timeout = requestObject.timeout;
 	}
 
-	const agent = getAgentWithProxy({
-		agentOptions,
-		proxyConfig: requestObject.proxy,
-		targetUrl: getTargetUrlFromAxiosConfig(axiosConfig),
-	});
-
-	applyAgentToAxiosConfig(axiosConfig, agent);
+	setAxiosAgents(axiosConfig, agentOptions, requestObject.proxy);
 
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, requestObject.proxy);
 
@@ -799,12 +752,7 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
 	}
-	const agent = getAgentWithProxy({
-		agentOptions,
-		proxyConfig: proxy,
-		targetUrl: getTargetUrlFromAxiosConfig(axiosRequest),
-	});
-	applyAgentToAxiosConfig(axiosRequest, agent);
+	setAxiosAgents(axiosRequest, agentOptions, proxy);
 
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest, n8nRequest.proxy);
 
@@ -934,7 +882,7 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope as string).split(' '),
+		scopes: (credentials.scope ?? '').split(' '),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
@@ -1249,6 +1197,84 @@ export async function requestOAuth1(
 			// Unknown error so simply throw it
 			throw error;
 		});
+}
+
+export async function refreshOAuth2Token(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	oAuth2Options?: IOAuth2Options,
+) {
+	const credentials = (await this.getCredentials(
+		credentialsType,
+	)) as unknown as OAuth2CredentialData;
+	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
+		throw new ApplicationError('OAuth credentials not connected');
+	}
+
+	const oAuthClient = createOAuth2Client(credentials);
+	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
+	const accessToken =
+		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
+	const refreshToken = oauthTokenData.refreshToken;
+	const token = oAuthClient.createToken(
+		{
+			...oauthTokenData,
+			...(accessToken ? { access_token: accessToken } : {}),
+			...(refreshToken ? { refresh_token: refreshToken } : {}),
+		},
+		oAuth2Options?.tokenType || oauthTokenData.tokenType,
+	);
+	const tokenRefreshOptions: IDataObject = {};
+	if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+		const body: IDataObject = {
+			client_id: credentials.clientId,
+			...(credentials.grantType === 'authorizationCode' && {
+				client_secret: credentials.clientSecret as string,
+			}),
+		};
+		tokenRefreshOptions.body = body;
+		tokenRefreshOptions.headers = {
+			Authorization: '',
+		};
+	}
+
+	this.logger.debug(
+		`Refreshing the OAuth2 token for "${credentialsType}" used by node "${node.name}".`,
+	);
+
+	let newToken;
+	// If it's OAuth2 with client credentials grant type, get a new token instead of refreshing it.
+	if (credentials.grantType === 'clientCredentials') {
+		newToken = await token.client.credentials.getToken();
+	} else {
+		newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
+	}
+
+	this.logger.debug(
+		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+	);
+
+	credentials.oauthTokenData = newToken.data;
+	if (!node.credentials?.[credentialsType]) {
+		throw new ApplicationError('Node does not have credential type', {
+			extra: { nodeName: node.name, credentialType: credentialsType },
+		});
+	}
+
+	const nodeCredentials = node.credentials[credentialsType];
+	await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
+		nodeCredentials,
+		credentialsType,
+		credentials as unknown as ICredentialDataDecryptedObject,
+	);
+
+	this.logger.debug(
+		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
+	);
+
+	return newToken.data;
 }
 
 export async function httpRequestWithAuthentication(
@@ -1742,6 +1768,20 @@ export const getRequestHelperFunctions = (
 				node,
 				additionalData,
 				additionalCredentialOptions,
+			);
+		},
+
+		async refreshOAuth2Token(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			oAuth2Options?: IOAuth2Options,
+		) {
+			return await refreshOAuth2Token.call(
+				this,
+				credentialsType,
+				node,
+				additionalData,
+				oAuth2Options,
 			);
 		},
 

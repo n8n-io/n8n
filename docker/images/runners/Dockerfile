@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.19
+ARG NODE_VERSION=22.21.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -74,7 +74,7 @@ RUN uv pip install -r /app/task-runner-python/extras.txt
 # ==============================================================================
 FROM alpine:3.22.1 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.3.1
+ARG LAUNCHER_VERSION=1.4.0
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -118,13 +118,12 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
 
 RUN addgroup -g 1000 -S runner \
- && adduser  -u 1000 -S -G runner -h /home/runner -D runner \
- && install -d -o runner -g runner /opt/runners
+ && adduser  -u 1000 -S -G runner -h /home/runner -D runner
 
 WORKDIR /home/runner
 
-COPY --from=javascript-runner-builder --chown=runner:runner /app/task-runner-javascript /opt/runners/task-runner-javascript
-COPY --from=python-runner-builder --chown=runner:runner /app/task-runner-python /opt/runners/task-runner-python
+COPY --from=javascript-runner-builder --chown=root:root /app/task-runner-javascript /opt/runners/task-runner-javascript
+COPY --from=python-runner-builder --chown=root:root /app/task-runner-python /opt/runners/task-runner-python
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 

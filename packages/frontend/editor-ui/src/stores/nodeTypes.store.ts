@@ -26,13 +26,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useCredentialsStore } from './credentials.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
-import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
-import { removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
+import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
@@ -387,7 +387,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
-		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
 			return;
 		}
 		try {
@@ -417,6 +417,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			return null;
 		}
 	};
+
+	const getIsNodeInstalled = computed(() => {
+		return (nodeTypeName: string) => {
+			return (
+				!!getNodeType.value(nodeTypeName) || !!communityNodeType.value(nodeTypeName)?.isInstalled
+			);
+		};
+	});
 
 	// #endregion
 
@@ -452,5 +460,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		setNodeTypes,
 		removeNodeTypes,
 		getCommunityNodeAttributes,
+		getIsNodeInstalled,
 	};
 });

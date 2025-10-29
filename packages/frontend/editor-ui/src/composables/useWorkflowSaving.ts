@@ -13,7 +13,7 @@ import {
 } from '@/constants';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
@@ -25,17 +25,20 @@ import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { useTemplatesStore } from '@/features/templates/templates.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import { injectWorkflowState } from './useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from '@/composables/useWorkflowState';
 
-export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
+export function useWorkflowSaving({
+	router,
+	workflowState: providedWorkflowState,
+}: { router: ReturnType<typeof useRouter>; workflowState?: WorkflowState }) {
 	const uiStore = useUIStore();
 	const npsSurveyStore = useNpsSurveyStore();
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
@@ -399,7 +402,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 					value: changedNodes[nodeName],
 					name: nodeName,
 				} as IUpdateInformation;
-				workflowsStore.setNodeValue(changes);
+				workflowState.setNodeValue(changes);
 			});
 
 			const createdTags = (workflowData.tags || []) as ITag[];

@@ -6,7 +6,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import {
 	Node,
@@ -20,7 +19,7 @@ import {
 
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './utils/formCompletionUtils';
-import { renderFormNode } from './utils/formNodeUtils';
+import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
 import { prepareFormReturnItem, resolveRawData } from './utils/utils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
@@ -277,6 +276,8 @@ export class Form extends Node {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip:
+			'=Execution will continue when form is submitted on <a href="{{ $execution.resumeFormUrl }}" target="_blank">{{ $execution.resumeFormUrl }}</a>',
 		webhooks: [
 			{
 				name: 'default',
@@ -331,12 +332,9 @@ export class Form extends Node {
 
 		const operation = context.getNodeParameter('operation', '') as string;
 
-		const parentNodes = context.getParentNodes(context.getNode().name);
-		const trigger = parentNodes.find(
-			(node) => node.type === 'n8n-nodes-base.formTrigger',
-		) as NodeTypeAndVersion;
+		const trigger = getFormTriggerNode(context);
 
-		const mode = context.evaluateExpression(`{{ $('${trigger?.name}').first().json.formMode }}`) as
+		const mode = context.evaluateExpression(`{{ $('${trigger.name}').first().json.formMode }}`) as
 			| 'test'
 			| 'production';
 
@@ -377,7 +375,7 @@ export class Form extends Node {
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(
-			`{{ $('${trigger?.name}').params.options?.useWorkflowTimezone }}`,
+			`{{ $('${trigger.name}').params.options?.useWorkflowTimezone }}`,
 		) as boolean;
 
 		if (useWorkflowTimezone === undefined && trigger?.typeVersion > 2) {

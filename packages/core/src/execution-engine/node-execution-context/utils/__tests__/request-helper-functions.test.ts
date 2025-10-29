@@ -1,10 +1,8 @@
 import FormData from 'form-data';
-import { Agent as HttpAgent } from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { Agent as HttpsAgent } from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import { mock } from 'jest-mock-extended';
+import type { Agent as HttpsAgent } from 'https';
+import { mock, mockDeep } from 'jest-mock-extended';
 import type {
+	IAllExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INode,
@@ -22,11 +20,11 @@ import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
 	createFormDataObject,
-	getAgentWithProxy,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
 	proxyRequestToAxios,
+	refreshOAuth2Token,
 	removeEmptyBody,
 } from '../request-helper-functions';
 
@@ -871,89 +869,188 @@ describe('Request Helper Functions', () => {
 		});
 	});
 
-	describe('getAgentWithProxy', () => {
-		const baseUrlHttps = 'https://example.com';
-		const baseUrlHttp = 'http://example.com';
-		const proxyUrlHttps = 'http://proxy-for-https.com:8080/';
-		const proxyUrlHttp = 'http://proxy-for-http.com:8080/';
+	describe('refreshOAuth2Token', () => {
+		const baseUrl = 'https://example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		const mockCredentialData = {
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			grantType: 'authorizationCode',
+			authUrl: 'https://example.com/auth',
+			accessTokenUrl: 'https://example.com/token',
+			authentication: 'body',
+			scope: 'openid',
+			oauthTokenData: {
+				access_token: 'old-token',
+				refresh_token: 'old-refresh-token',
+			},
+		};
 
-		test('should return a regular HTTP agent when no proxy is set', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttp,
-			});
-			expect(protocol).toEqual('http');
-			expect(agent).toBeInstanceOf(HttpAgent);
-		});
-
-		test('should return a regular HTTPS agent when no proxy is set', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-			});
-			expect(protocol).toEqual('https');
-			expect(agent).toBeInstanceOf(HttpsAgent);
-		});
-
-		test('should use a proxyConfig object', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-				proxyConfig: {
-					host: 'proxy-for-https.com',
-					port: 8080,
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node-name';
+			mockNode.credentials = {
+				'test-credentials-type': {
+					id: 'test-credentials-id',
+					name: 'test-credentials-name',
 				},
-			});
-			expect(protocol).toEqual('https');
-			expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
+			};
 		});
 
-		test('should use a proxyConfig string', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-				proxyConfig: proxyUrlHttps,
+		test('should refresh the OAuth2 token with pkce grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				clientSecret: undefined,
+				grantType: 'pkce',
 			});
-			expect(agent).toBeInstanceOf(HttpsProxyAgent);
-			expect(protocol).toEqual('https');
-			expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+			);
 		});
 
-		describe('environment variables', () => {
-			let originalEnv: NodeJS.ProcessEnv;
-
-			beforeAll(() => {
-				originalEnv = { ...process.env };
-				process.env.HTTP_PROXY = proxyUrlHttp;
-				process.env.HTTPS_PROXY = proxyUrlHttps;
-				process.env.NO_PROXY = 'should-not-proxy.com';
+		test('should refresh the OAuth2 token with client credentials grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				grantType: 'clientCredentials',
 			});
-
-			afterAll(() => {
-				process.env = originalEnv;
-			});
-
-			test('should proxy http requests (HTTP_PROXY)', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: baseUrlHttp,
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'client_credentials',
+					scope: 'openid',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
 				});
-				expect(protocol).toEqual('http');
-				expect(agent).toBeInstanceOf(HttpProxyAgent);
-				expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttp);
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+			);
+		});
+
+		test('should refresh the OAuth2 token with authorization code grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+			);
+		});
+
+		test('should throw an error if the OAuth2 token is not connected', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				oauthTokenData: undefined,
 			});
 
-			test('should proxy https requests (HTTPS_PROXY)', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: baseUrlHttps,
-				});
-				expect(protocol).toEqual('https');
-				expect(agent).toBeInstanceOf(HttpsProxyAgent);
-				expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('OAuth credentials not connected');
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should throw an error if node does not have credentials', async () => {
+			mockNode.credentials!['test-credentials-type'] = undefined!;
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
 			});
 
-			test('should not proxy some hosts based on NO_PROXY', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: 'https://should-not-proxy.com/foo',
-				});
-				expect(protocol).toEqual('https');
-				expect(agent).toBeInstanceOf(HttpsAgent);
-			});
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('Node does not have credential type');
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -49,10 +49,10 @@ export class CanvasComposer {
 		nodes: Array<{ credentials?: Record<string, unknown> }>;
 		meta?: Record<string, unknown>;
 	}> {
-		await this.n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+		await this.n8n.clipboard.grant();
 		await this.n8n.canvas.selectAll();
 		await this.n8n.canvas.copyNodes();
-		const workflowJSON = await this.n8n.page.evaluate(() => navigator.clipboard.readText());
+		const workflowJSON = await this.n8n.clipboard.readText();
 		return JSON.parse(workflowJSON);
 	}
 
@@ -112,5 +112,53 @@ export class CanvasComposer {
 					`Initial: ${initialNodeSize.toFixed(1)}px, Final: ${finalNodeSize.toFixed(1)}px`,
 			);
 		}
+	}
+
+	/**
+	 * Delay workflow GET request to simulate loading during page reload.
+	 * Useful for testing save-blocking behavior during real loading states.
+	 *
+	 * @param workflowId - The workflow ID to delay loading for
+	 * @param delayMs - Delay in milliseconds (default: 2000)
+	 */
+	async delayWorkflowLoad(workflowId: string, delayMs: number = 2000): Promise<void> {
+		await this.n8n.page.route(`**/rest/workflows/${workflowId}`, async (route) => {
+			if (route.request().method() === 'GET') {
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
+			}
+			await route.continue();
+		});
+	}
+
+	/**
+	 * Remove the workflow load delay route handler.
+	 * Should be called after delayWorkflowLoad() when testing is complete.
+	 *
+	 * @param workflowId - The workflow ID to stop delaying
+	 */
+	async undelayWorkflowLoad(workflowId: string): Promise<void> {
+		await this.n8n.page.unroute(`**/rest/workflows/${workflowId}`);
+	}
+
+	/**
+	 * Rename a node using keyboard shortcut
+	 * @param oldName - The current name of the node
+	 * @param newName - The new name for the node
+	 */
+	async renameNodeViaShortcut(oldName: string, newName: string): Promise<void> {
+		await this.n8n.canvas.nodeByName(oldName).click();
+		await this.n8n.page.keyboard.press('F2');
+		await expect(this.n8n.canvas.getRenamePrompt()).toBeVisible();
+		await this.n8n.page.keyboard.type(newName);
+		await this.n8n.page.keyboard.press('Enter');
+	}
+
+	/**
+	 * Reload the page and wait for canvas to be ready
+	 */
+	async reloadAndWaitForCanvas(): Promise<void> {
+		await this.n8n.page.reload();
+		await expect(this.n8n.canvas.getNodeViewLoader()).toBeHidden();
+		await expect(this.n8n.canvas.getLoadingMask()).toBeHidden();
 	}
 }

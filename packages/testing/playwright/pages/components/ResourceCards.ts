@@ -23,10 +23,6 @@ export class ResourceCards {
 		return this.page.getByTestId('resources-list-item');
 	}
 
-	getDataStores(): Locator {
-		return this.page.getByTestId('data-store-card');
-	}
-
 	getFolder(name: string): Locator {
 		return this.page.locator(`[data-test-id="folder-card"][data-resourcename="${name}"]`);
 	}
@@ -39,10 +35,6 @@ export class ResourceCards {
 		return this.getCredentials().filter({
 			has: this.page.getByTestId('card-content').locator('h2').filter({ hasText: name }),
 		});
-	}
-
-	getDataStore(name: string): Locator {
-		return this.page.getByTestId('data-store-card-name').filter({ hasText: name });
 	}
 
 	getCardActionToggle(card: Locator): Locator {
@@ -73,5 +65,9 @@ export class ResourceCards {
 	async deleteFolder(folderName: string): Promise<void> {
 		const folderCard = this.getFolder(folderName);
 		await this.clickCardAction(folderCard, 'delete');
+	}
+
+	async clickWorkflowCard(workflowName: string): Promise<void> {
+		await this.getWorkflow(workflowName).getByTestId('card-content').click();
 	}
 }

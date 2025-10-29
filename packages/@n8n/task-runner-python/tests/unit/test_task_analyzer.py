@@ -2,12 +2,14 @@ import pytest
 
 from src.errors.security_violation_error import SecurityViolationError
 from src.task_analyzer import TaskAnalyzer
+from src.config.security_config import SecurityConfig
+from src.constants import BLOCKED_ATTRIBUTES, BLOCKED_NAMES
 
 
 class TestTaskAnalyzer:
     @pytest.fixture
     def analyzer(self) -> TaskAnalyzer:
-        return TaskAnalyzer(
+        security_config = SecurityConfig(
             stdlib_allow={
                 "json",
                 "math",
@@ -21,7 +23,11 @@ class TestTaskAnalyzer:
                 "operator",
             },
             external_allow=set(),
+            builtins_deny=set(),
+            runner_env_deny=True,
         )
+
+        return TaskAnalyzer(security_config)
 
 
 class TestImportValidation(TestTaskAnalyzer):
@@ -65,53 +71,57 @@ class TestImportValidation(TestTaskAnalyzer):
 
 
 class TestAttributeAccessValidation(TestTaskAnalyzer):
-    def test_always_blocked_attributes(self, analyzer: TaskAnalyzer) -> None:
-        blocked_attributes = [
-            "obj.__subclasses__",
-            "obj.__globals__",
-            "obj.__builtins__",
-            "obj.__traceback__",
-            "obj.tb_frame",
-        ]
-
-        for code in blocked_attributes:
-            with pytest.raises(SecurityViolationError):
+    def test_all_blocked_attributes_are_blocked(self, analyzer: TaskAnalyzer) -> None:
+        for attr in BLOCKED_ATTRIBUTES:
+            code = f"obj.{attr}"
+            with pytest.raises(SecurityViolationError) as exc_info:
                 analyzer.validate(code)
+            assert attr in exc_info.value.description.lower()
 
-    def test_conditionally_blocked_in_chains(self, analyzer: TaskAnalyzer) -> None:
-        blocked_chains = [
-            "x.__class__.__bases__",
-            "obj.__class__.__mro__",
-            "something.__init__.__globals__",
-            "obj.__class__.__code__",
-            "func.__func__.__closure__",
-        ]
-
-        for code in blocked_chains:
-            with pytest.raises(SecurityViolationError):
+    def test_all_blocked_names_are_blocked(self, analyzer: TaskAnalyzer) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"{name}"
+            with pytest.raises(SecurityViolationError) as exc_info:
                 analyzer.validate(code)
+            assert name in exc_info.value.description
 
-    def test_conditionally_blocked_on_literals(self, analyzer: TaskAnalyzer) -> None:
-        blocked_literals = [
-            '"".__class__',
-            '"test".__class__',
-            "(0).__class__",
-            "(42).__class__",
-            "(3.14).__class__",
+    def test_loader_access_attempts_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            "__loader__.load_module('posix')",
+            "posix = __loader__.load_module('posix'); posix.system('echo')",
+            "module = __loader__.load_module('os')",
         ]
 
-        for code in blocked_literals:
-            with pytest.raises(SecurityViolationError):
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
                 analyzer.validate(code)
+            assert "__loader__" in exc_info.value.description
 
-        allowed_literals = [
-            "[].__class__",
-            "{}.__class__",
-            "().__class__",
+    def test_spec_access_attempts_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            "__spec__.loader().load_module('posix')",
+            "posix = __spec__.loader().load_module('posix')",
+            "__spec__",
+            "loader = __spec__.loader()",
         ]
 
-        for code in allowed_literals:
-            analyzer.validate(code)
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "__spec__" in exc_info.value.description
+
+    def test_dunder_name_attempts_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            "sys.modules[__name__]",
+            "builtins_module = sys.modules[__name__]",
+            "sys.modules[__name__].open('/etc/passwd', 'r')",
+            "builtins_module = sys.modules[__name__]; unfiltered_open = builtins_module.open",
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "__name__" in exc_info.value.description
 
     def test_allowed_attribute_access(self, analyzer: TaskAnalyzer) -> None:
         allowed_attributes = [
@@ -125,17 +135,6 @@ class TestAttributeAccessValidation(TestTaskAnalyzer):
 
         for code in allowed_attributes:
             analyzer.validate(code)
-
-    def test_safe_class_usage(self, analyzer: TaskAnalyzer) -> None:
-        safe_code = """
-class MyClass:
-    def __init__(self):
-        self.value = 42
-
-obj = MyClass()
-result = obj.__class__.__name__
-"""
-        analyzer.validate(safe_code)
 
 
 class TestDynamicImportDetection(TestTaskAnalyzer):
@@ -164,7 +163,13 @@ class TestDynamicImportDetection(TestTaskAnalyzer):
 
 class TestAllowAll(TestTaskAnalyzer):
     def test_allow_all_bypasses_validation(self) -> None:
-        analyzer = TaskAnalyzer(stdlib_allow={"*"}, external_allow={"*"})
+        security_config = SecurityConfig(
+            stdlib_allow={"*"},
+            external_allow={"*"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        analyzer = TaskAnalyzer(security_config)
 
         unsafe_allowed_code = [
             "import os",

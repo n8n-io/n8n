@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-import { useUIStore } from '@/stores/ui.store';
+import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -15,10 +15,9 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const route = useRoute();
 const i18n = useI18n();
 
-const { canUserAccessRouteByName } = useUserHelpers(router, route);
+const { canUserAccessRouteByName } = useUserHelpers(router);
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -51,6 +50,14 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			route: { to: { name: VIEWS.USERS_SETTINGS } },
 		},
 		{
+			id: 'settings-project-roles',
+			icon: 'user-round',
+			label: i18n.baseText('settings.projectRoles'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
+			route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
+		},
+		{
 			id: 'settings-api',
 			icon: 'plug',
 			label: i18n.baseText('settings.n8napi'),
@@ -66,7 +73,6 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			available: canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS),
 			route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
 		},
-
 		{
 			id: 'settings-source-control',
 			icon: 'git-branch',
@@ -90,6 +96,16 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
 			route: { to: { name: VIEWS.LDAP_SETTINGS } },
+		},
+		{
+			id: 'settings-provisioning',
+			icon: 'toolbox',
+			label: i18n.baseText('settings.provisioning.title'),
+			position: 'top',
+			available:
+				canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS) &&
+				settingsStore.isEnterpriseFeatureEnabled.provisioning,
+			route: { to: { name: VIEWS.PROVISIONING_SETTINGS } },
 		},
 		{
 			id: 'settings-workersview',
@@ -153,20 +169,20 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 .container {
 	min-width: $sidebar-expanded-width;
 	height: 100%;
-	background-color: var(--color-background-xlight);
-	border-right: var(--border-base);
+	background-color: var(--color--background--light-3);
+	border-right: var(--border);
 	position: relative;
 	overflow: auto;
 }
 
 .returnButton {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 	cursor: pointer;
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 	align-items: center;
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
@@ -174,11 +190,11 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 	display: flex;
 	flex-direction: column;
 
-	padding: 0 var(--spacing-3xs);
+	padding: 0 var(--spacing--3xs);
 }
 
 .versionContainer {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 }
 
 @media screen and (max-height: 420px) {

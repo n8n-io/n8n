@@ -6,7 +6,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { computed } from 'vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import type { INodeCreateElement } from '@/Interface';
-import ItemsRenderer from '@/components/Node/NodeCreator/Renderers/ItemsRenderer.vue';
+import ItemsRenderer from '@/features/shared/nodeCreator/components/Renderers/ItemsRenderer.vue';
 
 import { N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();
@@ -56,7 +56,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 .modal {
 	:global(.el-dialog__body) {
 		padding: 0;
-		padding-bottom: var(--spacing-s);
+		padding-bottom: var(--spacing--sm);
 	}
 }
 
@@ -64,7 +64,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing--sm);
 }
 
 .container {

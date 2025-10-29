@@ -3,10 +3,11 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
-import { programmaticEvaluation } from '../programmatic/programmatic';
+import { programmaticEvaluation } from '../programmatic/programmatic-evaluation';
 import type { EvaluationInput, TestCase } from '../types/evaluation';
-import { isWorkflowStateValues } from '../types/langsmith';
+import { isWorkflowStateValues, safeExtractUsage } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
+import { calculateCacheStats } from '../utils/cache-analyzer';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 /**
@@ -92,6 +93,10 @@ export async function runSingleTest(
 
 		const generatedWorkflow = state.values.workflowJSON;
 
+		// Extract cache statistics from messages
+		const usage = safeExtractUsage(state.values.messages);
+		const cacheStats = calculateCacheStats(usage);
+
 		// Evaluate
 		const evaluationInput: EvaluationInput = {
 			userPrompt: testCase.prompt,
@@ -100,7 +105,7 @@ export async function runSingleTest(
 		};
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
-		const programmaticEvaluationResult = await programmaticEvaluation(evaluationInput, nodeTypes);
+		const programmaticEvaluationResult = programmaticEvaluation(evaluationInput, nodeTypes);
 
 		return {
 			testCase,
@@ -108,6 +113,7 @@ export async function runSingleTest(
 			evaluationResult,
 			programmaticEvaluationResult,
 			generationTime,
+			cacheStats,
 		};
 	} catch (error) {
 		return createErrorResult(testCase, error);

@@ -1,330 +1,397 @@
+import { nanoid } from 'nanoid';
+
+import {
+	INSTANCE_ADMIN_CREDENTIALS,
+	INSTANCE_MEMBER_CREDENTIALS,
+	INSTANCE_OWNER_CREDENTIALS,
+} from '../../config/test-users';
 import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
 
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
 const NOTION_NODE_NAME = 'Notion';
+const EDIT_FIELDS_SET_NODE_NAME = 'Edit Fields (Set)';
 const NOTION_API_KEY = 'abc123Playwright';
 
-// Example of using API calls in a test
-async function getCredentialsForProject(n8n: n8nPage, projectId?: string) {
-	const params = new URLSearchParams({
-		includeScopes: 'true',
-		includeData: 'true',
-		...(projectId && { filter: JSON.stringify({ projectId }) }),
-	});
-	return await n8n.api.get('/rest/credentials', params);
-}
-
 test.describe('Projects', () => {
+	test.describe.configure({ mode: 'serial' });
+
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
+		// Enable features required for project workflows and moving resources
+		await n8n.api.enableFeature('sharing');
+		await n8n.api.enableFeature('folders');
+		await n8n.api.enableFeature('advancedPermissions');
+		await n8n.api.enableFeature('projectRole:admin');
+		await n8n.api.enableFeature('projectRole:editor');
+		await n8n.api.setMaxTeamProjectsQuota(-1);
 	});
 
-	test('should not show project add button and projects to a member if not invited to any project @auth:member', async ({
-		n8n,
-	}) => {
-		await expect(n8n.sideBar.getAddFirstProjectButton()).toBeDisabled();
-		await expect(n8n.sideBar.getProjectMenuItems()).toHaveCount(0);
-	});
-
-	test('should filter credentials by project ID', async ({ n8n }) => {
-		const { projectName, projectId } = await n8n.projectComposer.createProject();
-		await n8n.projectComposer.addCredentialToProject(
-			projectName,
-			'Notion API',
-			'apiKey',
-			NOTION_API_KEY,
-		);
-
-		const credentials = await getCredentialsForProject(n8n, projectId);
-		expect(credentials).toHaveLength(1);
-
-		const { projectId: project2Id } = await n8n.projectComposer.createProject();
-		const credentials2 = await getCredentialsForProject(n8n, project2Id);
-		expect(credentials2).toHaveLength(0);
-	});
-
-	test('should create sub-workflow and credential in the sub-workflow in the same project @auth:owner', async ({
-		n8n,
-	}) => {
-		const { projectName } = await n8n.projectComposer.createProject();
-		await n8n.sideBar.addWorkflowFromUniversalAdd(projectName);
-		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
-		await expect(
-			n8n.page.getByText('Workflow successfully created', { exact: false }),
-		).toBeVisible();
-
-		await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
-
-		const subn8n = await n8n.start.fromNewPage(() =>
-			n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`),
-		);
-
-		await subn8n.ndv.clickBackToCanvasButton();
-
-		await subn8n.canvas.deleteNodeByName('Replace me with your logic');
-		await subn8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block' });
-		await subn8n.credentialsComposer.createFromNdv({
-			apiKey: NOTION_API_KEY,
-		});
-
-		await subn8n.ndv.clickBackToCanvasButton();
-		await subn8n.canvas.saveWorkflow();
-
-		await subn8n.page.goto('/home/workflows');
-		await subn8n.sideBar.expand();
-		await subn8n.sideBar.clickProjectMenuItem(projectName);
-		await subn8n.page.getByRole('link', { name: 'Workflows' }).click();
-
-		// Get Workflow Count
-
-		await expect(subn8n.workflows.cards.getWorkflows()).toHaveCount(2);
-
-		// Assert that the sub-workflow is in the list
-		await expect(subn8n.page.getByRole('heading', { name: 'My Sub-Workflow' })).toBeVisible();
-
-		// Navigate to Credentials
-		await subn8n.page.getByRole('link', { name: 'Credentials', exact: true }).click();
-
-		// Assert that the credential is in the list
-		await expect(subn8n.credentials.cards.getCredentials()).toHaveCount(1);
-		await expect(subn8n.page.getByRole('heading', { name: 'Notion account' })).toBeVisible();
-	});
-
-	test.describe('Project Settings - Member Management', () => {
-		test('should display project settings page with correct layout @auth:owner', async ({
+	test.describe('when starting from scratch @db:reset', () => {
+		test('should not show project add button and projects to a member if not invited to any project @auth:member', async ({
 			n8n,
 		}) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('UI Test Project');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('UI Test Project');
-
-			// Verify basic project settings form elements are visible (inner controls)
-			await expect(n8n.projectSettings.getNameInput()).toBeVisible();
-			await expect(n8n.projectSettings.getDescriptionTextarea()).toBeVisible();
-			await n8n.projectSettings.expectMembersSelectIsVisible();
-
-			// Verify members table is visible when there are members
-			await n8n.projectSettings.expectTableIsVisible();
-
-			// Initially should have only the owner (current user)
-			await n8n.projectSettings.expectTableHasMemberCount(1);
-
-			// Verify save/cancel buttons are not visible initially (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
-
-			// Delete button should always be visible
-			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
+			await expect(n8n.sideBar.getAddFirstProjectButton()).toBeDisabled();
+			await expect(n8n.sideBar.getProjectMenuItems()).toHaveCount(0);
 		});
 
-		test('should allow editing project name and description @auth:owner', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Edit Test Project');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Edit Test Project');
-
-			// Update project name
-			const newName = 'Updated Project Name';
-			await n8n.projectSettings.fillProjectName(newName);
-
-			// Update project description
-			const newDescription = 'This is an updated project description.';
-			await n8n.projectSettings.fillProjectDescription(newDescription);
-
-			// Save changes
-			await n8n.projectSettings.clickSaveButton();
-
-			// Wait for success notification
-			await expect(
-				n8n.page.getByText('Project Updated Project Name saved successfully', { exact: false }),
-			).toBeVisible();
-
-			// Verify the form shows the updated values
-			await n8n.projectSettings.expectProjectNameValue(newName);
-			await n8n.projectSettings.expectProjectDescriptionValue(newDescription);
-		});
-
-		test('should display members table with correct structure @auth:owner', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Table Structure Test');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Table Structure Test');
-
-			const table = n8n.projectSettings.getMembersTable();
-
-			// Verify table headers are present
-			await expect(table.getByText('User')).toBeVisible();
-			await expect(table.getByText('Role')).toBeVisible();
-
-			// Verify the owner is displayed in the table
-			const memberRows = table.locator('tbody tr');
-			await expect(memberRows).toHaveCount(1);
-
-			// Verify owner cannot change their own role
-			const ownerRow = memberRows.first();
-			const roleDropdown = ownerRow.getByTestId('project-member-role-dropdown');
-			await expect(roleDropdown).toBeHidden();
-		});
-
-		test('should display role dropdown for members but not for current user @auth:owner', async ({
+		test('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', async ({
 			n8n,
 		}) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Role Dropdown Test');
+			const { projectName, projectId } = await n8n.projectComposer.createProject();
+			await n8n.projectComposer.addCredentialToProject(
+				projectName,
+				'Notion API',
+				'apiKey',
+				NOTION_API_KEY,
+			);
 
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Role Dropdown Test');
+			const credentials = await n8n.api.credentials.getCredentialsByProject(projectId);
+			expect(credentials).toHaveLength(1);
 
-			// Current user (owner) should not have a role dropdown
-			const currentUserRow = n8n.page.locator('tbody tr').first();
-			await expect(currentUserRow.getByTestId('project-member-role-dropdown')).toBeHidden();
-
-			// The role should be displayed as static text for the current user
-			await expect(currentUserRow.getByText('Admin')).toBeVisible();
+			const { projectId: project2Id } = await n8n.projectComposer.createProject();
+			const credentials2 = await n8n.api.credentials.getCredentialsByProject(project2Id);
+			expect(credentials2).toHaveLength(0);
 		});
 
-		test('should handle member search functionality when search input is used', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Search Test Project');
+		test('should allow changing an inaccessible credential when the workflow was moved to a team project @auth:owner', async ({
+			n8n,
+		}) => {
+			await n8n.navigate.toCredentials();
+			await n8n.credentials.emptyListCreateCredentialButton.click();
 
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Search Test Project');
+			await n8n.credentials.createCredentialFromCredentialPicker(
+				'Notion API',
+				{
+					apiKey: NOTION_API_KEY,
+				},
+				{
+					name: 'Credential in Home project',
+				},
+			);
 
-			// Verify search input is visible
-			const searchInput = n8n.page.getByTestId('project-members-search');
-			await expect(searchInput).toBeVisible();
+			await n8n.navigate.toWorkflows();
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
 
-			// Test search functionality - enter search term
-			await searchInput.fill('nonexistent');
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
-			// Since we only have the owner, searching for nonexistent should show no filtered results
-			// But the table structure should still be present
-			await expect(searchInput).toHaveValue('nonexistent');
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
+			await n8n.canvas.saveWorkflow();
 
-			// Clear search
-			await n8n.projectSettings.clearMemberSearch();
-			await expect(searchInput).toHaveValue('');
-		});
+			const { projectId, projectName } = await n8n.projectComposer.createProject('Project 1');
 
-		test('should show project settings form validation @auth:owner', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Validation Test');
+			await n8n.api.projects.addUserToProjectByEmail(
+				projectId,
+				INSTANCE_MEMBER_CREDENTIALS[0].email,
+				'project:editor',
+			);
 
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Validation Test');
+			await n8n.sideBar.clickPersonalMenuItem();
+			await n8n.sideBar.clickWorkflowsLink();
 
-			// Clear the project name (required field)
-			await n8n.projectSettings.fillProjectName('');
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
 
-			// Save button should be disabled when required field is empty
-			const saveButton = n8n.page.getByTestId('project-settings-save-button');
-			await expect(saveButton).toBeDisabled();
+			await n8n.workflowComposer.moveToProject('My workflow', projectName);
 
-			// Fill in a valid name
-			await n8n.projectSettings.fillProjectName('Valid Project Name');
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
 
-			// Save button should now be enabled
-			await expect(saveButton).toBeEnabled();
-		});
+			await n8n.sideBar.clickProjectMenuItem(projectName);
+			await n8n.navigate.toWorkflows();
 
-		test('should handle unsaved changes state @auth:owner', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Unsaved Changes Test');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Unsaved Changes Test');
-
-			// Initially, save and cancel buttons should not be visible (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
-
-			// Make a change to the project name
-			await n8n.projectSettings.fillProjectName('Modified Name');
-
-			// Save and cancel buttons should now be enabled
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeEnabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeEnabled();
-
-			// Unsaved changes message should be visible
-			await expect(n8n.page.getByText('You have unsaved changes')).toBeVisible();
-
-			// Cancel changes
-			await n8n.projectSettings.clickCancelButton();
-
-			// Buttons should not be visible again (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
-		});
-
-		test('should display delete project section with warning @auth:owner', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Delete Test Project');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Delete Test Project');
-
-			// Scroll to bottom to see delete section
-			await n8n.page
-				.locator('[data-test-id="project-settings-delete-button"]')
-				.scrollIntoViewIfNeeded();
-
-			// Verify danger section is visible with warning
-			// Copy was updated in UI to use sentence case and expanded description
-			await expect(n8n.page.getByText('Danger zone')).toBeVisible();
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
 			await expect(
-				n8n.page.getByText(
-					'When deleting a project, you can also choose to move all workflows and credentials to another project.',
-				),
-			).toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
+				n8n.workflows.cards.getWorkflow('My workflow').getByText('Personal'),
+			).toBeHidden();
+
+			await n8n.sideBar.clickSignout();
+			await n8n.page.waitForURL(/\/signin/);
+			await n8n.signIn.loginWithEmailAndPassword(
+				INSTANCE_MEMBER_CREDENTIALS[0].email,
+				INSTANCE_MEMBER_CREDENTIALS[0].password,
+			);
+
+			await expect(n8n.workflows.getProjectName()).toBeVisible();
+
+			await n8n.sideBar.clickProjectMenuItem(projectName);
+			await n8n.navigate.toWorkflows();
+
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
+
+			await n8n.workflows.cards.clickWorkflowCard('My workflow');
+
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
+
+			await n8n.canvas.openNode('Append a block');
+
+			await expect(n8n.ndv.getCredentialSelectInput()).toBeEnabled();
 		});
 
-		test('should persist settings after page reload @auth:owner', async ({ n8n }) => {
-			// Create a new project
-			const { projectId } = await n8n.projectComposer.createProject('Persistence Test');
-
-			// Navigate to project settings
-			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Persistence Test');
-
-			// Update project details
-			const projectName = 'Persisted Project Name';
-			const projectDescription = 'This description should persist after reload';
-
-			await n8n.projectSettings.fillProjectName(projectName);
-			await n8n.projectSettings.fillProjectDescription(projectDescription);
-			await n8n.projectSettings.clickSaveButton();
-
-			// Wait for save confirmation (partial match to include project name)
+		test('should create sub-workflow and credential in the sub-workflow in the same project @auth:owner', async ({
+			n8n,
+		}) => {
+			const { projectName } = await n8n.projectComposer.createProject();
+			await n8n.sideBar.addWorkflowFromUniversalAdd(projectName);
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.saveWorkflow();
 			await expect(
-				n8n.page.getByText('Project Persisted Project Name saved successfully', { exact: false }),
+				n8n.notifications.getNotificationByTitleOrContent('Workflow successfully created'),
 			).toBeVisible();
 
-			// Reload the page
+			await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
+
+			const subn8n = await n8n.start.fromNewPage(() =>
+				n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`),
+			);
+
+			await subn8n.ndv.clickBackToCanvasButton();
+
+			await subn8n.canvas.deleteNodeByName('Replace me with your logic');
+			await subn8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block' });
+			await subn8n.credentialsComposer.createFromNdv({
+				apiKey: NOTION_API_KEY,
+			});
+
+			await subn8n.ndv.clickBackToCanvasButton();
+			await subn8n.canvas.saveWorkflow();
+
+			await subn8n.navigate.toWorkflows();
+			await subn8n.sideBar.clickProjectMenuItem(projectName);
+			await subn8n.navigate.toWorkflows();
+
+			await expect(subn8n.workflows.cards.getWorkflows()).toHaveCount(2);
+
+			await expect(subn8n.page.getByRole('heading', { name: 'My Sub-Workflow' })).toBeVisible();
+
+			await subn8n.navigate.toCredentials();
+
+			await expect(subn8n.credentials.cards.getCredentials()).toHaveCount(1);
+			await expect(subn8n.page.getByRole('heading', { name: 'Notion account' })).toBeVisible();
+		});
+
+		test('should create credential from workflow in the correct project after editor page refresh @auth:owner', async ({
+			n8n,
+		}) => {
+			const { projectName } = await n8n.projectComposer.createProject(`Dev ${nanoid(8)}`);
+
+			await n8n.sideBar.clickProjectMenuItem(projectName);
+			await n8n.navigate.toWorkflows();
+
+			await n8n.workflows.clickNewWorkflowCard();
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.saveWorkflow();
+
+			// Wait for save notification to confirm workflow is saved
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Workflow successfully created'),
+			).toBeVisible();
+			// Wait for URL to update with workflow ID after save
+			await n8n.page.waitForURL(/\/workflow\/[^/]+$/);
+
 			await n8n.page.reload();
-			await expect(n8n.projectSettings.getTitle()).toHaveText('Persisted Project Name');
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 
-			// Verify data persisted
-			await n8n.projectSettings.expectProjectNameValue(projectName);
-			await n8n.projectSettings.expectProjectDescriptionValue(projectDescription);
+			await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block' });
+			await n8n.credentialsComposer.createFromNdv({
+				apiKey: NOTION_API_KEY,
+			});
+			await n8n.ndv.close();
+			await n8n.canvas.saveWorkflow();
 
-			// Verify table still shows the owner
-			await n8n.projectSettings.expectTableHasMemberCount(1);
+			await n8n.sideBar.clickProjectMenuItem(projectName);
+			await n8n.navigate.toCredentials();
+
+			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(1);
+		});
+
+		test('should set and update project icon @auth:admin', async ({ n8n }) => {
+			const DEFAULT_ICON = 'layers';
+			const NEW_PROJECT_NAME = `Test Project ${nanoid(8)}`;
+
+			await n8n.projectComposer.createProject(NEW_PROJECT_NAME);
+
+			await expect(n8n.projectSettings.getIconPickerButton().locator('svg')).toHaveAttribute(
+				'data-icon',
+				DEFAULT_ICON,
+			);
+
+			await n8n.projectSettings.clickIconPickerButton();
+			await n8n.projectSettings.selectIconTab('Emojis');
+
+			await n8n.projectSettings.selectFirstEmoji();
+
+			await expect(
+				n8n.notifications.getNotificationByTitle('Project icon updated successfully'),
+			).toBeVisible();
+
+			await expect(n8n.projectSettings.getIconPickerButton()).toContainText('😀');
+
+			await n8n.sideBar.expand();
+			await expect(
+				n8n.sideBar.getProjectMenuItems().filter({ hasText: NEW_PROJECT_NAME }),
+			).toContainText('😀');
+		});
+
+		test('should be able to create a workflow when in the workflow editor @auth:owner', async ({
+			n8n,
+		}) => {
+			await n8n.navigate.toWorkflow('new');
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.saveWorkflow();
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Workflow successfully created'),
+			).toBeVisible();
+
+			const savedWorkflowUrl = n8n.page.url();
+
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
+
+			// Close dropdown/menu
+			await n8n.page.locator('body').click();
+
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
+
+			await n8n.page.goBack();
+
+			expect(n8n.page.url()).toBe(savedWorkflowUrl);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
+
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
+
+			expect(n8n.page.url()).toContain('/workflow/new');
+
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
+		});
+	});
+
+	test.describe('when moving resources between projects @db:reset', () => {
+		test.describe.configure({ mode: 'serial' });
+
+		test.beforeEach(async ({ n8n }) => {
+			// Create workflow + credential in Home/Personal project
+			await n8n.api.workflows.createWorkflow({
+				name: 'Workflow in Home project',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+			await n8n.api.credentials.createCredential({
+				name: 'Credential in Home project',
+				type: 'notionApi',
+				data: { apiKey: '1234567890' },
+			});
+
+			// Create Project 1 with resources
+			const project1 = await n8n.api.projects.createProject('Project 1');
+			await n8n.api.workflows.createInProject(project1.id, {
+				name: 'Workflow in Project 1',
+			});
+			await n8n.api.credentials.createCredential({
+				name: 'Credential in Project 1',
+				type: 'notionApi',
+				data: { apiKey: '1234567890' },
+				projectId: project1.id,
+			});
+
+			// Create Project 2 with resources
+			const project2 = await n8n.api.projects.createProject('Project 2');
+			await n8n.api.workflows.createInProject(project2.id, {
+				name: 'Workflow in Project 2',
+			});
+			await n8n.api.credentials.createCredential({
+				name: 'Credential in Project 2',
+				type: 'notionApi',
+				data: { apiKey: '1234567890' },
+				projectId: project2.id,
+			});
+
+			// Navigate to home to load sidebar with new projects
+			await n8n.goHome();
+		});
+
+		test('should move the workflow to expected projects @auth:owner', async ({ n8n }) => {
+			// Move workflow from Personal to Project 2
+			await n8n.sideBar.clickPersonalMenuItem();
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
+			await n8n.workflowComposer.moveToProject('Workflow in Home project', 'Project 2');
+
+			// Verify Personal has 0 workflows
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
+
+			// Move workflow from Project 1 to Project 2
+			await n8n.sideBar.clickProjectMenuItem('Project 1');
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
+			await n8n.workflowComposer.moveToProject('Workflow in Project 1', 'Project 2');
+
+			// Move workflow from Project 2 to member user
+			await n8n.sideBar.clickProjectMenuItem('Project 2');
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(3);
+			await n8n.workflowComposer.moveToProject(
+				'Workflow in Home project',
+				INSTANCE_MEMBER_CREDENTIALS[0].email,
+				null,
+			);
+
+			// Verify Project 2 has 2 workflows remaining
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(2);
+		});
+
+		test('should move the credential to expected projects @auth:owner', async ({ n8n }) => {
+			// Move credential from Project 1 to Project 2
+			await n8n.sideBar.clickProjectMenuItem('Project 1');
+			await n8n.sideBar.clickCredentialsLink();
+			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(1);
+
+			const credentialCard1 = n8n.credentials.cards.getCredential('Credential in Project 1');
+			await n8n.credentials.cards.openCardActions(credentialCard1);
+			await n8n.credentials.cards.getCardAction('move').click();
+			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
+
+			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
+			await expect(n8n.page.getByRole('option')).toHaveCount(5);
+			await n8n.resourceMoveModal.selectProjectOption('Project 2');
+			await n8n.resourceMoveModal.clickMoveCredentialButton();
+
+			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(0);
+
+			// Move credential from Project 2 to admin user
+			await n8n.sideBar.clickProjectMenuItem('Project 2');
+			await n8n.sideBar.clickCredentialsLink();
+			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(2);
+
+			const credentialCard2 = n8n.credentials.cards.getCredential('Credential in Project 1');
+			await n8n.credentials.cards.openCardActions(credentialCard2);
+			await n8n.credentials.cards.getCardAction('move').click();
+			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
+
+			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
+			await expect(n8n.page.getByRole('option')).toHaveCount(5);
+			await n8n.resourceMoveModal.selectProjectOption(INSTANCE_ADMIN_CREDENTIALS.email);
+			await n8n.resourceMoveModal.clickMoveCredentialButton();
+
+			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(1);
+
+			// Move credential from admin user (Home) back to owner user
+			await n8n.sideBar.clickHomeMenuItem();
+			await n8n.navigate.toCredentials();
+			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(3);
+
+			const credentialCard3 = n8n.credentials.cards.getCredential('Credential in Project 1');
+			await n8n.credentials.cards.openCardActions(credentialCard3);
+			await n8n.credentials.cards.getCardAction('move').click();
+			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
+
+			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
+			await expect(n8n.page.getByRole('option')).toHaveCount(5);
+			await n8n.resourceMoveModal.selectProjectOption(INSTANCE_OWNER_CREDENTIALS.email);
+			await n8n.resourceMoveModal.clickMoveCredentialButton();
+
+			// Verify final state: 3 credentials total, 2 with Personal badge
+			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(3);
+			await expect(
+				n8n.credentials.cards.getCredentials().filter({ hasText: 'Personal' }),
+			).toHaveCount(2);
 		});
 	});
 });

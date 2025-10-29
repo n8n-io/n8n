@@ -11,19 +11,40 @@ const flagsSchema = z.object({
 		.string()
 		.describe('Output directory path')
 		.default(safeJoinPath(__dirname, './outputs')),
+	includeExecutionHistoryDataTables: z
+		.boolean()
+		.describe(
+			'Include execution history data tables, these are excluded by default as they can be very large',
+		)
+		.default(false),
 });
 
 @Command({
 	name: 'export:entities',
 	description: 'Export database entities to JSON files',
-	examples: ['', '--outputDir=./exports', '--outputDir=/path/to/backup'],
+	examples: [
+		'',
+		'--outputDir=./exports',
+		'--outputDir=/path/to/backup',
+		'--includeExecutionHistoryDataTables=true',
+	],
 	flagsSchema,
 })
 export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		const outputDir = this.flags.outputDir;
 
-		await Container.get(ExportService).exportEntities(outputDir);
+		const excludedDataTables = new Set<string>();
+
+		if (!this.flags.includeExecutionHistoryDataTables) {
+			excludedDataTables.add('execution_annotation_tags');
+			excludedDataTables.add('execution_annotations');
+			excludedDataTables.add('execution_data');
+			excludedDataTables.add('execution_entity');
+			excludedDataTables.add('execution_metadata');
+		}
+
+		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables);
 	}
 
 	catch(error: Error) {

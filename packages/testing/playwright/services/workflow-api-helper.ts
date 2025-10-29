@@ -24,7 +24,7 @@ type WorkflowImportResult = {
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: IWorkflowBase) {
+	async createWorkflow(workflow: Partial<IWorkflowBase>) {
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
 		if (!response.ok()) {
@@ -94,7 +94,7 @@ export class WorkflowApiHelper {
 	 * This ensures no conflicts when importing workflows for testing.
 	 */
 	private makeWorkflowUnique(
-		workflow: IWorkflowBase,
+		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number },
 	) {
 		const idLength = options?.idLength ?? 12;
@@ -115,12 +115,14 @@ export class WorkflowApiHelper {
 		let webhookId: string | undefined;
 		let webhookPath: string | undefined;
 
-		for (const node of workflow.nodes) {
-			if (node.type === 'n8n-nodes-base.webhook') {
-				webhookId = nanoid(idLength);
-				webhookPath = `${webhookPrefix}-${webhookId}`;
-				node.webhookId = webhookId;
-				node.parameters.path = webhookPath;
+		if (workflow.nodes) {
+			for (const node of workflow.nodes) {
+				if (node.type === 'n8n-nodes-base.webhook') {
+					webhookId = nanoid(idLength);
+					webhookPath = `${webhookPrefix}-${webhookId}`;
+					node.webhookId = webhookId;
+					node.parameters.path = webhookPath;
+				}
 			}
 		}
 
@@ -132,7 +134,7 @@ export class WorkflowApiHelper {
 	 * Returns detailed information about what was created.
 	 */
 	async createWorkflowFromDefinition(
-		workflow: IWorkflowBase,
+		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		const { makeUnique = true, ...rest } = options ?? {};
@@ -155,14 +157,21 @@ export class WorkflowApiHelper {
 	 * The workflow will be created with its original active state from the JSON file.
 	 * Returns detailed information about what was imported, including webhook info if present.
 	 */
-	async importWorkflow(
+	async importWorkflowFromFile(
 		fileName: string,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		const workflowDefinition: IWorkflowBase = JSON.parse(
-			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),
-		);
+		const filePath = resolveFromRoot('workflows', fileName);
+		const fileContent = readFileSync(filePath, 'utf8');
+		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
 
+		return await this.importWorkflowFromDefinition(workflowDefinition, options);
+	}
+
+	async importWorkflowFromDefinition(
+		workflowDefinition: Partial<IWorkflowBase>,
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+	): Promise<WorkflowImportResult> {
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
 		// Ensure the workflow is in the correct active state as specified in the JSON
@@ -177,7 +186,6 @@ export class WorkflowApiHelper {
 		const params = new URLSearchParams();
 		if (workflowId) params.set('workflowId', workflowId);
 		params.set('limit', limit.toString());
-
 		const response = await this.api.request.get('/rest/executions', { params });
 
 		if (!response.ok()) {

@@ -54,7 +54,6 @@ describe('GlobalConfig', () => {
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
-			warningThreshold: 45 * 1024 * 1024,
 			sizeCheckCacheDuration: 60000,
 		},
 		database: {
@@ -110,6 +109,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		userManagement: {
+			inviteLinksEmailOnly: false,
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
@@ -312,6 +312,7 @@ describe('GlobalConfig', () => {
 			disableBareRepos: false,
 		},
 		executions: {
+			mode: 'regular',
 			timeout: -1,
 			maxTimeout: 3600,
 			pruneData: true,
@@ -341,11 +342,14 @@ describe('GlobalConfig', () => {
 			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 			posthogConfig: {
 				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-				apiHost: 'https://ph.n8n.io',
+				apiHost: 'https://us.i.posthog.com',
 			},
 		},
 		aiAssistant: {
 			baseUrl: '',
+		},
+		aiBuilder: {
+			apiKey: '',
 		},
 		tags: {
 			disabled: false,
@@ -367,6 +371,14 @@ describe('GlobalConfig', () => {
 			ldap: {
 				loginEnabled: false,
 				loginLabel: '',
+			},
+			provisioning: {
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesProvisioningFrequency: 'never',
+				scopesName: 'n8n',
+				scopesInstanceRoleClaimName: 'n8n_instance_role',
+				scopesProjectsRolesClaimName: 'n8n_projects',
 			},
 		},
 		redis: {

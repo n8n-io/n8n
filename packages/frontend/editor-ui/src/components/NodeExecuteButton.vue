@@ -15,7 +15,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -27,13 +27,14 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { ButtonSize, IUpdateInformation } from '@/Interface';
-import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
+import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useUIStore } from '@/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
 const POPUP_UPDATE_DELAY = 3000;
@@ -82,6 +83,7 @@ const router = useRouter();
 const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 const workflowsStore = useWorkflowsStore();
+const workflowState = injectWorkflowState();
 const externalHooks = useExternalHooks();
 const toast = useToast();
 const ndvStore = useNDVStore();
@@ -102,7 +104,8 @@ const isNodeRunning = computed(() => {
 	if (!workflowsStore.isWorkflowRunning || codeGenerationInProgress.value) return false;
 	const triggeredNode = workflowsStore.executedNode;
 	return (
-		workflowsStore.isNodeExecuting(node.value?.name ?? '') || triggeredNode === node.value?.name
+		workflowState.executingNode.isNodeExecuting(node.value?.name ?? '') ||
+		triggeredNode === node.value?.name
 	);
 });
 
