@@ -408,7 +408,7 @@ defineExpose({
 	--node--size: 45px;
 	--plus-button--size: 30px;
 	--ndv--sub-connections--duration: 150ms;
-	--collapsed--spacing: 10px;
+	--collapsed--offset: 10px;
 	padding-top: calc(var(--node--size) + var(--spacing--3xs));
 }
 .connections {
@@ -507,7 +507,7 @@ defineExpose({
 	justify-content: center;
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	margin-right: calc(
-		(var(--nodes-length) - 1) * (-1 * (var(--node--size) - var(--collapsed--spacing)))
+		(var(--nodes-length) - 1) * (-1 * (var(--node--size) - var(--collapsed--offset)))
 	);
 	.connectedNodesWrapperExpanded & {
 		margin-right: 0;
@@ -533,7 +533,7 @@ defineExpose({
 	&:not(:first-child) {
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		transform: translateX(
-			calc(var(--node-index) * (-1 * (var(--node--size) - var(--collapsed--spacing))))
+			calc(var(--node-index) * (-1 * (var(--node--size) - var(--collapsed--offset))))
 		);
 	}
 
