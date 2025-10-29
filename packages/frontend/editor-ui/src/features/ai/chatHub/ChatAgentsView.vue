@@ -19,8 +19,8 @@ import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import type { ChatModelDto, ChatHubConversationModel } from '@n8n/api-types';
-import { filterAndSortAgents } from '@/features/ai/chatHub/chat.utils';
+import type { ChatHubConversationModel } from '@n8n/api-types';
+import { filterAndSortAgents, stringifyModel } from '@/features/ai/chatHub/chat.utils';
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { useMediaQuery } from '@vueuse/core';
@@ -45,18 +45,18 @@ const agentFilter = ref<ChatAgentFilter>({
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
-const readyToShowList = computed(() => chatStore.agentsReady && chatStore.modelsReady);
+const readyToShowList = computed(() => chatStore.customAgentsReady && chatStore.agentsReady);
 const allModels = computed(() =>
-	chatStore.models.n8n.models.concat(chatStore.models['custom-agent'].models),
+	chatStore.agents.n8n.models.concat(chatStore.agents['custom-agent'].models),
 );
 
-const models = computed(() => {
+const agents = computed(() => {
 	return filterAndSortAgents(
 		allModels.value,
 		agentFilter.value,
-		chatStore.agents,
+		chatStore.customAgents,
 		workflowsStore.workflowsById, // TODO: ensure workflows are fetched
-	).map((modelDto) => modelDto.model);
+	);
 });
 
 const providerOptions = [
@@ -82,7 +82,7 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 	}
 
 	try {
-		await chatStore.fetchAgent(model.agentId);
+		await chatStore.fetchCustomAgent(model.agentId);
 		editingAgentId.value = model.agentId;
 		uiStore.openModal('agentEditor');
 	} catch (error) {
@@ -95,7 +95,7 @@ function handleCloseAgentEditor() {
 }
 
 async function handleAgentCreatedOrUpdated() {
-	await chatStore.fetchAgents();
+	await chatStore.fetchCustomAgents();
 	editingAgentId.value = undefined;
 }
 
@@ -114,7 +114,7 @@ async function handleDeleteAgent(agentId: string) {
 	}
 
 	try {
-		await chatStore.deleteAgent(agentId);
+		await chatStore.deleteCustomAgent(agentId);
 		toast.showMessage({ type: 'success', title: 'Agent deleted successfully' });
 	} catch (error) {
 		toast.showError(error, 'Could not delete the agent');
@@ -125,14 +125,14 @@ watch(
 	credentialsByProvider,
 	(credentials) => {
 		if (credentials) {
-			void chatStore.fetchChatModels(credentials);
+			void chatStore.fetchAgents(credentials);
 		}
 	},
 	{ immediate: true },
 );
 
 onMounted(() => {
-	void chatStore.fetchAgents();
+	void chatStore.fetchCustomAgents();
 });
 </script>
 
@@ -185,19 +185,23 @@ onMounted(() => {
 			</N8nText>
 		</div>
 
-		<div v-else-if="models.length === 0" :class="$style.empty">
+		<div v-else-if="agents.length === 0" :class="$style.empty">
 			<N8nText color="text-light" size="medium"> No agents match your search criteria. </N8nText>
 		</div>
 
 		<div v-else :class="$style.agentsGrid">
 			<ChatAgentCard
-				v-for="model in models"
-				:key="`${model.provider}::${model.provider === 'custom-agent' ? model.agentId : model.provider === 'n8n' ? model.workflowId : model.model}`"
-				:model="chatStore.getModel(model)!"
-				:agents="chatStore.agents"
+				v-for="agent in agents"
+				:key="stringifyModel(agent.model)"
+				:agent="agent"
+				:agents="chatStore.customAgents"
 				:workflows-by-id="workflowsStore.workflowsById"
-				@edit="handleEditAgent(model)"
-				@delete="model.provider === 'custom-agent' ? handleDeleteAgent(model.agentId) : undefined"
+				@edit="handleEditAgent(agent.model)"
+				@delete="
+					agent.model.provider === 'custom-agent'
+						? handleDeleteAgent(agent.model.agentId)
+						: undefined
+				"
 			/>
 		</div>
 
@@ -205,7 +209,7 @@ onMounted(() => {
 			v-if="credentialsByProvider"
 			:agent-id="editingAgentId"
 			:credentials="credentialsByProvider"
-			@create-agent="handleAgentCreatedOrUpdated"
+			@create-custom-agent="handleAgentCreatedOrUpdated"
 			@close="handleCloseAgentEditor"
 		/>
 

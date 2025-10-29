@@ -16,6 +16,7 @@ export {
 	type ChatHubCustomAgentModel,
 	type ChatHubConversationModel,
 	chatHubProviderSchema,
+	chatHubLLMProviderSchema,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
 	type ChatHubMessageType,

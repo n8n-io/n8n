@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
 import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
-import { findOneFromModelsResponse } from '@/features/ai/chatHub/chat.utils';
+import {
+	findOneFromModelsResponse,
+	restoreConversationModelFromMessageOrSession,
+} from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
@@ -21,6 +24,7 @@ import {
 	type ChatHubMessageDto,
 	type ChatMessageId,
 	type ChatHubSendMessageRequest,
+	type ChatModelDto,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
@@ -77,82 +81,41 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
-const modelFromQuery = computed<ChatHubConversationModel | null>(() => {
+const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
 
-	if (!isNewSession.value || (!agentId && !workflowId)) {
+	if (!isNewSession.value) {
 		return null;
 	}
 
-	return (
-		chatStore.allModels.find(
-			(model) =>
-				(model.provider === 'custom-agent' && model.agentId === agentId) ||
-				(model.provider === 'n8n' && model.workflowId === workflowId),
-		) ?? null
-	);
+	if (typeof agentId === 'string') {
+		return chatStore.getAgent({ provider: 'custom-agent', agentId }) ?? null;
+	}
+
+	if (typeof workflowId === 'string') {
+		return chatStore.getAgent({ provider: 'n8n', workflowId }) ?? null;
+	}
+
+	return null;
 });
 
-const selectedModel = computed<ChatHubConversationModel | null>(() => {
-	if (!chatStore.modelsReady) {
-		return null;
+const selectedModel = computed<ChatModelDto | undefined>(() => {
+	if (!chatStore.agentsReady) {
+		return undefined;
 	}
 
 	if (modelFromQuery.value) {
 		return modelFromQuery.value;
 	}
 
-	let model: ChatHubConversationModel | null = null;
-
-	if (currentConversation.value?.provider) {
-		if (currentConversation.value.provider === 'n8n') {
-			const n8nModel = chatStore.models.n8n.models.find(
-				(m) =>
-					currentConversation.value &&
-					m.model.provider === 'n8n' &&
-					m.model.workflowId === currentConversation.value.workflowId,
-			);
-
-			if (!n8nModel) {
-				return null;
-			}
-
-			model = n8nModel.model;
-		} else if (currentConversation.value.provider === 'custom-agent') {
-			const agentModel = chatStore.models['custom-agent'].models.find(
-				(m) =>
-					currentConversation.value &&
-					m.model.provider === 'custom-agent' &&
-					m.model.agentId === currentConversation.value.agentId,
-			);
-
-			if (!agentModel) {
-				return null;
-			}
-
-			model = agentModel.model;
-		} else {
-			const chatModel = chatStore.models[currentConversation.value.provider].models.find(
-				(m) =>
-					currentConversation.value &&
-					currentConversation.value?.provider !== 'n8n' &&
-					currentConversation.value?.provider !== 'custom-agent' &&
-					m.model.provider === currentConversation.value?.provider &&
-					m.model.model === currentConversation.value.model,
-			);
-
-			if (!chatModel) {
-				return null;
-			}
-
-			model = chatModel.model;
-		}
-	} else {
-		model = defaultModel.value;
+	if (!currentConversation.value?.provider) {
+		return defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined;
 	}
 
-	return model;
+	const model = restoreConversationModelFromMessageOrSession(currentConversation.value);
+
+	return model ? chatStore.getAgent(model) : undefined;
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -162,22 +125,24 @@ const { credentialsByProvider, selectCredential } = useChatCredentials(
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['credentials'] | null>(
 	() => {
-		if (!selectedModel.value) {
+		const provider = selectedModel.value?.model.provider;
+
+		if (!provider) {
 			return null;
 		}
 
-		if (selectedModel.value.provider === 'custom-agent' || selectedModel.value.provider === 'n8n') {
+		if (provider === 'custom-agent' || provider === 'n8n') {
 			return {};
 		}
 
-		const credentialsId = credentialsByProvider.value?.[selectedModel.value.provider];
+		const credentialsId = credentialsByProvider.value?.[provider];
 
 		if (!credentialsId) {
 			return null;
 		}
 
 		return {
-			[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]: {
 				id: credentialsId,
 				name: '',
 			},
@@ -231,7 +196,7 @@ watch(
 
 // Preselect a model
 watch(
-	() => chatStore.models,
+	() => chatStore.agents,
 	(models) => {
 		const selected = selectedModel.value;
 
@@ -297,7 +262,7 @@ function onSubmit(message: string) {
 	chatStore.sendMessage(
 		sessionId.value,
 		message,
-		selectedModel.value,
+		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
 	);
 
@@ -337,7 +302,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 		sessionId.value,
 		messageToEdit,
 		message.content,
-		selectedModel.value,
+		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
 	);
 	editingMessageId.value = undefined;
@@ -358,20 +323,20 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
-		selectedModel.value,
+		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
 	);
 }
 
-async function handleSelectModel(selection: ChatHubConversationModel) {
+async function handleSelectModel(selection: ChatModelDto) {
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection);
+			await chatStore.updateSessionModel(sessionId.value, selection.model);
 		} catch (error) {
 			toast.showError(error, 'Could not update selected model');
 		}
 	} else {
-		defaultModel.value = selection;
+		defaultModel.value = selection.model;
 	}
 }
 
@@ -389,7 +354,7 @@ function handleConfigureModel() {
 
 async function handleEditAgent(agentId: string) {
 	try {
-		await chatStore.fetchAgent(agentId);
+		await chatStore.fetchCustomAgent(agentId);
 		editingAgentId.value = agentId;
 		uiStore.openModal('agentEditor');
 	} catch (error) {
@@ -420,11 +385,11 @@ function closeAgentEditor() {
 	>
 		<ChatConversationHeader
 			ref="headerRef"
-			:selected-model="selectedModel"
+			:selected-model="selectedModel ?? null"
 			:credentials="credentialsByProvider"
 			@select-model="handleSelectModel"
-			@edit-agent="handleEditAgent"
-			@create-agent="openNewAgentCreator"
+			@edit-custom-agent="handleEditAgent"
+			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
 		/>
 
@@ -432,12 +397,12 @@ function closeAgentEditor() {
 			v-if="credentialsByProvider"
 			:agent-id="editingAgentId"
 			:credentials="credentialsByProvider"
-			@create-agent="handleSelectModel"
+			@create-custom-agent="handleSelectModel"
 			@close="closeAgentEditor"
 		/>
 
 		<N8nScrollArea
-			v-if="chatStore.modelsReady"
+			v-if="chatStore.agentsReady"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
@@ -489,7 +454,7 @@ function closeAgentEditor() {
 						ref="inputRef"
 						:class="$style.prompt"
 						:is-responding="isResponding"
-						:selected-model="selectedModel"
+						:selected-model="selectedModel ?? null"
 						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
 						@submit="onSubmit"

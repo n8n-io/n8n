@@ -35,15 +35,16 @@ import {
 	type ChatHubUpdateAgentRequest,
 	type EnrichedStructuredChunk,
 	type ChatHubMessageStatus,
+	type ChatModelDto,
 } from '@n8n/api-types';
 import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
 import { retry } from '@n8n/utils/retry';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
-	const models = ref<ChatModelsResponse>();
+	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
-	const agents = ref<ChatHubAgentDto[]>();
+	const customAgents = ref<ChatHubAgentDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
@@ -255,11 +256,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message.updatedAt = new Date().toISOString();
 	}
 
-	async function fetchChatModels(credentialMap: CredentialsMap) {
-		models.value = await fetchChatModelsApi(rootStore.restApiContext, {
+	async function fetchAgents(credentialMap: CredentialsMap) {
+		agents.value = await fetchChatModelsApi(rootStore.restApiContext, {
 			credentials: credentialMap,
 		});
-		return models.value;
+		return agents.value;
 	}
 
 	async function fetchSessions() {
@@ -592,27 +593,25 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
-	async function fetchAgents() {
-		agents.value = await fetchAgentsApi(rootStore.restApiContext);
+	async function fetchCustomAgents() {
+		customAgents.value = await fetchAgentsApi(rootStore.restApiContext);
 	}
 
-	async function fetchAgent(agentId: string): Promise<ChatHubAgentDto> {
+	async function fetchCustomAgent(agentId: string): Promise<ChatHubAgentDto> {
 		const agent = await fetchAgentApi(rootStore.restApiContext, agentId);
 		currentEditingAgent.value = agent;
 		return agent;
 	}
 
-	function getAgent(agentId: string) {
-		return models.value?.['custom-agent'].models.find(
+	function getCustomAgent(agentId: string) {
+		return agents.value?.['custom-agent'].models.find(
 			(model) => 'agentId' in model && model.agentId === agentId,
 		);
 	}
 
-	async function createAgent(
-		payload: ChatHubCreateAgentRequest,
-	): Promise<ChatHubConversationModel> {
+	async function createCustomAgent(payload: ChatHubCreateAgentRequest): Promise<ChatModelDto> {
 		const agent = await createAgentApi(rootStore.restApiContext, payload);
-		agents.value = [...(agents.value ?? []), agent];
+		customAgents.value = [...(customAgents.value ?? []), agent];
 		const agentModel = {
 			model: {
 				provider: 'custom-agent' as const,
@@ -621,21 +620,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: agent.name,
 			description: agent.description ?? null,
 		};
-		models.value?.['custom-agent'].models.push(agentModel);
+		agents.value?.['custom-agent'].models.push(agentModel);
 
-		return agentModel.model;
+		return agentModel;
 	}
 
-	async function updateAgent(
+	async function updateCustomAgent(
 		agentId: string,
 		payload: ChatHubUpdateAgentRequest,
 	): Promise<ChatHubAgentDto> {
 		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
-		agents.value = agents.value?.map((a) => (a.id === agentId ? agent : a));
+		customAgents.value = customAgents.value?.map((a) => (a.id === agentId ? agent : a));
 
 		// Update the agent in models as well
-		if (models.value?.['custom-agent']) {
-			models.value['custom-agent'].models = models.value['custom-agent'].models.map((model) =>
+		if (agents.value?.['custom-agent']) {
+			agents.value['custom-agent'].models = agents.value['custom-agent'].models.map((model) =>
 				'agentId' in model && model.agentId === agentId ? { ...model, name: agent.name } : model,
 			);
 		}
@@ -643,28 +642,28 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return agent;
 	}
 
-	async function deleteAgent(agentId: string) {
+	async function deleteCustomAgent(agentId: string) {
 		await deleteAgentApi(rootStore.restApiContext, agentId);
-		agents.value = agents.value?.filter((a) => a.id !== agentId);
+		customAgents.value = customAgents.value?.filter((a) => a.id !== agentId);
 
 		// Remove the agent from models as well
-		if (models.value?.['custom-agent']) {
-			models.value['custom-agent'].models = models.value['custom-agent'].models.filter(
+		if (agents.value?.['custom-agent']) {
+			agents.value['custom-agent'].models = agents.value['custom-agent'].models.filter(
 				(model) => !('agentId' in model) || model.agentId !== agentId,
 			);
 		}
 	}
 
-	function getModel(identifier: ChatHubConversationModel) {
-		if (!models.value) return;
+	function getAgent(model: ChatHubConversationModel) {
+		if (!agents.value) return;
 
-		return models.value[identifier.provider].models.find((m) => {
-			if (identifier.provider === 'n8n') {
-				return m.model.provider === 'n8n' && m.model.workflowId === identifier.workflowId;
-			} else if (identifier.provider === 'custom-agent') {
-				return m.model.provider === 'custom-agent' && m.model.agentId === identifier.agentId;
+		return agents.value[model.provider].models.find((m) => {
+			if (model.provider === 'n8n') {
+				return m.model.provider === 'n8n' && m.model.workflowId === model.workflowId;
+			} else if (model.provider === 'custom-agent') {
+				return m.model.provider === 'custom-agent' && m.model.agentId === model.agentId;
 			} else {
-				return m.model.provider === identifier.provider && m.model.model === identifier.model;
+				return m.model.provider === model.provider && m.model.model === model.model;
 			}
 		});
 	}
@@ -673,20 +672,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		/**
 		 * models and agents
 		 */
-		allModels: computed(() => Object.values(models.value ?? {}).flatMap(({ models }) => models)),
-		models: computed(() => models.value ?? emptyChatModelsResponse),
-		modelsReady: computed(() => models.value !== undefined),
-		agents: computed(() => agents.value ?? []),
+		agents: computed(() => agents.value ?? emptyChatModelsResponse),
 		agentsReady: computed(() => agents.value !== undefined),
+		customAgents: computed(() => customAgents.value ?? []),
+		customAgentsReady: computed(() => customAgents.value !== undefined),
 		currentEditingAgent,
-		getModel,
-		fetchChatModels,
 		getAgent,
 		fetchAgents,
-		fetchAgent,
-		createAgent,
-		updateAgent,
-		deleteAgent,
+		getCustomAgent,
+		fetchCustomAgents,
+		fetchCustomAgent,
+		createCustomAgent,
+		updateCustomAgent,
+		deleteCustomAgent,
 
 		/**
 		 * conversations
