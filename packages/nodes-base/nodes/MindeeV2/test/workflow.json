@@ -11,7 +11,7 @@
 		},
 		{
 			"parameters": {
-				"operation": "enqueueAndGetInference",
+				"operation": "fileEnqueueAndPoll",
 				"modelId": {
 					"__rl": true,
 					"value": "87654321-4321-4321-4321-CBA987654321",
