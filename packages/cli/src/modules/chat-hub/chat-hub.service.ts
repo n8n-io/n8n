@@ -1411,7 +1411,7 @@ export class ChatHubService {
 		const common = {
 			position: [600, 500] as [number, number],
 			id: uuidv4(),
-			name: 'Chat Model',
+			name: NODE_NAMES.CHAT_MODEL,
 			credentials,
 			type: PROVIDER_NODE_TYPE_MAP[provider].name,
 			typeVersion: PROVIDER_NODE_TYPE_MAP[provider].version,
