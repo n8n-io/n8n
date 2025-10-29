@@ -302,9 +302,14 @@ class TaskExecutor:
         data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
         length_bytes = len(data).to_bytes(PIPE_MSG_PREFIX_LENGTH, "big")
 
-        TaskExecutor._write_bytes(write_fd, length_bytes)
-        TaskExecutor._write_bytes(write_fd, data)
-        os.close(write_fd)
+        try:
+            TaskExecutor._write_bytes(write_fd, length_bytes)
+            TaskExecutor._write_bytes(write_fd, data)
+        finally:
+            try:
+                os.close(write_fd)
+            except Exception:
+                pass
 
     @staticmethod
     def _put_error(
@@ -333,9 +338,14 @@ class TaskExecutor:
         data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
         length_bytes = len(data).to_bytes(PIPE_MSG_PREFIX_LENGTH, "big")
 
-        TaskExecutor._write_bytes(write_fd, length_bytes)
-        TaskExecutor._write_bytes(write_fd, data)
-        os.close(write_fd)
+        try:
+            TaskExecutor._write_bytes(write_fd, length_bytes)
+            TaskExecutor._write_bytes(write_fd, data)
+        finally:
+            try:
+                os.close(write_fd)
+            except Exception:
+                pass
 
     # ========== print() ==========
 
