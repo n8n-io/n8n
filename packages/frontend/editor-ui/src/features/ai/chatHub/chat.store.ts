@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	fetchChatModelsApi,
@@ -41,9 +41,8 @@ import { retry } from '@n8n/utils/retry';
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const models = ref<ChatModelsResponse>();
-	const loadingModels = ref(false);
-	const sessions = ref<ChatHubSessionDto[]>([]);
-	const agents = ref<ChatHubAgentDto[]>([]);
+	const sessions = ref<ChatHubSessionDto[]>();
+	const agents = ref<ChatHubAgentDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
@@ -256,11 +255,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchChatModels(credentialMap: CredentialsMap) {
-		loadingModels.value = true;
 		models.value = await fetchChatModelsApi(rootStore.restApiContext, {
 			credentials: credentialMap,
 		});
-		loadingModels.value = false;
 		return models.value;
 	}
 
@@ -555,7 +552,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
-		sessions.value = sessions.value.map((session) =>
+		sessions.value = sessions.value?.map((session) =>
 			session.id === sessionId
 				? {
 						...session,
@@ -579,7 +576,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function deleteSession(sessionId: ChatSessionId) {
 		await deleteConversationApi(rootStore.restApiContext, sessionId);
 
-		sessions.value = sessions.value.filter((session) => session.id !== sessionId);
+		sessions.value = sessions.value?.filter((session) => session.id !== sessionId);
 	}
 
 	function switchAlternative(sessionId: ChatSessionId, messageId: ChatMessageId) {
@@ -614,7 +611,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		payload: ChatHubCreateAgentRequest,
 	): Promise<ChatHubConversationModel> {
 		const agent = await createAgentApi(rootStore.restApiContext, payload);
-		agents.value.push(agent);
+		agents.value = [...(agents.value ?? []), agent];
 		const model = {
 			provider: 'custom-agent' as const,
 			agentId: agent.id,
@@ -630,7 +627,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		payload: ChatHubUpdateAgentRequest,
 	): Promise<ChatHubAgentDto> {
 		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
-		agents.value = agents.value.map((a) => (a.id === agentId ? agent : a));
+		agents.value = agents.value?.map((a) => (a.id === agentId ? agent : a));
 
 		// Update the agent in models as well
 		if (models.value?.['custom-agent']) {
@@ -644,7 +641,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	async function deleteAgent(agentId: string) {
 		await deleteAgentApi(rootStore.restApiContext, agentId);
-		agents.value = agents.value.filter((a) => a.id !== agentId);
+		agents.value = agents.value?.filter((a) => a.id !== agentId);
 
 		// Remove the agent from models as well
 		if (models.value?.['custom-agent']) {
@@ -656,11 +653,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	return {
 		models,
-		sessions,
-		agents,
+		sessions: computed(() => sessions.value ?? []),
+		sessionsReady: computed(() => sessions.value !== undefined),
+		agents: computed(() => agents.value ?? []),
+		agentsReady: computed(() => agents.value !== undefined),
 		currentEditingAgent,
 		conversationsBySession,
-		loadingModels,
 		isResponding,
 		getAgent,
 		lastMessage,

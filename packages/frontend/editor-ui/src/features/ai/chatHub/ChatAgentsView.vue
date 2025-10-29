@@ -45,6 +45,7 @@ const agentFilter = ref<ChatAgentFilter>({
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
+const readyToShowList = computed(() => chatStore.agentsReady);
 const allModels = computed(() =>
 	chatStore.agents
 		.map<ChatHubConversationModel>((agent) => ({
@@ -156,7 +157,7 @@ watch(
 			</N8nButton>
 		</div>
 
-		<div v-if="allModels.length > 0" :class="$style.controls">
+		<div v-if="readyToShowList && allModels.length > 0" :class="$style.controls">
 			<N8nInput v-model="agentFilter.search" :class="$style.search" placeholder="Search" clearable>
 				<template #prefix>
 					<N8nIcon icon="search" />
@@ -182,7 +183,9 @@ watch(
 			</N8nSelect>
 		</div>
 
-		<div v-if="allModels.length === 0" :class="$style.empty">
+		<template v-if="!readyToShowList" />
+
+		<div v-else-if="allModels.length === 0" :class="$style.empty">
 			<N8nText color="text-light" size="medium">
 				No agents available. Create your first custom agent to get started.
 			</N8nText>
