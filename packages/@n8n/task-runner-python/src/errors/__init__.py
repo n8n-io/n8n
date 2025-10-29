@@ -1,4 +1,5 @@
 from .configuration_error import ConfigurationError
+from .invalid_pipe_msg_content_error import InvalidPipeMsgContentError
 from .invalid_pipe_msg_length_error import InvalidPipeMsgLengthError
 from .no_idle_timeout_handler_error import NoIdleTimeoutHandlerError
 from .security_violation_error import SecurityViolationError
@@ -14,6 +15,7 @@ from .websocket_connection_error import WebsocketConnectionError
 
 __all__ = [
     "ConfigurationError",
+    "InvalidPipeMsgContentError",
     "InvalidPipeMsgLengthError",
     "NoIdleTimeoutHandlerError",
     "SecurityViolationError",

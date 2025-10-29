@@ -7,8 +7,10 @@ import os
 import sys
 import logging
 import threading
+from typing import cast
 
 from src.errors import (
+    InvalidPipeMsgContentError,
     InvalidPipeMsgLengthError,
     TaskCancelledError,
     TaskKilledError,
@@ -529,8 +531,36 @@ class PipeReaderThread(threading.Thread):
                 raise InvalidPipeMsgLengthError(length_int)
             self.message_size = length_int
             data = TaskExecutor._read_exact_bytes(self.read_fd, length_int)
-            self.pipe_message = json.loads(data.decode("utf-8"))
+            parsed_msg = json.loads(data.decode("utf-8"))
+            self.pipe_message = self._validate_pipe_message(parsed_msg)
         except Exception as e:
             self.error = e
         finally:
             self.read_conn.close()
+
+    def _validate_pipe_message(self, msg) -> PipeMessage:
+        if not isinstance(msg, dict):
+            raise InvalidPipeMsgContentError(f"Expected dict, got {type(msg).__name__}")
+
+        if "print_args" not in msg:
+            raise InvalidPipeMsgContentError("Message missing 'print_args' key")
+
+        if not isinstance(msg["print_args"], list):
+            raise InvalidPipeMsgContentError("'print_args' must be a list")
+
+        has_result = "result" in msg
+        has_error = "error" in msg
+
+        if not has_result and not has_error:
+            raise InvalidPipeMsgContentError("Msg is missing 'result' or 'error' key")
+
+        if has_result and has_error:
+            raise InvalidPipeMsgContentError("Msg has both 'result' and 'error' keys")
+
+        if has_result and not isinstance(msg["result"], list):
+            raise InvalidPipeMsgContentError("'result' must be a list")
+
+        if has_error and not isinstance(msg["error"], dict):
+            raise InvalidPipeMsgContentError("'error' must be a dict")
+
+        return cast(PipeMessage, msg)
