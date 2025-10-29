@@ -106,7 +106,13 @@ export class LiveWebhooks implements IWebhookManager {
 			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
 		}
 
-		const { nodes, connections } = workflowData.activeVersion ?? workflowData;
+		if (!workflowData.activeVersion) {
+			throw new NotFoundError(
+				`Active version not found for workflow with id "${webhook.workflowId}"`,
+			);
+		}
+
+		const { nodes, connections } = workflowData.activeVersion;
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,

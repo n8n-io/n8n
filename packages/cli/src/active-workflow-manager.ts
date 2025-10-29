@@ -255,7 +255,13 @@ export class ActiveWorkflowManager {
 			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
 		}
 
-		const { nodes, connections } = workflowData.activeVersion ?? workflowData;
+		if (!workflowData.activeVersion) {
+			throw new UnexpectedError('Active version not found for workflow', {
+				extra: { workflowId },
+			});
+		}
+
+		const { nodes, connections } = workflowData.activeVersion;
 
 		const workflow = new Workflow({
 			id: workflowId,
@@ -491,7 +497,13 @@ export class ActiveWorkflowManager {
 				},
 			);
 
-			const { nodes, connections } = dbWorkflow.activeVersion ?? dbWorkflow;
+			if (!dbWorkflow.activeVersion) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId: dbWorkflow.id },
+				});
+			}
+
+			const { nodes, connections } = dbWorkflow.activeVersion;
 			const workflowForError = { ...dbWorkflow, nodes, connections };
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -583,8 +595,14 @@ export class ActiveWorkflowManager {
 				return added;
 			}
 
-			// Get workflow data from the active version if it exists
-			const { nodes, connections } = dbWorkflow.activeVersion ?? dbWorkflow;
+			// Get workflow data from the active version
+			if (!dbWorkflow.activeVersion) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId: dbWorkflow.id },
+				});
+			}
+
+			const { nodes, connections } = dbWorkflow.activeVersion;
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
 

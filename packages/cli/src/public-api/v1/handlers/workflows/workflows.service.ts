@@ -87,18 +87,11 @@ export async function createWorkflow(
 }
 
 export async function setWorkflowAsActive(user: User, workflowId: WorkflowId, versionId: string) {
-	// Some users do not have workflow history enabled, for them activeVersion can be null
-	let activeVersion = null;
-
-	try {
-		activeVersion = await Container.get(WorkflowHistoryService).getVersion(
-			user,
-			workflowId,
-			versionId,
-		);
-	} catch (error) {
-		// TODO: Remove try blocks when workflow history is enabled for all users
-	}
+	const activeVersion = await Container.get(WorkflowHistoryService).getVersion(
+		user,
+		workflowId,
+		versionId,
+	);
 
 	await Container.get(WorkflowRepository).update(workflowId, {
 		active: true,

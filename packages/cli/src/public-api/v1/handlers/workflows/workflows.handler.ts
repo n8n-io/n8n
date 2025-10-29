@@ -313,25 +313,17 @@ export = {
 					);
 				}
 
-				// Some users do not have workflow history enabled, for them activeVersion can be null
-				let updatedVersion = null;
-				try {
-					updatedVersion = await Container.get(WorkflowHistoryService).getVersion(
-						req.user,
-						id,
-						updateData.versionId,
-					);
-				} catch (error) {
-					// TODO: Remove try-catch blocks when workflow history is enabled for all users
-				}
+				const updatedVersion = await Container.get(WorkflowHistoryService).getVersion(
+					req.user,
+					id,
+					updateData.versionId,
+				);
 
-				if (updatedVersion) {
-					updateData.activeVersion = getActiveVersionUpdateValue(
-						workflow,
-						updatedVersion,
-						undefined, // active is read-only
-					);
-				}
+				updateData.activeVersion = getActiveVersionUpdateValue(
+					workflow,
+					updatedVersion,
+					undefined, // active is read-only
+				);
 
 				await updateWorkflow(workflow.id, updateData);
 			} catch (error) {

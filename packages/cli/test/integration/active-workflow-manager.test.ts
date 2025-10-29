@@ -1,5 +1,11 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
-import type { Project, WebhookEntity } from '@n8n/db';
+import {
+	createWorkflow,
+	createWorkflowHistory,
+	setActiveVersion,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { IWorkflowDb, Project, User, WebhookEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -43,8 +49,11 @@ const externalHooks = mockInstance(ExternalHooks);
 
 let activeWorkflowManager: ActiveWorkflowManager;
 
-let createActiveWorkflow: () => Promise<IWorkflowBase>;
+let createActiveWorkflow: (
+	workflowOptions?: Parameters<typeof createWorkflow>[0],
+) => Promise<IWorkflowBase>;
 let createInactiveWorkflow: () => Promise<IWorkflowBase>;
+let owner: User;
 
 beforeAll(async () => {
 	await testDb.init();
@@ -64,15 +73,20 @@ beforeAll(async () => {
 
 	await utils.initNodeTypes(nodes);
 
-	const owner = await createOwner();
-	createActiveWorkflow = async () => await createWorkflow({ active: true }, owner);
+	owner = await createOwner();
+	createActiveWorkflow = async (workflowOptions: Partial<IWorkflowDb> = {}) => {
+		const workflow = await createWorkflow({ active: true, ...workflowOptions }, owner);
+		await createWorkflowHistory(workflow, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		return workflow;
+	};
 	createInactiveWorkflow = async () => await createWorkflow({ active: false }, owner);
 	Container.get(InstanceSettings).markAsLeader();
 });
 
 afterEach(async () => {
 	await activeWorkflowManager.removeAll();
-	await testDb.truncate(['WorkflowEntity', 'WebhookEntity']);
+	await testDb.truncate(['WorkflowEntity', 'WebhookEntity', 'WorkflowHistory']);
 	jest.clearAllMocks();
 });
 
@@ -176,7 +190,7 @@ describe('add()', () => {
 		);
 
 		// Create a workflow which has a form trigger
-		const dbWorkflow = await createWorkflow({
+		const dbWorkflow = await createActiveWorkflow({
 			nodes: [
 				{
 					id: 'uuid-1',

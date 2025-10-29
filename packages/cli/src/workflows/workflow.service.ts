@@ -307,17 +307,11 @@ export class WorkflowService {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
-		// Some users do not have workflow history enabled, for them activeVersion can be null
-		let updatedVersion = null;
-		try {
-			updatedVersion = await this.workflowHistoryService.getVersion(
-				user,
-				workflowId,
-				workflowUpdateData.versionId,
-			);
-		} catch (error) {
-			// TODO: Remove try-catch blocks when workflow history is enabled for all users
-		}
+		const updatedVersion = await this.workflowHistoryService.getVersion(
+			user,
+			workflowId,
+			workflowUpdateData.versionId,
+		);
 
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
@@ -334,13 +328,11 @@ export class WorkflowService {
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
 
-		if (updatedVersion) {
-			updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
-				workflow,
-				updatedVersion,
-				workflowUpdateData.active,
-			);
-		}
+		updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
+			workflow,
+			updatedVersion,
+			workflowUpdateData.active,
+		);
 
 		await this.workflowRepository.update(workflowId, updatePayload);
 
