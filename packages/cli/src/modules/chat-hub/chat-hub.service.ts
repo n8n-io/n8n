@@ -12,10 +12,6 @@ import {
 	ChatHubMessageStatus,
 	chatHubProviderSchema,
 	type EnrichedStructuredChunk,
-	type ChatHubAnthropicModel,
-	type ChatHubGoogleModel,
-	type ChatHubN8nModel,
-	type ChatHubOpenAIModel,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -218,14 +214,7 @@ export class ChatHubService {
 	private async fetchOpenAiModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<{
-		models: Array<{
-			name: string;
-			description: null;
-			model: ChatHubOpenAIModel;
-		}>;
-		error?: string;
-	}> {
+	): Promise<ChatModelsResponse['openai']> {
 		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
 			'searchModels',
 			'parameters.model',
@@ -250,14 +239,7 @@ export class ChatHubService {
 	private async fetchAnthropicModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<{
-		models: Array<{
-			name: string;
-			description: null;
-			model: ChatHubAnthropicModel;
-		}>;
-		error?: string;
-	}> {
+	): Promise<ChatModelsResponse['anthropic']> {
 		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
 			'searchModels',
 			'parameters.model',
@@ -282,14 +264,7 @@ export class ChatHubService {
 	private async fetchGoogleModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<{
-		models: Array<{
-			name: string;
-			description: null;
-			model: ChatHubGoogleModel;
-		}>;
-		error?: string;
-	}> {
+	): Promise<ChatModelsResponse['google']> {
 		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				// From Gemini node
@@ -349,14 +324,7 @@ export class ChatHubService {
 		};
 	}
 
-	private async fetchAgentWorkflowsAsModels(user: User): Promise<{
-		models: Array<{
-			name: string;
-			description: string | null;
-			model: ChatHubN8nModel;
-		}>;
-		error?: string;
-	}> {
+	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelsResponse['n8n']> {
 		const nodeTypes = [CHAT_TRIGGER_NODE_TYPE];
 		const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(
 			user,

@@ -274,7 +274,6 @@ watch(
 				await handleSelectModel({
 					provider: 'custom-agent',
 					agentId: agent.id,
-					name: agent.name,
 				});
 			}
 			return;
@@ -283,11 +282,11 @@ watch(
 		// Handle n8n workflow selection
 		if (typeof workflowId === 'string') {
 			const n8nModel = chatStore.models?.n8n?.models.find(
-				(m) => m.provider === 'n8n' && m.workflowId === workflowId,
+				(m) => m.model.provider === 'n8n' && m.model.workflowId === workflowId,
 			);
 
 			if (n8nModel) {
-				await handleSelectModel(n8nModel);
+				await handleSelectModel(n8nModel.model);
 			}
 		}
 	},

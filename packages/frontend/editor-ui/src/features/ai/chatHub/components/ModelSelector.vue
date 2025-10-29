@@ -267,8 +267,8 @@ defineExpose({
 			/>
 
 			<ChatAgentAvatar
-				v-if="selectedModel"
-				:model="selectedModel"
+				v-if="selectedModelDto"
+				:model="selectedModelDto.model"
 				:size="credentialsName ? 'md' : 'sm'"
 				:class="$style.icon"
 			/>

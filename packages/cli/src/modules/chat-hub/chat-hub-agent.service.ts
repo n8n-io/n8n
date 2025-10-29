@@ -1,4 +1,4 @@
-import { ChatHubCustomAgentModel } from '@n8n/api-types';
+import { ChatModelsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -18,14 +18,7 @@ export class ChatHubAgentService {
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 	) {}
 
-	async getAgentsByUserIdAsModels(userId: string): Promise<{
-		models: Array<{
-			name: string;
-			description: string | null;
-			model: ChatHubCustomAgentModel;
-		}>;
-		error?: string;
-	}> {
+	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelsResponse['custom-agent']> {
 		const agents = await this.getAgentsByUserId(userId);
 
 		return {
