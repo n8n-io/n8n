@@ -25,6 +25,7 @@ import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/R
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useUsersStore } from '@/features/settings/users/users.store';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -33,6 +34,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
+const usersStore = useUsersStore();
 
 const projectPages = useProjectPages();
 
@@ -74,6 +76,9 @@ const projectName = computed(() => {
 
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
+);
+const globalPermissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
 );
 
 const showSettings = computed(
@@ -159,7 +164,7 @@ const createVariableButton = computed(() => ({
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
-		!getResourcePermissions(homeProject.value?.scopes)?.projectVariable?.create,
+		(!projectPermissions.value.create && !globalPermissions.value.create),
 }));
 
 const selectedMainButtonType = computed(() => props.mainButton ?? ACTION_TYPES.WORKFLOW);
