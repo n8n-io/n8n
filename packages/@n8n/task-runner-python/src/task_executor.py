@@ -9,6 +9,7 @@ import logging
 import threading
 
 from src.errors import (
+    InvalidPipeMsgLengthError,
     TaskCancelledError,
     TaskKilledError,
     TaskResultMissingError,
@@ -111,6 +112,8 @@ class TaskExecutor:
                     read_fd, PIPE_MSG_PREFIX_LENGTH
                 )
                 length_int = int.from_bytes(length_bytes, "big")
+                if length_int <= 0:
+                    raise InvalidPipeMsgLengthError(length_int)
                 message_size_list.append(length_int)
                 data = TaskExecutor._read_exact_bytes(read_fd, length_int)
                 pipe_message_list.append(json.loads(data.decode("utf-8")))
