@@ -3,16 +3,20 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { convertJsonSchemaToZod } from '@utils/schemaParsing';
+import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import { Toolkit } from 'langchain/agents';
 import {
 	createResultError,
 	createResultOk,
+	type ILoadOptionsFunctions,
+	type ISupplyDataFunctions,
 	type IDataObject,
 	type IExecuteFunctions,
 	type Result,
 } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type {
 	McpAuthenticationOption,
@@ -155,21 +159,37 @@ function normalizeAndValidateUrl(input: string): Result<URL, Error> {
 	return parsedUrl;
 }
 
+function isUnauthorizedError(error: unknown): boolean {
+	return (
+		!!error &&
+		typeof error === 'object' &&
+		(('code' in error && Number(error.code) === 401) ||
+			('message' in error && typeof error.message === 'string' && error.message.includes('401')))
+	);
+}
+
+type OnUnauthorizedHandler = (
+	headers?: Record<string, string>,
+) => Promise<Record<string, string> | null>;
+
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
 	| { type: 'connection'; error: Error };
+
 export async function connectMcpClient({
 	headers,
 	serverTransport,
 	endpointUrl,
 	name,
 	version,
+	onUnauthorized,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
 	headers?: Record<string, string>;
 	name: string;
 	version: number;
+	onUnauthorized?: OnUnauthorizedHandler;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -187,6 +207,20 @@ export async function connectMcpClient({
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
+			if (onUnauthorized && isUnauthorizedError(error)) {
+				const newHeaders = await onUnauthorized(headers);
+				if (newHeaders) {
+					// Don't pass `onUnauthorized` to avoid possible infinite recursion
+					return await connectMcpClient({
+						headers: newHeaders,
+						serverTransport,
+						endpointUrl,
+						name,
+						version,
+					});
+				}
+			}
+
 			return createResultError({ type: 'connection', error });
 		}
 	}
@@ -208,6 +242,20 @@ export async function connectMcpClient({
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
+		if (onUnauthorized && isUnauthorizedError(error)) {
+			const newHeaders = await onUnauthorized(headers);
+			if (newHeaders) {
+				// Don't pass `onUnauthorized` to avoid possible infinite recursion
+				return await connectMcpClient({
+					headers: newHeaders,
+					serverTransport,
+					endpointUrl,
+					name,
+					version,
+				});
+			}
+		}
+
 		return createResultError({ type: 'connection', error });
 	}
 }
@@ -235,9 +283,61 @@ export async function getAuthHeaders(
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
 		}
+		case 'mcpOAuth2Api': {
+			const result = await ctx
+				.getCredentials<{ oauthTokenData: { access_token: string } }>('mcpOAuth2Api')
+				.catch(() => null);
+
+			if (!result) return {};
+
+			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
+		}
 		case 'none':
 		default: {
 			return {};
 		}
 	}
+}
+
+/**
+ * Tries to refresh the OAuth2 token, storing them in the database if successful
+ * @param ctx - The execution context
+ * @param authentication - The authentication method
+ * @param headers - The headers to refresh
+ * @returns The refreshed headers or null if the authentication method is not oAuth2Api or has failed
+ */
+export async function tryRefreshOAuth2Token(
+	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
+	authentication: McpAuthenticationOption,
+	headers?: Record<string, string>,
+) {
+	if (authentication !== 'mcpOAuth2Api') {
+		return null;
+	}
+
+	let access_token: string | null = null;
+	try {
+		const result = (await ctx.helpers.refreshOAuth2Token.call(
+			ctx,
+			'mcpOAuth2Api',
+		)) as ClientOAuth2TokenData;
+		access_token = result?.access_token;
+	} catch (error) {
+		return null;
+	}
+
+	if (!access_token) {
+		return null;
+	}
+
+	if (!headers) {
+		return {
+			Authorization: `Bearer ${access_token}`,
+		};
+	}
+
+	return {
+		...headers,
+		Authorization: `Bearer ${access_token}`,
+	};
 }

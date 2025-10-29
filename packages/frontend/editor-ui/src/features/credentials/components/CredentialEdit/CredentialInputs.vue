@@ -5,7 +5,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
-import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
+import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import { computed } from 'vue';
 
 import { N8nNotice } from '@n8n/design-system';

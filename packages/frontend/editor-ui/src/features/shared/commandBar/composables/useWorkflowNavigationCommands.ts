@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
+import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import debounce from 'lodash/debounce';
 import { VIEWS } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
