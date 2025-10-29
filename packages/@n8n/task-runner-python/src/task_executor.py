@@ -96,33 +96,9 @@ class TaskExecutor:
     ) -> tuple[Items, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
-        read_fd = read_conn.fileno()
         print_args: PrintArgs = []
 
-        # lists for reader-to-runner communication (each either 0 or 1 msg)
-        pipe_message_list: list[PipeMessage] = []
-        message_size_list: list[int] = []
-        read_error_list: list[Exception] = []
-
-        def read_from_pipe():
-            """Read result from pipe in background thread."""
-
-            try:
-                length_bytes = TaskExecutor._read_exact_bytes(
-                    read_fd, PIPE_MSG_PREFIX_LENGTH
-                )
-                length_int = int.from_bytes(length_bytes, "big")
-                if length_int <= 0:
-                    raise InvalidPipeMsgLengthError(length_int)
-                message_size_list.append(length_int)
-                data = TaskExecutor._read_exact_bytes(read_fd, length_int)
-                pipe_message_list.append(json.loads(data.decode("utf-8")))
-            except Exception as e:
-                read_error_list.append(e)
-            finally:
-                read_conn.close()
-
-        pipe_reader = threading.Thread(target=read_from_pipe)
+        pipe_reader = PipeReaderThread(read_conn.fileno(), read_conn)
         pipe_reader.start()
 
         try:
@@ -160,13 +136,13 @@ class TaskExecutor:
                 except Exception:
                     pass
 
-            if read_error_list:
-                raise TaskResultReadError(read_error_list[0])
+            if pipe_reader.error:
+                raise TaskResultReadError(pipe_reader.error)
 
-            if not pipe_message_list:
+            if pipe_reader.pipe_message is None:
                 raise TaskResultMissingError()
 
-            returned = pipe_message_list[0]
+            returned = pipe_reader.pipe_message
 
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
@@ -176,7 +152,8 @@ class TaskExecutor:
 
             result = returned["result"]
             print_args = returned.get("print_args", [])
-            result_size_bytes = message_size_list[0]
+            assert pipe_reader.message_size is not None
+            result_size_bytes = pipe_reader.message_size
 
             return result, print_args, result_size_bytes
 
@@ -522,3 +499,31 @@ class TaskExecutor:
             if written == 0:
                 raise OSError("Write failed")
             total_written += written
+
+
+class PipeReaderThread(threading.Thread):
+    """Background thread that reads result from pipe."""
+
+    def __init__(self, read_fd: int, read_conn: PipeConnection):
+        super().__init__()
+        self.read_fd = read_fd
+        self.read_conn = read_conn
+        self.pipe_message: PipeMessage | None = None
+        self.message_size: int | None = None  # bytes
+        self.error: Exception | None = None
+
+    def run(self):
+        try:
+            length_bytes = TaskExecutor._read_exact_bytes(
+                self.read_fd, PIPE_MSG_PREFIX_LENGTH
+            )
+            length_int = int.from_bytes(length_bytes, "big")
+            if length_int <= 0:
+                raise InvalidPipeMsgLengthError(length_int)
+            self.message_size = length_int
+            data = TaskExecutor._read_exact_bytes(self.read_fd, length_int)
+            self.pipe_message = json.loads(data.decode("utf-8"))
+        except Exception as e:
+            self.error = e
+        finally:
+            self.read_conn.close()
