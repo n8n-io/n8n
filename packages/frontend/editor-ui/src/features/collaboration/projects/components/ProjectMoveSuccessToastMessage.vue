@@ -34,18 +34,13 @@ const targetProjectName = computed(() => {
 			<span v-else>{{ i18n.baseText('projects.move.resource.success.message.workflow') }}</span>
 		</N8nText>
 		<p v-if="isTargetProjectTeam" class="pt-s">
-			<RouterLink
-				:to="{
-					name: props.routeName,
-					params: { projectId: props.targetProject.id },
-				}"
-			>
+			<a href="#">
 				{{
 					i18n.baseText('projects.move.resource.success.link', {
 						interpolate: { targetProjectName },
 					})
 				}}
-			</RouterLink>
+			</a>
 		</p>
 	</div>
 </template>

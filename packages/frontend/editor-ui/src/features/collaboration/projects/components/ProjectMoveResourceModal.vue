@@ -28,6 +28,7 @@ import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { truncate } from '@n8n/utils/string/truncate';
 import { computed, h, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
 import {
 	N8nButton,
@@ -52,6 +53,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const toast = useToast();
+const router = useRouter();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
@@ -166,6 +168,15 @@ const moveResource = async () => {
 				areAllUsedCredentialsShareable:
 					shareableCredentials.value.length === usedCredentials.value.length,
 			}),
+			onClick: (event: MouseEvent | undefined) => {
+				if (event?.target instanceof HTMLAnchorElement && selectedProject.value) {
+					event.preventDefault();
+					void router.push({
+						name: isResourceWorkflow.value ? VIEWS.PROJECTS_WORKFLOWS : VIEWS.PROJECTS_CREDENTIALS,
+						params: { projectId: selectedProject.value.id },
+					});
+				}
+			},
 			type: 'success',
 			duration: 8000,
 		});
