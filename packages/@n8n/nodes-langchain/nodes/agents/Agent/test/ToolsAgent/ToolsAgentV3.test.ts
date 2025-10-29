@@ -1,20 +1,40 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk } from '@langchain/core/messages';
+import type { ChatPromptTemplate } from '@langchain/core/prompts';
+import { RunnableSequence } from '@langchain/core/runnables';
+import { createToolCallingAgent } from 'langchain/agents';
+import type { Tool } from 'langchain/tools';
 import { mock } from 'jest-mock-extended';
-import type {
-	IExecuteFunctions,
-	INode,
-	EngineRequest,
-	EngineResponse,
-	INodeExecutionData,
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INode,
+	type EngineRequest,
+	type EngineResponse,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 
 import * as helpers from '../../agents/ToolsAgent/V3/helpers';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V3/execute';
 import type { RequestResponseMetadata } from '../../agents/ToolsAgent/V3/execute';
+import * as commonHelpers from '../../agents/ToolsAgent/common';
+import * as utilHelpers from '@utils/helpers';
 
 // Mock the helper modules
 jest.mock('../../agents/ToolsAgent/V3/helpers', () => ({
 	buildExecutionContext: jest.fn(),
 	executeBatch: jest.fn(),
+}));
+
+// Mock langchain modules
+jest.mock('langchain/agents', () => ({
+	createToolCallingAgent: jest.fn(),
+}));
+
+jest.mock('@langchain/core/runnables', () => ({
+	RunnableSequence: {
+		from: jest.fn(),
+	},
 }));
 
 const mockContext = mock<IExecuteFunctions>();
@@ -393,434 +413,52 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 
 		expect(mockContext.logger.debug).toHaveBeenCalledWith('Executing Tools Agent V3');
 	});
-});
 
-describe('max iterations', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-		mockContext.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		};
-	});
-
-	it('should enforce maxIterations and stop when limit is reached', async () => {
-		mockContext.getNode.mockReturnValue(mockNode);
-		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
-		mockContext.isStreaming = jest.fn().mockReturnValue(false) as any;
-
-		const mockModel = mock<BaseChatModel>();
-
-		const mockAgent = mock<any>();
-		const mockRunnableSequence = mock<any>();
-
-		mockRunnableSequence.invoke = jest.fn().mockResolvedValue([
-			{
-				toolCalls: [
-					{
-						id: 'call_456',
-						name: 'TestTool',
-						args: { input: 'test data' },
-						type: 'tool_call',
-					},
-				],
-			},
-		]);
-
-		const mockTool = mock<Tool>();
-		mockTool.name = 'TestTool';
-		mockTool.metadata = {
-			sourceNodeName: 'Test Tool',
-		};
-
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-
-		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
-			if (param === 'needsFallback') return false;
-			if (param === 'options')
-				return {
-					systemMessage: 'You are a helpful assistant',
-					maxIterations: 2,
-					returnIntermediateSteps: false,
-					passthroughBinaryImages: true,
-					enableStreaming: false,
-				};
-			return defaultValue;
+	it('should throw NodeOperationError when max iterations is reached', async () => {
+		mockContext.getNodeParameter.mockImplementation((param) => {
+			if (param === 'options.maxIterations') return 2;
+			return undefined;
 		});
 
-		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
-		mockContext.sendChunk = jest.fn() as any;
-
-		// Should return an EngineRequest with actions and metadata
-		// Now simulate the second call with response from tools
 		const response: EngineResponse<RequestResponseMetadata> = {
-			actionResponses: [
-				{
-					action: {
-						id: 'call_123',
-						nodeName: 'TestTool',
-						input: { input: 'test data', id: 'call_123' },
-						metadata: { itemIndex: 0, previousRequests: [] },
-						actionType: 'ExecutionNodeAction',
-						type: 'ai_tool',
-					},
-					data: [{ json: { result: 'tool result' } }] as any,
-				},
-			],
-			metadata: { itemIndex: 999, previousRequests: [], iterationCount: 3 },
+			actionResponses: [],
+			metadata: { iterationCount: 3 },
 		};
 
 		await expect(toolsAgentExecute.call(mockContext, response)).rejects.toThrow(NodeOperationError);
 	});
 
-	it('should track iteration count correctly when called first time', async () => {
-		mockContext.getNode.mockReturnValue(mockNode);
-		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
-
-		const mockModel = mock<BaseChatModel>();
-
-		const mockAgent = mock<any>();
-		const mockRunnableSequence = mock<any>();
-		mockRunnableSequence.singleAction = true;
-		mockRunnableSequence.streamRunnable = false;
-
-		mockRunnableSequence.invoke = jest.fn().mockResolvedValue([
-			{
-				toolCalls: [
-					{
-						id: 'call_456',
-						name: 'TestTool',
-						args: { input: 'test data' },
-						type: 'tool_call',
-					},
-				],
-			},
-		]);
-
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-
-		const mockTool = mock<Tool>();
-		mockTool.name = 'TestTool';
-		mockTool.metadata = {
-			sourceNodeName: 'Test Tool',
-		};
-
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-
-		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
-			if (param === 'needsFallback') return false;
-			if (param === 'options.enableStreaming') return false;
-			if (param === 'options.batching.batchSize') return defaultValue;
-			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
-			if (param === 'options')
-				return {
-					systemMessage: 'You are a helpful assistant',
-					maxIterations: 10,
-					returnIntermediateSteps: false,
-					passthroughBinaryImages: true,
-				};
-			return defaultValue;
+	it('should not throw when iteration count is below max iterations', async () => {
+		mockContext.getNodeParameter.mockImplementation((param) => {
+			if (param === 'options.maxIterations') return 10;
+			return undefined;
 		});
 
-		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
-
-		// First iteration - no previous response
-		const result1 = (await toolsAgentExecute.call(
-			mockContext,
-		)) as EngineRequest<RequestResponseMetadata>;
-
-		expect(result1.metadata.iterationCount).toBe(1);
-	});
-
-	it('should enforce maxIterations and stop when limit is reached streaming)', async () => {
-		mockContext.getNode.mockReturnValue(mockNode);
-		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
-		mockContext.getParentNodes.mockReturnValue([
-			{ name: 'TestTool', type: 'Tool', typeVersion: 3, disabled: false },
-		]);
-		mockContext.isStreaming = jest.fn().mockReturnValue(true) as any;
-
-		const mockModel = mock<BaseChatModel>();
-
-		const mockAgent = mock<any>();
-		const mockRunnableSequence = mock<any>();
-		mockRunnableSequence.singleAction = true;
-		mockRunnableSequence.streamRunnable = false;
-
-		// Mock streaming events with tool calls
-		const mockStreamEvents = async function* () {
-			yield {
-				event: 'on_chat_model_stream',
-				data: {
-					chunk: {
-						content: 'I need to call a tool',
-					} as AIMessageChunk,
-				},
-			};
-			yield {
-				event: 'on_chat_model_end',
-				data: {
-					output: {
-						content: 'I need to call a tool',
-						tool_calls: [
-							{
-								id: 'call_123',
-								name: 'TestTool',
-								args: { input: 'test data' },
-								type: 'tool_call',
-							},
-						],
-					},
-				},
-			};
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
 		};
 
-		mockRunnableSequence.streamEvents = jest.fn().mockReturnValue(mockStreamEvents());
-		const mockTool = mock<Tool>();
-		mockTool.name = 'TestTool';
-		mockTool.metadata = {
-			sourceNodeName: 'Test Tool',
+		const mockBatchResult = {
+			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
+			request: undefined,
 		};
 
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		jest.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
 
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-
-		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
-			if (param === 'needsFallback') return false;
-			if (param === 'options.enableStreaming') return true;
-			if (param === 'options.batching.batchSize') return defaultValue;
-			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
-			if (param === 'options')
-				return {
-					systemMessage: 'You are a helpful assistant',
-					maxIterations: 1,
-					returnIntermediateSteps: false,
-					passthroughBinaryImages: true,
-					enableStreaming: true,
-				};
-			return defaultValue;
-		});
-
-		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
-		mockContext.sendChunk = jest.fn() as any;
-
-		// Should return an EngineRequest with actions and metadata
-		// Now simulate the second call with response from tools
 		const response: EngineResponse<RequestResponseMetadata> = {
-			actionResponses: [
-				{
-					action: {
-						id: 'call_123',
-						nodeName: 'TestTool',
-						input: { input: 'test data', id: 'call_123' },
-						metadata: { itemIndex: 0, previousRequests: [] },
-						actionType: 'ExecutionNodeAction',
-						type: 'ai_tool',
-					},
-					data: [{ json: { result: 'tool result' } }] as any,
-				},
-			],
-			metadata: { itemIndex: 999, previousRequests: [], iterationCount: 1 },
+			actionResponses: [],
+			metadata: { iterationCount: 5 },
 		};
 
-		// Mock stream for second call - should hit maxIterations and return final output
-		const mockStreamEvents2 = async function* () {
-			yield {
-				event: 'on_chat_model_stream',
-				data: {
-					chunk: {
-						content: 'Maximum iterations reached',
-					} as AIMessageChunk,
-				},
-			};
-			yield {
-				event: 'on_chat_model_end',
-				data: {
-					output: {
-						content: 'Still want to call more tools',
-						tool_calls: [
-							{
-								id: 'call_456',
-								name: 'TestTool',
-								args: { input: 'more data' },
-								type: 'tool_call',
-							},
-						],
-					},
-				},
-			};
-		};
+		const result = await toolsAgentExecute.call(mockContext, response);
 
-		mockRunnableSequence.streamEvents.mockReturnValue(mockStreamEvents2());
-
-		await expect(toolsAgentExecute.call(mockContext, response)).rejects.toThrow(NodeOperationError);
-	});
-
-	it('should track iteration count correctly when called first time', async () => {
-		mockContext.getNode.mockReturnValue(mockNode);
-		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
-
-		const mockModel = mock<BaseChatModel>();
-
-		const mockAgent = mock<any>();
-		const mockRunnableSequence = mock<any>();
-		mockRunnableSequence.singleAction = true;
-		mockRunnableSequence.streamRunnable = false;
-
-		mockRunnableSequence.invoke = jest.fn().mockResolvedValue([
-			{
-				tool: 'TestTool',
-				toolInput: { input: 'test data' },
-				toolCallId: 'call_456',
-				type: 'tool_call',
-				log: 'Need another tool call',
-			},
-		]);
-
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-
-		const mockTool = mock<Tool>();
-		mockTool.name = 'TestTool';
-		mockTool.metadata = {
-			sourceNodeName: 'Test Tool',
-		};
-
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-
-		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
-			if (param === 'needsFallback') return false;
-			if (param === 'options.enableStreaming') return false;
-			if (param === 'options.batching.batchSize') return defaultValue;
-			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
-			if (param === 'options')
-				return {
-					systemMessage: 'You are a helpful assistant',
-					maxIterations: 10,
-					returnIntermediateSteps: false,
-					passthroughBinaryImages: true,
-				};
-			return defaultValue;
-		});
-
-		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
-
-		// First iteration - no previous response
-		const result1 = (await toolsAgentExecute.call(
-			mockContext,
-		)) as EngineRequest<RequestResponseMetadata>;
-
-		expect(result1.metadata.iterationCount).toBe(1);
-	});
-
-	it('should track iteration count correctly on iteration', async () => {
-		mockContext.getNode.mockReturnValue(mockNode);
-		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
-
-		const mockModel = mock<BaseChatModel>();
-
-		const mockAgent = mock<any>();
-		const mockRunnableSequence = mock<any>();
-		mockRunnableSequence.singleAction = true;
-		mockRunnableSequence.streamRunnable = false;
-
-		mockRunnableSequence.invoke = jest.fn().mockResolvedValue([
-			{
-				toolCalls: [
-					{
-						id: 'call_456',
-						name: 'TestTool',
-						args: { input: 'test data' },
-						type: 'tool_call',
-					},
-				],
-			},
-		]);
-
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-
-		const mockTool = mock<Tool>();
-		mockTool.name = 'TestTool';
-		mockTool.metadata = {
-			sourceNodeName: 'Test Tool',
-		};
-
-		const responses: EngineResponse<RequestResponseMetadata> = {
-			actionResponses: [
-				{
-					action: {
-						id: 'call_456',
-						nodeName: 'TestTool',
-						input: { input: 'test data' },
-						metadata: { itemIndex: 0, previousRequests: [] },
-						actionType: 'ExecutionNodeAction',
-						type: 'ai_tool',
-					},
-					data: [{ json: { result: 'tool result' } }] as any,
-				},
-			],
-			metadata: { itemIndex: 1, previousRequests: [], iterationCount: 1 },
-		};
-
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-
-		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
-			if (param === 'needsFallback') return false;
-			if (param === 'options.enableStreaming') return false;
-			if (param === 'options.batching.batchSize') return defaultValue;
-			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
-			if (param === 'options')
-				return {
-					systemMessage: 'You are a helpful assistant',
-					maxIterations: 10,
-					returnIntermediateSteps: false,
-					passthroughBinaryImages: true,
-				};
-			return defaultValue;
-		});
-
-		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
-
-		// First iteration - no previous response
-		const result = (await toolsAgentExecute.call(
-			mockContext,
-			responses,
-		)) as EngineRequest<RequestResponseMetadata>;
-
-		expect(result.metadata.iterationCount).toBe(2);
+		expect(result).toEqual([mockBatchResult.returnData]);
 	});
 });

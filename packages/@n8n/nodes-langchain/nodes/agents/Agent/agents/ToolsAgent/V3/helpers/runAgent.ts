@@ -86,10 +86,14 @@ export async function runAgent(
 		// If result contains tool calls, build the request object like the normal flow
 		if (result.toolCalls && result.toolCalls.length > 0) {
 			const actions = await createEngineRequests(result.toolCalls, itemIndex, tools);
+			const currentIterationCount = response?.metadata?.iterationCount ?? 0;
 
 			return {
 				actions,
-				metadata: { previousRequests: buildSteps(response, itemIndex) },
+				metadata: {
+					previousRequests: buildSteps(response, itemIndex),
+					iterationCount: currentIterationCount + 1,
+				},
 			};
 		}
 
@@ -132,10 +136,14 @@ export async function runAgent(
 
 		// If response contains tool calls, we need to return this in the right format
 		const actions = await createEngineRequests(modelResponse, itemIndex, tools);
+		const currentIterationCount = response?.metadata?.iterationCount ?? 0;
 
 		return {
 			actions,
-			metadata: { previousRequests: buildSteps(response, itemIndex) },
+			metadata: {
+				previousRequests: buildSteps(response, itemIndex),
+				iterationCount: currentIterationCount + 1,
+			},
 		};
 	}
 }

@@ -64,4 +64,6 @@ export type RequestResponseMetadata = {
 	itemIndex?: number;
 	/** Previous tool call requests (for multi-turn conversations) */
 	previousRequests?: ToolCallData[];
+	/** Current iteration count (for max iterations enforcement) */
+	iterationCount?: number;
 };

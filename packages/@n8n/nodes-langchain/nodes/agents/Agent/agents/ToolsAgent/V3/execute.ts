@@ -1,4 +1,4 @@
-import { sleep } from 'n8n-workflow';
+import { NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	EngineRequest,
 	IExecuteFunctions,
@@ -30,6 +30,17 @@ export async function toolsAgentExecute(
 	response?: EngineResponse<RequestResponseMetadata>,
 ): Promise<INodeExecutionData[][] | EngineRequest<RequestResponseMetadata>> {
 	this.logger.debug('Executing Tools Agent V3');
+
+	// Check max iterations if this is a continuation of a previous execution
+	if (response?.metadata?.iterationCount !== undefined) {
+		const maxIterations = this.getNodeParameter('options.maxIterations', 0, 10) as number;
+		if (response.metadata.iterationCount >= maxIterations) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Max iterations (${maxIterations}) reached. The agent could not complete the task within the allowed number of iterations.`,
+			);
+		}
+	}
 
 	const returnData: INodeExecutionData[] = [];
 	let request: EngineRequest<RequestResponseMetadata> | undefined = undefined;
