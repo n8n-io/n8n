@@ -141,7 +141,7 @@ describe('WorkflowExecutionService', () => {
 			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
 				workflowData: { nodes: [node] },
 				startNodes: [],
-				destinationNode: node.name,
+				destinationNode: { nodeName: node.name, mode: 'exclusive' },
 				agentRequest: undefined,
 			});
 

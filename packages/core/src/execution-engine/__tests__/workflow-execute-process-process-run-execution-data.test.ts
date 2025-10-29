@@ -283,7 +283,7 @@ describe('processRunExecutionData', () => {
 			const executionData: IRunExecutionData = {
 				startData: {
 					startNodes: [{ name: node1.name, sourceData: null }],
-					destinationNode: node1.name,
+					destinationNode: { nodeName: node1.name, mode: 'exclusive' },
 				},
 				resultData: { runData: {} },
 				executionData: {

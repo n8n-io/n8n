@@ -119,7 +119,7 @@ export class WorkflowExecutionService {
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
-			destinationNode,
+			destinationNode?.nodeName,
 		);
 
 		// TODO: Reverse the order of events, first find out if the execution is
@@ -134,7 +134,7 @@ export class WorkflowExecutionService {
 		// here and either create the runData (e.g. scheduler trigger) or wait for
 		// a webhook or event.
 		if (destinationNode) {
-			if (this.isDestinationNodeATrigger(destinationNode, workflowData)) {
+			if (this.isDestinationNodeATrigger(destinationNode.nodeName, workflowData)) {
 				runData = undefined;
 			}
 		}

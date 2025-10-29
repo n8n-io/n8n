@@ -10,6 +10,7 @@ import type {
 	IHttpRequestMethods,
 	IRunData,
 	IWorkflowBase,
+	DestinationNode,
 } from 'n8n-workflow';
 
 import { authAllowlistedNodes } from './constants';
@@ -138,7 +139,7 @@ export class TestWebhooks implements IWebhookManager {
 						if (error !== null) reject(error);
 						else resolve(data);
 					},
-					destinationNode,
+					destinationNode ? { nodeName: destinationNode, mode: 'exclusive' as const } : undefined,
 				);
 
 				// The workflow did not run as the request was probably setup related
@@ -269,7 +270,7 @@ export class TestWebhooks implements IWebhookManager {
 		additionalData: IWorkflowExecuteAdditionalData;
 		runData?: IRunData;
 		pushRef?: string;
-		destinationNode?: string;
+		destinationNode?: DestinationNode;
 		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
 	}) {
 		const {
@@ -289,7 +290,7 @@ export class TestWebhooks implements IWebhookManager {
 		let webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
 			additionalData,
-			destinationNode,
+			destinationNode?.nodeName,
 			true,
 		);
 
@@ -347,7 +348,7 @@ export class TestWebhooks implements IWebhookManager {
 			const registration: TestWebhookRegistration = {
 				pushRef,
 				workflowEntity,
-				destinationNode,
+				destinationNode: destinationNode?.nodeName,
 				webhook: cacheableWebhook as IWebhookData,
 			};
 

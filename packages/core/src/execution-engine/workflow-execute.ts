@@ -40,6 +40,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	EngineRequest,
 	EngineResponse,
+	DestinationNode,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -118,24 +119,27 @@ export class WorkflowExecute {
 	run(
 		workflow: Workflow,
 		startNode?: INode,
-		destinationNode?: string,
+		destinationNode?: DestinationNode,
 		pinData?: IPinData,
 		triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'],
 	): PCancelable<IRun> {
 		this.status = 'running';
 
 		// Get the nodes to start workflow execution from
-		startNode = startNode || workflow.getStartNode(destinationNode);
+		startNode = startNode || workflow.getStartNode(destinationNode?.nodeName);
 
 		if (startNode === undefined) {
 			throw new ApplicationError('No node to start the workflow from could be found');
 		}
 
-		// If a destination node is given we only run the direct parent nodes and no others
+		// If a destination node is given we only run the direct parent nodes,
+		// and possibly the node itself if inclusive mode is set.
 		let runNodeFilter: string[] | undefined;
 		if (destinationNode) {
-			runNodeFilter = workflow.getParentNodes(destinationNode);
-			runNodeFilter.push(destinationNode);
+			runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
+			if (destinationNode.mode === 'inclusive') {
+				runNodeFilter.push(destinationNode.nodeName);
+			}
 		}
 
 		// Initialize the data of the start nodes
@@ -189,10 +193,11 @@ export class WorkflowExecute {
 		runData: IRunData,
 		pinData: IPinData = {},
 		dirtyNodeNames: string[] = [],
-		destinationNodeName: string,
+		destinationNode: DestinationNode,
 		agentRequest?: AiAgentRequest,
 	): PCancelable<IRun> {
-		const originalDestination = destinationNodeName;
+		let destinationNodeName = destinationNode.nodeName;
+		const originalDestination = destinationNode;
 
 		let destination = workflow.getNode(destinationNodeName);
 		assert.ok(
@@ -236,7 +241,7 @@ export class WorkflowExecute {
 				this.status = 'running';
 				this.runExecutionData = {
 					startData: {
-						destinationNode: destinationNodeName,
+						destinationNode: { nodeName: destinationNodeName, mode: destinationNode.mode },
 						runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 					},
 					resultData: {
@@ -308,7 +313,7 @@ export class WorkflowExecute {
 		this.status = 'running';
 		this.runExecutionData = {
 			startData: {
-				destinationNode: destinationNodeName,
+				destinationNode: { nodeName: destinationNodeName, mode: destinationNode.mode },
 				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
@@ -1370,7 +1375,7 @@ export class WorkflowExecute {
 
 		let destinationNode: string | undefined;
 		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
-			destinationNode = this.runExecutionData.startData.destinationNode;
+			destinationNode = this.runExecutionData.startData.destinationNode.nodeName;
 		}
 		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
 		const workflowIssues = this.checkReadyForExecution(workflow, {
@@ -1979,7 +1984,7 @@ export class WorkflowExecute {
 					if (
 						this.runExecutionData.startData &&
 						this.runExecutionData.startData.destinationNode &&
-						this.runExecutionData.startData.destinationNode === executionNode.name
+						this.runExecutionData.startData.destinationNode.nodeName === executionNode.name
 					) {
 						// Before stopping, make sure we are executing hooks so
 						// That frontend is notified for example for manual executions.

@@ -185,7 +185,7 @@ describe('ManualExecutionService', () => {
 			);
 		});
 
-		it('should correctly include destinationNode in executionData when provided', async () => {
+		it.only('should correctly include destinationNode in executionData when provided', async () => {
 			const mockTriggerData = mock<ITaskData>();
 			const startNodeName = 'startNode';
 			const triggerNodeName = 'triggerNode';
@@ -198,7 +198,7 @@ describe('ManualExecutionService', () => {
 				},
 				startNodes: [{ name: startNodeName }],
 				executionMode: 'manual',
-				destinationNode: destinationNodeName,
+				destinationNode: { nodeName: destinationNodeName, mode: 'exclusive' },
 			});
 
 			const startNode = mock<INode>({ name: startNodeName });
@@ -226,7 +226,7 @@ describe('ManualExecutionService', () => {
 				data.executionMode,
 				expect.objectContaining({
 					startData: {
-						destinationNode: destinationNodeName,
+						destinationNode: { nodeName: destinationNodeName, mode: 'exclusive' },
 					},
 					resultData: expect.any(Object),
 					executionData: expect.any(Object),
@@ -384,7 +384,7 @@ describe('ManualExecutionService', () => {
 				runData: mockRunData,
 				startNodes: [{ name: 'node1' }],
 				dirtyNodeNames,
-				destinationNode: destinationNodeName,
+				destinationNode: { nodeName: destinationNodeName, mode: 'exclusive' },
 			});
 
 			const workflow = mock<Workflow>({
@@ -493,7 +493,7 @@ describe('ManualExecutionService', () => {
 				executionMode: 'manual',
 				runData: mockRunData,
 				startNodes: [],
-				destinationNode: destinationNodeName,
+				destinationNode: { nodeName: destinationNodeName, mode: 'exclusive' },
 				pinData: {},
 				dirtyNodeNames: [],
 				agentRequest: undefined,

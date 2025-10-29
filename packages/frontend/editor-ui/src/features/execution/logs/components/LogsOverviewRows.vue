@@ -52,7 +52,9 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
 
 	if (latestName) {
-		await runWorkflow.runWorkflow({ destinationNode: latestName });
+		await runWorkflow.runWorkflow({
+			destinationNode: { nodeName: latestName, mode: 'inclusive' },
+		});
 	}
 }
 

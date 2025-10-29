@@ -557,6 +557,7 @@ const onDragEnd = (el: HTMLElement) => {
 											size="small"
 											type="secondary"
 											hide-icon
+											execution-mode="exclusive"
 										/>
 									</template>
 								</I18nT>

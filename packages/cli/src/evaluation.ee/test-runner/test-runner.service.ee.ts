@@ -318,7 +318,7 @@ export class TestRunnerService {
 		};
 
 		const data: IWorkflowExecutionDataProcess = {
-			destinationNode: triggerNode.name,
+			destinationNode: { nodeName: triggerNode.name, mode: 'inclusive' },
 			executionMode: 'manual',
 			runData: {},
 			workflowData: {
@@ -334,7 +334,7 @@ export class TestRunnerService {
 			userId: metadata.userId,
 			executionData: {
 				startData: {
-					destinationNode: triggerNode.name,
+					destinationNode: { nodeName: triggerNode.name, mode: 'inclusive' },
 				},
 				resultData: {
 					runData: {},

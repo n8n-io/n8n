@@ -396,10 +396,13 @@ describe('prepareExecutionData', () => {
 			webhookResultData,
 			undefined,
 			{},
-			'targetNode',
+			{ nodeName: 'targetNode', mode: 'exclusive' },
 		);
 
-		expect(runExecutionData.startData?.destinationNode).toBe('targetNode');
+		expect(runExecutionData.startData?.destinationNode).toEqual({
+			nodeName: 'targetNode',
+			mode: 'exclusive',
+		});
 	});
 
 	test('should update execution data with execution data merge', () => {

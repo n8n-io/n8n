@@ -868,28 +868,29 @@ export class Workflow {
 	 *
 	 */
 	getStartNode(destinationNode?: string): INode | undefined {
-		if (destinationNode) {
-			// Find the highest parent nodes of the given one
-			const nodeNames = this.getHighestNode(destinationNode);
-
-			if (nodeNames.length === 0) {
-				// If no parent nodes have been found then only the destination-node
-				// is in the tree so add that one
-				nodeNames.push(destinationNode);
-			}
-
-			// Check which node to return as start node
-			const node = this.__getStartNode(nodeNames);
-			if (node !== undefined) {
-				return node;
-			}
-
-			// If none of the above did find anything simply return the
-			// first parent node in the list
-			return this.nodes[nodeNames[0]];
+		if (!destinationNode) {
+			// If there's no destination, we consider all nodes.
+			return this.__getStartNode(Object.keys(this.nodes));
 		}
 
-		return this.__getStartNode(Object.keys(this.nodes));
+		// Find the highest parent nodes of the given one
+		const nodeNames = this.getHighestNode(destinationNode);
+
+		if (nodeNames.length === 0) {
+			// If no parent nodes have been found then only the destination-node
+			// is in the tree so add that one
+			nodeNames.push(destinationNode);
+		}
+
+		// Check which node to return as start node
+		const node = this.__getStartNode(nodeNames);
+		if (node !== undefined) {
+			return node;
+		}
+
+		// If none of the above did find anything simply return the
+		// first parent node in the list
+		return this.nodes[nodeNames[0]];
 	}
 
 	getConnectionsBetweenNodes(

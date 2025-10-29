@@ -29,6 +29,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
 	WebhookResponseData,
+	DestinationNode,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -296,7 +297,7 @@ export function prepareExecutionData(
 	webhookResultData: IWebhookResponseData,
 	runExecutionData: IRunExecutionData | undefined,
 	runExecutionDataMerge: object = {},
-	destinationNode?: string,
+	destinationNode?: DestinationNode,
 	executionId?: string,
 	workflowData?: IWorkflowBase,
 ): { runExecutionData: IRunExecutionData; pinData: IPinData | undefined } {
@@ -368,7 +369,7 @@ export async function executeWebhook(
 		error: Error | null,
 		data: IWebhookResponseCallbackData | WebhookResponse,
 	) => void,
-	destinationNode?: string,
+	destinationNode?: DestinationNode,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(

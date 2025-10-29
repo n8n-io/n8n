@@ -130,8 +130,8 @@ describe('Execution Lifecycle Hooks', () => {
 		};
 		successfulRunWithRewiredDestination.data = {
 			startData: {
-				destinationNode: 'PartialExecutionToolExecutor',
-				originalDestinationNode: nodeName,
+				destinationNode: { nodeName: 'PartialExecutionToolExecutor', mode: 'exclusive' },
+				originalDestinationNode: { nodeName: nodeName, mode: 'exclusive' },
 			},
 			resultData: {
 				runData: {},
@@ -182,7 +182,10 @@ describe('Execution Lifecycle Hooks', () => {
 					userId: expectedUserId,
 				});
 
-				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toBe(nodeName);
+				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toEqual({
+					nodeName,
+					mode: 'exclusive',
+				});
 				expect(
 					successfulRunWithRewiredDestination.data.startData?.originalDestinationNode,
 				).toBeUndefined();
