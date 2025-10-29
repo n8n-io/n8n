@@ -69,7 +69,8 @@ export class DynamicNodeParametersService {
 			payload.projectId &&
 			!(await userHasScopes(user, ['dataTable:listProject'], false, {
 				projectId: payload.projectId,
-			}))
+			})) &&
+			!(await userHasScopes(user, ['dataTable:list'], true, {}))
 		) {
 			this.logger.warn(
 				`Scrubbed inaccessible projectId ${payload.projectId} from DynamicNodeParameters request`,

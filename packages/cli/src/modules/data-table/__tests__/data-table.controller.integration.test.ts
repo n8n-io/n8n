@@ -229,8 +229,8 @@ describe('POST /projects/:projectId/data-tables', () => {
 describe('GET /projects/:projectId/data-tables', () => {
 	test('should not list data tables when project does not exist', async () => {
 		await authMemberAgent.get('/projects/non-existing-id/data-tables').expect(403);
-		await authAdminAgent.get('/projects/non-existing-id/data-tables').expect(403);
-		await authOwnerAgent.get('/projects/non-existing-id/data-tables').expect(403);
+		await authAdminAgent.get('/projects/non-existing-id/data-tables').expect(404);
+		await authOwnerAgent.get('/projects/non-existing-id/data-tables').expect(404);
 	});
 
 	test('should not list data tables if user has no access to project', async () => {
@@ -239,10 +239,10 @@ describe('GET /projects/:projectId/data-tables', () => {
 		await authMemberAgent.get(`/projects/${project.id}/data-tables`).expect(403);
 	});
 
-	test('should not list data tables if admin has no access to project', async () => {
+	test('should list data tables for admins', async () => {
 		const project = await createTeamProject('test project', owner);
 
-		await authAdminAgent.get(`/projects/${project.id}/data-tables`).expect(403);
+		await authAdminAgent.get(`/projects/${project.id}/data-tables`).expect(200);
 	});
 
 	test("should not list data tables from another user's personal project", async () => {
