@@ -1,0 +1,282 @@
+/**
+ * NexyHub Theme Overrides
+ * 
+ * This file maps n8n's design tokens to NexyHub colors.
+ * All n8n components reference these tokens, so overriding them
+ * will rebrand the entire application.
+ * 
+ * Color Strategy:
+ * - Primary (Blue #6b78cc) → Interactive elements, links, primary buttons
+ * - Accent (Green #adc91a) → Success states, secondary actions
+ * - Neutrals → UI structure, text, backgrounds
+ * - Semantic → Status indicators (success, warning, error)
+ * 
+ * Dark mode is default. Light mode adjustments handled separately if needed.
+ */
+
+@use './nexyhub-primitives' as nh;
+
+@mixin nexyhub-theme {
+	// Include primitive color definitions
+	@include nh.nexyhub-primitives;
+
+	// ==========================================
+	// PRIMARY COLOR SYSTEM
+	// ==========================================
+	// Maps to: Buttons, links, focus states, active navigation
+	
+	--color--primary--h: var(--nh--primary--h);
+	--color--primary--s: var(--nh--primary--s);
+	--color--primary--l: var(--nh--primary--l);
+
+	--color--primary--shade-1: var(--nh--primary-600);  // Hover/Active state
+	--color--primary: var(--nh--primary-500);            // Base primary
+	--color--primary--tint-1: var(--nh--primary-300);   // Light variant
+	--color--primary--tint-2: var(--nh--primary-100);   // Very light/backgrounds
+	--color--primary--tint-3: var(--nh--primary-50);    // Subtle backgrounds
+
+	// ==========================================
+	// SECONDARY COLOR SYSTEM
+	// ==========================================
+	// Maps to: Secondary buttons, badges, tags, alternative actions
+	// Using the green accent color for differentiation
+	
+	--color--secondary--shade-1: var(--nh--accent-700); // Dark green for hover
+	--color--secondary: var(--nh--accent-500);           // Base green
+	--color--secondary--tint-1: var(--nh--accent-300);  // Light green
+	--color--secondary--tint-2: var(--nh--accent-100);  // Very light green
+
+	// ==========================================
+	// SUCCESS COLOR SYSTEM
+	// ==========================================
+	// Maps to: Success messages, checkmarks, completed states
+	
+	--color--success--shade-1: var(--nh--accent-700);   // Dark green
+	--color--success: var(--nh--accent-500);             // Base green
+	--color--success--tint-1: var(--nh--accent-400);    // Light green
+	--color--success--tint-2: var(--nh--accent-300);    // Lighter
+	--color--success--tint-3: var(--nh--accent-200);    // Very light
+	--color--success--tint-4: var(--nh--accent-100);    // Background
+
+	// ==========================================
+	// WARNING COLOR SYSTEM
+	// ==========================================
+	// Maps to: Warning messages, caution states
+	
+	--color--warning--shade-1: var(--nh--warning-dark); // Dark orange
+	--color--warning: var(--nh--warning);                // Base orange
+	--color--warning--tint-1: #edb972;                   // Light orange (calculated)
+	--color--warning--tint-2: var(--nh--warning-light);  // Background
+
+	// ==========================================
+	// DANGER/ERROR COLOR SYSTEM
+	// ==========================================
+	// Maps to: Error messages, destructive actions, alerts
+	
+	--color--danger--shade-1: var(--nh--critical-dark); // Dark red
+	--color--danger: var(--nh--critical);                // Base red
+	--color--danger--tint-1: #e67878;                    // Light red (calculated)
+	--color--danger--tint-2: #f0b3b3;                    // Lighter red (calculated)
+	--color--danger--tint-3: var(--nh--critical-light);  // Background red
+	--color--danger--tint-4: #fdf5f5;                    // Very light background (calculated)
+
+	// ==========================================
+	// TEXT COLOR SYSTEM
+	// ==========================================
+	// Maps to: All text content across the application
+	// Using neutral scale for optimal readability
+	
+	--color--text--shade-1: var(--nh--neutral-400);     // Darkest text (e.g., on light surfaces)
+	--color--text: var(--nh--neutral-800);               // Base text color
+	--color--text--tint-1: var(--nh--neutral-700);      // Secondary text
+	--color--text--tint-2: var(--nh--neutral-600);      // Tertiary/disabled text
+	--color--text--tint-3: var(--nh--neutral-900);      // Lightest text
+	--color--text--danger: var(--nh--critical);          // Error text
+
+	// ==========================================
+	// FOREGROUND COLOR SYSTEM
+	// ==========================================
+	// Maps to: Borders, dividers, subtle UI elements
+	
+	--color--foreground--shade-2: var(--nh--neutral-100); // Very dark
+	--color--foreground--shade-1: var(--nh--neutral-300); // Dark
+	--color--foreground: var(--nh--neutral-400);           // Base foreground
+	--color--foreground--tint-1: var(--nh--neutral-500);  // Light borders
+	--color--foreground--tint-2: var(--nh--neutral-600);  // Lighter borders
+
+	// ==========================================
+	// BACKGROUND COLOR SYSTEM
+	// ==========================================
+	// Maps to: Page backgrounds, cards, panels, modals
+	// Dark mode: Dark backgrounds with lighter surfaces
+	
+	--color--background--shade-2: var(--nh--neutral-050); // Darkest (main background)
+	--color--background--shade-1: var(--nh--neutral-100); // Dark surface
+	--color--background: var(--nh--neutral-200);           // Base surface (cards/panels)
+	--color--background--light-1: var(--nh--neutral-250); // Calculated: slightly lighter
+	--color--background--light-2: var(--nh--neutral-300); // Light surface
+	--color--background--light-3: var(--nh--neutral-400); // Lightest surface
+
+	// Create intermediate value for better gradation
+	--nh--neutral-250: #1e2429; // Between 200 and 300
+
+	// ==========================================
+	// CANVAS / WORKFLOW EDITOR
+	// ==========================================
+	// The workflow editor uses specific canvas colors
+	
+	--canvas--color--background: var(--nh--neutral-050);  // Main canvas background
+	--canvas--dot--color: var(--nh--neutral-300);         // Dot grid color
+	--canvas--read-only-line--color: var(--nh--neutral-400);
+	--canvas--color--selected: rgba(107, 120, 204, 0.15); // Primary with opacity
+	--canvas--color--selected-transparent: rgba(107, 120, 204, 0.15);
+	--canvas--label--color--background: rgba(26, 31, 36, 0.9); // Semi-transparent
+	
+	// Canvas background HSL (for gradient calculations)
+	--canvas--color--background--h: 215;
+	--canvas--color--background--s: 10%;
+	--canvas--color--background--l: 7%;
+
+	// ==========================================
+	// NODE / WORKFLOW ELEMENT COLORS
+	// ==========================================
+	
+	--node--color--background: var(--nh--neutral-200);    // Node background
+	--node--color--background--executing: var(--nh--neutral-300);
+	--node--color--background--executing-1: var(--nh--neutral-300);
+	--node--border-color--pinned: var(--nh--primary-500); // Blue for pinned nodes
+	--node--type-main--color: var(--nh--primary-400);     // Node accent color
+
+	// ==========================================
+	// STICKY NOTES
+	// ==========================================
+	// Colorful sticky notes for workflow documentation
+	
+	--sticky--color--background: var(--nh--accent-800);   // Default: dark green
+	--sticky--border-color: var(--nh--accent-600);
+	--sticky--color--text: var(--nh--neutral-900);
+	--sticky--code--color--text: var(--nh--primary-200);
+	--sticky--code--color--background: rgba(107, 120, 204, 0.1);
+
+	// Sticky note variants (keeping n8n's variety but adjusted to NexyHub palette)
+	--sticky--color--background--variant-1: var(--nh--accent-800);  // Green (default)
+	--sticky--border-color--variant-1: var(--nh--accent-600);
+	
+	--sticky--color--background--variant-2: #1a2838;               // Blue-gray
+	--sticky--border-color--variant-2: #2e3a94;
+	
+	--sticky--color--background--variant-3: #382020;               // Red-brown
+	--sticky--border-color--variant-3: var(--nh--critical-dark);
+	
+	--sticky--color--background--variant-4: var(--nh--primary-800); // Blue
+	--sticky--border-color--variant-4: var(--nh--primary-600);
+	
+	--sticky--color--background--variant-5: #383020;               // Orange-brown
+	--sticky--border-color--variant-5: var(--nh--warning-dark);
+	
+	--sticky--color--background--variant-6: var(--nh--neutral-300); // Gray
+	--sticky--border-color--variant-6: var(--nh--neutral-500);
+	
+	--sticky--color--background--variant-7: var(--nh--neutral-200); // Light gray
+	--sticky--border-color--variant-7: var(--nh--neutral-400);
+
+	// ==========================================
+	// AI ASSISTANT COLORS
+	// ==========================================
+	// Gradient colors for AI-powered features
+	
+	--assistant--color--highlight-1: var(--nh--primary-400);   // Blue
+	--assistant--color--highlight-2: #8c7ed8;                  // Purple (calculated)
+	--assistant--color--highlight-3: var(--nh--critical);      // Red accent
+	
+	--assistant--button--color--background--gradient: linear-gradient(
+		var(--nh--neutral-300),
+		var(--nh--neutral-300)
+	);
+	--assistant--button--color--background--gradient--hover: linear-gradient(
+		var(--nh--neutral-400),
+		var(--nh--neutral-400)
+	);
+	--assistant--button--color--background--gradient--active: linear-gradient(
+		var(--nh--neutral-500),
+		var(--nh--neutral-500)
+	);
+	
+	--assistant--color--highlight-gradient: linear-gradient(
+		90deg,
+		var(--nh--primary-500),
+		var(--nh--accent-500)
+	);
+	--assistant--color--highlight-gradient--reverse: linear-gradient(
+		90deg,
+		var(--nh--accent-500),
+		var(--nh--primary-500)
+	);
+
+	// ==========================================
+	// LANGCHAIN / CHAT INTERFACE
+	// ==========================================
+	
+	--lm-chat--messages--color--background: var(--nh--neutral-100);
+	--lm-chat--bot--color--background: var(--nh--neutral-200);
+	--lm-chat--bot--border-color: var(--nh--neutral-400);
+	--lm-chat--user--color--background: var(--nh--primary-800);
+	--lm-chat--user--border-color: var(--nh--primary-600);
+
+	// ==========================================
+	// SHADOWS
+	// ==========================================
+	// Darker shadows for dark mode
+	
+	--shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 6px rgba(0, 0, 0, 0.15);
+	--shadow--dark: 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 6px rgba(0, 0, 0, 0.25);
+	--shadow--light: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+
+	// ==========================================
+	// NODE ICON COLORS
+	// ==========================================
+	// These map to different node types and integrations
+	
+	--node--icon--color--gray: var(--nh--neutral-700);
+	--node--icon--color--black: var(--nh--neutral-900);
+	--node--icon--color--blue: var(--nh--primary-400);
+	--node--icon--color--light-blue: #58abff; // Keeping distinct
+	--node--icon--color--green: var(--nh--accent-500);
+	--node--icon--color--dark-green: var(--nh--accent-700);
+	--node--icon--color--orange: var(--nh--warning);
+	--node--icon--color--red: var(--nh--critical);
+	--node--icon--color--purple: #8c7ed8; // Calculated midpoint between blue and red
+
+	// ==========================================
+	// BUTTON & LINK HOVER STATES
+	// ==========================================
+	
+	--button--color--background--primary--hover: var(--nh--primary-600);
+	--button--color--background--primary--active: var(--nh--primary-700);
+	--link--color: var(--nh--primary-400);
+	--link--color--hover: var(--nh--primary-300);
+
+	// ==========================================
+	// INPUT & FORM ELEMENTS
+	// ==========================================
+	
+	--input--color--background: var(--nh--neutral-200);
+	--input--color--background--focus: var(--nh--neutral-250);
+	--input--border-color: var(--nh--neutral-500);
+	--input--border-color--focus: var(--nh--primary-500);
+	--input--color--text: var(--nh--neutral-900);
+	--input--color--placeholder: var(--nh--neutral-600);
+
+	// ==========================================
+	// MISC UI ELEMENTS
+	// ==========================================
+	
+	--icon--color: var(--nh--neutral-700);
+	--icon--color--hover: var(--nh--primary-400);
+	
+	--grid--row--color--background--selected: var(--nh--primary-50);
+	--grid--cell--border-color--editing: 2px solid var(--nh--primary-500);
+	
+	--command-bar-item--color--background--hover: var(--nh--neutral-200);
+	--command-bar--shadow: 0 15px 45px 0 rgba(0, 0, 0, 0.3), 0 5px 10px 0 rgba(0, 0, 0, 0.2);
+}

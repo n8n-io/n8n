@@ -1,0 +1,88 @@
+/**
+ * NexyHub Primitive Colors
+ * 
+ * These are the base color values from the NexyHub design system.
+ * They should not be used directly in components - use the token mappings instead.
+ * 
+ * Color Analysis:
+ * - Primary (Blue): #6b78cc - HSL(230, 48%, 60%) - Professional, trustworthy
+ * - Accent (Green): #adc91a - HSL(68, 78%, 45%) - Vibrant, energetic
+ * - Neutrals: Cool gray scale with blue undertones
+ * - Critical: #d34747 - Red for errors/danger
+ * - Warning: #d8921a - Orange for warnings
+ */
+
+@mixin nexyhub-primitives {
+	// Brand Primary (Blue) - Main interactive color
+	// Darker shades for hover/active states, lighter for backgrounds
+	--nh--primary-900: #101534;
+	--nh--primary-800: #181f4f;
+	--nh--primary-700: #1f2866;
+	--nh--primary-600: #2e3a94; // Darker for hover states
+	--nh--primary-500: #6b78cc; // Base primary color
+	--nh--primary-400: #7583d2; // Slightly lighter
+	--nh--primary-300: #8c95d8; // Light variant
+	--nh--primary-200: #b3b9e5; // Very light
+	--nh--primary-100: #d9ddf2; // Background tint
+	--nh--primary-50: #eef0f9;  // Subtle background
+
+	// HSL values for dynamic color manipulation
+	--nh--primary--h: 230;
+	--nh--primary--s: 48%;
+	--nh--primary--l: 60%;
+
+	// Brand Accent (Green) - Success states, secondary actions
+	// Lime green with good visibility and energy
+	--nh--accent-900: #222a00;
+	--nh--accent-800: #313f00;
+	--nh--accent-700: #3e5200; // Dark green for text on light backgrounds
+	--nh--accent-600: #597b0a; // Darker green for hover
+	--nh--accent-500: #adc91a; // Base accent color
+	--nh--accent-400: #bedc55; // Lighter variant
+	--nh--accent-300: #d1e68f; // Light
+	--nh--accent-200: #e5f0c2; // Very light
+	--nh--accent-100: #f3f8e3; // Background tint
+
+	// Neutrals (Dark mode defaults)
+	// Cool gray scale with slight blue undertone for cohesion
+	--nh--neutral-900: #e8eaed; // Lightest - for text on dark backgrounds
+	--nh--neutral-800: #b5bcc3; // Light gray - secondary text
+	--nh--neutral-700: #9099a2; // Medium-light - tertiary text
+	--nh--neutral-600: #6b747d; // Medium - disabled text
+	--nh--neutral-500: #465058; // Medium-dark - borders
+	--nh--neutral-400: #2c343b; // Dark - subtle backgrounds
+	--nh--neutral-300: #23292f; // Darker - elevated surfaces
+	--nh--neutral-200: #1a1f24; // Very dark - cards/panels
+	--nh--neutral-100: #12161a; // Almost black - secondary background
+	--nh--neutral-050: #0b0d11; // Darkest - main background
+
+	// Neutrals (Light mode)
+	// Inverted scale for light mode
+	--nh--neutral-light-900: #1e2124; // Darkest text
+	--nh--neutral-light-800: #34393d; // Dark text
+	--nh--neutral-light-700: #4e555c; // Medium text
+	--nh--neutral-light-600: #6b747d; // Light text
+	--nh--neutral-light-500: #9099a2; // Disabled
+	--nh--neutral-light-400: #b5bcc3; // Borders
+	--nh--neutral-light-300: #d0d5da; // Light borders
+	--nh--neutral-light-200: #e8eaed; // Light backgrounds
+	--nh--neutral-light-100: #f5f6f7; // Lighter backgrounds
+	--nh--neutral-light-050: #ffffff; // White
+
+	// Semantic Colors
+	--nh--critical: #d34747;        // Red for errors
+	--nh--critical-dark: #b02d2d;   // Darker red for light mode
+	--nh--critical-light: #f9e6e6;  // Light red background
+
+	--nh--warning: #d8921a;         // Orange for warnings
+	--nh--warning-dark: #c07a00;    // Darker orange for light mode
+	--nh--warning-light: #f4e4c6;   // Light orange background
+
+	--nh--success: #adc91a;         // Green (matches accent)
+	--nh--success-dark: #4b6600;    // Darker green for light mode
+	--nh--success-light: #f3f8e3;   // Light green background
+
+	--nh--info: #6b78cc;            // Blue (matches primary)
+	--nh--info-dark: #2e3a94;       // Darker blue for light mode
+	--nh--info-light: #eef0f9;      // Light blue background
+}

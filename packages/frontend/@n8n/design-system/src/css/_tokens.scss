@@ -1,4 +1,5 @@
 @use 'sass:math';
+@use './themes/nexyhub/nexyhub-overrides' as nexyhub;
 
 /**
  * CSS Variable Naming Migration with Backwards Compatibility
@@ -745,6 +746,12 @@
 
 	--command-bar-item--color--background--hover: var(--color--background);
 	--command-bar--shadow: 0 15px 45px 0 hsla(0, 0%, 0%, 0.13), 0 5px 10px 0 hsla(0, 0%, 0%, 0.08);
+
+	// ==========================================
+	// NEXYHUB THEME OVERRIDE
+	// ==========================================
+	// This must be the LAST mixin call to ensure NexyHub colors override all n8n defaults
+	@include nexyhub.nexyhub-theme;
 }
 
 :root {
