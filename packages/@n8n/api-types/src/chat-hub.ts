@@ -33,34 +33,27 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
  */
 const openAIModelSchema = z.object({
 	provider: z.literal('openai'),
-	name: z.string(),
 	model: z.string(),
 });
 
 const anthropicModelSchema = z.object({
 	provider: z.literal('anthropic'),
-	name: z.string(),
 	model: z.string(),
 });
 
 const googleModelSchema = z.object({
 	provider: z.literal('google'),
-	name: z.string(),
 	model: z.string(),
 });
 
 const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
-	name: z.string(),
 	workflowId: z.string(),
-	description: z.string().nullable(),
 });
 
 const chatAgentSchema = z.object({
 	provider: z.literal('custom-agent'),
-	name: z.string(),
 	agentId: z.string(),
-	description: z.string().nullable(),
 });
 
 export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
@@ -71,6 +64,11 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	chatAgentSchema,
 ]);
 
+export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
+export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
+export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
+export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
+export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
 
 /**
@@ -83,13 +81,19 @@ export const chatModelsRequestSchema = z.object({
 
 export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 
+export interface ChatModelDto {
+	model: ChatHubConversationModel;
+	name: string;
+	description: string | null;
+}
+
 /**
  * Response type for fetching available chat models
  */
 export type ChatModelsResponse = Record<
 	ChatHubProvider,
 	{
-		models: ChatHubConversationModel[];
+		models: ChatModelDto[];
 		error?: string;
 	}
 >;

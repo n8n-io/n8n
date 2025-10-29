@@ -11,7 +11,7 @@ export function findOneFromModelsResponse(
 ): ChatHubConversationModel | undefined {
 	for (const provider of chatHubProviderSchema.options) {
 		if (response[provider].models.length > 0) {
-			return response[provider].models[0];
+			return response[provider].models[0].model;
 		}
 	}
 
