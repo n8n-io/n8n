@@ -15,6 +15,7 @@ export function calculateCategoryAverages(results: TestResult[]): Record<string,
 		efficiency: 0,
 		dataFlow: 0,
 		maintainability: 0,
+		bestPractices: 0,
 	};
 
 	results
@@ -27,6 +28,7 @@ export function calculateCategoryAverages(results: TestResult[]): Record<string,
 			categoryAverages.efficiency += r.evaluationResult.efficiency.score;
 			categoryAverages.dataFlow += r.evaluationResult.dataFlow.score;
 			categoryAverages.maintainability += r.evaluationResult.maintainability.score;
+			categoryAverages.bestPractices += r.evaluationResult.bestPractices.score;
 		});
 
 	Object.keys(categoryAverages).forEach((key) => {
@@ -60,6 +62,7 @@ export function countViolationsByType(results: TestResult[]): {
 				...r.evaluationResult.efficiency.violations,
 				...r.evaluationResult.dataFlow.violations,
 				...r.evaluationResult.maintainability.violations,
+				...r.evaluationResult.bestPractices.violations,
 			];
 			criticalCount += allViolations.filter((v) => v.type === 'critical').length;
 			majorCount += allViolations.filter((v) => v.type === 'major').length;
