@@ -28,7 +28,7 @@ const getPromptOption: (
 		type: 'string',
 		default: defaultPrompt,
 		description:
-			'The system prompt used by the guardrail. JSON output is enforced by the node automatically.',
+			'The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically.',
 		hint,
 		typeOptions: {
 			rows: 6,
@@ -434,7 +434,7 @@ export const versionDescription: INodeTypeDescription = {
 			name: 'systemMessage',
 			type: 'string',
 			description:
-				'The system message used by the guardrail to enforce JSON output according to schema',
+				'The system message used by the guardrail to enforce thresholds and JSON output according to schema',
 			hint: 'This message is appended after prompts defined by guardrails',
 			default: LLM_SYSTEM_RULES,
 			typeOptions: {
