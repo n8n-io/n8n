@@ -3,11 +3,11 @@ export function isArrayOfArray<A>(item: A[] | A[][]): item is A[][] {
 	return Array.isArray(item[0]);
 }
 
-export function get(
+export function get<T>(
 	object: Record<string, any> | undefined,
 	path: Array<string | number> | string,
-	defaultValue?: any,
-): any {
+	defaultValue?: T,
+): T | undefined {
 	if (typeof path === 'string') {
 		path = path.split('.').map((key) => {
 			const numKey = Number(key);

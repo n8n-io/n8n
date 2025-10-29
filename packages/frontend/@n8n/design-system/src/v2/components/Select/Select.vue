@@ -45,8 +45,6 @@ defineOptions({ inheritAttrs: false });
 const $style = useCssModule();
 
 const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
-	valueKey: 'value' as never,
-	labelKey: 'label' as never,
 	placeholder: 'Select an option',
 	variant: 'default',
 	size: 'small',
@@ -110,8 +108,8 @@ const groups = computed<SelectItemProps[]>(() => {
 		return isSelectItem(item)
 			? {
 					...item,
-					value: get(item, props.valueKey as string) as string,
-					label: String(get(item, props.labelKey as string)),
+					value: get(item, props.valueKey?.toString() ?? 'value'),
+					label: get(item, props.labelKey?.toString() ?? 'label'),
 					class: [$style.SelectItem, item.class, size.value],
 					strokeWidth: iconStrokeWidth.value,
 				}
