@@ -189,7 +189,7 @@ const moveResource = async () => {
 		}
 	} catch (error) {
 		toast.showError(
-			error.message,
+			error,
 			i18n.baseText('projects.move.resource.error.title', {
 				interpolate: {
 					resourceTypeLabel: props.data.resourceTypeLabel,
