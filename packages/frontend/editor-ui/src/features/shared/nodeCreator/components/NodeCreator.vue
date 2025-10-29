@@ -207,14 +207,14 @@ onClickOutside(
 	font-weight: var(--font-weight--bold);
 }
 .nodeCreator {
-	--node-creator-width: #{$node-creator-width};
+	--node-creator--width: #{$node-creator-width};
 	--node--icon--color: var(--color--text);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
 	right: 0;
 	z-index: var(--node-creator--z);
-	width: var(--node-creator-width);
+	width: var(--node-creator--width);
 	color: $node-creator-text-color;
 }
 
@@ -247,7 +247,7 @@ onClickOutside(
 
 @media screen and (max-width: #{$node-creator-width + $sidebar-width}) {
 	.nodeCreator {
-		--node-creator-width: calc(100vw - #{$sidebar-width});
+		--node-creator--width: calc(100vw - #{$sidebar-width});
 	}
 
 	.close {

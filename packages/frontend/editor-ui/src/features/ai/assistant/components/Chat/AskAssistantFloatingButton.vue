@@ -74,7 +74,7 @@ const onClick = async () => {
 .container {
 	position: absolute;
 	right: var(--spacing--sm);
-	bottom: var(--ask-assistant-floating-button-bottom-offset, --spacing--2xl);
+	bottom: var(--ask-assistant--floating-button--margin-bottom, --spacing--2xl);
 	z-index: var(--ask-assistant--floating-button--z);
 }
 

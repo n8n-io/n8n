@@ -819,6 +819,6 @@ function onRenameNode(value: string) {
 .forceHover {
 	color: var(--button--color--text--secondary--hover-active-focus);
 	border-color: var(--button--border-color--secondary--hover-active-focus);
-	background-color: var(--color-button-secondary-hover-active-focus-background);
+	background-color: var(--button--color--background--secondary--hover);
 }
 </style>

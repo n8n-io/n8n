@@ -181,8 +181,8 @@ function isActiveRange(presetValue: number) {
 
 <style module>
 .PresetButton {
-	// todo test
-	--button-border-color: transparent;
+	/* TODO: test */
+	--button--border-color: transparent;
 	text-align: left;
 	display: flex;
 }

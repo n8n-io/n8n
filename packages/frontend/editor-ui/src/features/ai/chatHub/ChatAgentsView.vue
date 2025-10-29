@@ -226,7 +226,7 @@ onMounted(async () => {
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 	padding: var(--spacing--xl);
 	gap: var(--spacing--xl);
 	overflow-y: auto;

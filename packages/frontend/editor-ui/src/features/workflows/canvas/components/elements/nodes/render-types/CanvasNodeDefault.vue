@@ -190,9 +190,9 @@ function onActivate(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node-border-width: 2px;
-	--trigger-node--border-radius: 36px;
-	--canvas-node--status-icons-offset: var(--spacing--3xs);
+	--canvas-node--border-width: 2px;
+	--trigger-node--radius: 36px;
+	--canvas-node--status-icons--margin: var(--spacing--3xs);
 	--node--icon--color: var(--color--foreground--shade-1);
 
 	position: relative;
@@ -201,14 +201,14 @@ function onActivate(event: MouseEvent) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: var(--canvas-node--background, var(--node--color--background));
-	border: var(--canvas-node-border-width) solid
+	background: var(--canvas-node--color--background, var(--node--color--background));
+	border: var(--canvas-node--border-width) solid
 		var(--canvas-node--border-color, var(--color--foreground--shade-2));
 	border-radius: var(--radius--lg);
 
 	&.trigger {
-		border-radius: var(--trigger-node--border-radius) var(--radius--lg) var(--radius--lg)
-			var(--trigger-node--border-radius);
+		border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
+			var(--trigger-node--radius);
 	}
 
 	/**
@@ -216,8 +216,11 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		background: var(--canvas-node--background, var(--node-type--supplemental--color--background));
-		border: var(--canvas-node-border-width) solid
+		background: var(
+			--canvas-node--color--background,
+			var(--node-type--supplemental--color--background)
+		);
+		border: var(--canvas-node--border-width) solid
 			var(--canvas-node--border-color, var(--color--foreground--shade-1));
 		border-radius: calc(var(--canvas-node--height) / 2);
 
@@ -228,7 +231,7 @@ function onActivate(event: MouseEvent) {
 
 	&.configurable {
 		.icon {
-			margin-left: calc(40px - (var(--node--icon--size)) / 2 - var(--canvas-node-border-width));
+			margin-left: calc(40px - (var(--node--icon--size)) / 2 - var(--canvas-node--border-width));
 		}
 
 		.description {
@@ -278,6 +281,7 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.selected {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
 		box-shadow: 0 0 0 calc(8px * var(--canvas-zoom-compensation-factor, 1))
 			var(--canvas--color--selected-transparent);
 	}
@@ -294,7 +298,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.error {
-		--canvas-node--border-color: var(--color-canvas-node-error-border-color, var(--color--danger));
+		--canvas-node--border-color: var(--canvas-node--border-color--error, var(--color--danger));
 	}
 
 	&.pinned {
@@ -367,8 +371,8 @@ function onActivate(event: MouseEvent) {
 
 .statusIcons {
 	position: absolute;
-	bottom: var(--canvas-node--status-icons-offset);
-	right: var(--canvas-node--status-icons-offset);
+	bottom: var(--canvas-node--status-icons--margin);
+	right: var(--canvas-node--status-icons--margin);
 }
 
 .icon {

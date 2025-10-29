@@ -86,6 +86,6 @@ const nodeTypeName = computed(() =>
 
 <style lang="scss" module>
 .nodeIcon {
-	--node--icon--color: var(--canvas-node-icon-color, v-bind(iconColor));
+	--node--icon--color: var(--canvas-node--icon-color, v-bind(iconColor));
 }
 </style>

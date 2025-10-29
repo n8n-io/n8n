@@ -190,20 +190,21 @@ echo ""
 # echo "✓ Font size tokens replaced"
 # echo ""
 
-# Z-index tokens
-echo "[New] Replacing z-index tokens..."
-echo "$files" | xargs perl -pi -e 's/--z-index-top-banners/--top-banners--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-app-header/--app-header--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-app-sidebar/--app-sidebar--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-workflow-preview-ndv/--workflow-preview--ndv--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-canvas-add-button/--canvas-add-button--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-codemirror-tooltip/--codemirror-tooltip--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-ask-assistant-chat/--ask-assistant--chat--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-ask-assistant-floating-button/--ask-assistant--floating-button--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-ndv/--ndv--z/g'
-echo "$files" | xargs perl -pi -e 's/--z-index-node-creator/--node-creator--z/g'
-echo "✓ Z-index tokens replaced"
-echo ""
+# NOTE: Commenting out - these were already run in previous iterations
+# # Z-index tokens
+# echo "[New] Replacing z-index tokens..."
+# echo "$files" | xargs perl -pi -e 's/--z-index-top-banners/--top-banners--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-app-header/--app-header--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-app-sidebar/--app-sidebar--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-workflow-preview-ndv/--workflow-preview--ndv--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-canvas-add-button/--canvas-add-button--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-codemirror-tooltip/--codemirror-tooltip--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-ask-assistant-chat/--ask-assistant--chat--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-ask-assistant-floating-button/--ask-assistant--floating-button--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-ndv/--ndv--z/g'
+# echo "$files" | xargs perl -pi -e 's/--z-index-node-creator/--node-creator--z/g'
+# echo "✓ Z-index tokens replaced"
+# echo ""
 
 # Height tokens
 echo "[New] Replacing height tokens..."
@@ -307,6 +308,40 @@ echo "[New] Replacing size tokens..."
 echo "$files" | xargs perl -pi -e 's/--node-size/--node--size/g'
 echo "$files" | xargs perl -pi -e 's/--plus-button-size/--plus-button--size/g'
 echo "✓ Size tokens replaced"
+echo ""
+
+# === New batch of tokens to fix remaining errors (excluding --chat namespace and unsupported properties) ===
+
+# Fix simple text color tokens
+echo "[Batch 2] Replacing remaining simple tokens..."
+echo "$files" | xargs perl -pi -e 's/--color-text-base/--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--color-text(?!-)/--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--border-base(?!-)/--border/g'
+echo "$files" | xargs perl -pi -e 's/--color-foreground-light/--color--foreground--tint-1/g'
+echo "✓ Simple tokens replaced"
+echo ""
+
+# Fix incorrect conversions that need property adjustments (excluding chat)
+echo "[Batch 2] Fixing property vocabulary issues..."
+echo "$files" | xargs perl -pi -e 's/--canvas-node--background/--canvas-node--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--canvas-node--status-icons-offset/--canvas-node--status-icons--margin/g'
+echo "$files" | xargs perl -pi -e 's/--trigger-node--border-radius/--trigger-node--radius/g'
+echo "✓ Property vocabulary issues fixed"
+echo ""
+
+# GitHub-style diff viewer variables (third-party lib conventions)
+echo "[Batch 2] Replacing third-party lib variables..."
+echo "$files" | xargs perl -pi -e 's/--fgColor-default/--diff--color--foreground/g'
+echo "$files" | xargs perl -pi -e 's/--bgColor-default/--diff--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-fg-subtle/--diff--color--foreground--subtle/g'
+echo "$files" | xargs perl -pi -e 's/--color-diff-blob-deletion-num-bg/--diff--blob--deletion-num--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-diff-blob-deletion-num-text/--diff--blob--deletion-num--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--color-danger-emphasis/--diff--color--danger--emphasis/g'
+echo "$files" | xargs perl -pi -e 's/--color-diff-blob-addition-num-text/--diff--blob--addition-num--color--text/g'
+echo "$files" | xargs perl -pi -e 's/--color-diff-blob-addition-num-bg/--diff--blob--addition-num--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--color-success-emphasis/--diff--color--success--emphasis/g'
+echo "$files" | xargs perl -pi -e 's/--color-diff-blob-hunk-num-bg/--diff--blob--hunk-num--color--background/g'
+echo "✓ Third-party lib variables replaced"
 echo ""
 
 echo "✓ Token replacements complete!"

@@ -45,23 +45,24 @@ const props = withDefaults(
 		}
 
 		&:global([theme='dark']) {
-			--fgColor-default: var(--color--text--shade-1);
-			--bgColor-default: var(--color--background--light-2);
-			--color-fg-subtle: var(--color--text--tint-1); // Muted text
+			// todo remove
+			--diff--color--foreground: var(--color--text--shade-1);
+			--diff--color--background: var(--color--background--light-2);
+			--diff--color--foreground--subtle: var(--color--text--tint-1); // Muted text
 
 			// deletions
-			--color-diff-blob-deletion-num-bg: var(--diff--color--deleted--light);
-			--color-diff-blob-deletion-num-text: var(--color--text--tint-3);
-			--color-danger-emphasis: var(--diff--color--deleted);
+			--diff--blob--deletion-num--color--background: var(--diff--color--deleted--light);
+			--diff--blob--deletion-num--color--text: var(--color--text--tint-3);
+			--diff--color--danger--emphasis: var(--diff--color--deleted);
 
 			// insertions
-			--color-diff-blob-addition-num-text: var(--color--text--tint-3);
-			--color-diff-blob-addition-num-bg: var(--diff--color--new--light);
-			--color-success-emphasis: var(--diff--color--new);
+			--diff--blob--addition-num--color--text: var(--color--text--tint-3);
+			--diff--blob--addition-num--color--background: var(--diff--color--new--light);
+			--diff--color--success--emphasis: var(--diff--color--new);
 
-			--color-diff-blob-hunk-num-bg: var(--color--background--shade-1);
+			--diff--blob--hunk-num--color--background: var(--color--background--shade-1);
 			:global(.blob-code-hunk) {
-				background-color: var(--color-diff-blob-hunk-num-bg);
+				background-color: var(--diff--blob--hunk-num--color--background);
 			}
 		}
 	}
