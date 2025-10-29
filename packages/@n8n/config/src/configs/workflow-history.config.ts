@@ -4,5 +4,5 @@ import { Config, Env } from '../decorators';
 export class WorkflowHistoryConfig {
 	/** Time (in hours) to keep workflow history versions for. `-1` means forever. */
 	@Env('N8N_WORKFLOW_HISTORY_PRUNE_TIME')
-	pruneTime: number = 24;
+	pruneTime: number = -1;
 }
