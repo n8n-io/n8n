@@ -152,6 +152,10 @@ class TaskExecutor:
                 logger.warning(
                     LOG_PIPE_READER_TIMEOUT.format(timeout=PIPE_READER_JOIN_TIMEOUT)
                 )
+                try:
+                    read_conn.close()
+                except Exception:
+                    pass
 
             if read_error_list:
                 raise TaskResultReadError(read_error_list[0])
