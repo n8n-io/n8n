@@ -5,6 +5,10 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	type ICredentialTestFunctions,
+	type ICredentialDataDecryptedObject,
+	type INodeCredentialTestResult,
+	type ICredentialsDecrypted,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
@@ -44,6 +48,7 @@ export class Baserow implements INodeType {
 			{
 				name: 'baserowApi',
 				required: true,
+				testedBy: 'testBaserowCredentials',
 			},
 		],
 		properties: [
@@ -186,6 +191,67 @@ export class Baserow implements INodeType {
 					authHeader,
 				)) as LoadedResource[];
 				return toOptions(fields);
+			},
+		},
+
+		credentialTest: {
+			async testBaserowCredentials(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted<ICredentialDataDecryptedObject>,
+			): Promise<INodeCredentialTestResult> {
+				const data = credential.data as {
+					authType: 'basic' | 'token';
+					host: string;
+					token?: string;
+					username?: string;
+					password?: string;
+				};
+
+				try {
+					// Database token authentication
+					if (data.authType === 'token') {
+						if (!data.token) {
+							return { status: 'Error', message: 'Missing token for token authentication.' };
+						}
+
+						await this.helpers.request({
+							baseURL: data.host,
+							url: '/api/database/tokens/check/',
+							method: 'GET',
+							headers: { Authorization: `Token ${data.token}` },
+							json: true,
+						});
+
+						return { status: 'OK', message: 'Token authentication successful.' };
+					}
+
+					// JWT username + password authentication
+					if (!data.username || !data.password) {
+						return { status: 'Error', message: 'Missing username or password.' };
+					}
+
+					const response = await this.helpers.request({
+						baseURL: data.host,
+						url: '/api/user/token-auth/',
+						method: 'POST',
+						json: true,
+						body: {
+							username: data.username,
+							password: data.password,
+						},
+					});
+
+					if (response?.token) {
+						return { status: 'OK', message: 'Username & password authentication successful.' };
+					}
+
+					return { status: 'Error', message: 'Authentication failed.' };
+				} catch (error: any) {
+					return {
+						status: 'Error',
+						message: error?.message ?? 'Connection test failed.',
+					};
+				}
 			},
 		},
 	};
