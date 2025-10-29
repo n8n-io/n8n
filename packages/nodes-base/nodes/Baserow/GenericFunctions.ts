@@ -3,7 +3,7 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IRequestOptions,
+	IHttpRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -23,14 +23,14 @@ export async function baserowApiRequest(
 ) {
 	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: authHeader,
 		},
 		method,
 		body,
 		qs,
-		uri: `${credentials.host}${endpoint}`,
+		url: `${credentials.host}${endpoint}`,
 		json: true,
 	};
 
@@ -43,7 +43,7 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.httpRequest(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -91,18 +91,18 @@ export async function getAuthorizationHeader(
 	{ username, password, authType, token, host }: BaserowCredentials,
 ) {
 	if (authType === 'basic') {
-		const options: IRequestOptions = {
+		const options: IHttpRequestOptions = {
 			method: 'POST',
 			body: {
 				username,
 				password,
 			},
-			uri: `${host}/api/user/token-auth/`,
+			url: `${host}/api/user/token-auth/`,
 			json: true,
 		};
 
 		try {
-			const { token } = (await this.helpers.request(options)) as { token: string };
+			const { token } = (await this.helpers.httpRequest(options)) as { token: string };
 			return `JWT ${token}`;
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), error as JsonObject);
