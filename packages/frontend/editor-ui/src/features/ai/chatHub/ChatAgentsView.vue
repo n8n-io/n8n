@@ -12,7 +12,7 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
@@ -45,19 +45,9 @@ const agentFilter = ref<ChatAgentFilter>({
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
-const readyToShowList = computed(() => chatStore.agentsReady);
+const readyToShowList = computed(() => chatStore.agentsReady && chatStore.modelsReady);
 const allModels = computed(() =>
-	chatStore.agents
-		.map<ChatHubConversationModel>((agent) => ({
-			provider: 'custom-agent',
-			agentId: agent.id,
-			name: agent.name,
-		}))
-		.concat(
-			chatStore.models.n8n.models.flatMap((model) =>
-				model.provider === 'n8n' ? [{ ...model, type: 'n8n-workflow' }] : [],
-			),
-		),
+	chatStore.models.n8n.models.concat(chatStore.models['custom-agent'].models),
 );
 
 const models = computed(() => {
@@ -135,11 +125,15 @@ watch(
 	credentialsByProvider,
 	(credentials) => {
 		if (credentials) {
-			void Promise.all([chatStore.fetchAgents(), chatStore.fetchChatModels(credentials)]);
+			void chatStore.fetchChatModels(credentials);
 		}
 	},
 	{ immediate: true },
 );
+
+onMounted(() => {
+	void chatStore.fetchAgents();
+});
 </script>
 
 <template>
