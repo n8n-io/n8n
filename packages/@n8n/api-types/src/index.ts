@@ -8,6 +8,12 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export {
 	chatHubConversationModelSchema,
+	type ChatModelDto,
+	type ChatHubOpenAIModel,
+	type ChatHubAnthropicModel,
+	type ChatHubGoogleModel,
+	type ChatHubN8nModel,
+	type ChatHubCustomAgentModel,
 	type ChatHubConversationModel,
 	chatHubProviderSchema,
 	type ChatHubProvider,
