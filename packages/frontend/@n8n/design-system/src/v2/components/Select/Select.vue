@@ -50,7 +50,6 @@ const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
 	placeholder: 'Select an option',
 	variant: 'default',
 	size: 'small',
-	selectedIcon: 'check',
 });
 const emit = defineEmits<SelectEmits<T, VK, M>>();
 const slots = defineSlots<SelectSlots<T, VK, M>>();
@@ -76,14 +75,14 @@ defineExpose({
 	triggerRef,
 });
 
-const variants: Record<SelectProps['variant'], string> = {
+const variants: Record<SelectVariants, string> = {
 	default: $style.Default,
 	ghost: $style.Ghost,
 };
 
 const variant = computed(() => variants[props.variant]);
 
-const sizes: Record<SelectProps['size'], string> = {
+const sizes: Record<SelectSizes, string> = {
 	xsmall: $style.XSmall,
 	small: $style.Small,
 	medium: $style.Medium,
@@ -98,7 +97,7 @@ const strokeWidths = {
 
 const iconStrokeWidth = computed(() => strokeWidths[props.size]);
 
-const labelSizes: Record<SelectProps['size'], string> = {
+const labelSizes: Record<SelectSizes, string> = {
 	xsmall: $style.SelectLabelXSmall,
 	small: $style.SelectLabelSmall,
 	medium: $style.SelectLabelMedium,
@@ -111,17 +110,15 @@ const groups = computed<SelectItemProps[]>(() => {
 		return isSelectItem(item)
 			? {
 					...item,
-					value: get(item, props.valueKey || 'value') as string,
-					label: String(get(item, props.labelKey || 'label')),
+					value: get(item, props.valueKey as string) as string,
+					label: String(get(item, props.labelKey as string)),
 					class: [$style.SelectItem, item.class, size.value],
 					strokeWidth: iconStrokeWidth.value,
-					selectedIcon: props.selectedIcon,
 				}
 			: {
 					value: item,
 					label: String(item),
 					class: [$style.SelectItem, size.value],
-					selectedIcon: props.selectedIcon,
 				};
 	});
 });
@@ -208,10 +205,10 @@ const groups = computed<SelectItemProps[]>(() => {
 	line-height: var(--line-height--md);
 	border: 1px solid transparent;
 	background-color: var(--color--background--light-2);
-	height: var(--spacing--lg);
+	height: 24px;
 	position: relative;
-	gap: var(--spacing--3xs);
-	color: var(--color--text);
+	gap: 6px;
+	color: var(--text--color);
 
 	&:focus {
 		box-shadow: 0 0 0 2px var(--color--secondary);
@@ -224,7 +221,7 @@ const groups = computed<SelectItemProps[]>(() => {
 	}
 
 	&[data-placeholder] {
-		color: var(--color--text);
+		color: var(--color--text--tint-1);
 	}
 
 	&[data-disabled] {
@@ -242,20 +239,20 @@ const groups = computed<SelectItemProps[]>(() => {
 }
 
 .XSmall {
-	min-height: var(--spacing--lg);
-	padding: 0 var(--spacing--2xs);
+	min-height: 24px;
+	padding: 0 8px;
 	font-size: var(--font-size--2xs);
 }
 
 .Small {
 	min-height: 28px;
-	padding: 0 var(--spacing--xs);
+	padding: 0 10px;
 	font-size: var(--font-size--2xs);
 }
 
 .Medium {
 	min-height: 36px;
-	padding: 0 var(--spacing--xs);
+	padding: 0 12px;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--sm);
 }
@@ -277,14 +274,15 @@ const groups = computed<SelectItemProps[]>(() => {
 	background-color: var(--color--background--light-2);
 	box-shadow: var(--shadow);
 	/**
-	 * High z-index to ensure select dropdown is above other elements
-	 * TODO: Replace with design system z-index variable when available
+	 * This is a very high z-index value to ensure the select component is always on top
+	 * we should remove this and use the auto z-index management system later on
+	 * i doubt this will cause issues given that if the content is visible it's the only thing a user can interact with
 	 */
 	z-index: 999999;
 }
 
 .SelectViewport {
-	padding: var(--spacing--4xs);
+	padding: 5px;
 }
 
 .SelectValue {
@@ -294,17 +292,17 @@ const groups = computed<SelectItemProps[]>(() => {
 }
 
 .SelectItem {
-	font-size: var(--font-size--xs);
+	font-size: 13px;
 	line-height: 1;
 	border-radius: var(--radius);
 	display: flex;
 	align-items: center;
-	height: var(--spacing--lg);
-	padding: 0 var(--spacing--2xs);
+	height: 24px;
+	padding: 0 8px;
 	position: relative;
 	user-select: none;
-	color: var(--color--text);
-	gap: var(--spacing--3xs);
+	color: var(--text--color);
+	gap: 6px;
 
 	&:not([data-disabled]) {
 		&:hover,
@@ -321,7 +319,7 @@ const groups = computed<SelectItemProps[]>(() => {
 }
 
 .SelectLabel {
-	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--4xs);
+	padding: 6px 8px 4px;
 	color: var(--color--text--tint-1);
 }
 
@@ -340,7 +338,7 @@ const groups = computed<SelectItemProps[]>(() => {
 .SelectSeparator {
 	height: 1px;
 	background-color: var(--border-color);
-	margin: var(--spacing--3xs);
+	margin: 6px;
 }
 
 .SelectItemIndicator {
@@ -356,7 +354,7 @@ const groups = computed<SelectItemProps[]>(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: var(--spacing--lg);
+	height: 24px;
 	cursor: default;
 }
 </style>

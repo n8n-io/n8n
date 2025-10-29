@@ -27,13 +27,11 @@ vi.mock('is-emoji-supported', () => ({
  */
 beforeAll(() => {
 	// Patch missing pointer APIs
-	interface ElementProtoWithPointer extends HTMLElement {
+	const elementProto = HTMLElement.prototype as HTMLElement & {
 		hasPointerCapture?: (pointerId: number) => boolean;
 		setPointerCapture?: (pointerId: number) => void;
 		releasePointerCapture?: (pointerId: number) => void;
-	}
-	
-	const elementProto: ElementProtoWithPointer = HTMLElement.prototype;
+	};
 
 	if (!elementProto.hasPointerCapture) {
 		Object.defineProperties(elementProto, {
@@ -59,37 +57,21 @@ const OriginalPointerEvent = window.PointerEvent || window.MouseEvent;
 
 // Patched MouseEvent
 class PatchedMouseEvent extends OriginalMouseEvent {
-	private _defaultPrevented = false;
-
 	constructor(type: string, eventInit?: MouseEventInit) {
 		super(type, eventInit);
-	}
-
-	preventDefault() {
-		super.preventDefault();
-		this._defaultPrevented = true;
-	}
-
-	get defaultPrevented() {
-		return this._defaultPrevented;
+		Object.defineProperty(this, 'defaultPrevented', {
+			get: () => false,
+		});
 	}
 }
 
 // Patched PointerEvent
 class PatchedPointerEvent extends OriginalPointerEvent {
-	private _defaultPrevented = false;
-
 	constructor(type: string, eventInit?: PointerEventInit) {
 		super(type, eventInit);
-	}
-
-	preventDefault() {
-		super.preventDefault();
-		this._defaultPrevented = true;
-	}
-
-	get defaultPrevented() {
-		return this._defaultPrevented;
+		Object.defineProperty(this, 'defaultPrevented', {
+			get: () => false,
+		});
 	}
 }
 
