@@ -137,7 +137,7 @@ export async function process(
 				name: 'jailbreak',
 				check: createJailbreakCheckFn({
 					model,
-					prompt: prompt ?? JAILBREAK_PROMPT,
+					prompt: prompt?.trim() || JAILBREAK_PROMPT,
 					threshold,
 					systemMessage: options.systemMessage,
 				}),
@@ -150,7 +150,7 @@ export async function process(
 				name: 'nsfw',
 				check: createNSFWCheckFn({
 					model,
-					prompt: prompt ?? NSFW_SYSTEM_PROMPT,
+					prompt: prompt?.trim() || NSFW_SYSTEM_PROMPT,
 					threshold,
 					systemMessage: options.systemMessage,
 				}),
@@ -163,7 +163,7 @@ export async function process(
 				name: 'topicalAlignment',
 				check: createTopicalAlignmentCheckFn({
 					model,
-					prompt: prompt ?? TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
+					prompt: prompt?.trim() || TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
 					systemMessage: options.systemMessage,
 					threshold,
 				}),
