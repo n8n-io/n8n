@@ -9,7 +9,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useSettingsStore } from '@/stores/settings.store';
-import VirtualSchemaHeader from '@/features/ndv/components/runData/VirtualSchemaHeader.vue';
+import VirtualSchemaHeader from '@/features/ndv/runData/components/VirtualSchemaHeader.vue';
 
 describe('VirtualSchemaHeader.vue', () => {
 	let renderComponent: ReturnType<typeof createComponentRenderer>;

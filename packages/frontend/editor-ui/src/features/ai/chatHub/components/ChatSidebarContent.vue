@@ -7,7 +7,7 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { groupConversationsByDate } from '@/features/ai/chatHub/chat.utils';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { CHAT_VIEW, CHAT_AGENTS_VIEW } from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import Logo from '@n8n/design-system/components/N8nLogo';
@@ -112,6 +112,13 @@ onMounted(async () => {
 				label="New Chat"
 				icon="square-pen"
 				:active="route.name === CHAT_VIEW"
+				@click="sidebar.toggleOpen(false)"
+			/>
+			<ChatSidebarLink
+				:to="{ name: CHAT_AGENTS_VIEW }"
+				label="Custom Agents"
+				icon="robot"
+				:active="route.name === CHAT_AGENTS_VIEW"
 				@click="sidebar.toggleOpen(false)"
 			/>
 		</div>

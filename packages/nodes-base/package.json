@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.115.0",
+  "version": "1.116.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -50,6 +50,7 @@
       "dist/credentials/BaserowApi.credentials.js",
       "dist/credentials/BeeminderApi.credentials.js",
       "dist/credentials/BeeminderOAuth2Api.credentials.js",
+      "dist/credentials/BitbucketAccessTokenApi.credentials.js",
       "dist/credentials/BitbucketApi.credentials.js",
       "dist/credentials/BitlyApi.credentials.js",
       "dist/credentials/BitlyOAuth2Api.credentials.js",

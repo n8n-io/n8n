@@ -5,32 +5,38 @@ import {
 	ChatHubConversationResponse,
 	ChatHubEditMessageRequest,
 	ChatHubRegenerateMessageRequest,
-	ChatHubChangeConversationTitleRequest,
+	ChatHubUpdateConversationRequest,
 	ChatSessionId,
 	ChatMessageId,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Post, Body, GlobalScope, Get, Delete, Param } from '@n8n/decorators';
+import {
+	RestController,
+	Post,
+	Body,
+	GlobalScope,
+	Get,
+	Delete,
+	Param,
+	Patch,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
-import { ChatHubService } from './chat-hub.service';
-import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
-/* eslint-disable @typescript-eslint/naming-convention */
-const JSONL_STREAM_HEADERS = {
-	'Content-Type': 'application/json-lines; charset=utf-8',
-	'Transfer-Encoding': 'chunked',
-	'Cache-Control': 'no-cache',
-	Connection: 'keep-alive',
-};
-/* eslint-enable @typescript-eslint/naming-convention */
+import { ChatHubService } from './chat-hub.service';
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
 @RestController('/chat')
 export class ChatHubController {
 	constructor(
 		private readonly chatService: ChatHubService,
+		private readonly chatAgentService: ChatHubAgentService,
 		private readonly logger: Logger,
 	) {}
 
@@ -70,9 +76,6 @@ export class ChatHubController {
 		res: Response,
 		@Body payload: ChatHubSendMessageRequest,
 	) {
-		res.writeHead(200, JSONL_STREAM_HEADERS);
-		res.flushHeaders();
-
 		this.logger.debug(`Chat send request received: ${JSON.stringify(payload)}`);
 
 		try {
@@ -80,21 +83,25 @@ export class ChatHubController {
 				...payload,
 				userId: req.user.id,
 			});
-		} catch (executionError: unknown) {
-			assert(executionError instanceof Error);
+		} catch (error: unknown) {
+			assert(error instanceof Error);
 
-			this.logger.error(`Error in chat send endpoint: ${executionError}`);
+			this.logger.error(`Error in chat send endpoint: ${error}`);
 
 			if (!res.headersSent) {
+				if (error instanceof ResponseError) {
+					throw error;
+				}
+
 				res.status(500).json({
 					code: 500,
-					message: executionError.message,
+					message: error.message,
 				});
 			} else if (!res.writableEnded) {
 				res.write(
 					JSON.stringify({
 						type: 'error',
-						content: executionError.message,
+						content: error.message,
 					}) + '\n',
 				);
 				res.flush();
@@ -113,9 +120,6 @@ export class ChatHubController {
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
 	) {
-		res.writeHead(200, JSONL_STREAM_HEADERS);
-		res.flushHeaders();
-
 		this.logger.debug(`Chat edit request received: ${JSON.stringify(payload)}`);
 
 		try {
@@ -125,22 +129,25 @@ export class ChatHubController {
 				editId,
 				userId: req.user.id,
 			});
-		} catch (executionError: unknown) {
-			assert(executionError instanceof Error);
+		} catch (error: unknown) {
+			assert(error instanceof Error);
 
-			this.logger.error(`Error in chat edit endpoint: ${executionError}`);
+			this.logger.error(`Error in chat edit endpoint: ${error}`);
 
 			if (!res.headersSent) {
+				if (error instanceof ResponseError) {
+					throw error;
+				}
+
 				res.status(500).json({
 					code: 500,
-					message: executionError.message,
+					message: error.message,
 				});
 			} else if (!res.writableEnded) {
 				res.write(
 					JSON.stringify({
 						type: 'error',
-						content: executionError.message,
-						id: payload.replyId,
+						content: error.message,
 					}) + '\n',
 				);
 				res.flush();
@@ -159,9 +166,6 @@ export class ChatHubController {
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
 	) {
-		res.writeHead(200, JSONL_STREAM_HEADERS);
-		res.flushHeaders();
-
 		this.logger.debug(`Chat retry request received: ${JSON.stringify(payload)}`);
 
 		try {
@@ -171,22 +175,25 @@ export class ChatHubController {
 				retryId,
 				userId: req.user.id,
 			});
-		} catch (executionError: unknown) {
-			assert(executionError instanceof Error);
+		} catch (error: unknown) {
+			assert(error instanceof Error);
 
-			this.logger.error(`Error in chat retry endpoint: ${executionError}`);
+			this.logger.error(`Error in chat retry endpoint: ${error}`);
 
 			if (!res.headersSent) {
+				if (error instanceof ResponseError) {
+					throw error;
+				}
+
 				res.status(500).json({
 					code: 500,
-					message: executionError.message,
+					message: error.message,
 				});
 			} else if (!res.writableEnded) {
 				res.write(
 					JSON.stringify({
 						type: 'error',
-						content: executionError.message,
-						id: payload.replyId,
+						content: error.message,
 					}) + '\n',
 				);
 				res.flush();
@@ -210,15 +217,17 @@ export class ChatHubController {
 		res.status(204).send();
 	}
 
-	@Post('/conversations/:sessionId/rename')
+	@Patch('/conversations/:sessionId')
 	@GlobalScope('chatHub:message')
-	async updateConversationTitle(
+	async updateConversation(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
-		@Body payload: ChatHubChangeConversationTitleRequest,
+		@Body payload: ChatHubUpdateConversationRequest,
 	): Promise<ChatHubConversationResponse> {
-		await this.chatService.updateSessionTitle(req.user.id, sessionId, payload.title);
+		if (Object.keys(payload).length > 0) {
+			await this.chatService.updateSession(req.user, sessionId, payload);
+		}
 
 		return await this.chatService.getConversation(req.user.id, sessionId);
 	}
@@ -231,6 +240,51 @@ export class ChatHubController {
 		@Param('sessionId') sessionId: ChatSessionId,
 	): Promise<void> {
 		await this.chatService.deleteSession(req.user.id, sessionId);
+
+		res.status(204).send();
+	}
+
+	@Get('/agents')
+	@GlobalScope('chatHubAgent:list')
+	async getAgents(req: AuthenticatedRequest) {
+		return await this.chatAgentService.getAgentsByUserId(req.user.id);
+	}
+
+	@Get('/agents/:agentId')
+	@GlobalScope('chatHubAgent:read')
+	async getAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
+		return await this.chatAgentService.getAgentById(agentId, req.user.id);
+	}
+
+	@Post('/agents')
+	@GlobalScope('chatHubAgent:create')
+	async createAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ChatHubCreateAgentRequest,
+	) {
+		return await this.chatAgentService.createAgent(req.user, payload);
+	}
+
+	@Post('/agents/:agentId')
+	@GlobalScope('chatHubAgent:update')
+	async updateAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: ChatHubUpdateAgentRequest,
+	) {
+		return await this.chatAgentService.updateAgent(agentId, req.user, payload);
+	}
+
+	@Delete('/agents/:agentId')
+	@GlobalScope('chatHubAgent:delete')
+	async deleteAgent(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<void> {
+		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
 	}

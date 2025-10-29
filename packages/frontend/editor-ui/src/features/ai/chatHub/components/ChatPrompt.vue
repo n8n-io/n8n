@@ -1,27 +1,28 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
-import { N8nIconButton, N8nInput } from '@n8n/design-system';
+import type { ChatHubConversationModel, ChatHubLLMProvider } from '@n8n/api-types';
+import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
-import { computed } from 'vue';
-import { ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import { useChatStore } from '../chat.store';
 
-const { selectedModel } = defineProps<{
+const { selectedModel, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
 	selectedModel: ChatHubConversationModel | null;
-	isCredentialsSelected: boolean;
+	isMissingCredentials: boolean;
 }>();
 
 const emit = defineEmits<{
 	submit: [string];
 	stop: [];
 	selectModel: [];
-	setCredentials: [ChatHubProvider];
+	setCredentials: [ChatHubLLMProvider];
 }>();
 
-const inputRef = useTemplateRef('inputRef');
+const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const message = ref('');
+const chatStore = useChatStore();
 
 const toast = useToast();
 
@@ -31,14 +32,17 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
+const selected = computed(() => {
+	if (!selectedModel || !chatStore.models) return null;
+	return chatStore.getModel(selectedModel) ?? null;
+});
+
 const placeholder = computed(() => {
 	if (!selectedModel) {
 		return 'Select a model';
 	}
 
-	const modelName = selectedModel.model;
-
-	return `Message ${modelName}`;
+	return `Message ${selected.value?.name ?? 'a model'}...`;
 });
 
 function onMic() {
@@ -106,17 +110,20 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
-			<div v-if="!selectedModel" :class="$style.callout">
+			<N8nText v-if="!selectedModel" :class="$style.callout">
 				Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
 				conversation
-			</div>
-			<div v-else-if="!isCredentialsSelected" :class="$style.callout">
+			</N8nText>
+			<N8nText v-else-if="isMissingCredentials" :class="$style.callout">
 				Please
-				<a href="" @click.prevent="emit('setCredentials', selectedModel.provider)">
+				<a
+					href=""
+					@click.prevent="emit('setCredentials', selectedModel.provider as ChatHubLLMProvider)"
+				>
 					set credentials
 				</a>
 				for {{ providerDisplayNames[selectedModel.provider] }} to start a conversation
-			</div>
+			</N8nText>
 			<N8nInput
 				ref="inputRef"
 				v-model="message"
@@ -126,7 +133,7 @@ defineExpose({
 				autocomplete="off"
 				:autosize="{ minRows: 1, maxRows: 6 }"
 				autofocus
-				:disabled="!isCredentialsSelected || !selectedModel"
+				:disabled="isMissingCredentials || !selectedModel"
 				@keydown="handleKeydownTextarea"
 			/>
 
@@ -136,7 +143,7 @@ defineExpose({
 					native-type="button"
 					type="secondary"
 					title="Attach"
-					:disabled="!isCredentialsSelected || !selectedModel || isResponding"
+					:disabled="isMissingCredentials || !selectedModel || isResponding"
 					icon="paperclip"
 					icon-size="large"
 					text
@@ -147,7 +154,7 @@ defineExpose({
 					native-type="button"
 					:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
 					type="secondary"
-					:disabled="!isCredentialsSelected || !selectedModel || isResponding"
+					:disabled="isMissingCredentials || !selectedModel || isResponding"
 					:icon="speechInput.isListening.value ? 'square' : 'mic'"
 					:class="{ [$style.recording]: speechInput.isListening.value }"
 					icon-size="large"
@@ -156,7 +163,7 @@ defineExpose({
 				<N8nIconButton
 					v-if="!isResponding"
 					native-type="submit"
-					:disabled="!isCredentialsSelected || !selectedModel || !message.trim()"
+					:disabled="isMissingCredentials || !selectedModel || !message.trim()"
 					title="Send"
 					icon="arrow-up"
 					icon-size="large"
@@ -191,7 +198,7 @@ defineExpose({
 .callout {
 	color: var(--color--secondary);
 	background-color: hsla(247, 49%, 53%, 0.1);
-	padding: 16px 16px 32px;
+	padding: 12px 16px 24px;
 	border-top-left-radius: 16px;
 	border-top-right-radius: 16px;
 	width: 100%;

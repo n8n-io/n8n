@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { XYPosition } from '@/Interface';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';

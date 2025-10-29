@@ -19,6 +19,7 @@ import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
 import { ProjectService } from '@/services/project.service.ee';
+import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class ProvisioningService {
@@ -33,6 +34,7 @@ export class ProvisioningService {
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async init() {
@@ -106,33 +108,51 @@ export class ProvisioningService {
 	}
 
 	/**
-	 * @param projectIdToRole expected to be a JSON string for a map of project IDs to role slugs
+	 * @param projectIdToRole expected to be an array of strings like this:
+	 * [
+	 *   "<projectUuid>:<projectRoleDisplayName>",
+	 *   "<projectUuid>:<projectRoleDisplayName>",
+	 *   ...
+	 * ]
 	 */
-	async provisionProjectRolesForUser(userId: string, projectIdToRole: unknown): Promise<void> {
-		if (typeof projectIdToRole !== 'string') {
+	async provisionProjectRolesForUser(userId: string, projectIdToRoles: unknown): Promise<void> {
+		if (!Array.isArray(projectIdToRoles)) {
 			this.logger.warn(
-				`Skipping project role provisioning. Invalid projectIdToRole type: expected string, received ${typeof projectIdToRole}`,
-				{ userId, projectIdToRole },
+				`Skipping project role provisioning. Invalid projectIdToRole type: expected array, received ${typeof projectIdToRoles}`,
+				{ userId, projectIdToRoles },
 			);
 			return;
 		}
 
 		let projectRoleMap: Record<string, string>;
 		try {
-			projectRoleMap = JSON.parse(projectIdToRole);
-			for (const [key, value] of Object.entries(projectRoleMap)) {
-				if (typeof key !== 'string' || typeof value !== 'string') {
+			projectRoleMap = {};
+			for (const entry of projectIdToRoles) {
+				if (typeof entry !== 'string') {
 					this.logger.warn(
-						`Skipping project role mapping for ${key}:${value}. Invalid types: expected both key and value to be strings.`,
-						{ userId },
+						`Skipping invalid project role mapping entry. Expected string, received ${typeof entry}.`,
+						{ userId, entry },
 					);
-					delete projectRoleMap[key];
+					continue;
 				}
+
+				const [projectId, roleSlugSuffix] = entry.split(':');
+				if (!projectId || !roleSlugSuffix) {
+					this.logger.warn(
+						`Skipping invalid project role mapping entry. Expected format "projectId:displayName", received "${entry}".`,
+						{ userId, entry },
+					);
+					continue;
+				}
+
+				// This means that if the external SSO setup has two roles configured
+				// for the same projectId, we only provision the one we see last in the sent list.
+				projectRoleMap[projectId] = `project:${roleSlugSuffix}`;
 			}
 		} catch (error) {
 			this.logger.warn(
 				'Skipping project role provisioning. Failed to parse project to role mapping.',
-				{ userId, projectIdToRole },
+				{ userId, projectIdToRoles },
 			);
 			return;
 		}
@@ -154,11 +174,10 @@ export class ProvisioningService {
 					slug: In(roleSlugs),
 					roleType: 'project',
 				},
-				select: ['slug'],
+				select: ['displayName', 'slug'],
 			}),
 		]);
 		const existingProjectIds = new Set(existingProjects.map((project) => project.id));
-		const existingRoleSlugs = new Set(existingRoles.map((r) => r.slug));
 
 		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
 
@@ -166,21 +185,21 @@ export class ProvisioningService {
 		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
 			if (!existingProjectIds.has(projectId)) {
 				this.logger.warn(
-					`Skipping project role provisioning. Project with ID ${projectId} not found.`,
+					`Skipped provisioning project role for project with ID ${projectId}, because project does not exist or is a personal project.`,
 					{ userId, projectId, roleSlug },
 				);
 				continue;
 			}
-
-			if (!existingRoleSlugs.has(roleSlug)) {
+			const role = existingRoles.find((role) => role.slug === roleSlug);
+			if (!role) {
 				this.logger.warn(
-					`Skipping project role provisioning. Role with slug ${roleSlug} not found or is not a project role.`,
+					`Skipping project role provisioning for role with slug ${roleSlug}, because role does not exist or is not specific to projects.`,
 					{ userId, projectId, roleSlug },
 				);
 				continue;
 			}
 
-			validProjectToRoleMappings.push({ projectId, roleSlug });
+			validProjectToRoleMappings.push({ projectId, roleSlug: role.slug });
 		}
 
 		if (validProjectToRoleMappings.length === 0) {
@@ -265,7 +284,10 @@ export class ProvisioningService {
 
 		this.provisioningConfig = await this.loadConfig();
 
-		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
+		if (this.instanceSettings.isMultiMain) {
+			await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
+		}
+
 		return await this.getConfig();
 	}
 
@@ -306,5 +328,23 @@ export class ProvisioningService {
 		}
 
 		return envProvidedConfig;
+	}
+
+	async isProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return (
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles
+		);
+	}
+
+	async isInstanceRoleProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProvisionInstanceRole;
+	}
+
+	async isProjectRolesProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProvisionProjectRoles;
 	}
 }
