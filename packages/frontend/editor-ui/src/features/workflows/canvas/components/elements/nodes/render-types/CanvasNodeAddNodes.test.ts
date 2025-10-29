@@ -3,14 +3,14 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY, TEMPLATES_URLS, VIEWS } from '@/constants';
+import { TEMPLATES_URLS, VIEWS, EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useTemplatesDataGatheringStore } from '@/experiments/templatesDataGathering/stores/templatesDataGathering.store';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import { setActivePinia } from 'pinia';
 import * as vueRouter from 'vue-router';
 import CanvasNodeAddNodes from './CanvasNodeAddNodes.vue';
@@ -37,7 +37,7 @@ vi.mock('@/stores/posthog.store', () => ({
 	})),
 }));
 
-vi.mock('@/utils/experiments', async (importOriginal) => {
+vi.mock('@/experiments/utils', async (importOriginal) => {
 	const actual = await importOriginal<object>();
 
 	return {
@@ -57,7 +57,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let templatesStore: ReturnType<typeof useTemplatesStore>;
 let uiStore: ReturnType<typeof useUIStore>;
-let templatesDataGatheringStore: ReturnType<typeof useTemplatesDataGatheringStore>;
+let templatesDataQualityStore: ReturnType<typeof useTemplatesDataQualityStore>;
 let router: ReturnType<typeof vueRouter.useRouter>;
 
 const renderComponent = createComponentRenderer(CanvasNodeAddNodes, {
@@ -77,7 +77,7 @@ describe('CanvasNodeAddNodes', () => {
 		settingsStore = useSettingsStore();
 		templatesStore = useTemplatesStore();
 		uiStore = useUIStore();
-		templatesDataGatheringStore = useTemplatesDataGatheringStore();
+		templatesDataQualityStore = useTemplatesDataQualityStore();
 
 		window.open = vi.fn();
 	});
@@ -124,7 +124,7 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should track user click', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			templatesDataGatheringStore.isFeatureEnabled = vi.fn(() => false);
+			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
 
 			const { getByTestId } = renderComponent({
 				global: {
@@ -140,9 +140,9 @@ describe('CanvasNodeAddNodes', () => {
 			expect(trackTemplatesClick).toHaveBeenCalledWith(TemplateClickSource.emptyWorkflowLink);
 		});
 
-		it('should open modal when templates data gathering is enabled', async () => {
+		it('should open modal when templates data quality is enabled', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			templatesDataGatheringStore.isFeatureEnabled = vi.fn(() => true);
+			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => true);
 			uiStore.openModal = vi.fn();
 			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
 				get: vi.fn(() => false),
@@ -159,7 +159,7 @@ describe('CanvasNodeAddNodes', () => {
 			const link = getByTestId('canvas-template-link');
 			await userEvent.click(link);
 
-			expect(uiStore.openModal).toHaveBeenCalledWith(EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY);
+			expect(uiStore.openModal).toHaveBeenCalledWith(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 		});
 
 		it('should navigate to templates view when custom host is configured', async () => {
@@ -184,7 +184,7 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should open window to template repository when no custom host and feature disabled', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			templatesDataGatheringStore.isFeatureEnabled = vi.fn(() => false);
+			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
 			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
 				get: vi.fn(() => false),
 			});

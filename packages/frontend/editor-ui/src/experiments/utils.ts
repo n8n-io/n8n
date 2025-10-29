@@ -1,6 +1,6 @@
 import { useTelemetry } from '@/composables/useTelemetry';
 import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/constants';
-import { useTemplatesDataGatheringStore } from '@/experiments/templatesDataGathering/stores/templatesDataGathering.store';
+import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -14,7 +14,7 @@ export const isExtraTemplateLinksExperimentEnabled = () => {
 		(usePostHog().getVariant(EXTRA_TEMPLATE_LINKS_EXPERIMENT.name) ===
 			EXTRA_TEMPLATE_LINKS_EXPERIMENT.variant &&
 			useCloudPlanStore().userIsTrialing) ||
-		useTemplatesDataGatheringStore().isFeatureEnabled()
+		useTemplatesDataQualityStore().isFeatureEnabled()
 	);
 };
 

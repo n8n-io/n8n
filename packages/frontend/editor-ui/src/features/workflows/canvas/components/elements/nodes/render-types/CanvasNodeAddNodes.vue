@@ -2,7 +2,7 @@
 import {
 	NODE_CREATOR_OPEN_SOURCES,
 	VIEWS,
-	EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY,
+	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 } from '@/constants';
 import { nodeViewEventBus } from '@/event-bus';
 import {
@@ -18,14 +18,14 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink, N8nTooltip } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
-import { useTemplatesDataGatheringStore } from '@/experiments/templatesDataGathering/stores/templatesDataGathering.store';
+import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
 const uiStore = useUIStore();
-const templatesDataGatheringStore = useTemplatesDataGatheringStore();
+const templatesDataQualityStore = useTemplatesDataQualityStore();
 const isTooltipVisible = ref(false);
 
 const templatesLinkEnabled = computed(() => {
@@ -63,9 +63,8 @@ async function onClickTemplatesLink() {
 		return;
 	}
 
-	if (templatesDataGatheringStore.isFeatureEnabled()) {
-		uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY);
-		trackTemplatesClick(TemplateClickSource.emptyWorkflowLink);
+	if (templatesDataQualityStore.isFeatureEnabled()) {
+		uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 		return;
 	}
 

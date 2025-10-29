@@ -2,10 +2,10 @@
 import { computed } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type ITemplatesWorkflow } from '@n8n/rest-api-client';
-import { useTemplatesDataGatheringStore } from '../stores/templatesDataGathering.store';
+import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
 import { useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
-import { EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY } from '@/constants';
+import { EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/constants';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nCard, N8nText } from '@n8n/design-system';
@@ -15,7 +15,7 @@ const props = defineProps<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
-const { getTemplateRoute, trackTemplateTileClick } = useTemplatesDataGatheringStore();
+const { getTemplateRoute, trackTemplateTileClick } = useTemplatesDataQualityStore();
 const router = useRouter();
 const uiStore = useUIStore();
 const locale = useI18n();
@@ -32,7 +32,7 @@ const templateNodes = computed(() => {
 const handleUseTemplate = async () => {
 	trackTemplateTileClick(props.template.id);
 	await router.push(getTemplateRoute(props.template.id));
-	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY);
+	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 };
 </script>
 

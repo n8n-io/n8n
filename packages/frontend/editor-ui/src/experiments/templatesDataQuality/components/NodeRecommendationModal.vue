@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import Modal from '@/components/Modal.vue';
-import { EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY, TEMPLATES_URLS } from '@/constants';
+import { EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY, TEMPLATES_URLS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useTemplatesDataGatheringStore } from '../stores/templatesDataGathering.store';
+import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
 import TemplateCard from './TemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nLink, N8nSpinner, N8nText } from '@n8n/design-system';
 
 const uiStore = useUIStore();
 const locale = useI18n();
-const templatesStore = useTemplatesDataGatheringStore();
+const templatesStore = useTemplatesDataQualityStore();
 
 const closeModal = () => {
-	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY);
+	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 };
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
@@ -43,7 +43,7 @@ onMounted(async () => {
 
 <template>
 	<Modal
-		:name="EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY"
+		:name="EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY"
 		min-width="min(800px, 90vw)"
 		max-height="90vh"
 		@close="closeModal"
@@ -60,7 +60,7 @@ onMounted(async () => {
 			<div v-if="isLoadingTemplates" :class="$style.loading">
 				<N8nSpinner size="small" />
 				<N8nText size="small">{{
-					locale.baseText('workflows.dataGathering.loadingTemplates')
+					locale.baseText('workflows.templatesDataQuality.loadingTemplates')
 				}}</N8nText>
 			</div>
 			<div v-else :class="$style.suggestions">
@@ -68,7 +68,7 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.seeMore">
 				<N8nLink :href="TEMPLATES_URLS.BASE_WEBSITE_URL">
-					{{ locale.baseText('workflows.dataGathering.seeMoreTemplates') }}
+					{{ locale.baseText('workflows.templatesDataQuality.seeMoreTemplates') }}
 				</N8nLink>
 			</div>
 		</template>

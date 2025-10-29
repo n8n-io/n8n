@@ -25,7 +25,7 @@ import {
 	RELEASE_NOTES_URL,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
-	EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY,
+	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 } from '@/constants';
 import { EXTERNAL_LINKS } from '@/constants/externalLinks';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
@@ -52,7 +52,7 @@ import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { I18nT } from 'vue-i18n';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import { useTemplatesDataGatheringStore } from '@/experiments/templatesDataGathering/stores/templatesDataGathering.store';
+import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
@@ -72,7 +72,7 @@ const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
-const templatesDataGatheringStore = useTemplatesDataGatheringStore();
+const templatesDataQualityStore = useTemplatesDataQualityStore();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
@@ -105,7 +105,7 @@ const isTemplatesExperimentEnabled = computed(() => {
 	return (
 		personalizedTemplatesV2Store.isFeatureEnabled() ||
 		personalizedTemplatesV3Store.isFeatureEnabled() ||
-		templatesDataGatheringStore.isFeatureEnabled()
+		templatesDataQualityStore.isFeatureEnabled()
 	);
 });
 
@@ -140,7 +140,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
 	},
 	{
-		// Link to personalized template modal, available when V2, V3 or data gathering experiment is enabled
+		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
@@ -345,8 +345,8 @@ const toggleCollapse = () => {
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
-			if (templatesDataGatheringStore.isFeatureEnabled()) {
-				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY);
+			if (templatesDataQualityStore.isFeatureEnabled()) {
+				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 				trackTemplatesClick(TemplateClickSource.sidebarButton);
 			} else if (personalizedTemplatesV3Store.isFeatureEnabled()) {
 				personalizedTemplatesV3Store.markTemplateRecommendationInteraction();
