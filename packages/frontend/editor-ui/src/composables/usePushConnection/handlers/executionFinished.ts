@@ -87,7 +87,9 @@ export async function executionFinished(
 			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
 		} else if (
 			templateId === 'ready-to-run-ai-workflow-v1' ||
-			templateId === 'ready-to-run-ai-workflow-v2'
+			templateId === 'ready-to-run-ai-workflow-v2' ||
+			templateId === 'ready-to-run-ai-workflow-v3' ||
+			templateId === 'ready-to-run-ai-workflow-v4'
 		) {
 			if (data.status === 'success') {
 				readyToRunWorkflowsV2Store.trackExecuteAiWorkflowSuccess();

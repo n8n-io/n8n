@@ -41,6 +41,7 @@ describe('permissions', () => {
 			role: {},
 			chatHub: {},
 			chatHubAgent: {},
+			breakingChanges: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -75,6 +76,7 @@ describe('permissions', () => {
 			'workflow:update',
 			'folder:create',
 			'insights:list',
+			'breakingChanges:list',
 		];
 
 		const permissionRecord: PermissionsRecord = {
@@ -153,6 +155,9 @@ describe('permissions', () => {
 			role: {},
 			chatHub: {},
 			chatHubAgent: {},
+			breakingChanges: {
+				list: true,
+			},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);
