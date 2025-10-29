@@ -40,8 +40,7 @@ from src.constants import (
     SIGTERM_EXIT_CODE,
     SIGKILL_EXIT_CODE,
     PIPE_MSG_PREFIX_LENGTH,
-    PIPE_READER_JOIN_TIMEOUT,
-    LOG_PIPE_READER_TIMEOUT,
+    LOG_PIPE_READER_TIMEOUT_TRIGGERED,
 )
 
 from multiprocessing.context import ForkServerProcess
@@ -94,6 +93,7 @@ class TaskExecutor:
         read_conn: PipeConnection,
         write_conn: PipeConnection,
         task_timeout: int,
+        pipe_reader_timeout: float,
         continue_on_fail: bool,
     ) -> tuple[Items, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
@@ -127,11 +127,13 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            pipe_reader.join(timeout=PIPE_READER_JOIN_TIMEOUT)
+            pipe_reader.join(timeout=pipe_reader_timeout)
 
             if pipe_reader.is_alive():
                 logger.warning(
-                    LOG_PIPE_READER_TIMEOUT.format(timeout=PIPE_READER_JOIN_TIMEOUT)
+                    LOG_PIPE_READER_TIMEOUT_TRIGGERED.format(
+                        timeout=pipe_reader_timeout
+                    )
                 )
                 try:
                     read_conn.close()

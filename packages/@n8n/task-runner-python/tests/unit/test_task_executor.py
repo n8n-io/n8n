@@ -28,6 +28,7 @@ class TestTaskExecutorProcessExitHandling:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
+                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -46,6 +47,7 @@ class TestTaskExecutorProcessExitHandling:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
+                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -64,6 +66,7 @@ class TestTaskExecutorProcessExitHandling:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
+                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -86,6 +89,7 @@ class TestTaskExecutorProcessExitHandling:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
+                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -115,6 +119,7 @@ class TestTaskExecutorPipeCommunication:
             read_conn=read_conn,
             write_conn=write_conn,
             task_timeout=60,
+            pipe_reader_timeout=3.0,
             continue_on_fail=False,
         )
 
@@ -155,6 +160,7 @@ class TestTaskExecutorPipeCommunication:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
+                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
