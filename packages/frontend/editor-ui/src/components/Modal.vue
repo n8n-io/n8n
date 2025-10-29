@@ -82,7 +82,7 @@ onMounted(() => {
 	window.addEventListener('keydown', onWindowKeydown);
 	props.eventBus?.on('close', closeDialog);
 	const activeElement = document.activeElement as HTMLElement;
-	if (activeElement) {
+	if (activeElement && uiStore.modalsById[props.name]?.open) {
 		activeElement.blur();
 	}
 });

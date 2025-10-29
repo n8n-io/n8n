@@ -241,8 +241,15 @@ watch(
 				await router.push({ name: CHAT_VIEW });
 			}
 		}
+	},
+	{ immediate: true },
+);
 
-		inputRef.value?.focus();
+// Focus prompt when new a new conversation is started
+watch(
+	[inputRef, sessionId],
+	([input]) => {
+		input?.focus();
 	},
 	{ immediate: true },
 );
