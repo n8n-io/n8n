@@ -7,9 +7,6 @@
 		M extends boolean = false
 	"
 >
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import { get } from '@n8n/design-system/v2/utils';
-import type { GetItemKeys, GetModelValue } from '@n8n/design-system/v2/utils/types';
 import { reactivePick } from '@vueuse/core';
 import {
 	SelectValue as RSelectValue,
@@ -26,6 +23,10 @@ import {
 	useForwardPropsEmits,
 } from 'reka-ui';
 import { computed, useCssModule, useTemplateRef } from 'vue';
+
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { get } from '@n8n/design-system/v2/utils';
+import type { GetItemKeys, GetModelValue } from '@n8n/design-system/v2/utils/types';
 
 import type {
 	SelectEmits,
