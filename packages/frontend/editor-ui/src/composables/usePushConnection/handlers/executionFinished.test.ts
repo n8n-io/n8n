@@ -12,6 +12,9 @@ import type { Router } from 'vue-router';
 import type { WorkflowState } from '@/composables/useWorkflowState';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/stores/ui.store';
+import { mockedStore } from '@/__tests__/utils';
 
 const opts = {
 	workflowState: mock<WorkflowState>(),
@@ -211,5 +214,67 @@ describe('executionFinished', () => {
 		);
 
 		expect(workflowState.executingNode.lastAddedExecutingNode).toBeNull();
+	});
+
+	it('should return early and clear active execution when fetchExecutionData returns undefined', async () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				workflows: {
+					activeExecutionId: '123',
+				},
+			},
+		});
+
+		setActivePinia(pinia);
+
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		const uiStore = mockedStore(useUIStore);
+
+		// Set activeExecutionId directly on the store
+		workflowsStore.activeExecutionId = '123';
+
+		// Mock getWorkflowById to return a workflow
+		vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+			id: '1',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+			active: false,
+			settings: {},
+		} as unknown as ReturnType<typeof workflowsStore.getWorkflowById>);
+
+		vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(null);
+
+		const setProcessingExecutionResultsSpy = vi.spyOn(uiStore, 'setProcessingExecutionResults');
+
+		const workflowState = mock<WorkflowState>({
+			executingNode: {
+				lastAddedExecutingNode: 'test-node',
+			},
+			setActiveExecutionId: vi.fn(),
+		});
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: {
+					executionId: '123',
+					workflowId: '1',
+					status: 'error',
+				},
+			},
+			{
+				router: mock<Router>(),
+				workflowState,
+			},
+		);
+
+		// Verify that setActiveExecutionId was called with undefined
+		expect(workflowState.setActiveExecutionId).toHaveBeenCalledWith(undefined);
+
+		// Verify that processing was set to false
+		expect(setProcessingExecutionResultsSpy).toHaveBeenCalledWith(false);
+
+		expect(runWorkflow).not.toHaveBeenCalled();
 	});
 });
