@@ -168,6 +168,7 @@ export class Chat implements INodeType {
 				name: CHAT_WAIT_USER_REPLY,
 				type: 'boolean',
 				default: true,
+				noDataExpression: true,
 			},
 			{
 				displayName: 'Options',
@@ -175,6 +176,11 @@ export class Chat implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
+				displayOptions: {
+					hide: {
+						'@tool': [true],
+					},
+				},
 				options: [
 					{
 						displayName: 'Add Memory Input Connection',
@@ -184,6 +190,20 @@ export class Chat implements INodeType {
 					},
 					limitWaitTimeOption,
 				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [limitWaitTimeOption],
+				displayOptions: {
+					show: {
+						'@tool': [true],
+						[`/${CHAT_WAIT_USER_REPLY}`]: [true],
+					},
+				},
 			},
 		],
 	};
