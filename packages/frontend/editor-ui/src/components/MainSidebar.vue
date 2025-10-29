@@ -347,7 +347,6 @@ const handleSelect = (key: string) => {
 		case 'templates':
 			if (templatesDataGatheringStore.isFeatureEnabled()) {
 				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY);
-				// TODO: check with Romeo if that's going to cause data issues for the other experiments
 				trackTemplatesClick(TemplateClickSource.sidebarButton);
 			} else if (personalizedTemplatesV3Store.isFeatureEnabled()) {
 				personalizedTemplatesV3Store.markTemplateRecommendationInteraction();

@@ -3,13 +3,33 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import { TEMPLATES_URLS } from '@/constants';
+import { EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY, TEMPLATES_URLS, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { TemplateClickSource } from '@/utils/experiments';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useTemplatesDataGatheringStore } from '@/experiments/templatesDataGathering/stores/templatesDataGathering.store';
+import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
+import * as vueRouter from 'vue-router';
 import CanvasNodeAddNodes from './CanvasNodeAddNodes.vue';
+
+vi.mock('vue-router', () => {
+	const push = vi.fn();
+	const resolve = vi.fn().mockReturnValue({ href: '' });
+	return {
+		useRouter: () => ({
+			push,
+			resolve,
+		}),
+		useRoute: () => ({
+			params: {},
+			location: {},
+		}),
+		RouterLink: vi.fn(),
+	};
+});
 
 vi.mock('@/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
@@ -23,6 +43,7 @@ vi.mock('@/utils/experiments', async (importOriginal) => {
 	return {
 		...actual,
 		isExtraTemplateLinksExperimentEnabled: vi.fn(() => true),
+		trackTemplatesClick: vi.fn(),
 	};
 });
 
@@ -34,6 +55,10 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
+let templatesStore: ReturnType<typeof useTemplatesStore>;
+let uiStore: ReturnType<typeof useUIStore>;
+let templatesDataGatheringStore: ReturnType<typeof useTemplatesDataGatheringStore>;
+let router: ReturnType<typeof vueRouter.useRouter>;
 
 const renderComponent = createComponentRenderer(CanvasNodeAddNodes, {
 	global: {
@@ -48,7 +73,13 @@ describe('CanvasNodeAddNodes', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
+		router = vueRouter.useRouter();
 		settingsStore = useSettingsStore();
+		templatesStore = useTemplatesStore();
+		uiStore = useUIStore();
+		templatesDataGatheringStore = useTemplatesDataGatheringStore();
+
+		window.open = vi.fn();
 	});
 
 	afterEach(() => {
@@ -93,6 +124,7 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should track user click', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
+			templatesDataGatheringStore.isFeatureEnabled = vi.fn(() => false);
 
 			const { getByTestId } = renderComponent({
 				global: {
@@ -105,12 +137,73 @@ describe('CanvasNodeAddNodes', () => {
 			const link = getByTestId('canvas-template-link');
 			await userEvent.click(link);
 
-			expect(mockTrack).toHaveBeenCalledWith(
-				'User clicked on templates',
-				expect.objectContaining({
-					source: TemplateClickSource.emptyWorkflowLink,
-				}),
-			);
+			expect(trackTemplatesClick).toHaveBeenCalledWith(TemplateClickSource.emptyWorkflowLink);
+		});
+
+		it('should open modal when templates data gathering is enabled', async () => {
+			settingsStore.settings.templates = { enabled: true, host: '' };
+			templatesDataGatheringStore.isFeatureEnabled = vi.fn(() => true);
+			uiStore.openModal = vi.fn();
+			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
+				get: vi.fn(() => false),
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+					},
+				},
+			});
+
+			const link = getByTestId('canvas-template-link');
+			await userEvent.click(link);
+
+			expect(uiStore.openModal).toHaveBeenCalledWith(EXPERIMENT_TEMPLATES_DATA_GATHERING_KEY);
+		});
+
+		it('should navigate to templates view when custom host is configured', async () => {
+			settingsStore.settings.templates = { enabled: true, host: 'https://custom.com' };
+			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
+				get: vi.fn(() => true),
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+					},
+				},
+			});
+
+			const link = getByTestId('canvas-template-link');
+			await userEvent.click(link);
+
+			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.TEMPLATES });
+		});
+
+		it('should open window to template repository when no custom host and feature disabled', async () => {
+			settingsStore.settings.templates = { enabled: true, host: '' };
+			templatesDataGatheringStore.isFeatureEnabled = vi.fn(() => false);
+			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
+				get: vi.fn(() => false),
+			});
+			Object.defineProperty(templatesStore, 'websiteTemplateRepositoryURL', {
+				get: vi.fn(() => 'https://n8n.io/workflows'),
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+					},
+				},
+			});
+
+			const link = getByTestId('canvas-template-link');
+			await userEvent.click(link);
+
+			expect(window.open).toHaveBeenCalledWith('https://n8n.io/workflows', '_blank');
 		});
 	});
 });
