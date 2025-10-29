@@ -3,8 +3,11 @@ import {
 	type ChatHubConversationModel,
 	type ChatModelsResponse,
 	type ChatHubSessionDto,
+	type ChatHubAgentDto,
 } from '@n8n/api-types';
-import type { GroupedConversations } from './chat.types';
+import type { ChatMessage, GroupedConversations, ChatAgentFilter } from './chat.types';
+import { CHAT_VIEW } from './constants';
+import type { IWorkflowDb } from '@/Interface';
 
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
@@ -18,8 +21,8 @@ export function findOneFromModelsResponse(
 	return undefined;
 }
 
-export function getRelativeDate(now: Date, dateString: string | null): string {
-	const date = dateString ? new Date(dateString) : now;
+export function getRelativeDate(now: Date, dateString: string): string {
+	const date = new Date(dateString);
 	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	const yesterday = new Date(today);
 	yesterday.setDate(yesterday.getDate() - 1);
@@ -45,7 +48,7 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 
 	// Group sessions by relative date
 	for (const session of sessions) {
-		const group = getRelativeDate(now, session.lastMessageAt);
+		const group = getRelativeDate(now, session.lastMessageAt ?? session.updatedAt);
 
 		if (!groups.has(group)) {
 			groups.set(group, []);
@@ -66,11 +69,159 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 						group: groupName,
 						sessions: sessions.sort(
 							(a, b) =>
-								(b.lastMessageAt ? Date.parse(b.lastMessageAt) : +now) -
-								(a.lastMessageAt ? Date.parse(a.lastMessageAt) : +now),
+								Date.parse(b.lastMessageAt ?? b.updatedAt) -
+								Date.parse(a.lastMessageAt ?? a.updatedAt),
 						),
 					},
 				]
 			: [];
 	});
+}
+
+export function getAgentRoute(model: ChatHubConversationModel) {
+	if (model.provider === 'n8n') {
+		return {
+			name: CHAT_VIEW,
+			query: {
+				workflowId: model.workflowId,
+			},
+		};
+	}
+
+	if (model.provider === 'custom-agent') {
+		return {
+			name: CHAT_VIEW,
+			query: {
+				agentId: model.agentId,
+			},
+		};
+	}
+
+	return {
+		name: CHAT_VIEW,
+	};
+}
+
+export function restoreConversationModelFromMessageOrSession(
+	messageOrSession: ChatHubSessionDto | ChatMessage,
+	agents: ChatHubAgentDto[],
+	workflowsById: Partial<Record<string, IWorkflowDb>>,
+): ChatHubConversationModel | null {
+	if (messageOrSession.provider === null) {
+		return null;
+	}
+
+	switch (messageOrSession.provider) {
+		case 'custom-agent':
+			if (!messageOrSession.agentId) {
+				return null;
+			}
+
+			return {
+				provider: 'custom-agent',
+				agentId: messageOrSession.agentId,
+				name:
+					agents.find((agent) => agent.id === messageOrSession.agentId)?.name ??
+					`Custom agent ${messageOrSession.agentId}`,
+			};
+		case 'n8n':
+			if (!messageOrSession.workflowId) {
+				return null;
+			}
+
+			return {
+				provider: 'n8n',
+				workflowId: messageOrSession.workflowId,
+				name:
+					workflowsById[messageOrSession.workflowId]?.name ??
+					`n8n workflow ${messageOrSession.workflowId}`,
+			};
+		default:
+			if (messageOrSession.model === null) {
+				return null;
+			}
+
+			return {
+				provider: messageOrSession.provider,
+				model: messageOrSession.model,
+				name: messageOrSession.model,
+			};
+	}
+}
+
+export function describeConversationModel(model: ChatHubConversationModel) {
+	switch (model.provider) {
+		case 'n8n':
+			return `n8n workflow ${model.name}`;
+		case 'custom-agent':
+			return `Custom agent ${model.name}`;
+		default:
+			return model.model;
+	}
+}
+
+export function getTimestamp(
+	model: ChatHubConversationModel,
+	type: 'createdAt' | 'updatedAt',
+	agents: ChatHubAgentDto[],
+	workflowsById: Partial<Record<string, IWorkflowDb>>,
+): number | null {
+	if (model.provider === 'custom-agent') {
+		const agent = agents.find((a) => a.id === model.agentId);
+		return agent?.[type] ? Date.parse(agent[type]) : null;
+	}
+
+	if (model.provider === 'n8n') {
+		const workflow = workflowsById[model.workflowId];
+		return workflow?.[type]
+			? typeof workflow[type] === 'string'
+				? Date.parse(workflow[type])
+				: workflow[type]
+			: null;
+	}
+
+	return null;
+}
+
+export function filterAndSortAgents(
+	models: ChatHubConversationModel[],
+	filter: ChatAgentFilter,
+	agents: ChatHubAgentDto[],
+	workflowsById: Partial<Record<string, IWorkflowDb>>,
+): ChatHubConversationModel[] {
+	let filtered = models;
+
+	// Apply search filter
+	if (filter.search.trim()) {
+		const query = filter.search.toLowerCase();
+		filtered = filtered.filter((model) => model.name.toLowerCase().includes(query));
+	}
+
+	// Apply provider filter
+	if (filter.provider !== '') {
+		filtered = filtered.filter((model) => model.provider === filter.provider);
+	}
+
+	// Apply sorting
+	filtered = [...filtered].sort((a, b) => {
+		const dateA = getTimestamp(a, filter.sortBy, agents, workflowsById);
+		const dateB = getTimestamp(b, filter.sortBy, agents, workflowsById);
+
+		// Sort by dates (newest first)
+		if (dateA && dateB) {
+			return dateB - dateA;
+		}
+
+		// Items without dates go to the end
+		if (dateA && !dateB) {
+			return -1;
+		}
+		if (!dateA && dateB) {
+			return 1;
+		}
+
+		return 0;
+	});
+
+	return filtered;
 }

@@ -62,3 +62,9 @@ export interface GroupedConversations {
 	group: string;
 	sessions: ChatHubSessionDto[];
 }
+
+export interface ChatAgentFilter {
+	sortBy: 'updatedAt' | 'createdAt';
+	provider: 'custom-agent' | 'n8n' | '';
+	search: string;
+}

@@ -20,9 +20,9 @@ import { useRBACStore } from '@/stores/rbac.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
+import { useBannersStore } from '@/stores/banners.store';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -48,7 +48,7 @@ export async function initializeCore() {
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
 	const ssoStore = useSSOStore();
-	const uiStore = useUIStore();
+	const bannersStore = useBannersStore();
 
 	const toast = useToast();
 	const i18n = useI18n();
@@ -91,7 +91,7 @@ export async function initializeCore() {
 	) {
 		banners.push('V1');
 	}
-	uiStore.initialize({
+	bannersStore.initialize({
 		banners,
 	});
 
@@ -134,7 +134,7 @@ export async function initializeAuthenticatedFeatures(
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const insightsStore = useInsightsStore();
-	const uiStore = useUIStore();
+	const bannersStore = useBannersStore();
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
 
@@ -162,12 +162,12 @@ export async function initializeAuthenticatedFeatures(
 			.then(() => {
 				if (cloudPlanStore.userIsTrialing) {
 					if (cloudPlanStore.trialExpired) {
-						uiStore.pushBannerToStack('TRIAL_OVER');
+						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {
-						uiStore.pushBannerToStack('TRIAL');
+						bannersStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
-					uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
+					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
 				}
 			})
 			.catch((error) => {
@@ -180,9 +180,9 @@ export async function initializeAuthenticatedFeatures(
 			.fetchDataTableSize()
 			.then(({ quotaStatus }) => {
 				if (quotaStatus === 'error') {
-					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
+					bannersStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
 				} else if (quotaStatus === 'warn') {
-					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
+					bannersStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
 				}
 			})
 			.catch((error) => {
@@ -220,7 +220,7 @@ function registerAuthenticationHooks() {
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const postHogStore = usePostHog();
-	const uiStore = useUIStore();
+	const bannersStore = useBannersStore();
 	const npsSurveyStore = useNpsSurveyStore();
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
@@ -237,7 +237,7 @@ function registerAuthenticationHooks() {
 	});
 
 	usersStore.registerLogoutHook(() => {
-		uiStore.clearBannerStack();
+		bannersStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
 		postHogStore.reset();
 		cloudPlanStore.reset();
