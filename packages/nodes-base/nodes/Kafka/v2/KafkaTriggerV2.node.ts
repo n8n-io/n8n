@@ -225,7 +225,7 @@ export class KafkaTriggerV2 implements INodeType {
 					);
 				}
 
-				const httpsAgent = new https.default.Agent({
+				const httpsAgent = new https.Agent({
 					cert: clientCert as string,
 					key: clientKey as string,
 					...(caCert && { ca: caCert as string }),
