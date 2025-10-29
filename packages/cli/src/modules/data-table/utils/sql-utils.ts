@@ -402,12 +402,24 @@ export function resolvePath(
 			if (typeof value === 'number') {
 				typeofReturn = 'number';
 				type = dataTableColumnTypeToSql('number', dbType);
+
+				return `CASE
+				WHEN jsonb_typeof((${base.replace('->>', '->')})) = '${typeofReturn}' OR jsonb_typeof((${base.replace('->>', '->')})) = 'boolean'
+				THEN (${base})::${type}
+				ELSE NULL
+			END`;
 			} else if (value instanceof Date) {
 				typeofReturn = 'timestamp';
 				type = dataTableColumnTypeToSql('date', dbType);
 			} else if (typeof value === 'boolean') {
 				typeofReturn = 'boolean';
-				type = dataTableColumnTypeToSql('boolean', dbType);
+				type = dataTableColumnTypeToSql('number', dbType);
+
+				return `CASE
+				WHEN jsonb_typeof((${base.replace('->>', '->')})) = '${typeofReturn}' OR jsonb_typeof((${base.replace('->>', '->')})) = 'number'
+				THEN (${base})::${type}
+				ELSE NULL
+			END`;
 			} else if (typeof value === 'string') {
 				typeofReturn = 'string';
 				type = dataTableColumnTypeToSql('string', dbType);

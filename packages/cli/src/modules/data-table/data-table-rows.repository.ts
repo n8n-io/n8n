@@ -53,6 +53,7 @@ type QueryBuilder = SelectQueryBuilder<any>;
  * - Postgres/SQLite/Oracle/SQL Server: `ESCAPE '\'` is written as-is.
  * - MySQL/MariaDB: the SQL literal itself requires two backslashes (`'\\'`) to mean one.
  */
+// eslint-disable-next-line complexity
 function getConditionAndParams(
 	filter: DataTableFilter['filters'][number],
 	index: number,
@@ -100,12 +101,23 @@ function getConditionAndParams(
 		lte: '<=',
 	};
 
-	if (operators[filter.condition]) {
+	if (filter.path !== undefined) {
 		if (typeof filter.value === 'boolean') {
-			// This ensures the same behavior between postgres and sqlite
-			return [`${columnRef} ${operators[filter.condition]} ${filter.value ? 1 : 0}`, {}];
+			if (filter.condition === 'eq') {
+				if (filter.value) {
+					return [`${columnRef} > 0`, {}];
+				} else {
+					return [`NOT ${columnRef}`, {}];
+				}
+			}
+			if (filter.condition === 'neq') {
+				// This ensures the same behavior between postgres and sqlite
+				return [`${columnRef} >= ${filter.value ? 0 : 1}`, {}];
+			}
 		}
+	}
 
+	if (operators[filter.condition]) {
 		return [
 			`${columnRef} ${operators[filter.condition]} :${paramName}${postfix}`,
 			{ [paramName]: value },
