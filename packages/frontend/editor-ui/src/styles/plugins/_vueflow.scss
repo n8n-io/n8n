@@ -93,6 +93,17 @@
 }
 
 /**
+ * Handles
+ */
+
+.vue-flow__handle {
+	&:not(.connectionindicator) .plus {
+		display: none;
+		position: absolute;
+	}
+}
+
+/**
  * Selection
  */
 
@@ -113,11 +124,30 @@
 }
 
 /**
+ * Pane
+ */
+
+.vue-flow__pane {
+	cursor: grab;
+
+	&.selection {
+		cursor: default;
+	}
+
+	&.dragging {
+		cursor: grabbing;
+	}
+}
+
+/**
  * Controls
  */
 
 .vue-flow__controls {
 	margin: var(--spacing--sm);
+	display: flex;
+	gap: var(--spacing--xs);
+	box-shadow: none;
 
 	@include mixins.breakpoint('xs-only') {
 		max-width: calc(100% - 3 * var(--spacing--sm) - var(--spacing--2xs));

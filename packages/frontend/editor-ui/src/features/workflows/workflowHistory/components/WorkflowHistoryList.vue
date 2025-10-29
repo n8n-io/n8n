@@ -11,6 +11,7 @@ import type {
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
+import { useIntersectionObserver } from '@/composables/useIntersectionObserver';
 
 import { N8nLoading } from '@n8n/design-system';
 const props = defineProps<{
@@ -41,29 +42,16 @@ const i18n = useI18n();
 
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
-const observer = ref<IntersectionObserver | null>(null);
+
+const { observe: observeForLoadMore } = useIntersectionObserver({
+	root: listElement,
+	threshold: 0.01,
+	onIntersect: () =>
+		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length }),
+});
 
 const getActions = (index: number) =>
 	index === 0 ? props.actions.filter((action) => action.value !== 'restore') : props.actions;
-
-const observeElement = (element: Element) => {
-	observer.value = new IntersectionObserver(
-		([entry]) => {
-			if (entry.isIntersecting) {
-				observer.value?.unobserve(element);
-				observer.value?.disconnect();
-				observer.value = null;
-				emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length });
-			}
-		},
-		{
-			root: listElement.value,
-			threshold: 0.01,
-		},
-	);
-
-	observer.value.observe(element);
-};
 
 const onAction = ({
 	action,
@@ -101,7 +89,7 @@ const onItemMounted = ({
 		index === props.items.length - 1 &&
 		props.lastReceivedItemsLength === props.requestNumberOfItems
 	) {
-		observeElement(listElement.value?.children[index] as Element);
+		observeForLoadMore(listElement.value?.children[index]);
 	}
 };
 </script>
