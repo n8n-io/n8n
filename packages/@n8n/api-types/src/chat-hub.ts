@@ -210,7 +210,7 @@ export interface ChatHubAgentDto {
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
-	provider: ChatHubProvider;
+	provider: ChatHubLLMProvider;
 	model: string;
 	createdAt: string;
 	updatedAt: string;
