@@ -1635,3 +1635,45 @@ describe('PUT /workflows/:id/transfer', () => {
 		expect(response.statusCode).toBe(400);
 	});
 });
+
+describe('POST /workflows/:id/execute', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/1/execute', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/1/execute', 'abcXYZ'),
+	);
+
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/999/execute');
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
+	});
+
+	test('should execute owned workflow', async () => {
+		const workflow = await createWorkflowWithTrigger({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('executionId');
+		expect(typeof response.body.executionId).toBe('string');
+	});
+
+	test('should execute workflow owned by another user when owner', async () => {
+		const workflow = await createWorkflowWithTrigger({}, member);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/execute`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('executionId');
+	});
+
+	test('should fail to execute workflow without permissions', async () => {
+		const workflow = await createWorkflowWithTrigger({}, owner);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`);
+
+		expect(response.statusCode).toBe(403);
+	});
+});
