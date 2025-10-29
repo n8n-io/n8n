@@ -14,12 +14,24 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { KafkaTrigger } from '../KafkaTrigger.node';
+import { KafkaTriggerV2 } from '../v2/KafkaTriggerV2.node';
 
 jest.mock('kafkajs');
 jest.mock('@kafkajs/confluent-schema-registry');
 
-describe('KafkaTrigger Node', () => {
+import type { INodeTypeBaseDescription } from 'n8n-workflow';
+
+// Base description required by versioned nodes
+const baseDescription: INodeTypeBaseDescription = {
+	displayName: 'Kafka Trigger',
+	name: 'kafkaTrigger',
+	icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
+	group: ['trigger'],
+	description: 'Consume messages from a Kafka topic',
+	defaultVersion: 2,
+};
+
+describe('KafkaTrigger Node (V2)', () => {
 	let mockKafka: jest.Mocked<Kafka>;
 	let mockRegistry: jest.Mocked<SchemaRegistry>;
 	let mockConsumerConnect: jest.Mock;
@@ -81,13 +93,12 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should connect to Kafka and subscribe to topic', async () => {
-		const { close, emit } = await testTriggerNode(KafkaTrigger, {
+		const { close, emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
-					useSchemaRegistry: false,
 					options: {
 						fromBeginning: true,
 						parallelProcessing: true,
@@ -99,6 +110,7 @@ describe('KafkaTrigger Node', () => {
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
+				useSchemaRegistry: false,
 			},
 		});
 
@@ -133,13 +145,12 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle authentication when credentials are provided', async () => {
-		await testTriggerNode(KafkaTrigger, {
+		await testTriggerNode(new KafkaTriggerV2(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
-					useSchemaRegistry: false,
 				},
 			},
 			credential: {
@@ -150,6 +161,7 @@ describe('KafkaTrigger Node', () => {
 				username: 'test-user',
 				password: 'test-password',
 				saslMechanism: 'plain',
+				useSchemaRegistry: false,
 			},
 		});
 
@@ -168,7 +180,7 @@ describe('KafkaTrigger Node', () => {
 
 	it('should throw an error if authentication is enabled but credentials are missing', async () => {
 		await expect(
-			testTriggerNode(KafkaTrigger, {
+			testTriggerNode(new KafkaTriggerV2(baseDescription), {
 				mode: 'trigger',
 				node: {
 					parameters: {
@@ -187,14 +199,12 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should use schema registry when enabled', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
-					useSchemaRegistry: true,
-					schemaRegistryUrl: 'http://localhost:8081',
 					options: { parallelProcessing: true },
 				},
 			},
@@ -203,6 +213,9 @@ describe('KafkaTrigger Node', () => {
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
+				useSchemaRegistry: true,
+				schemaRegistryUrl: 'http://localhost:8081',
+				schemaRegistryAuthType: 'none',
 			},
 		});
 
@@ -227,14 +240,150 @@ describe('KafkaTrigger Node', () => {
 		]);
 	});
 
-	it('should parse JSON message when jsonParseMessage is true', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+	it('should use schema registry with basic authentication when credentials are provided', async () => {
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
-					useSchemaRegistry: false,
+					options: { parallelProcessing: true },
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+				useSchemaRegistry: true,
+				schemaRegistryUrl: 'http://localhost:8081',
+				schemaRegistryAuthType: 'basic',
+				schemaRegistryUsername: 'schema-user',
+				schemaRegistryPassword: 'schema-pass',
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('test-message'),
+			headers: { 'content-type': Buffer.from('application/json') },
+		});
+
+		expect(SchemaRegistry).toHaveBeenCalledWith({
+			host: 'http://localhost:8081',
+			auth: {
+				username: 'schema-user',
+				password: 'schema-pass',
+			},
+		});
+		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: { data: 'decoded-data' },
+						topic: 'test-topic',
+					},
+				},
+			],
+		]);
+	});
+
+	it('should use schema registry with TLS authentication', async () => {
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					options: { parallelProcessing: true },
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+				useSchemaRegistry: true,
+				schemaRegistryUrl: 'https://localhost:8081',
+				schemaRegistryAuthType: 'tls',
+				schemaRegistryClientCert:
+					'-----BEGIN CERTIFICATE-----\nMOCK_CERT\n-----END CERTIFICATE-----',
+				schemaRegistryClientKey: '-----BEGIN PRIVATE KEY-----\nMOCK_KEY\n-----END PRIVATE KEY-----',
+				schemaRegistryCaCert: '-----BEGIN CERTIFICATE-----\nMOCK_CA\n-----END CERTIFICATE-----',
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('test-message'),
+		});
+
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				host: 'https://localhost:8081',
+				httpsAgent: expect.any(Object),
+			}),
+		);
+		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: { data: 'decoded-data' },
+						topic: 'test-topic',
+					},
+				},
+			],
+		]);
+	});
+
+	it('should use schema registry without authentication when authType is none', async () => {
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					options: { parallelProcessing: true },
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+				useSchemaRegistry: true,
+				schemaRegistryUrl: 'http://localhost:8081',
+				schemaRegistryAuthType: 'none',
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('test-message'),
+		});
+
+		expect(SchemaRegistry).toHaveBeenCalledWith({
+			host: 'http://localhost:8081',
+		});
+		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: { data: 'decoded-data' },
+						topic: 'test-topic',
+					},
+				},
+			],
+		]);
+	});
+
+	it('should parse JSON message when jsonParseMessage is true', async () => {
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
 					options: {
 						jsonParseMessage: true,
 						parallelProcessing: true,
@@ -247,6 +396,7 @@ describe('KafkaTrigger Node', () => {
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
+				useSchemaRegistry: false,
 			},
 		});
 
@@ -260,14 +410,13 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should include headers when returnHeaders is true', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
-					useSchemaRegistry: false,
 					options: {
 						returnHeaders: true,
 					},
@@ -278,6 +427,7 @@ describe('KafkaTrigger Node', () => {
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
+				useSchemaRegistry: false,
 			},
 		});
 
@@ -310,25 +460,28 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle manual trigger mode', async () => {
-		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
-			mode: 'manual',
-			node: {
-				parameters: {
-					topic: 'test-topic',
-					groupId: 'test-group',
-					useSchemaRegistry: false,
-					options: {
-						parallelProcessing: true,
+		const { emit, manualTriggerFunction } = await testTriggerNode(
+			new KafkaTriggerV2(baseDescription),
+			{
+				mode: 'manual',
+				node: {
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						options: {
+							parallelProcessing: true,
+						},
 					},
 				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+					useSchemaRegistry: false,
+				},
 			},
-			credential: {
-				brokers: 'localhost:9092',
-				clientId: 'n8n-kafka',
-				ssl: false,
-				authentication: false,
-			},
-		});
+		);
 
 		await manualTriggerFunction?.();
 
@@ -343,14 +496,143 @@ describe('KafkaTrigger Node', () => {
 		expect(emit).toHaveBeenCalledWith([[{ json: { message: 'test', topic: 'test-topic' } }]]);
 	});
 
-	it('should handle sequential processing when parallelProcessing is false', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+	it('should throw error when schema registry URL is missing', async () => {
+		await expect(
+			testTriggerNode(new KafkaTriggerV2(baseDescription), {
+				mode: 'trigger',
+				node: {
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+					useSchemaRegistry: true,
+					schemaRegistryUrl: '',
+				},
+			}),
+		).rejects.toThrow(NodeOperationError);
+	});
+
+	it('should throw error when basic auth credentials are missing', async () => {
+		await expect(
+			testTriggerNode(new KafkaTriggerV2(baseDescription), {
+				mode: 'trigger',
+				node: {
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+					useSchemaRegistry: true,
+					schemaRegistryUrl: 'http://localhost:8081',
+					schemaRegistryAuthType: 'basic',
+					schemaRegistryUsername: '',
+					schemaRegistryPassword: '',
+				},
+			}),
+		).rejects.toThrow(NodeOperationError);
+	});
+
+	it('should throw error when TLS certificates are missing', async () => {
+		await expect(
+			testTriggerNode(new KafkaTriggerV2(baseDescription), {
+				mode: 'trigger',
+				node: {
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+					useSchemaRegistry: true,
+					schemaRegistryUrl: 'https://localhost:8081',
+					schemaRegistryAuthType: 'tls',
+					schemaRegistryClientCert: '',
+					schemaRegistryClientKey: '',
+				},
+			}),
+		).rejects.toThrow(NodeOperationError);
+	});
+
+	it('should throw error when schema registry decode fails', async () => {
+		mockRegistryDecode.mockRejectedValueOnce(new Error('Invalid Avro schema'));
+
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
-					useSchemaRegistry: false,
+					options: { parallelProcessing: true },
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+				useSchemaRegistry: true,
+				schemaRegistryUrl: 'http://localhost:8081',
+				schemaRegistryAuthType: 'none',
+			},
+		});
+
+		await expect(
+			publishMessage({
+				value: Buffer.from('invalid-avro-data'),
+			}),
+		).rejects.toThrow(NodeOperationError);
+
+		expect(emit).not.toHaveBeenCalled();
+	});
+
+	it('should handle null message value gracefully', async () => {
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					options: { parallelProcessing: true },
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+				useSchemaRegistry: false,
+			},
+		});
+
+		await publishMessage({
+			value: null as any,
+		});
+
+		expect(emit).toHaveBeenCalledWith([[{ json: { message: '', topic: 'test-topic' } }]]);
+	});
+
+	it('should handle sequential processing when parallelProcessing is false', async () => {
+		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
 					options: {
 						parallelProcessing: false,
 					},
@@ -361,6 +643,7 @@ describe('KafkaTrigger Node', () => {
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
+				useSchemaRegistry: false,
 			},
 		});
 

@@ -195,6 +195,7 @@
       "dist/credentials/JotFormApi.credentials.js",
       "dist/credentials/JwtAuth.credentials.js",
       "dist/credentials/Kafka.credentials.js",
+      "dist/credentials/KafkaV2.credentials.js",
       "dist/credentials/KeapOAuth2Api.credentials.js",
       "dist/credentials/KibanaApi.credentials.js",
       "dist/credentials/KitemakerApi.credentials.js",
