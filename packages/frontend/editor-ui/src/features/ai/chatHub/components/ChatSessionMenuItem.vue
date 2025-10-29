@@ -6,8 +6,6 @@ import { type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import { useChatStore } from '../chat.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
 
 const { session, isRenaming, active } = defineProps<{
@@ -23,20 +21,12 @@ const emit = defineEmits<{
 	delete: [sessionId: string];
 }>();
 
-const chatStore = useChatStore();
-const workflowsStore = useWorkflowsStore();
 const input = useTemplateRef('input');
 const editedLabel = ref('');
 
 type SessionAction = 'rename' | 'delete';
 
-const model = computed(() =>
-	restoreConversationModelFromMessageOrSession(
-		session,
-		chatStore.agents,
-		workflowsStore.workflowsById,
-	),
-);
+const model = computed(() => restoreConversationModelFromMessageOrSession(session));
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 	{
