@@ -119,14 +119,18 @@ export async function processEventStream(
 					if (matchingStep) {
 						matchingStep.observation = toolData.output || '';
 
-						// Save tool result to memory if configured
-						if (memory && matchingStep.observation && input) {
-							await saveToolResultsToMemory(memory, input, [
-								{
-									action: matchingStep.action,
-									observation: matchingStep.observation,
-								},
-							]);
+						// Save tool result to memory
+						if (matchingStep.observation && input) {
+							await saveToolResultsToMemory(
+								input,
+								[
+									{
+										action: matchingStep.action,
+										observation: matchingStep.observation,
+									},
+								],
+								memory,
+							);
 						}
 					}
 				}
@@ -138,8 +142,8 @@ export async function processEventStream(
 	ctx.sendChunk('end', itemIndex);
 
 	// Save conversation to memory if memory is connected
-	if (memory && input && agentResult.output) {
-		await saveToMemory(memory, input, agentResult.output);
+	if (input && agentResult.output) {
+		await saveToMemory(input, agentResult.output, memory);
 	}
 
 	// Include collected tool calls in the result

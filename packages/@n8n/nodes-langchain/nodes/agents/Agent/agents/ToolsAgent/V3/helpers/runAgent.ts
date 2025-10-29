@@ -62,11 +62,7 @@ export async function runAgent(
 		isStreamingAvailable &&
 		ctx.getNode().typeVersion >= 2.1
 	) {
-		let chatHistory: BaseMessage[] | undefined = undefined;
-		if (memory) {
-			// Load memory variables to respect context window length
-			chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
-		}
+		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
 		const eventStream = executor.streamEvents(
 			{
 				...invokeParams,
@@ -79,7 +75,7 @@ export async function runAgent(
 		);
 
 		const result = await processEventStream(
-			ctx as IExecuteFunctions,
+			ctx,
 			eventStream,
 			itemIndex,
 			options.returnIntermediateSteps,
@@ -100,11 +96,8 @@ export async function runAgent(
 		return result;
 	} else {
 		// Handle regular execution
-		let chatHistory: BaseMessage[] | undefined = undefined;
-		if (memory) {
-			// Load memory variables to respect context window length
-			chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
-		}
+		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
+
 		const modelResponse = await executor.invoke({
 			...invokeParams,
 			chat_history: chatHistory,

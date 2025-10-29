@@ -23,10 +23,13 @@ import type { ToolCallData } from './types';
  * ```
  */
 export async function loadMemory(
-	memory: BaseChatMemory,
+	memory?: BaseChatMemory,
 	model?: BaseChatModel,
 	maxTokens?: number,
-): Promise<BaseMessage[]> {
+): Promise<BaseMessage[] | undefined> {
+	if (!memory) {
+		return undefined;
+	}
 	const memoryVariables = await memory.loadMemoryVariables({});
 	let chatHistory = (memoryVariables['chat_history'] as BaseMessage[]) || [];
 
@@ -58,11 +61,11 @@ export async function loadMemory(
  * ```
  */
 export async function saveToMemory(
-	memory: BaseChatMemory,
 	input: string,
 	output: string,
+	memory?: BaseChatMemory,
 ): Promise<void> {
-	if (!output) {
+	if (!output || !memory) {
 		return;
 	}
 
@@ -94,11 +97,11 @@ export async function saveToMemory(
  * ```
  */
 export async function saveToolResultsToMemory(
-	memory: BaseChatMemory,
 	input: string,
 	toolResults: ToolCallData[],
+	memory?: BaseChatMemory,
 ): Promise<void> {
-	if (!toolResults.length) {
+	if (!memory || !toolResults.length) {
 		return;
 	}
 
