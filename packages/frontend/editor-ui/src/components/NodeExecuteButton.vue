@@ -15,7 +15,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -27,7 +27,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { ButtonSize, IUpdateInformation } from '@/Interface';
-import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
+import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useUIStore } from '@/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';

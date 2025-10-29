@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { N8nIcon, N8nInput, N8nButton, N8nTooltip } from '@n8n/design-system';
-import VueMarkdown from 'vue-markdown-render';
-import markdownLink from 'markdown-it-link-attributes';
-import type MarkdownIt from 'markdown-it';
-import ChatMessageActions from './ChatMessageActions.vue';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useClipboard } from '@/composables/useClipboard';
-import { ref, nextTick, watch, useTemplateRef, computed, onBeforeMount } from 'vue';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import { useSpeechSynthesis } from '@vueuse/core';
-import type { ChatMessage } from '../chat.types';
 import type { ChatMessageId } from '@n8n/api-types';
+import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
+import { useSpeechSynthesis } from '@vueuse/core';
+import type MarkdownIt from 'markdown-it';
+import markdownLink from 'markdown-it-link-attributes';
+import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import VueMarkdown from 'vue-markdown-render';
+import type { ChatMessage } from '../chat.types';
+import ChatMessageActions from './ChatMessageActions.vue';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -34,6 +36,8 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+const chatStore = useChatStore();
+const workflowsStore = useWorkflowsStore();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -47,12 +51,13 @@ const speech = useSpeechSynthesis(messageContent, {
 	volume: 1,
 });
 
-const credentialTypeName = computed(() => {
-	if (message.type !== 'ai' || !message.provider || message.provider === 'n8n') {
-		return null;
-	}
-	return PROVIDER_CREDENTIAL_TYPE_MAP[message.provider] ?? null;
-});
+const model = computed(() =>
+	restoreConversationModelFromMessageOrSession(
+		message,
+		chatStore.agents,
+		workflowsStore.workflowsById,
+	),
+);
 
 async function handleCopy() {
 	const text = message.content;
@@ -140,14 +145,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<N8nTooltip
-				v-else-if="message.type === 'ai' && credentialTypeName"
-				:show-after="100"
-				placement="left"
-			>
-				<template #content>{{ message.model }}</template>
-				<CredentialIcon :size="20" :credential-type-name="credentialTypeName" />
-			</N8nTooltip>
+			<ChatAgentAvatar v-else-if="model" :model="model" size="md" tooltip />
 			<N8nIcon v-else icon="sparkles" width="20" height="20" />
 		</div>
 		<div :class="$style.content">
@@ -176,7 +174,11 @@ onBeforeMount(() => {
 					<VueMarkdown
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-						:source="message.content"
+						:source="
+							message.status === 'error' && !message.content
+								? 'Error: Unknown error occurred'
+								: message.content
+						"
 						:options="markdownOptions"
 						:plugins="[linksNewTabPlugin]"
 					/>

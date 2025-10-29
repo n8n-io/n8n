@@ -40,6 +40,8 @@ describe('permissions', () => {
 			mcpApiKey: {},
 			role: {},
 			chatHub: {},
+			chatHubAgent: {},
+			breakingChanges: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -74,6 +76,7 @@ describe('permissions', () => {
 			'workflow:update',
 			'folder:create',
 			'insights:list',
+			'breakingChanges:list',
 		];
 
 		const permissionRecord: PermissionsRecord = {
@@ -151,6 +154,10 @@ describe('permissions', () => {
 			workflowTags: {},
 			role: {},
 			chatHub: {},
+			chatHubAgent: {},
+			breakingChanges: {
+				list: true,
+			},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

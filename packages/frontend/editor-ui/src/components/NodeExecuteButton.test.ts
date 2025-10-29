@@ -16,13 +16,13 @@ import {
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import * as buttonParameterUtils from '@/components/ButtonParameter/utils';
+import * as buttonParameterUtils from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import {
 	injectWorkflowState,
 	useWorkflowState,

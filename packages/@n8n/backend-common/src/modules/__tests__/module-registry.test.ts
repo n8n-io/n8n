@@ -28,6 +28,7 @@ describe('eligibleModules', () => {
 			'community-packages',
 			'data-table',
 			'provisioning',
+			'breaking-changes',
 		]);
 	});
 
@@ -39,6 +40,7 @@ describe('eligibleModules', () => {
 			'community-packages',
 			'data-table',
 			'provisioning',
+			'breaking-changes',
 		]);
 	});
 
