@@ -120,7 +120,7 @@ export async function execute(
 					bom: options.enableBOM,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					skip_records_with_error: skipRecordsWithErrors,
-                    columns: options.headerRow !== false,
+					columns: options.headerRow !== false,
 					relax_quotes: options.relaxQuotes,
 					onRecord: (record) => {
 						if (!options.includeEmptyCells) {
