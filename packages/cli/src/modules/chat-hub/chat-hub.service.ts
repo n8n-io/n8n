@@ -1091,10 +1091,6 @@ export class ChatHubService {
 			);
 		} finally {
 			if (provider !== 'n8n') {
-				// TODO: If we don't wait for a bit then a followup workflow insights query
-				// that happens after executions might fail to find the workflow.
-				// Once/if we add the new workflow flag to keep these WFs around this wouldn't be needed.
-				await new Promise((resolve) => setTimeout(resolve, 3000));
 				await this.deleteChatWorkflow(workflowData.id);
 			}
 		}
