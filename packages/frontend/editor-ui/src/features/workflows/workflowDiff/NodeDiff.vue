@@ -45,10 +45,12 @@ const props = withDefaults(
 		}
 
 		&:global([theme='dark']) {
-			// todo remove
-			--diff--color--foreground: var(--color--text--shade-1);
-			--diff--color--background: var(--color--background--light-2);
-			--diff--color--foreground--subtle: var(--color--text--tint-1); // Muted text
+			/* stylelint-disable-next-line @n8n/css-var-naming */
+			--fgColor-default: var(--color--text--shade-1);
+			/* stylelint-disable-next-line @n8n/css-var-naming */
+			--bgColor-default: var(--color--background--light-2);
+			/* stylelint-disable-next-line @n8n/css-var-naming */
+			--color-fg-subtle: var(--color--text--tint-1); // Muted text
 
 			// deletions
 			--diff--blob--deletion-num--color--background: var(--diff--color--deleted--light);
