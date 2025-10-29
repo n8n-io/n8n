@@ -165,6 +165,49 @@ describe('WorkflowDependencyRepository', () => {
 			expect(savedDependencies[0].dependencyKey).toBe('cred-new');
 			expect(savedDependencies[0].workflowVersionId).toBe(2);
 		});
+
+		it('should prevent races between concurrent updates', async () => {
+			//
+			// ARRANGE
+			//
+			const workflow = await createWorkflow({ versionId: '2' });
+
+			const depsVersion1 = new WorkflowDependencies(workflow.id, 1, 1);
+			depsVersion1.add({
+				dependencyType: 'credential',
+				dependencyKey: 'cred-1',
+				dependencyInfo: null,
+			});
+
+			const depsVersion2 = new WorkflowDependencies(workflow.id, 2, 1);
+			depsVersion2.add({
+				dependencyType: 'credential',
+				dependencyKey: 'cred-2',
+				dependencyInfo: null,
+			});
+
+			//
+			// ACT
+			//
+			// Run the two updates concurrently. Due to the versioning logic,
+			// the second update should always be applied. If there's a race,
+			// this test may intermittently fail.
+
+			//
+			// ASSERT
+			//
+			await Promise.all([
+				workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, depsVersion1),
+				workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, depsVersion2),
+			]);
+
+			const savedDependencies = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(savedDependencies).toHaveLength(1);
+			expect(savedDependencies[0].workflowVersionId).toBe(2);
+			expect(savedDependencies[0].dependencyKey).toBe('cred-2');
+		});
 	});
 
 	describe('removeDependenciesForWorkflow()', () => {

@@ -53,6 +53,8 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	): Promise<boolean> {
 		if (this.databaseConfig.type === 'sqlite') {
 			// SQLite has different concurrency controls, so we handle it slightly differently.
+			// TODO: this is only necessary for the legacy driver. Once that's removed in v2, we can
+			// unify the logic with the other databases.
 			return await this.updateWithImmediateTransaction(workflowId, dependencies);
 		}
 		return await this.manager.transaction(async (tx) => {
@@ -107,17 +109,16 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 
 		// If we deleted something, the incoming version is newer - proceed with insert
 		if (deleteResult.affected && deleteResult.affected > 0) {
-			const entities = dependencies.dependencies.map((dep) => this.create(dep));
 			// NOTE: we cast to any[] because TypeORM doesn't like the JSON column.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			await tx.insert(WorkflowDependency, entities as any[]);
+			await tx.insert(WorkflowDependency, dependencies.dependencies as any[]);
 			return true;
 		}
 
 		// Nothing was deleted - either no existing data, or existing data is newer/same version
 		// Check if any dependencies exist for this workflow. We lock for update to avoid a race
 		// when two processes try to insert dependencies for the same workflow at the same time.
-		const hasData = await this.hasExistingData(workflowId, tx);
+		const hasData = await this.acquireLockAndCheckForExistingData(workflowId, tx);
 
 		if (!hasData) {
 			// There's no existing data, so we can safely insert the new dependencies.
@@ -156,12 +157,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
-	private async hasExistingData(workflowId: string, tx: EntityManager): Promise<boolean> {
+	private async acquireLockAndCheckForExistingData(
+		workflowId: string,
+		tx: EntityManager,
+	): Promise<boolean> {
 		if (this.databaseConfig.type === 'sqlite') {
 			// We skip the explicit locking here. SQLite locks the entire database for writes,
 			// so the prepareTransactionForSqlite step ensures no concurrent writes happen.
-			const count = await tx.count(WorkflowDependency, { where: { workflowId } });
-			return count > 0;
+			return await tx.existsBy(WorkflowDependency, { workflowId });
 		}
 		// For Postgres and MySQL we lock on the workflow row, and only then check the dependency table.
 		// This prevents a race between two concurrent updates.
@@ -170,8 +173,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		await tx.query(`SELECT id FROM ${tableName} WHERE id = ${placeholder} FOR UPDATE`, [
 			workflowId,
 		]);
-		const count = await tx.count(WorkflowDependency, { where: { workflowId } });
-		return count > 0;
+		return await tx.existsBy(WorkflowDependency, { workflowId });
 	}
 
 	private getTableName(name: string): string {
