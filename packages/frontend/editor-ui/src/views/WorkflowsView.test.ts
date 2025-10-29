@@ -35,7 +35,7 @@ vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => (
 		isSharedSubPage: false,
 	}),
 }));
-vi.mock('@/utils/experiments', async (importOriginal) => {
+vi.mock('@/experiments/utils', async (importOriginal) => {
 	const actual = await importOriginal<object>();
 
 	return {
