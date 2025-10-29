@@ -87,7 +87,7 @@ const MODES = new Set(['light', 'dark', 'hc', 'rtl', 'print']);
 const MEDIA = new Set(['sm', 'md', 'lg', 'xl', '2xl']);
 
 // Ignore issues related to these namespaces
-const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka']);
+const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka', 'ag']);
 
 // Allowed namespaces
 const NAMESPACES = new Set(['n8n', 'p', ...DISABLE_CHECK_FOR_NAMESPACES]);
