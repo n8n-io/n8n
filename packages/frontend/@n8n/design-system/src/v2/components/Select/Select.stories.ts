@@ -54,7 +54,10 @@ export const ItemsObjectArray = {
 		},
 		template: `
 		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+			<h3>Default </h3>
 			<Select v-bind="args" v-model="value" />
+			<h3>Disabled </h3>
+			<Select v-bind="args" v-model="value" disabled/>
 		</div>
 		`,
 	}),
