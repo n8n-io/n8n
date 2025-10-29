@@ -61,16 +61,23 @@ const showExecuteMessage = computed(() => {
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
 
-	// Check if there's an error message after the last workflow update
-	const hasErrorAfterUpdate = builderStore.chatMessages
-		.slice(builderUpdatedWorkflowMessageIndex + 1)
-		.some((msg) => msg.type === 'error');
+	// Check if there's an error message or task aborted message after the last workflow update
+	const messagesAfterUpdate = builderStore.chatMessages.slice(
+		builderUpdatedWorkflowMessageIndex + 1,
+	);
+	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
+	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some(
+		(msg) =>
+			msg.type === 'text' &&
+			msg.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage'),
+	);
 
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
-		!hasErrorAfterUpdate
+		!hasErrorAfterUpdate &&
+		!hasTaskAbortedAfterUpdate
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
