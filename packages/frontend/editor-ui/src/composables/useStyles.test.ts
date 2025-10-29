@@ -19,7 +19,7 @@ describe('useStyles', () => {
 		);
 
 		expect(global.document.documentElement.style.setProperty).toHaveBeenCalledWith(
-			'--workflow-preview--ndv--z',
+			'--workflow-preview-ndv--z',
 			'9999999',
 		);
 
