@@ -22,10 +22,6 @@ export class AddActiveVersionIdColumn1761302979000 implements ReversibleMigratio
 		);
 
 		// For existing ACTIVE workflows, set activeVersionId = versionId
-		// Only update workflows where the versionId exists in workflow_history to avoid
-		// foreign key constraint violations. Some users don't have workflow history enabled,
-		// and their workflows need to have activeVersionId = NULL until we enable history for them.
-		const workflowHistoryTableName = escape.tableName(WORKFLOW_HISTORY_TABLE_NAME);
 		const versionIdColumn = escape.columnName('versionId');
 		const activeColumn = escape.columnName('active');
 		const activeVersionIdColumn = escape.columnName('activeVersionId');
@@ -33,11 +29,7 @@ export class AddActiveVersionIdColumn1761302979000 implements ReversibleMigratio
 		await queryRunner.query(
 			`UPDATE ${workflowsTableName}
 			 SET ${activeVersionIdColumn} = ${versionIdColumn}
-			 WHERE ${activeColumn} = true
-			 AND EXISTS (
-			 	SELECT 1 FROM ${workflowHistoryTableName}
-			 	WHERE ${workflowHistoryTableName}.${versionIdColumn} = ${workflowsTableName}.${versionIdColumn}
-			 )`,
+			 WHERE ${activeColumn} = true`,
 		);
 	}
 
