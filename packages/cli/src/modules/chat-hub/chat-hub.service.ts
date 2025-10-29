@@ -14,27 +14,14 @@ import {
 	type EnrichedStructuredChunk,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import {
-	ExecutionRepository,
-	IExecutionResponse,
-	SharedWorkflow,
-	SharedWorkflowRepository,
-	User,
-	withTransaction,
-	WorkflowEntity,
-	WorkflowRepository,
-} from '@n8n/db';
+import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
 import {
-	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
-	NodeConnectionTypes,
 	OperationalError,
 	ManualExecutionCancelledError,
-	type IConnections,
-	type INode,
 	type INodeCredentials,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
@@ -45,7 +32,6 @@ import {
 	IExecuteData,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -61,22 +47,16 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
-import {
-	CONVERSATION_TITLE_GENERATION_PROMPT,
-	JSONL_STREAM_HEADERS,
-	NODE_NAMES,
-	PROVIDER_NODE_TYPE_MAP,
-} from './chat-hub.constants';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import type {
 	HumanMessagePayload,
 	RegenerateMessagePayload,
 	EditMessagePayload,
-	MessageRecord,
 	ModelWithCredentials,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
-import { getMaxContextWindowTokens } from './context-limits';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 
 @Service()
@@ -90,13 +70,13 @@ export class ChatHubService {
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly sessionRepository: ChatHubSessionRepository,
 		private readonly messageRepository: ChatHubMessageRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
+		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 	) {}
 
 	async getModels(
@@ -342,70 +322,6 @@ export class ChatHubService {
 		};
 	}
 
-	private async createChatWorkflow(
-		user: User,
-		sessionId: ChatSessionId,
-		projectId: string,
-		history: ChatHubMessage[],
-		humanMessage: string,
-		credentials: INodeCredentials,
-		model: ChatHubConversationModel,
-		generateConversationTitle: boolean,
-		trx?: EntityManager,
-		systemMessage?: string,
-	) {
-		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
-			const { nodes, connections, executionData } = this.prepareChatWorkflow({
-				user,
-				sessionId,
-				history,
-				humanMessage,
-				credentials,
-				model,
-				generateConversationTitle,
-				systemMessage,
-			});
-
-			const newWorkflow = new WorkflowEntity();
-			newWorkflow.versionId = uuidv4();
-			newWorkflow.name = `Chat ${sessionId}`;
-			newWorkflow.active = false;
-			newWorkflow.nodes = nodes;
-			newWorkflow.connections = connections;
-
-			const workflow = await em.save<WorkflowEntity>(newWorkflow);
-
-			await em.save<SharedWorkflow>(
-				this.sharedWorkflowRepository.create({
-					role: 'workflow:owner',
-					projectId,
-					workflow,
-				}),
-			);
-
-			const workflowData = {
-				...workflow,
-				nodes,
-				connections,
-				versionId: uuidv4(),
-			};
-
-			return {
-				workflowData,
-				executionData,
-			};
-		});
-	}
-
-	private async ensureCredentials(
-		user: User,
-		model: ChatHubConversationModel,
-		credentials: INodeCredentials,
-		trx?: EntityManager,
-	) {
-		return await this.chatHubCredentialsService.ensureCredentials(user, model, credentials, trx);
-	}
-
 	private async deleteChatWorkflow(workflowId: string): Promise<void> {
 		await this.workflowRepository.delete(workflowId);
 	}
@@ -472,9 +388,6 @@ export class ChatHubService {
 					trx,
 				);
 
-				// generate title on receiving the first human message only
-				const generateTitle = previousMessageId === null;
-
 				if (provider === 'n8n') {
 					return await this.prepareCustomAgentWorkflow(
 						user,
@@ -491,7 +404,6 @@ export class ChatHubService {
 						sessionId,
 						history,
 						message,
-						generateTitle,
 						trx,
 					);
 				}
@@ -503,7 +415,7 @@ export class ChatHubService {
 					model,
 					history,
 					message,
-					generateTitle,
+					undefined,
 					trx,
 				);
 			},
@@ -519,6 +431,13 @@ export class ChatHubService {
 			selectedModel,
 			provider,
 		);
+
+		// Generate title for the session on receiving the first human message
+		// TODO: Do this concurrently / on a separate API call?
+		// TODO: Do this for n8n and custom agent providers
+		if (previousMessageId === null && !['n8n', 'custom-agent'].includes(provider)) {
+			await this.generateSessionTitle(user, sessionId, message, credentials, model);
+		}
 	}
 
 	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
@@ -573,7 +492,6 @@ export class ChatHubService {
 						sessionId,
 						history,
 						message,
-						false,
 						trx,
 					);
 				}
@@ -585,7 +503,7 @@ export class ChatHubService {
 					model,
 					history,
 					message,
-					false,
+					undefined,
 					trx,
 				);
 			}
@@ -663,7 +581,6 @@ export class ChatHubService {
 					sessionId,
 					history,
 					message,
-					false,
 					trx,
 				);
 			} else {
@@ -674,7 +591,7 @@ export class ChatHubService {
 					model,
 					history,
 					message,
-					false,
+					undefined,
 					trx,
 				);
 			}
@@ -706,23 +623,26 @@ export class ChatHubService {
 		model: ChatHubConversationModel,
 		history: ChatHubMessage[],
 		message: string,
-		generateConversationTitle: boolean,
+		systemMessage: string | undefined,
 		trx: EntityManager,
-		systemMessage?: string,
 	) {
-		const credential = await this.ensureCredentials(user, model, credentials, trx);
-
-		return await this.createChatWorkflow(
+		const credential = await this.chatHubCredentialsService.ensureCredentials(
 			user,
+			model,
+			credentials,
+			trx,
+		);
+
+		return await this.chatHubWorkflowService.createChatWorkflow(
+			user.id,
 			sessionId,
 			credential.projectId,
 			history,
 			message,
 			credentials,
 			model,
-			generateConversationTitle,
-			trx,
 			systemMessage,
+			trx,
 		);
 	}
 
@@ -732,7 +652,6 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		history: ChatHubMessage[],
 		message: string,
-		generateConversationTitle: boolean,
 		trx: EntityManager,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id);
@@ -775,9 +694,8 @@ export class ChatHubService {
 			model,
 			history,
 			message,
-			generateConversationTitle,
-			trx,
 			systemMessage,
+			trx,
 		);
 	}
 
@@ -1096,215 +1014,87 @@ export class ChatHubService {
 		}
 	}
 
-	private prepareChatWorkflow({
-		user,
-		sessionId,
-		history,
-		humanMessage,
-		credentials,
-		model,
-		generateConversationTitle,
-		systemMessage,
-	}: {
-		user: User;
-		sessionId: ChatSessionId;
-		history: ChatHubMessage[];
-		humanMessage: string;
-		credentials: INodeCredentials;
-		model: ChatHubConversationModel;
-		generateConversationTitle: boolean;
-		systemMessage?: string;
-	}) {
-		const chatTriggerNode: INode = {
-			parameters: {},
-			type: CHAT_TRIGGER_NODE_TYPE,
-			typeVersion: 1.3,
-			position: [0, 0],
-			id: uuidv4(),
-			name: NODE_NAMES.CHAT_TRIGGER,
-			webhookId: uuidv4(),
-		};
+	private async generateSessionTitle(
+		user: User,
+		sessionId: ChatSessionId,
+		humanMessage: string,
+		credentials: INodeCredentials,
+		model: ChatHubConversationModel,
+	) {
+		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
+			async (trx) => {
+				const credential = await this.chatHubCredentialsService.ensureCredentials(
+					user,
+					model,
+					credentials,
+					trx,
+				);
 
-		const nodes: INode[] = [
-			chatTriggerNode,
-			{
-				parameters: {
-					promptType: 'define',
-					text: "={{ $('When chat message received').item.json.chatInput }}",
-					options: {
-						enableStreaming: true,
-						maxTokensFromMemory:
-							model.provider !== 'n8n' && model.provider !== 'custom-agent'
-								? getMaxContextWindowTokens(model.provider, model.model)
-								: undefined,
-						systemMessage,
-					},
-				},
-				type: AGENT_LANGCHAIN_NODE_TYPE,
-				typeVersion: 3,
-				position: [600, 0],
-				id: uuidv4(),
-				name: NODE_NAMES.REPLY_AGENT,
+				return await this.chatHubWorkflowService.createTitleGenerationWorkflow(
+					user.id,
+					sessionId,
+					credential.projectId,
+					humanMessage,
+					credentials,
+					model,
+					trx,
+				);
 			},
-			this.createModelNode(credentials, model),
-			{
-				parameters: {
-					sessionIdType: 'customKey',
-					sessionKey: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.sessionId }}`,
-					contextWindowLength: 20, // TODO: Decide this based on selected model & chat history token size
-				},
-				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-				typeVersion: 1.3,
-				position: [480, 208],
-				id: uuidv4(),
-				name: NODE_NAMES.MEMORY,
-			},
-			{
-				parameters: {
-					mode: 'insert',
-					insertMode: 'override',
-					messages: {
-						messageValues: history
-							// Empty messages can't be restored by the memory manager
-							.filter((message) => message.content.length > 0)
-							.map((message) => {
-								const typeMap: Record<string, MessageRecord['type']> = {
-									human: 'user',
-									ai: 'ai',
-									system: 'system',
-								};
+		);
 
-								// TODO: Tool messages etc?
-								return {
-									type: typeMap[message.type] || 'system',
-									message: message.content,
-									hideFromUI: false,
-								};
-							}),
-					},
-				},
-				type: '@n8n/n8n-nodes-langchain.memoryManager',
-				typeVersion: 1.1,
-				position: [224, 0],
-				id: uuidv4(),
-				name: NODE_NAMES.RESTORE_CHAT_MEMORY,
-			},
-			{
-				parameters: {
-					mode: 'delete',
-					deleteMode: 'all',
-				},
-				type: '@n8n/n8n-nodes-langchain.memoryManager',
-				typeVersion: 1.1,
-				position: [976, 0],
-				id: uuidv4(),
-				name: NODE_NAMES.CLEAR_CHAT_MEMORY,
-			},
-			{
-				disabled: !generateConversationTitle,
-				parameters: {
-					promptType: 'define',
-					text: "={{ $('When chat message received').item.json.chatInput }}",
-					options: {
-						enableStreaming: false,
-						systemMessage: CONVERSATION_TITLE_GENERATION_PROMPT,
-					},
-				},
-				type: AGENT_LANGCHAIN_NODE_TYPE,
-				typeVersion: 3,
-				position: [224, 360],
-				id: uuidv4(),
-				name: NODE_NAMES.TITLE_GENERATOR_AGENT,
-			},
-		];
+		try {
+			const execution = await this.workflowExecutionService.executeChatWorkflow(
+				workflowData,
+				executionData,
+				user,
+			);
 
-		const connections: IConnections = {
-			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [
-					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
-				],
-			},
-			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
-				main: [
-					[
-						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 },
-						{ node: NODE_NAMES.TITLE_GENERATOR_AGENT, type: NodeConnectionTypes.Main, index: 0 },
-					],
-				],
-			},
-			[NODE_NAMES.CHAT_MODEL]: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [
-					[
-						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
-						{
-							node: NODE_NAMES.TITLE_GENERATOR_AGENT,
-							type: NodeConnectionTypes.AiLanguageModel,
-							index: 0,
-						},
-					],
-				],
-			},
-			[NODE_NAMES.MEMORY]: {
-				ai_memory: [
-					[
-						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
-						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
-						{ node: NODE_NAMES.CLEAR_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
-					],
-				],
-			},
-			[NODE_NAMES.REPLY_AGENT]: {
-				main: [
-					[
-						{
-							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
-							type: NodeConnectionTypes.Main,
-							index: 0,
-						},
-					],
-				],
-			},
-		};
+			const executionId = execution.executionId;
 
-		const nodeExecutionStack: IExecuteData[] = [
-			{
-				node: chatTriggerNode,
-				data: {
-					main: [
-						[
-							{
-								json: {
-									sessionId,
-									action: 'sendMessage',
-									chatInput: humanMessage,
-								},
-							},
-						],
-					],
-				},
-				source: null,
-			},
-		];
+			if (!executionId) {
+				throw new OperationalError('There was a problem starting the chat execution.');
+			}
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-			manualData: {
-				userId: user.id,
-			},
-		};
+			try {
+				let result: IRun | undefined;
+				try {
+					result = await this.activeExecutions.getPostExecutePromise(executionId);
+					if (!result) {
+						throw new OperationalError('There was a problem executing the chat workflow.');
+					}
+				} catch (error: unknown) {
+					if (error instanceof ManualExecutionCancelledError) {
+						return;
+					}
 
-		return { nodes, connections, executionData };
+					throw error;
+				}
+
+				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+					workflowData.id,
+				]);
+				if (!execution) {
+					throw new OperationalError(`Could not find execution with ID ${executionId}`);
+				}
+
+				if (!execution.status || execution.status !== 'success') {
+					const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+					throw new OperationalError(message);
+				}
+
+				const title = this.getAIOutput(execution, NODE_NAMES.TITLE_GENERATOR_AGENT);
+				if (title) {
+					await this.sessionRepository.updateChatTitle(sessionId, title);
+				}
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					this.logger.error(`Error during chat workflow execution: ${error}`);
+				}
+				throw error;
+			}
+		} finally {
+			await this.deleteChatWorkflow(workflowData.id);
+		}
 	}
 
 	private async saveHumanMessage(
@@ -1453,57 +1243,6 @@ export class ChatHubService {
 			throw new NotFoundError('Chat message not found');
 		}
 		return message;
-	}
-
-	private createModelNode(
-		credentials: INodeCredentials,
-		conversationModel: ChatHubConversationModel,
-	): INode {
-		if (conversationModel.provider === 'n8n' || conversationModel.provider === 'custom-agent') {
-			throw new OperationalError('Custom agent workflows do not require a model node');
-		}
-
-		const { provider, model } = conversationModel;
-		const common = {
-			position: [600, 500] as [number, number],
-			id: uuidv4(),
-			name: NODE_NAMES.CHAT_MODEL,
-			credentials,
-			type: PROVIDER_NODE_TYPE_MAP[provider].name,
-			typeVersion: PROVIDER_NODE_TYPE_MAP[provider].version,
-		};
-
-		switch (provider) {
-			case 'openai':
-				return {
-					...common,
-					parameters: {
-						model: { __rl: true, mode: 'list', value: model },
-						options: {},
-					},
-				};
-			case 'anthropic':
-				return {
-					...common,
-					parameters: {
-						model: {
-							__rl: true,
-							mode: 'list',
-							value: model,
-							cachedResultName: model,
-						},
-						options: {},
-					},
-				};
-			case 'google':
-				return {
-					...common,
-					parameters: {
-						model: { __rl: true, mode: 'list', value: model },
-						options: {},
-					},
-				};
-		}
 	}
 
 	/**
