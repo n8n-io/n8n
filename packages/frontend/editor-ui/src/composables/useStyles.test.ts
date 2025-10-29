@@ -24,7 +24,7 @@ describe('useStyles', () => {
 		);
 
 		expect(global.document.documentElement.style.setProperty).toHaveBeenLastCalledWith(
-			'--z-index-nps-survey-modal',
+			'--nps-survey-modal--z',
 			'3001',
 		);
 	});
