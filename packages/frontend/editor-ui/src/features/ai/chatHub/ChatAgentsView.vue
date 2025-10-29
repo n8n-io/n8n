@@ -54,7 +54,7 @@ const allModels = computed(() =>
 			name: agent.name,
 		}))
 		.concat(
-			(chatStore.models?.n8n?.models ?? []).flatMap((model) =>
+			chatStore.models.n8n.models.flatMap((model) =>
 				model.provider === 'n8n' ? [{ ...model, type: 'n8n-workflow' }] : [],
 			),
 		),

@@ -16,6 +16,7 @@ export {
 	type ChatHubMessageStatus,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	chatModelsRequestSchema,
+	emptyChatModelsResponse,
 	type ChatModelsRequest,
 	type ChatModelsResponse,
 	ChatHubSendMessageRequest,

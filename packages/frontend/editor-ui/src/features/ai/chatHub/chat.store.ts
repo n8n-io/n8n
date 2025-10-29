@@ -21,19 +21,20 @@ import {
 	updateConversationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type {
-	ChatHubConversationModel,
-	ChatHubSendMessageRequest,
-	ChatModelsResponse,
-	ChatHubSessionDto,
-	ChatMessageId,
-	ChatSessionId,
-	ChatHubMessageDto,
-	ChatHubAgentDto,
-	ChatHubCreateAgentRequest,
-	ChatHubUpdateAgentRequest,
-	EnrichedStructuredChunk,
-	ChatHubMessageStatus,
+import {
+	emptyChatModelsResponse,
+	type ChatHubConversationModel,
+	type ChatHubSendMessageRequest,
+	type ChatModelsResponse,
+	type ChatHubSessionDto,
+	type ChatMessageId,
+	type ChatSessionId,
+	type ChatHubMessageDto,
+	type ChatHubAgentDto,
+	type ChatHubCreateAgentRequest,
+	type ChatHubUpdateAgentRequest,
+	type EnrichedStructuredChunk,
+	type ChatHubMessageStatus,
 } from '@n8n/api-types';
 import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
 import { retry } from '@n8n/utils/retry';
@@ -652,13 +653,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	return {
-		models,
+		models: computed(() => models.value ?? emptyChatModelsResponse),
+		modelsReady: computed(() => models.value !== undefined),
 		sessions: computed(() => sessions.value ?? []),
 		sessionsReady: computed(() => sessions.value !== undefined),
 		agents: computed(() => agents.value ?? []),
 		agentsReady: computed(() => agents.value !== undefined),
 		currentEditingAgent,
-		conversationsBySession,
 		isResponding,
 		getAgent,
 		lastMessage,

@@ -54,8 +54,8 @@ const credentialsName = computed(() =>
 );
 
 const menu = computed(() => {
-	const agents = chatStore.models?.['custom-agent'].models;
-	const agentOptions = (agents ?? [])
+	const agents = chatStore.models['custom-agent'].models;
+	const agentOptions = agents
 		.filter((model) => 'agentId' in model)
 		.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
 			id: `agent::${agent.agentId}`,
@@ -87,8 +87,8 @@ const menu = computed(() => {
 				provider !== 'custom-agent' && (!props.includeCustomAgents ? provider !== 'n8n' : true),
 		) // hide n8n agent for now
 		.map((provider) => {
-			const models = chatStore.models?.[provider].models ?? [];
-			const error = chatStore.models?.[provider].error;
+			const models = chatStore.models[provider].models;
+			const error = chatStore.models[provider].error;
 
 			const modelOptions =
 				models.length > 0
@@ -158,7 +158,7 @@ function onSelect(id: string) {
 		if (value === 'new') {
 			emit('createAgent');
 		} else {
-			const agents = chatStore.models?.['custom-agent'].models;
+			const agents = chatStore.models['custom-agent'].models;
 			const selected = agents?.find((agent) => 'agentId' in agent && agent.agentId === value);
 
 			if (selected) {
@@ -183,7 +183,7 @@ function onSelect(id: string) {
 
 	const model = parsedProvider === 'n8n' ? null : identifier;
 	const workflowId = parsedProvider === 'n8n' ? identifier : null;
-	const selected = chatStore.models?.[parsedProvider].models
+	const selected = chatStore.models[parsedProvider].models
 		.filter((m) => m.provider !== 'custom-agent')
 		.find((m) => (m.provider === 'n8n' ? m.workflowId === workflowId : m.model === model));
 
@@ -221,7 +221,7 @@ defineExpose({
 
 <template>
 	<N8nNavigationDropdown
-		v-if="chatStore.models !== undefined"
+		v-if="chatStore.modelsReady"
 		ref="dropdownRef"
 		:menu="menu"
 		@select="onSelect"

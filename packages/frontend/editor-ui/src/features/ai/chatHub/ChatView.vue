@@ -56,7 +56,6 @@ const currentConversation = computed(() =>
 		: undefined,
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
-const isInitialized = computed(() => chatStore.models !== undefined);
 
 const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
 
@@ -80,7 +79,7 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 );
 
 const selectedModel = computed<ChatHubConversationModel | null>(() => {
-	if (!chatStore.models) {
+	if (!chatStore.modelsReady) {
 		return null;
 	}
 
@@ -88,7 +87,7 @@ const selectedModel = computed<ChatHubConversationModel | null>(() => {
 
 	if (currentConversation.value?.provider) {
 		if (currentConversation.value.provider === 'n8n') {
-			const n8nModel = chatStore.models?.n8n.models.find(
+			const n8nModel = chatStore.models.n8n.models.find(
 				(m) =>
 					currentConversation.value &&
 					m.provider === 'n8n' &&
@@ -101,7 +100,7 @@ const selectedModel = computed<ChatHubConversationModel | null>(() => {
 
 			model = n8nModel;
 		} else if (currentConversation.value.provider === 'custom-agent') {
-			const agentModel = chatStore.models?.['custom-agent'].models.find(
+			const agentModel = chatStore.models['custom-agent'].models.find(
 				(m) =>
 					currentConversation.value &&
 					m.provider === 'custom-agent' &&
@@ -114,7 +113,7 @@ const selectedModel = computed<ChatHubConversationModel | null>(() => {
 
 			model = agentModel;
 		} else {
-			const chatModel = chatStore.models?.[currentConversation.value.provider].models.find(
+			const chatModel = chatStore.models[currentConversation.value.provider].models.find(
 				(m) =>
 					currentConversation.value &&
 					currentConversation.value?.provider !== 'n8n' &&
@@ -287,7 +286,7 @@ watch(
 
 		// Handle n8n workflow selection
 		if (typeof workflowId === 'string') {
-			const n8nModel = chatStore.models?.n8n?.models.find(
+			const n8nModel = chatStore.models.n8n.models.find(
 				(m) => m.provider === 'n8n' && m.workflowId === workflowId,
 			);
 
@@ -454,7 +453,7 @@ function closeAgentEditor() {
 		/>
 
 		<N8nScrollArea
-			v-if="isInitialized"
+			v-if="chatStore.modelsReady"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
