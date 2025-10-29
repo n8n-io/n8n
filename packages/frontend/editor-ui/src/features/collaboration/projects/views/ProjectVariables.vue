@@ -308,7 +308,7 @@ onMounted(() => {
 		@click:add="openCreateVariableModal"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader main-button="variable">
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
