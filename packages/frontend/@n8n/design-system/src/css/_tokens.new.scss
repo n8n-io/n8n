@@ -5,29 +5,29 @@
 	--background--brand--hover: var(--color--orange-400);
 	--background--brand--active: var(--color--orange-500);
 	--background--brand--focus: var(--color--orange-400);
-	--background--brand--disabled: var(--color--gray-200);
+	--background--brand--disabled: var(--color--neutral-200);
 
 	// Surface
-	--background--surface: var(--color--gray-white);
-	--background--surface--hover: var(--color--gray-100);
-	--background--surface--active: var(--color--gray-125);
-	--background--surface--focus: var(--color--gray-100);
-	--background--surface--disabled: var(--color--gray-200);
+	--background--surface: var(--color--neutral-white);
+	--background--surface--hover: var(--color--neutral-100);
+	--background--surface--active: var(--color--neutral-125);
+	--background--surface--focus: var(--color--neutral-100);
+	--background--surface--disabled: var(--color--neutral-200);
 
 	// Border
-	--border-color--subtle: var(--color--gray-100);
-	--border-color: var(--color--gray-200);
-	--border-color--strong: var(--color--gray-800);
+	--border-color--subtle: var(--color--neutral-100);
+	--border-color: var(--color--neutral-200);
+	--border-color--strong: var(--color--neutral-800);
 
 	// Icon
-	--icon-color--subtle: var(--color--gray-200);
-	--icon-color: var(--color--gray-500);
-	--icon-color--strong: var(--color--gray-800);
+	--icon-color--subtle: var(--color--neutral-200);
+	--icon-color: var(--color--neutral-500);
+	--icon-color--strong: var(--color--neutral-800);
 
 	// Text
-	--text-color: var(--color--gray-800);
-	--text-color--subtle: var(--color--gray-500);
-	--text-color--subtler: var(--color--gray-200);
+	--text-color: var(--color--neutral-800);
+	--text-color--subtle: var(--color--neutral-500);
+	--text-color--subtler: var(--color--neutral-200);
 
 	// Success
 	--background--success: var(--color--green-50);
@@ -54,10 +54,10 @@
 	--icon-color--info: var(--color--blue-800);
 
 	// Inverse
-	--background--inverse: var(--color--gray-900);
-	--border-color--inverse: var(--color--gray-700);
-	--text-color--inverse: var(--color--gray-100);
-	--icon-color--inverse: var(--color--gray-100);
+	--background--inverse: var(--color--neutral-900);
+	--border-color--inverse: var(--color--neutral-700);
+	--text-color--inverse: var(--color--neutral-100);
+	--icon-color--inverse: var(--color--neutral-100);
 }
 
 :root {

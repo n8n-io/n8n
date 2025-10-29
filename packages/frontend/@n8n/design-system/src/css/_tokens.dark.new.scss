@@ -6,29 +6,29 @@
 	--background--brand--hover: var(--color--orange-400);
 	--background--brand--active: var(--color--orange-500);
 	--background--brand--focus: var(--color--orange-400);
-	--background--brand--disabled: var(--color--gray-800);
+	--background--brand--disabled: var(--color--neutral-800);
 
 	// Surface
-	--background--surface: var(--color--gray-900);
-	--background--surface--hover: var(--color--gray-750);
-	--background--surface--active: var(--color--gray-600);
-	--background--surface--focus: var(--color--gray-750);
-	--background--surface--disabled: var(--color--gray-800);
+	--background--surface: var(--color--neutral-900);
+	--background--surface--hover: var(--color--neutral-750);
+	--background--surface--active: var(--color--neutral-600);
+	--background--surface--focus: var(--color--neutral-750);
+	--background--surface--disabled: var(--color--neutral-800);
 
 	// Border
-	--border-color--subtle: var(--color--gray-800);
-	--border-color: var(--color--gray-700);
-	--border-color--strong: var(--color--gray-600);
+	--border-color--subtle: var(--color--neutral-800);
+	--border-color: var(--color--neutral-700);
+	--border-color--strong: var(--color--neutral-600);
 
 	// Icon
-	--icon-color--subtle: var(--color--gray-600);
-	--icon-color: var(--color--gray-300);
-	--icon-color--strong: var(--color--gray-white);
+	--icon-color--subtle: var(--color--neutral-600);
+	--icon-color: var(--color--neutral-300);
+	--icon-color--strong: var(--color--neutral-white);
 
 	// Text
-	--text-color: var(--color--gray-white);
-	--text-color--subtle: var(--color--gray-250);
-	--text-color--subtler: var(--color--gray-400);
+	--text-color: var(--color--neutral-white);
+	--text-color--subtle: var(--color--neutral-250);
+	--text-color--subtler: var(--color--neutral-400);
 
 	// Success
 	--background--success: var(--color--green-950);
@@ -55,10 +55,10 @@
 	--icon-color--info: var(--color--blue-50);
 
 	// Inverse
-	--background--inverse: var(--color--gray-white);
-	--border-color--inverse: var(--color--gray-200);
-	--text-color--inverse: var(--color--gray-800);
-	--icon-color--inverse: var(--color--gray-800);
+	--background--inverse: var(--color--neutral-white);
+	--border-color--inverse: var(--color--neutral-200);
+	--text-color--inverse: var(--color--neutral-800);
+	--icon-color--inverse: var(--color--neutral-800);
 }
 
 body[data-theme='dark'] {
