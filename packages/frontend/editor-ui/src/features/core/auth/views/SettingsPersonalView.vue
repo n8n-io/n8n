@@ -506,8 +506,6 @@ onBeforeUnmount(() => {
 }
 
 .disableMfaButton {
-	// todo test
-	--button--color: var(--color--danger);
 	> span {
 		font-weight: var(--font-weight--bold);
 	}
