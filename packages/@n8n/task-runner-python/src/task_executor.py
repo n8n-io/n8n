@@ -274,12 +274,12 @@ class TaskExecutor:
 
                 json_data = TaskExecutor._extract_json_data_per_item(user_output)
 
-                item = {"json": json_data, "pairedItem": {"item": index}}
+                output_item = {"json": json_data, "pairedItem": {"item": index}}
 
                 if isinstance(user_output, dict) and "binary" in user_output:
-                    item["binary"] = user_output["binary"]
+                    output_item["binary"] = user_output["binary"]
 
-                result.append(item)
+                result.append(output_item)
 
             TaskExecutor._put_result(write_conn.fileno(), result, print_args)
 
