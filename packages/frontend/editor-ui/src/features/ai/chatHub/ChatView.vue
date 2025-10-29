@@ -56,6 +56,7 @@ const currentConversation = computed(() =>
 		: undefined,
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
+const isInitialized = computed(() => chatStore.models !== undefined);
 
 const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
 
@@ -79,7 +80,12 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 );
 
 const selectedModel = computed<ChatHubConversationModel | null>(() => {
+	if (!chatStore.models) {
+		return null;
+	}
+
 	let model: ChatHubConversationModel | null = null;
+
 	if (currentConversation.value?.provider) {
 		if (currentConversation.value.provider === 'n8n') {
 			const n8nModel = chatStore.models?.n8n.models.find(
@@ -448,6 +454,7 @@ function closeAgentEditor() {
 		/>
 
 		<N8nScrollArea
+			v-if="isInitialized"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"

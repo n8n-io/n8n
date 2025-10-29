@@ -204,7 +204,6 @@ onClickOutside(
 );
 
 // Reload models when credentials are updated
-// TODO: fix duplicate requests
 watch(
 	() => props.credentials,
 	(credentials) => {
@@ -221,7 +220,12 @@ defineExpose({
 </script>
 
 <template>
-	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" @select="onSelect">
+	<N8nNavigationDropdown
+		v-if="chatStore.models !== undefined"
+		ref="dropdownRef"
+		:menu="menu"
+		@select="onSelect"
+	>
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
