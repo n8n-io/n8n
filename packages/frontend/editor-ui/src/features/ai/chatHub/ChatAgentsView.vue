@@ -19,7 +19,7 @@ import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { type ChatHubConversationModel } from '@n8n/api-types';
+import type { ChatModelDto, ChatHubConversationModel } from '@n8n/api-types';
 import { filterAndSortAgents } from '@/features/ai/chatHub/chat.utils';
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
@@ -47,16 +47,15 @@ const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ??
 
 const allModels = computed(() =>
 	chatStore.agents
-		.map<ChatHubConversationModel>((agent) => ({
-			provider: 'custom-agent',
-			agentId: agent.id,
+		.map<ChatModelDto>((agent) => ({
+			model: {
+				provider: 'custom-agent',
+				agentId: agent.id,
+			},
 			name: agent.name,
+			description: agent.description,
 		}))
-		.concat(
-			(chatStore.models?.n8n?.models ?? []).flatMap((model) =>
-				model.provider === 'n8n' ? [{ ...model, type: 'n8n-workflow' }] : [],
-			),
-		),
+		.concat(chatStore.models?.n8n.models ?? []),
 );
 
 const models = computed(() => {
@@ -65,7 +64,7 @@ const models = computed(() => {
 		agentFilter.value,
 		chatStore.agents,
 		workflowsStore.workflowsById, // TODO: ensure workflows are fetched
-	);
+	).map((modelDto) => modelDto.model);
 });
 
 const providerOptions = [
@@ -193,7 +192,7 @@ onMounted(async () => {
 			<ChatAgentCard
 				v-for="model in models"
 				:key="`${model.provider}::${model.provider === 'custom-agent' ? model.agentId : model.provider === 'n8n' ? model.workflowId : model.model}`"
-				:model="model"
+				:model="chatStore.getModel(model)!"
 				:agents="chatStore.agents"
 				:workflows-by-id="workflowsStore.workflowsById"
 				@edit="handleEditAgent(model)"
