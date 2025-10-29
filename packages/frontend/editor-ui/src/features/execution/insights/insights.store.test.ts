@@ -10,7 +10,8 @@ import type { IUser } from '@n8n/rest-api-client/api/users';
 import { reactive } from 'vue';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
 	useRoute: () => reactive({}),
 }));
 vi.mock('@/features/execution/insights/insights.api');

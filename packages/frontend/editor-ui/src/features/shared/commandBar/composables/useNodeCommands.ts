@@ -4,7 +4,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
+import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import type { CommandGroup } from '../types';
