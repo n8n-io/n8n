@@ -25,18 +25,18 @@ const trailingProps = computed(() => ({
 
 <template>
 	<SelectItem
-		:disabled
-		:value="isAcceptable(value)"
+		:disabled="props.disabled"
+		:value="isAcceptable(props.value)"
 		:class="props.class"
-		@select="onSelect?.($event)"
+		@select="props.onSelect?.($event)"
 	>
 		<slot name="item-leading" :item="props" :ui="leadingProps">
-			<Icon v-if="icon" :icon="icon" v-bind="leadingProps" />
+			<Icon v-if="props.icon" :icon="props.icon" v-bind="leadingProps" />
 		</slot>
 
 		<SelectItemText :class="$style.ItemText">
 			<slot name="item-label" :item="props">
-				{{ label }}
+				{{ props.label }}
 			</slot>
 		</SelectItemText>
 
