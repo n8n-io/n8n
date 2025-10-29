@@ -85,43 +85,43 @@ const selectedModel = computed<ChatHubConversationModel | null>(() => {
 			const n8nModel = chatStore.models?.n8n.models.find(
 				(m) =>
 					currentConversation.value &&
-					m.provider === 'n8n' &&
-					m.workflowId === currentConversation.value.workflowId,
+					m.model.provider === 'n8n' &&
+					m.model.workflowId === currentConversation.value.workflowId,
 			);
 
 			if (!n8nModel) {
 				return null;
 			}
 
-			model = n8nModel;
+			model = n8nModel.model;
 		} else if (currentConversation.value.provider === 'custom-agent') {
 			const agentModel = chatStore.models?.['custom-agent'].models.find(
 				(m) =>
 					currentConversation.value &&
-					m.provider === 'custom-agent' &&
-					m.agentId === currentConversation.value.agentId,
+					m.model.provider === 'custom-agent' &&
+					m.model.agentId === currentConversation.value.agentId,
 			);
 
 			if (!agentModel) {
 				return null;
 			}
 
-			model = agentModel;
+			model = agentModel.model;
 		} else {
 			const chatModel = chatStore.models?.[currentConversation.value.provider].models.find(
 				(m) =>
 					currentConversation.value &&
 					currentConversation.value?.provider !== 'n8n' &&
 					currentConversation.value?.provider !== 'custom-agent' &&
-					m.provider === currentConversation.value?.provider &&
-					m.model === currentConversation.value.model,
+					m.model.provider === currentConversation.value?.provider &&
+					m.model.model === currentConversation.value.model,
 			);
 
 			if (!chatModel) {
 				return null;
 			}
 
-			model = chatModel;
+			model = chatModel.model;
 		}
 	} else {
 		model = defaultModel.value;
@@ -274,7 +274,6 @@ watch(
 				await handleSelectModel({
 					provider: 'custom-agent',
 					agentId: agent.id,
-					name: agent.name,
 				});
 			}
 			return;
@@ -283,11 +282,11 @@ watch(
 		// Handle n8n workflow selection
 		if (typeof workflowId === 'string') {
 			const n8nModel = chatStore.models?.n8n?.models.find(
-				(m) => m.provider === 'n8n' && m.workflowId === workflowId,
+				(m) => m.model.provider === 'n8n' && m.model.workflowId === workflowId,
 			);
 
 			if (n8nModel) {
-				await handleSelectModel(n8nModel);
+				await handleSelectModel(n8nModel.model);
 			}
 		}
 	},

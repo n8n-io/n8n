@@ -233,6 +233,29 @@ export class WorkflowExecutionService {
 		};
 	}
 
+	async executeChatWorkflow(
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		user: User,
+		httpResponse: Response,
+		streamingEnabled: boolean = true,
+	) {
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'chat',
+			workflowData,
+			userId: user.id,
+			executionData,
+			streamingEnabled,
+			httpResponse,
+		};
+
+		const executionId = await this.workflowRunner.run(data, undefined, true);
+
+		return {
+			executionId,
+		};
+	}
+
 	/** Executes an error workflow */
 	async executeErrorWorkflow(
 		workflowId: string,
