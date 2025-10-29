@@ -3,38 +3,37 @@ import type { SelectRootEmits, SelectRootProps } from 'reka-ui';
 import type { IconName } from '../../../components/N8nIcon/icons';
 import type {
 	AcceptableValue,
-	ArrayOrNested,
 	GetItemKeys,
 	GetModelValue,
 	GetModelValueEmits,
-	NestedItem,
 } from '../../utils/types';
 
-type VueCssClass = string | Record<string, boolean> | Array<string | Record<string, boolean>>;
+type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
+
+export type SelectItemProps = {
+	label?: string;
+	/**
+	 * The item type.
+	 * @defaultValue 'item'
+	 */
+	type?: 'label' | 'separator' | 'item';
+	value?: SelectValue;
+	disabled?: boolean;
+	onSelect?: (e: Event) => void;
+	icon?: IconName;
+	class?: VueCssClass;
+	strokeWidth?: number;
+	[key: string]: unknown;
+};
 
 export type SelectValue = AcceptableValue;
-export type SelectItem =
-	| SelectValue
-	| {
-			label?: string;
-			/**
-			 * The item type.
-			 * @defaultValue 'item'
-			 */
-			type?: 'label' | 'separator' | 'item';
-			value?: SelectValue;
-			disabled?: boolean;
-			onSelect?: (e: Event) => void;
-			icon?: IconName;
-			class?: VueCssClass;
-			[key: string]: unknown;
-	  };
+export type SelectItem = SelectValue | SelectItemProps;
 
 export type SelectVariants = 'default' | 'ghost';
 export type SelectSizes = 'xsmall' | 'small' | 'medium';
 
 export type SelectProps<
-	T extends ArrayOrNested<SelectItem> = ArrayOrNested<SelectItem>,
+	T extends SelectItem[] = SelectItem[],
 	VK extends GetItemKeys<T> = 'value',
 	M extends boolean = false,
 > = Omit<SelectRootProps<T>, 'dir' | 'multiple' | 'modelValue' | 'defaultValue' | 'by'> & {
@@ -70,22 +69,21 @@ export type SelectProps<
 };
 
 export type SelectEmits<
-	A extends ArrayOrNested<SelectItem>,
+	A extends SelectItem[],
 	VK extends GetItemKeys<A> | undefined,
 	M extends boolean,
 > = Omit<SelectRootEmits, 'update:modelValue'> & GetModelValueEmits<A, VK, M>;
 
-type SlotProps<T extends SelectItem> = (props: { item: T; index: number }) => unknown;
+type SlotProps = (props: { item: SelectItemProps; ui: Record<string, unknown> }) => unknown;
 
 export type SelectSlots<
-	A extends ArrayOrNested<SelectItem> = ArrayOrNested<SelectItem>,
+	A extends SelectItem[] = SelectItem[],
 	VK extends GetItemKeys<A> | undefined = undefined,
 	M extends boolean = false,
-	T extends NestedItem<A> = NestedItem<A>,
 > = {
 	default(props: { modelValue?: GetModelValue<A, VK, M>; open: boolean }): unknown;
-	item: SlotProps<T>;
-	['item-leading']: SlotProps<T>;
-	['item-label']: SlotProps<T>;
-	['item-trailing']: SlotProps<T>;
+	item: (props: { item: SelectItemProps }) => unknown;
+	['item-leading']: SlotProps;
+	['item-label']: (props: { item: SelectItemProps }) => unknown;
+	['item-trailing']: SlotProps;
 };

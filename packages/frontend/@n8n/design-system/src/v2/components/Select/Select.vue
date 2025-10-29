@@ -2,19 +2,19 @@
 	setup
 	lang="ts"
 	generic="
-		T extends ArrayOrNested<SelectItem>,
+		T extends Array<SelectItem>,
 		VK extends GetItemKeys<T> = 'value',
 		M extends boolean = false
 	"
 >
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { get } from '@n8n/design-system/v2/utils';
+import type { GetItemKeys, GetModelValue } from '@n8n/design-system/v2/utils/types';
 import { reactivePick } from '@vueuse/core';
 import {
-	SelectItem as RSelectItem,
 	SelectValue as RSelectValue,
 	SelectContent,
 	SelectGroup,
-	SelectItemIndicator,
-	SelectItemText,
 	SelectLabel,
 	SelectPortal,
 	SelectRoot,
@@ -27,15 +27,6 @@ import {
 } from 'reka-ui';
 import { computed, useCssModule, useTemplateRef } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import { get, isArrayOfArray } from '@n8n/design-system/v2/utils';
-import type {
-	ArrayOrNested,
-	GetItemKeys,
-	GetModelValue,
-	NestedItem,
-} from '@n8n/design-system/v2/utils/types';
-
 import type {
 	SelectEmits,
 	SelectItem,
@@ -44,7 +35,9 @@ import type {
 	SelectValue,
 	SelectSizes,
 	SelectVariants,
+	SelectItemProps,
 } from './Select.types';
+import N8nSelectItem from './SelectItem.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -65,16 +58,11 @@ const rootProps = useForwardPropsEmits(
 	emit,
 );
 
-const groups = computed<SelectItem[][]>(() => {
-	if (!props.items?.length) return [];
-	return isArrayOfArray(props.items) ? props.items : [props.items];
-});
-
-const triggerRef = useTemplateRef<InstanceType<typeof SelectTrigger>>('trigger');
-
 function isSelectItem(item: SelectItem): item is Exclude<SelectItem, SelectValue> {
 	return typeof item === 'object' && item !== null;
 }
+
+const triggerRef = useTemplateRef<InstanceType<typeof SelectTrigger>>('trigger');
 
 function castToSelectItemValue(
 	value?: GetModelValue<T, VK, M>,
@@ -99,6 +87,40 @@ const sizes: Record<SelectSizes, string> = {
 	medium: $style.Medium,
 };
 const size = computed(() => sizes[props.size]);
+
+const strokeWidths = {
+	xsmall: 1,
+	small: 1,
+	medium: 1.5,
+};
+
+const iconStrokeWidth = computed(() => strokeWidths[props.size]);
+
+const labelSizes: Record<SelectSizes, string> = {
+	xsmall: $style.SelectLabelXSmall,
+	small: $style.SelectLabelSmall,
+	medium: $style.SelectLabelMedium,
+};
+const labelSize = computed(() => labelSizes[props.size]);
+
+const groups = computed<SelectItemProps[]>(() => {
+	if (!props.items?.length) return [];
+	return props.items.map((item) => {
+		return isSelectItem(item)
+			? {
+					...item,
+					value: get(item, props.valueKey as string) as string,
+					label: String(get(item, props.labelKey as string)),
+					class: [$style.SelectItem, item.class, size.value],
+					strokeWidth: iconStrokeWidth.value,
+				}
+			: {
+					value: item,
+					label: String(item),
+					class: [$style.SelectItem, size.value],
+				};
+	});
+});
 </script>
 
 <template>
@@ -118,7 +140,7 @@ const size = computed(() => sizes[props.size]);
 			:class="[$style.SelectTrigger, variant, size]"
 			:aria-label="$attrs['aria-label'] ?? placeholder"
 		>
-			<Icon v-if="icon" :icon="icon" />
+			<Icon v-if="icon" :icon="icon" :class="$style.SelectedIcon" :stroke-width="iconStrokeWidth" />
 			<RSelectValue :placeholder="placeholder" :class="$style.SelectValue">
 				<slot :model-value="modelValue" :open="open" />
 			</RSelectValue>
@@ -132,55 +154,32 @@ const size = computed(() => sizes[props.size]);
 				</SelectScrollUpButton>
 
 				<SelectViewport :class="$style.SelectViewport">
-					<SelectGroup v-for="(group, groupIndex) in groups" :key="`group-${groupIndex}`">
-						<template v-for="(item, index) in group" :key="`group-${groupIndex}-${index}`">
-							<SelectLabel
-								v-if="isSelectItem(item) && item.type === 'label'"
-								:class="$style.SelectLabel"
-							>
-								{{ get(item, props.labelKey as string) }}
+					<SelectGroup>
+						<template v-for="(item, index) in groups" :key="`group-${index}`">
+							<SelectLabel v-if="item.type === 'label'" :class="[$style.SelectLabel, labelSize]">
+								{{ item.label }}
 							</SelectLabel>
 
 							<SelectSeparator
-								v-else-if="isSelectItem(item) && item.type === 'separator'"
+								v-else-if="item.type === 'separator'"
 								:class="$style.SelectSeparator"
 								role="separator"
 							/>
 
-							<RSelectItem
-								v-else
-								:disabled="isSelectItem(item) && item.disabled"
-								:value="isSelectItem(item) ? get(item, props.valueKey as string) : item"
-								:class="$style.SelectItem"
-								@select="isSelectItem(item) && item.onSelect?.($event)"
-							>
-								<slot name="item" :item="item as NestedItem<T>" :index="index">
-									<slot name="item-leading" :item="item as NestedItem<T>" :index="index">
-										<Icon v-if="isSelectItem(item) && item.icon" :icon="item.icon" />
-									</slot>
-
-									<SelectItemText>
-										<slot name="item-label" :item="item as NestedItem<T>" :index="index">
-											{{ isSelectItem(item) ? get(item, props.labelKey as string) : item }}
-										</slot>
-									</SelectItemText>
-
-									<span :class="$style.ItemTrailing">
-										<slot name="item-trailing" :item="item as NestedItem<T>" :index="index" />
-
-										<SelectItemIndicator as-child>
-											<Icon icon="check" />
-										</SelectItemIndicator>
-									</span>
-								</slot>
-							</RSelectItem>
+							<slot v-else name="item" :item="item">
+								<N8nSelectItem v-bind="item">
+									<template #item-leading="{ ui }">
+										<slot name="item-leading" :item="item" :ui="ui" />
+									</template>
+									<template #item-label>
+										<slot name="item-label" :item="item" />
+									</template>
+									<template #item-trailing="{ ui }">
+										<slot name="item-trailing" :item="item" :ui="ui" />
+									</template>
+								</N8nSelectItem>
+							</slot>
 						</template>
-
-						<SelectSeparator
-							v-if="groups.length > 1 && groupIndex < groups.length - 1"
-							:class="$style.SelectSeparator"
-							role="separator"
-						/>
 					</SelectGroup>
 				</SelectViewport>
 
@@ -241,11 +240,13 @@ const size = computed(() => sizes[props.size]);
 .XSmall {
 	min-height: 24px;
 	padding: 0 8px;
+	font-size: var(--font-size--2xs);
 }
 
 .Small {
 	min-height: 28px;
 	padding: 0 10px;
+	font-size: var(--font-size--2xs);
 }
 
 .Medium {
@@ -255,16 +256,14 @@ const size = computed(() => sizes[props.size]);
 	line-height: var(--line-height--sm);
 }
 
-.TrailingIcon {
-	margin-left: auto;
+.SelectedIcon {
 	flex-shrink: 0;
 }
 
-.ItemTrailing {
+.TrailingIcon {
 	margin-left: auto;
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
+	flex-shrink: 0;
+	color: var(--color--text);
 }
 
 .SelectContent {
@@ -283,19 +282,6 @@ const size = computed(() => sizes[props.size]);
 
 .SelectViewport {
 	padding: 5px;
-	background:
-		linear-gradient(var(--color--background--light-2) 30%, rgba(255, 255, 255, 0)) center top,
-		linear-gradient(rgba(255, 255, 255, 0), var(--color--background--light-2) 70%) center bottom,
-		radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) center top,
-		radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) center bottom;
-
-	background-repeat: no-repeat;
-	background-size:
-		100% 40px,
-		100% 40px,
-		100% 5px,
-		100% 5px;
-	background-attachment: local, local, scroll, scroll;
 }
 
 .SelectValue {
@@ -316,6 +302,7 @@ const size = computed(() => sizes[props.size]);
 	user-select: none;
 	color: var(--text--color);
 	gap: 6px;
+
 	&:not([data-disabled]) {
 		&:hover,
 		&[data-highlighted] {
@@ -333,6 +320,17 @@ const size = computed(() => sizes[props.size]);
 .SelectLabel {
 	padding: 6px 8px 4px;
 	color: var(--color--text--tint-1);
+}
+
+.SelectLabelMedium {
+	font-size: var(--font-size--2xs);
+}
+
+.SelectLabelSmall {
+	font-size: var(--font-size--2xs);
+}
+
+.SelectLabelXSmall {
 	font-size: var(--font-size--2xs);
 }
 

@@ -184,31 +184,6 @@ describe('v2/components/Select', () => {
 		});
 	});
 
-	describe('grouped items', () => {
-		it('should render nested array of items', async () => {
-			const items: SelectItem[][] = [
-				[
-					{ value: '1', label: 'Option 1' },
-					{ value: '2', label: 'Option 2' },
-				],
-				[
-					{ value: '3', label: 'Option 3' },
-					{ value: '4', label: 'Option 4' },
-				],
-			];
-			const wrapper = render(Select, {
-				props: {
-					items,
-					defaultOpen: true,
-				},
-			});
-			const trigger = wrapper.container.querySelector('[role="combobox"]');
-
-			const { popover } = await getPopoverContainer(trigger);
-			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(1);
-		});
-	});
-
 	describe('v-model', () => {
 		it('should update modelValue on selection', async () => {
 			const items = [
