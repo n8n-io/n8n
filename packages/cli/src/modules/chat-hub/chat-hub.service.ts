@@ -148,10 +148,13 @@ export class ChatHubService {
 			),
 		);
 
-		return responses.reduce<ChatModelsResponse>((acc, [provider, res]) => {
-			acc[provider] = res;
-			return acc;
-		}, emptyChatModelsResponse);
+		return responses.reduce<ChatModelsResponse>(
+			(acc, [provider, res]) => {
+				acc[provider] = res;
+				return acc;
+			},
+			{ ...emptyChatModelsResponse },
+		);
 	}
 
 	private async fetchModelsForProvider(

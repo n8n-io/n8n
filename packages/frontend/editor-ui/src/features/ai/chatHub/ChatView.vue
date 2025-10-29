@@ -198,9 +198,7 @@ watch(
 watch(
 	() => chatStore.agents,
 	(models) => {
-		const selected = selectedModel.value;
-
-		if (!models || selected !== null || !isNewSession.value) {
+		if (!models || !!selectedModel.value || !isNewSession.value) {
 			return;
 		}
 
