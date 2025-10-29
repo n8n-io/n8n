@@ -4,7 +4,7 @@
 # Run from anywhere - uses absolute paths
 
 # Absolute path to frontend directory
-FRONTEND_DIR="./packages/frontend"
+FRONTEND_DIR="./packages/frontend/editor-ui"
 
 # Find all files in frontend folder except _tokens.scss (which is already updated)
 echo "Finding files to process..."
@@ -189,6 +189,125 @@ echo ""
 # echo "$files" | xargs perl -pi -e 's/--font-size-s/--font-size--sm/g'
 # echo "✓ Font size tokens replaced"
 # echo ""
+
+# Z-index tokens
+echo "[New] Replacing z-index tokens..."
+echo "$files" | xargs perl -pi -e 's/--z-index-top-banners/--top-banners--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-app-header/--app-header--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-app-sidebar/--app-sidebar--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-workflow-preview-ndv/--workflow-preview--ndv--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-canvas-add-button/--canvas-add-button--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-codemirror-tooltip/--codemirror-tooltip--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-ask-assistant-chat/--ask-assistant--chat--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-ask-assistant-floating-button/--ask-assistant--floating-button--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-ndv/--ndv--z/g'
+echo "$files" | xargs perl -pi -e 's/--z-index-node-creator/--node-creator--z/g'
+echo "✓ Z-index tokens replaced"
+echo ""
+
+# Height tokens
+echo "[New] Replacing height tokens..."
+echo "$files" | xargs perl -pi -e 's/--header-height/--header--height/g'
+echo "$files" | xargs perl -pi -e 's/--banner-height/--banner--height/g'
+echo "$files" | xargs perl -pi -e 's/--dialog-height/--dialog--height/g'
+echo "$files" | xargs perl -pi -e 's/--dialog-min-height/--dialog--min-height/g'
+echo "$files" | xargs perl -pi -e 's/--dialog-max-height/--dialog--max-height/g'
+echo "$files" | xargs perl -pi -e 's/--content-height/--content--height/g'
+echo "$files" | xargs perl -pi -e 's/--draggable-height/--draggable--height/g'
+echo "$files" | xargs perl -pi -e 's/--expanded-max-height/--embedded-ndv--max-height--expanded/g'
+echo "$files" | xargs perl -pi -e 's/--metrics-chart-height/--metrics-chart--height/g'
+echo "$files" | xargs perl -pi -e 's/--parameter-input-options-height/--parameter-input-options--height/g'
+echo "$files" | xargs perl -pi -e 's/--logs-panel-height/--logs-panel--height/g'
+echo "$files" | xargs perl -pi -e 's/--google-auth-btn-height/--google-auth-btn--height/g'
+echo "$files" | xargs perl -pi -e 's/--max-height-on-focus/--input--max-height--focus/g'
+echo "✓ Height tokens replaced"
+echo ""
+
+# Width tokens
+echo "[New] Replacing width tokens..."
+echo "$files" | xargs perl -pi -e 's/--content-container-width/--content-container--width/g'
+echo "$files" | xargs perl -pi -e 's/--dialog-max-width/--dialog--max-width/g'
+echo "$files" | xargs perl -pi -e 's/--dialog-min-width/--dialog--min-width/g'
+echo "$files" | xargs perl -pi -e 's/--node-creator-width/--node-creator--width/g'
+echo "$files" | xargs perl -pi -e 's/--delete-option-width/--delete-option--width/g'
+echo "$files" | xargs perl -pi -e 's/--input-issues-width/--resource-locator--input-issues--width/g'
+echo "$files" | xargs perl -pi -e 's/--input-override-width/--resource-locator--input-override--width/g'
+echo "$files" | xargs perl -pi -e 's/--input-width/--output-item-select--width/g'
+echo "$files" | xargs perl -pi -e 's/--max-select-width/--node-input--select--max-width/g'
+echo "$files" | xargs perl -pi -e 's/--project-field-width/--project-field--width/g'
+echo "$files" | xargs perl -pi -e 's/--canvas-node-border-width/--canvas-node--border-width/g'
+echo "✓ Width tokens replaced"
+echo ""
+
+# Background tokens (color--background)
+echo "[New] Replacing background tokens..."
+echo "$files" | xargs perl -pi -e 's/--menu-background/--menu--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--execution-list-item-background/--execution-list-item--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--execution-list-item-highlight-background/--execution-list-item--color--background--highlight/g'
+echo "$files" | xargs perl -pi -e 's/--grid-cell-active-background/--grid-cell--color--background--active/g'
+echo "$files" | xargs perl -pi -e 's/--trigger-icon-background-color/--trigger-icon--color--background/g'
+echo "$files" | xargs perl -pi -e 's/--google-auth-btn-normal/--google-auth-btn--color--background--normal/g'
+echo "$files" | xargs perl -pi -e 's/--google-auth-btn-focus/--google-auth-btn--color--background--focus/g'
+echo "$files" | xargs perl -pi -e 's/--google-auth-btn-pressed/--google-auth-btn--color--background--pressed/g'
+echo "$files" | xargs perl -pi -e 's/--google-auth-btn-disabled/--google-auth-btn--color--background--disabled/g'
+echo "✓ Background tokens replaced"
+echo ""
+
+# Color tokens
+echo "[New] Replacing color tokens..."
+echo "$files" | xargs perl -pi -e 's/--canvas-node-icon-color/--canvas-node--icon-color/g'
+echo "$files" | xargs perl -pi -e 's/--canvas-edge-color/--canvas-edge--color/g'
+echo "$files" | xargs perl -pi -e 's/--edge-highlight-color/--edge--color--highlight/g'
+echo "$files" | xargs perl -pi -e 's/--icon-base-color/--icon--color/g'
+echo "$files" | xargs perl -pi -e 's/--button-color/--button--color/g'
+echo "$files" | xargs perl -pi -e 's/--button-border-color/--button--border-color/g'
+echo "$files" | xargs perl -pi -e 's/--trigger-icon-border-color/--trigger-icon--border-color/g'
+echo "$files" | xargs perl -pi -e 's/--color-canvas-node-error-border-color/--canvas-node--border-color--error/g'
+echo "$files" | xargs perl -pi -e 's/--color-button-secondary-hover-active-focus-background/--button--color--background--secondary--hover/g'
+echo "$files" | xargs perl -pi -e 's/--el-color-primary/--color--primary/g'
+echo "✓ Color tokens replaced"
+echo ""
+
+# Border tokens - using radius for border-radius, border for border style
+echo "[New] Replacing border tokens..."
+echo "$files" | xargs perl -pi -e 's/--schema-preview-dashed-border-dark/--schema-preview--border--dashed--dark/g'
+echo "$files" | xargs perl -pi -e 's/--schema-preview-dashed-border/--schema-preview--border--dashed/g'
+echo "$files" | xargs perl -pi -e 's/--input-border-bottom-right-radius/--input-triple--radius--bottom-right/g'
+echo "$files" | xargs perl -pi -e 's/--input-border-top-right-radius/--input-triple--radius--top-right/g'
+echo "✓ Border tokens replaced"
+echo ""
+
+# Spacing and margin tokens (using margin-left, margin-top, etc)
+echo "[New] Replacing spacing/margin tokens..."
+echo "$files" | xargs perl -pi -e 's/--spacing-1xl/--spacing--xl/g'
+echo "$files" | xargs perl -pi -e 's/--toast-bottom-offset/--toast--margin-bottom/g'
+echo "$files" | xargs perl -pi -e 's/--ask-assistant-floating-button-bottom-offset/--ask-assistant--floating-button--margin-bottom/g'
+echo "$files" | xargs perl -pi -e 's/--trigger-placeholder-top-position/--trigger-placeholder--margin-top/g'
+echo "$files" | xargs perl -pi -e 's/--trigger-placeholder-left-position/--trigger-placeholder--margin-left/g'
+echo "$files" | xargs perl -pi -e 's/--search-margin/--search--margin/g'
+echo "$files" | xargs perl -pi -e 's/--ndv-spacing/--ndv--spacing/g'
+echo "$files" | xargs perl -pi -e 's/--collapsed-offset/--collapsed--spacing/g'
+echo "✓ Spacing/margin tokens replaced"
+echo ""
+
+# Font weight tokens
+echo "[New] Replacing font weight tokens..."
+echo "$files" | xargs perl -pi -e 's/--font-weight-normal/--font-weight--regular/g'
+echo "✓ Font weight tokens replaced"
+echo ""
+
+# Animation/duration tokens
+echo "[New] Replacing animation/duration tokens..."
+echo "$files" | xargs perl -pi -e 's/--animation-duration/--ndv--sub-connections--duration/g'
+echo "✓ Animation/duration tokens replaced"
+echo ""
+
+# Size tokens
+echo "[New] Replacing size tokens..."
+echo "$files" | xargs perl -pi -e 's/--node-size/--node--size/g'
+echo "$files" | xargs perl -pi -e 's/--plus-button-size/--plus-button--size/g'
+echo "✓ Size tokens replaced"
+echo ""
 
 echo "✓ Token replacements complete!"
 echo "Processed $file_count files"

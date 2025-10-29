@@ -10,16 +10,16 @@ describe('useStyles', () => {
 
 		expect(global.document.documentElement.style.setProperty).toHaveBeenNthCalledWith(
 			2,
-			'--z-index-app-header',
+			'--app-header--z',
 			'99',
 		);
 		expect(global.document.documentElement.style.setProperty).toHaveBeenCalledWith(
-			'--z-index-canvas-add-button',
+			'--canvas-add-button--z',
 			'101',
 		);
 
 		expect(global.document.documentElement.style.setProperty).toHaveBeenCalledWith(
-			'--z-index-workflow-preview-ndv',
+			'--workflow-preview--ndv--z',
 			'9999999',
 		);
 

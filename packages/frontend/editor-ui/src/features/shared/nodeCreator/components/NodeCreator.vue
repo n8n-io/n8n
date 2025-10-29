@@ -213,7 +213,7 @@ onClickOutside(
 	top: $header-height;
 	bottom: 0;
 	right: 0;
-	z-index: var(--z-index-node-creator);
+	z-index: var(--node-creator--z);
 	width: var(--node-creator-width);
 	color: $node-creator-text-color;
 }
@@ -237,7 +237,7 @@ onClickOutside(
 
 .close {
 	position: absolute;
-	z-index: calc(var(--z-index-node-creator) + 1);
+	z-index: calc(var(--node-creator--z) + 1);
 	top: var(--spacing--xs);
 	right: var(--spacing--xs);
 	background: transparent;

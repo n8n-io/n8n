@@ -140,7 +140,7 @@ watchOnce(isVisible, (visible) => {
 	overflow: hidden;
 
 	--canvas-node--border-color: var(--color--text--tint-2);
-	--expanded-max-height: min(
+	--embedded-ndv--max-height--expanded: min(
 		calc(var(--canvas-node--height) * 2),
 		var(--max-height-on-focus),
 		300px
@@ -150,7 +150,7 @@ watchOnce(isVisible, (visible) => {
 		user-select: text;
 		cursor: auto;
 		height: auto;
-		max-height: var(--expanded-max-height);
+		max-height: var(--embedded-ndv--max-height--expanded);
 		min-height: var(--spacing--3xl);
 
 		:global(.selected) & {
@@ -177,7 +177,7 @@ watchOnce(isVisible, (visible) => {
 	width: 100%;
 
 	height: auto;
-	max-height: calc(var(--expanded-max-height) - var(--border-width) * 2);
+	max-height: calc(var(--embedded-ndv--max-height--expanded) - var(--border-width) * 2);
 	min-height: var(--spacing--2xl); // should be multiple of GRID_SIZE
 
 	:global(.selected) & {

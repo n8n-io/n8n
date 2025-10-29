@@ -46,12 +46,18 @@ const PROPERTY_VOCABULARY = new Set([
 	'margin-bottom',
 	'max-height',
 	'max-width',
+	'min-height',
+	'min-width',
 	'z',
 	'duration',
 	'easing',
 	'outline-color',
 	'outline-width',
 	'width',
+	'top',
+	'bottom',
+	'left',
+	'right',
 ]);
 
 // Properties that can be used as standalone single-group variables (without a value)

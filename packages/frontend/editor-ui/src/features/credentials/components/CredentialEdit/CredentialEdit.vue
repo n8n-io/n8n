@@ -1201,7 +1201,7 @@ const { width } = useElementSize(credNameRef);
 .credentialModal {
 	--dialog-max-width: 1200px;
 	--dialog--close--spacing--top: 31px;
-	--dialog-max-height: 750px;
+	--dialog--max-height: 750px;
 
 	:global(.el-dialog__header) {
 		padding-bottom: 0;

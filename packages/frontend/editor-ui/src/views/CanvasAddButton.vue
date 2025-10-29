@@ -59,7 +59,7 @@ const containerCssVars = computed(() => ({
 	left: var(--trigger-placeholder-left-position);
 	// We have to increase z-index to make sure it's higher than selecting box in NodeView
 	// otherwise the clicks wouldn't register
-	z-index: var(--z-index-canvas-add-button);
+	z-index: var(--canvas-add-button--z);
 
 	&:hover .button svg path {
 		fill: var(--color--primary);
