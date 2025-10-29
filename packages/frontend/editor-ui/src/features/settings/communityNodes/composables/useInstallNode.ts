@@ -7,7 +7,7 @@ import { i18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { removePreviewToken } from '@/components/Node/NodeCreator/utils';
+import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';

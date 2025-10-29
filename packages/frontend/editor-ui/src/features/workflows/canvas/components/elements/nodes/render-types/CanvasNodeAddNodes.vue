@@ -6,7 +6,7 @@ import {
 	TemplateClickSource,
 	trackTemplatesClick,
 } from '@/utils/experiments';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useI18n } from '@n8n/i18n';

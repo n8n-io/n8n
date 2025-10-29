@@ -6,8 +6,8 @@ import ChatMessagesPanel from '@/features/execution/logs/components/ChatMessages
 import LogsDetailsPanel from '@/features/execution/logs/components/LogDetailsPanel.vue';
 import LogsPanelActions from '@/features/execution/logs/components/LogsPanelActions.vue';
 import { useLogsExecutionData } from '@/features/execution/logs/composables/useLogsExecutionData';
-import { useNDVStore } from '@/features/ndv/ndv.store';
-import { ndvEventBus } from '@/features/ndv/ndv.eventBus';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useLogsSelection } from '@/features/execution/logs/composables/useLogsSelection';
 import { useLogsTreeExpand } from '@/features/execution/logs/composables/useLogsTreeExpand';
 import { type LogEntry } from '@/features/execution/logs/logs.types';

@@ -16,14 +16,19 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 	}
 
 	async createChatMessage(message: Partial<ChatHubMessage>, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			await em.insert(ChatHubMessage, message);
-			const saved = await em.findOneOrFail(ChatHubMessage, {
-				where: { id: message.id },
-			});
-			await this.chatSessionRepository.updateLastMessageAt(saved.sessionId, saved.createdAt, em);
-			return saved;
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				await em.insert(ChatHubMessage, message);
+				const saved = await em.findOneOrFail(ChatHubMessage, {
+					where: { id: message.id },
+				});
+				await this.chatSessionRepository.updateLastMessageAt(saved.sessionId, saved.createdAt, em);
+				return saved;
+			},
+			false,
+		);
 	}
 
 	async updateChatMessage(
@@ -31,15 +36,25 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		fields: { status?: ChatHubMessageStatus; content?: string },
 		trx?: EntityManager,
 	) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.update(ChatHubMessage, { id }, fields);
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.update(ChatHubMessage, { id }, fields);
+			},
+			false,
+		);
 	}
 
 	async deleteChatMessage(id: ChatMessageId, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.delete(ChatHubMessage, { id });
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.delete(ChatHubMessage, { id });
+			},
+			false,
+		);
 	}
 
 	async getManyBySessionId(sessionId: string, trx?: EntityManager) {

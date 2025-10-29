@@ -3,12 +3,12 @@ import { computed } from 'vue';
 import BaseBanner from './BaseBanner.vue';
 import { i18n as locale } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useUIStore } from '@/stores/ui.store';
+import { useBannersStore } from '@/stores/banners.store';
 
-const uiStore = useUIStore();
+const bannersStore = useBannersStore();
 
 async function dismissPermanently() {
-	await uiStore.dismissBanner('V1', 'permanent');
+	await bannersStore.dismissBanner('V1', 'permanent');
 }
 
 const hasOwnerPermission = computed(() => hasPermission(['instanceOwner']));

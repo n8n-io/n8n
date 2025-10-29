@@ -8,7 +8,7 @@ import type {
 	INode,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { executionDataToJson, getMainAuthField, getNodeAuthOptions } from '@/utils/nodeTypesUtils';
 import type { ChatRequest } from '../assistant.types';

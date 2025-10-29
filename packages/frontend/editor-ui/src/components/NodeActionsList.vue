@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useActions } from '@/components/Node/NodeCreator/composables/useActions';
-import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
+import { useActions } from '@/features/shared/nodeCreator/composables/useActions';
+import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import type { ActionCreateElement, INodeCreateElement, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

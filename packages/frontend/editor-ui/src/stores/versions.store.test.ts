@@ -10,7 +10,8 @@ import { useToast } from '@/composables/useToast';
 import { reactive } from 'vue';
 import { VIEWS } from '@/constants';
 
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
 	useRoute: () => reactive({ name: VIEWS.HOMEPAGE }),
 }));
 

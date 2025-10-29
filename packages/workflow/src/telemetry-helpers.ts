@@ -17,6 +17,7 @@ import {
 	LANGCHAIN_CUSTOM_TOOLS,
 	MERGE_NODE_TYPE,
 	OPEN_AI_API_CREDENTIAL_TYPE,
+	OPENAI_CHAT_LANGCHAIN_NODE_TYPE,
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -442,6 +443,11 @@ export function generateNodesGraph(
 						: language === 'pythonNative'
 							? 'pythonNative'
 							: 'unknown';
+		} else if (node.type === OPENAI_CHAT_LANGCHAIN_NODE_TYPE) {
+			const enabledDefault = node.typeVersion >= 1.3 ? true : false;
+			// For 1.3+ node version by default it is true and isn't stored in parameters
+			nodeItem.use_responses_api = (node.parameters?.responsesApiEnabled ??
+				enabledDefault) as boolean;
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
