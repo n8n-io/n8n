@@ -101,12 +101,15 @@ function getConditionAndParams(
 	};
 
 	if (operators[filter.condition]) {
-		const result = [
+		if (typeof filter.value === 'boolean') {
+			// This ensures the same behavior between postgres and sqlite
+			return [`${columnRef} ${operators[filter.condition]} ${filter.value ? 1 : 0}`, {}];
+		}
+
+		return [
 			`${columnRef} ${operators[filter.condition]} :${paramName}${postfix}`,
 			{ [paramName]: value },
 		];
-		console.log('result', result);
-		return result as never;
 	}
 
 	// Special handling for neq to include NULL values (only if value is not null!)
