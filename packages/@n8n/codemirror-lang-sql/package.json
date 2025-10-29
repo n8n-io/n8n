@@ -40,8 +40,9 @@
     "@codemirror/autocomplete": "^6.0.0",
     "@codemirror/language": "^6.0.0",
     "@codemirror/state": "^6.0.0",
+    "@lezer/common": "^1.2.1",
     "@lezer/highlight": "^1.0.0",
-    "@lezer/lr": "^1.0.0",
+    "@lezer/lr": "^1.4.2",
     "@n8n/codemirror-lang": "workspace:*"
   },
   "devDependencies": {

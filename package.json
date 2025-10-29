@@ -40,6 +40,7 @@
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
+    "start:azure": "export $(cat .env | xargs) && cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
@@ -89,6 +90,8 @@
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
+      "@lezer/common": "^1.2.1",
+      "@lezer/lr": "^1.4.2",
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",

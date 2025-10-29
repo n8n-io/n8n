@@ -184,6 +184,10 @@ export class FrontendService {
 					loginUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/login`,
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
+				azureAd: {
+					loginEnabled: true,
+					loginUrl: `${instanceBaseUrl}/${restEndpoint}/azure-ad/login`,
+				},
 			},
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,

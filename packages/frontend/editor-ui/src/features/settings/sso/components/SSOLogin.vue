@@ -22,19 +22,37 @@ const onSSOLogin = async () => {
 		toast.showError(error, 'Error', error.message);
 	}
 };
+
+const onAzureAdLogin = () => {
+	const redirect = typeof route.query?.redirect === 'string' ? route.query.redirect : undefined;
+	const loginUrl = ssoStore.getAzureAdLoginUrl(redirect);
+	window.location.href = loginUrl;
+};
 </script>
 
 <template>
-	<div v-if="ssoStore.showSsoLoginButton" :class="$style.ssoLogin">
+	<div
+		v-if="ssoStore.showSsoLoginButton || ssoStore.isAzureAdLoginEnabled"
+		:class="$style.ssoLogin"
+	>
 		<div :class="$style.divider">
 			<span>{{ i18n.baseText('sso.login.divider') }}</span>
 		</div>
 		<N8nButton
+			v-if="ssoStore.showSsoLoginButton"
 			size="large"
 			type="primary"
 			outline
 			:label="i18n.baseText('sso.login.button')"
 			@click="onSSOLogin"
+		/>
+		<N8nButton
+			v-if="ssoStore.isAzureAdLoginEnabled"
+			size="large"
+			type="primary"
+			outline
+			:label="ssoStore.azureAdLoginLabel"
+			@click="onAzureAdLogin"
 		/>
 	</div>
 </template>

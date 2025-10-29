@@ -18,6 +18,7 @@ import { PostHogClient } from '@/posthog';
 import { BannerService } from '@/services/banner.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
+import { isAzureAdForceAuthenticationEnabled } from '@/sso.ee/sso-helpers';
 
 @RestController('/owner')
 export class OwnerController {
@@ -39,6 +40,16 @@ export class OwnerController {
 	 */
 	@Post('/setup', { skipAuth: true })
 	async setupOwner(req: AuthenticatedRequest, res: Response, @Body payload: OwnerSetupRequestDto) {
+		// Check if Azure AD force authentication is enabled
+		if (isAzureAdForceAuthenticationEnabled()) {
+			this.logger.debug(
+				'Request to setup owner via email/password blocked - Azure AD force authentication is enabled',
+			);
+			throw new BadRequestError(
+				'Email/password setup is disabled. Please log in with Azure AD - the first user will automatically become the owner.',
+			);
+		}
+
 		const { email, firstName, lastName, password } = payload;
 
 		if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {

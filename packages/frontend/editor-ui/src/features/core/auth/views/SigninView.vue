@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
@@ -40,6 +40,15 @@ const showMfaView = ref(false);
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
+
+// Redirect to Azure AD login if it's the only authentication method
+onMounted(() => {
+	if (ssoStore.isAzureAdLoginEnabled) {
+		const redirect = typeof route.query?.redirect === 'string' ? route.query.redirect : undefined;
+		const loginUrl = ssoStore.getAzureAdLoginUrl(redirect);
+		window.location.href = loginUrl;
+	}
+});
 
 const ldapLoginLabel = computed(() => ssoStore.ldapLoginLabel);
 const isLdapLoginEnabled = computed(() => ssoStore.isLdapLoginEnabled);

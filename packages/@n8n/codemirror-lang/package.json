@@ -30,7 +30,7 @@
   "peerDependencies": {
     "@codemirror/language": "*",
     "@lezer/highlight": "*",
-    "@lezer/lr": "^1.4.0"
+    "@lezer/lr": "^1.4.2"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

@@ -29,7 +29,8 @@ export const useSSOStore = defineStore('sso', () => {
 				isDefaultAuthenticationSaml.value) ||
 			(isOidcLoginEnabled.value &&
 				isEnterpriseOidcEnabled.value &&
-				isDefaultAuthenticationOidc.value),
+				isDefaultAuthenticationOidc.value) ||
+			azureAd.value.loginEnabled,
 	);
 
 	const getSSORedirectUrl = async (existingRedirect?: string) =>
@@ -44,11 +45,16 @@ export const useSSOStore = defineStore('sso', () => {
 				loginUrl?: string;
 				callbackUrl?: string;
 			};
+			azureAd?: {
+				loginEnabled: boolean;
+				loginLabel: string;
+			};
 		};
 		features: {
 			saml: boolean;
 			ldap: boolean;
 			oidc: boolean;
+			azureAd?: boolean;
 		};
 	}) => {
 		authenticationMethod.value = options.authenticationMethod;
@@ -70,6 +76,11 @@ export const useSSOStore = defineStore('sso', () => {
 			oidc.value.loginEnabled = options.config.oidc.loginEnabled;
 			oidc.value.loginUrl = options.config.oidc.loginUrl || '';
 			oidc.value.callbackUrl = options.config.oidc.callbackUrl || '';
+		}
+
+		if (options.config.azureAd) {
+			azureAd.value.loginEnabled = options.config.azureAd.loginEnabled;
+			azureAd.value.loginLabel = options.config.azureAd.loginLabel;
 		}
 	};
 
@@ -196,6 +207,27 @@ export const useSSOStore = defineStore('sso', () => {
 		return await ldapApi.runLdapSync(rootStore.restApiContext, data);
 	};
 
+	/**
+	 * Azure AD Configuration
+	 */
+
+	const azureAd = ref<{
+		loginEnabled: boolean;
+		loginLabel: string;
+	}>({
+		loginEnabled: false,
+		loginLabel: 'Sign in with Microsoft',
+	});
+
+	const isAzureAdLoginEnabled = computed(() => azureAd.value.loginEnabled);
+
+	const azureAdLoginLabel = computed(() => azureAd.value.loginLabel);
+
+	const getAzureAdLoginUrl = (redirect?: string) => {
+		const redirectParam = redirect ? `?redirect=${encodeURIComponent(redirect)}` : '';
+		return `${rootStore.restApiContext.baseUrl}/azure-ad/login${redirectParam}`;
+	};
+
 	const initializeSelectedProtocol = () => {
 		if (selectedAuthProtocol.value) return;
 
@@ -238,5 +270,10 @@ export const useSSOStore = defineStore('sso', () => {
 		testLdapConnection,
 		updateLdapConfig,
 		runLdapSync,
+
+		azureAd,
+		isAzureAdLoginEnabled,
+		azureAdLoginLabel,
+		getAzureAdLoginUrl,
 	};
 });

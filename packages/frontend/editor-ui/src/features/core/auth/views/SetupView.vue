@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { reactive, ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
@@ -15,12 +16,35 @@ import AuthView from './AuthView.vue';
 
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
+const ssoStore = useSSOStore();
 
 const toast = useToast();
 const locale = useI18n();
 const router = useRouter();
+const route = useRoute();
 
 const loading = ref(false);
+
+// Redirect to Azure AD login for owner setup (only if not already authenticated)
+onMounted(async () => {
+	// Check if user is already authenticated
+	if (usersStore.currentUserId) {
+		// User is logged in, redirect to home page
+		await router.push({ name: VIEWS.HOMEPAGE });
+		return;
+	}
+
+	if (ssoStore.isAzureAdLoginEnabled) {
+		toast.showMessage({
+			title: locale.baseText('auth.setup.azureAdRedirect.title'),
+			message: locale.baseText('auth.setup.azureAdRedirect.message'),
+			type: 'info',
+		});
+		const redirect = typeof route.query?.redirect === 'string' ? route.query.redirect : undefined;
+		const loginUrl = ssoStore.getAzureAdLoginUrl(redirect);
+		window.location.href = loginUrl;
+	}
+});
 const formConfig: IFormBoxConfig = reactive({
 	title: locale.baseText('auth.setup.setupOwner'),
 	buttonText: locale.baseText('auth.setup.next'),

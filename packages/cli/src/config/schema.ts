@@ -20,9 +20,9 @@ export const schema = {
 		 * @techdebt Refactor this to stop using the legacy config schema for internal state.
 		 */
 		authenticationMethod: {
-			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
-			format: ['email', 'ldap', 'saml'] as const,
-			default: 'email',
+			doc: 'How to authenticate users - only Azure AD is supported',
+			format: ['azuread', 'email', 'ldap', 'saml', 'oidc'] as const,
+			default: 'azuread',
 		},
 	},
 
