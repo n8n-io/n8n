@@ -139,27 +139,62 @@ function onDocumentationUrlClick(): void {
 </script>
 
 <template>
-	<N8nInputLabel
-		:label="i18n.credText(activeCredentialType).inputLabelDisplayName(parameter)"
-		:tooltip-text="i18n.credText(activeCredentialType).inputLabelDescription(parameter)"
-		:required="parameter.required"
-		:show-tooltip="focused"
-		:show-options="menuExpanded"
-		:data-test-id="parameter.name"
-		:size="label.size"
-	>
-		<template #options>
-			<ParameterOptions
+	<div>
+		<N8nInputLabel
+			:label="i18n.credText(activeCredentialType).inputLabelDisplayName(parameter)"
+			:tooltip-text="i18n.credText(activeCredentialType).inputLabelDescription(parameter)"
+			:required="parameter.required"
+			:show-tooltip="focused"
+			:show-options="menuExpanded"
+			:data-test-id="parameter.name"
+			:size="label.size"
+		>
+			<template #options>
+				<ParameterOptions
+					:parameter="parameter"
+					:value="value"
+					:is-read-only="false"
+					:show-options="!isFixedCollectionType"
+					:show-expression-selector="!isFixedCollectionType"
+					:is-value-expression="isValueExpression"
+					@update:model-value="optionSelected"
+					@menu-expanded="onMenuExpanded"
+				/>
+			</template>
+			<ParameterInputWrapper
+				v-if="!isFixedCollectionType"
+				ref="param"
+				input-size="large"
 				:parameter="parameter"
-				:value="value"
-				:is-read-only="false"
-				:show-options="!isFixedCollectionType"
-				:show-expression-selector="!isFixedCollectionType"
-				:is-value-expression="isValueExpression"
-				@update:model-value="optionSelected"
-				@menu-expanded="onMenuExpanded"
+				:model-value="value"
+				:path="parameter.name"
+				:hide-issues="true"
+				:documentation-url="documentationUrl"
+				:error-highlight="showRequiredErrors"
+				:is-for-credential="true"
+				:event-source="eventSource"
+				:hint="!showRequiredErrors && hint ? hint : ''"
+				:event-bus="eventBus"
+				@focus="onFocus"
+				@blur="onBlur"
+				@text-input="valueChanged"
+				@update="valueChanged"
 			/>
-		</template>
+			<div v-if="showRequiredErrors" :class="$style.errors">
+				<N8nText color="danger" size="small">
+					{{ i18n.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+					<N8nLink
+						v-if="documentationUrl"
+						:to="documentationUrl"
+						size="small"
+						:underline="true"
+						@click="onDocumentationUrlClick"
+					>
+						{{ i18n.baseText('parameterInputExpanded.openDocs') }}
+					</N8nLink>
+				</N8nText>
+			</div>
+		</N8nInputLabel>
 		<!-- FIXME: cast -->
 		<div v-if="isFixedCollectionType" class="fixed-collection-wrapper">
 			<LazyFixedCollectionParameter
@@ -170,40 +205,7 @@ function onDocumentationUrlClick(): void {
 				@value-changed="valueChanged"
 			/>
 		</div>
-		<ParameterInputWrapper
-			v-else
-			ref="param"
-			input-size="large"
-			:parameter="parameter"
-			:model-value="value"
-			:path="parameter.name"
-			:hide-issues="true"
-			:documentation-url="documentationUrl"
-			:error-highlight="showRequiredErrors"
-			:is-for-credential="true"
-			:event-source="eventSource"
-			:hint="!showRequiredErrors && hint ? hint : ''"
-			:event-bus="eventBus"
-			@focus="onFocus"
-			@blur="onBlur"
-			@text-input="valueChanged"
-			@update="valueChanged"
-		/>
-		<div v-if="showRequiredErrors" :class="$style.errors">
-			<N8nText color="danger" size="small">
-				{{ i18n.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-				<N8nLink
-					v-if="documentationUrl"
-					:to="documentationUrl"
-					size="small"
-					:underline="true"
-					@click="onDocumentationUrlClick"
-				>
-					{{ i18n.baseText('parameterInputExpanded.openDocs') }}
-				</N8nLink>
-			</N8nText>
-		</div>
-	</N8nInputLabel>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -229,10 +231,6 @@ function onDocumentationUrlClick(): void {
 	}
 	.icon-button > Button:hover {
 		color: var(--icon--color--hover);
-	}
-
-	.fixed-collection-wrapper:hover .icon-button {
-		opacity: 1;
 	}
 }
 </style>
