@@ -356,6 +356,9 @@ importers:
 
   packages/@n8n/ai-workflow-builder.ee:
     dependencies:
+      '@byjohann/toon':
+        specifier: ^0.3.1
+        version: 0.3.1
       '@langchain/anthropic':
         specifier: 'catalog:'
         version: 0.3.26(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
@@ -4428,6 +4431,9 @@ packages:
       dotenv: ^16.4.5
       openai: ^4.62.1
       zod: ^3.23.8
+
+  '@byjohann/toon@0.3.1':
+    resolution: {integrity: sha512-i9ISUy4jZYqnIsSGseeu0EkKZu3fHFtLrmnX8Vjdwc5VlgbDOkkm0+jKDjMa7tsmM6YcD4TyAlZ67BUysFhahA==}
 
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
@@ -19866,6 +19872,8 @@ snapshots:
       - bufferutil
       - encoding
       - utf-8-validate
+
+  '@byjohann/toon@0.3.1': {}
 
   '@cfworker/json-schema@4.1.0': {}
 

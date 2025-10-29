@@ -39,6 +39,7 @@
     }
   },
   "dependencies": {
+    "@byjohann/toon": "^0.3.1",
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
     "@langchain/langgraph": "0.2.74",

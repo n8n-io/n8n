@@ -25,20 +25,28 @@ export const parametersSchema = z
 const nodeDefinitionPrompt = `
 The node accepts these properties:
 <node_properties_definition>
+\`\`\`toon
 {node_definition}
+\`\`\`
 </node_properties_definition>`;
 
 const workflowContextPrompt = `
 <current_workflow_json>
+\`\`\`toon
 {workflow_json}
+\`\`\`
 </current_workflow_json>
 
 <current_simplified_execution_data>
+\`\`\`toon
 {execution_data}
+\`\`\`
 </current_simplified_execution_data>
 
 <current_execution_nodes_schemas>
+\`\`\`toon
 {execution_schema}
+\`\`\`
 </current_execution_nodes_schemas>
 
 <selected_node>

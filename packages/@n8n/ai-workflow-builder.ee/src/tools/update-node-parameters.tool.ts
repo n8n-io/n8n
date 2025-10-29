@@ -1,3 +1,4 @@
+import { encode } from '@byjohann/toon';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { tool } from '@langchain/core/tools';
 import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
@@ -41,9 +42,8 @@ const updateNodeParametersSchema = z.object({
 /**
  * Build a success message for the parameter update
  */
-function buildSuccessMessage(node: INode, changes: string[]): string {
-	const changesList = changes.map((c) => `- ${c}`).join('\n');
-	return `Successfully updated parameters for node "${node.name}" (${node.type}):\n${changesList}`;
+function buildSuccessMessage(node: INode, _changes: string[]): string {
+	return `Successfully updated parameters for node "${node.name}"`;
 }
 
 /**
@@ -68,7 +68,6 @@ async function processParameterUpdates(
 	const formattedChanges = formatChangesForPrompt(changes);
 
 	// Get the node's properties definition as JSON
-	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
 
 	// Call the parameter updater chain with dynamic prompt building
 	const parametersChain = createParameterUpdaterChain(
@@ -82,14 +81,14 @@ async function processParameterUpdates(
 	);
 
 	const newParameters = (await parametersChain.invoke({
-		workflow_json: trimWorkflowJSON(workflow),
-		execution_schema: state.workflowContext?.executionSchema ?? 'NO SCHEMA',
-		execution_data: state.workflowContext?.executionData ?? 'NO EXECUTION DATA YET',
+		workflow_json: encode(trimWorkflowJSON(workflow)),
+		execution_schema: encode(state.workflowContext?.executionSchema) ?? 'NO SCHEMA',
+		execution_data: encode(state.workflowContext?.executionData) ?? 'NO EXECUTION DATA YET',
 		node_id: nodeId,
 		node_name: node.name,
 		node_type: node.type,
-		current_parameters: JSON.stringify(currentParameters, null, 2),
-		node_definition: nodePropertiesJson,
+		current_parameters: encode(currentParameters),
+		node_definition: encode(nodeType.properties),
 		changes: formattedChanges,
 		instanceUrl: instanceUrl ?? '',
 	})) as INodeParameters;
