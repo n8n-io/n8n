@@ -1,9 +1,8 @@
 import { type SecretKeysConfig, secretKeysCheck } from '../../actions/checks/secretKeys';
 
 describe('secretKeys guardrail', () => {
-	it('detects secrets when block=true', async () => {
+	it('detects secrets', async () => {
 		const config: SecretKeysConfig = {
-			block: true,
 			threshold: 'balanced',
 			customRegex: [],
 		};

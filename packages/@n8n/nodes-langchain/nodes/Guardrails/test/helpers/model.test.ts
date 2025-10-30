@@ -5,6 +5,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { GuardrailError } from '../../actions/types';
 import { getChatModel, runLLMValidation } from '../../helpers/model';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { StructuredOutputParser } from '@langchain/core/output_parsers';
 
 jest.mock('@langchain/core/prompts', () => ({
 	ChatPromptTemplate: {
@@ -102,13 +104,11 @@ describe('model helper', () => {
 				.mocked((await import('langchain/agents')).AgentExecutor)
 				.mockImplementation(() => mockAgentExecutor as unknown as AgentExecutor);
 
-			const result = await runLLMValidation(
-				'test-guardrail',
-				mockModel,
-				'Test prompt',
-				'Test input',
-				0.5,
-			);
+			const result = await runLLMValidation('test-guardrail', 'Test input', {
+				model: mockModel,
+				prompt: 'Test prompt',
+				threshold: 0.5,
+			});
 
 			expect(result).toEqual({
 				guardrailName: 'test-guardrail',
@@ -131,13 +131,11 @@ describe('model helper', () => {
 				.mocked((await import('langchain/agents')).AgentExecutor)
 				.mockImplementation(() => mockAgentExecutor as unknown as AgentExecutor);
 
-			const result = await runLLMValidation(
-				'test-guardrail',
-				mockModel,
-				'Test prompt',
-				'Test input',
-				0.5,
-			);
+			const result = await runLLMValidation('test-guardrail', 'Test input', {
+				model: mockModel,
+				prompt: 'Test prompt',
+				threshold: 0.5,
+			});
 
 			expect(result).toEqual({
 				guardrailName: 'test-guardrail',
@@ -146,6 +144,39 @@ describe('model helper', () => {
 				originalException: expect.any(GuardrailError),
 				info: {},
 			});
+		});
+
+		it('should use provided systemMessage instead of default rules', async () => {
+			const invokeMock = jest.fn().mockResolvedValue({
+				content: [{ type: 'text', text: '{"confidenceScore":0.6,"flagged":true}' }],
+			});
+			jest.mocked(ChatPromptTemplate.fromMessages).mockImplementationOnce(
+				() =>
+					({
+						pipe: jest.fn().mockReturnValue({ invoke: invokeMock }),
+					}) as unknown as any,
+			);
+
+			jest.mocked(StructuredOutputParser).mockImplementationOnce(
+				() =>
+					({
+						getFormatInstructions: jest.fn().mockReturnValue('Format instructions'),
+						parse: jest.fn().mockResolvedValue({ confidenceScore: 0.6, flagged: true }),
+					}) as unknown as any,
+			);
+
+			const model = { invoke: jest.fn() } as unknown as BaseChatModel;
+			await runLLMValidation('test-guardrail', 'Input text', {
+				model,
+				prompt: 'System Prompt',
+				threshold: 0.5,
+				systemMessage: 'CUSTOM_RULES',
+			});
+
+			expect(invokeMock).toHaveBeenCalled();
+			const callArg = invokeMock.mock.calls[0][0];
+			expect(callArg.system_message).toContain('CUSTOM_RULES');
+			expect(callArg.system_message).not.toContain('Only respond with the json object');
 		});
 	});
 });
