@@ -433,10 +433,14 @@ export class ChatHubService {
 			provider,
 		);
 
-		// Generate title for the session on receiving the first human message
-		// TODO: Perhaps do this concurrently / on a separate API call?
+		// Generate title for the session on receiving the first human message.
+		// This could be moved on a separate API call perhaps, maybe triggered after the first message is sent?
 		if (previousMessageId === null) {
-			await this.generateSessionTitle(user, sessionId, message, credentials, model);
+			await this.generateSessionTitle(user, sessionId, message, credentials, model).catch(
+				(error) => {
+					this.logger.error(`Title generation failed: ${error}`);
+				},
+			);
 		}
 	}
 

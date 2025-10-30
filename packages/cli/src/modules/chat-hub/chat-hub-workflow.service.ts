@@ -364,7 +364,7 @@ export class ChatHubWorkflowService {
 
 		const { provider, model } = conversationModel;
 		const common = {
-			position: [600, 500] as [number, number],
+			position: [600, 300] as [number, number],
 			id: uuidv4(),
 			name: NODE_NAMES.CHAT_MODEL,
 			credentials,
@@ -479,7 +479,7 @@ export class ChatHubWorkflowService {
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
 			typeVersion: 3,
-			position: [224, 360],
+			position: [600, 0],
 			id: uuidv4(),
 			name: NODE_NAMES.TITLE_GENERATOR_AGENT,
 		};
