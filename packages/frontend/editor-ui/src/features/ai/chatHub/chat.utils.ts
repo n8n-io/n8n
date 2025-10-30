@@ -198,3 +198,15 @@ export function fromStringToModel(value: string): ChatHubConversationModel | und
 			? { provider: 'custom-agent', agentId: identifier }
 			: { provider: parsedProvider, model: identifier };
 }
+
+export function isMatchedAgent(agent: ChatModelDto, model: ChatHubConversationModel): boolean {
+	if (model.provider === 'n8n') {
+		return agent.model.provider === 'n8n' && agent.model.workflowId === model.workflowId;
+	}
+
+	if (model.provider === 'custom-agent') {
+		return agent.model.provider === 'custom-agent' && agent.model.agentId === model.agentId;
+	}
+
+	return agent.model.provider === model.provider && agent.model.model === model.model;
+}

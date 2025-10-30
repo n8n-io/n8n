@@ -245,6 +245,17 @@ watch(
 	{ immediate: true },
 );
 
+// Reload models when credentials are updated
+watch(
+	credentialsByProvider,
+	(credentials) => {
+		if (credentials) {
+			void chatStore.fetchAgents(credentials);
+		}
+	},
+	{ immediate: true },
+);
+
 function onSubmit(message: string) {
 	if (
 		!message.trim() ||
