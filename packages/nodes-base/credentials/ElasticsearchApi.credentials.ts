@@ -94,15 +94,16 @@ export class ElasticsearchApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		if (credentials.authType === 'apiKey') {
-			requestOptions.headers = {
-				...requestOptions.headers,
-				Authorization: `ApiKey ${credentials.apiKey}`,
-			};
-		} else {
+		if (credentials.authType === 'basicAuth') {
 			requestOptions.auth = {
 				username: credentials.username as string,
 				password: credentials.password as string,
+			};
+		} else {
+			// Default to API Key authentication
+			requestOptions.headers = {
+				...requestOptions.headers,
+				Authorization: `ApiKey ${credentials.apiKey}`,
 			};
 		}
 		return requestOptions;

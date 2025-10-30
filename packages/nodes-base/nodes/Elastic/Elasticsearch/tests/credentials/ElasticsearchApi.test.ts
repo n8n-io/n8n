@@ -89,10 +89,30 @@ describe('ElasticsearchApi', () => {
 		});
 	});
 
-	describe('authenticate - Edge Cases', () => {
-		it('should default to API Key auth if authType is not specified', async () => {
+	describe('authenticate - Default Behavior', () => {
+		it('should default to API Key auth when authType is not specified', async () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: 'default-key',
+				baseUrl: 'https://test.es.io:9243',
+				ignoreSSLIssues: false,
+				// authType intentionally omitted
+			};
+			const requestOptions: IHttpRequestOptions = {
+				url: 'https://test.es.io:9243/test',
+				method: 'GET',
+			};
+
+			const result = await elasticsearchApi.authenticate(credentials, requestOptions);
+
+			// Should default to API Key authentication
+			expect(result.headers?.Authorization).toBe('ApiKey default-key');
+			expect(result.auth).toBeUndefined();
+		});
+
+		it('should default to API Key auth when authType is invalid', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				authType: 'invalid' as any,
+				apiKey: 'fallback-key',
 				baseUrl: 'https://test.es.io:9243',
 				ignoreSSLIssues: false,
 			};
@@ -103,8 +123,9 @@ describe('ElasticsearchApi', () => {
 
 			const result = await elasticsearchApi.authenticate(credentials, requestOptions);
 
-			// Without authType, it should not add auth (credentials validation would catch this)
-			expect(result).toBeDefined();
+			// Should fallback to API Key authentication
+			expect(result.headers?.Authorization).toBe('ApiKey fallback-key');
+			expect(result.auth).toBeUndefined();
 		});
 	});
 });
