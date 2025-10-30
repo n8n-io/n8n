@@ -3,7 +3,7 @@ import { WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { getWorkflowHistoryPruneTime } from './workflow-history-helper.ee';
+import { getWorkflowHistoryPruneTime } from './workflow-history-helper';
 
 @Service()
 export class WorkflowHistoryManager {

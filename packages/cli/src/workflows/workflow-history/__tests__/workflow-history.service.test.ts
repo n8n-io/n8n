@@ -3,7 +3,7 @@ import { User, WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { getWorkflow } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);

@@ -59,7 +59,7 @@ import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
-import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
+import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 

@@ -6,7 +6,7 @@ import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { WorkflowHistoryRequest } from '@/requests';
 
-import { WorkflowHistoryService } from './workflow-history.service.ee';
+import { WorkflowHistoryService } from './workflow-history.service';
 
 const DEFAULT_TAKE = 20;
 
