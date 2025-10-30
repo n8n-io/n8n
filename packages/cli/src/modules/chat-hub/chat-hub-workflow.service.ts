@@ -23,7 +23,6 @@ import {
 	NodeConnectionTypes,
 	OperationalError,
 	type IBinaryData,
-	type INodeExecutionData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -142,22 +141,35 @@ export class ChatHubWorkflowService {
 		});
 	}
 
-	createChatNodeExecutionData(
+	prepareExecutionData(
+		triggerNode: INode,
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
-	): INodeExecutionData {
-		return {
-			json: {
-				sessionId,
-				action: 'sendMessage',
-				chatInput: message,
-				files: attachments.map(({ data, ...metadata }) => metadata),
+	): IExecuteData[] {
+		return [
+			{
+				node: triggerNode,
+				data: {
+					main: [
+						[
+							{
+								json: {
+									sessionId,
+									action: 'sendMessage',
+									chatInput: message,
+									files: attachments.map(({ data, ...metadata }) => metadata),
+								},
+								binary: Object.fromEntries(
+									attachments.map((attachment, index) => [`data${index}`, attachment]),
+								),
+							},
+						],
+					],
+				},
+				source: null,
 			},
-			binary: Object.fromEntries(
-				attachments.map((attachment, index) => [`data${index}`, attachment]),
-			),
-		};
+		];
 	}
 
 	private buildChatWorkflow({
@@ -232,15 +244,12 @@ export class ChatHubWorkflowService {
 			},
 		};
 
-		const nodeExecutionStack: IExecuteData[] = [
-			{
-				node: chatTriggerNode,
-				data: {
-					main: [[this.createChatNodeExecutionData(sessionId, humanMessage, attachments)]],
-				},
-				source: null,
-			},
-		];
+		const nodeExecutionStack = this.prepareExecutionData(
+			chatTriggerNode,
+			sessionId,
+			humanMessage,
+			attachments,
+		);
 
 		const executionData: IRunExecutionData = {
 			startData: {},

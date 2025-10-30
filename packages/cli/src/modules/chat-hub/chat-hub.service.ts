@@ -33,7 +33,6 @@ import {
 	jsonParse,
 	StructuredChunk,
 	RESPOND_TO_CHAT_NODE_TYPE,
-	IExecuteData,
 	IRunExecutionData,
 	INodeParameters,
 	INode,
@@ -65,7 +64,7 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
-import type { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 
 @Service()
 export class ChatHubService {
@@ -767,23 +766,12 @@ export class ChatHubService {
 			);
 		}
 
-		const nodeExecutionStack: IExecuteData[] = [
-			{
-				node: chatTriggerNode,
-				data: {
-					main: [
-						[
-							this.chatHubWorkflowService.createChatNodeExecutionData(
-								sessionId,
-								message,
-								attachments,
-							),
-						],
-					],
-				},
-				source: null,
-			},
-		];
+		const nodeExecutionStack = this.chatHubWorkflowService.prepareExecutionData(
+			chatTriggerNode,
+			sessionId,
+			message,
+			attachments,
+		);
 
 		const executionData: IRunExecutionData = {
 			startData: {},
