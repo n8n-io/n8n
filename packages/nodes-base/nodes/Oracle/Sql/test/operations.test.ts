@@ -143,6 +143,10 @@ const fakeConnection = {
 	rollback: jest.fn(),
 };
 
+Object.defineProperty(fakeConnection, 'oracleServerVersion', {
+	get: () => 2305000000, // mimic server is 23c
+});
+
 const createFakePool = (connection: IDataObject) => {
 	return {
 		getConnection() {
@@ -905,6 +909,77 @@ VALUES (
 			expect(expectedArgs).toHaveLength(1);
 			expect(expectedArgs[0].query).toMatch(expectedRegex);
 			expect(normalizeParams(expectedArgs[0].values)).toEqual(normalizeParams(expectedVal));
+		});
+
+		it('should call runQueries with out binds using bindInfo and multiple items', async () => {
+			const expectedQuery = `
+			BEGIN
+				:out_value1 := :in_value * 2;
+				:out_value2 := :in_value + 10;
+				:out_value3 := :in_value * :in_value;
+			END;`;
+			const makeItem = (i: number) => ({
+				json: { in_value: 10 },
+				pairedItem: { item: i, input: undefined },
+			});
+			const items = [makeItem(0), makeItem(1)];
+			const outParams = ['out_value1', 'out_value2', 'out_value3'];
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: expectedQuery,
+				isBindInfo: true,
+				resource: 'database',
+				options: {
+					params: {
+						values: [
+							{
+								name: 'in_value',
+								valueNumber: 10,
+								datatype: 'number',
+								parseInStatement: false,
+							},
+							...outParams.map((name) => ({
+								name,
+								datatype: 'number',
+								parseInStatement: false,
+								bindDirection: 'out',
+							})),
+						],
+					},
+				},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const runQueries = getRunQueriesFn(mockThis, pool);
+			const nodeOptions = nodeParameters.options as IDataObject;
+			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+			if (integratedTests) {
+				for (const r of result) {
+					expect(r.json).toMatchObject({
+						out_value1: 20,
+						out_value2: 20,
+						out_value3: 100,
+					});
+				}
+			}
+
+			expect(runQueries).toHaveBeenCalledTimes(1);
+
+			const [calls] = runQueries.mock.calls[0] as [QueryWithValues[], unknown, unknown];
+			expect(calls).toHaveLength(2);
+
+			const expectedValues = {
+				in_value: { type: oracleDBTypes.NUMBER, val: 10, dir: 3002 },
+				out_value1: { type: oracleDBTypes.NUMBER, dir: 3003 },
+				out_value2: { type: oracleDBTypes.NUMBER, dir: 3003 },
+				out_value3: { type: oracleDBTypes.NUMBER, dir: 3003 },
+			};
+
+			calls.forEach((arg) => {
+				expect(arg.query).toBe(expectedQuery);
+				expect(arg.values).toEqual(expectedValues);
+			});
 		});
 	});
 

@@ -14,7 +14,11 @@ import type { OracleDBNodeOptions, OracleDBNodeCredentials } from '../helpers/in
 let initializeDriverMode = false;
 
 const getOracleDBConfig = (credentials: OracleDBNodeCredentials) => {
-	const { useThickMode, useSSL, ...dbConfig } = credentials;
+	const { useThickMode, useSSL, ...dbConfig } = {
+		...credentials,
+		privilege: credentials.privilege || undefined,
+	};
+
 	return dbConfig;
 };
 

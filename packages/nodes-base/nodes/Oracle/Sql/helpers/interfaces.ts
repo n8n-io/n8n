@@ -122,3 +122,16 @@ export type ExecuteOpBindParam =
 				values: number[];
 			};
 	  });
+
+// Definition of row returned for column information.
+export interface TableColumnRow {
+	COLUMN_NAME: string;
+	DATA_TYPE: string;
+	DATA_LENGTH: number;
+	CHAR_LENGTH: number;
+	DEFAULT_LENGTH: number | null;
+	NULLABLE: 'Y' | 'N';
+	IDENTITY_COLUMN?: 'YES' | 'NO'; // only present in 12c+
+	HAS_DEFAULT: 'YES' | 'NO';
+	CONSTRAINT_TYPES?: string | null;
+}
