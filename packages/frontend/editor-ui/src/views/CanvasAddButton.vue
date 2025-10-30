@@ -16,8 +16,8 @@ const props = defineProps<Props>();
 
 const nodeCreatorStore = useNodeCreatorStore();
 const containerCssVars = computed(() => ({
-	'--trigger-placeholder-left-position': `${props.position[0]}px`,
-	'--trigger-placeholder-top-position': `${props.position[1]}px`,
+	'--trigger-placeholder--margin-left': `${props.position[0]}px`,
+	'--trigger-placeholder--margin-top': `${props.position[1]}px`,
 }));
 </script>
 
@@ -55,11 +55,11 @@ const containerCssVars = computed(() => ({
 	width: 100px;
 	height: 100px;
 	position: absolute;
-	top: var(--trigger-placeholder-top-position);
-	left: var(--trigger-placeholder-left-position);
+	top: var(--trigger-placeholder--margin-top);
+	left: var(--trigger-placeholder--margin-left);
 	// We have to increase z-index to make sure it's higher than selecting box in NodeView
 	// otherwise the clicks wouldn't register
-	z-index: var(--z-index-canvas-add-button);
+	z-index: var(--canvas-add-button--z);
 
 	&:hover .button svg path {
 		fill: var(--color--primary);

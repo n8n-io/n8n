@@ -608,7 +608,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	flex-direction: column;
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 	width: $sidebar-expanded-width;
-	background-color: var(--menu-background, var(--color--background--light-3));
+	background-color: var(--menu--color--background, var(--color--background--light-3));
 
 	.logo {
 		display: flex;

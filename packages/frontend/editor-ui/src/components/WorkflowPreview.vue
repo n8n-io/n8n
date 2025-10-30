@@ -277,7 +277,7 @@ watch(
 	left: 0;
 	height: 100%;
 	width: 100%;
-	z-index: var(--z-index-workflow-preview-ndv);
+	z-index: var(--workflow-preview-ndv--z);
 }
 
 .spinner {

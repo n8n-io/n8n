@@ -297,7 +297,7 @@ async function copySessionId() {
 	--chat--message--user--border: none;
 	--chat--input--padding: var(--spacing--xs);
 	--chat--color-typing: var(--color--text--tint-1);
-	--chat--textarea--max-height: calc(var(--logs-panel-height) * 0.3);
+	--chat--textarea--max-height: calc(var(--logs-panel--height) * 0.3);
 	--chat--message--pre--background: var(--color--foreground--tint-1);
 	--chat--textarea--height: calc(
 		var(--chat--input--padding) * 2 + var(--chat--input--font-size) *

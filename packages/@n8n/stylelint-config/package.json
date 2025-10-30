@@ -11,9 +11,6 @@
     "./rules": {
       "default": "./dist/rules/index.js",
       "types": "./dist/rules/index.d.ts"
-    },
-    "./formatter-summary": {
-      "default": "./dist/formatter-summary.js"
     }
   },
   "scripts": {
