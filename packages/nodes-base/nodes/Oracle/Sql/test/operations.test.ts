@@ -144,7 +144,7 @@ const fakeConnection = {
 };
 
 Object.defineProperty(fakeConnection, 'oracleServerVersion', {
-	get: () => 2305000000, // mimic server is 23c
+	get: () => 2305000000, // mimic server is 23ai
 });
 
 const createFakePool = (connection: IDataObject) => {
