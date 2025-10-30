@@ -1,5 +1,6 @@
 import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedTestContainer, StoppedTestContainer } from 'testcontainers';
+
 import {
 	getMailpitApiBaseUrl,
 	mailpitWaitForMessage,

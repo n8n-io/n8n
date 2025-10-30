@@ -28,8 +28,8 @@ import {
 	setupTaskRunner,
 } from './n8n-test-container-dependencies';
 import { setupGitea } from './n8n-test-container-gitea';
-import { createSilentLogConsumer } from './n8n-test-container-utils';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
+import { createSilentLogConsumer } from './n8n-test-container-utils';
 
 // --- Constants ---
 
