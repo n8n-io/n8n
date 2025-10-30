@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
+import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
 import {
-	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
-	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
-} from '@/constants';
-import { findOneFromModelsResponse } from '@/features/ai/chatHub/chat.utils';
+	findOneFromModelsResponse,
+	restoreConversationModelFromMessageOrSession,
+} from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
@@ -15,33 +15,31 @@ import {
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
 } from '@/features/ai/chatHub/constants';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
 	chatHubConversationModelSchema,
-	type ChatHubProvider,
 	type ChatHubLLMProvider,
-	chatHubProviderSchema,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
 	type ChatHubMessageDto,
 	type ChatMessageId,
+	type ChatHubSendMessageRequest,
+	type ChatModelDto,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
-import { credentialsMapSchema, type CredentialsMap } from './chat.types';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useUIStore } from '@/stores/ui.store';
+import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
-const credentialsStore = useCredentialsStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
@@ -83,133 +81,78 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
+const modelFromQuery = computed<ChatModelDto | null>(() => {
+	const agentId = route.query.agentId;
+	const workflowId = route.query.workflowId;
 
-const selectedModel = computed<ChatHubConversationModel | null>(() => {
-	let model: ChatHubConversationModel | null = null;
-	if (currentConversation.value?.provider) {
-		if (currentConversation.value.provider === 'n8n') {
-			const n8nModel = chatStore.models?.n8n.models.find(
-				(m) =>
-					currentConversation.value &&
-					m.provider === 'n8n' &&
-					m.workflowId === currentConversation.value.workflowId,
-			);
-
-			if (!n8nModel) {
-				return null;
-			}
-
-			model = n8nModel;
-		} else if (currentConversation.value.provider === 'custom-agent') {
-			const agentModel = chatStore.models?.['custom-agent'].models.find(
-				(m) =>
-					currentConversation.value &&
-					m.provider === 'custom-agent' &&
-					m.agentId === currentConversation.value.agentId,
-			);
-
-			if (!agentModel) {
-				return null;
-			}
-
-			model = agentModel;
-		} else {
-			const chatModel = chatStore.models?.[currentConversation.value.provider].models.find(
-				(m) =>
-					currentConversation.value &&
-					currentConversation.value?.provider !== 'n8n' &&
-					currentConversation.value?.provider !== 'custom-agent' &&
-					m.provider === currentConversation.value?.provider &&
-					m.model === currentConversation.value.model,
-			);
-
-			if (!chatModel) {
-				return null;
-			}
-
-			model = chatModel;
-		}
-	} else {
-		model = defaultModel.value;
+	if (!isNewSession.value) {
+		return null;
 	}
 
-	return model;
+	if (typeof agentId === 'string') {
+		return chatStore.getAgent({ provider: 'custom-agent', agentId }) ?? null;
+	}
+
+	if (typeof workflowId === 'string') {
+		return chatStore.getAgent({ provider: 'n8n', workflowId }) ?? null;
+	}
+
+	return null;
 });
 
-const selectedCredentials = useLocalStorage<CredentialsMap>(
-	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(usersStore.currentUserId ?? 'anonymous'),
-	{},
-	{
-		writeDefaults: false,
-		shallow: true,
-		serializer: {
-			read: (value) => {
-				try {
-					return credentialsMapSchema.parse(JSON.parse(value));
-				} catch (error) {
-					return {};
-				}
-			},
-			write: (value) => JSON.stringify(value),
-		},
-	},
+const selectedModel = computed<ChatModelDto | undefined>(() => {
+	if (!chatStore.agentsReady) {
+		return undefined;
+	}
+
+	if (modelFromQuery.value) {
+		return modelFromQuery.value;
+	}
+
+	if (!currentConversation.value?.provider) {
+		return defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined;
+	}
+
+	const model = restoreConversationModelFromMessageOrSession(currentConversation.value);
+
+	return model ? chatStore.getAgent(model) : undefined;
+});
+
+const { credentialsByProvider, selectCredential } = useChatCredentials(
+	usersStore.currentUserId ?? 'anonymous',
 );
-
-const autoSelectCredentials = computed<CredentialsMap>(() =>
-	Object.fromEntries(
-		chatHubProviderSchema.options.map((provider) => {
-			if (provider === 'n8n' || provider === 'custom-agent') {
-				return [provider, null];
-			}
-
-			const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-			if (!credentialType) {
-				return [provider, null];
-			}
-
-			const lastCreatedCredential =
-				credentialsStore
-					.getCredentialsByType(credentialType)
-					.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
-
-			return [provider, lastCreatedCredential];
-		}),
-	),
-);
-
-const mergedCredentials = computed(() => ({
-	...autoSelectCredentials.value,
-	...selectedCredentials.value,
-}));
 
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
-const isNewChat = computed(() => route.name === CHAT_VIEW);
-const credentialsId = computed(() =>
-	selectedModel.value ? mergedCredentials.value[selectedModel.value.provider] : undefined,
+const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['credentials'] | null>(
+	() => {
+		const provider = selectedModel.value?.model.provider;
+
+		if (!provider) {
+			return null;
+		}
+
+		if (provider === 'custom-agent' || provider === 'n8n') {
+			return {};
+		}
+
+		const credentialsId = credentialsByProvider.value?.[provider];
+
+		if (!credentialsId) {
+			return null;
+		}
+
+		return {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]: {
+				id: credentialsId,
+				name: '',
+			},
+		};
+	},
 );
-
-const modelRequiresCredentials = computed(() => {
-	if (!selectedModel.value) return false;
-
-	return (
-		selectedModel.value?.provider !== 'n8n' && selectedModel.value?.provider !== 'custom-agent'
-	);
-});
-
-const isMissingSelectedCredential = computed(() => {
-	if (!selectedModel.value) return false;
-
-	if (!modelRequiresCredentials.value) {
-		return false;
-	}
-
-	return !credentialsId.value;
-});
+const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
-const credentialsFetched = ref<boolean>(false);
-const modelsFetched = ref<boolean>(false);
 const editingAgentId = ref<string | undefined>(undefined);
 
 function scrollToBottom(smooth: boolean) {
@@ -251,28 +194,18 @@ watch(
 	{ immediate: true, flush: 'post' },
 );
 
-// Reload models when credentials are updated
-// TODO: fix duplicate requests
+// Preselect a model
 watch(
-	mergedCredentials,
-	async (credentials) => {
-		const models = await chatStore.fetchChatModels(credentials);
-
-		const selected = selectedModel.value;
-		if (selected === null) {
-			const model = findOneFromModelsResponse(models) ?? null;
-
-			if (model) {
-				await handleSelectModel(model);
-			}
+	() => chatStore.agents,
+	(models) => {
+		if (!models || !!selectedModel.value || !isNewSession.value) {
+			return;
 		}
 
-		const currentProvider = selectedModel.value?.provider;
-		if (currentProvider && currentProvider !== 'n8n') {
-			const providerModels = models[currentProvider].models;
-			modelsFetched.value = !models[currentProvider].error && providerModels.length > 0;
-		} else {
-			modelsFetched.value = true;
+		const model = findOneFromModelsResponse(models) ?? null;
+
+		if (model) {
+			void handleSelectModel(model);
 		}
 	},
 	{ immediate: true },
@@ -291,8 +224,15 @@ watch(
 				await router.push({ name: CHAT_VIEW });
 			}
 		}
+	},
+	{ immediate: true },
+);
 
-		inputRef.value?.focus();
+// Focus prompt when new a new conversation is started
+watch(
+	[inputRef, sessionId],
+	([input]) => {
+		input?.focus();
 	},
 	{ immediate: true },
 );
@@ -305,41 +245,24 @@ watch(
 	{ immediate: true },
 );
 
-onMounted(async () => {
-	await Promise.all([
-		credentialsStore.fetchCredentialTypes(false),
-		credentialsStore.fetchAllCredentials(),
-	]);
-	credentialsFetched.value = true;
-});
-
 function onSubmit(message: string) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
 		!selectedModel.value ||
-		isMissingSelectedCredential.value
+		!credentialsForSelectedProvider.value
 	) {
 		return;
 	}
 
 	didSubmitInCurrentSession.value = true;
 
-	const credentials = {};
-	if (
-		selectedModel.value.provider !== 'n8n' &&
-		selectedModel.value.provider !== 'custom-agent' &&
-		credentialsId.value
-	) {
-		Object.assign(credentials, {
-			[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-				id: credentialsId.value,
-				name: '',
-			},
-		});
-	}
-
-	chatStore.sendMessage(sessionId.value, message, selectedModel.value, credentials);
+	chatStore.sendMessage(
+		sessionId.value,
+		message,
+		selectedModel.value.model,
+		credentialsForSelectedProvider.value,
+	);
 
 	inputRef.value?.setText('');
 
@@ -366,33 +289,19 @@ function handleEditMessage(message: ChatHubMessageDto) {
 		chatStore.isResponding(message.sessionId) ||
 		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
-		isMissingSelectedCredential.value
+		!credentialsForSelectedProvider.value
 	) {
 		return;
 	}
 
 	const messageToEdit = message.revisionOfMessageId ?? message.id;
 
-	const credentials = {};
-	if (
-		selectedModel.value.provider !== 'n8n' &&
-		selectedModel.value.provider !== 'custom-agent' &&
-		credentialsId.value
-	) {
-		Object.assign(credentials, {
-			[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-				id: credentialsId.value,
-				name: '',
-			},
-		});
-	}
-
 	chatStore.editMessage(
 		sessionId.value,
 		messageToEdit,
 		message.content,
-		selectedModel.value,
-		credentials,
+		selectedModel.value.model,
+		credentialsForSelectedProvider.value,
 	);
 	editingMessageId.value = undefined;
 }
@@ -402,44 +311,31 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		chatStore.isResponding(message.sessionId) ||
 		message.type !== 'ai' ||
 		!selectedModel.value ||
-		isMissingSelectedCredential.value
+		!credentialsForSelectedProvider.value
 	) {
 		return;
 	}
 
 	const messageToRetry = message.retryOfMessageId ?? message.id;
 
-	const credentials = {};
-	if (
-		selectedModel.value.provider !== 'n8n' &&
-		selectedModel.value.provider !== 'custom-agent' &&
-		credentialsId.value
-	) {
-		Object.assign(credentials, {
-			[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-				id: credentialsId.value,
-				name: '',
-			},
-		});
-	}
-
-	chatStore.regenerateMessage(sessionId.value, messageToRetry, selectedModel.value, credentials);
+	chatStore.regenerateMessage(
+		sessionId.value,
+		messageToRetry,
+		selectedModel.value.model,
+		credentialsForSelectedProvider.value,
+	);
 }
 
-async function handleSelectModel(selection: ChatHubConversationModel) {
+async function handleSelectModel(selection: ChatModelDto) {
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection);
+			await chatStore.updateSessionModel(sessionId.value, selection.model);
 		} catch (error) {
 			toast.showError(error, 'Could not update selected model');
 		}
 	} else {
-		defaultModel.value = selection;
+		defaultModel.value = selection.model;
 	}
-}
-
-function handleSelectCredentials(provider: ChatHubProvider, id: string) {
-	selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
 }
 
 function handleSwitchAlternative(messageId: string) {
@@ -456,7 +352,7 @@ function handleConfigureModel() {
 
 async function handleEditAgent(agentId: string) {
 	try {
-		await chatStore.fetchAgent(agentId);
+		await chatStore.fetchCustomAgent(agentId);
 		editingAgentId.value = agentId;
 		uiStore.openModal('agentEditor');
 	} catch (error) {
@@ -480,29 +376,31 @@ function closeAgentEditor() {
 		:class="[
 			$style.component,
 			{
-				[$style.isNewChat]: isNewChat,
+				[$style.isNewSession]: isNewSession,
 				[$style.isMobileDevice]: isMobileDevice,
 			},
 		]"
 	>
 		<ChatConversationHeader
 			ref="headerRef"
-			:selected-model="selectedModel"
-			:credentials="mergedCredentials"
+			:selected-model="selectedModel ?? null"
+			:credentials="credentialsByProvider"
 			@select-model="handleSelectModel"
-			@edit-agent="handleEditAgent"
-			@create-agent="openNewAgentCreator"
-			@select-credential="handleSelectCredentials"
+			@edit-custom-agent="handleEditAgent"
+			@create-custom-agent="openNewAgentCreator"
+			@select-credential="selectCredential"
 		/>
 
 		<AgentEditorModal
+			v-if="credentialsByProvider"
 			:agent-id="editingAgentId"
-			:credentials="mergedCredentials"
-			@create-agent="handleSelectModel"
+			:credentials="credentialsByProvider"
+			@create-custom-agent="handleSelectModel"
 			@close="closeAgentEditor"
 		/>
 
 		<N8nScrollArea
+			v-if="chatStore.agentsReady"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
@@ -510,7 +408,11 @@ function closeAgentEditor() {
 			:class="$style.scrollArea"
 		>
 			<div :class="$style.scrollable" ref="scrollable">
-				<ChatStarter v-if="isNewChat" :class="$style.starter" :is-mobile-device="isMobileDevice" />
+				<ChatStarter
+					v-if="isNewSession"
+					:class="$style.starter"
+					:is-mobile-device="isMobileDevice"
+				/>
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
@@ -538,7 +440,7 @@ function closeAgentEditor() {
 
 				<div :class="$style.promptContainer">
 					<N8nIconButton
-						v-if="!arrivedState.bottom && !isNewChat"
+						v-if="!arrivedState.bottom && !isNewSession"
 						type="secondary"
 						icon="arrow-down"
 						:class="$style.scrollToBottomButton"
@@ -550,8 +452,9 @@ function closeAgentEditor() {
 						ref="inputRef"
 						:class="$style.prompt"
 						:is-responding="isResponding"
-						:selected-model="selectedModel"
+						:selected-model="selectedModel ?? null"
 						:is-missing-credentials="isMissingSelectedCredential"
+						:is-new-session="isNewSession"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
@@ -595,7 +498,7 @@ function closeAgentEditor() {
 	justify-content: start;
 	gap: var(--spacing--2xl);
 
-	.isNewChat & {
+	.isNewSession & {
 		justify-content: center;
 	}
 }
@@ -635,7 +538,7 @@ function closeAgentEditor() {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.component:not(.isNewChat) & {
+	.component:not(.isNewSession) & {
 		position: absolute;
 		bottom: 0;
 		left: 0;

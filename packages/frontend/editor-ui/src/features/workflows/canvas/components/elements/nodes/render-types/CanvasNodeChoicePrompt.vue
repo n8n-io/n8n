@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';

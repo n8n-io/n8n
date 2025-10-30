@@ -675,8 +675,7 @@ describe('AskAssistantBuild', () => {
 				},
 			});
 
-			// User cancels generation - this adds a locale message for aborted task
-			// In tests, i18n.baseText returns the key itself
+			// User cancels generation - this adds an aborted message
 			builderStore.$patch({
 				chatMessages: [
 					{ id: '1', role: 'user', type: 'text', content: testMessage },
@@ -684,7 +683,8 @@ describe('AskAssistantBuild', () => {
 						id: '2',
 						role: 'assistant',
 						type: 'text',
-						content: 'aiAssistant.builder.streamAbortedMessage',
+						content: 'Task aborted',
+						aborted: true,
 					},
 				],
 			});
@@ -1025,7 +1025,6 @@ describe('AskAssistantBuild', () => {
 			});
 
 			// Add cancellation message to chat
-			// In tests, i18n.baseText returns the key itself
 			builderStore.$patch({
 				chatMessages: [
 					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
@@ -1033,7 +1032,8 @@ describe('AskAssistantBuild', () => {
 						id: '2',
 						role: 'assistant',
 						type: 'text',
-						content: 'aiAssistant.builder.streamAbortedMessage',
+						content: 'Task aborted',
+						aborted: true,
 					},
 				],
 			});
@@ -1291,6 +1291,53 @@ describe('AskAssistantBuild', () => {
 						updates: [],
 					},
 					{ id: '3', role: 'assistant', type: 'error', content: 'Failed to update parameters' },
+				],
+			});
+
+			await flushPromises();
+
+			// Verify the ExecuteMessage component should NOT be rendered
+			expect(queryByTestId('execute-message-component')).not.toBeInTheDocument();
+		});
+
+		it('should hide ExecuteMessage component when task is aborted after workflow update', async () => {
+			// Setup: workflow with nodes
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { queryByTestId } = renderComponent();
+
+			// Simulate workflow update message followed by task aborted message
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create a workflow' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'workflow-updated',
+						codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+					},
+					{
+						id: '3',
+						role: 'assistant',
+						type: 'text',
+						content: 'Task aborted',
+						aborted: true,
+					},
 				],
 			});
 

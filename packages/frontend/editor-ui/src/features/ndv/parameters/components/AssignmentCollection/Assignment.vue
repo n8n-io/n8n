@@ -284,7 +284,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 	left: 0;
 	opacity: 0;
 	transition: opacity 100ms ease-in;
-	color: var(--icon-base-color);
+	color: var(--icon--color);
 }
 .extraTopPadding {
 	top: calc(20px + var(--spacing--lg));

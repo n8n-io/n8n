@@ -276,7 +276,7 @@ const onBlur = (): void => {
 	left: 0;
 	opacity: 0;
 	transition: opacity 100ms ease-in;
-	color: var(--icon-base-color);
+	color: var(--icon--color);
 }
 
 .defaultTopPadding {

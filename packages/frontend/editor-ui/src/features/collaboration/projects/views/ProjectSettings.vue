@@ -632,7 +632,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 .projectSettings {
-	--project-field-width: 560px;
+	--project-field--width: 560px;
 
 	display: grid;
 	width: 100%;
@@ -641,7 +641,7 @@ onMounted(() => {
 
 	form {
 		width: 100%;
-		max-width: var(--content-container-width);
+		max-width: var(--content-container--width);
 		padding: 0 var(--spacing--2xl);
 
 		fieldset {
@@ -664,7 +664,7 @@ onMounted(() => {
 
 .header {
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 	padding: var(--spacing--lg) var(--spacing--2xl) 0;
 }
 
@@ -705,7 +705,7 @@ onMounted(() => {
 .projectName {
 	display: flex;
 	gap: var(--spacing--2xs);
-	max-width: var(--project-field-width);
+	max-width: var(--project-field--width);
 
 	.projectNameInput {
 		flex: 1;
@@ -714,7 +714,7 @@ onMounted(() => {
 
 .projectDescriptionInput,
 .userSelect {
-	max-width: var(--project-field-width);
+	max-width: var(--project-field--width);
 	width: 100%;
 }
 

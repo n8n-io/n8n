@@ -46,6 +46,11 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 				workflowOrganization: 0,
 				modularity: 0,
 			},
+			bestPractices: {
+				score: 0,
+				violations: [],
+				techniques: [],
+			},
 			structuralSimilarity: { score: 0, violations: [], applicable: false },
 			summary: `Evaluation failed: ${errorMessage}`,
 		},
