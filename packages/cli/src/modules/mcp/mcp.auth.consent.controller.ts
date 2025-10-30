@@ -34,6 +34,8 @@ export class McpConsentController {
 			const consentDetails = await this.mcpOAuthService.getConsentDetails(sessionId, req.user.id);
 
 			if (!consentDetails) {
+				// JWT verification failed or client not found - clear the invalid cookie
+				res.clearCookie('n8n-oauth-session');
 				return res.status(400).json({
 					status: 'error',
 					message: 'Invalid or expired authorization session',
@@ -55,6 +57,8 @@ export class McpConsentController {
 			};
 		} catch (error) {
 			this.logger.error('Failed to get consent details', { error });
+			// Clear cookie on error
+			res.clearCookie('n8n-oauth-session');
 			return res.status(500).json({
 				status: 'error',
 				message: 'Failed to load authorization details',

@@ -190,6 +190,9 @@ export class McpOAuthService implements OAuthServerProvider {
 					used: false,
 				});
 
+				// Clear any existing OAuth session cookie
+				res.clearCookie('n8n-oauth-session');
+
 				// Redirect back to client with authorization code
 				const targetUrl = new URL(params.redirectUri);
 				targetUrl.searchParams.set('code', code);
@@ -226,6 +229,10 @@ export class McpOAuthService implements OAuthServerProvider {
 		} catch (error) {
 			console.log(error);
 			this.logger.error('Error in authorize method', { error, clientId: client.client_id });
+
+			// Clear any OAuth session cookie on error
+			res.clearCookie('n8n-oauth-session');
+
 			res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
 		}
 	}
