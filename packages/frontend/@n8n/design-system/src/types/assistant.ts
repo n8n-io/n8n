@@ -5,7 +5,11 @@ export namespace ChatUI {
 		type: 'text';
 		content: string;
 		codeSnippet?: string;
-		aborted?: boolean;
+	}
+
+	export interface TaskAbortedMessage extends Omit<TextMessage, 'role' | 'codeSnippet'> {
+		role: 'assistant';
+		aborted: true;
 	}
 
 	export interface SummaryBlock {
@@ -108,6 +112,7 @@ export namespace ChatUI {
 
 	export type AssistantMessage = (
 		| TextMessage
+		| TaskAbortedMessage
 		| MessagesWithReplies
 		| ErrorMessage
 		| EndSessionMessage
@@ -132,7 +137,13 @@ export type RatingFeedback = { rating?: 'up' | 'down'; feedback?: string };
 export function isTextMessage(
 	msg: ChatUI.AssistantMessage,
 ): msg is ChatUI.TextMessage & { id?: string; read?: boolean; quickReplies?: ChatUI.QuickReply[] } {
-	return msg.type === 'text';
+	return msg.type === 'text' && !('aborted' in msg);
+}
+
+export function isTaskAbortedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.TaskAbortedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'text' && 'aborted' in msg && msg.aborted;
 }
 
 export function isSummaryBlock(msg: ChatUI.AssistantMessage): msg is ChatUI.SummaryBlock & {

@@ -8,7 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
-import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -66,9 +66,7 @@ const showExecuteMessage = computed(() => {
 		builderUpdatedWorkflowMessageIndex + 1,
 	);
 	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
-	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some(
-		(msg) => msg.type === 'text' && msg.aborted,
-	);
+	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some((msg) => isTaskAbortedMessage(msg));
 
 	return (
 		!builderStore.streaming &&
@@ -256,9 +254,7 @@ watch(
 			// Check if the generation completed successfully (no error or cancellation)
 			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
 			const successful =
-				lastMessage &&
-				lastMessage.type !== 'error' &&
-				!(lastMessage.type === 'text' && lastMessage.aborted);
+				lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
 
 			builderStore.initialGeneration = false;
 
