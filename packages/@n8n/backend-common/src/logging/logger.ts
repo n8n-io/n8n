@@ -176,7 +176,12 @@ export class Logger implements LoggerType {
 	}
 
 	private color() {
-		return this.noColor ? winston.format.uncolorize() : winston.format.colorize({ all: true });
+		if (this.noColor) return winston.format.uncolorize();
+		// Check FORCE_COLOR at runtime to allow opt-in coloring in production
+		const forceColor = process.env.FORCE_COLOR !== undefined && process.env.FORCE_COLOR !== '';
+		if (forceColor) return winston.format.colorize({ all: true });
+		// Default: no colors in production, colors in development
+		return inProduction ? winston.format.uncolorize() : winston.format.colorize({ all: true });
 	}
 
 	private debugDevConsoleFormat() {
@@ -199,7 +204,7 @@ export class Logger implements LoggerType {
 		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp(),
-			winston.format.uncolorize(),
+			this.color(),
 			this.scopeFilter(),
 			winston.format.printf(({ level, message, timestamp, metadata: rawMetadata }) => {
 				const metadata = this.toPrintable(rawMetadata);

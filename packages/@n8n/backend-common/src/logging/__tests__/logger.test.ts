@@ -450,9 +450,11 @@ describe('Logger', () => {
 
 		afterEach(() => {
 			jest.resetAllMocks();
+			delete process.env.NO_COLOR;
+			delete process.env.FORCE_COLOR;
 		});
 
-		test('debugProdConsoleFormat uses winston.format.uncolorize()', () => {
+		test('production debug logs default to no colors', () => {
 			// ARRANGE
 			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
