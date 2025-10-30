@@ -94,6 +94,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'dataTable:delete',
 	'dataTable:read',
 	'dataTable:update',
+	'dataTable:list',
 	'dataTable:listProject',
 	'dataTable:readRow',
 	'dataTable:writeRow',

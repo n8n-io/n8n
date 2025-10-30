@@ -77,7 +77,7 @@ describe('GET /data-tables-global', () => {
 	test("should not list data tables from another user's personal project", async () => {
 		await createDataTable(ownerProject, { name: 'Personal Data Table' });
 
-		const response = await authAdminAgent.get('/data-tables-global').expect(403);
+		const response = await authAdminAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
