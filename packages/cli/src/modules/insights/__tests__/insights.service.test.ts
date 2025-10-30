@@ -46,6 +46,52 @@ describe('InsightsService', () => {
 		const startDate = new Date('2024-01-01');
 		const endDate = new Date('2024-01-07');
 
+		it('should return complete summary with all metrics', async () => {
+			mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([
+				{ period: 'current', type: TypeToNumber.success, total_value: 8 },
+				{ period: 'current', type: TypeToNumber.failure, total_value: 12 },
+				{ period: 'current', type: TypeToNumber.runtime_ms, total_value: 4000 },
+				{ period: 'current', type: TypeToNumber.time_saved_min, total_value: 120 },
+				{ period: 'previous', type: TypeToNumber.success, total_value: 14 },
+				{ period: 'previous', type: TypeToNumber.failure, total_value: 6 },
+				{ period: 'previous', type: TypeToNumber.runtime_ms, total_value: 6000 },
+				{ period: 'previous', type: TypeToNumber.time_saved_min, total_value: 80 },
+			]);
+
+			const result = await insightsService.getInsightsSummary({
+				startDate,
+				endDate,
+			});
+
+			expect(result).toEqual({
+				averageRunTime: {
+					value: 200,
+					unit: 'millisecond',
+					deviation: -100,
+				},
+				failed: {
+					value: 12,
+					unit: 'count',
+					deviation: 6,
+				},
+				failureRate: {
+					value: 0.6,
+					unit: 'ratio',
+					deviation: 0.3,
+				},
+				timeSaved: {
+					value: 120,
+					unit: 'minute',
+					deviation: 40,
+				},
+				total: {
+					value: 20,
+					unit: 'count',
+					deviation: 0,
+				},
+			});
+		});
+
 		const createMockAggregates = (config: {
 			currentRuntime?: number;
 			currentSuccess?: number;
