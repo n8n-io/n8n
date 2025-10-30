@@ -13,6 +13,8 @@ import {
 	chatHubProviderSchema,
 	type EnrichedStructuredChunk,
 	ChatHubBaseLLMModel,
+	ChatHubN8nModel,
+	ChatHubCustomAgentModel,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
@@ -140,6 +142,7 @@ export class ChatHubService {
 				anthropic: { models: [] },
 				google: { models: [] },
 				n8n: { models: [] },
+				// eslint-disable-next-line @typescript-eslint/naming-convention
 				'custom-agent': { models: [] },
 			},
 		);
@@ -431,8 +434,7 @@ export class ChatHubService {
 		);
 
 		// Generate title for the session on receiving the first human message
-		// TODO: Do this concurrently / on a separate API call?
-		// TODO: Do this for n8n and custom agent providers
+		// TODO: Perhaps do this concurrently / on a separate API call?
 		if (previousMessageId === null) {
 			await this.generateSessionTitle(user, sessionId, message, credentials, model);
 		}
@@ -937,40 +939,16 @@ export class ChatHubService {
 		}
 
 		try {
-			let result: IRun | undefined;
-			try {
-				result = await this.activeExecutions.getPostExecutePromise(executionId);
-				if (!result) {
-					throw new OperationalError('There was a problem executing the chat workflow.');
-				}
-			} catch (error: unknown) {
-				if (error instanceof ManualExecutionCancelledError) {
-					return;
-				}
-
-				throw error;
-			}
-
-			const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-				workflowData.id,
-			]);
-			if (!execution) {
-				throw new OperationalError(`Could not find execution with ID ${executionId}`);
-			}
-
-			if (!execution.status || execution.status !== 'success') {
-				const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
-				throw new OperationalError(message);
-			}
-
-			// TODO: Getting the title from the execution like this
-			// only works on base chat workflows. Custom agent workflows
-			// would need a different mechanism.
-			const title = this.getAIOutput(execution, NODE_NAMES.TITLE_GENERATOR_AGENT);
-			if (title) {
-				await this.sessionRepository.updateChatTitle(sessionId, title);
+			// Wait until the execution finishes (or errors) so that we don't delete the workflow too early
+			const result = await this.activeExecutions.getPostExecutePromise(executionId);
+			if (!result) {
+				throw new OperationalError('There was a problem executing the chat workflow.');
 			}
 		} catch (error: unknown) {
+			if (error instanceof ManualExecutionCancelledError) {
+				return;
+			}
+
 			if (error instanceof Error) {
 				this.logger.error(`Error during chat workflow execution: ${error}`);
 			}
@@ -1014,198 +992,263 @@ export class ChatHubService {
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 	) {
-		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
-			async (trx) => {
-				const { provider } = model;
-				let credential: CredentialWithProjectId | null = null;
-
-				if (provider === 'n8n') {
-					const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
-						model.workflowId,
-						user,
-						['workflow:read'],
-						{ includeTags: false, includeParentFolder: false },
-					);
-
-					if (!workflowEntity) {
-						throw new BadRequestError('Workflow not found for title generation');
-					}
-
-					// Find a supported Model node from the workflow and figure out the provider from it
-					const llmNodes = workflowEntity.nodes.reduce<
-						Array<{ node: INode; provider: ChatHubLLMProvider }>
-					>((acc, node) => {
-						const supportedProvider = Object.entries(PROVIDER_NODE_TYPE_MAP).find(
-							([_provider, { name }]) => node.type === name,
-						);
-
-						if (supportedProvider) {
-							const [provider] = supportedProvider;
-							acc.push({ node, provider: provider as ChatHubLLMProvider });
-						}
-
-						return acc;
-					}, []);
-
-					this.logger.debug(
-						`Found ${llmNodes.length} LLM nodes in workflow ${workflowEntity.id} for title generation`,
-					);
-
-					if (llmNodes.length === 0) {
-						throw new BadRequestError(
-							'No supported Model nodes found in workflow for title generation',
-						);
-					}
-
-					// Grab the first one and use its model and credentials to generate the title
-					const modelNode = llmNodes[0];
-
-					// Extract credentials from the node, check that they exist and the user has access to them.
-					const llmModel = (modelNode.node.parameters?.model as INodeParameters)?.value;
-					if (!llmModel) {
-						throw new BadRequestError('No model set on Model node for title generation');
-					}
-
-					const llmCredentials = modelNode.node.credentials;
-
-					if (!llmCredentials) {
-						throw new BadRequestError('No credentials found on Model node for title generation');
-					}
-
-					// Check the credential to get a project ID to use for the workflow
-					credential = await this.chatHubCredentialsService.ensureCredentials(
-						user,
-						modelNode.provider,
-						llmCredentials,
-						trx,
-					);
-
-					model = {
-						provider: modelNode.provider,
-						model: llmModel as string,
-					};
-
-					credentials = {
-						[PROVIDER_CREDENTIAL_TYPE_MAP[modelNode.provider]]: {
-							id: credential.id,
-							name: '',
-						},
-					};
-				} else if (provider === 'custom-agent') {
-					const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
-					if (!agent) {
-						throw new BadRequestError('Agent not found for title generation');
-					}
-
-					if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-						throw new BadRequestError('Invalid provider for title generation');
-					}
-
-					const credentialId = agent.credentialId;
-					if (!credentialId) {
-						throw new BadRequestError('Credentials not set for agent');
-					}
-
-					model = {
-						provider: agent.provider,
-						model: agent.model,
-					};
-
-					credentials = {
-						[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
-							id: credentialId,
-							name: '',
-						},
-					};
-
-					credential = await this.chatHubCredentialsService.ensureCredentials(
-						user,
-						agent.provider,
-						credentials,
-						trx,
-					);
-				} else {
-					credential = await this.chatHubCredentialsService.ensureCredentials(
-						user,
-						provider,
-						credentials,
-						trx,
-					);
-				}
-
-				if (!credential) {
-					throw new BadRequestError('Could not determine credentials for title generation');
-				}
-
-				this.logger.debug(
-					`Using credential ID ${credential.id} for title generation in project ${credential.projectId}, model ${JSON.stringify(model)}`,
-				);
-
-				return await this.chatHubWorkflowService.createTitleGenerationWorkflow(
-					user.id,
-					sessionId,
-					credential.projectId,
-					humanMessage,
-					credentials,
-					model,
-					trx,
-				);
-			},
+		const { executionData, workflowData } = await this.prepareTitleGenerationWorkflow(
+			user,
+			sessionId,
+			humanMessage,
+			credentials,
+			model,
 		);
 
 		try {
-			const execution = await this.workflowExecutionService.executeChatWorkflow(
-				workflowData,
-				executionData,
-				user,
-			);
-
-			const executionId = execution.executionId;
-
-			if (!executionId) {
-				throw new OperationalError('There was a problem starting the chat execution.');
+			const title = await this.runTitleWorkflowAndGetTitle(user, workflowData, executionData);
+			if (title) {
+				await this.sessionRepository.updateChatTitle(sessionId, title);
 			}
-
-			try {
-				let result: IRun | undefined;
-				try {
-					result = await this.activeExecutions.getPostExecutePromise(executionId);
-					if (!result) {
-						throw new OperationalError('There was a problem executing the chat workflow.');
-					}
-				} catch (error: unknown) {
-					if (error instanceof ManualExecutionCancelledError) {
-						return;
-					}
-
-					throw error;
-				}
-
-				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-					workflowData.id,
-				]);
-				if (!execution) {
-					throw new OperationalError(`Could not find execution with ID ${executionId}`);
-				}
-
-				if (!execution.status || execution.status !== 'success') {
-					const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
-					throw new OperationalError(message);
-				}
-
-				const title = this.getAIOutput(execution, NODE_NAMES.TITLE_GENERATOR_AGENT);
-				if (title) {
-					await this.sessionRepository.updateChatTitle(sessionId, title);
-				}
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					this.logger.error(`Error during chat workflow execution: ${error}`);
-				}
-				throw error;
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				this.logger.error(`Error during session title generation workflow execution: ${error}`);
 			}
+			throw error;
 		} finally {
 			await this.deleteChatWorkflow(workflowData.id);
 		}
+	}
+
+	private async prepareTitleGenerationWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		humanMessage: string,
+		incomingCredentials: INodeCredentials,
+		incomingModel: ChatHubConversationModel,
+	) {
+		return await this.messageRepository.manager.transaction(async (trx) => {
+			const { resolvedCredentials, resolvedModel, credential } =
+				await this.resolveCredentialsAndModelForTitle(
+					user,
+					incomingModel,
+					incomingCredentials,
+					trx,
+				);
+
+			if (!credential) {
+				throw new BadRequestError('Could not determine credentials for title generation');
+			}
+
+			this.logger.debug(
+				`Using credential ID ${credential.id} for title generation in project ${credential.projectId}, model ${JSON.stringify(resolvedModel)}`,
+			);
+
+			return await this.chatHubWorkflowService.createTitleGenerationWorkflow(
+				user.id,
+				sessionId,
+				credential.projectId,
+				humanMessage,
+				resolvedCredentials,
+				resolvedModel,
+				trx,
+			);
+		});
+	}
+
+	private async resolveCredentialsAndModelForTitle(
+		user: User,
+		model: ChatHubConversationModel,
+		credentials: INodeCredentials,
+		trx: EntityManager,
+	): Promise<{
+		resolvedCredentials: INodeCredentials;
+		resolvedModel: ChatHubConversationModel;
+		credential: CredentialWithProjectId;
+	}> {
+		if (model.provider === 'n8n') {
+			return await this.resolveFromN8nWorkflow(user, model, trx);
+		}
+
+		if (model.provider === 'custom-agent') {
+			return await this.resolveFromCustomAgent(user, model, trx);
+		}
+
+		const credential = await this.chatHubCredentialsService.ensureCredentials(
+			user,
+			model.provider,
+			credentials,
+			trx,
+		);
+
+		return {
+			resolvedCredentials: credentials,
+			resolvedModel: model,
+			credential,
+		};
+	}
+
+	private async resolveFromN8nWorkflow(
+		user: User,
+		model: ChatHubN8nModel,
+		trx: EntityManager,
+	): Promise<{
+		resolvedCredentials: INodeCredentials;
+		resolvedModel: ChatHubConversationModel;
+		credential: CredentialWithProjectId;
+	}> {
+		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
+			model.workflowId,
+			user,
+			['workflow:read'],
+			{ includeTags: false, includeParentFolder: false },
+		);
+
+		if (!workflowEntity) {
+			throw new BadRequestError('Workflow not found for title generation');
+		}
+
+		const modelNodes = this.findSupportedLLMNodes(workflowEntity);
+		this.logger.debug(
+			`Found ${modelNodes.length} LLM nodes in workflow ${workflowEntity.id} for title generation`,
+		);
+
+		if (modelNodes.length === 0) {
+			throw new BadRequestError('No supported Model nodes found in workflow for title generation');
+		}
+
+		const modelNode = modelNodes[0];
+		const llmModel = (modelNode.node.parameters?.model as INodeParameters)?.value;
+		if (!llmModel) {
+			throw new BadRequestError('No model set on Model node for title generation');
+		}
+
+		const llmCredentials = modelNode.node.credentials;
+		if (!llmCredentials) {
+			throw new BadRequestError('No credentials found on Model node for title generation');
+		}
+
+		const credential = await this.chatHubCredentialsService.ensureCredentials(
+			user,
+			modelNode.provider,
+			llmCredentials,
+			trx,
+		);
+
+		const resolvedModel: ChatHubConversationModel = {
+			provider: modelNode.provider,
+			model: llmModel as string,
+		};
+
+		const resolvedCredentials: INodeCredentials = {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[modelNode.provider]]: {
+				id: credential.id,
+				name: '',
+			},
+		};
+
+		return { resolvedCredentials, resolvedModel, credential };
+	}
+
+	private findSupportedLLMNodes(workflowEntity: { nodes: INode[]; id: string }) {
+		return workflowEntity.nodes.reduce<Array<{ node: INode; provider: ChatHubLLMProvider }>>(
+			(acc, node) => {
+				const supportedProvider = Object.entries(PROVIDER_NODE_TYPE_MAP).find(
+					([_provider, { name }]) => node.type === name,
+				);
+				if (supportedProvider) {
+					const [provider] = supportedProvider;
+					acc.push({ node, provider: provider as ChatHubLLMProvider });
+				}
+				return acc;
+			},
+			[],
+		);
+	}
+
+	private async resolveFromCustomAgent(
+		user: User,
+		model: ChatHubCustomAgentModel,
+		trx: EntityManager,
+	): Promise<{
+		resolvedCredentials: INodeCredentials;
+		resolvedModel: ChatHubConversationModel;
+		credential: CredentialWithProjectId;
+	}> {
+		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
+		if (!agent) {
+			throw new BadRequestError('Agent not found for title generation');
+		}
+
+		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
+			throw new BadRequestError('Invalid provider for title generation');
+		}
+
+		const credentialId = agent.credentialId;
+		if (!credentialId) {
+			throw new BadRequestError('Credentials not set for agent');
+		}
+
+		const resolvedModel: ChatHubConversationModel = {
+			provider: agent.provider,
+			model: agent.model,
+		};
+
+		const resolvedCredentials: INodeCredentials = {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
+				id: credentialId,
+				name: '',
+			},
+		};
+
+		const credential = await this.chatHubCredentialsService.ensureCredentials(
+			user,
+			agent.provider,
+			resolvedCredentials,
+			trx,
+		);
+
+		return { resolvedCredentials, resolvedModel, credential };
+	}
+
+	private async runTitleWorkflowAndGetTitle(
+		user: User,
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+	): Promise<string | null> {
+		const started = await this.workflowExecutionService.executeChatWorkflow(
+			workflowData,
+			executionData,
+			user,
+		);
+
+		const executionId = started.executionId;
+		if (!executionId) {
+			throw new OperationalError('There was a problem starting the chat execution.');
+		}
+
+		let run: IRun | undefined;
+		try {
+			run = await this.activeExecutions.getPostExecutePromise(executionId);
+			if (!run) {
+				throw new OperationalError('There was a problem executing the chat workflow.');
+			}
+		} catch (error: unknown) {
+			if (error instanceof ManualExecutionCancelledError) {
+				return null;
+			}
+			throw error;
+		}
+
+		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+			workflowData.id,
+		]);
+		if (!execution) {
+			throw new OperationalError(`Could not find execution with ID ${executionId}`);
+		}
+
+		if (!execution.status || execution.status !== 'success') {
+			const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+			throw new OperationalError(message);
+		}
+
+		const title = this.getAIOutput(execution, NODE_NAMES.TITLE_GENERATOR_AGENT);
+		return title ?? null;
 	}
 
 	private async saveHumanMessage(
