@@ -3,13 +3,13 @@ import { ref, computed } from 'vue';
 import ParameterInputList from './ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
-import {
-	deepCopy,
-	type INodeParameters,
-	type INodeProperties,
-	type INodePropertyCollection,
-	type INodePropertyOptions,
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
@@ -19,7 +19,6 @@ import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
 import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
-
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
 	hideDelete?: boolean;
@@ -116,7 +115,7 @@ const parameterOptions = computed(() => {
 	});
 });
 
-async function optionSelected(optionName: string) {
+function optionSelected(optionName: string) {
 	const options = getOptionProperties(optionName);
 	if (options.length === 0) {
 		return;
@@ -126,6 +125,7 @@ async function optionSelected(optionName: string) {
 	const name = `${props.path}.${option.name}`;
 
 	let parameterData;
+
 	if (
 		'typeOptions' in option &&
 		option.typeOptions !== undefined &&
@@ -149,6 +149,7 @@ async function optionSelected(optionName: string) {
 				newValue.push(deepCopy(option.default));
 			}
 		}
+
 		parameterData = {
 			name,
 			value: newValue,
