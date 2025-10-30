@@ -53,16 +53,23 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 	}
 
 	function trackTemplateTileClick(templateId: number) {
-		telemetry.track('User clicked on template recommendation tile', {
+		telemetry.track('User viewed template detail', {
 			templateId,
 		});
 	}
 
+	function trackTemplateShown(templateId: number, tileNumber: number) {
+		telemetry.track('User viewed template cell', {
+			tileNumber,
+			templateId,
+		});
+	}
 	return {
 		isFeatureEnabled,
 		getRandomTemplateIds,
 		getTemplateData,
 		getTemplateRoute,
 		trackTemplateTileClick,
+		trackTemplateShown,
 	};
 });

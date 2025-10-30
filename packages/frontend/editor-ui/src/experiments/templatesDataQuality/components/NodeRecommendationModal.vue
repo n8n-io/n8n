@@ -22,6 +22,12 @@ const templates = ref<ITemplatesWorkflowFull[]>([]);
 const isLoadingTemplates = ref(false);
 const nodeTypesStore = useNodeTypesStore();
 
+const trackTemplatesShown = (templateIds: number[]) => {
+	templateIds.forEach((id, index) => {
+		templatesStore.trackTemplateShown(id, index + 1);
+	});
+};
+
 onMounted(async () => {
 	isLoadingTemplates.value = true;
 	try {
@@ -35,6 +41,7 @@ onMounted(async () => {
 					r.status === 'fulfilled' && r.value !== null,
 			)
 			.map((r) => r.value);
+		trackTemplatesShown(ids);
 	} finally {
 		isLoadingTemplates.value = false;
 	}
