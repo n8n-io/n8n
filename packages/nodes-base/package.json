@@ -173,6 +173,7 @@
       "dist/credentials/HttpBearerAuth.credentials.js",
       "dist/credentials/HttpDigestAuth.credentials.js",
       "dist/credentials/HttpHeaderAuth.credentials.js",
+      "dist/credentials/HttpMultipleHeadersAuth.credentials.js",
       "dist/credentials/HttpCustomAuth.credentials.js",
       "dist/credentials/HttpQueryAuth.credentials.js",
       "dist/credentials/HttpSslAuth.credentials.js",
