@@ -798,9 +798,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	 */
 	async findWorkflowsNeedingIndexing(batchSize?: number): Promise<WorkflowEntity[]> {
 		const qb = this.createQueryBuilder('workflow');
-		const workflowIdAlias = qb.escape('workflowId');
-		const maxVersionIdAlias = qb.escape('maxVersionId');
-		const depAlias = qb.escape('dep');
+		const workflowIdAlias = 'workflowId';
+		const maxVersionIdAlias = 'maxVersionId';
+		const depAlias = 'dep';
 
 		qb.leftJoin(
 			(subQuery) => {
@@ -810,15 +810,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					.from(WorkflowDependency, 'wd')
 					.groupBy('wd.workflowId');
 			},
-			'dep',
-			`workflow.id = ${depAlias}.${workflowIdAlias}`,
+			depAlias,
+			`workflow.id = ${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)}`,
 		);
 
 		// Include workflows that are either:
 		// 1. Unindexed (no dependency entries exist)
 		// 2. Outdated (workflow version is newer than indexed version)
-		qb.where(`${depAlias}.${workflowIdAlias} IS NULL`).orWhere(
-			`workflow.versionCounter > ${depAlias}.${maxVersionIdAlias}`,
+		qb.where(`${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)} IS NULL`).orWhere(
+			`workflow.versionCounter > ${qb.escape(depAlias)}.${qb.escape(maxVersionIdAlias)}`,
 		);
 		if (batchSize) {
 			qb.limit(batchSize);

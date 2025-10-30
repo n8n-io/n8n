@@ -4,6 +4,9 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
+// A safety limit to prevent infinite loops in indexing.
+const LOOP_LIMIT = 1_000_000_000;
+
 /**
  * Service for managing the workflow dependency index. The index tracks dependencies such as node types,
  * credentials, workflow calls, and webhook paths used by each workflow. The service builds the index on server start
@@ -26,7 +29,7 @@ export class WorkflowIndexService {
 		const batchSize = this.batchSize;
 		let processedCount = 0;
 
-		while (true) {
+		while (processedCount < LOOP_LIMIT) {
 			// Get only workflows that need indexing (unindexed or outdated).
 			const workflows = await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize);
 
