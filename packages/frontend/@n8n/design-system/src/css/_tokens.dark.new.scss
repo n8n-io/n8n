@@ -69,5 +69,6 @@ body[data-theme='dark'] {
 @media (prefers-color-scheme: dark) {
 	body:not([data-theme]) {
 		@include theme;
+		color-scheme: dark;
 	}
 }
