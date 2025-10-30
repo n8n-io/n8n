@@ -18,7 +18,7 @@ import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
 // Mock the workflow history helper functions to avoid DI container issues in tests
-jest.mock('@/workflows/workflow-history.ee/workflow-history-helper.ee', () => ({
+jest.mock('@/workflows/workflow-history/workflow-history-helper', () => ({
 	getWorkflowHistoryLicensePruneTime: jest.fn(() => 24),
 	getWorkflowHistoryPruneTime: jest.fn(() => 24),
 }));
