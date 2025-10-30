@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useUIStore } from '@/stores/ui.store';
+import { useBannersStore } from '@/stores/banners.store';
 import { computed, useSlots } from 'vue';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -12,17 +12,19 @@ interface Props {
 	theme?: CalloutTheme;
 	customIcon?: IconName;
 	dismissible?: boolean;
+	dismissPermanently?: boolean;
 }
 
 const i18n = useI18n();
 
-const uiStore = useUIStore();
+const bannersStore = useBannersStore();
 const slots = useSlots();
 
 const props = withDefaults(defineProps<Props>(), {
 	theme: 'info',
 	dismissible: true,
 	customIcon: undefined,
+	dismissPermanently: false,
 });
 
 const emit = defineEmits<{
@@ -34,7 +36,10 @@ const hasTrailingContent = computed(() => {
 });
 
 async function onCloseClick() {
-	await uiStore.dismissBanner(props.name);
+	await bannersStore.dismissBanner(
+		props.name,
+		props.dismissPermanently ? 'permanent' : 'temporary',
+	);
 	emit('close');
 }
 </script>
@@ -70,7 +75,7 @@ async function onCloseClick() {
 
 <style lang="scss" module>
 .callout {
-	height: calc(var(--header-height) * 1px);
+	height: var(--banner-height);
 }
 
 .mainContent {

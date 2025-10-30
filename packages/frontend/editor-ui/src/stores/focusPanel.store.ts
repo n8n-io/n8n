@@ -13,7 +13,7 @@ import { useWorkflowsStore } from './workflows.store';
 import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useStorage } from '@/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
-import { isFromAIOverrideValue } from '@/utils/fromAIOverrideUtils';
+import { isFromAIOverrideValue } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
 
 // matches NodeCreator to ensure they fully overlap by default when both are open
 const DEFAULT_PANEL_WIDTH = 500;

@@ -2,9 +2,10 @@
 import { useToast } from '@/composables/useToast';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import type { ChatHubConversationModel, ChatHubLLMProvider } from '@n8n/api-types';
-import { N8nIconButton, N8nInput } from '@n8n/design-system';
+import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import { useChatStore } from '../chat.store';
 
 const { selectedModel, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const message = ref('');
+const chatStore = useChatStore();
 
 const toast = useToast();
 
@@ -30,12 +32,17 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
+const selected = computed(() => {
+	if (!selectedModel || !chatStore.models) return null;
+	return chatStore.getModel(selectedModel) ?? null;
+});
+
 const placeholder = computed(() => {
 	if (!selectedModel) {
 		return 'Select a model';
 	}
 
-	return `Message ${selectedModel.name}`;
+	return `Message ${selected.value?.name ?? 'a model'}...`;
 });
 
 function onMic() {
@@ -103,11 +110,11 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
-			<div v-if="!selectedModel" :class="$style.callout">
+			<N8nText v-if="!selectedModel" :class="$style.callout">
 				Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
 				conversation
-			</div>
-			<div v-else-if="isMissingCredentials" :class="$style.callout">
+			</N8nText>
+			<N8nText v-else-if="isMissingCredentials" :class="$style.callout">
 				Please
 				<a
 					href=""
@@ -116,7 +123,7 @@ defineExpose({
 					set credentials
 				</a>
 				for {{ providerDisplayNames[selectedModel.provider] }} to start a conversation
-			</div>
+			</N8nText>
 			<N8nInput
 				ref="inputRef"
 				v-model="message"
@@ -191,7 +198,7 @@ defineExpose({
 .callout {
 	color: var(--color--secondary);
 	background-color: hsla(247, 49%, 53%, 0.1);
-	padding: 16px 16px 32px;
+	padding: 12px 16px 24px;
 	border-top-left-radius: 16px;
 	border-top-right-radius: 16px;
 	width: 100%;

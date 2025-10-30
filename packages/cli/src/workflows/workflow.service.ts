@@ -587,8 +587,11 @@ export class WorkflowService {
 		);
 	}
 
-	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[]) {
-		const foundWorkflows = await this.workflowRepository.findWorkflowsWithNodeType(nodeTypes);
+	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[], includeNodes = false) {
+		const foundWorkflows = await this.workflowRepository.findWorkflowsWithNodeType(
+			nodeTypes,
+			includeNodes,
+		);
 
 		let { workflows } = await this.workflowRepository.getManyAndCount(
 			foundWorkflows.map((w) => w.id),
@@ -598,13 +601,16 @@ export class WorkflowService {
 			workflows = await this.processSharedWorkflows(workflows);
 		}
 
-		workflows = await this.addUserScopes(workflows, user);
+		const withScopes = await this.addUserScopes(workflows, user);
 
-		this.cleanupSharedField(workflows);
+		this.cleanupSharedField(withScopes);
 
-		return workflows.map((workflow) => ({
-			resourceType: 'workflow',
-			...workflow,
-		}));
+		return withScopes.map((workflow) => {
+			const nodes = includeNodes
+				? (foundWorkflows.find((w) => w.id === workflow.id)?.nodes ?? [])
+				: undefined;
+
+			return { resourceType: 'workflow', ...workflow, ...(includeNodes ? { nodes } : {}) };
+		});
 	}
 }
