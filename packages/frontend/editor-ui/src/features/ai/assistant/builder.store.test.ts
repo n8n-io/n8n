@@ -647,9 +647,9 @@ describe('AI Builder store', () => {
 			expect(builderStore.chatMessages[0].role).toBe('user');
 			expect(builderStore.chatMessages[1].role).toBe('assistant');
 			expect(builderStore.chatMessages[1].type).toBe('text');
-			expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
-				'aiAssistant.builder.streamAbortedMessage',
-			);
+			const abortedMessage = builderStore.chatMessages[1] as ChatUI.TaskAbortedMessage;
+			expect(abortedMessage.content).toBe('aiAssistant.builder.streamAbortedMessage');
+			expect(abortedMessage.aborted).toBe(true);
 
 			// Verify streaming state was reset
 			expect(builderStore.streaming).toBe(false);
@@ -774,9 +774,9 @@ describe('AI Builder store', () => {
 			const assistantMessages = builderStore.chatMessages.filter((msg) => msg.role === 'assistant');
 			expect(assistantMessages).toHaveLength(1);
 			expect(assistantMessages[0].type).toBe('text');
-			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe(
-				'aiAssistant.builder.streamAbortedMessage',
-			);
+			const abortedMessage = assistantMessages[0] as ChatUI.TaskAbortedMessage;
+			expect(abortedMessage.content).toBe('aiAssistant.builder.streamAbortedMessage');
+			expect(abortedMessage.aborted).toBe(true);
 		});
 	});
 

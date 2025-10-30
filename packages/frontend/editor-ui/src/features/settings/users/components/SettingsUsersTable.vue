@@ -147,6 +147,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 			:headers="headers"
 			:items="rows"
 			:items-length="data.count"
+			:page-sizes="[10, 25, 50]"
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.name`]="{ value }">
