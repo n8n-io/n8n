@@ -1113,12 +1113,22 @@ export class ChatHubService {
 		const modelNode = modelNodes[0];
 		const llmModel = (modelNode.node.parameters?.model as INodeParameters)?.value;
 		if (!llmModel) {
-			throw new BadRequestError('No model set on Model node for title generation');
+			throw new BadRequestError(
+				`No model set on Model node "${modelNode.node.name}" for title generation`,
+			);
+		}
+
+		if (typeof llmModel !== 'string' || llmModel.length === 0 || llmModel.startsWith('=')) {
+			throw new BadRequestError(
+				`Invalid model set on Model node "${modelNode.node.name}" for title generation`,
+			);
 		}
 
 		const llmCredentials = modelNode.node.credentials;
 		if (!llmCredentials) {
-			throw new BadRequestError('No credentials found on Model node for title generation');
+			throw new BadRequestError(
+				`No credentials found on Model node "${modelNode.node.name}" for title generation`,
+			);
 		}
 
 		const credential = await this.chatHubCredentialsService.ensureCredentials(
@@ -1130,7 +1140,7 @@ export class ChatHubService {
 
 		const resolvedModel: ChatHubConversationModel = {
 			provider: modelNode.provider,
-			model: llmModel as string,
+			model: llmModel,
 		};
 
 		const resolvedCredentials: INodeCredentials = {

@@ -364,7 +364,7 @@ export class ChatHubWorkflowService {
 
 		const { provider, model } = conversationModel;
 		const common = {
-			position: [600, 300] as [number, number],
+			position: [600, 300] satisfies [number, number],
 			id: uuidv4(),
 			name: NODE_NAMES.CHAT_MODEL,
 			credentials,
