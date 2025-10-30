@@ -61,6 +61,7 @@ import {
 import { injectWorkflowState } from '@/composables/useWorkflowState';
 import get from 'lodash/get';
 import set from 'lodash/set';
+import unset from 'lodash/unset';
 import toPath from 'lodash/toPath';
 
 type Props = {
@@ -582,17 +583,21 @@ function onDataChange({ name, value }: IUpdateInformation) {
 	const { oauthTokenData, ...credData } = credentialData.value;
 	credentialData.value = deepCopy(credData);
 
-	// for fixed collections:
-	// if the value is undefined and the name (path) ends with a number
-	// we need to remove the item from the array
-	if (value === undefined && name.endsWith(']')) {
-		const path = toPath(name);
-		const index = parseInt(path[path.length - 1], 10);
-		const arrayPath = path.slice(0, -1);
-		const array = get(credentialData.value, arrayPath) as unknown[];
-		if (Array.isArray(array)) {
-			array.splice(index, 1);
-			set(credentialData.value, arrayPath, array);
+	if (value === undefined) {
+		// for fixed collections:
+		// if the value is undefined and the name (path) ends with a number
+		// we need to remove the item from the array
+		if (name.endsWith(']')) {
+			const path = toPath(name);
+			const index = parseInt(path[path.length - 1], 10);
+			const arrayPath = path.slice(0, -1);
+			const array = get(credentialData.value, arrayPath) as unknown[];
+			if (Array.isArray(array)) {
+				array.splice(index, 1);
+				set(credentialData.value, arrayPath, array);
+			}
+		} else {
+			unset(credentialData.value, name);
 		}
 	} else {
 		set(credentialData.value, name, value);

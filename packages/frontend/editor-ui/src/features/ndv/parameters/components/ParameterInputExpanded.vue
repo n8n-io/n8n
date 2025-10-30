@@ -216,7 +216,6 @@ function onDocumentationUrlClick(): void {
 				</N8nText>
 			</div>
 		</N8nInputLabel>
-		<!-- FIXME: cast -->
 		<div v-if="isFixedCollectionType" class="fixed-collection-wrapper">
 			<LazyFixedCollectionParameter
 				:parameter="parameter"

@@ -341,6 +341,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						:is-read-only="isReadOnly"
 						class="parameter-item"
 						:hide-delete="true"
+						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
 				</div>
