@@ -71,7 +71,7 @@ const sidebarWidth = ref(DEFAULT_LEFT_SIDEBAR_WIDTH);
 const expressionInputRef = ref<InstanceType<typeof ExpressionEditorModalInput>>();
 const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
-const outputRenderMode = ref<'text' | 'html'>('text');
+const outputRenderMode = ref<'text' | 'html' | 'markdown'>('text');
 
 const activeNode = computed(() => ndvStore.activeNode);
 const inputEditor = computed(() => expressionInputRef.value?.editor);
@@ -231,7 +231,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								size="small"
 								:options="[
 									{ label: 'Text', value: 'text' },
-									{ label: 'HTML', value: 'html' },
+									{ label: 'Html', value: 'html' },
+									{ label: 'Markdown', value: 'markdown' },
 								]"
 							/>
 						</div>

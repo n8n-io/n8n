@@ -8,11 +8,12 @@ import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { forceParse } from '@/utils/forceParse';
 import RunDataHtml from '@/features/ndv/components/runData/RunDataHtml.vue';
+import RunDataMarkdown from '@/features/ndv/components/runData/RunDataMarkdown.vue';
 
 interface ExpressionOutputProps {
 	segments: Segment[];
 	extensions?: Extension[];
-	render?: 'text' | 'html';
+	render?: 'text' | 'html' | 'markdown';
 }
 
 const props = withDefaults(defineProps<ExpressionOutputProps>(), {
@@ -120,7 +121,7 @@ watch(
 		if (newMode === 'text' && !editor.value) {
 			await nextTick();
 			initializeEditor();
-		} else if (newMode === 'html' && editor.value) {
+		} else if ((newMode === 'html' || newMode === 'markdown') && editor.value) {
 			editor.value.destroy();
 			editor.value = null;
 		}
@@ -146,6 +147,12 @@ defineExpose({ getValue: () => '=' + resolvedExpression.value });
 		v-else-if="render === 'html'"
 		data-test-id="expression-output"
 		:input-html="resolvedExpression"
+	/>
+
+	<RunDataMarkdown
+		v-else-if="render === 'markdown'"
+		data-test-id="expression-output"
+		:input-markdown="resolvedExpression"
 	/>
 </template>
 
