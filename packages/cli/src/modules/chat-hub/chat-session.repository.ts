@@ -40,6 +40,16 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		});
 	}
 
+	async updateChatSession(id: string, updates: Partial<ChatHubSession>, trx?: EntityManager) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			await em.update(ChatHubSession, { id }, updates);
+			return await em.findOneOrFail(ChatHubSession, {
+				where: { id },
+				relations: ['messages'],
+			});
+		});
+	}
+
 	async deleteChatHubSession(id: string, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			return await em.delete(ChatHubSession, { id });
@@ -54,12 +64,17 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 	}
 
 	async getOneById(id: string, userId: string, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.findOne(ChatHubSession, {
-				where: { id, ownerId: userId },
-				relations: ['messages'],
-			});
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.findOne(ChatHubSession, {
+					where: { id, ownerId: userId },
+					relations: ['messages'],
+				});
+			},
+			false,
+		);
 	}
 
 	async deleteAll(trx?: EntityManager) {

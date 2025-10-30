@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workflow';
-import { versionDescription } from './description';
+
 import { process } from './actions/process';
+import { versionDescription } from './description';
 import { getChatModel } from './helpers/model';
 
 export class Guardrails implements INodeType {
@@ -8,8 +9,8 @@ export class Guardrails implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const model = await getChatModel.call(this);
-		const violationBehavior = this.getNodeParameter('violationBehavior', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as 'classify' | 'sanitize';
+		const model = operation === 'classify' ? await getChatModel.call(this) : null;
 
 		const failedItems: INodeExecutionData[] = [];
 		const passedItems: INodeExecutionData[] = [];
@@ -18,13 +19,13 @@ export class Guardrails implements INodeType {
 				const responseData = await process.call(this, i, model);
 				if (responseData.passed) {
 					passedItems.push({
-						json: { ...responseData.passed, guardrailsInput: responseData.guardrailsInput },
+						json: { guardrailsInput: responseData.guardrailsInput, ...responseData.passed },
 						pairedItem: { item: i },
 					});
 				}
 				if (responseData.failed) {
 					failedItems.push({
-						json: { ...responseData.failed, guardrailsInput: responseData.guardrailsInput },
+						json: { guardrailsInput: responseData.guardrailsInput, ...responseData.failed },
 						pairedItem: { item: i },
 					});
 				}
@@ -40,9 +41,10 @@ export class Guardrails implements INodeType {
 			}
 		}
 
-		if (violationBehavior === 'routeToFailOutput') {
+		if (operation === 'classify') {
 			return [passedItems, failedItems];
 		}
+
 		return [passedItems];
 	}
 }

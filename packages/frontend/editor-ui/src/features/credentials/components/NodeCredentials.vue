@@ -16,9 +16,9 @@ import TitledList from '@/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/constants';
-import { ndvEventBus } from '@/features/ndv/ndv.eventBus';
+import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -626,7 +626,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	font-weight: var(--font-weight--bold);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--color--background--light-2);
-	color: var(--color-text--dark);
+	color: var(--color--text--shade-1);
 
 	border: 0;
 	border-top: var(--border);

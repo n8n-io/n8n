@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
+import {
+	BREAKPOINT_SM,
+	BREAKPOINT_MD,
+	BREAKPOINT_LG,
+	BREAKPOINT_XL,
+} from '@/constants/breakpoints';
+import { useBannersStore } from '@/stores/banners.store';
 import { getBannerRowHeight } from '@/utils/htmlUtils';
 import { useDebounce } from '@/composables/useDebounce';
 
@@ -25,7 +30,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const { callDebounced } = useDebounce();
-const uiStore = useUIStore();
+const bannersStore = useBannersStore();
 
 const width = ref(window.innerWidth);
 
@@ -73,7 +78,7 @@ const onResizeEnd = async () => {
 	await nextTick();
 
 	const bannerHeight = await getBannerRowHeight();
-	uiStore.updateBannersHeight(bannerHeight);
+	bannersStore.updateBannersHeight(bannerHeight);
 };
 
 onMounted(() => {

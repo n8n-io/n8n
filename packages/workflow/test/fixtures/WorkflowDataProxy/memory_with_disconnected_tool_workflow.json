@@ -1,0 +1,199 @@
+{
+	"name": "My workflow 16",
+	"nodes": [
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "Greet the user",
+				"options": {
+					"maxIterations": 1
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [416, 0],
+			"id": "c26a647a-58b2-4c10-9cc5-ac3ccb6c6219",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [288, 208],
+			"id": "4568addd-cc56-4e40-b462-e8c55383ff92",
+			"name": "OpenAI Chat Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [112, -352],
+			"id": "1c26bc07-8091-44ba-98b4-e93020bedb91",
+			"name": "When Executed by Another Workflow"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ce088643-09fc-4cf0-a04a-a82bb973b8c8",
+							"name": "response",
+							"value": "banana",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [320, -352],
+			"id": "77b084e4-68bb-45c2-ae2f-76a67c859bcc",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"typeVersion": 2.2,
+			"position": [992, 160],
+			"id": "2b964f5c-46c7-4e6f-85c2-a3134b3bd223",
+			"name": "AI Agent Tool"
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [560, 320],
+			"id": "6eebeae8-5a25-4a79-8d6d-3fa2cb3fcfa5",
+			"name": "Simple Memory"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-144, 0],
+			"id": "e1570d09-e91c-49a2-bd62-24ceb060ecd1",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b4fca0ed-9032-43ad-8e10-8ca932c9f1a5",
+							"name": "sessionId",
+							"value": "1",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [64, 0],
+			"id": "4d04fe47-6af4-4440-b782-e9d8163f4cfa",
+			"name": "Edit Fields1"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "AI Agent Tool",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent Tool": {
+			"ai_tool": [[]]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					},
+					{
+						"node": "AI Agent Tool",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6c8d6680-cdd4-4ed0-b562-16d3b1d7d915",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "exPkwOsVPRUPnV5V",
+	"tags": []
+}

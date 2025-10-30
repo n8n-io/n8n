@@ -22,6 +22,7 @@ export interface GuardrailResult<TInfo extends Record<string, unknown> = Record<
 
 export type LLMConfig = {
 	model: BaseChatModel;
+	systemMessage?: string;
 	prompt: string;
 	threshold: number;
 };
@@ -47,38 +48,28 @@ export type CustomRegex = {
 export interface GuardrailsOptions {
 	keywords?: string;
 	jailbreak?: Value<{
-		prompt: string;
+		prompt?: string;
 		threshold: number;
 	}>;
 	nsfw?: Value<{
-		prompt: string;
-		threshold: number;
-	}>;
-	promptInjection?: Value<{
-		prompt: string;
+		prompt?: string;
 		threshold: number;
 	}>;
 	pii?: Value<{
-		mode: 'redact' | 'block';
 		type: 'all' | 'selected';
 		entities?: PIIEntity[];
-		customRegex?: {
-			regex: CustomRegex[];
-		};
 	}>;
 	urls?: Value<{
-		mode: 'redact' | 'block';
 		allowedUrls: string;
 		allowedSchemes: string[];
 		blockUserinfo: boolean;
 		allowSubdomains: boolean;
 	}>;
 	secretKeys?: Value<{
-		mode: 'redact' | 'block';
 		permissiveness: 'strict' | 'balanced' | 'permissive';
 	}>;
 	topicalAlignment?: Value<{
-		prompt: string;
+		prompt?: string;
 		threshold: number;
 	}>;
 	custom?: {
@@ -87,6 +78,9 @@ export interface GuardrailsOptions {
 			prompt: string;
 			threshold: number;
 		}>;
+	};
+	customRegex?: {
+		regex: CustomRegex[];
 	};
 }
 

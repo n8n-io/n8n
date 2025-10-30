@@ -211,6 +211,43 @@ describe('WorkflowDetails', () => {
 			});
 		});
 
+		it('should not have workflow duplicate and import without update permission', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:read'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+		});
+
+		it('should have workflow duplicate and import options if permission update is true', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:update'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+		});
+
 		it("should have disabled 'Archive' option on new workflow", async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {

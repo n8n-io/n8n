@@ -1,43 +1,31 @@
 <script setup lang="ts">
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import {
-	type ChatHubConversationModel,
-	type ChatHubProvider,
-	type ChatSessionId,
-} from '@n8n/api-types';
-import { N8nIconButton } from '@n8n/design-system';
-import { computed, useTemplateRef } from 'vue';
+import type { ChatHubProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
+import { N8nButton, N8nIconButton } from '@n8n/design-system';
+import { useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { selectedModel, credentials } = defineProps<{
-	selectedModel: ChatHubConversationModel | null;
-	credentials: CredentialsMap;
+	selectedModel: ChatModelDto | null;
+	credentials: CredentialsMap | null;
 }>();
 
 const emit = defineEmits<{
-	selectModel: [ChatHubConversationModel];
-	setCredentials: [provider: ChatHubProvider];
+	selectModel: [ChatModelDto];
 	renameConversation: [id: ChatSessionId, title: string];
+	editCustomAgent: [agentId: string];
+	createCustomAgent: [];
+	selectCredential: [provider: ChatHubProvider, credentialId: string];
 }>();
 
 const sidebar = useChatHubSidebarState();
-const chatStore = useChatStore();
-const credentialsStore = useCredentialsStore();
 const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
 
-const credentialsName = computed(() =>
-	selectedModel
-		? credentialsStore.getCredentialById(credentials[selectedModel.provider] ?? '')?.name
-		: undefined,
-);
-
-function onModelChange(selection: ChatHubConversationModel) {
+function onModelChange(selection: ChatModelDto) {
 	emit('selectModel', selection);
 }
 
@@ -54,31 +42,44 @@ defineExpose({
 
 <template>
 	<div :class="$style.component">
-		<N8nIconButton
-			v-if="!sidebar.isStatic.value"
-			:class="$style.menuButton"
+		<div :class="$style.grow">
+			<N8nIconButton
+				v-if="!sidebar.isStatic.value"
+				:class="$style.menuButton"
+				type="secondary"
+				icon="panel-left"
+				text
+				icon-size="large"
+				@click="sidebar.toggleOpen(true)"
+			/>
+			<N8nIconButton
+				v-if="!sidebar.isStatic.value"
+				:class="$style.menuButton"
+				type="secondary"
+				icon="square-pen"
+				text
+				icon-size="large"
+				@click="onNewChat"
+			/>
+			<ModelSelector
+				ref="modelSelectorRef"
+				:selectedAgent="selectedModel"
+				:credentials="credentials"
+				@change="onModelChange"
+				@create-custom-agent="emit('createCustomAgent')"
+				@select-credential="
+					(provider, credentialId) => emit('selectCredential', provider, credentialId)
+				"
+			/>
+		</div>
+		<N8nButton
+			v-if="selectedModel?.model.provider === 'custom-agent'"
+			:class="$style.editAgent"
 			type="secondary"
-			icon="panel-left"
-			text
-			icon-size="large"
-			@click="sidebar.toggleOpen(true)"
-		/>
-		<N8nIconButton
-			v-if="!sidebar.isStatic.value"
-			:class="$style.menuButton"
-			type="secondary"
-			icon="square-pen"
-			text
-			icon-size="large"
-			@click="onNewChat"
-		/>
-		<ModelSelector
-			ref="modelSelectorRef"
-			:models="chatStore.models ?? null"
-			:selected-model="selectedModel"
-			:credentials-name="credentialsName"
-			@change="onModelChange"
-			@configure="emit('setCredentials', $event)"
+			size="small"
+			icon="cog"
+			label="Edit Agent"
+			@click="emit('editCustomAgent', selectedModel.model.agentId)"
 		/>
 	</div>
 </template>
@@ -99,7 +100,18 @@ defineExpose({
 	}
 }
 
+.grow {
+	flex-grow: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
 .title {
 	margin-inline: var(--spacing--md);
+}
+
+.editAgent {
+	margin-right: var(--spacing--3xs);
 }
 </style>

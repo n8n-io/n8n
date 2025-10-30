@@ -27,10 +27,8 @@ export enum PIIEntity {
 	IBAN_CODE = 'IBAN_CODE',
 	IP_ADDRESS = 'IP_ADDRESS',
 	LOCATION = 'LOCATION',
-	PERSON = 'PERSON',
 	PHONE_NUMBER = 'PHONE_NUMBER',
 	MEDICAL_LICENSE = 'MEDICAL_LICENSE',
-	URL = 'URL',
 
 	// USA
 	US_BANK_NUMBER = 'US_BANK_NUMBER',
@@ -82,8 +80,11 @@ const allEntities = Object.values(PIIEntity);
 
 export type PIIConfig = {
 	entities?: PIIEntity[];
-	block: boolean;
 	customRegex?: CustomRegex[];
+};
+
+export type CustomRegexConfig = {
+	customRegex: CustomRegex[];
 };
 
 /**
@@ -99,9 +100,7 @@ interface PiiDetectionResult {
  */
 interface PiiAnalyzerResult {
 	entityType: string;
-	start: number;
-	end: number;
-	score: number;
+	text: string;
 }
 
 export const PII_NAME_MAP: Record<PIIEntity, string> = {
@@ -112,10 +111,8 @@ export const PII_NAME_MAP: Record<PIIEntity, string> = {
 	[PIIEntity.IBAN_CODE]: 'IBAN Code',
 	[PIIEntity.IP_ADDRESS]: 'IP Address',
 	[PIIEntity.LOCATION]: 'Location',
-	[PIIEntity.PERSON]: 'Person',
 	[PIIEntity.PHONE_NUMBER]: 'Phone Number',
 	[PIIEntity.MEDICAL_LICENSE]: 'Medical License',
-	[PIIEntity.URL]: 'URL',
 	[PIIEntity.US_BANK_NUMBER]: 'US Bank Number',
 	[PIIEntity.US_DRIVER_LICENSE]: 'US Driver License',
 	[PIIEntity.US_ITIN]: 'US ITIN',
@@ -157,11 +154,8 @@ const DEFAULT_PII_PATTERNS: Record<PIIEntity, RegExp> = {
 	[PIIEntity.IP_ADDRESS]: /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g,
 	[PIIEntity.LOCATION]:
 		/\b[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Place|Pl|Court|Ct|Way|Highway|Hwy)\b/g,
-	[PIIEntity.PERSON]: /\b[A-Z][a-z]+ [A-Z][a-z]+\b/g,
 	[PIIEntity.PHONE_NUMBER]: /\b[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}\b/g,
 	[PIIEntity.MEDICAL_LICENSE]: /\b[A-Z]{2}\d{6}\b/g,
-	[PIIEntity.URL]:
-		/\bhttps?:\/\/(?:[-\w.])+(?:\:[0-9]+)?(?:\/(?:[\w\/_.])*(?:\?(?:[\w&=%.])*)?(?:\#(?:[\w.])*)?)?/g,
 
 	// USA
 	[PIIEntity.US_BANK_NUMBER]: /\b\d{8,17}\b/g,
@@ -219,20 +213,24 @@ const DEFAULT_PII_PATTERNS: Record<PIIEntity, RegExp> = {
  */
 function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 	if (!text) {
-		throw new Error('Text cannot be empty or null');
+		return {
+			mapping: {},
+			analyzerResults: [],
+		};
 	}
 
 	const grouped: Record<string, string[]> = {};
 	const analyzerResults: PiiAnalyzerResult[] = [];
 
 	const matchAgainstPattern = (name: string, pattern: RegExp) => {
-		const regex = new RegExp(pattern.source, pattern.flags);
+		// make sure to add the global flag to the regex, otherwise while() will never end
+		const flags = pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g';
+		const regex = new RegExp(pattern.source, flags);
 		let match;
 		while ((match = regex.exec(text)) !== null) {
 			const entityType = name;
 			const start = match.index;
 			const end = match.index + match[0].length;
-			const score = 0.9; // High confidence for regex matches
 
 			if (!grouped[entityType]) {
 				grouped[entityType] = [];
@@ -241,9 +239,7 @@ function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 
 			analyzerResults.push({
 				entityType,
-				start,
-				end,
-				score,
+				text: text.substring(start, end),
 			});
 		}
 	};
@@ -273,8 +269,23 @@ export const createPiiCheckFn: CreateCheckFn<PIIConfig> = (config) => {
 		const detection = detectPii(input, config);
 		const piiFound = detection.mapping && Object.keys(detection.mapping).length > 0;
 		return {
-			guardrailName: 'pii',
-			tripwireTriggered: config.block && piiFound,
+			guardrailName: 'personalData',
+			tripwireTriggered: piiFound,
+			info: {
+				maskEntities: detection.mapping,
+				analyzerResults: detection.analyzerResults,
+			},
+		};
+	};
+};
+
+export const createCustomRegexCheckFn: CreateCheckFn<CustomRegexConfig> = (config) => {
+	return (input: string) => {
+		const detection = detectPii(input, { customRegex: config.customRegex, entities: [] });
+		const customRegexFound = detection.mapping && Object.keys(detection.mapping).length > 0;
+		return {
+			guardrailName: 'customRegex',
+			tripwireTriggered: customRegexFound,
 			info: {
 				maskEntities: detection.mapping,
 				analyzerResults: detection.analyzerResults,
