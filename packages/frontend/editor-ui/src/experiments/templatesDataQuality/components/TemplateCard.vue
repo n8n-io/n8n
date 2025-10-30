@@ -53,7 +53,7 @@ const handleUseTemplate = async () => {
 				:label="locale.baseText('workflows.templateRecoV2.useTemplate')"
 				type="secondary"
 				size="mini"
-				@click="handleUseTemplate"
+				@click.stop="handleUseTemplate"
 			/>
 		</div>
 	</N8nCard>
