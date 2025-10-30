@@ -18,7 +18,7 @@ import {
 
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult, RequestResponseMetadata } from '../types';
-import type { ItemContext } from './processItem';
+import type { ItemContext } from './prepareItemContext';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 /**

@@ -3,8 +3,8 @@ export type { ExecutionContext } from './buildExecutionContext';
 
 export { createAgentSequence } from './createAgentSequence';
 
-export { prepareItemContext as processItem } from './processItem';
-export type { ItemContext } from './processItem';
+export { prepareItemContext } from './prepareItemContext';
+export type { ItemContext } from './prepareItemContext';
 
 export { runAgent } from './runAgent';
 
