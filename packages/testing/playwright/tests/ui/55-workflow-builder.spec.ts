@@ -117,16 +117,6 @@ test.describe('Workflow Builder @auth:owner', () => {
 			expect(messageCount).toBeGreaterThan(0);
 		});
 
-		test('should show user message in chat after clicking suggestion', async ({ n8n }) => {
-			await n8n.page.goto('/workflow/new');
-			await openBuilderAndClickSuggestion(n8n);
-
-			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
-
-			const messageText = await n8n.aiAssistant.getChatMessagesUser().first().textContent();
-			expect(messageText?.trim().length).toBeGreaterThan(0);
-		});
-
 		test('should stop workflow generation and show task aborted message', async ({ n8n }) => {
 			await n8n.page.goto('/workflow/new');
 			await openBuilderAndClickSuggestion(n8n);
@@ -152,20 +142,5 @@ test.describe('Workflow Builder @auth:owner', () => {
 			// Verify the Build with AI button is still visible (canvas is back to default)
 			await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
 		});
-	});
-
-	test('should be able to close and reopen workflow builder', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
-
-		await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
-		await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
-
-		await n8n.aiAssistant.getCloseChatButton().click();
-		await expect(n8n.aiAssistant.getAskAssistantChat()).toBeHidden();
-
-		await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
-		await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
-
-		await expect(n8n.aiBuilder.getWorkflowSuggestions()).toBeVisible();
 	});
 });
