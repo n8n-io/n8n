@@ -229,7 +229,12 @@ describe('Cross-Project Access Control Tests', () => {
 		await member1Agent.get(`/workflows/${workflowA.id}`).expect(200); // Can read
 		await member1Agent
 			.patch(`/workflows/${workflowA.id}`)
-			.send({ name: 'Updated Multi-Project Workflow A Test2', versionId: workflowA.versionId })
+			.send({
+				name: 'Updated Multi-Project Workflow A Test2',
+				versionId: workflowA.versionId,
+				nodes: workflowA.nodes,
+				connections: workflowA.connections,
+			})
 			.expect(200); // Can write
 
 		// Test workflow permissions: Cannot access Project B workflows
@@ -340,7 +345,12 @@ describe('Cross-Project Access Control Tests', () => {
 		// Member1 can write workflows in Project A, but not credentials
 		await member1Agent
 			.patch(`/workflows/${workflowA.id}`)
-			.send({ name: 'Updated by Member1 Test3', versionId: workflowA.versionId })
+			.send({
+				name: 'Updated by Member1 Test3',
+				versionId: workflowA.versionId,
+				nodes: workflowA.nodes,
+				connections: workflowA.connections,
+			})
 			.expect(200);
 
 		await member1Agent
@@ -386,7 +396,12 @@ describe('Cross-Project Access Control Tests', () => {
 		await member1Agent.get(`/workflows/${workflowA.id}`).expect(200);
 		await member1Agent
 			.patch(`/workflows/${workflowA.id}`)
-			.send({ name: 'Modified in Project A Test4', versionId: workflowA.versionId })
+			.send({
+				name: 'Modified in Project A Test4',
+				versionId: workflowA.versionId,
+				nodes: workflowA.nodes,
+				connections: workflowA.connections,
+			})
 			.expect(200);
 
 		// Member1 should NOT be able to manipulate resources in Project B

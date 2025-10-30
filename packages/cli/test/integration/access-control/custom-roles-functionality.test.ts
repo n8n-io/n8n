@@ -293,7 +293,12 @@ describe('Custom Role Functionality Tests', () => {
 			// Test update operation
 			const updateResponse = await member3Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Multi-scope Workflow', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Multi-scope Workflow',
+					versionId: workflow.versionId,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+				})
 				.expect(200);
 
 			expect(updateResponse.body.data.name).toBe('Updated Multi-scope Workflow');
@@ -464,7 +469,12 @@ describe('Custom Role Functionality Tests', () => {
 			// Write-only roles should be able to update existing workflows
 			const updateResponse = await member2Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Write-Only Workflow', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Write-Only Workflow',
+					versionId: workflow.versionId,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+				})
 				.expect(200);
 
 			expect(updateResponse.body.data.name).toBe('Updated Write-Only Workflow');
@@ -543,11 +553,12 @@ describe('Custom Role Functionality Tests', () => {
 
 			const getResponse = await member1Agent.get(`/workflows/${workflowId}`).expect(200);
 			expect(getResponse.body.data.name).toBe('Mixed Permission Test Workflow');
+			const { nodes, connections } = getResponse.body.data;
 
 			// Test update (allowed)
 			const updateResponse = await member1Agent
 				.patch(`/workflows/${workflowId}`)
-				.send({ name: 'Updated Mixed Permission Workflow', versionId })
+				.send({ name: 'Updated Mixed Permission Workflow', versionId, nodes, connections })
 				.expect(200);
 
 			expect(updateResponse.body.data.name).toBe('Updated Mixed Permission Workflow');
@@ -672,10 +683,11 @@ describe('Custom Role Functionality Tests', () => {
 				// Test basic operations on simple workflow
 				const getResponse = await member2Agent.get(`/workflows/${workflowId}`).expect(200);
 				expect(getResponse.body.data.nodes).toHaveLength(1);
+				const { nodes, connections } = getResponse.body.data;
 
 				const updateResponse = await member2Agent
 					.patch(`/workflows/${workflowId}`)
-					.send({ name: 'Updated Simple Workflow', versionId })
+					.send({ name: 'Updated Simple Workflow', versionId, nodes, connections })
 					.expect(200);
 
 				expect(updateResponse.body.data.name).toBe('Updated Simple Workflow');
