@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { MessageContent } from '@langchain/core/messages';
 import { OutputParserException, StructuredOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -6,7 +7,6 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { GuardrailError, type GuardrailResult, type LLMConfig } from '../actions/types';
-import { MessageContent } from '@langchain/core/messages';
 
 const LlmResponseSchema = z.object({
 	confidenceScore: z.number().min(0).max(1).describe('Confidence score between 0.0 and 1.0'),
@@ -92,7 +92,9 @@ async function runLLM(
 			input: inputText,
 			system_message: fullPrompt,
 		});
-
+		// FIXME: https://github.com/langchain-ai/langchainjs/issues/9012
+		// This is a manual fix to extract the text from the response.
+		// Replace with const chain = chatPrompt.pipe(model).pipe(outputParser); when the issue is fixed.
 		const extractText = (content: MessageContent) => {
 			if (typeof content === 'string') {
 				return content;
