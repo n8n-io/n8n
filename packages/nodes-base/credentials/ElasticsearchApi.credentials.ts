@@ -1,7 +1,8 @@
 import type {
-	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -14,10 +15,57 @@ export class ElasticsearchApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Base URL',
+			name: 'baseUrl',
+			type: 'string',
+			default: '',
+			placeholder: 'https://mydeployment.es.us-central1.gcp.cloud.es.io:9243',
+			description: "Referred to as Elasticsearch 'endpoint' in the Elastic deployment dashboard",
+			required: true,
+		},
+		{
+			displayName: 'Authentication Type',
+			name: 'authType',
+			type: 'options',
+			options: [
+				{
+					name: 'API Key',
+					value: 'apiKey',
+				},
+				{
+					name: 'Basic Auth',
+					value: 'basicAuth',
+				},
+			],
+			default: 'apiKey',
+		},
+		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authType: ['apiKey'],
+				},
+			},
+			description: 'API key for Elasticsearch Serverless and Cloud instances',
+		},
+		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
 			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authType: ['basicAuth'],
+				},
+			},
 		},
 		{
 			displayName: 'Password',
@@ -27,14 +75,12 @@ export class ElasticsearchApi implements ICredentialType {
 				password: true,
 			},
 			default: '',
-		},
-		{
-			displayName: 'Base URL',
-			name: 'baseUrl',
-			type: 'string',
-			default: '',
-			placeholder: 'https://mydeployment.es.us-central1.gcp.cloud.es.io:9243',
-			description: "Referred to as Elasticsearch 'endpoint' in the Elastic deployment dashboard",
+			required: true,
+			displayOptions: {
+				show: {
+					authType: ['basicAuth'],
+				},
+			},
 		},
 		{
 			displayName: 'Ignore SSL Issues (Insecure)',
@@ -44,20 +90,29 @@ export class ElasticsearchApi implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			auth: {
-				username: '={{$credentials.username}}',
-				password: '={{$credentials.password}}',
-			},
-		},
-	};
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		if (credentials.authType === 'apiKey') {
+			requestOptions.headers = {
+				...requestOptions.headers,
+				Authorization: `ApiKey ${credentials.apiKey}`,
+			};
+		} else {
+			requestOptions.auth = {
+				username: credentials.username as string,
+				password: credentials.password as string,
+			};
+		}
+		return requestOptions;
+	}
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}'.replace(/\/$/, ''),
-			url: '/_xpack?human=false',
+			baseURL: '={{$credentials.baseUrl.replace(/\\/$/, "")}}',
+			url: '/',
+			method: 'GET',
 			skipSslCertificateValidation: '={{$credentials.ignoreSSLIssues}}',
 		},
 	};
