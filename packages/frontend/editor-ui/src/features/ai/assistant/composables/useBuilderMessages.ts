@@ -318,13 +318,18 @@ export function useBuilderMessages() {
 		};
 	}
 
-	function createAssistantMessage(content: string, id: string): ChatUI.AssistantMessage {
+	function createAssistantMessage(
+		content: string,
+		id: string,
+		options?: { aborted?: boolean },
+	): ChatUI.AssistantMessage {
 		return {
 			id,
 			role: 'assistant',
 			type: 'text',
 			content,
 			read: true,
+			aborted: options?.aborted ?? false,
 		};
 	}
 

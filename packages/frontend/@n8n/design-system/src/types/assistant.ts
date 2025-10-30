@@ -5,6 +5,7 @@ export namespace ChatUI {
 		type: 'text';
 		content: string;
 		codeSnippet?: string;
+		aborted?: boolean;
 	}
 
 	export interface SummaryBlock {

@@ -675,8 +675,7 @@ describe('AskAssistantBuild', () => {
 				},
 			});
 
-			// User cancels generation - this adds a locale message for aborted task
-			// In tests, i18n.baseText returns the key itself
+			// User cancels generation - this adds an aborted message
 			builderStore.$patch({
 				chatMessages: [
 					{ id: '1', role: 'user', type: 'text', content: testMessage },
@@ -684,7 +683,8 @@ describe('AskAssistantBuild', () => {
 						id: '2',
 						role: 'assistant',
 						type: 'text',
-						content: 'aiAssistant.builder.streamAbortedMessage',
+						content: 'Task aborted',
+						aborted: true,
 					},
 				],
 			});
@@ -1025,7 +1025,6 @@ describe('AskAssistantBuild', () => {
 			});
 
 			// Add cancellation message to chat
-			// In tests, i18n.baseText returns the key itself
 			builderStore.$patch({
 				chatMessages: [
 					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
@@ -1033,7 +1032,8 @@ describe('AskAssistantBuild', () => {
 						id: '2',
 						role: 'assistant',
 						type: 'text',
-						content: 'aiAssistant.builder.streamAbortedMessage',
+						content: 'Task aborted',
+						aborted: true,
 					},
 				],
 			});
@@ -1321,7 +1321,6 @@ describe('AskAssistantBuild', () => {
 			const { queryByTestId } = renderComponent();
 
 			// Simulate workflow update message followed by task aborted message
-			// In tests, i18n.baseText returns the key itself
 			builderStore.$patch({
 				streaming: false,
 				chatMessages: [
@@ -1336,7 +1335,8 @@ describe('AskAssistantBuild', () => {
 						id: '3',
 						role: 'assistant',
 						type: 'text',
-						content: 'aiAssistant.builder.streamAbortedMessage',
+						content: 'Task aborted',
+						aborted: true,
 					},
 				],
 			});

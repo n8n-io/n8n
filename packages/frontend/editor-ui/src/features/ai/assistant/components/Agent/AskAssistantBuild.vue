@@ -67,9 +67,7 @@ const showExecuteMessage = computed(() => {
 	);
 	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
 	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some(
-		(msg) =>
-			msg.type === 'text' &&
-			msg.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage'),
+		(msg) => msg.type === 'text' && msg.aborted,
 	);
 
 	return (
@@ -260,10 +258,7 @@ watch(
 			const successful =
 				lastMessage &&
 				lastMessage.type !== 'error' &&
-				!(
-					lastMessage.type === 'text' &&
-					lastMessage.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage')
-				);
+				!(lastMessage.type === 'text' && lastMessage.aborted);
 
 			builderStore.initialGeneration = false;
 
