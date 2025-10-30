@@ -9,9 +9,9 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
-	STORES,
 	WAIT_NODE_TYPE,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -53,31 +53,27 @@ import type {
 	ITaskData,
 	IWorkflowSettings,
 	INodeType,
-} from 'n8n-workflow';
-import {
-	deepCopy,
 	NodeConnectionType,
-	NodeHelpers,
-	SEND_AND_WAIT_OPERATION,
-	Workflow,
 } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, SEND_AND_WAIT_OPERATION, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
-import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
-import { useNDVStore } from '@/stores/ndv.store';
+import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
+import { unflattenExecutionData } from '@/features/execution/executions/executions.utils';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -85,10 +81,13 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
-import { clearPopupWindowState, openFormPopupWindow } from '@/utils/executionUtils';
+import {
+	clearPopupWindowState,
+	openFormPopupWindow,
+} from '@/features/execution/executions/executions.utils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useUsersStore } from '@/stores/users.store';
-import { updateCurrentUserSettings } from '@/api/users';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
