@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowDependencies, WorkflowDependencyRepository } from '@n8n/db';
+import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
@@ -16,9 +16,48 @@ import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 export class WorkflowIndexService {
 	constructor(
 		private readonly dependencyRepository: WorkflowDependencyRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
+		private readonly batchSize = 100,
 	) {}
+
+	async buildIndex() {
+		const batchSize = this.batchSize;
+		let skip = 0;
+		let processedCount = 0;
+
+		while (true) {
+			// Get only workflows that need indexing (unindexed or outdated).
+			const workflows = await this.workflowRepository.findWorkflowsNeedingIndexing({
+				take: batchSize,
+				skip,
+			});
+
+			if (workflows.length === 0) {
+				break;
+			}
+
+			// Build the index for each workflow in the batch.
+			for (const workflow of workflows) {
+				await this.updateIndexFor(workflow);
+			}
+
+			processedCount += workflows.length;
+			this.logger.debug(`Indexed ${processedCount} workflows so far`);
+
+			// If we got fewer workflows than the batch size, we're done.
+			if (workflows.length < batchSize) {
+				break;
+			}
+
+			skip += batchSize;
+		}
+
+		this.logger.info(
+			`Finished building workflow dependency index. Processed ${processedCount} workflows.`,
+		);
+	}
 
 	/**
 	 * Update the dependency index for a given workflow.

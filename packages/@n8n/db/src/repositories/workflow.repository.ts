@@ -13,7 +13,13 @@ import type {
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
-import { WebhookEntity, TagEntity, WorkflowEntity, WorkflowTagMapping } from '../entities';
+import {
+	WebhookEntity,
+	TagEntity,
+	WorkflowEntity,
+	WorkflowTagMapping,
+	WorkflowDependency,
+} from '../entities';
 import type {
 	ListQueryDb,
 	FolderWithWorkflowAndSubFolderCount,
@@ -779,5 +785,38 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.getMany();
 
 		return workflows;
+	}
+
+	/**
+	 * Find workflows that need indexing - either unindexed (no entries in workflow_dependency)
+	 * or outdated (versionCounter > workflowVersionId in workflow_dependency).
+	 */
+	async findWorkflowsNeedingIndexing(pagination: { take?: number; skip?: number }): Promise<
+		WorkflowEntity[]
+	> {
+		const qb = this.createQueryBuilder('workflow').leftJoin(
+			(subQuery) => {
+				return subQuery
+					.select('wd.workflowId', 'workflowId')
+					.addSelect('MAX(wd.workflowVersionId)', 'maxVersionId')
+					.from(WorkflowDependency, 'wd')
+					.groupBy('wd.workflowId');
+			},
+			'dep',
+			'workflow.id = dep.workflowId',
+		);
+
+		// Include workflows that are either:
+		// 1. Unindexed (no dependency entries exist)
+		// 2. Outdated (workflow version is newer than indexed version)
+		qb.where('dep.workflowId IS NULL').orWhere('workflow.versionCounter > dep.maxVersionId');
+		if (pagination.take) {
+			qb.take(pagination.take);
+		}
+		if (pagination.skip) {
+			qb.skip(pagination.skip);
+		}
+
+		return await qb.getMany();
 	}
 }
