@@ -34,13 +34,13 @@ describe('Guardrails', () => {
 
 	describe('execute', () => {
 		describe('successful execution', () => {
-			it('should process single item successfully with routeToFailOutput behavior', async () => {
+			it('should process single item successfully', async () => {
 				const inputData: INodeExecutionData[] = [{ json: { test: 'data' } }];
 
 				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
-						violationBehavior: 'routeToFailOutput',
+						operation: 'classify',
 					};
 					return params[paramName];
 				});
@@ -72,42 +72,6 @@ describe('Guardrails', () => {
 				expect(processSpy).toHaveBeenCalledWith(0, mockModel);
 			});
 
-			it('should process single item successfully with throwError behavior', async () => {
-				const inputData: INodeExecutionData[] = [{ json: { test: 'data' } }];
-
-				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
-				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-					const params: Record<string, any> = {
-						violationBehavior: 'throwError',
-					};
-					return params[paramName];
-				});
-
-				const getChatModelSpy = jest.spyOn(ModelHelpers, 'getChatModel');
-				getChatModelSpy.mockResolvedValue(mockModel);
-
-				const processSpy = jest.spyOn(ProcessActions, 'process');
-				processSpy.mockResolvedValue({
-					guardrailsInput: 'processed text',
-					passed: {
-						checks: [{ name: 'test', triggered: false }],
-					},
-					failed: null,
-				});
-
-				const result = await guardrailsNode.execute.call(mockExecuteFunctions);
-
-				expect(result).toHaveLength(1);
-				expect(result[0]).toHaveLength(1);
-				expect(result[0][0]).toEqual({
-					json: {
-						guardrailsInput: 'processed text',
-						checks: [{ name: 'test', triggered: false }],
-					},
-					pairedItem: { item: 0 },
-				});
-			});
-
 			it('should process multiple items successfully', async () => {
 				const inputData: INodeExecutionData[] = [
 					{ json: { test: 'data1' } },
@@ -118,7 +82,7 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
-						violationBehavior: 'routeToFailOutput',
+						operation: 'classify',
 					};
 					return params[paramName];
 				});
@@ -161,7 +125,7 @@ describe('Guardrails', () => {
 				expect(processSpy).toHaveBeenNthCalledWith(3, 2, mockModel);
 			});
 
-			it('should handle mixed passed and failed results with routeToFailOutput', async () => {
+			it('should handle mixed passed and failed results when operation is classify', async () => {
 				const inputData: INodeExecutionData[] = [
 					{ json: { test: 'data1' } },
 					{ json: { test: 'data2' } },
@@ -171,7 +135,7 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
-						violationBehavior: 'routeToFailOutput',
+						operation: 'classify',
 					};
 					return params[paramName];
 				});
@@ -241,7 +205,7 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
-						violationBehavior: 'throwError',
+						operation: 'sanitize',
 					};
 					return params[paramName];
 				});
@@ -265,7 +229,7 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
-						violationBehavior: 'routeToFailOutput',
+						operation: 'classify',
 					};
 					return params[paramName];
 				});
@@ -299,7 +263,7 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
-						violationBehavior: 'routeToFailOutput',
+						operation: 'classify',
 					};
 					return params[paramName];
 				});
@@ -355,13 +319,13 @@ describe('Guardrails', () => {
 		});
 
 		describe('output routing', () => {
-			it('should return single output array when violationBehavior is throwError', async () => {
+			it('should return single output array when operation is sanitize', async () => {
 				const inputData: INodeExecutionData[] = [{ json: { test: 'data' } }];
 
 				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
-						violationBehavior: 'throwError',
+						operation: 'sanitize',
 					};
 					return params[paramName];
 				});
@@ -384,13 +348,13 @@ describe('Guardrails', () => {
 				expect(result[0]).toHaveLength(1);
 			});
 
-			it('should return two output arrays when violationBehavior is routeToFailOutput', async () => {
+			it('should return two output arrays when operation is classify', async () => {
 				const inputData: INodeExecutionData[] = [{ json: { test: 'data' } }];
 
 				mockExecuteFunctions.getInputData.mockReturnValue(inputData);
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
-						violationBehavior: 'routeToFailOutput',
+						operation: 'classify',
 					};
 					return params[paramName];
 				});

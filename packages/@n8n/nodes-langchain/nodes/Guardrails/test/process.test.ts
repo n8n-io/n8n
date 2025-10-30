@@ -1,898 +1,293 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import * as CheckFunctions from '../actions/checks/jailbreak';
-import * as KeywordsCheck from '../actions/checks/keywords';
-import * as NSFWCheck from '../actions/checks/nsfw';
-import * as PiiCheck from '../actions/checks/pii';
-import * as PromptInjectionCheck from '../actions/checks/promptInjection';
-import * as SecretKeysCheck from '../actions/checks/secretKeys';
-import * as TopicalAlignmentCheck from '../actions/checks/topicalAlignment';
-import * as UrlsCheck from '../actions/checks/urls';
-import { process } from '../actions/process';
-import type { GuardrailsOptions } from '../actions/types';
-import * as BaseHelpers from '../helpers/base';
-import * as MapperHelpers from '../helpers/mappers';
-import * as ModelHelpers from '../helpers/model';
-import * as PreflightHelpers from '../helpers/preflight';
+jest.mock('../helpers/model', () => ({
+	createLLMCheckFn: jest.fn(() => jest.fn()),
+}));
 
-interface TestParams {
-	text: string;
-	violationBehavior: string;
-	guardrails: GuardrailsOptions | undefined;
-	promptType: string;
-	[key: string]: unknown;
-}
+jest.mock('../actions/checks/jailbreak', () => ({
+	createJailbreakCheckFn: jest.fn(() => jest.fn()),
+	JAILBREAK_PROMPT: 'DEFAULT_JAILBREAK',
+}));
 
-describe('process', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockNode: jest.Mocked<INode>;
-	let mockModel: jest.Mocked<BaseChatModel>;
-	const itemIndex = 0;
+jest.mock('../actions/checks/keywords', () => ({
+	createKeywordsCheckFn: jest.fn(() => jest.fn()),
+}));
+
+jest.mock('../actions/checks/nsfw', () => ({
+	createNSFWCheckFn: jest.fn(() => jest.fn()),
+	NSFW_SYSTEM_PROMPT: 'DEFAULT_NSFW',
+}));
+
+jest.mock('../actions/checks/pii', () => ({
+	createPiiCheckFn: jest.fn(() => jest.fn()),
+	createCustomRegexCheckFn: jest.fn(() => jest.fn()),
+}));
+
+jest.mock('../actions/checks/secretKeys', () => ({
+	createSecretKeysCheckFn: jest.fn(() => jest.fn()),
+}));
+
+jest.mock('../actions/checks/topicalAlignment', () => ({
+	createTopicalAlignmentCheckFn: jest.fn(() => jest.fn()),
+	TOPICAL_ALIGNMENT_SYSTEM_PROMPT: 'DEFAULT_TOPICAL',
+}));
+
+jest.mock('../actions/checks/urls', () => ({
+	createUrlsCheckFn: jest.fn(() => jest.fn()),
+}));
+
+import { createJailbreakCheckFn } from '../actions/checks/jailbreak';
+import { createKeywordsCheckFn } from '../actions/checks/keywords';
+import { createNSFWCheckFn } from '../actions/checks/nsfw';
+import { createCustomRegexCheckFn, createPiiCheckFn } from '../actions/checks/pii';
+import { createSecretKeysCheckFn } from '../actions/checks/secretKeys';
+import { createTopicalAlignmentCheckFn } from '../actions/checks/topicalAlignment';
+import { createUrlsCheckFn } from '../actions/checks/urls';
+import { process as processGuardrails } from '../actions/process';
+import { createLLMCheckFn } from '../helpers/model';
+
+describe('Guardrails Process', () => {
+	let exec: jest.Mocked<IExecuteFunctions>;
+	let node: INode;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-
-		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockNode = mock<INode>({
-			id: 'test-node',
-			name: 'Guardrails Node',
+		exec = mockDeep<IExecuteFunctions>();
+		node = {
+			id: 'test',
+			name: 'Guardrails',
 			type: 'n8n-nodes-langchain.guardrails',
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
-		});
-		mockModel = mock<BaseChatModel>();
-
-		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		};
+		exec.getNode.mockReturnValue(node);
+		exec.continueOnFail.mockReturnValue(false);
 	});
 
-	describe('successful execution', () => {
-		it('should process text with no guardrails configured', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {};
+	function setParams(params: Record<string, unknown>) {
+		exec.getNodeParameter.mockImplementation((name: string, index: number) => {
+			// Prefer specific index key, fall back to global
+			const key = `${name}@${index}`;
+			if (key in params) return params[key] as unknown as any;
+			return params[name] as unknown as any;
+		});
+	}
 
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValue({
-				passed: [],
-				failed: [],
-			});
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result).toEqual({
-				guardrailsInput: text,
-				passed: {
-					checks: [],
-				},
-				failed: null,
-			});
-			expect(runStageGuardrailsSpy).toHaveBeenCalledTimes(2);
+	it('Throws When Operation Is Classify And Model Is Null', async () => {
+		setParams({
+			text: 'hello',
+			operation: 'classify',
+			guardrails: {},
+			customizeSystemMessage: false,
 		});
 
-		it('should process text with PII guardrail configured', async () => {
-			const text = 'My email is john@example.com';
-			const guardrails: GuardrailsOptions = {
-				pii: {
-					value: {
-						mode: 'redact',
-						type: 'all',
-						entities: [],
-					},
-				},
-			};
+		await expect(processGuardrails.call(exec, 0, null as unknown as BaseChatModel)).rejects.toThrow(
+			'Chat Model is required for classify operation',
+		);
+	});
 
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
+	it('Sanitize: Throws NodeOperationError When Any Preflight Check Fails', async () => {
+		const piiCheck = jest.fn().mockImplementation(() => ({
+			guardrailName: 'personalData',
+			tripwireTriggered: false,
+			executionFailed: true,
+			info: {},
+		}));
+		(createPiiCheckFn as jest.Mock).mockReturnValueOnce(piiCheck);
+		setParams({
+			text: 'txt',
+			operation: 'sanitize',
+			guardrails: { pii: { value: { entities: ['EMAIL'] } } },
+		});
 
-			const createPiiCheckFnSpy = jest.spyOn(PiiCheck, 'createPiiCheckFn');
-			const mockPiiCheck = jest.fn().mockResolvedValue({
-				guardrailName: 'pii',
+		await expect(processGuardrails.call(exec, 0, null as unknown as BaseChatModel)).rejects.toThrow(
+			NodeOperationError,
+		);
+	});
+
+	it('Classify: Unexpected Error In Input Stage Throws', async () => {
+		setParams({ text: 't', operation: 'classify', guardrails: { keywords: 'x' } });
+		const model = {} as BaseChatModel;
+		(createKeywordsCheckFn as jest.Mock).mockReturnValueOnce(
+			jest.fn(() => {
+				throw new Error('boom');
+			}),
+		);
+		await expect(processGuardrails.call(exec, 0, model)).rejects.toThrow('boom');
+	});
+
+	it('Classify: Non-Unexpected Failure Returns Failed Results', async () => {
+		setParams({ text: 't', operation: 'classify', guardrails: { keywords: 'x' } });
+		const model = {} as BaseChatModel;
+		(createKeywordsCheckFn as jest.Mock).mockReturnValueOnce(
+			jest.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: true, info: {} })),
+		);
+		const res = await processGuardrails.call(exec, 0, model);
+		expect(res.failed).not.toBeNull();
+		expect(res.passed).toBeNull();
+		expect(res.failed?.checks[0]).toMatchObject({ name: 'keywords', triggered: true });
+		expect(res.guardrailsInput).toBe('t');
+	});
+
+	it('All Pass: Returns Combined Passed Checks And Modified Input', async () => {
+		setParams({
+			text: 'abc',
+			operation: 'classify',
+			guardrails: { pii: { value: { entities: ['EMAIL'] } }, keywords: 'foo' },
+		});
+		const model = {} as BaseChatModel;
+		(createPiiCheckFn as jest.Mock).mockReturnValueOnce(
+			jest.fn(() => ({
+				guardrailName: 'personalData',
 				tripwireTriggered: false,
-				executionFailed: false,
-				info: { maskEntities: { EMAIL: ['john@example.com'] } },
-			});
-			createPiiCheckFnSpy.mockReturnValue(mockPiiCheck);
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy
-				.mockResolvedValueOnce({
-					passed: [
-						{
-							status: 'fulfilled' as const,
-							value: {
-								guardrailName: 'pii',
-								tripwireTriggered: false,
-								executionFailed: false,
-								info: { maskEntities: { EMAIL: ['john@example.com'] } },
-							},
-						},
-					],
-					failed: [],
-				})
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				});
-
-			const applyPreflightModificationsSpy = jest.spyOn(
-				PreflightHelpers,
-				'applyPreflightModifications',
-			);
-			applyPreflightModificationsSpy.mockReturnValue('My email is <EMAIL>');
-
-			const mapGuardrailResultToUserResultSpy = jest.spyOn(
-				MapperHelpers,
-				'mapGuardrailResultToUserResult',
-			);
-			mapGuardrailResultToUserResultSpy.mockReturnValue({
-				name: 'pii',
-				triggered: false,
-				executionFailed: false,
-			});
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result).toEqual({
-				guardrailsInput: 'My email is <EMAIL>',
-				passed: {
-					checks: [
-						{
-							name: 'pii',
-							triggered: false,
-							executionFailed: false,
-						},
-					],
-				},
-				failed: null,
-			});
-			expect(createPiiCheckFnSpy).toHaveBeenCalledWith({
-				block: false,
-				entities: [],
-				customRegex: undefined,
-			});
-			expect(applyPreflightModificationsSpy).toHaveBeenCalledWith(text, [
-				{
-					guardrailName: 'pii',
-					tripwireTriggered: false,
-					executionFailed: false,
-					info: { maskEntities: { EMAIL: ['john@example.com'] } },
-				},
-			]);
-		});
-
-		it('should process text with multiple guardrails configured', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				pii: {
-					value: {
-						mode: 'block',
-						type: 'all',
-						entities: [],
-					},
-				},
-				secretKeys: {
-					value: {
-						mode: 'block',
-						permissiveness: 'strict',
-					},
-				},
-				jailbreak: {
-					value: {
-						prompt: 'Detect jailbreak attempts',
-						threshold: 0.8,
-					},
-				},
-				keywords: 'badword,spam',
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const createPiiCheckFnSpy = jest.spyOn(PiiCheck, 'createPiiCheckFn');
-			const createSecretKeysCheckFnSpy = jest.spyOn(SecretKeysCheck, 'createSecretKeysCheckFn');
-			const createJailbreakCheckFnSpy = jest.spyOn(CheckFunctions, 'createJailbreakCheckFn');
-			const createKeywordsCheckFnSpy = jest.spyOn(KeywordsCheck, 'createKeywordsCheckFn');
-
-			createPiiCheckFnSpy.mockReturnValue(jest.fn());
-			createSecretKeysCheckFnSpy.mockReturnValue(jest.fn());
-			createJailbreakCheckFnSpy.mockReturnValue(jest.fn());
-			createKeywordsCheckFnSpy.mockReturnValue(jest.fn());
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				})
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				});
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result.passed).toBeDefined();
-			expect(result.failed).toBeNull();
-			expect(createPiiCheckFnSpy).toHaveBeenCalledWith({
-				block: true,
-				entities: [],
-				customRegex: undefined,
-			});
-			expect(createSecretKeysCheckFnSpy).toHaveBeenCalledWith({
-				block: true,
-				threshold: 'strict',
-			});
-			expect(createJailbreakCheckFnSpy).toHaveBeenCalledWith({
-				model: mockModel,
-				prompt: 'Detect jailbreak attempts',
-				threshold: 0.8,
-			});
-			expect(createKeywordsCheckFnSpy).toHaveBeenCalledWith({
-				keywords: ['badword', 'spam'],
-			});
-		});
-
-		it('should process text with custom guardrails configured', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				custom: {
-					guardrail: [
-						{
-							name: 'customCheck',
-							prompt: 'Custom validation prompt',
-							threshold: 0.7,
-						},
-					],
-				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const createLLMCheckFnSpy = jest.spyOn(ModelHelpers, 'createLLMCheckFn');
-			createLLMCheckFnSpy.mockReturnValue(jest.fn());
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				})
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				});
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result.passed).toBeDefined();
-			expect(result.failed).toBeNull();
-			expect(createLLMCheckFnSpy).toHaveBeenCalledWith('customCheck', {
-				model: mockModel,
-				prompt: 'Custom validation prompt',
-				threshold: 0.7,
-			});
-		});
+				info: { maskEntities: { EMAIL: ['abc'] } },
+			})),
+		);
+		(createKeywordsCheckFn as jest.Mock).mockReturnValueOnce(
+			jest.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: false, info: {} })),
+		);
+		const res = await processGuardrails.call(exec, 0, model);
+		expect(res.failed).toBeNull();
+		if (!res.passed) throw new Error('Expected passed results');
+		expect(res.passed.checks.length).toBeGreaterThanOrEqual(2);
+		expect(res.guardrailsInput).toBe('<EMAIL>');
 	});
 
-	describe('error handling', () => {
-		it('should throw error when preflight guardrails fail and violationBehavior is throwError', async () => {
-			const text = 'This contains sensitive data';
-			const guardrails: GuardrailsOptions = {
-				pii: {
-					value: {
-						mode: 'block',
-						type: 'all',
-						entities: [],
-					},
-				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValueOnce({
-				passed: [],
-				failed: [
-					{
-						status: 'fulfilled' as const,
-						value: {
-							guardrailName: 'pii',
-							tripwireTriggered: true,
-							executionFailed: false,
-							info: {},
-						},
-					},
-				],
-			});
-
-			await expect(process.call(mockExecuteFunctions, itemIndex, mockModel)).rejects.toThrow(
-				NodeOperationError,
-			);
+	it('Classify: Preflight Failure Returns Failed Results', async () => {
+		setParams({
+			text: 'pre',
+			operation: 'classify',
+			guardrails: { secretKeys: { value: { permissiveness: 0.5 } } },
 		});
-
-		it('should return failed result when preflight guardrails fail and violationBehavior is routeToFailOutput', async () => {
-			const text = 'This contains sensitive data';
-			const guardrails: GuardrailsOptions = {
-				pii: {
-					value: {
-						mode: 'block',
-						type: 'all',
-						entities: [],
-					},
-				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'routeToFailOutput',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValueOnce({
-				passed: [],
-				failed: [
-					{
-						status: 'fulfilled' as const,
-						value: {
-							guardrailName: 'pii',
-							tripwireTriggered: true,
-							executionFailed: false,
-							info: {},
-						},
-					},
-				],
-			});
-
-			const mapGuardrailResultToUserResultSpy = jest.spyOn(
-				MapperHelpers,
-				'mapGuardrailResultToUserResult',
-			);
-			mapGuardrailResultToUserResultSpy.mockReturnValue({
-				name: 'pii',
-				triggered: true,
-				executionFailed: false,
-			});
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result).toEqual({
-				guardrailsInput: text,
-				passed: null,
-				failed: {
-					checks: [
-						{
-							name: 'pii',
-							triggered: true,
-							executionFailed: false,
-						},
-					],
-				},
-			});
-		});
-
-		it('should return failed result when preflight guardrails fail and continueOnFail is true', async () => {
-			const text = 'This contains sensitive data';
-			const guardrails: GuardrailsOptions = {
-				pii: {
-					value: {
-						mode: 'block',
-						type: 'all',
-						entities: [],
-					},
-				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValueOnce({
-				passed: [],
-				failed: [
-					{
-						status: 'fulfilled' as const,
-						value: {
-							guardrailName: 'pii',
-							tripwireTriggered: true,
-							executionFailed: false,
-							info: {},
-						},
-					},
-				],
-			});
-
-			const mapGuardrailResultToUserResultSpy = jest.spyOn(
-				MapperHelpers,
-				'mapGuardrailResultToUserResult',
-			);
-			mapGuardrailResultToUserResultSpy.mockReturnValue({
-				name: 'pii',
-				triggered: true,
-				executionFailed: false,
-			});
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result.failed).toBeDefined();
-			expect(result.passed).toBeNull();
-		});
-
-		it('should throw error when input guardrails fail and violationBehavior is throwError', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				jailbreak: {
-					value: {
-						prompt: 'Detect jailbreak attempts',
-						threshold: 0.8,
-					},
-				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				})
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [
-						{
-							status: 'fulfilled' as const,
-							value: {
-								guardrailName: 'jailbreak',
-								tripwireTriggered: true,
-								executionFailed: false,
-								info: {},
-							},
-						},
-					],
-				});
-
-			await expect(process.call(mockExecuteFunctions, itemIndex, mockModel)).rejects.toThrow(
-				NodeOperationError,
-			);
-		});
-
-		it('should handle execution failures in guardrails', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				pii: {
-					value: {
-						mode: 'block',
-						type: 'all',
-						entities: [],
-					},
-				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValueOnce({
-				passed: [],
-				failed: [
-					{
-						status: 'fulfilled' as const,
-						value: {
-							guardrailName: 'pii',
-							tripwireTriggered: true,
-							executionFailed: true,
-							originalException: new Error('PII check failed'),
-							info: {},
-						},
-					},
-				],
-			});
-
-			await expect(process.call(mockExecuteFunctions, itemIndex, mockModel)).rejects.toThrow(
-				NodeOperationError,
-			);
-		});
-
-		it('should handle rejected promises in guardrails', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				pii: {
-					value: {
-						mode: 'block',
-						type: 'all',
-						entities: [],
-					},
-				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValueOnce({
-				passed: [],
-				failed: [
-					{
-						status: 'rejected' as const,
-						reason: new Error('Guardrail execution failed'),
-					},
-				],
-			});
-
-			await expect(process.call(mockExecuteFunctions, itemIndex, mockModel)).rejects.toThrow(
-				NodeOperationError,
-			);
-		});
+		const model = {} as BaseChatModel;
+		(createSecretKeysCheckFn as jest.Mock).mockReturnValueOnce(
+			jest.fn(() => ({ guardrailName: 'secretKeys', tripwireTriggered: true, info: {} })),
+		);
+		const res = await processGuardrails.call(exec, 0, model);
+		expect(res.failed).not.toBeNull();
+		expect(res.passed).toBeNull();
+		expect(res.guardrailsInput).toBe('pre');
+		expect(res.failed?.checks[0]).toMatchObject({ name: 'secretKeys', triggered: true });
 	});
 
-	describe('guardrail configuration', () => {
-		it('should configure URLs guardrail correctly', async () => {
-			const text = 'Check this URL: https://example.com';
-			const guardrails: GuardrailsOptions = {
+	it('Classify: Unexpected Error With ContinueOnFail Returns Failed', async () => {
+		setParams({ text: 'inp', operation: 'classify', guardrails: { keywords: 'x' } });
+		exec.continueOnFail.mockReturnValue(true);
+		const model = {} as BaseChatModel;
+		(createKeywordsCheckFn as jest.Mock).mockReturnValueOnce(
+			jest.fn(() => {
+				throw new Error('kaboom');
+			}),
+		);
+		const res = await processGuardrails.call(exec, 0, model);
+		expect(res.failed).not.toBeNull();
+		expect(res.passed).toBeNull();
+		expect(res.failed?.checks[0].executionFailed).toBe(true);
+	});
+
+	it('Configures Checks Based On Guardrails Options', async () => {
+		setParams({
+			text: 'xyz',
+			operation: 'classify',
+			customizeSystemMessage: true,
+			systemMessage: 'SYS',
+			guardrails: {
+				pii: { value: { entities: ['EMAIL'] } },
+				customRegex: { regex: 'foo.*' },
+				secretKeys: { value: { permissiveness: 0.5 } },
 				urls: {
 					value: {
-						mode: 'block',
-						allowedUrls: 'https://trusted.com,https://safe.org',
+						allowedUrls: 'https://a.com, https://b.com',
 						allowedSchemes: ['https'],
 						blockUserinfo: true,
 						allowSubdomains: false,
 					},
 				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const createUrlsCheckFnSpy = jest.spyOn(UrlsCheck, 'createUrlsCheckFn');
-			createUrlsCheckFnSpy.mockReturnValue(jest.fn());
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				})
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				});
-
-			await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(createUrlsCheckFnSpy).toHaveBeenCalledWith({
-				allowedUrls: ['https://trusted.com', 'https://safe.org'],
-				allowedSchemes: ['https'],
-				blockUserinfo: true,
-				allowSubdomains: false,
-				block: true,
-			});
-		});
-
-		it('should configure NSFW guardrail correctly', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				nsfw: {
-					value: {
-						prompt: 'Detect NSFW content',
-						threshold: 0.9,
-					},
+				keywords: 'alpha, beta',
+				jailbreak: { value: { threshold: 0.2, prompt: '' } },
+				nsfw: { value: { threshold: 0.3, prompt: '' } },
+				topicalAlignment: { value: { threshold: 0.4, prompt: '' } },
+				custom: {
+					guardrail: [
+						{ name: 'c1', threshold: 0.1, prompt: 'P1' },
+						{ name: 'c2', threshold: 0.2, prompt: 'P2' },
+					],
 				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const createNSFWCheckFnSpy = jest.spyOn(NSFWCheck, 'createNSFWCheckFn');
-			createNSFWCheckFnSpy.mockReturnValue(jest.fn());
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				})
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				});
-
-			await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(createNSFWCheckFnSpy).toHaveBeenCalledWith({
-				model: mockModel,
-				prompt: 'Detect NSFW content',
-				threshold: 0.9,
-			});
+			},
 		});
+		const model = {} as BaseChatModel;
+		(createPiiCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'pii', tripwireTriggered: false, info: {} })),
+		);
+		(createCustomRegexCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'customRegex', tripwireTriggered: false, info: {} })),
+		);
+		(createKeywordsCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: false, info: {} })),
+		);
+		(createJailbreakCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'jailbreak', tripwireTriggered: false, info: {} })),
+		);
+		(createNSFWCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'nsfw', tripwireTriggered: false, info: {} })),
+		);
+		(createTopicalAlignmentCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'topicalAlignment', tripwireTriggered: false, info: {} })),
+		);
+		(createSecretKeysCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'secret', tripwireTriggered: false, info: {} })),
+		);
+		(createUrlsCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'urls', tripwireTriggered: false, info: {} })),
+		);
+		(createLLMCheckFn as jest.Mock).mockReturnValue(
+			jest.fn(() => ({ guardrailName: 'custom', tripwireTriggered: false, info: {} })),
+		);
 
-		it('should configure prompt injection guardrail correctly', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				promptInjection: {
-					value: {
-						prompt: 'Detect prompt injection attempts',
-						threshold: 0.7,
-					},
-				},
-			};
+		await processGuardrails.call(exec, 0, model);
 
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const createPromptInjectionCheckFnSpy = jest.spyOn(
-				PromptInjectionCheck,
-				'createPromptInjectionCheckFn',
-			);
-			createPromptInjectionCheckFnSpy.mockReturnValue(jest.fn());
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				})
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				});
-
-			await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(createPromptInjectionCheckFnSpy).toHaveBeenCalledWith({
-				model: mockModel,
-				prompt: 'Detect prompt injection attempts',
-				threshold: 0.7,
-			});
+		expect(createPiiCheckFn).toHaveBeenCalledWith({ entities: ['EMAIL'] });
+		expect(createSecretKeysCheckFn).toHaveBeenCalledWith({ threshold: 0.5 });
+		expect(createUrlsCheckFn).toHaveBeenCalledWith({
+			allowedUrls: ['https://a.com', 'https://b.com'],
+			allowedSchemes: ['https'],
+			blockUserinfo: true,
+			allowSubdomains: false,
 		});
-
-		it('should configure topical alignment guardrail correctly', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				topicalAlignment: {
-					value: {
-						prompt: 'Check topical alignment',
-						threshold: 0.6,
-					},
-				},
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const createTopicalAlignmentCheckFnSpy = jest.spyOn(
-				TopicalAlignmentCheck,
-				'createTopicalAlignmentCheckFn',
-			);
-			createTopicalAlignmentCheckFnSpy.mockReturnValue(jest.fn());
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				})
-				.mockResolvedValueOnce({
-					passed: [],
-					failed: [],
-				});
-
-			await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(createTopicalAlignmentCheckFnSpy).toHaveBeenCalledWith({
-				model: mockModel,
-				prompt: 'Check topical alignment',
-				threshold: 0.6,
-			});
+		expect(createKeywordsCheckFn).toHaveBeenCalledWith({ keywords: ['alpha', 'beta'] });
+		expect(createJailbreakCheckFn).toHaveBeenCalledWith({
+			model,
+			prompt: 'DEFAULT_JAILBREAK',
+			threshold: 0.2,
+			systemMessage: 'SYS',
 		});
-	});
-
-	describe('edge cases', () => {
-		it('should handle empty input text', async () => {
-			const text = '';
-			const guardrails: GuardrailsOptions = {};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValue({
-				passed: [],
-				failed: [],
-			});
-
-			const applyPreflightModificationsSpy = jest.spyOn(
-				PreflightHelpers,
-				'applyPreflightModifications',
-			);
-			applyPreflightModificationsSpy.mockReturnValue('');
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result.passed).toBeDefined();
-			expect(result.guardrailsInput).toBe('');
+		expect(createNSFWCheckFn).toHaveBeenCalledWith({
+			model,
+			prompt: 'DEFAULT_NSFW',
+			threshold: 0.3,
+			systemMessage: 'SYS',
 		});
-
-		it('should handle undefined guardrails configuration', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValue({
-				passed: [],
-				failed: [],
-			});
-
-			const applyPreflightModificationsSpy = jest.spyOn(
-				PreflightHelpers,
-				'applyPreflightModifications',
-			);
-			applyPreflightModificationsSpy.mockReturnValue(text);
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result.passed).toBeDefined();
-			expect(result.failed).toBeNull();
+		expect(createTopicalAlignmentCheckFn).toHaveBeenCalledWith({
+			model,
+			prompt: 'DEFAULT_TOPICAL',
+			systemMessage: 'SYS',
+			threshold: 0.4,
 		});
-
-		it('should handle guardrails with empty values', async () => {
-			const text = 'This is a test message';
-			const guardrails: GuardrailsOptions = {
-				pii: { value: undefined },
-				secretKeys: { value: undefined },
-				urls: { value: undefined },
-				jailbreak: { value: undefined },
-				nsfw: { value: undefined },
-				promptInjection: { value: undefined },
-				topicalAlignment: { value: undefined },
-				keywords: '',
-				custom: { guardrail: [] },
-			};
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: TestParams = {
-					text,
-					violationBehavior: 'throwError',
-					guardrails,
-					promptType: 'define',
-				};
-				return params[paramName] as any;
-			});
-
-			const runStageGuardrailsSpy = jest.spyOn(BaseHelpers, 'runStageGuardrails');
-			runStageGuardrailsSpy.mockResolvedValue({
-				passed: [],
-				failed: [],
-			});
-
-			const result = await process.call(mockExecuteFunctions, itemIndex, mockModel);
-
-			expect(result.passed).toBeDefined();
-			expect(result.failed).toBeNull();
+		expect(createLLMCheckFn).toHaveBeenNthCalledWith(1, 'c1', {
+			model,
+			prompt: 'P1',
+			threshold: 0.1,
+			systemMessage: 'SYS',
+		});
+		expect(createLLMCheckFn).toHaveBeenNthCalledWith(2, 'c2', {
+			model,
+			prompt: 'P2',
+			threshold: 0.2,
+			systemMessage: 'SYS',
 		});
 	});
 });

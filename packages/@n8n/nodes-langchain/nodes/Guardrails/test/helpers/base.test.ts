@@ -36,7 +36,11 @@ describe('base helper', () => {
 				input: [],
 			};
 
-			const result = await runStageGuardrails(stageGuardrails, 'preflight', 'test input');
+			const result = await runStageGuardrails({
+				stageGuardrails,
+				stage: 'preflight',
+				inputText: 'test input',
+			});
 
 			expect(mockCheck1).toHaveBeenCalledWith('test input');
 			expect(mockCheck2).toHaveBeenCalledWith('test input');
@@ -59,7 +63,11 @@ describe('base helper', () => {
 				input: [],
 			};
 
-			const result = await runStageGuardrails(stageGuardrails, 'preflight', 'test input');
+			const result = await runStageGuardrails({
+				stageGuardrails,
+				stage: 'preflight',
+				inputText: 'test input',
+			});
 
 			expect(mockCheck).toHaveBeenCalledWith('test input');
 
@@ -85,7 +93,11 @@ describe('base helper', () => {
 				input: [],
 			};
 
-			const result = await runStageGuardrails(stageGuardrails, 'preflight', 'test input');
+			const result = await runStageGuardrails({
+				stageGuardrails,
+				stage: 'preflight',
+				inputText: 'test input',
+			});
 
 			expect(result.failed).toHaveLength(1);
 			expect((result.failed[0] as PromiseRejectedResult).reason).toBeInstanceOf(GuardrailError);
@@ -105,7 +117,11 @@ describe('base helper', () => {
 				input: [],
 			};
 
-			const result = await runStageGuardrails(stageGuardrails, 'preflight', 'test input');
+			const result = await runStageGuardrails({
+				stageGuardrails,
+				stage: 'preflight',
+				inputText: 'test input',
+			});
 
 			expect(result.failed).toHaveLength(1);
 			expect((result.failed[0] as PromiseRejectedResult).reason).toBeInstanceOf(GuardrailError);
@@ -121,7 +137,11 @@ describe('base helper', () => {
 				input: [],
 			};
 
-			const result = await runStageGuardrails(stageGuardrails, 'preflight', 'test input');
+			const result = await runStageGuardrails({
+				stageGuardrails,
+				stage: 'preflight',
+				inputText: 'test input',
+			});
 
 			expect(result.passed).toHaveLength(0);
 			expect(result.failed).toHaveLength(0);
@@ -155,7 +175,11 @@ describe('base helper', () => {
 				input: [],
 			};
 
-			const result = await runStageGuardrails(stageGuardrails, 'preflight', 'test input');
+			const result = await runStageGuardrails({
+				stageGuardrails,
+				stage: 'preflight',
+				inputText: 'test input',
+			});
 
 			expect(result.passed).toHaveLength(1);
 			expect(result.failed).toHaveLength(2);
@@ -182,7 +206,11 @@ describe('base helper', () => {
 				input: [],
 			};
 
-			const result = await runStageGuardrails(stageGuardrails, 'preflight', 'test input');
+			const result = await runStageGuardrails({
+				stageGuardrails,
+				stage: 'preflight',
+				inputText: 'test input',
+			});
 
 			// Guardrails with executionFailed: true should be in failed array
 			// The logic is: if (result.status === 'fulfilled' && !result.value.tripwireTriggered)
