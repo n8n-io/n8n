@@ -96,6 +96,7 @@ export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const RESPOND_TO_CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager';
 export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
+export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
 
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,

@@ -29,6 +29,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 } from '@/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
@@ -105,6 +106,7 @@ import PromptMfaCodeModal from '@/features/core/auth/components/PromptMfaCodeMod
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
+import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 </script>
 
@@ -378,6 +380,12 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V3_KEY">
 			<template #default="{ modalName, data }">
 				<NodeRecommendationModalV3 :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY">
+			<template #default="{ modalName, data }">
+				<NodeRecommendationModalTDQ :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
