@@ -307,8 +307,8 @@ export class FrontendService {
 				credits: 0,
 			},
 			workflowHistory: {
-				pruneTime: -1,
-				licensePruneTime: -1,
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
 			},
 			pruning: {
 				isEnabled: this.globalConfig.executions.pruneData,
@@ -432,11 +432,6 @@ export class FrontendService {
 		if (this.license.isVariablesEnabled()) {
 			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
-
-		Object.assign(this.settings.workflowHistory, {
-			pruneTime: getWorkflowHistoryPruneTime(),
-			licensePruneTime: getWorkflowHistoryLicensePruneTime(),
-		});
 
 		if (this.communityPackagesService) {
 			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
