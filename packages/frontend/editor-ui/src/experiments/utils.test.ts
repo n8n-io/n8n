@@ -1,9 +1,10 @@
+import { setActivePinia, createPinia } from 'pinia';
 import {
 	getTemplatePathByRole,
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
 	trackTemplatesClick,
-} from './experiments';
+} from './utils';
 
 const getVariant = vi.fn();
 vi.mock('@/stores/posthog.store', () => ({
@@ -37,6 +38,10 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 describe('Utils: experiments', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
 	describe('isExtraTemplateLinksExperimentEnabled()', () => {
 		it.each([
 			{

@@ -173,6 +173,28 @@ describe('evaluateAgentPrompt', () => {
 
 		expect(result.violations).toHaveLength(0);
 	});
+	it('should not check agent nodes with promptType set to guardrails', () => {
+		const workflow = mock<SimpleWorkflow>({
+			nodes: [
+				{
+					id: '1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {
+						promptType: 'guardrails',
+						text: 'This would normally trigger a violation',
+					},
+				},
+			],
+			connections: {},
+		});
+
+		const result = evaluateAgentPrompt(workflow);
+
+		expect(result.violations).toHaveLength(0);
+	});
 
 	it('should check agent nodes with promptType set to define', () => {
 		const workflow = mock<SimpleWorkflow>({

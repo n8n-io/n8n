@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
+import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
 import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
 import { type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
 
 const { session, isRenaming, active } = defineProps<{
 	session: ChatHubSessionDto;
@@ -27,6 +28,7 @@ const editedLabel = ref('');
 type SessionAction = 'rename' | 'delete';
 
 const model = computed(() => restoreConversationModelFromMessageOrSession(session));
+const agent = useAgent(model);
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 	{
@@ -105,7 +107,7 @@ watch(
 			/>
 		</template>
 		<template #icon>
-			<ChatAgentAvatar v-if="model" :model="model" size="sm" />
+			<ChatAgentAvatar :agent="agent ?? null" size="sm" />
 		</template>
 	</ChatSidebarLink>
 </template>

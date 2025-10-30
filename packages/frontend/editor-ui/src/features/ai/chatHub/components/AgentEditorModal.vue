@@ -5,7 +5,7 @@ import { useToast } from '@/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useUIStore } from '@/stores/ui.store';
-import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
+import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
@@ -19,7 +19,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	createAgent: [agent: ChatHubConversationModel];
+	createCustomAgent: [agent: ChatModelDto];
 	close: [];
 }>();
 
@@ -33,7 +33,7 @@ const modalBus = ref(createEventBus());
 const name = ref('');
 const description = ref('');
 const systemPrompt = ref('');
-const selectedModel = ref<ChatHubConversationModel | null>(null);
+const selectedModel = ref<ChatModelDto | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
 
@@ -67,24 +67,17 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 });
 
 function loadAgent() {
-	const agent = chatStore.currentEditingAgent;
-	if (!agent) return;
+	const customAgent = chatStore.currentEditingAgent;
 
-	name.value = agent.name;
-	description.value = agent.description ?? '';
-	systemPrompt.value = agent.systemPrompt;
-	if (agent.provider && agent.model) {
-		selectedModel.value = {
-			provider: agent.provider,
-			model: agent.model,
-			name: agent.model,
-		} as ChatHubConversationModel;
+	if (!customAgent) return;
 
-		if (agent.credentialId) {
-			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
-		}
-	} else {
-		selectedModel.value = null;
+	name.value = customAgent.name;
+	description.value = customAgent.description ?? '';
+	systemPrompt.value = customAgent.systemPrompt;
+	selectedModel.value = chatStore.getAgent(customAgent) ?? null;
+
+	if (customAgent.credentialId) {
+		agentSelectedCredentials.value[customAgent.provider] = customAgent.credentialId;
 	}
 }
 
@@ -117,7 +110,7 @@ function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
 	};
 }
 
-function onModelChange(model: ChatHubConversationModel) {
+function onModelChange(model: ChatModelDto) {
 	selectedModel.value = model;
 }
 
@@ -127,33 +120,33 @@ async function onSave() {
 	isSaving.value = true;
 	try {
 		assert(selectedModel.value);
+
 		const model = 'model' in selectedModel.value ? selectedModel.value.model : undefined;
+
 		assert(model);
+		assert(model.provider !== 'n8n' && model.provider !== 'custom-agent');
 
-		const provider = selectedModel.value.provider;
-		assert(provider !== 'n8n' && provider !== 'custom-agent');
+		const credentialId = agentMergedCredentials.value[model.provider];
 
-		const credentialId = agentMergedCredentials.value[provider];
 		assert(credentialId);
 
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
-			provider,
-			model,
+			...model,
 			credentialId,
 		};
 
 		if (isEditMode.value && props.agentId) {
-			await chatStore.updateAgent(props.agentId, payload);
+			await chatStore.updateCustomAgent(props.agentId, payload, props.credentials);
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
 				type: 'success',
 			});
 		} else {
-			const agent = await chatStore.createAgent(payload);
-			emit('createAgent', agent);
+			const agent = await chatStore.createCustomAgent(payload, props.credentials);
+			emit('createCustomAgent', agent);
 
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.create'),
@@ -187,7 +180,7 @@ async function onDelete() {
 
 	isDeleting.value = true;
 	try {
-		await chatStore.deleteAgent(props.agentId);
+		await chatStore.deleteCustomAgent(props.agentId, props.credentials);
 		toast.showMessage({
 			title: i18n.baseText('chatHub.agent.editor.success.delete'),
 			type: 'success',
@@ -267,7 +260,7 @@ async function onDelete() {
 					:required="true"
 				>
 					<ModelSelector
-						:selected-model="selectedModel"
+						:selectedAgent="selectedModel"
 						:include-custom-agents="false"
 						:credentials="agentMergedCredentials"
 						@change="onModelChange"

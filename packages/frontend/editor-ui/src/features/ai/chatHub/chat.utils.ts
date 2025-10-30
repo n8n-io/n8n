@@ -3,19 +3,15 @@ import {
 	type ChatHubConversationModel,
 	type ChatModelsResponse,
 	type ChatHubSessionDto,
-	type ChatHubAgentDto,
 	type ChatModelDto,
 } from '@n8n/api-types';
 import type { ChatMessage, GroupedConversations, ChatAgentFilter } from './chat.types';
 import { CHAT_VIEW } from './constants';
-import type { IWorkflowDb } from '@/Interface';
 
-export function findOneFromModelsResponse(
-	response: ChatModelsResponse,
-): ChatHubConversationModel | undefined {
+export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
 		if (response[provider].models.length > 0) {
-			return response[provider].models[0].model;
+			return response[provider].models[0];
 		}
 	}
 
@@ -141,45 +137,9 @@ export function restoreConversationModelFromMessageOrSession(
 	}
 }
 
-export function describeConversationModel(model: ChatModelDto) {
-	switch (model.model.provider) {
-		case 'n8n':
-			return `n8n workflow ${model.name}`;
-		case 'custom-agent':
-			return `Custom agent ${model.name}`;
-		default:
-			return model.model;
-	}
-}
-
-export function getTimestamp(
-	model: ChatHubConversationModel,
-	type: 'createdAt' | 'updatedAt',
-	agents: ChatHubAgentDto[],
-	workflowsById: Partial<Record<string, IWorkflowDb>>,
-): number | null {
-	if (model.provider === 'custom-agent') {
-		const agent = agents.find((a) => model.provider === 'custom-agent' && a.id === model.agentId);
-		return agent?.[type] ? Date.parse(agent[type]) : null;
-	}
-
-	if (model.provider === 'n8n') {
-		const workflow = workflowsById[model.workflowId];
-		return workflow?.[type]
-			? typeof workflow[type] === 'string'
-				? Date.parse(workflow[type])
-				: workflow[type]
-			: null;
-	}
-
-	return null;
-}
-
 export function filterAndSortAgents(
 	models: ChatModelDto[],
 	filter: ChatAgentFilter,
-	agents: ChatHubAgentDto[],
-	workflowsById: Partial<Record<string, IWorkflowDb>>,
 ): ChatModelDto[] {
 	let filtered = models;
 
@@ -196,8 +156,10 @@ export function filterAndSortAgents(
 
 	// Apply sorting
 	filtered = [...filtered].sort((a, b) => {
-		const dateA = getTimestamp(a.model, filter.sortBy, agents, workflowsById);
-		const dateB = getTimestamp(b.model, filter.sortBy, agents, workflowsById);
+		const dateAStr = a[filter.sortBy];
+		const dateBStr = b[filter.sortBy];
+		const dateA = dateAStr ? Date.parse(dateAStr) : undefined;
+		const dateB = dateBStr ? Date.parse(dateBStr) : undefined;
 
 		// Sort by dates (newest first)
 		if (dateA && dateB) {
@@ -216,4 +178,23 @@ export function filterAndSortAgents(
 	});
 
 	return filtered;
+}
+
+export function stringifyModel(model: ChatHubConversationModel): string {
+	return `${model.provider}::${model.provider === 'custom-agent' ? model.agentId : model.provider === 'n8n' ? model.workflowId : model.model}`;
+}
+
+export function fromStringToModel(value: string): ChatHubConversationModel | undefined {
+	const [provider, identifier] = value.split('::');
+	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
+
+	if (!parsedProvider) {
+		return undefined;
+	}
+
+	return parsedProvider === 'n8n'
+		? { provider: 'n8n', workflowId: identifier }
+		: parsedProvider === 'custom-agent'
+			? { provider: 'custom-agent', agentId: identifier }
+			: { provider: parsedProvider, model: identifier };
 }
