@@ -182,7 +182,6 @@ USER 65532:65532
 
 EXPOSE 5680/tcp
 
-# No tini in distroless - task-runner-launcher must handle signals directly
 ENTRYPOINT ["/usr/local/bin/task-runner-launcher"]
 CMD ["javascript", "python"]
 
