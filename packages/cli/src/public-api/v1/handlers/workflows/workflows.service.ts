@@ -103,8 +103,15 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 	return await Container.get(WorkflowRepository).remove(workflow);
 }
 
-export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	return await Container.get(WorkflowRepository).update(workflowId, updateData);
+export async function updateWorkflow(existingWorkflow: WorkflowEntity, updateData: WorkflowEntity) {
+	// Keep existing settings and only update ones that were sent
+	if (updateData.settings && existingWorkflow.settings) {
+		updateData.settings = {
+			...existingWorkflow.settings,
+			...updateData.settings,
+		};
+	}
+	return await Container.get(WorkflowRepository).update(existingWorkflow.id, updateData);
 }
 
 export function parseTagNames(tags: string): string[] {

@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubProviderSchema } from '@n8n/api-types';
 import type {
 	ChatHubProvider,
 	ChatHubConversationModel,
-	ChatModelsResponse,
 	ChatHubLLMProvider,
+	ChatHubCustomAgentModel,
 } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -18,10 +18,11 @@ import type { CredentialsMap } from '../chat.types';
 import CredentialSelectorModal from './CredentialSelectorModal.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 
 const props = withDefaults(
 	defineProps<{
-		models: ChatModelsResponse | null;
 		selectedModel: ChatHubConversationModel | null;
 		includeCustomAgents?: boolean;
 		credentials: CredentialsMap;
@@ -42,12 +43,18 @@ function handleSelectCredentials(provider: ChatHubProvider, id: string) {
 }
 
 const i18n = useI18n();
+const chatStore = useChatStore();
 const dropdownRef = useTemplateRef('dropdownRef');
 const credentialSelectorProvider = ref<Exclude<ChatHubProvider, 'n8n' | 'custom-agent'> | null>(
 	null,
 );
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+
+const selectedModelDto = computed(() => {
+	if (!props.selectedModel || !chatStore.models) return null;
+	return chatStore.getModel(props.selectedModel) ?? null;
+});
 
 const credentialsName = computed(() =>
 	props.selectedModel
@@ -56,17 +63,15 @@ const credentialsName = computed(() =>
 		: undefined,
 );
 
-const isCustomAgent = computed(() => props.selectedModel?.provider === 'custom-agent');
-
 const menu = computed(() => {
-	const agents = props.models?.['custom-agent'].models;
-	const agentOptions = (agents ?? [])
-		.filter((model) => 'agentId' in model)
-		.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
-			id: `agent::${agent.agentId}`,
-			title: agent.name,
-			disabled: false,
-		}));
+	const agents = chatStore.models?.['custom-agent'].models;
+	const agentOptions = (agents ?? []).map<
+		ComponentProps<typeof N8nNavigationDropdown>['menu'][number]
+	>((agent) => ({
+		id: `agent::${(agent.model as ChatHubCustomAgentModel).agentId}`,
+		title: agent.name,
+		disabled: false,
+	}));
 
 	const agentMenu: ComponentProps<typeof N8nNavigationDropdown>['menu'][number] = {
 		id: 'custom-agents',
@@ -92,15 +97,20 @@ const menu = computed(() => {
 				provider !== 'custom-agent' && (!props.includeCustomAgents ? provider !== 'n8n' : true),
 		) // hide n8n agent for now
 		.map((provider) => {
-			const models = props.models?.[provider].models ?? [];
-			const error = props.models?.[provider].error;
+			const models = chatStore.models?.[provider].models ?? [];
+			const error = chatStore.models?.[provider].error;
 
 			const modelOptions =
 				models.length > 0
 					? models
-							.filter((model) => model.provider !== 'custom-agent')
+							.filter((model) => model.model.provider !== 'custom-agent')
 							.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => {
-								const identifier = model.provider === 'n8n' ? model.workflowId : model.model;
+								const identifier =
+									model.model.provider === 'n8n'
+										? model.model.workflowId
+										: model.model.provider !== 'custom-agent'
+											? model.model.model
+											: model.model.agentId;
 
 								return {
 									id: `${provider}::${identifier}`,
@@ -138,8 +148,8 @@ const menu = computed(() => {
 });
 
 const selectedLabel = computed(() => {
-	if (!props.selectedModel) return 'Select model';
-	return props.selectedModel.name;
+	if (!selectedModelDto.value) return 'Select model';
+	return selectedModelDto.value.name;
 });
 
 function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
@@ -163,11 +173,13 @@ function onSelect(id: string) {
 		if (value === 'new') {
 			emit('createAgent');
 		} else {
-			const agents = props.models?.['custom-agent'].models;
-			const selected = agents?.find((agent) => 'agentId' in agent && agent.agentId === value);
+			const agents = chatStore.models?.['custom-agent'].models;
+			const selected = agents?.find(
+				(agent) => agent.model.provider === 'custom-agent' && agent.model.agentId === value,
+			);
 
 			if (selected) {
-				emit('change', selected);
+				emit('change', selected.model);
 			}
 		}
 		return;
@@ -188,15 +200,19 @@ function onSelect(id: string) {
 
 	const model = parsedProvider === 'n8n' ? null : identifier;
 	const workflowId = parsedProvider === 'n8n' ? identifier : null;
-	const selected = props.models?.[parsedProvider].models
-		.filter((m) => m.provider !== 'custom-agent')
-		.find((m) => (m.provider === 'n8n' ? m.workflowId === workflowId : m.model === model));
+	const selected = chatStore.models?.[parsedProvider].models
+		.filter((m) => m.model.provider !== 'custom-agent')
+		.find((m) =>
+			m.model.provider === 'n8n'
+				? m.model.workflowId === workflowId
+				: m.model.provider !== 'custom-agent' && m.model.model === model,
+		);
 
 	if (!selected) {
 		return;
 	}
 
-	emit('change', selected);
+	emit('change', selected.model);
 }
 
 function handleCreateNewCredential(provider: ChatHubLLMProvider) {
@@ -206,6 +222,16 @@ function handleCreateNewCredential(provider: ChatHubLLMProvider) {
 onClickOutside(
 	computed(() => dropdownRef.value?.$el),
 	() => dropdownRef.value?.close(),
+);
+
+// Reload models when credentials are updated
+// TODO: fix duplicate requests
+watch(
+	() => props.credentials,
+	(credentials) => {
+		void chatStore.fetchChatModels(credentials);
+	},
+	{ immediate: true },
 );
 
 defineExpose({
@@ -240,18 +266,10 @@ defineExpose({
 				@create-new="handleCreateNewCredential"
 			/>
 
-			<N8nAvatar
-				v-if="isCustomAgent"
-				:first-name="selectedModel?.name"
-				size="xsmall"
-				:class="$style.icon"
-			/>
-			<CredentialIcon
-				v-else-if="selectedModel && selectedModel.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
-				:credential-type-name="
-					PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider as ChatHubLLMProvider]
-				"
-				:size="credentialsName ? 20 : 16"
+			<ChatAgentAvatar
+				v-if="selectedModelDto"
+				:model="selectedModelDto.model"
+				:size="credentialsName ? 'md' : 'sm'"
 				:class="$style.icon"
 			/>
 			<div :class="$style.selected">

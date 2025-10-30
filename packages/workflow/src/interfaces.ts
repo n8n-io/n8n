@@ -2576,6 +2576,7 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	meta?: WorkflowFEMeta;
 }
 
 export interface IWorkflowCredentials {
@@ -2715,7 +2716,8 @@ export type WorkflowExecuteMode =
 	| 'retry'
 	| 'trigger'
 	| 'webhook'
-	| 'evaluation';
+	| 'evaluation'
+	| 'chat';
 
 export type WorkflowActivateMode =
 	| 'init'
@@ -2747,6 +2749,9 @@ export interface IWorkflowSettings {
 
 export interface WorkflowFEMeta {
 	onboardingId?: string;
+	templateId?: string;
+	instanceId?: string;
+	templateCredsSetupCompleted?: boolean;
 }
 
 export interface WorkflowTestData {

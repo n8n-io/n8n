@@ -70,7 +70,7 @@ import {
 	WorkflowStateKey,
 } from '@/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
 	jsonParse,
@@ -147,7 +147,7 @@ defineOptions({
 });
 
 const LazyNodeCreation = defineAsyncComponent(
-	async () => await import('@/components/Node/NodeCreation.vue'),
+	async () => await import('@/features/shared/nodeCreator/views/NodeCreation.vue'),
 );
 
 const LazyNodeDetailsView = defineAsyncComponent(
