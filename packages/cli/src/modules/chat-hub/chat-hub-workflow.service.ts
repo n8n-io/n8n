@@ -58,7 +58,7 @@ export class ChatHubWorkflowService {
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
 			);
 
-			const { nodes, connections, executionData } = this.prepareChatWorkflow({
+			const { nodes, connections, executionData } = this.buildChatWorkflow({
 				userId,
 				sessionId,
 				history,
@@ -92,7 +92,53 @@ export class ChatHubWorkflowService {
 		});
 	}
 
-	private prepareChatWorkflow({
+	async createTitleGenerationWorkflow(
+		userId: string,
+		sessionId: ChatSessionId,
+		projectId: string,
+		humanMessage: string,
+		credentials: INodeCredentials,
+		model: ChatHubConversationModel,
+		trx?: EntityManager,
+	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
+		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
+			this.logger.debug(
+				`Creating title generation workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
+			);
+
+			const { nodes, connections, executionData } = this.buildTitleGenerationWorkflow(
+				userId,
+				sessionId,
+				credentials,
+				model,
+				humanMessage,
+			);
+
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.versionId = uuidv4();
+			newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
+			newWorkflow.active = false;
+			newWorkflow.nodes = nodes;
+			newWorkflow.connections = connections;
+
+			const workflow = await em.save<WorkflowEntity>(newWorkflow);
+
+			await em.save<SharedWorkflow>(
+				this.sharedWorkflowRepository.create({
+					role: 'workflow:owner',
+					projectId,
+					workflow,
+				}),
+			);
+
+			return {
+				workflowData: workflow,
+				executionData,
+			};
+		});
+	}
+
+	private buildChatWorkflow({
 		userId,
 		sessionId,
 		history,
@@ -109,12 +155,12 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel;
 		systemMessage?: string;
 	}) {
-		const chatTriggerNode = this.createChatTriggerNode();
-		const toolsAgentNode = this.createToolsAgentNode(model, systemMessage);
-		const modelNode = this.createModelNode(credentials, model);
-		const memoryNode = this.createMemoryNode(20);
-		const restoreMemoryNode = this.createMemoryRestoreNode(history);
-		const clearMemoryNode = this.clearMemoryNode();
+		const chatTriggerNode = this.buildChatTriggerNode();
+		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
+		const modelNode = this.buildModelNode(credentials, model);
+		const memoryNode = this.buildMemoryNode(20);
+		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
+		const clearMemoryNode = this.buildClearMemoryNode();
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -202,62 +248,16 @@ export class ChatHubWorkflowService {
 		return { nodes, connections, executionData };
 	}
 
-	async createTitleGenerationWorkflow(
-		userId: string,
-		sessionId: ChatSessionId,
-		projectId: string,
-		humanMessage: string,
-		credentials: INodeCredentials,
-		model: ChatHubConversationModel,
-		trx?: EntityManager,
-	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
-		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
-			this.logger.debug(
-				`Creating title generation workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
-			);
-
-			const { nodes, connections, executionData } = this.prepareTitleGenerationWorkflow(
-				userId,
-				sessionId,
-				credentials,
-				model,
-				humanMessage,
-			);
-
-			const newWorkflow = new WorkflowEntity();
-			newWorkflow.versionId = uuidv4();
-			newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
-			newWorkflow.active = false;
-			newWorkflow.nodes = nodes;
-			newWorkflow.connections = connections;
-
-			const workflow = await em.save<WorkflowEntity>(newWorkflow);
-
-			await em.save<SharedWorkflow>(
-				this.sharedWorkflowRepository.create({
-					role: 'workflow:owner',
-					projectId,
-					workflow,
-				}),
-			);
-
-			return {
-				workflowData: workflow,
-				executionData,
-			};
-		});
-	}
-
-	private prepareTitleGenerationWorkflow(
+	private buildTitleGenerationWorkflow(
 		userId: string,
 		sessionId: ChatSessionId,
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		humanMessage: string,
 	) {
-		const chatTriggerNode = this.createChatTriggerNode();
-		const titleGeneratorAgentNode = this.createTitleGeneratorAgentNode();
-		const modelNode = this.createModelNode(credentials, model);
+		const chatTriggerNode = this.buildChatTriggerNode();
+		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode();
+		const modelNode = this.buildModelNode(credentials, model);
 
 		const nodes: INode[] = [chatTriggerNode, titleGeneratorAgentNode, modelNode];
 
@@ -320,7 +320,7 @@ export class ChatHubWorkflowService {
 		return { nodes, connections, executionData };
 	}
 
-	private createChatTriggerNode(): INode {
+	private buildChatTriggerNode(): INode {
 		return {
 			parameters: {},
 			type: CHAT_TRIGGER_NODE_TYPE,
@@ -332,7 +332,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private createToolsAgentNode(model: ChatHubConversationModel, systemMessage?: string): INode {
+	private buildToolsAgentNode(model: ChatHubConversationModel, systemMessage?: string): INode {
 		return {
 			parameters: {
 				promptType: 'define',
@@ -354,7 +354,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private createModelNode(
+	private buildModelNode(
 		credentials: INodeCredentials,
 		conversationModel: ChatHubConversationModel,
 	): INode {
@@ -405,7 +405,7 @@ export class ChatHubWorkflowService {
 		}
 	}
 
-	private createMemoryNode(contextWindowLength: number): INode {
+	private buildMemoryNode(contextWindowLength: number): INode {
 		return {
 			parameters: {
 				sessionIdType: 'customKey',
@@ -420,7 +420,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private createMemoryRestoreNode(history: ChatHubMessage[]): INode {
+	private buildRestoreMemoryNode(history: ChatHubMessage[]): INode {
 		return {
 			parameters: {
 				mode: 'insert',
@@ -453,7 +453,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private clearMemoryNode(): INode {
+	private buildClearMemoryNode(): INode {
 		return {
 			parameters: {
 				mode: 'delete',
@@ -467,7 +467,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private createTitleGeneratorAgentNode(): INode {
+	private buildTitleGeneratorAgentNode(): INode {
 		return {
 			parameters: {
 				promptType: 'define',
