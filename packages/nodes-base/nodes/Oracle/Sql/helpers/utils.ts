@@ -851,7 +851,9 @@ export function getBindParameters(
 						bindVal = Buffer.from((bindVal as any).data);
 						break;
 					}
-					throw new UserError('BLOB data must be valid Buffer  or { type: "Buffer", data: [...] }');
+					throw new UserError(
+						'BLOB data must be valid Buffer or \'{ type: "Buffer", data: [...] }\'',
+					);
 				case 'date': {
 					const val = item.valueDate;
 					if (typeof val === 'string') {
