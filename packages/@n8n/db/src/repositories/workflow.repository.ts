@@ -72,14 +72,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return result.map(({ id }) => id);
 	}
 
-	async getAllVersionIds(): Promise<string[]> {
-		const result = await this.find({
-			select: { versionId: true },
-		});
-
-		return result.map(({ versionId }) => versionId).filter((id) => id !== null);
-	}
-
 	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
 		const activeWorkflows = await this.find({
 			select: ['id'],

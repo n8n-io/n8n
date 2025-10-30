@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
-import { DataSource, LessThan, Not, In, Repository } from '@n8n/typeorm';
+import { DataSource, LessThan, Repository } from '@n8n/typeorm';
 
-import { WorkflowHistory } from '../entities';
+import { WorkflowHistory, WorkflowEntity } from '../entities';
 
 @Service()
 export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
@@ -13,14 +13,24 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		return await this.delete({ createdAt: LessThan(date) });
 	}
 
-	async deleteEarlierThanExcept(date: Date, excludeVersionIds: string[]) {
-		if (excludeVersionIds.length === 0) {
-			return await this.deleteEarlierThan(date);
-		}
+	/**
+	 * Delete workflow history records earlier than a given date, except for current workflow versions.
+	 */
+	async deleteEarlierThanExceptCurrent(date: Date) {
+		const sub = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('w.versionId')
+			.from(WorkflowEntity, 'w')
+			.where('w.versionId IS NOT NULL')
+			.getQuery();
 
-		return await this.delete({
-			createdAt: LessThan(date),
-			versionId: Not(In(excludeVersionIds)),
-		});
+		return this.manager
+			.createQueryBuilder()
+			.delete()
+			.from(WorkflowHistory)
+			.where('createdAt < :date', { date })
+			.andWhere(`versionId NOT IN ${sub}`)
+			.execute();
 	}
 }

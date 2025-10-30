@@ -37,9 +37,6 @@ export class WorkflowHistoryManager {
 		}
 		const pruneDateTime = DateTime.now().minus({ hours: pruneHours }).toJSDate();
 
-		// Get all latest workflow versions to exclude from pruning
-		const currentVersionIds = await this.workflowRepo.getAllVersionIds();
-
-		await this.workflowHistoryRepo.deleteEarlierThanExcept(pruneDateTime, currentVersionIds);
+		await this.workflowHistoryRepo.deleteEarlierThanExceptCurrent(pruneDateTime);
 	}
 }
