@@ -20,7 +20,6 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import type { SortingAndPaginationUpdates } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
-import { getResourcePermissions } from '@n8n/permissions';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -40,12 +39,6 @@ const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
-
-const projectPermissions = computed(() =>
-	getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
-	),
-);
 
 const loading = ref(true);
 
@@ -155,8 +148,8 @@ watch(
 				:description="i18n.baseText('dataTable.empty.description')"
 				:button-text="i18n.baseText('dataTable.add.button.label')"
 				button-type="secondary"
-				:button-disabled="!projectPermissions.dataTable.create"
-				:button-icon="!projectPermissions.dataTable.create ? 'lock' : undefined"
+				:button-disabled="!dataTableStore.projectPermissions.dataTable.create"
+				:button-icon="!dataTableStore.projectPermissions.dataTable.create ? 'lock' : undefined"
 				@click:button="onAddModalClick"
 			>
 				<template #disabledButtonTooltip>
