@@ -275,7 +275,7 @@ function getIssues(index: number): string[] {
 
 .addCondition {
 	// Styling to match collection button (should move to standard button in future)
-	font-weight: var(--font-weight-normal);
+	font-weight: var(--font-weight--regular);
 	--button--color--text: var(--color--text--shade-1);
 	--button--border-color: var(--color--foreground);
 	--button--color--background: var(--color--background);

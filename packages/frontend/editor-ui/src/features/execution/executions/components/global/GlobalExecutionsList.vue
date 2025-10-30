@@ -470,7 +470,7 @@ const goToUpgrade = () => {
 	flex-direction: column;
 	overflow: hidden;
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 }
 
 .execList {

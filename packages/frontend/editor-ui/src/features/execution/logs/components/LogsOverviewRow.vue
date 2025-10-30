@@ -253,8 +253,10 @@ watch(
 
 .background {
 	position: absolute;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	left: calc(var(--indent-depth) * 32px);
 	top: 0;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	width: calc(100% - var(--indent-depth) * 32px);
 	height: 100%;
 	border-radius: var(--radius);
@@ -304,6 +306,7 @@ watch(
 }
 
 .icon {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	margin-left: var(--row-gap-thickness);
 	flex-grow: 0;
 	flex-shrink: 0;

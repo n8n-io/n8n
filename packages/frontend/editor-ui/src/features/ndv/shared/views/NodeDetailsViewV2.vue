@@ -856,7 +856,7 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .backdrop {
 	position: absolute;
-	z-index: var(--z-index-ndv);
+	z-index: var(--ndv--z);
 	top: 0;
 	left: 0;
 	right: 0;
@@ -866,7 +866,7 @@ onBeforeUnmount(() => {
 
 .dialog {
 	position: absolute;
-	z-index: var(--z-index-ndv);
+	z-index: var(--ndv--z);
 	width: calc(100% - var(--spacing--2xl));
 	height: calc(100% - var(--spacing--2xl));
 	top: var(--spacing--lg);
@@ -937,11 +937,11 @@ onBeforeUnmount(() => {
 }
 
 .draggable {
-	--draggable-height: 18px;
+	--draggable--height: 18px;
 	position: absolute;
-	top: calc(-1 * var(--draggable-height));
+	top: calc(-1 * var(--draggable--height));
 	left: 50%;
 	transform: translateX(-50%);
-	height: var(--draggable-height);
+	height: var(--draggable--height);
 }
 </style>

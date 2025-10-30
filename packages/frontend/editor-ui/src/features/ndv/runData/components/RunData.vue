@@ -2017,7 +2017,7 @@ defineExpose({ enterEditMode });
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: var(--ndv-spacing) var(--ndv-spacing) var(--spacing--xl) var(--ndv-spacing);
+	padding: var(--ndv--spacing) var(--ndv--spacing) var(--spacing--xl) var(--ndv--spacing);
 	text-align: center;
 
 	> * {
@@ -2027,7 +2027,7 @@ defineExpose({ enterEditMode });
 }
 
 .container {
-	--ndv-spacing: var(--spacing--sm);
+	--ndv--spacing: var(--spacing--sm);
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -2047,12 +2047,12 @@ defineExpose({ enterEditMode });
 .header {
 	display: flex;
 	align-items: center;
-	margin-bottom: var(--ndv-spacing);
-	padding: var(--ndv-spacing) var(--spacing--3xs) 0 var(--ndv-spacing);
+	margin-bottom: var(--ndv--spacing);
+	padding: var(--ndv--spacing) var(--spacing--3xs) 0 var(--ndv--spacing);
 	position: relative;
 	overflow-x: auto;
 	overflow-y: hidden;
-	min-height: calc(30px + var(--ndv-spacing));
+	min-height: calc(30px + var(--ndv--spacing));
 	scrollbar-width: thin;
 	container-type: inline-size;
 
@@ -2081,7 +2081,7 @@ defineExpose({ enterEditMode });
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding: 0 var(--ndv-spacing) var(--spacing--3xl) var(--ndv-spacing);
+	padding: 0 var(--ndv--spacing) var(--spacing--3xl) var(--ndv--spacing);
 	right: 0;
 	overflow-y: auto;
 	line-height: var(--line-height--xl);
@@ -2095,18 +2095,18 @@ defineExpose({ enterEditMode });
 
 .inlineError {
 	line-height: var(--line-height--xl);
-	padding-left: var(--ndv-spacing);
-	padding-right: var(--ndv-spacing);
-	padding-bottom: var(--ndv-spacing);
+	padding-left: var(--ndv--spacing);
+	padding-right: var(--ndv--spacing);
+	padding-bottom: var(--ndv--spacing);
 }
 
 .outputs {
 	display: flex;
 	flex-direction: column;
-	gap: var(--ndv-spacing);
-	padding-left: var(--ndv-spacing);
-	padding-right: var(--ndv-spacing);
-	padding-bottom: var(--ndv-spacing);
+	gap: var(--ndv--spacing);
+	padding-left: var(--ndv--spacing);
+	padding-right: var(--ndv--spacing);
+	padding-bottom: var(--ndv--spacing);
 
 	.compact & {
 		padding-left: var(--spacing--2xs);
@@ -2128,9 +2128,9 @@ defineExpose({ enterEditMode });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding-left: var(--ndv-spacing);
-	padding-right: var(--ndv-spacing);
-	padding-bottom: var(--ndv-spacing);
+	padding-left: var(--ndv--spacing);
+	padding-right: var(--ndv--spacing);
+	padding-bottom: var(--ndv--spacing);
 	flex-flow: wrap;
 }
 
@@ -2139,18 +2139,18 @@ defineExpose({ enterEditMode });
 }
 
 .inputSelect {
-	padding-left: var(--ndv-spacing);
-	padding-right: var(--ndv-spacing);
-	padding-bottom: var(--ndv-spacing);
+	padding-left: var(--ndv--spacing);
+	padding-right: var(--ndv--spacing);
+	padding-bottom: var(--ndv--spacing);
 }
 
 .runSelector {
 	display: flex;
 	align-items: center;
 	flex-flow: wrap;
-	padding-left: var(--ndv-spacing);
-	padding-right: var(--ndv-spacing);
-	margin-bottom: var(--ndv-spacing);
+	padding-left: var(--ndv--spacing);
+	padding-right: var(--ndv--spacing);
+	margin-bottom: var(--ndv--spacing);
 	gap: var(--spacing--3xs);
 
 	:global(.el-input--suffix .el-input__inner) {
@@ -2206,7 +2206,7 @@ defineExpose({ enterEditMode });
 .spinner {
 	display: flex;
 	justify-content: center;
-	margin-bottom: var(--ndv-spacing);
+	margin-bottom: var(--ndv--spacing);
 
 	* {
 		color: var(--color--primary);
@@ -2220,8 +2220,8 @@ defineExpose({ enterEditMode });
 	display: flex;
 	flex-direction: column;
 	justify-content: stretch;
-	padding-left: var(--ndv-spacing);
-	padding-right: var(--ndv-spacing);
+	padding-left: var(--ndv--spacing);
+	padding-right: var(--ndv--spacing);
 }
 
 .editModeBody {
@@ -2237,8 +2237,8 @@ defineExpose({ enterEditMode });
 	width: 100%;
 	justify-content: space-between;
 	align-items: center;
-	padding-top: var(--ndv-spacing);
-	padding-bottom: var(--ndv-spacing);
+	padding-top: var(--ndv--spacing);
+	padding-bottom: var(--ndv--spacing);
 }
 
 .editModeFooterInfotip {
@@ -2251,7 +2251,7 @@ defineExpose({ enterEditMode });
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-	margin-left: var(--ndv-spacing);
+	margin-left: var(--ndv--spacing);
 }
 
 .stretchVertically {
@@ -2265,8 +2265,8 @@ defineExpose({ enterEditMode });
 
 .hintCallout {
 	margin-bottom: var(--spacing--xs);
-	margin-left: var(--ndv-spacing);
-	margin-right: var(--ndv-spacing);
+	margin-left: var(--ndv--spacing);
+	margin-right: var(--ndv--spacing);
 
 	.compact & {
 		margin: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
@@ -2274,7 +2274,7 @@ defineExpose({ enterEditMode });
 }
 
 .schema {
-	padding: 0 var(--ndv-spacing);
+	padding: 0 var(--ndv--spacing);
 }
 
 .messageSection {
@@ -2333,7 +2333,7 @@ defineExpose({ enterEditMode });
 
 .ndv-v2,
 .compact {
-	--ndv-spacing: var(--spacing--2xs);
+	--ndv--spacing: var(--spacing--2xs);
 }
 </style>
 
