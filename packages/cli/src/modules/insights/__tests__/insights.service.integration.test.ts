@@ -28,7 +28,7 @@ import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
-describe('InsightsService', () => {
+describe('InsightsService (Integration)', () => {
 	const today = new Date();
 
 	beforeAll(async () => {
