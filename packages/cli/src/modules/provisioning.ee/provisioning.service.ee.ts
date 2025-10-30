@@ -330,6 +330,22 @@ export class ProvisioningService {
 		return envProvidedConfig;
 	}
 
+	async getInstanceRoleClaimName(): Promise<string | null> {
+		if (!(await this.isInstanceRoleProvisioningEnabled())) {
+			return null;
+		}
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesInstanceRoleClaimName;
+	}
+
+	async getProjectsRolesClaimName(): Promise<string | null> {
+		if (!(await this.isProjectRolesProvisioningEnabled())) {
+			return null;
+		}
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProjectsRolesClaimName;
+	}
+
 	async isProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
 		return (
