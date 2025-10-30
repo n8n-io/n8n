@@ -64,7 +64,8 @@ const headers = ref<Array<TableHeader<Role>>>([
 	{
 		title: i18n.baseText('projectRoles.sourceControl.table.lastEdited'),
 		key: 'updatedAt',
-		value: (item: Role) => (item.updatedAt ? dateformat(item.updatedAt, 'd mmm, yyyy') : ''),
+		value: (item: Role) =>
+			item.updatedAt && !item.systemRole ? dateformat(item.updatedAt, 'd mmm, yyyy') : '—',
 		disableSort: true,
 		resize: false,
 	},
