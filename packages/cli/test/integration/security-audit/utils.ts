@@ -43,6 +43,7 @@ export async function saveManualTriggerWorkflow() {
 		active: false,
 		connections: {},
 		nodeTypes: {},
+		versionId: uuid(),
 		nodes: [
 			{
 				id: uuid(),

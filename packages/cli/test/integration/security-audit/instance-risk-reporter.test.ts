@@ -45,6 +45,7 @@ test('should report webhook lacking authentication', async () => {
 		active: true,
 		nodeTypes: {},
 		connections: {},
+		versionId: uuid(),
 		nodes: [
 			{
 				parameters: {
@@ -88,6 +89,7 @@ test('should not report webhooks having basic or header auth', async () => {
 			active: true,
 			nodeTypes: {},
 			connections: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					parameters: {
@@ -132,6 +134,7 @@ test('should not report webhooks validated by direct children', async () => {
 			name: 'My Test Workflow',
 			active: true,
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					parameters: {

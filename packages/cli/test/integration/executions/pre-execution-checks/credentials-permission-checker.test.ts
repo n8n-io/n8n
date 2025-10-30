@@ -35,6 +35,7 @@ const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<IWo
 		connections: {},
 		nodeTypes: mockNodeTypes,
 		nodes,
+		versionId: uuid(),
 	};
 
 	const workflowEntity = await Container.get(WorkflowRepository).save(workflowDetails);

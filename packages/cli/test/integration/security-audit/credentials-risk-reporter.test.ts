@@ -51,6 +51,7 @@ test('should report credentials not in any use', async () => {
 		active: false,
 		connections: {},
 		nodeTypes: {},
+		versionId: uuid(),
 		nodes: [
 			{
 				id: uuid(),
@@ -98,6 +99,7 @@ test('should report credentials not in active use', async () => {
 		active: false,
 		connections: {},
 		nodeTypes: {},
+		versionId: uuid(),
 		nodes: [
 			{
 				id: uuid(),
@@ -142,6 +144,7 @@ test('should report credential in not recently executed workflow', async () => {
 		active: false,
 		connections: {},
 		nodeTypes: {},
+		versionId: uuid(),
 		nodes: [
 			{
 				id: uuid(),
@@ -211,6 +214,7 @@ test('should not report credentials in recently executed workflow', async () => 
 		active: true,
 		connections: {},
 		nodeTypes: {},
+		versionId: uuid(),
 		nodes: [
 			{
 				id: uuid(),
