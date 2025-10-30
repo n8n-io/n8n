@@ -2576,6 +2576,7 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	versionCounter?: number;
 	meta?: WorkflowFEMeta;
 }
 
