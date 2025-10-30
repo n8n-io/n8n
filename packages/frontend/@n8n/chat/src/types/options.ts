@@ -18,6 +18,7 @@ export interface ChatOptions {
 	chatSessionKey?: string;
 	defaultLanguage?: 'en';
 	initialMessages?: string[];
+	messageHistory?: ChatMessage[];
 	metadata?: Record<string, unknown>;
 	i18n: Record<
 		string,

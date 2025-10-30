@@ -74,7 +74,7 @@ async function copySessionId() {
 }
 
 function initializeChat() {
-	if (!props.isOpen || !isWorkflowReadyForChat.value) {
+	if (!isWorkflowReadyForChat.value) {
 		return;
 	}
 
@@ -101,17 +101,16 @@ function destroyChat() {
 	}
 }
 
-// Watch for isOpen changes to handle panel close/reopen
+// Watch for isOpen changes - but don't destroy/recreate the chat
+// Just let CSS handle visibility to preserve chat state
 watch(
 	() => props.isOpen,
-	async (newIsOpen, oldIsOpen) => {
-		if (newIsOpen && !oldIsOpen) {
-			// Panel reopened - register webhook and reinitialize chat
+	async (newIsOpen) => {
+		if (newIsOpen && !chatApp) {
+			// Panel opened and chat not yet initialized - initialize it
 			initializeChat();
-		} else if (!newIsOpen && oldIsOpen) {
-			// Panel closed - cleanup
-			destroyChat();
 		}
+		// Note: We don't destroy when closing to preserve chat state
 	},
 );
 
@@ -247,7 +246,7 @@ onUnmounted(() => {
 
 		<!-- Chat SDK Container -->
 		<main
-			v-if="isOpen && chatTriggerNode"
+			v-show="isOpen && chatTriggerNode"
 			:class="$style.chatSdkContainer"
 			data-test-id="canvas-chat-body"
 		>
@@ -408,6 +407,7 @@ onUnmounted(() => {
 			--chat--input--text-color: var(--color--text);
 			--chat--input--border: 1px solid var(--color--foreground);
 			--chat--input--border-active: 1px solid var(--color--primary);
+			--chat--color--primary-shade-50: var(--color--primary--shade-50);
 		}
 	}
 }

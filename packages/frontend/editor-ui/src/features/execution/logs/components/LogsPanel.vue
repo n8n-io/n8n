@@ -141,9 +141,10 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 }
 
 function onHideChatPanel() {
-	// Reset execution data to clear stale ChatTrigger nodes from previous executions
-	// This forces hasChat to re-evaluate based only on current workflow nodes
-	resetExecutionData();
+	// Note: We don't reset execution data here because this event is only emitted
+	// when the ChatTrigger node is removed from the workflow, not when the panel is closed.
+	// The execution data will be properly cleaned up when switching workflows via
+	// the watcher in useLogsExecutionData composable (watching workflowId changes).
 }
 </script>
 

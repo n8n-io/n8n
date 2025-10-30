@@ -112,6 +112,9 @@ function onEscapeKeyDown() {
 }
 
 onMounted(async () => {
+	if (!messages.value.length && options.messageHistory) {
+		messages.value = options.messageHistory.map((m) => ({ ...m }));
+	}
 	await initialize();
 	if (!options.showWelcomeScreen && !currentSessionId.value) {
 		getStarted();

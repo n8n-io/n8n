@@ -194,7 +194,7 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 			chatInputKey: 'chatInput',
 			chatSessionKey: 'sessionId',
 			defaultLanguage: 'en' as const,
-			initialMessages: [],
+			messageHistory: messages.value,
 			i18n: {
 				en: {
 					title: locale.baseText('chat.window.title') || 'Chat',
@@ -206,10 +206,39 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 					closeButtonTooltip: 'Close',
 				},
 			},
-			beforeMessageSent: async (_message: string) => {
+			beforeMessageSent: async (message: string) => {
 				// Register fresh webhook before each message to ensure it's active
 				// This gives us a fresh webhook with full timeout for each message
 				await registerChatWebhook();
+
+				// Store user message for persistence
+				if (!isReadOnly) {
+					logsStore.addChatMessage({
+						id: uuid(),
+						text: message,
+						sender: 'user',
+					});
+				}
+			},
+			afterMessageSent: async (_message: string, response) => {
+				// Store bot response for persistence
+				if (!isReadOnly && response) {
+					// For streaming, response is { hasReceivedChunks: boolean }
+					// For non-streaming, it's SendMessageResponse
+					if ('hasReceivedChunks' in response) {
+						return;
+					}
+
+					// Extract bot message from non-streaming response
+					const botMessage = response.output ?? response.text ?? response.message;
+					if (botMessage && typeof botMessage === 'string') {
+						logsStore.addChatMessage({
+							id: uuid(),
+							text: botMessage,
+							sender: 'bot',
+						});
+					}
+				}
 			},
 		};
 		return options;
