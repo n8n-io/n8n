@@ -66,7 +66,7 @@ export class WorkflowIndexService {
 		dependencyUpdates.add({
 			dependencyType: 'nodeType',
 			dependencyKey: node.type,
-			dependencyInfo: node.id,
+			dependencyInfo: { id: node.id, version: node.typeVersion },
 		});
 	}
 
@@ -79,7 +79,7 @@ export class WorkflowIndexService {
 			dependencyUpdates.add({
 				dependencyType: 'credentialId',
 				dependencyKey: id,
-				dependencyInfo: node.id,
+				dependencyInfo: { id: node.id, version: node.typeVersion },
 			});
 		}
 	}
@@ -95,7 +95,7 @@ export class WorkflowIndexService {
 		dependencyUpdates.add({
 			dependencyType: 'workflowCall',
 			dependencyKey: calledWorkflowId,
-			dependencyInfo: node.id,
+			dependencyInfo: { id: node.id, version: node.typeVersion },
 		});
 	}
 
@@ -107,7 +107,7 @@ export class WorkflowIndexService {
 		dependencyUpdates.add({
 			dependencyType: 'webhookPath',
 			dependencyKey: webhookPath,
-			dependencyInfo: node.id,
+			dependencyInfo: { id: node.id, version: node.typeVersion },
 		});
 	}
 

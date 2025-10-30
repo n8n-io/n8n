@@ -19,7 +19,7 @@ export class WorkflowDependencies {
 	add(dependency: {
 		dependencyType: string;
 		dependencyKey: string | null;
-		dependencyInfo: unknown;
+		dependencyInfo: Record<string, unknown> | null;
 	}) {
 		const dep = new WorkflowDependency();
 		Object.assign(dep, dependency);
