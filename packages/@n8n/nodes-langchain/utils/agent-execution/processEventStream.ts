@@ -5,7 +5,7 @@ import type { ToolCall } from '@langchain/core/messages/tool';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { saveToMemory, saveToolResultsToMemory } from './memoryManager';
+import { saveToMemory, saveToolResultsToMemory } from './memoryManagement';
 import type { AgentResult, ToolCallRequest } from './types';
 
 /**

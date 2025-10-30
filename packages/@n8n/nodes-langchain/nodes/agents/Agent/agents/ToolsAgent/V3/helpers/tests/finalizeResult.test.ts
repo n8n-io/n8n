@@ -3,7 +3,7 @@ import type { BaseChatMemory } from 'langchain/memory';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
-import { finalizeResult } from './finalizeResult';
+import { finalizeResult } from '../finalizeResult';
 
 describe('finalizeResult', () => {
 	it('should finalize result without memory or output parser', () => {

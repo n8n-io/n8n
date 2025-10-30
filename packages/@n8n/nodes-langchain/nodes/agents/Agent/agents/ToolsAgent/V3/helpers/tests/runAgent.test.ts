@@ -6,9 +6,9 @@ import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 
 import * as agentExecution from '@utils/agent-execution';
 
-import type { RequestResponseMetadata } from '../types';
-import type { ItemContext } from './processItem';
-import { runAgent } from './runAgent';
+import type { RequestResponseMetadata } from '../../types';
+import type { ItemContext } from '../prepareItemContext';
+import { runAgent } from '../runAgent';
 
 jest.mock('@utils/agent-execution', () => ({
 	loadMemory: jest.fn(),

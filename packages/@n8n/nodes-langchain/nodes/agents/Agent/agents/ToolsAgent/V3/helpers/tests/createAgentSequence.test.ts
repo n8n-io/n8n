@@ -5,8 +5,8 @@ import { mock } from 'jest-mock-extended';
 import { createToolCallingAgent } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
 
-import { createAgentSequence } from './createAgentSequence';
-import * as commonHelpers from '../../common';
+import * as commonHelpers from '../../../common';
+import { createAgentSequence } from '../createAgentSequence';
 
 jest.mock('langchain/agents', () => ({
 	createToolCallingAgent: jest.fn(),
@@ -18,7 +18,7 @@ jest.mock('@langchain/core/runnables', () => ({
 	},
 }));
 
-jest.mock('../../common', () => ({
+jest.mock('../../../common', () => ({
 	getAgentStepsParser: jest.fn(),
 	fixEmptyContentMessage: jest.fn(),
 }));

@@ -3,10 +3,10 @@ import { mock } from 'jest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
-import { buildExecutionContext } from './buildExecutionContext';
-import * as commonHelpers from '../../common';
+import * as commonHelpers from '../../../common';
+import { buildExecutionContext } from '../buildExecutionContext';
 
-jest.mock('../../common', () => ({
+jest.mock('../../../common', () => ({
 	getChatModel: jest.fn(),
 	getOptionalMemory: jest.fn(),
 }));

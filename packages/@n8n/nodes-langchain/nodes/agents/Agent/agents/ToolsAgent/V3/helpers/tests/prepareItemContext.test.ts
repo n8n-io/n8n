@@ -6,9 +6,9 @@ import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 import * as helpers from '@utils/helpers';
 import * as outputParsers from '@utils/output_parsers/N8nOutputParser';
 
-import * as commonHelpers from '../../common';
-import type { RequestResponseMetadata } from '../types';
-import { prepareItemContext } from './processItem';
+import * as commonHelpers from '../../../common';
+import type { RequestResponseMetadata } from '../../types';
+import { prepareItemContext } from '../prepareItemContext';
 
 jest.mock('@utils/helpers', () => ({
 	getPromptInputByType: jest.fn(),
@@ -18,7 +18,7 @@ jest.mock('@utils/output_parsers/N8nOutputParser', () => ({
 	getOptionalOutputParser: jest.fn(),
 }));
 
-jest.mock('../../common', () => ({
+jest.mock('../../../common', () => ({
 	getTools: jest.fn(),
 	prepareMessages: jest.fn(),
 	preparePrompt: jest.fn(),
