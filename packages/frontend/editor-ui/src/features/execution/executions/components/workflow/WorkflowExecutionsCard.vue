@@ -113,7 +113,7 @@ function onRetryMenuItemSelect(action: string): void {
 					<N8nText :class="$style.statusLabel" size="small">{{ executionUIDetails.label }}</N8nText>
 					{{ ' ' }}
 					<N8nText
-						v-if="executionUIDetails.name === 'running'"
+						v-if="executionUIDetails.name === 'running' && !execution.stoppedAt"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 						data-test-id="execution-time-in-status"
@@ -191,8 +191,8 @@ function onRetryMenuItemSelect(action: string): void {
 @use '@/styles/variables' as *;
 
 .WorkflowExecutionsCard {
-	--execution-list-item-background: var(--execution-card--color--background);
-	--execution-list-item-highlight-background: var(--color--warning--tint-1);
+	--execution-list-item--color--background: var(--execution-card--color--background);
+	--execution-list-item--color--background--highlight: var(--color--warning--tint-1);
 
 	display: flex;
 	flex-direction: column;
@@ -209,7 +209,7 @@ function onRetryMenuItemSelect(action: string): void {
 	&:hover,
 	&.active {
 		.executionLink {
-			--execution-list-item-background: var(--execution-card--color--background--hover);
+			--execution-list-item--color--background: var(--execution-card--color--background--hover);
 		}
 	}
 
@@ -298,7 +298,7 @@ function onRetryMenuItemSelect(action: string): void {
 }
 
 .executionLink {
-	background: var(--execution-list-item-background);
+	background: var(--execution-list-item--color--background);
 	display: flex;
 	width: 100%;
 	align-items: center;

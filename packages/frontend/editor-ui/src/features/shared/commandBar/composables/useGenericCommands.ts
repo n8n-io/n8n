@@ -50,7 +50,7 @@ export function useGenericCommands(): CommandGroup {
 		},
 		{
 			id: ITEM_ID.TEMPLATES,
-			title: i18n.baseText('mainSidebar.templates'),
+			title: i18n.baseText('generic.templates'),
 			section: i18n.baseText('commandBar.sections.general'),
 			handler: () => {
 				void router.push({ name: VIEWS.PRE_BUILT_AGENT_TEMPLATES });
@@ -61,14 +61,14 @@ export function useGenericCommands(): CommandGroup {
 					icon: 'package-open',
 				},
 			},
-			keywords: [i18n.baseText('mainSidebar.templates').toLowerCase()],
+			keywords: [i18n.baseText('generic.templates').toLowerCase()],
 		},
 		{
 			id: ITEM_ID.VARIABLES,
 			title: i18n.baseText('mainSidebar.variables'),
 			section: i18n.baseText('commandBar.sections.general'),
 			handler: () => {
-				void router.push({ name: VIEWS.VARIABLES });
+				void router.push({ name: VIEWS.HOME_VARIABLES });
 			},
 			icon: {
 				component: N8nIcon,

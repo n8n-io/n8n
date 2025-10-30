@@ -70,7 +70,6 @@ export const DataTableModule: FrontendModuleDescription = {
 			{
 				label: i18n.baseText('dataTable.dataTables'),
 				value: DATA_TABLE_VIEW,
-				tag: i18n.baseText('generic.betaProper'),
 				to: {
 					name: DATA_TABLE_VIEW,
 				},
@@ -80,7 +79,6 @@ export const DataTableModule: FrontendModuleDescription = {
 			{
 				label: i18n.baseText('dataTable.dataTables'),
 				value: PROJECT_DATA_TABLES,
-				tag: i18n.baseText('generic.betaProper'),
 				dynamicRoute: {
 					name: PROJECT_DATA_TABLES,
 					includeProjectId: true,

@@ -150,6 +150,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			const userMsg = createAssistantMessage(
 				locale.baseText('aiAssistant.builder.streamAbortedMessage'),
 				'aborted-streaming',
+				{ aborted: true },
 			);
 			chatMessages.value = [...chatMessages.value, userMsg];
 			return;

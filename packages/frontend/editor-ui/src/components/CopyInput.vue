@@ -89,6 +89,7 @@ function copy() {
 	font-weight: var(--font-weight--regular);
 
 	&:hover {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--display-copy-button: flex;
 		width: 100%;
 	}
@@ -118,6 +119,7 @@ function copy() {
 }
 
 .copyButton {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	display: var(--display-copy-button, none);
 	position: absolute;
 	top: 0;
