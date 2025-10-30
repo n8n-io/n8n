@@ -15,22 +15,31 @@ import { Service } from '@n8n/di';
 import { Response } from 'express';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
+// eslint-disable-next-line import-x/extensions
+import { AuthService } from '@/auth/auth.service';
+import { JwtService } from '@/services/jwt.service';
+
 import { AccessTokenRepository } from './oauth-access-token.repository';
 import { AuthorizationCodeRepository } from './oauth-authorization-code.repository';
 import { OAuthClientRepository } from './oauth-client.repository';
 import { RefreshTokenRepository } from './oauth-refresh-token.repository';
 import { UserConsentRepository } from './oauth-user-consent.repository';
 
-// eslint-disable-next-line import-x/extensions
-import { AuthService } from '@/auth/auth.service';
-
 type OAuthClientInformationFullWithScopes = OAuthClientInformationFull & {};
+
+interface OAuthSessionPayload {
+	clientId: string;
+	redirectUri: string;
+	codeChallenge: string;
+	state: string | null;
+}
 
 @Service()
 export class McpOAuthService implements OAuthServerProvider {
 	constructor(
 		private readonly logger: Logger,
 		private readonly authService: AuthService,
+		private readonly jwtService: JwtService,
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly authorizationCodeRepository: AuthorizationCodeRepository,
 		private readonly accessTokenRepository: AccessTokenRepository,
@@ -132,10 +141,29 @@ export class McpOAuthService implements OAuthServerProvider {
 			try {
 				[user] = await this.authService.resolveJwt(req, res);
 			} catch (error) {
-				// User is not authenticated - redirect to login with current URL as redirect
-				const currentUrl = req.originalUrl;
-				const loginUrl = `/signin?redirect=${encodeURIComponent(currentUrl)}`;
-				res.redirect(loginUrl);
+				// User is not authenticated - save OAuth state in a signed cookie and redirect to consent page
+				// The consent page will handle redirecting to login if needed
+				const sessionPayload: OAuthSessionPayload = {
+					clientId: client.client_id,
+					redirectUri: params.redirectUri,
+					codeChallenge: params.codeChallenge,
+					state: params.state ?? null,
+				};
+
+				// Sign the OAuth session data as a JWT
+				const sessionToken = this.jwtService.sign(sessionPayload, {
+					expiresIn: '10m',
+				});
+
+				// Set session cookie with the signed JWT
+				res.cookie('n8n-oauth-session', sessionToken, {
+					httpOnly: true,
+					secure: process.env.NODE_ENV === 'production',
+					sameSite: 'lax',
+					maxAge: 10 * 60 * 1000, // 10 minutes
+				});
+
+				res.redirect('/oauth/consent');
 				return;
 			}
 
@@ -404,42 +432,54 @@ export class McpOAuthService implements OAuthServerProvider {
 
 	/**
 	 * Get consent details from session cookie
+	 * Now expects sessionToken to be a JWT containing OAuth parameters
 	 */
 	async getConsentDetails(
-		sessionId: string,
+		sessionToken: string,
 		userId: string,
 	): Promise<{
 		clientName: string;
 		clientId: string;
 		scopes: string[];
+		sessionId: string;
 	} | null> {
-		const authRecord = await this.authorizationCodeRepository.findOne({
-			where: {
-				code: sessionId,
-				userId,
-			},
-		});
+		try {
+			// Verify and decode the JWT session token
+			const sessionPayload = this.jwtService.verify<OAuthSessionPayload>(sessionToken);
 
-		if (!authRecord || authRecord.expiresAt < Date.now()) {
-			if (authRecord) {
-				await this.authorizationCodeRepository.remove(authRecord);
+			// Look up the client
+			const client = await this.oauthClientRepository.findOne({
+				where: { id: sessionPayload.clientId },
+			});
+
+			if (!client) {
+				return null;
 			}
+
+			// Create a new authorization code record with the authenticated user
+			const sessionId = randomUUID();
+			await this.authorizationCodeRepository.save({
+				code: sessionId,
+				clientId: sessionPayload.clientId,
+				userId,
+				redirectUri: sessionPayload.redirectUri,
+				codeChallenge: sessionPayload.codeChallenge,
+				codeChallengeMethod: 'S256',
+				state: sessionPayload.state ?? null,
+				expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+				used: false,
+			});
+
+			return {
+				clientName: client.name,
+				clientId: client.id,
+				scopes: [], // TODO: Add scopes support
+				sessionId, // Return the new authorization code ID for use in handleConsentDecision
+			};
+		} catch (error) {
+			this.logger.error('Error getting consent details', { error });
 			return null;
 		}
-
-		const client = await this.oauthClientRepository.findOne({
-			where: { id: authRecord.clientId },
-		});
-
-		if (!client) {
-			return null;
-		}
-
-		return {
-			clientName: client.name,
-			clientId: client.id,
-			scopes: [], // TODO: Add scopes support
-		};
 	}
 
 	/**

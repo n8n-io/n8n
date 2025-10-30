@@ -30,6 +30,7 @@ export class McpConsentController {
 			}
 
 			// Get consent details using the service
+			// This will verify the JWT, create an authorization record, and return details
 			const consentDetails = await this.mcpOAuthService.getConsentDetails(sessionId, req.user.id);
 
 			if (!consentDetails) {
@@ -38,6 +39,14 @@ export class McpConsentController {
 					message: 'Invalid or expired authorization session',
 				});
 			}
+
+			// Update the cookie with the authorization code ID for use in approval
+			res.cookie('n8n-oauth-session', consentDetails.sessionId, {
+				httpOnly: true,
+				secure: process.env.NODE_ENV === 'production',
+				sameSite: 'lax',
+				maxAge: 10 * 60 * 1000, // 10 minutes
+			});
 
 			return {
 				clientName: consentDetails.clientName,
