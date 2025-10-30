@@ -13,6 +13,7 @@ import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
+import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -48,6 +49,7 @@ const speech = useSpeechSynthesis(messageContent, {
 });
 
 const model = computed(() => restoreConversationModelFromMessageOrSession(message));
+const agent = useAgent(model);
 
 async function handleCopy() {
 	const text = message.content;
@@ -135,7 +137,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<ChatAgentAvatar v-else-if="model" :model="model" size="md" tooltip />
+			<ChatAgentAvatar v-else-if="agent" :agent="agent" size="md" tooltip />
 			<N8nIcon v-else icon="sparkles" width="20" height="20" />
 		</div>
 		<div :class="$style.content">

@@ -10,12 +10,10 @@ import type { ChatMessage, GroupedConversations, ChatAgentFilter } from './chat.
 import { CHAT_VIEW } from './constants';
 import type { IWorkflowDb } from '@/Interface';
 
-export function findOneFromModelsResponse(
-	response: ChatModelsResponse,
-): ChatHubConversationModel | undefined {
+export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
 		if (response[provider].models.length > 0) {
-			return response[provider].models[0].model;
+			return response[provider].models[0];
 		}
 	}
 
@@ -141,17 +139,6 @@ export function restoreConversationModelFromMessageOrSession(
 	}
 }
 
-export function describeConversationModel(model: ChatModelDto) {
-	switch (model.model.provider) {
-		case 'n8n':
-			return `n8n workflow ${model.name}`;
-		case 'custom-agent':
-			return `Custom agent ${model.name}`;
-		default:
-			return model.model;
-	}
-}
-
 export function getTimestamp(
 	model: ChatHubConversationModel,
 	type: 'createdAt' | 'updatedAt',
@@ -216,4 +203,23 @@ export function filterAndSortAgents(
 	});
 
 	return filtered;
+}
+
+export function stringifyModel(model: ChatHubConversationModel): string {
+	return `${model.provider}::${model.provider === 'custom-agent' ? model.agentId : model.provider === 'n8n' ? model.workflowId : model.model}`;
+}
+
+export function fromStringToModel(value: string): ChatHubConversationModel | undefined {
+	const [provider, identifier] = value.split('::');
+	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
+
+	if (!parsedProvider) {
+		return undefined;
+	}
+
+	return parsedProvider === 'n8n'
+		? { provider: 'n8n', workflowId: identifier }
+		: parsedProvider === 'custom-agent'
+			? { provider: 'custom-agent', agentId: identifier }
+			: { provider: parsedProvider, model: identifier };
 }

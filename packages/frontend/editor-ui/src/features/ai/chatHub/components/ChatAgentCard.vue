@@ -8,8 +8,8 @@ import TimeAgo from '@/components/TimeAgo.vue';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 
-const { model, agents, workflowsById } = defineProps<{
-	model: ChatModelDto;
+const { agent, agents, workflowsById } = defineProps<{
+	agent: ChatModelDto;
 	agents: ChatHubAgentDto[];
 	workflowsById: Partial<Record<string, IWorkflowDb>>;
 }>();
@@ -19,39 +19,24 @@ const emit = defineEmits<{
 	delete: [];
 }>();
 
-const description = computed(() => {
-	if (model.model.provider === 'custom-agent') {
-		const agent = agents.find(
-			(a) => model.model.provider === 'custom-agent' && a.id === model.model.agentId,
-		);
-
-		// TODO: there's model.description that we could just use?
-		if (agent?.description) {
-			return agent.description;
-		}
-	}
-
-	return 'No description';
-});
-
-const updatedAt = computed(() => getTimestamp(model.model, 'updatedAt', agents, workflowsById));
-const createdAt = computed(() => getTimestamp(model.model, 'createdAt', agents, workflowsById));
+const updatedAt = computed(() => getTimestamp(agent.model, 'updatedAt', agents, workflowsById));
+const createdAt = computed(() => getTimestamp(agent.model, 'createdAt', agents, workflowsById));
 </script>
 
 <template>
-	<RouterLink :to="getAgentRoute(model.model)" :class="$style.card">
-		<ChatAgentAvatar :model="model.model" size="lg" />
+	<RouterLink :to="getAgentRoute(agent.model)" :class="$style.card">
+		<ChatAgentAvatar :agent="agent" size="lg" />
 
 		<div :class="$style.content">
 			<N8nText tag="h3" size="medium" bold :class="$style.title">
-				{{ model.name }}
+				{{ agent.name }}
 			</N8nText>
 			<N8nText size="small" color="text-light" :class="$style.description">
-				{{ description }}
+				{{ agent.description || 'No description' }}
 			</N8nText>
 			<div :class="$style.metadata">
 				<N8nText size="small" color="text-light">
-					{{ model.model.provider === 'n8n' ? 'n8n workflow' : 'Custom agent' }}
+					{{ agent.model.provider === 'n8n' ? 'n8n workflow' : 'Custom agent' }}
 				</N8nText>
 				<N8nText v-if="updatedAt" size="small" color="text-light">
 					Last updated <TimeAgo :date="String(updatedAt)" />
@@ -62,7 +47,7 @@ const createdAt = computed(() => getTimestamp(model.model, 'createdAt', agents, 
 			</div>
 		</div>
 
-		<div v-if="model.model.provider === 'custom-agent'" :class="$style.actions">
+		<div v-if="agent.model.provider === 'custom-agent'" :class="$style.actions">
 			<N8nIconButton
 				icon="pen"
 				type="tertiary"
@@ -85,17 +70,17 @@ const createdAt = computed(() => getTimestamp(model.model, 'createdAt', agents, 
 .card {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--md);
-	padding: var(--spacing--md);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	text-decoration: none;
 	color: inherit;
-	transition: border-color 0.2s ease;
+	transition: box-shadow 0.3s ease;
 
 	&:hover {
-		border-color: var(--color--primary);
+		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
 }
 
@@ -132,11 +117,11 @@ const createdAt = computed(() => getTimestamp(model.model, 'createdAt', agents, 
 		align-items: center;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		white-space: nowrap;
+		white-space: pre;
 	}
 
 	& > *:not(:last-child):after {
-		content: '•';
+		content: '|';
 		display: block;
 		padding-inline: var(--spacing--3xs);
 	}
