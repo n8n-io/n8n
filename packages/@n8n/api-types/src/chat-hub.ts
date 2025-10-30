@@ -67,6 +67,8 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
 export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
 export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
+export type ChatHubBaseLLMModel = ChatHubOpenAIModel | ChatHubAnthropicModel | ChatHubGoogleModel;
+
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
@@ -85,6 +87,8 @@ export interface ChatModelDto {
 	model: ChatHubConversationModel;
 	name: string;
 	description: string | null;
+	updatedAt: string | null;
+	createdAt: string | null;
 }
 
 /**

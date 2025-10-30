@@ -1,26 +1,19 @@
 <script setup lang="ts">
-import { getAgentRoute, getTimestamp } from '@/features/ai/chatHub/chat.utils';
-import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
-import type { ChatHubAgentDto, ChatModelDto } from '@n8n/api-types';
-import type { IWorkflowDb } from '@/Interface';
-import { N8nIconButton, N8nText } from '@n8n/design-system';
 import TimeAgo from '@/components/TimeAgo.vue';
-import { computed } from 'vue';
+import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
+import type { ChatModelDto } from '@n8n/api-types';
+import { N8nIconButton, N8nText } from '@n8n/design-system';
 import { RouterLink } from 'vue-router';
 
-const { agent, agents, workflowsById } = defineProps<{
+const { agent } = defineProps<{
 	agent: ChatModelDto;
-	agents: ChatHubAgentDto[];
-	workflowsById: Partial<Record<string, IWorkflowDb>>;
 }>();
 
 const emit = defineEmits<{
 	edit: [];
 	delete: [];
 }>();
-
-const updatedAt = computed(() => getTimestamp(agent.model, 'updatedAt', agents, workflowsById));
-const createdAt = computed(() => getTimestamp(agent.model, 'createdAt', agents, workflowsById));
 </script>
 
 <template>
@@ -38,11 +31,11 @@ const createdAt = computed(() => getTimestamp(agent.model, 'createdAt', agents, 
 				<N8nText size="small" color="text-light">
 					{{ agent.model.provider === 'n8n' ? 'n8n workflow' : 'Custom agent' }}
 				</N8nText>
-				<N8nText v-if="updatedAt" size="small" color="text-light">
-					Last updated <TimeAgo :date="String(updatedAt)" />
+				<N8nText v-if="agent.updatedAt" size="small" color="text-light">
+					Last updated <TimeAgo :date="agent.updatedAt" />
 				</N8nText>
-				<N8nText v-if="createdAt" size="small" color="text-light">
-					Created <TimeAgo :date="String(createdAt)" />
+				<N8nText v-if="agent.createdAt" size="small" color="text-light">
+					Created <TimeAgo :date="agent.createdAt" />
 				</N8nText>
 			</div>
 		</div>
