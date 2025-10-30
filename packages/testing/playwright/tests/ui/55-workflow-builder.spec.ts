@@ -52,7 +52,7 @@ if (apiKey) {
 	}
 }
 
-test.describe('Workflow Builder @auth:owner', () => {
+test.describe('Workflow Builder @auth:owner @ai', () => {
 	test.beforeEach(async ({ setupRequirements }) => {
 		await setupRequirements(workflowBuilderEnabledRequirements);
 	});
