@@ -75,6 +75,8 @@ class PatchedPointerEvent extends OriginalPointerEvent {
 	}
 }
 
-// Apply patches
-window.MouseEvent = PatchedMouseEvent;
-window.PointerEvent = PatchedPointerEvent;
+beforeEach(() => {
+	vi.stubGlobal('MouseEvent', PatchedMouseEvent);
+	vi.stubGlobal('PointerEvent', PatchedPointerEvent);
+});
+afterEach(() => vi.unstubAllGlobals());
