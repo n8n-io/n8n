@@ -29,7 +29,8 @@ async function openBuilderAndClickSuggestion(n8n: n8nPage) {
 	const firstPill = n8n.aiBuilder.getSuggestionPills().first();
 	await firstPill.waitFor({ state: 'visible' });
 	await firstPill.click();
-	await n8n.page.keyboard.press('Enter');
+	// Suggestion pill already populated the input, just submit with Enter
+	await n8n.aiAssistant.sendMessage('', 'enter-key');
 }
 
 // Pass the API key to the container if available (only works for containerized tests)
@@ -101,6 +102,9 @@ test.describe('Workflow Builder @auth:owner', () => {
 
 			const nodeCount = await n8n.canvas.getCanvasNodes().count();
 			expect(nodeCount).toBeGreaterThan(0);
+
+			// Verify "Execute and refine" button appears after workflow is built
+			await expect(n8n.page.getByRole('button', { name: 'Execute and refine' })).toBeVisible();
 		});
 
 		test('should display assistant messages during workflow generation', async ({ n8n }) => {
@@ -141,6 +145,37 @@ test.describe('Workflow Builder @auth:owner', () => {
 
 			// Verify the Build with AI button is still visible (canvas is back to default)
 			await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
+		});
+
+		test('should not build workflow with vague prompt', async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
+
+			// Open workflow builder
+			await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
+			await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
+
+			// Wait for suggestions to load (but we can type over them)
+			await expect(n8n.aiBuilder.getWorkflowSuggestions()).toBeVisible();
+
+			// Send a vague message that shouldn't trigger workflow generation
+			await n8n.aiAssistant.sendMessage('Hello!', 'enter-key');
+
+			// Wait for user message to appear
+			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
+
+			// Wait for assistant to respond (with longer timeout for API call)
+			const assistantMessages = n8n.aiAssistant.getChatMessagesAssistant();
+			await expect(assistantMessages.first()).toBeVisible({ timeout: 60000 });
+
+			// Verify no nodes were added to canvas
+			const nodeCount = await n8n.canvas.getCanvasNodes().count();
+			expect(nodeCount).toBe(0);
+
+			// Verify "Execute and refine" button does NOT appear (since no workflow was built)
+			await expect(n8n.page.getByRole('button', { name: 'Execute and refine' })).toBeHidden();
+
+			// Verify the chat is still open for further interaction
+			await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
 		});
 	});
 });
