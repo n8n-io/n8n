@@ -12,7 +12,6 @@ export interface ModelWithCredentials {
 	workflowId?: string;
 	credentialId: string | null;
 	agentId?: string;
-	agentName?: string;
 	name?: string;
 }
 

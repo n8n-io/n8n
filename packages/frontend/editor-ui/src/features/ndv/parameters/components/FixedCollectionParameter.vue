@@ -386,7 +386,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 	.controls {
 		:deep(.button) {
-			font-weight: var(--font-weight-normal);
+			font-weight: var(--font-weight--regular);
 			--button--color--text: var(--color--text--shade-1);
 			--button--border-color: var(--color--foreground);
 			--button--color--background: var(--color--background);

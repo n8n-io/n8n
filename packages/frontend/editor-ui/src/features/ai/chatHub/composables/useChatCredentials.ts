@@ -7,12 +7,13 @@ import {
 	type ChatHubProvider,
 } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 /**
  * Composable for managing chat credentials including auto-selection and user selection.
  */
 export function useChatCredentials(userId: string) {
+	const isInitialized = ref(false);
 	const credentialsStore = useCredentialsStore();
 	const selectedCredentials = useLocalStorage<CredentialsMap>(
 		LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(userId),
@@ -56,10 +57,14 @@ export function useChatCredentials(userId: string) {
 		),
 	);
 
-	const credentialsByProvider = computed<CredentialsMap>(() => ({
-		...autoSelectCredentials.value,
-		...selectedCredentials.value,
-	}));
+	const credentialsByProvider = computed<CredentialsMap | null>(() =>
+		isInitialized.value
+			? {
+					...autoSelectCredentials.value,
+					...selectedCredentials.value,
+				}
+			: null,
+	);
 
 	function selectCredential(provider: ChatHubProvider, id: string) {
 		selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
@@ -70,6 +75,7 @@ export function useChatCredentials(userId: string) {
 			credentialsStore.fetchCredentialTypes(false),
 			credentialsStore.fetchAllCredentials(),
 		]);
+		isInitialized.value = true;
 	});
 
 	return { credentialsByProvider, selectCredential };

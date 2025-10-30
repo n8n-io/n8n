@@ -135,9 +135,6 @@ const tag = computed(() => {
 	if (description.value.toLowerCase().includes('deprecated')) {
 		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
 	}
-	if (props.nodeType.name.includes('dataTable')) {
-		return { text: i18n.baseText('nodeCreator.nodeItem.beta'), type: 'info' };
-	}
 	return undefined;
 });
 
@@ -247,8 +244,8 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 
 <style lang="scss" module>
 .nodeItem {
-	--trigger-icon-background-color: #{$trigger-icon-background-color};
-	--trigger-icon-border-color: #{$trigger-icon-border-color};
+	--trigger-icon--color--background: #{$trigger-icon-background-color};
+	--trigger-icon--border-color: #{$trigger-icon-border-color};
 	margin-left: 15px;
 	margin-right: 12px;
 	user-select: none;

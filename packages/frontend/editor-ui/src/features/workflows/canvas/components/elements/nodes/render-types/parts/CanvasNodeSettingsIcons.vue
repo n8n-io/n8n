@@ -90,8 +90,8 @@ const size = 'medium';
 <style lang="scss" module>
 .settingsIcons {
 	position: absolute;
-	top: var(--canvas-node--status-icons-offset);
-	right: var(--canvas-node--status-icons-offset);
+	top: var(--canvas-node--status-icons--margin);
+	right: var(--canvas-node--status-icons--margin);
 	display: flex;
 	flex-direction: row;
 }

@@ -591,7 +591,7 @@ const onDragEnd = (el: HTMLElement) => {
 }
 
 .scroller {
-	padding: 0 var(--ndv-spacing);
+	padding: 0 var(--ndv--spacing);
 	padding-bottom: var(--spacing--2xl);
 
 	.compact & {
@@ -603,7 +603,7 @@ const onDragEnd = (el: HTMLElement) => {
 	display: inline-flex;
 	margin-left: var(--spacing--xl);
 	color: var(--color--text--tint-1);
-	margin-bottom: var(--ndv-spacing);
+	margin-bottom: var(--ndv--spacing);
 }
 
 .notice {
@@ -611,11 +611,13 @@ const onDragEnd = (el: HTMLElement) => {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--lg);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	margin-left: calc(var(--spacing--lg) * var(--schema-level));
 }
 
 .empty-schema {
 	padding-bottom: var(--spacing--xs);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	margin-left: calc((var(--spacing--xl) * var(--schema-level)));
 }
 </style>

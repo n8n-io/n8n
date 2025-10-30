@@ -42,8 +42,8 @@ $--mode-selector-width: 92px;
 }
 
 .rightNoCorner > * {
-	--input-border-bottom-right-radius: 0;
-	--input-border-top-right-radius: 0;
+	--input-triple--radius--bottom-right: 0;
+	--input-triple--radius--top-right: 0;
 }
 
 .resourceLocator {
@@ -52,8 +52,8 @@ $--mode-selector-width: 92px;
 	width: 100%;
 	position: relative;
 
-	--input-issues-width: 28px;
-	--input-override-width: 30px;
+	--resource-locator--input-issues--width: 28px;
+	--resource-locator--input-override--width: 30px;
 
 	.inputContainer {
 		display: flex;
@@ -78,13 +78,13 @@ $--mode-selector-width: 92px;
 		top: 0;
 		bottom: 0;
 		left: 0;
-		right: var(--input-issues-width);
+		right: var(--resource-locator--input-issues--width);
 		border: 1px solid var(--border-color);
 		border-radius: var(--radius);
 	}
 
 	.backgroundOverride {
-		right: var(--input-override-width);
+		right: var(--resource-locator--input-override--width);
 	}
 
 	.backgroundWithIssuesAndShowResourceLink {

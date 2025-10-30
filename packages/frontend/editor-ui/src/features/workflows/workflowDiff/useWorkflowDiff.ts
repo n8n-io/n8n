@@ -1,75 +1,12 @@
-import _pick from 'lodash-es/pick';
-import _isEqual from 'lodash-es/isEqual';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { toValue, computed, ref, watchEffect, shallowRef } from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
-import type { Workflow, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type { Workflow, IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
+import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-
-export const enum NodeDiffStatus {
-	Eq = 'equal',
-	Modified = 'modified',
-	Added = 'added',
-	Deleted = 'deleted',
-}
-
-export type NodeDiff<T> = {
-	status: NodeDiffStatus;
-	node: T;
-};
-
-export type WorkflowDiff<T> = Map<string, NodeDiff<T>>;
-
-export function compareNodes<T extends { id: string }>(
-	base: T | undefined,
-	target: T | undefined,
-): boolean {
-	const propsToCompare = ['name', 'type', 'typeVersion', 'webhookId', 'credentials', 'parameters'];
-
-	const baseNode = _pick(base, propsToCompare);
-	const targetNode = _pick(target, propsToCompare);
-
-	return _isEqual(baseNode, targetNode);
-}
-
-export function compareWorkflowsNodes<T extends { id: string }>(
-	base: T[],
-	target: T[],
-	nodesEqual: (base: T | undefined, target: T | undefined) => boolean = compareNodes,
-): WorkflowDiff<T> {
-	const baseNodes = base.reduce<Map<string, T>>((acc, node) => {
-		acc.set(node.id, node);
-		return acc;
-	}, new Map());
-
-	const targetNodes = target.reduce<Map<string, T>>((acc, node) => {
-		acc.set(node.id, node);
-		return acc;
-	}, new Map());
-
-	const diff: WorkflowDiff<T> = new Map();
-
-	for (const [id, node] of baseNodes.entries()) {
-		if (!targetNodes.has(id)) {
-			diff.set(id, { status: NodeDiffStatus.Deleted, node });
-		} else if (!nodesEqual(baseNodes.get(id), targetNodes.get(id))) {
-			diff.set(id, { status: NodeDiffStatus.Modified, node });
-		} else {
-			diff.set(id, { status: NodeDiffStatus.Eq, node });
-		}
-	}
-
-	for (const [id, node] of targetNodes.entries()) {
-		if (!baseNodes.has(id)) {
-			diff.set(id, { status: NodeDiffStatus.Added, node });
-		}
-	}
-
-	return diff;
-}
 
 export function mapConnections(connections: CanvasConnection[]) {
 	return connections.reduce(

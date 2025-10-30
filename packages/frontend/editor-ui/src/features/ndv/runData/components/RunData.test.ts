@@ -1006,6 +1006,104 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('schema view with mixed execution states', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should show schema view when some upstream nodes are executed', async () => {
+			// Setup: Create a scenario where one upstream node has executed, another hasn't
+			const lastSuccessfulExecution = {
+				id: '456',
+				finished: true,
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				data: {
+					resultData: {
+						runData: {
+							'Executed Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: {
+										main: [[{ json: { test: 'executed data' } }]],
+									},
+									source: [null],
+									executionStatus: 'success' as const,
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				runs: [], // Current node hasn't run
+				lastSuccessfulExecution,
+				paneType: 'input',
+			});
+
+			await waitFor(() => {
+				const schemaComponent = getByTestId('run-data-schema-node');
+				expect(schemaComponent).toBeInTheDocument();
+			});
+		});
+
+		it('should show empty state when all upstream nodes are unexecuted', async () => {
+			const { container } = render({
+				displayMode: 'schema',
+				runs: [],
+				paneType: 'input',
+			});
+
+			expect(
+				container.querySelector('[data-test-id="run-data-schema-node"]'),
+			).not.toBeInTheDocument();
+		});
+
+		it('should show schema view with lastSuccessfulExecution when current node not executed but upstream has data', async () => {
+			const lastSuccessfulExecution = {
+				id: '123',
+				finished: true,
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				data: {
+					resultData: {
+						runData: {
+							'Upstream Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: {
+										main: [[{ json: { value: 'from previous run' } }]],
+									},
+									source: [null],
+									executionStatus: 'success' as const,
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				runs: [],
+				lastSuccessfulExecution,
+				paneType: 'input',
+			});
+
+			await waitFor(() => {
+				const schemaComponent = getByTestId('run-data-schema-node');
+				expect(schemaComponent).toBeInTheDocument();
+				expect(schemaComponent.getAttribute('preview-execution')).toBeTruthy();
+			});
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
