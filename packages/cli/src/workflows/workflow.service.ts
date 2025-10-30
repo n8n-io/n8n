@@ -233,6 +233,8 @@ export class WorkflowService {
 		if (Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active'])).length > 0) {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
+			// This is necessary for collaboration to work properly - even when only name or settings
+			// change, we need to update the version to detect conflicts when multiple users are editing.
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
@@ -240,6 +242,15 @@ export class WorkflowService {
 					previousVersionId: workflow.versionId,
 					newVersionId: workflowUpdateData.versionId,
 				},
+			);
+		}
+
+		const versionChanged = workflowUpdateData.versionId !== workflow.versionId;
+
+		// To create a new version, nodes and connections are required
+		if (versionChanged && (!workflowUpdateData.nodes || !workflowUpdateData.connections)) {
+			throw new Error(
+				`Cannot save workflow history: nodes and connections are required for workflow ${workflowId}`,
 			);
 		}
 
@@ -322,7 +333,7 @@ export class WorkflowService {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
-		if (workflowUpdateData.versionId !== workflow.versionId) {
+		if (versionChanged) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 

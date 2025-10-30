@@ -82,4 +82,19 @@ describe('update()', () => {
 
 		expect(addSpy).not.toHaveBeenCalled();
 	});
+
+	test('should throw error when nodes are missing during name change', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflow({}, owner);
+
+		// Try to update only the name without nodes and connections
+		const updateData = {
+			name: 'New Name',
+			versionId: workflow.versionId, // Include current versionId to pass version conflict check
+		} as any;
+
+		await expect(workflowService.update(owner, updateData, workflow.id)).rejects.toThrow(
+			`Cannot save workflow history: nodes and connections are required for workflow ${workflow.id}`,
+		);
+	});
 });

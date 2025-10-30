@@ -838,11 +838,13 @@ describe('PATCH /workflows/:workflowId', () => {
 			};
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(workflow);
-			const { id, versionId } = createResponse.body.data;
+			const { id, versionId, nodes, connections } = createResponse.body.data;
 
 			const response = await authOwnerAgent.patch(`/workflows/${id}`).send({
 				name: 'new name',
 				versionId,
+				nodes,
+				connections,
 			});
 
 			expect(response.statusCode).toBe(200);
@@ -877,6 +879,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const response = await authOwnerAgent.patch(`/workflows/${id}`).send({
 				versionId,
+				connections: {},
 				nodes: [
 					{
 						id: 'uuid-1234',
@@ -1076,6 +1079,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const response = await authAnotherMemberAgent.patch(`/workflows/${id}`).send({
 				versionId,
+				connections: {},
 				nodes: changedNodes,
 			});
 
@@ -1089,7 +1093,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			// owner creates and shares workflow
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
-			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const { id, versionId: ownerVersionId, nodes, connections } = createResponse.body.data;
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1101,13 +1105,13 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ name: 'Update by member', versionId: memberVersionId });
+				.send({ name: 'Update by member', versionId: memberVersionId, nodes, connections });
 
 			// owner blocked from updating workflow nodes
 
 			const updateAttemptResponse = await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ nodes: [], versionId: ownerVersionId });
+				.send({ nodes: [], connections: {}, versionId: ownerVersionId });
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1117,11 +1121,11 @@ describe('PATCH /workflows/:workflowId', () => {
 			// owner creates, updates and shares workflow
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
-			const { id, versionId: ownerFirstVersionId } = createResponse.body.data;
+			const { id, versionId: ownerFirstVersionId, nodes, connections } = createResponse.body.data;
 
 			const updateResponse = await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ name: 'Update by owner', versionId: ownerFirstVersionId });
+				.send({ name: 'Update by owner', versionId: ownerFirstVersionId, nodes, connections });
 
 			const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
@@ -1138,13 +1142,13 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ name: 'Owner update again', versionId: ownerSecondVersionId });
+				.send({ name: 'Owner update again', versionId: ownerSecondVersionId, nodes, connections });
 
 			// member blocked from updating workflow
 
 			const updateAttemptResponse = await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ nodes: [], versionId: memberVersionId });
+				.send({ nodes: [], connections: {}, versionId: memberVersionId });
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1154,7 +1158,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			// owner creates and shares workflow
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
-			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const { id, versionId: ownerVersionId, nodes, connections } = createResponse.body.data;
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1165,12 +1169,24 @@ describe('PATCH /workflows/:workflowId', () => {
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
 			await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
+				.send({
+					active: true,
+					versionId: memberVersionId,
+					name: 'Update by member',
+					nodes,
+					connections,
+				});
 			// owner blocked from activating workflow
 
 			const activationAttemptResponse = await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: ownerVersionId, name: 'Update by owner' });
+				.send({
+					active: true,
+					versionId: ownerVersionId,
+					name: 'Update by owner',
+					nodes,
+					connections,
+				});
 
 			expect(activationAttemptResponse.status).toBe(400);
 			expect(activationAttemptResponse.body.code).toBe(100);
@@ -1180,11 +1196,11 @@ describe('PATCH /workflows/:workflowId', () => {
 			// owner creates, updates and shares workflow
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
-			const { id, versionId: ownerFirstVersionId } = createResponse.body.data;
+			const { id, versionId: ownerFirstVersionId, nodes, connections } = createResponse.body.data;
 
 			const updateResponse = await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ name: 'Update by owner', versionId: ownerFirstVersionId });
+				.send({ name: 'Update by owner', versionId: ownerFirstVersionId, nodes, connections });
 			const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
 			await authOwnerAgent
@@ -1200,13 +1216,25 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: ownerSecondVersionId, name: 'Owner update again' });
+				.send({
+					active: true,
+					versionId: ownerSecondVersionId,
+					name: 'Owner update again',
+					nodes,
+					connections,
+				});
 
 			// member blocked from activating workflow
 
 			const updateAttemptResponse = await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
+				.send({
+					active: true,
+					versionId: memberVersionId,
+					name: 'Update by member',
+					nodes,
+					connections,
+				});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1216,7 +1244,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			// owner creates and shares workflow
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
-			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const { id, versionId: ownerVersionId, nodes, connections } = createResponse.body.data;
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1230,13 +1258,18 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ name: 'Another name', versionId: ownerVersionId });
+				.send({ name: 'Another name', versionId: ownerVersionId, nodes, connections });
 
 			// member blocked from updating workflow settings
 
 			const updateAttemptResponse = await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
+				.send({
+					settings: { saveManualExecutions: true },
+					versionId: memberVersionId,
+					nodes,
+					connections,
+				});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1246,7 +1279,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			// owner creates and shares workflow
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
-			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const { id, versionId: ownerVersionId, nodes, connections } = createResponse.body.data;
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1260,13 +1293,23 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: ownerVersionId });
+				.send({
+					settings: { saveManualExecutions: true },
+					versionId: ownerVersionId,
+					nodes,
+					connections,
+				});
 
 			// member blocked from updating workflow name
 
 			const updateAttemptResponse = await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
+				.send({
+					settings: { saveManualExecutions: true },
+					versionId: memberVersionId,
+					nodes,
+					connections,
+				});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
