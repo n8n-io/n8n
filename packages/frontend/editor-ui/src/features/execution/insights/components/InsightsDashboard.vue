@@ -6,7 +6,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, now, toCalendarDateTime, today } from '@internationalized/date';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -126,14 +126,9 @@ const range = shallowRef<{
  * Converts the range to a UTC date range with the current time
  */
 const getFilteredRange = () => {
-	const endRange = range.value.end?.toDate(getLocalTimeZone());
-	const startRange = range.value.start?.toDate(getLocalTimeZone());
-
-	const startDate = new Date();
-	startDate.setFullYear(startRange?.getFullYear(), startRange?.getMonth(), startRange?.getDate());
-
-	const endDate = new Date();
-	endDate.setFullYear(endRange?.getFullYear(), endRange?.getMonth(), endRange?.getDate());
+	const timezone = getLocalTimeZone();
+	const startDate = toCalendarDateTime(range.value.start, now(timezone)).toDate(timezone);
+	const endDate = toCalendarDateTime(range.value.end, now(timezone)).toDate(timezone);
 
 	return {
 		startDate: startDate.toISOString() as unknown as Date,
