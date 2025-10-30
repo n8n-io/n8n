@@ -46,7 +46,7 @@ const emit = defineEmits<{
 
 		svg {
 			// ensure enough contrast in both light and dark mode
-			color: var(--color--gray-250);
+			color: var(--color--neutral-250);
 		}
 	}
 }

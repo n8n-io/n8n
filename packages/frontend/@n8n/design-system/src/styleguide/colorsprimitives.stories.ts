@@ -22,7 +22,7 @@ const Template =
 	});
 
 export const Gray = Template(
-	"<color-circles :colors=\"['--color--gray-950', '--color--gray-900', '--color--gray-850', '--color--gray-800', '--color--gray-700', '--color--gray-600', '--color--gray-500', '--color--gray-400', '--color--gray-300', '--color--gray-250', '--color--gray-200', '--color--gray-150', '--color--gray-125', '--color--gray-100', '--color--gray-100', '--color--gray-50', '--color--gray-white']\" />",
+	"<color-circles :colors=\"['--color--neutral-950', '--color--neutral-900', '--color--neutral-850', '--color--neutral-800', '--color--neutral-700', '--color--neutral-600', '--color--neutral-500', '--color--neutral-400', '--color--neutral-300', '--color--neutral-250', '--color--neutral-200', '--color--neutral-150', '--color--neutral-125', '--color--neutral-100', '--color--neutral-100', '--color--neutral-50', '--color--neutral-white']\" />",
 );
 
 export const Primary = Template(

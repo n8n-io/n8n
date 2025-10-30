@@ -49,7 +49,7 @@ defineProps<{
 	&.completed {
 		background-color: var(--color--success);
 		border-color: var(--color--success);
-		color: var(--color--gray-white);
+		color: var(--color--neutral-white);
 	}
 
 	&.inactive {
