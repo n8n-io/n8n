@@ -244,8 +244,8 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 
 <style lang="scss" module>
 .nodeItem {
-	--trigger-icon-background-color: #{$trigger-icon-background-color};
-	--trigger-icon-border-color: #{$trigger-icon-border-color};
+	--trigger-icon--color--background: #{$trigger-icon-background-color};
+	--trigger-icon--border-color: #{$trigger-icon-border-color};
 	margin-left: 15px;
 	margin-right: 12px;
 	user-select: none;

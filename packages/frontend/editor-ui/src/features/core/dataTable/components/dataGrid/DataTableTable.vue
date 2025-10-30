@@ -345,10 +345,6 @@ defineExpose({
 
 		&:global(.boolean-cell) {
 			border: var(--grid--cell--border-color--editing) !important;
-
-			&:global(.ag-cell-focus) {
-				background-color: var(--grid-cell-active-background);
-			}
 		}
 	}
 
