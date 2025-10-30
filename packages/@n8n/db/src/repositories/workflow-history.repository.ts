@@ -30,7 +30,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.delete()
 			.from(WorkflowHistory)
 			.where('createdAt < :date', { date })
-			.andWhere(`versionId NOT IN ${sub}`)
+			.andWhere(`versionId NOT IN (${sub})`)
 			.execute();
 	}
 }
