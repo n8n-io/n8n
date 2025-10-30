@@ -6,7 +6,7 @@ import { computed } from 'vue';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const cloudPlanStore = useCloudPlanStore();
@@ -86,14 +86,33 @@ function onUpdatePlanClick() {
 			</div>
 		</template>
 		<template #trailingContent>
-			<N8nButton type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
-				locale.baseText('generic.upgradeNow')
-			}}</N8nButton>
+			<div :class="$style.trailingContent">
+				<N8nBadge :class="$style.badge" size="small" :show-border="false" :bold="true">
+					{{ locale.baseText('banners.trial.testBadge') }}
+				</N8nBadge>
+				<N8nButton type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
+					locale.baseText('generic.upgradeNow')
+				}}</N8nButton>
+			</div>
 		</template>
 	</BaseBanner>
 </template>
 
 <style module lang="scss">
+.trailingContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.badge {
+	color: var(--color--foreground--tint-2);
+	border: none;
+	background: var(--color--foreground--shade-2);
+	border-radius: var(--radius);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+}
+
 .content {
 	display: flex;
 	align-items: center;

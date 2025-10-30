@@ -258,6 +258,7 @@
 	"banners.confirmEmail.toast.error.message": "Please try again later.",
 	"banners.nonProductionLicense.message": "This n8n instance is not licensed for production purposes.",
 	"banners.trial.message": "1 day left in your n8n trial | {count} days left in your n8n trial",
+	"banners.trial.testBadge": "New badge",
 	"banners.trialOver.message": "Your trial is over. Upgrade now to keep automating.",
 	"banners.v1.message": "n8n has been updated to version 1, introducing some breaking changes. Please consult the <a target=\"_blank\" href=\"https://docs.n8n.io/1-0-migration-checklist\">migration guide</a> for more information.",
 	"binaryDataDisplay.backToList": "Back to list",

@@ -156,6 +156,9 @@ export async function initializeAuthenticatedFeatures(
 		await nodeTypesStore.getNodeTranslationHeaders();
 	}
 
+	// TEMP: Force show trial banner for screenshot
+	uiStore.pushBannerToStack('TRIAL');
+
 	if (settingsStore.isCloudDeployment) {
 		void cloudPlanStore
 			.initialize()
