@@ -113,7 +113,7 @@ function onRetryMenuItemSelect(action: string): void {
 					<N8nText :class="$style.statusLabel" size="small">{{ executionUIDetails.label }}</N8nText>
 					{{ ' ' }}
 					<N8nText
-						v-if="executionUIDetails.name === 'running'"
+						v-if="executionUIDetails.name === 'running' && !execution.stoppedAt"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 						data-test-id="execution-time-in-status"
