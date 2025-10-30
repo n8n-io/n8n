@@ -44,6 +44,15 @@ EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
 EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
 SIGTERM_EXIT_CODE = -15
 SIGKILL_EXIT_CODE = -9
+PIPE_MSG_PREFIX_LENGTH = 4  # bytes
+PIPE_MSG_MAX_SIZE = (
+    2 ** (PIPE_MSG_PREFIX_LENGTH * 8) - 1
+)  # bytes (~4 GiB with 4-byte prefix)
+
+# Pipe reader join timeout
+TYPICAL_PAYLOAD_RATIO = 0.1  # assume typical size is 10% of max payload
+PARSE_THROUGHPUT_BYTES_PER_SEC = 100_000_000  # 100 MB/s
+PIPE_READER_JOIN_TIMEOUT_SAFETY_BUFFER = 2.0  # seconds
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -97,6 +106,11 @@ LOG_TASK_CANCEL_UNKNOWN = (
 )
 LOG_TASK_CANCEL_WAITING = "Cancelled task {task_id} (waiting for settings)"
 LOG_SENTRY_MISSING = "Sentry is enabled but sentry-sdk is not installed. Install with: uv sync --all-extras"
+LOG_PIPE_READER_TIMEOUT_TRIGGERED = (
+    "Pipe reader thread did not finish reading within {timeout}s. "
+    "Closing pipe to unblock. Task may fail if data was not fully read. "
+    "For large payloads, increase N8N_RUNNERS_MAX_PAYLOAD to scale timeout."
+)
 
 # RPC
 RPC_BROWSER_CONSOLE_LOG_METHOD = "logNodeOutput"
