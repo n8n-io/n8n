@@ -78,7 +78,7 @@ async function handleDeleteSession(sessionId: string) {
 }
 
 onMounted(() => {
-	void Promise.all([chatStore.fetchSessions(), chatStore.fetchCustomAgents()]);
+	void chatStore.fetchSessions();
 });
 </script>
 
