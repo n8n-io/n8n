@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
+import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL, VIEWS } from '@/constants';
 import {
 	findOneFromModelsResponse,
 	restoreConversationModelFromMessageOrSession,
@@ -380,6 +380,10 @@ function openNewAgentCreator() {
 function closeAgentEditor() {
 	editingAgentId.value = undefined;
 }
+
+function handleOpenWorkflow(workflowId: string) {
+	void router.push({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+}
 </script>
 
 <template>
@@ -400,6 +404,7 @@ function closeAgentEditor() {
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
+			@open-workflow="handleOpenWorkflow"
 		/>
 
 		<AgentEditorModal
