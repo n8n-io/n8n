@@ -1,13 +1,12 @@
-import type { MigrationContext, ReversibleMigration } from '../migration-types';
+import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
-export class BackfillMissingWorkflowHistoryRecords1761609600000 implements ReversibleMigration {
+export class BackfillMissingWorkflowHistoryRecords1761609600000 implements IrreversibleMigration {
 	/**
-	 * Create workflow_history records for workflows where the versionId
-	 * doesn't exist in workflow_history table.
-	 *
-	 * This ensures all workflows have a history record for their current version.
+	 * 1. Generate versionIds for workflows with NULL versionId (only possible for manual inserts)
+	 * 2. Create workflow_history records for all workflows missing them
+	 * 3. Make versionId NOT NULL to ensure data consistency
 	 */
-	async up({ escape, runQuery, logger }: MigrationContext) {
+	async up({ escape, runQuery, schemaBuilder }: MigrationContext) {
 		const workflowTable = escape.tableName('workflow_entity');
 		const historyTable = escape.tableName('workflow_history');
 		const versionIdColumn = escape.columnName('versionId');
@@ -19,83 +18,59 @@ export class BackfillMissingWorkflowHistoryRecords1761609600000 implements Rever
 		const createdAtColumn = escape.columnName('createdAt');
 		const updatedAtColumn = escape.columnName('updatedAt');
 
-		// Find workflows with versionIds that don't exist in workflow_history
-		const workflowsWithMissingHistory = await runQuery<
-			Array<{
-				workflowId: string;
-				versionId: string;
-				nodes: string;
-				connections: string;
-			}>
-		>(`
-			SELECT
-				w.${idColumn} as workflowId,
-				w.${versionIdColumn} as versionId,
-				w.${nodesColumn} as nodes,
-				w.${connectionsColumn} as connections
-			FROM ${workflowTable} w
-			LEFT JOIN ${historyTable} wh ON w.${versionIdColumn} = wh.${versionIdColumn}
-			WHERE w.${versionIdColumn} IS NOT NULL
-			AND wh.${versionIdColumn} IS NULL
+		// Step 1: Generate versionIds for workflows that have NULL or empty versionId
+		const workflowsWithoutVersionId = await runQuery<Array<{ id: string }>>(`
+			SELECT ${idColumn} as id
+			FROM ${workflowTable}
+			WHERE ${versionIdColumn} IS NULL OR ${versionIdColumn} = ''
 		`);
 
-		if (workflowsWithMissingHistory.length === 0) {
-			logger.info('No missing workflow history records found - skipping backfill');
-			return;
-		}
-
-		logger.info(
-			`Found ${workflowsWithMissingHistory.length} workflows with missing history records`,
-		);
-
-		const now = new Date();
-		const authors = 'system migration';
-
-		// Insert missing records in batches to avoid overwhelming the database
-		const batchSize = 100;
-		for (let i = 0; i < workflowsWithMissingHistory.length; i += batchSize) {
-			const batch = workflowsWithMissingHistory.slice(i, i + batchSize);
-
-			// Insert each record in the batch
-			for (const workflow of batch) {
-				await runQuery(
-					`INSERT INTO ${historyTable}
-						(${versionIdColumn}, ${workflowIdColumn}, ${authorsColumn}, ${nodesColumn}, ${connectionsColumn}, ${createdAtColumn}, ${updatedAtColumn})
-					VALUES (:versionId, :workflowId, :authors, :nodes, :connections, :createdAt, :updatedAt)`,
-					{
-						versionId: workflow.versionId,
-						workflowId: workflow.workflowId,
-						authors,
-						nodes: workflow.nodes,
-						connections: workflow.connections,
-						createdAt: now,
-						updatedAt: now,
-					},
-				);
-			}
-
-			logger.info(
-				`Backfilled batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(workflowsWithMissingHistory.length / batchSize)}`,
+		// Running in a loop to avoid using DB-specific syntax for generating UUIDs
+		for (const workflow of workflowsWithoutVersionId) {
+			const versionId = crypto.randomUUID();
+			await runQuery(
+				`
+				UPDATE ${workflowTable}
+				SET ${versionIdColumn} = :versionId
+				WHERE ${idColumn} = :id
+				`,
+				{ versionId, id: workflow.id },
 			);
 		}
 
-		logger.info(
-			`Successfully backfilled ${workflowsWithMissingHistory.length} workflow history records`,
-		);
-	}
-
-	async down({ escape, runQuery }: MigrationContext) {
-		const historyTable = escape.tableName('workflow_history');
-		const authorsColumn = escape.columnName('authors');
-
+		// Step 2: Create workflow_history records for workflows missing them
 		await runQuery(
 			`
-			DELETE FROM ${historyTable}
-			WHERE ${authorsColumn} = :authors
-		`,
+			INSERT INTO ${historyTable} (
+				${versionIdColumn},
+				${workflowIdColumn},
+				${authorsColumn},
+				${nodesColumn},
+				${connectionsColumn},
+				${createdAtColumn},
+				${updatedAtColumn}
+			)
+			SELECT
+				w.${versionIdColumn},
+				w.${idColumn},
+				:authors,
+				w.${nodesColumn},
+				w.${connectionsColumn},
+				:createdAt,
+				:updatedAt
+		    FROM ${workflowTable} w
+	        LEFT JOIN ${historyTable} wh
+				ON w.${versionIdColumn} = wh.${versionIdColumn}
+			WHERE wh.${versionIdColumn} IS NULL
+			`,
 			{
 				authors: 'system migration',
+				createdAt: new Date(),
+				updatedAt: new Date(),
 			},
 		);
+
+		// Step 3: Make versionId NOT NULL
+		await schemaBuilder.addNotNull('workflow_entity', 'versionId');
 	}
 }
