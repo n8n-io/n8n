@@ -10,6 +10,7 @@ import { JwtService } from '@/services/jwt.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
+import { AccessTokenRepository } from '../oauth-access-token.repository';
 
 const mockReqWith = (authHeader: string | undefined) => {
 	const req = mockDeep<Request>();
@@ -26,6 +27,7 @@ const jwtService = new JwtService(instanceSettings, mock());
 let userRepository: jest.Mocked<UserRepository>;
 let apiKeyRepository: jest.Mocked<ApiKeyRepository>;
 let telemetry: jest.Mocked<Telemetry>;
+let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
 let mcpServerApiKeyService: McpServerApiKeyService;
 
 describe('McpServerApiKeyService', () => {
@@ -37,11 +39,13 @@ describe('McpServerApiKeyService', () => {
 		userRepository = mockInstance(UserRepository);
 		apiKeyRepository = mockInstance(ApiKeyRepository);
 		telemetry = mockInstance(Telemetry);
+		accessTokenRepository = mockInstance(AccessTokenRepository);
 		mcpServerApiKeyService = new McpServerApiKeyService(
 			apiKeyRepository,
 			jwtService,
 			userRepository,
 			telemetry,
+			accessTokenRepository,
 		);
 	});
 

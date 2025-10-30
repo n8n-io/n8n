@@ -7,6 +7,7 @@ import { ApiKeyAudience } from 'n8n-workflow';
 
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
 import { getClientInfo } from './mcp.utils';
+import { AccessTokenRepository } from './oauth-access-token.repository';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
@@ -29,6 +30,7 @@ export class McpServerApiKeyService {
 		private readonly jwtService: JwtService,
 		private readonly userRepository: UserRepository,
 		private readonly telemetry: Telemetry,
+		private readonly accessTokenRepository: AccessTokenRepository,
 	) {}
 
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
@@ -81,6 +83,26 @@ export class McpServerApiKeyService {
 		});
 	}
 
+	private async getUserForAccessToken(token: string) {
+		const accessToken = await this.accessTokenRepository.findOne({
+			where: {
+				token,
+				revoked: false,
+			},
+		});
+
+		if (!accessToken) {
+			return null;
+		}
+
+		return await this.userRepository.findOne({
+			where: {
+				id: accessToken.userId,
+			},
+			relations: ['role'],
+		});
+	}
+
 	async deleteAllMcpApiKeysForUser(user: User, trx?: EntityManager) {
 		const manager = trx ?? this.apiKeyRepository.manager;
 
@@ -123,26 +145,35 @@ export class McpServerApiKeyService {
 				return;
 			}
 
-			const apiKey = this.extractAPIKeyFromHeader(authorizationHeader);
+			const token = this.extractAPIKeyFromHeader(authorizationHeader);
 
-			if (!apiKey) {
+			if (!token) {
 				this.responseWithUnauthorized(res, req);
 				return;
 			}
 
-			const user = await this.getUserForApiKey(apiKey);
+			// Try to validate as API key first
+			let user = await this.getUserForApiKey(token);
+
+			if (user) {
+				// Validate JWT for API key
+				try {
+					this.jwtService.verify(token, {
+						issuer: API_KEY_ISSUER,
+						audience: API_KEY_AUDIENCE,
+					});
+					(req as AuthenticatedRequest).user = user;
+					next();
+					return;
+				} catch (e) {
+					// JWT verification failed, continue to try OAuth token
+				}
+			}
+
+			// Try to validate as OAuth access token
+			user = await this.getUserForAccessToken(token);
 
 			if (!user) {
-				this.responseWithUnauthorized(res, req);
-				return;
-			}
-
-			try {
-				this.jwtService.verify(apiKey, {
-					issuer: API_KEY_ISSUER,
-					audience: API_KEY_AUDIENCE,
-				});
-			} catch (e) {
 				this.responseWithUnauthorized(res, req);
 				return;
 			}
