@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowDependencyRepository } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
@@ -91,50 +93,50 @@ describe('WorkflowIndexService', () => {
 					expect.objectContaining({
 						dependencyType: 'nodeType',
 						dependencyKey: 'n8n-nodes-base.webhook',
-						dependencyInfo: { id: 'node-1', version: 1 },
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 }
 					}),
 					expect.objectContaining({
 						dependencyType: 'nodeType',
 						dependencyKey: 'n8n-nodes-base.httpRequest',
-						dependencyInfo: { id: 'node-2', version: 1 },
+						dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 }
 					}),
 					expect.objectContaining({
 						dependencyType: 'nodeType',
 						dependencyKey: 'n8n-nodes-base.executeWorkflow',
-						dependencyInfo: { id: 'node-3', version: 1 },
+						dependencyInfo: { nodeId: 'node-3', nodeVersion: 1 }
 					}),
 					expect.objectContaining({
 						dependencyType: 'nodeType',
 						dependencyKey: 'n8n-nodes-base.executeWorkflow',
-						dependencyInfo: { id: 'node-4', version: 1 },
+						dependencyInfo: { nodeId: 'node-4', nodeVersion: 1 }
 					}),
 					// webhookPath dependencies
 					expect.objectContaining({
 						dependencyType: 'webhookPath',
 						dependencyKey: 'webhook-1',
-						dependencyInfo: { id: 'node-1', version: 1 },
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 }
 					}),
 					// credentialId dependencies
 					expect.objectContaining({
 						dependencyType: 'credentialId',
 						dependencyKey: 'cred-1',
-						dependencyInfo: { id: 'node-2', version: 1 },
+						dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 }
 					}),
 					expect.objectContaining({
 						dependencyType: 'credentialId',
 						dependencyKey: 'cred-2',
-						dependencyInfo: { id: 'node-2', version: 1 },
+						dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 }
 					}),
 					// workflowCall dependencies (both string and object format)
 					expect.objectContaining({
 						dependencyType: 'workflowCall',
 						dependencyKey: 'sub-workflow-1',
-						dependencyInfo: { id: 'node-3', version: 1 },
+						dependencyInfo: { nodeId: 'node-3', nodeVersion: 1 }
 					}),
 					expect.objectContaining({
 						dependencyType: 'workflowCall',
 						dependencyKey: 'sub-workflow-2',
-						dependencyInfo: { id: 'node-4', version: 1 },
+						dependencyInfo: { nodeId: 'node-4', nodeVersion: 1 }
 					}),
 				]),
 			}),
@@ -219,17 +221,17 @@ describe('WorkflowIndexService', () => {
 					expect.objectContaining({
 						dependencyType: 'credentialId',
 						dependencyKey: 'cred-1',
-						dependencyInfo: { id: 'node-1', version: 1 },
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 }
 					}),
 					expect.objectContaining({
 						dependencyType: 'credentialId',
 						dependencyKey: 'cred-2',
-						dependencyInfo: { id: 'node-1', version: 1 },
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 }
 					}),
 					expect.objectContaining({
 						dependencyType: 'credentialId',
 						dependencyKey: 'cred-3',
-						dependencyInfo: { id: 'node-1', version: 1 },
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 }
 					}),
 				]),
 			}),

@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowDependencies, WorkflowDependencyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { INode, IWorkflowBase } from 'n8n-workflow';
+import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
 /**
  * Service for managing the workflow dependency index. The index tracks dependencies such as node types,
@@ -26,16 +26,11 @@ export class WorkflowIndexService {
 	 * NOTE: this should generally be handled via events, rather than called directly.
 	 * The exception is during workflow imports where it's simpler to call directly.
 	 *
-	 * @param workflow
 	 */
 	async updateIndexFor(workflow: IWorkflowBase) {
 		// TODO: input validation.
 		// Generate the dependency updates for the given workflow.
-		const dependencyUpdates = new WorkflowDependencies(
-			workflow.id,
-			workflow.versionCounter,
-			/*indexVersionId=*/ 1, // TODO: find a better way to manage this.
-		);
+		const dependencyUpdates = new WorkflowDependencies(workflow.id, workflow.versionCounter);
 
 		workflow.nodes.forEach((node) => {
 			this.addNodeTypeDependencies(node, dependencyUpdates);
@@ -50,11 +45,12 @@ export class WorkflowIndexService {
 				workflow.id,
 				dependencyUpdates,
 			);
-		} catch (error) {
+		} catch (e) {
+			const error = ensureError(e);
 			this.logger.error(
-				`Failed to update workflow dependency index for workflow ${workflow.id}: ${(error as Error).message}`,
+				`Failed to update workflow dependency index for workflow ${workflow.id}: ${error.message}`,
 			);
-			this.errorReporter.error(error as Error);
+			this.errorReporter.error(error);
 			return;
 		}
 		this.logger.debug(
@@ -66,7 +62,7 @@ export class WorkflowIndexService {
 		dependencyUpdates.add({
 			dependencyType: 'nodeType',
 			dependencyKey: node.type,
-			dependencyInfo: { id: node.id, version: node.typeVersion },
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 		});
 	}
 
@@ -79,7 +75,7 @@ export class WorkflowIndexService {
 			dependencyUpdates.add({
 				dependencyType: 'credentialId',
 				dependencyKey: id,
-				dependencyInfo: { id: node.id, version: node.typeVersion },
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 			});
 		}
 	}
@@ -95,7 +91,7 @@ export class WorkflowIndexService {
 		dependencyUpdates.add({
 			dependencyType: 'workflowCall',
 			dependencyKey: calledWorkflowId,
-			dependencyInfo: { id: node.id, version: node.typeVersion },
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 		});
 	}
 
@@ -107,7 +103,7 @@ export class WorkflowIndexService {
 		dependencyUpdates.add({
 			dependencyType: 'webhookPath',
 			dependencyKey: webhookPath,
-			dependencyInfo: { id: node.id, version: node.typeVersion },
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 		});
 	}
 
@@ -136,6 +132,7 @@ export class WorkflowIndexService {
 		}
 		this.errorReporter.warn(
 			`While indexing, could not determine called workflow ID from executeWorkflow node ${node.id}`,
+			{ extra: node.parameters },
 		);
 		return undefined;
 	}

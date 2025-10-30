@@ -4,6 +4,8 @@ import { DataSource, EntityManager, LessThan, Repository } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
 
+const INDEX_VERSION_ID = 1;
+
 /**
  * Helper class to collect workflow dependencies before writing them to the database.
  */
@@ -13,7 +15,6 @@ export class WorkflowDependencies {
 	constructor(
 		readonly workflowId: string,
 		readonly workflowVersionId: number | undefined,
-		readonly indexVersionId: number,
 	) {}
 
 	add(dependency: {
@@ -26,7 +27,7 @@ export class WorkflowDependencies {
 		Object.assign(dep, {
 			workflowId: this.workflowId,
 			workflowVersionId: this.workflowVersionId,
-			indexVersionId: this.indexVersionId,
+			indexVersionId: INDEX_VERSION_ID,
 		});
 		this.dependencies.push(dep);
 	}

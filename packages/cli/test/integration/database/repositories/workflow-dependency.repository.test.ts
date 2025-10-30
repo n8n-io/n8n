@@ -51,7 +51,7 @@ if (globalConfig.database.isLegacySqlite) {
 				// ARRANGE
 				//
 				const workflow = await createWorkflow({ versionId: 'v1' });
-				const dependencies = new WorkflowDependencies(workflow.id, 1, 1);
+				const dependencies = new WorkflowDependencies(workflow.id, 1);
 				dependencies.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-123',
@@ -105,7 +105,7 @@ if (globalConfig.database.isLegacySqlite) {
 				const workflow = await createWorkflow({ versionId: 'v1' });
 
 				// Insert initial dependencies with version 1
-				const initialDeps = new WorkflowDependencies(workflow.id, 1, 1);
+				const initialDeps = new WorkflowDependencies(workflow.id, 1);
 				initialDeps.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-old',
@@ -114,7 +114,7 @@ if (globalConfig.database.isLegacySqlite) {
 				await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, initialDeps);
 
 				// Create new dependencies with version 2
-				const updatedDeps = new WorkflowDependencies(workflow.id, 2, 1);
+				const updatedDeps = new WorkflowDependencies(workflow.id, 2);
 				updatedDeps.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-new',
@@ -156,7 +156,7 @@ if (globalConfig.database.isLegacySqlite) {
 				const workflow = await createWorkflow({ versionId: 'v2' });
 
 				// Insert dependencies with version 2
-				const newerDeps = new WorkflowDependencies(workflow.id, 2, 1);
+				const newerDeps = new WorkflowDependencies(workflow.id, 2);
 				newerDeps.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-new',
@@ -165,7 +165,7 @@ if (globalConfig.database.isLegacySqlite) {
 				await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, newerDeps);
 
 				// Try to update with older version 1
-				const olderDeps = new WorkflowDependencies(workflow.id, 1, 1);
+				const olderDeps = new WorkflowDependencies(workflow.id, 1);
 				olderDeps.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-old',
@@ -198,14 +198,14 @@ if (globalConfig.database.isLegacySqlite) {
 				//
 				const workflow = await createWorkflow({ versionId: '2' });
 
-				const depsVersion1 = new WorkflowDependencies(workflow.id, 1, 1);
+				const depsVersion1 = new WorkflowDependencies(workflow.id, 1);
 				depsVersion1.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-1',
 					dependencyInfo: null,
 				});
 
-				const depsVersion2 = new WorkflowDependencies(workflow.id, 2, 1);
+				const depsVersion2 = new WorkflowDependencies(workflow.id, 2);
 				depsVersion2.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-2',
@@ -242,7 +242,7 @@ if (globalConfig.database.isLegacySqlite) {
 				// ARRANGE
 				//
 				const workflow = await createWorkflow({ versionId: 'v1' });
-				const dependencies = new WorkflowDependencies(workflow.id, 1, 1);
+				const dependencies = new WorkflowDependencies(workflow.id, 1);
 				dependencies.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-1',
