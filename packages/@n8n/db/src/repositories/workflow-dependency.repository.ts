@@ -51,50 +51,13 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		workflowId: string,
 		dependencies: WorkflowDependencies,
 	): Promise<boolean> {
-		if (this.databaseConfig.type === 'sqlite') {
-			// SQLite has different concurrency controls, so we handle it slightly differently.
-			// TODO: this is only necessary for the legacy driver. Once that's removed in v2, we can
-			// unify the logic with the other databases.
-			return await this.updateWithImmediateTransaction(workflowId, dependencies);
+		if (this.databaseConfig.isLegacySqlite) {
+			console.log('Throwing error');
+			throw new Error('Workflow dependency indexing is not supported on legacy SQLite databases');
 		}
 		return await this.manager.transaction(async (tx) => {
 			return await this.executeUpdate(workflowId, dependencies, tx);
 		});
-	}
-
-	private async updateWithImmediateTransaction(
-		workflowId: string,
-		dependencies: WorkflowDependencies,
-	): Promise<boolean> {
-		// We use a query runner to have more control over the transaction.
-		const queryRunner = this.manager.connection.createQueryRunner();
-		await queryRunner.connect();
-
-		try {
-			// Set a busy_timeout - otherwise the query will fail immediately if the database is locked.
-			// This enables retrying for a short period instead.
-			await queryRunner.query('PRAGMA busy_timeout = 5000');
-
-			// Start an immediate transaction FIRST to acquire a RESERVED lock.
-			// NOTE: in the typical case where we're updating an existing workflow, this would happen
-			// anyway when we delete the existing dependencies. We lock explicitly to make it clearer,
-			// and ensure nothing weird happens when there are no existing dependencies.
-			// NOTE: we use raw SQL here because TypeORM does not support specifying the transaction type.
-			await queryRunner.query('BEGIN IMMEDIATE TRANSACTION');
-
-			try {
-				// Perform the update using queryRunner.manager
-				const result = await this.executeUpdate(workflowId, dependencies, queryRunner.manager);
-
-				await queryRunner.query('COMMIT');
-				return result;
-			} catch (error) {
-				await queryRunner.query('ROLLBACK');
-				throw error;
-			}
-		} finally {
-			await queryRunner.release();
-		}
 	}
 
 	private async executeUpdate(
@@ -146,6 +109,9 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * @returns Whether any dependencies were removed
 	 */
 	async removeDependenciesForWorkflow(workflowId: string): Promise<boolean> {
+		if (this.databaseConfig.isLegacySqlite) {
+			throw new Error('Workflow dependency indexing is not supported on legacy SQLite databases');
+		}
 		return await this.manager.transaction(async (tx) => {
 			const deleteResult = await tx.delete(WorkflowDependency, { workflowId });
 
