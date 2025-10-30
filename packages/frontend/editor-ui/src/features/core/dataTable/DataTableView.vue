@@ -1,30 +1,31 @@
 <script setup lang="ts">
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 
-import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useToast } from '@/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { SortingAndPaginationUpdates } from '@/Interface';
-import type { DataTableResource } from '@/features/core/dataTable/types';
 import DataTableCard from '@/features/core/dataTable/components/DataTableCard.vue';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import {
 	ADD_DATA_TABLE_MODAL_KEY,
 	DEFAULT_DATA_TABLE_PAGE_SIZE,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
-import { useDebounce } from '@/composables/useDebounce';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import type { DataTableResource } from '@/features/core/dataTable/types';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { SortingAndPaginationUpdates } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionBox } from '@n8n/design-system';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import { N8nActionBox } from '@n8n/design-system';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -39,6 +40,12 @@ const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
+
+const projectPermissions = computed(() =>
+	getResourcePermissions(
+		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
+	),
+);
 
 const loading = ref(true);
 
@@ -148,8 +155,14 @@ watch(
 				:description="i18n.baseText('dataTable.empty.description')"
 				:button-text="i18n.baseText('dataTable.add.button.label')"
 				button-type="secondary"
+				:button-disabled="!projectPermissions.dataTable.create"
+				:button-icon="!projectPermissions.dataTable.create ? 'lock' : undefined"
 				@click:button="onAddModalClick"
-			/>
+			>
+				<template #disabledButtonTooltip>
+					{{ i18n.baseText('dataTable.empty.button.disabled.tooltip') }}
+				</template>
+			</N8nActionBox>
 		</template>
 		<template #item="{ item: data }">
 			<DataTableCard

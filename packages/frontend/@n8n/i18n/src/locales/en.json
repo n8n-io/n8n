@@ -3157,6 +3157,7 @@
 	"dataTable.dataTables": "Data tables",
 	"dataTable.empty.label": "You don't have any data tables yet",
 	"dataTable.empty.description": "Use data tables to persist execution results, share data between workflows, and track metrics for evaluation.",
+	"dataTable.empty.button.disabled.tooltip": "Your current role in the project does not allow you to create data tables",
 	"dataTable.card.size": "{size}MB",
 	"dataTable.card.column.count": "{count} column | {count} columns",
 	"dataTable.add.title": "Create new data table",
