@@ -14,7 +14,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { deepCopy, NodeHelpers } from 'n8n-workflow';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
@@ -59,6 +59,9 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import toPath from 'lodash/toPath';
 
 type Props = {
 	modalName: string;
@@ -569,16 +572,31 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 
 function onDataChange({ name, value }: IUpdateInformation) {
 	// skip update if new value matches the current
-	if (credentialData.value[name] === value) return;
+	const currentValue = get(credentialData.value, name);
+	if (currentValue === value) {
+		return;
+	}
 
 	hasUnsavedChanges.value = true;
 
 	const { oauthTokenData, ...credData } = credentialData.value;
+	credentialData.value = deepCopy(credData);
 
-	credentialData.value = {
-		...credData,
-		[name]: value as CredentialInformation,
-	};
+	// for fixed collections:
+	// if the value is undefined and the name (path) ends with a number
+	// we need to remove the item from the array
+	if (value === undefined && name.endsWith(']')) {
+		const path = toPath(name);
+		const index = parseInt(path[path.length - 1], 10);
+		const arrayPath = path.slice(0, -1);
+		const array = get(credentialData.value, arrayPath) as unknown[];
+		if (Array.isArray(array)) {
+			array.splice(index, 1);
+			set(credentialData.value, arrayPath, array);
+		}
+	} else {
+		set(credentialData.value, name, value);
+	}
 }
 
 function closeDialog() {
@@ -1142,8 +1160,8 @@ const { width } = useElementSize(credNameRef);
 				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
 					<N8nMenuItem
 						v-for="item in sidebarItems"
-						:item="item"
 						:key="item.id"
+						:item="item"
 						:active="activeTab === item.id"
 						@click="() => onTabSelect(item.id)"
 					/>
