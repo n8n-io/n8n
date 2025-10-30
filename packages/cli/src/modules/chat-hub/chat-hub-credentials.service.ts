@@ -1,4 +1,9 @@
-import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubConversationModel } from '@n8n/api-types';
+import {
+	ChatHubLLMProvider,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubConversationModel,
+} from '@n8n/api-types';
+import type { User, CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
@@ -6,7 +11,6 @@ import type { INodeCredentials } from 'n8n-workflow';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { User, CredentialsEntity } from '@n8n/db';
 
 export type CredentialWithProjectId = CredentialsEntity & { projectId: string };
 
@@ -16,7 +20,7 @@ export class ChatHubCredentialsService {
 
 	async ensureCredentials(
 		user: User,
-		model: ChatHubConversationModel,
+		provider: ChatHubLLMProvider,
 		credentials: INodeCredentials,
 		trx?: EntityManager,
 	): Promise<CredentialWithProjectId> {
@@ -26,7 +30,7 @@ export class ChatHubCredentialsService {
 			trx,
 		);
 
-		const credentialId = this.pickCredentialId(model.provider, credentials);
+		const credentialId = this.pickCredentialId(provider, credentials);
 		if (!credentialId) {
 			throw new BadRequestError('No credentials provided for the selected model provider');
 		}

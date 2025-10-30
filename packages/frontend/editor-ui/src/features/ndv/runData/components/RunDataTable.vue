@@ -981,7 +981,7 @@ th.isCollapsingColumn + th {
 
 .tableRightMargin {
 	// becomes necessary with large tables
-	width: var(--ndv-spacing);
+	width: var(--ndv--spacing);
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;

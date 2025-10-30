@@ -135,7 +135,7 @@ const onInstall = async () => {
 .title {
 	display: flex;
 	align-items: center;
-	color: var(--color-text);
+	color: var(--color--text);
 	font-size: var(--font-size--xl);
 	font-weight: var(--font-weight--bold);
 }

@@ -2002,7 +2002,7 @@ onUpdated(async () => {
 
 .tipVisible {
 	--input--radius--bottom-left: 0;
-	--input-border-bottom-right-radius: 0;
+	--input-triple--radius--bottom-right: 0;
 }
 
 .tip {
@@ -2019,8 +2019,8 @@ onUpdated(async () => {
 }
 
 .noRightCornersInput > * {
-	--input-border-bottom-right-radius: 0;
-	--input-border-top-right-radius: 0;
+	--input-triple--radius--bottom-right: 0;
+	--input-triple--radius--top-right: 0;
 }
 
 .overrideButton {
