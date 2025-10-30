@@ -285,9 +285,17 @@ describe('Resource Access Control Matrix Tests', () => {
 			});
 
 			test('PATCH /workflows/:id should return 200', async () => {
+				const getResponse = await testUserAgent.get(`/workflows/${testWorkflowId}`).expect(200);
+				const { nodes, connections } = getResponse.body.data;
+
 				const response = await testUserAgent
 					.patch(`/workflows/${testWorkflowId}`)
-					.send({ name: 'Updated by All-Ops', versionId: testWorkflowVersionId })
+					.send({
+						name: 'Updated by All-Ops',
+						versionId: testWorkflowVersionId,
+						nodes,
+						connections,
+					})
 					.expect(200);
 				expect(response.body.data.name).toBe('Updated by All-Ops');
 			});
