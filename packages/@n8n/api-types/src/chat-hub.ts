@@ -85,6 +85,8 @@ export interface ChatModelDto {
 	model: ChatHubConversationModel;
 	name: string;
 	description: string | null;
+	updatedAt: string | null;
+	createdAt: string | null;
 }
 
 /**

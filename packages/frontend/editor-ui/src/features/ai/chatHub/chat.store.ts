@@ -13,7 +13,6 @@ import {
 	deleteConversationApi,
 	stopGenerationApi,
 	fetchSingleConversationApi,
-	fetchAgentsApi,
 	fetchAgentApi,
 	createAgentApi,
 	updateAgentApi,
@@ -44,7 +43,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
-	const customAgents = ref<ChatHubAgentDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
@@ -593,10 +591,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
-	async function fetchCustomAgents() {
-		customAgents.value = await fetchAgentsApi(rootStore.restApiContext);
-	}
-
 	async function fetchCustomAgent(agentId: string): Promise<ChatHubAgentDto> {
 		const agent = await fetchAgentApi(rootStore.restApiContext, agentId);
 		currentEditingAgent.value = agent;
@@ -614,7 +608,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		credentials: CredentialsMap,
 	): Promise<ChatModelDto> {
 		const agent = await createAgentApi(rootStore.restApiContext, payload);
-		customAgents.value = [...(customAgents.value ?? []), agent];
 		const agentModel = {
 			model: {
 				provider: 'custom-agent' as const,
@@ -622,6 +615,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			},
 			name: agent.name,
 			description: agent.description ?? null,
+			createdAt: agent.createdAt,
+			updatedAt: agent.updatedAt,
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
 
@@ -636,7 +631,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
 		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
-		customAgents.value = customAgents.value?.map((a) => (a.id === agentId ? agent : a));
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {
@@ -652,7 +646,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	async function deleteCustomAgent(agentId: string, credentials: CredentialsMap) {
 		await deleteAgentApi(rootStore.restApiContext, agentId);
-		customAgents.value = customAgents.value?.filter((a) => a.id !== agentId);
 
 		// Remove the agent from models as well
 		if (agents.value?.['custom-agent']) {
@@ -684,13 +677,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 */
 		agents: computed(() => agents.value ?? emptyChatModelsResponse),
 		agentsReady: computed(() => agents.value !== undefined),
-		customAgents: computed(() => customAgents.value ?? []),
-		customAgentsReady: computed(() => customAgents.value !== undefined),
 		currentEditingAgent,
 		getAgent,
 		fetchAgents,
 		getCustomAgent,
-		fetchCustomAgents,
 		fetchCustomAgent,
 		createCustomAgent,
 		updateCustomAgent,
