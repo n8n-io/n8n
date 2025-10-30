@@ -15,6 +15,7 @@ import {
 	ChatHubBaseLLMModel,
 	ChatHubN8nModel,
 	ChatHubCustomAgentModel,
+	emptyChatModelsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
@@ -137,14 +138,7 @@ export class ChatHubService {
 				acc[provider] = res;
 				return acc;
 			},
-			{
-				openai: { models: [] },
-				anthropic: { models: [] },
-				google: { models: [] },
-				n8n: { models: [] },
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				'custom-agent': { models: [] },
-			},
+			{ ...emptyChatModelsResponse },
 		);
 	}
 
