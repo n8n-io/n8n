@@ -33,6 +33,7 @@ import {
 	IExecuteData,
 	IRunExecutionData,
 	INodeParameters,
+	INode,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -1019,7 +1020,6 @@ export class ChatHubService {
 				let credential: CredentialWithProjectId | null = null;
 
 				if (provider === 'n8n') {
-					// Grab a model from the workflow and use its credentials
 					const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 						model.workflowId,
 						user,
@@ -1031,10 +1031,21 @@ export class ChatHubService {
 						throw new BadRequestError('Workflow not found for title generation');
 					}
 
-					// TODO: Extract any supported LLM node types, and figure out the provider based on it
-					const llmNodes = workflowEntity.nodes.filter(
-						(node) => node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-					);
+					// Find a supported Model node from the workflow and figure out the provider from it
+					const llmNodes = workflowEntity.nodes.reduce<
+						Array<{ node: INode; provider: ChatHubLLMProvider }>
+					>((acc, node) => {
+						const supportedProvider = Object.entries(PROVIDER_NODE_TYPE_MAP).find(
+							([_provider, { name }]) => node.type === name,
+						);
+
+						if (supportedProvider) {
+							const [provider] = supportedProvider;
+							acc.push({ node, provider: provider as ChatHubLLMProvider });
+						}
+
+						return acc;
+					}, []);
 
 					this.logger.debug(
 						`Found ${llmNodes.length} LLM nodes in workflow ${workflowEntity.id} for title generation`,
@@ -1046,37 +1057,36 @@ export class ChatHubService {
 						);
 					}
 
-					// Grab the first one and use this Model node to generate the title
+					// Grab the first one and use its model and credentials to generate the title
 					const modelNode = llmNodes[0];
 
-					// Extract credentials from the node, check they exist and the user has access to them
-					// and grab the credential to get the project ID
-					const llmModel = (modelNode.parameters?.model as INodeParameters)?.value;
+					// Extract credentials from the node, check that they exist and the user has access to them.
+					const llmModel = (modelNode.node.parameters?.model as INodeParameters)?.value;
 					if (!llmModel) {
 						throw new BadRequestError('No model set on Model node for title generation');
 					}
 
-					const llmCredentials = modelNode.credentials;
-					const llmProvider = 'openai';
+					const llmCredentials = modelNode.node.credentials;
 
 					if (!llmCredentials) {
 						throw new BadRequestError('No credentials found on Model node for title generation');
 					}
 
+					// Check the credential to get a project ID to use for the workflow
 					credential = await this.chatHubCredentialsService.ensureCredentials(
 						user,
-						llmProvider,
+						modelNode.provider,
 						llmCredentials,
 						trx,
 					);
 
 					model = {
-						provider: llmProvider,
+						provider: modelNode.provider,
 						model: llmModel as string,
 					};
 
 					credentials = {
-						[PROVIDER_CREDENTIAL_TYPE_MAP[llmProvider]]: {
+						[PROVIDER_CREDENTIAL_TYPE_MAP[modelNode.provider]]: {
 							id: credential.id,
 							name: '',
 						},

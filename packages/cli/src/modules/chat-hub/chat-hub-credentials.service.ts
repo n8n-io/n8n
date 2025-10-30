@@ -3,6 +3,7 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
 } from '@n8n/api-types';
+import type { User, CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
@@ -10,7 +11,6 @@ import type { INodeCredentials } from 'n8n-workflow';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { User, CredentialsEntity } from '@n8n/db';
 
 export type CredentialWithProjectId = CredentialsEntity & { projectId: string };
 

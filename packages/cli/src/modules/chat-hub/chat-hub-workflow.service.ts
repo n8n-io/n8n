@@ -377,7 +377,7 @@ export class ChatHubWorkflowService {
 				return {
 					...common,
 					parameters: {
-						model: { __rl: true, mode: 'list', value: model },
+						model: { __rl: true, mode: 'id', value: model },
 						options: {},
 					},
 				};
@@ -387,7 +387,7 @@ export class ChatHubWorkflowService {
 					parameters: {
 						model: {
 							__rl: true,
-							mode: 'list',
+							mode: 'id',
 							value: model,
 							cachedResultName: model,
 						},
@@ -398,7 +398,7 @@ export class ChatHubWorkflowService {
 				return {
 					...common,
 					parameters: {
-						model: { __rl: true, mode: 'list', value: model },
+						model: { __rl: true, mode: 'id', value: model },
 						options: {},
 					},
 				};
