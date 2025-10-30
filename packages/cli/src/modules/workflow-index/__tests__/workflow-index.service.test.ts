@@ -1,6 +1,6 @@
-import { Logger } from '@n8n/backend-common';
-import { WorkflowDependencyRepository } from '@n8n/db';
-import { ErrorReporter } from 'n8n-core';
+import type { Logger } from '@n8n/backend-common';
+import type { WorkflowDependencyRepository } from '@n8n/db';
+import type { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { WorkflowIndexService } from '../workflow-index.service';
@@ -186,6 +186,47 @@ describe('WorkflowIndexService', () => {
 				dependencies: expect.not.arrayContaining([
 					expect.objectContaining({
 						dependencyType: 'workflowCall',
+					}),
+				]),
+			}),
+		);
+	});
+
+	it('should handle multiple credentials on a single node', async () => {
+		mockRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+		const workflow = createWorkflow([
+			createNode({
+				id: 'node-1',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: {
+					httpAuth: { id: 'cred-1', name: 'Basic Auth' },
+					apiKey: { id: 'cred-2', name: 'API Key' },
+					oAuth2: { id: 'cred-3', name: 'OAuth2' },
+				},
+			}),
+		]);
+
+		await service.updateIndexFor(workflow);
+
+		expect(mockRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+			'workflow-123',
+			expect.objectContaining({
+				dependencies: expect.arrayContaining([
+					expect.objectContaining({
+						dependencyType: 'credentialId',
+						dependencyKey: 'cred-1',
+						dependencyInfo: 'node-1',
+					}),
+					expect.objectContaining({
+						dependencyType: 'credentialId',
+						dependencyKey: 'cred-2',
+						dependencyInfo: 'node-1',
+					}),
+					expect.objectContaining({
+						dependencyType: 'credentialId',
+						dependencyKey: 'cred-3',
+						dependencyInfo: 'node-1',
 					}),
 				]),
 			}),
