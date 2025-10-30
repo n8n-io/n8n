@@ -1,18 +1,15 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { Project } from '@/databases/entities/project';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { OrchestrationService } from '@/services/orchestration.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockLogger } from '@test/mocking';
 
 jest.useFakeTimers({ advanceTimers: true });
 
@@ -22,7 +19,6 @@ describe('WaitTracker', () => {
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
-	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
 
 	const project = mock<Project>({ id: 'projectId' });
@@ -35,6 +31,7 @@ describe('WaitTracker', () => {
 			pushRef: 'push_ref',
 			parentExecution: undefined,
 		}),
+		startedAt: undefined,
 	});
 	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
 
@@ -46,7 +43,6 @@ describe('WaitTracker', () => {
 			ownershipService,
 			activeExecutions,
 			workflowRunner,
-			orchestrationService,
 			instanceSettings,
 		);
 		multiMainSetup.on.mockReturnThis();
@@ -149,63 +145,111 @@ describe('WaitTracker', () => {
 			);
 		});
 
-		it('should also resume parent execution once sub-workflow finishes', async () => {
-			const parentExecution = mock<IExecutionResponse>({
-				id: 'parent_execution_id',
-				finished: false,
-			});
-			parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
-			execution.data.parentExecution = {
-				executionId: parentExecution.id,
-				workflowId: parentExecution.workflowData.id,
+		describe('parent execution restart behavior', () => {
+			const setupParentExecutionTest = (shouldResume: boolean | undefined) => {
+				const parentExecution = mock<IExecutionResponse>({
+					id: 'parent_execution_id',
+					finished: false,
+				});
+				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
+				execution.data.parentExecution = {
+					executionId: parentExecution.id,
+					workflowId: parentExecution.workflowData.id,
+					shouldResume,
+				};
+				executionRepository.findSingleExecution
+					.calledWith(parentExecution.id)
+					.mockResolvedValue(parentExecution);
+				const postExecutePromise = createDeferredPromise<IRun | undefined>();
+				activeExecutions.getPostExecutePromise
+					.calledWith(execution.id)
+					.mockReturnValue(postExecutePromise.promise);
+
+				return { parentExecution, postExecutePromise };
 			};
-			executionRepository.findSingleExecution
-				.calledWith(parentExecution.id)
-				.mockResolvedValue(parentExecution);
-			const postExecutePromise = createDeferredPromise<IRun | undefined>();
-			activeExecutions.getPostExecutePromise
-				.calledWith(execution.id)
-				.mockReturnValue(postExecutePromise.promise);
 
-			await waitTracker.startExecution(execution.id);
+			it('should resume parent execution once sub-workflow finishes by default', async () => {
+				const { parentExecution, postExecutePromise } = setupParentExecutionTest(undefined);
 
-			expect(executionRepository.findSingleExecution).toHaveBeenNthCalledWith(1, execution.id, {
-				includeData: true,
-				unflattenData: true,
+				await waitTracker.startExecution(execution.id);
+
+				expect(executionRepository.findSingleExecution).toHaveBeenNthCalledWith(1, execution.id, {
+					includeData: true,
+					unflattenData: true,
+				});
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					1,
+					{
+						executionMode: execution.mode,
+						executionData: execution.data,
+						workflowData: execution.workflowData,
+						projectId: project.id,
+						pushRef: execution.data.pushRef,
+					},
+					false,
+					false,
+					execution.id,
+				);
+
+				postExecutePromise.resolve(mock<IRun>());
+				await jest.advanceTimersByTimeAsync(100);
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					2,
+					{
+						executionMode: parentExecution.mode,
+						executionData: parentExecution.data,
+						workflowData: parentExecution.workflowData,
+						projectId: project.id,
+						pushRef: parentExecution.data.pushRef,
+						startedAt: parentExecution.startedAt,
+					},
+					false,
+					false,
+					parentExecution.id,
+				);
 			});
 
-			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-			expect(workflowRunner.run).toHaveBeenNthCalledWith(
-				1,
-				{
-					executionMode: execution.mode,
-					executionData: execution.data,
-					workflowData: execution.workflowData,
-					projectId: project.id,
-					pushRef: execution.data.pushRef,
-				},
-				false,
-				false,
-				execution.id,
-			);
+			it('should not resume parent execution when shouldResume is false', async () => {
+				const { postExecutePromise } = setupParentExecutionTest(false);
 
-			postExecutePromise.resolve(mock<IRun>());
-			await jest.advanceTimersByTimeAsync(100);
+				await waitTracker.startExecution(execution.id);
 
-			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
-			expect(workflowRunner.run).toHaveBeenNthCalledWith(
-				2,
-				{
-					executionMode: parentExecution.mode,
-					executionData: parentExecution.data,
-					workflowData: parentExecution.workflowData,
-					projectId: project.id,
-					pushRef: parentExecution.data.pushRef,
-				},
-				false,
-				false,
-				parentExecution.id,
-			);
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				postExecutePromise.resolve(mock<IRun>());
+				await jest.advanceTimersByTimeAsync(100);
+
+				// Parent execution should NOT be started
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+
+			it('should resume parent execution when shouldResume is true', async () => {
+				const { parentExecution, postExecutePromise } = setupParentExecutionTest(true);
+
+				await waitTracker.startExecution(execution.id);
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				postExecutePromise.resolve(mock<IRun>());
+				await jest.advanceTimersByTimeAsync(100);
+
+				// Parent execution SHOULD be started
+				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					2,
+					expect.objectContaining({
+						executionMode: parentExecution.mode,
+						projectId: project.id,
+					}),
+					false,
+					false,
+					parentExecution.id,
+				);
+			});
 		});
 	});
 
@@ -235,7 +279,6 @@ describe('WaitTracker', () => {
 				ownershipService,
 				activeExecutions,
 				workflowRunner,
-				orchestrationService,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
 			);
 

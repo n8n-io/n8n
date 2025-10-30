@@ -1,20 +1,22 @@
+import type { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type {
+	AuthenticatedRequest,
+	User,
+	InvalidAuthTokenRepository,
+	UserRepository,
+} from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import { AUTH_COOKIE_NAME, Time } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import type { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
-import type { UserRepository } from '@/databases/repositories/user.repository';
-import type { AuthenticatedRequest } from '@/requests';
+import { AUTH_COOKIE_NAME } from '@/constants';
+import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 
 describe('AuthService', () => {
-	config.set('userManagement.jwtSecret', 'random-secret');
-
 	const browserId = 'test-browser-id';
 	const userData = {
 		id: '123',
@@ -24,52 +26,86 @@ describe('AuthService', () => {
 		mfaEnabled: false,
 	};
 	const user = mock<User>(userData);
-	const jwtService = new JwtService(mock());
+	const globalConfig = mock<GlobalConfig>({
+		auth: { cookie: { secure: true, samesite: 'lax' } },
+		userManagement: { jwtSecret: 'random-secret' },
+	});
+	const jwtService = new JwtService(mock(), globalConfig);
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
+	const mfaService = mock<MfaService>();
 	const authService = new AuthService(
+		globalConfig,
 		mock(),
 		mock(),
 		jwtService,
 		urlService,
 		userRepository,
 		invalidAuthTokenRepository,
+		mfaService,
 	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
 	jest.useFakeTimers({ now });
 
 	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.YE-ZGGIQRNQ4DzUe9rjXvOOFFN9ufU34WibsCxAsc4o'; // Generated using `authService.issueJWT(user, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Generated using `authService.issueJWT(user, false, browserId)`
+
+	const validTokenWithMfa =
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.9kTTue-ZdBQ0CblH0IrqW9K-k0WWfxfsWTglyPB10ko'; // Generated using `authService.issueJWT(user, true, browserId)`
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 		jest.setSystemTime(now);
-		config.set('userManagement.jwtSessionDurationHours', 168);
-		config.set('userManagement.jwtRefreshTimeoutHours', 0);
+		globalConfig.userManagement.jwtSessionDurationHours = 168;
+		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
+		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
 	});
 
 	describe('createJWTHash', () => {
 		it('should generate unique hashes', () => {
 			expect(authService.createJWTHash(user)).toEqual('mJAYx4Wb7k');
 			expect(
-				authService.createJWTHash(mock<User>({ email: user.email, password: 'newPasswordHash' })),
+				authService.createJWTHash(
+					mock<User>({ email: user.email, password: 'newPasswordHash', mfaEnabled: false }),
+				),
 			).toEqual('FVALtU7AE0');
 			expect(
 				authService.createJWTHash(
-					mock<User>({ email: 'test1@example.com', password: user.password }),
+					mock<User>({ email: 'test1@example.com', password: user.password, mfaEnabled: false }),
 				),
 			).toEqual('y8ha6X01jd');
+			expect(
+				authService.createJWTHash(
+					mock<User>({
+						email: user.email,
+						password: user.password,
+						mfaEnabled: true,
+						mfaSecret: 'secret',
+					}),
+				),
+			).toEqual('WUXEVFet9W');
+			expect(
+				authService.createJWTHash(
+					mock<User>({
+						email: user.email,
+						password: 'newPasswordHash',
+						mfaEnabled: true,
+						mfaSecret: 'secret',
+					}),
+				),
+			).toEqual('toYQYKufH6');
 		});
 	});
 
-	describe('authMiddleware', () => {
-		const req = mock<AuthenticatedRequest>({
-			cookies: {},
-			user: undefined,
-			browserId,
-		});
+	describe('createAuthMiddleware', () => {
+		const mockReq = () =>
+			mock<AuthenticatedRequest>({
+				cookies: {},
+				user: undefined,
+				browserId,
+			});
 		const res = mock<Response>();
 		const next = jest.fn() as NextFunction;
 
@@ -78,9 +114,12 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 if no cookie is set', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = undefined;
 
-			await authService.authMiddleware(req, res, next);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+
+			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
@@ -88,11 +127,14 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 and clear the cookie if the JWT is expired', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
-			await authService.authMiddleware(req, res, next);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+
+			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
 			expect(userRepository.findOne).not.toHaveBeenCalled();
@@ -102,10 +144,13 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 and clear the cookie if the JWT has been invalidated', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
 
-			await authService.authMiddleware(req, res, next);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+
+			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
 			expect(userRepository.findOne).not.toHaveBeenCalled();
@@ -114,19 +159,387 @@ describe('AuthService', () => {
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
 		});
 
+		it('should 401 but not clear the cookie if 2FA is enforced and not configured for the user', async () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			userRepository.findOne.mockResolvedValue(user);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			mfaService.isMFAEnforced.mockImplementation(() => {
+				return true;
+			});
+
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: false });
+
+			await middleware(req, res, next);
+
+			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+			expect(userRepository.findOne).toHaveBeenCalled();
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.clearCookie).not.toHaveBeenCalledWith();
+		});
+
 		it('should refresh the cookie before it expires', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			userRepository.findOne.mockResolvedValue(user);
 
-			await authService.authMiddleware(req, res, next);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+
+			await middleware(req, res, next);
 
 			expect(next).toHaveBeenCalled();
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
+				secure: true,
+			});
+		});
+
+		describe('allowSkipPreviewAuth', () => {
+			let originalPreviewMode: string | undefined;
+
+			beforeEach(() => {
+				// Store original value
+				originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+				// Reset mocks
+				jest.resetAllMocks();
+				res.status.mockReturnThis();
+			});
+
+			afterEach(() => {
+				// Restore original value
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			});
+
+			it('should skip authentication when allowSkipPreviewAuth is true and preview mode is enabled', async () => {
+				process.env.N8N_PREVIEW_MODE = 'true';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+			});
+
+			it('should NOT skip authentication when allowSkipPreviewAuth is false even in preview mode', async () => {
+				process.env.N8N_PREVIEW_MODE = 'true';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: false,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(next).not.toHaveBeenCalled();
+				expect(res.status).toHaveBeenCalledWith(401);
+			});
+
+			it('should NOT skip authentication when allowSkipPreviewAuth is true but preview mode is disabled', async () => {
+				process.env.N8N_PREVIEW_MODE = 'false';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(next).not.toHaveBeenCalled();
+				expect(res.status).toHaveBeenCalledWith(401);
+			});
+
+			it('should NOT skip authentication when allowSkipPreviewAuth is true but preview mode is undefined', async () => {
+				delete process.env.N8N_PREVIEW_MODE;
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(next).not.toHaveBeenCalled();
+				expect(res.status).toHaveBeenCalledWith(401);
+			});
+
+			it('should still process valid authentication normally in preview mode with allowSkipPreviewAuth true', async () => {
+				process.env.N8N_PREVIEW_MODE = 'true';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBe(user);
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+			});
+
+			it('should handle authentication errors normally in preview mode with allowSkipPreviewAuth true', async () => {
+				process.env.N8N_PREVIEW_MODE = 'true';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = 'invalid-token';
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(next).toHaveBeenCalled(); // Should still call next() due to preview mode skip
+				expect(res.status).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('allowUnauthenticated', () => {
+			it('should populate the user info if the token is valid', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBe(user);
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
+			});
+
+			it('should clear the cookie if the token is expired', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should clear the cookie if the token has been invalidated', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should not populate the user info if the token is invalid', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = 'invalid-token';
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should not populate the user info if the token is not set', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
+			});
+
+			it('should clear cookie if MFA required and not used', async () => {
+				const userWithMfa = mock<User>({ ...userData, mfaEnabled: true, mfaSecret: 'secret' });
+
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
+
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(userWithMfa);
+				mfaService.isMFAEnforced.mockReturnValue(true);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			});
+
+			it('should skip user when MFA enforced and user has no MFA', async () => {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
+
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user); // user has mfaEnabled: false
+				mfaService.isMFAEnforced.mockReturnValue(true);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+				expect(res.clearCookie).not.toHaveBeenCalled();
+			});
+
+			it('should work correctly when both allowUnauthenticated and allowSkipPreviewAuth are true in preview mode', async () => {
+				const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+				process.env.N8N_PREVIEW_MODE = 'true';
+
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: false,
+					allowUnauthenticated: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(req.user).toBeUndefined();
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+
+				// Restore original value
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			});
+		});
+	});
+
+	describe('issueCookie', () => {
+		const res = mock<Response>();
+		it('should issue a cookie with the correct options', () => {
+			authService.issueCookie(res, user, false, browserId);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'lax',
+				secure: true,
+			});
+		});
+
+		it('should issue a cookie with the correct options, when 2FA was used', () => {
+			authService.issueCookie(res, user, true, browserId);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validTokenWithMfa, {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'lax',
+				secure: true,
+			});
+		});
+
+		it('should allow changing cookie options', () => {
+			globalConfig.auth.cookie = { secure: false, samesite: 'none' };
+
+			authService.issueCookie(res, user, false, browserId);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'none',
 				secure: false,
 			});
 		});
@@ -136,7 +549,7 @@ describe('AuthService', () => {
 		describe('when not setting userManagement.jwtSessionDuration', () => {
 			it('should default to expire in 7 days', () => {
 				const defaultInSeconds = 7 * Time.days.toSeconds;
-				const token = authService.issueJWT(user, browserId);
+				const token = authService.issueJWT(user, false, browserId);
 
 				expect(authService.jwtExpiration).toBe(defaultInSeconds);
 				const decodedToken = jwtService.verify(token);
@@ -153,8 +566,8 @@ describe('AuthService', () => {
 			const testDurationSeconds = testDurationHours * Time.hours.toSeconds;
 
 			it('should apply it to tokens', () => {
-				config.set('userManagement.jwtSessionDurationHours', testDurationHours);
-				const token = authService.issueJWT(user, browserId);
+				globalConfig.userManagement.jwtSessionDurationHours = testDurationHours;
+				const token = authService.issueJWT(user, false, browserId);
 
 				const decodedToken = jwtService.verify(token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
@@ -214,6 +627,10 @@ describe('AuthService', () => {
 				'user email does not match the one on the token',
 				{ ...userData, email: 'someone@example.com' },
 			],
+			[
+				'user mfa secret does not match the one on the token',
+				{ ...userData, mfaEnabled: true, mfaSecret: '123' },
+			],
 		])('should throw if %s', async (_, data) => {
 			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
@@ -222,21 +639,27 @@ describe('AuthService', () => {
 
 		it('should refresh the cookie before it expires', async () => {
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
-				secure: false,
+				secure: true,
 			});
 
 			const newToken = res.cookie.mock.calls[0].at(1);
 			expect(newToken).not.toBe(validToken);
-			expect(await authService.resolveJwt(newToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(newToken, req, res)).toEqual([user, { usedMfa: false }]);
 			expect((jwt.decode(newToken) as jwt.JwtPayload).browserId).toEqual(
 				(jwt.decode(validToken) as jwt.JwtPayload).browserId,
 			);
@@ -244,27 +667,42 @@ describe('AuthService', () => {
 
 		it('should refresh the cookie only if less than 1/4th of time is left', async () => {
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(5 * Time.days.toMilliseconds);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(1 * Time.days.toMilliseconds);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).toHaveBeenCalled();
 		});
 
 		it('should not refresh the cookie if jwtRefreshTimeoutHours is set to -1', async () => {
-			config.set('userManagement.jwtRefreshTimeoutHours', -1);
+			globalConfig.userManagement.jwtRefreshTimeoutHours = -1;
 
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 	});

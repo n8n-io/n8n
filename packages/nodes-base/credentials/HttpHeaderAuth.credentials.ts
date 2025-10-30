@@ -5,7 +5,7 @@ export class HttpHeaderAuth implements ICredentialType {
 
 	displayName = 'Header Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 
@@ -25,6 +25,12 @@ export class HttpHeaderAuth implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+			default: '',
+		},
+		{
+			displayName: 'To send multiple headers, use a "Custom Auth" credential instead',
+			name: 'useCustomAuth',
+			type: 'notice',
 			default: '',
 		},
 	];

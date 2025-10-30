@@ -1,37 +1,49 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "url": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
+        "active": {
+            "type": "boolean"
         },
         "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "time_zone": {
             "type": "string"
         },
         "iana_time_zone": {
             "type": "string"
         },
-        "locale_id": {
+        "id": {
             "type": "integer"
         },
         "locale": {
             "type": "string"
         },
+        "locale_id": {
+            "type": "integer"
+        },
+        "moderator": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "only_private_comments": {
+            "type": "boolean"
+        },
+        "report_csv": {
+            "type": "boolean"
+        },
+        "restricted_agent": {
+            "type": "boolean"
+        },
         "role": {
             "type": "string"
         },
-        "verified": {
+        "shared": {
+            "type": "boolean"
+        },
+        "shared_agent": {
+            "type": "boolean"
+        },
+        "suspended": {
             "type": "boolean"
         },
         "tags": {
@@ -40,29 +52,18 @@
                 "type": "string"
             }
         },
-        "active": {
-            "type": "boolean"
+        "time_zone": {
+            "type": "string"
         },
-        "shared": {
-            "type": "boolean"
+        "updated_at": {
+            "type": "string"
         },
-        "shared_agent": {
-            "type": "boolean"
+        "url": {
+            "type": "string"
         },
-        "moderator": {
-            "type": "boolean"
-        },
-        "only_private_comments": {
-            "type": "boolean"
-        },
-        "restricted_agent": {
-            "type": "boolean"
-        },
-        "suspended": {
-            "type": "boolean"
-        },
-        "report_csv": {
+        "verified": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

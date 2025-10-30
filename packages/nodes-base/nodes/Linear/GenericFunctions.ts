@@ -39,9 +39,9 @@ export async function linearApiRequest(
 			options,
 		);
 
-		if (response.errors) {
+		if (response?.errors) {
 			throw new NodeApiError(this.getNode(), response.errors, {
-				message: response.errors[0].message,
+				message: response.errors[0].message ?? 'Unknown API Error',
 			});
 		}
 
@@ -51,12 +51,13 @@ export async function linearApiRequest(
 			this.getNode(),
 			{},
 			{
-				message: error.errorResponse
-					? error.errorResponse[0].message
-					: error.context.data.errors[0].message,
-				description: error.errorResponse
-					? error.errorResponse[0].extensions.userPresentableMessage
-					: error.context.data.errors[0].extensions.userPresentableMessage,
+				message:
+					error.errorResponse?.[0]?.message ||
+					error.context.data.errors[0]?.message ||
+					'Unknown API error',
+				description:
+					error.errorResponse?.[0]?.extensions?.userPresentableMessage ||
+					error.context.data.errors[0]?.extensions?.userPresentableMessage,
 			},
 		);
 	}

@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasControlButtons > should render correctly 1`] = `
+"<div class="vue-flow__panel bottom left vue-flow__controls" style="pointer-events: all;">
+  <!---->
+  <!----><button class="vue-flow__controls-button vue-flow__controls-interactive"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 32">
+      <path d="M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0c-4.114 1.828-1.37 2.133.305 2.438 1.676.305 4.42 2.59 4.42 5.181v3.048H3.047A3.056 3.056 0 0 0 0 13.714v15.238A3.056 3.056 0 0 0 3.048 32h18.285a3.056 3.056 0 0 0 3.048-3.048V13.714a3.056 3.056 0 0 0-3.048-3.047zM12.19 24.533a3.056 3.056 0 0 1-3.047-3.047 3.056 3.056 0 0 1 3.047-3.048 3.056 3.056 0 0 1 3.048 3.048 3.056 3.056 0 0 1-3.048 3.047z"></path>
+    </svg>
+    <!---->
+  </button>
+  <n8n-icon-button-stub icon="maximize" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="zoom-to-fit" class="el-tooltip__trigger"></n8n-icon-button-stub>
+  <!--teleport start-->
+  <!--teleport end-->
+  <n8n-icon-button-stub icon="zoom-in" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="zoom-in-button" class="el-tooltip__trigger"></n8n-icon-button-stub>
+  <!--teleport start-->
+  <!--teleport end-->
+  <n8n-icon-button-stub icon="zoom-out" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="zoom-out-button" class="el-tooltip__trigger"></n8n-icon-button-stub>
+  <!--teleport start-->
+  <!--teleport end-->
+  <!--v-if-->
+  <!--v-if-->
+  <n8n-button-stub block="false" element="button" label="" square="true" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="tidy-up-button" class="iconButton el-tooltip__trigger el-tooltip__trigger"></n8n-button-stub>
+  <!--teleport start-->
+  <!--teleport end-->
+  <!--v-if-->
+  <!--v-if-->
+</div>"
+`;

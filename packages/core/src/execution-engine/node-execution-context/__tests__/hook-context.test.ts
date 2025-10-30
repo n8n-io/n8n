@@ -1,3 +1,4 @@
+import { ApplicationError } from '@n8n/errors';
 import { mock } from 'jest-mock-extended';
 import type {
 	Expression,
@@ -13,7 +14,6 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
 
 import { HookContext } from '../hook-context';
 

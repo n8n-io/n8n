@@ -1,35 +1,30 @@
+import { UserRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
-
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
+import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
 
-export class DisableMFACommand extends BaseCommand {
-	static description = 'Disable MFA authentication for a user';
+const flagsSchema = z.object({
+	email: z.string().describe('The email of the user to disable the MFA authentication'),
+});
 
-	static examples = ['$ n8n mfa:disable --email=johndoe@example.com'];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		email: Flags.string({
-			description: 'The email of the user to disable the MFA authentication',
-		}),
-	};
-
-	async init() {
-		await super.init();
-	}
-
+@Command({
+	name: 'mfa:disable',
+	description: 'Disable MFA authentication for a user',
+	examples: ['--email=johndoe@example.com'],
+	flagsSchema,
+})
+export class DisableMFACommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {
-		const { flags } = await this.parse(DisableMFACommand);
+		const { flags } = this;
 
 		if (!flags.email) {
 			this.logger.info('An email with --email must be provided');
 			return;
 		}
 
-		const repository = Container.get(AuthUserRepository);
+		const repository = Container.get(UserRepository);
 		const user = await repository.findOneBy({ email: flags.email });
 
 		if (!user) {

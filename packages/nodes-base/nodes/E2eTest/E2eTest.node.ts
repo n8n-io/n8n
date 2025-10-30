@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
@@ -25,8 +25,8 @@ export class E2eTest implements INodeType {
 			name: 'E2E Test',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',

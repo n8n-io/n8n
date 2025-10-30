@@ -15,7 +15,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
@@ -29,6 +29,7 @@ import {
 	getMessageContent,
 	getTarget,
 	createSendAndWaitMessageBody,
+	processThreadOptions,
 } from './GenericFunctions';
 import {
 	channelRLC,
@@ -43,7 +44,11 @@ import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -55,8 +60,8 @@ export class SlackV2 implements INodeType {
 			defaults: {
 				name: 'Slack',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			usableAsTool: true,
 			credentials: [
 				{
@@ -78,6 +83,7 @@ export class SlackV2 implements INodeType {
 					},
 				},
 			],
+			waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 			webhooks: sendAndWaitWebhooksDescription,
 			properties: [
 				{
@@ -835,8 +841,8 @@ export class SlackV2 implements INodeType {
 							}
 						}
 
-						const replyValues = (otherOptions.thread_ts as IDataObject)?.replyValues as IDataObject;
-						Object.assign(body, replyValues);
+						const threadParams = processThreadOptions(otherOptions.thread_ts as IDataObject);
+						Object.assign(body, threadParams);
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
 						if (otherOptions.botProfile) {
@@ -1318,7 +1324,7 @@ export class SlackV2 implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 
-						const options = this.getNodeParameter('options', i);
+						const options = this.getNodeParameter('Options', i);
 
 						const body: IDataObject = {
 							name,
@@ -1334,7 +1340,7 @@ export class SlackV2 implements INodeType {
 					if (operation === 'enable') {
 						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
 
-						const options = this.getNodeParameter('options', i);
+						const options = this.getNodeParameter('option', i);
 
 						const body: IDataObject = {
 							usergroup: userGroupId,

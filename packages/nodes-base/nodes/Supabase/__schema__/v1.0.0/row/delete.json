@@ -4,44 +4,39 @@
         "content": {
             "type": "string"
         },
+        "embedding": {
+            "type": "string"
+        },
         "metadata": {
             "type": "object",
             "properties": {
+                "blobType": {
+                    "type": "string"
+                },
+                "file_id": {
+                    "type": "string"
+                },
                 "loc": {
                     "type": "object",
                     "properties": {
                         "lines": {
                             "type": "object",
                             "properties": {
-                                "to": {
-                                    "type": "integer"
-                                },
                                 "from": {
                                     "type": "integer"
+                                },
+                                "to": {
+                                    "type": "integer"
                                 }
-                            },
-                            "required": [
-                                "to",
-                                "from"
-                            ]
+                            }
                         }
-                    },
-                    "required": [
-                        "lines"
-                    ]
+                    }
                 },
                 "source": {
                     "type": "string"
-                },
-                "blobType": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "loc",
-                "source",
-                "blobType"
-            ]
+            }
         }
-    }
+    },
+    "version": 2
 }

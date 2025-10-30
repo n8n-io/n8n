@@ -1,0 +1,32 @@
+import type { ModuleInterface } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+
+@BackendModule({ name: 'my-feature' })
+export class MyFeatureModule implements ModuleInterface {
+	async init() {
+		await import('./my-feature.controller');
+
+		const { MyFeatureService } = await import('./my-feature.service');
+		Container.get(MyFeatureService).start();
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		const { MyFeatureService } = await import('./my-feature.service');
+
+		await Container.get(MyFeatureService).shutdown();
+	}
+
+	async entities() {
+		const { MyFeatureEntity } = await import('./my-feature.entity');
+		
+		return [MyFeatureEntity];
+	}
+
+	async context() {
+		const { MyFeatureService } = await import('./my-feature.service');
+		
+		return { myFeatureProxy: Container.get(MyFeatureService) };
+	}
+}

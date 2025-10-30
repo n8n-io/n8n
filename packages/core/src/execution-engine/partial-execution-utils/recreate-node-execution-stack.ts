@@ -1,6 +1,7 @@
 import * as a from 'assert/strict';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
+	type NodeConnectionType,
 	type IExecuteData,
 	type INode,
 	type INodeExecutionData,
@@ -99,7 +100,7 @@ export function recreateNodeExecutionStack(
 	for (const startNode of startNodes) {
 		const incomingStartNodeConnections = graph
 			.getDirectParentConnections(startNode)
-			.filter((c) => c.type === NodeConnectionType.Main);
+			.filter((c) => c.type === NodeConnectionTypes.Main);
 
 		let incomingData: INodeExecutionData[][] = [];
 		let incomingSourceData: ITaskDataConnectionsSource | null = null;

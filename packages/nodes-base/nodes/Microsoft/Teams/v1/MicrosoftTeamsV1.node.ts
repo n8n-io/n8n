@@ -7,7 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type INodeTypeBaseDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { channelFields, channelOperations } from './ChannelDescription';
@@ -32,8 +32,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Teams',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'microsoftTeamsOAuth2Api',

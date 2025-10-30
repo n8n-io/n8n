@@ -1,0 +1,446 @@
+{
+	"name": "Gmail v1 test - drafts",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [980, 560],
+			"id": "388c50bd-918f-48d5-8fa2-eba4d3e36ab6",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "toJson",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [1420, 860],
+			"id": "1c1112be-de7c-441e-865c-48044601cb40",
+			"name": "Attachment"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0a4e38fe-ed38-400e-afb1-9d430f167d54",
+							"name": "attachment",
+							"value": true,
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1200, 860],
+			"id": "381ca2b8-026a-487a-9f5f-5ef2edb9aa1d",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"subject": "Test Subject",
+				"message": "Test Message",
+				"additionalFields": {
+					"ccList": ["test_cc@n8n.io"],
+					"bccList": ["test_bcc@n8n.io"],
+					"attachmentsUi": {
+						"attachmentsBinary": [
+							{
+								"property": "data"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 1,
+			"position": [1640, 860],
+			"id": "0119d458-2782-4fea-abe9-8ac8cabe77aa",
+			"name": "Gmail - Drafts - Create",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 2,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 1,
+			"position": [1200, 260],
+			"id": "94698cf7-7ce2-4d89-8b04-51c59acf3373",
+			"name": "Gmail - Drafts - All",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"messageId": "test"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 1,
+			"position": [1200, 460],
+			"id": "2b518238-3c18-4527-8315-5d2f5d664af7",
+			"name": "Gmail - Drafts - Delete",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"messageId": "test",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 1,
+			"position": [1200, 660],
+			"id": "9d33ea25-6866-4e74-9a53-042fbe70655a",
+			"name": "Gmail - Drafts - Get",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Gmail - Drafts - All": [
+			{
+				"json": {
+					"date": "2024-12-13T10:15:01.000Z",
+					"from": {
+						"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">node qa</span> &lt;<a href=\"mailto:node8qa@gmail.com\" class=\"mp_address_email\">node8qa@gmail.com</a>&gt;</span>",
+						"text": "\"node qa\" <node8qa@gmail.com>",
+						"value": [
+							{
+								"address": "node8qa@gmail.com",
+								"name": "node qa"
+							}
+						]
+					},
+					"headers": {
+						"content-type": "Content-Type: multipart/alternative; boundary=\"0000000000009d58b60629241a22\"",
+						"date": "Date: Fri, 13 Dec 2024 11:15:01 +0100",
+						"from": "From: node qa <node8qa@gmail.com>",
+						"message-id": "Message-ID: <CAEGAProwudGnKXxqrhMjOuxamTh7yArjwP7OD9UBq-Jpkb0X9w@mail.gmail.com>",
+						"mime-version": "MIME-Version: 1.0",
+						"subject": "Subject: Test draft",
+						"to": "To: test@gmail.com"
+					},
+					"html": "<div dir=\"ltr\">draft body<br></div>\n",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"messageId": "a1b2c3d4e5f6g7h8",
+					"sizeEstimate": 67890,
+					"subject": "Test draft",
+					"text": "draft body\n",
+					"textAsHtml": "<p>draft body</p>",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"to": {
+						"html": "<span class=\"mp_address_group\"><a href=\"mailto:test@gmail.com\" class=\"mp_address_email\">test@gmail.com</a></span>",
+						"text": "test@gmail.com",
+						"value": [
+							{
+								"address": "test@gmail.com",
+								"name": ""
+							}
+						]
+					}
+				}
+			},
+			{
+				"json": {
+					"date": "2024-12-13T10:15:01.000Z",
+					"from": {
+						"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">node qa</span> &lt;<a href=\"mailto:node8qa@gmail.com\" class=\"mp_address_email\">node8qa@gmail.com</a>&gt;</span>",
+						"text": "\"node qa\" <node8qa@gmail.com>",
+						"value": [
+							{
+								"address": "node8qa@gmail.com",
+								"name": "node qa"
+							}
+						]
+					},
+					"headers": {
+						"content-type": "Content-Type: multipart/alternative; boundary=\"0000000000009d58b60629241a22\"",
+						"date": "Date: Fri, 13 Dec 2024 11:15:01 +0100",
+						"from": "From: node qa <node8qa@gmail.com>",
+						"message-id": "Message-ID: <CAEGAProwudGnKXxqrhMjOuxamTh7yArjwP7OD9UBq-Jpkb0X9w@mail.gmail.com>",
+						"mime-version": "MIME-Version: 1.0",
+						"subject": "Subject: Test draft",
+						"to": "To: test@gmail.com"
+					},
+					"html": "<div dir=\"ltr\">draft body<br></div>\n",
+					"labelIds": ["UNREAD", "CATEGORY_SOCIAL", "INBOX"],
+					"messageId": "z9y8x7w6v5u4t3s2",
+					"sizeEstimate": 54321,
+					"subject": "Test draft",
+					"text": "draft body\n",
+					"textAsHtml": "<p>draft body</p>",
+					"threadId": "z9y8x7w6v5u4t3s2",
+					"to": {
+						"html": "<span class=\"mp_address_group\"><a href=\"mailto:test@gmail.com\" class=\"mp_address_email\">test@gmail.com</a></span>",
+						"text": "test@gmail.com",
+						"value": [
+							{
+								"address": "test@gmail.com",
+								"name": ""
+							}
+						]
+					}
+				}
+			}
+		],
+		"Gmail - Drafts - Create": [
+			{
+				"json": {
+					"historyId": "54321",
+					"id": "a1b2c3d4e5f6g7h8",
+					"internalDate": "1733405400000",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"payload": {
+						"body": {
+							"size": 0
+						},
+						"filename": "",
+						"headers": [
+							{
+								"name": "Delivered-To",
+								"value": "exampleuser@gmail.com"
+							},
+							{
+								"name": "Received",
+								"value": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{
+								"name": "X-Google-Smtp-Source",
+								"value": "ABC12345+EXAMPLE123456789"
+							},
+							{
+								"name": "X-Received",
+								"value": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+							},
+							{
+								"name": "ARC-Seal",
+								"value": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456="
+							},
+							{
+								"name": "ARC-Message-Signature",
+								"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345="
+							},
+							{
+								"name": "ARC-Authentication-Results",
+								"value": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com"
+							},
+							{
+								"name": "Return-Path",
+								"value": "<promo@promotion.example.com>"
+							},
+							{
+								"name": "Date",
+								"value": "Thu, 5 Dec 2024 08:30:00 -0800"
+							},
+							{
+								"name": "From",
+								"value": "Holiday Deals <promo@promotion.example.com>"
+							},
+							{
+								"name": "To",
+								"value": "exampleuser@gmail.com"
+							},
+							{
+								"name": "Message-ID",
+								"value": "<12345abc67890@promotion.example.com>"
+							},
+							{
+								"name": "Subject",
+								"value": "Exclusive Holiday Discounts!"
+							},
+							{
+								"name": "MIME-Version",
+								"value": "1.0"
+							},
+							{
+								"name": "Content-Type",
+								"value": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+							}
+						],
+						"mimeType": "multipart/alternative",
+						"partId": "",
+						"parts": [
+							{
+								"body": {
+									"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4=",
+									"size": 1234
+								},
+								"filename": "",
+								"headers": [
+									{
+										"name": "Content-Type",
+										"value": "text/plain; charset=utf-8"
+									},
+									{
+										"name": "Content-Transfer-Encoding",
+										"value": "quoted-printable"
+									}
+								],
+								"mimeType": "text/plain",
+								"partId": "0"
+							},
+							{
+								"body": {
+									"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4=",
+									"size": 5678
+								},
+								"filename": "",
+								"headers": [
+									{
+										"name": "Content-Type",
+										"value": "text/html; charset=\"utf-8\""
+									},
+									{
+										"name": "Content-Transfer-Encoding",
+										"value": "quoted-printable"
+									}
+								],
+								"mimeType": "text/html",
+								"partId": "1"
+							}
+						]
+					},
+					"sizeEstimate": 67890,
+					"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+					"threadId": "a1b2c3d4e5f6g7h8"
+				}
+			}
+		],
+		"Gmail - Drafts - Delete": [{ "json": { "success": true } }],
+		"Gmail - Drafts - Get": [
+			{
+				"json": {
+					"date": "2024-12-13T10:15:01.000Z",
+					"from": {
+						"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">node qa</span> &lt;<a href=\"mailto:node8qa@gmail.com\" class=\"mp_address_email\">node8qa@gmail.com</a>&gt;</span>",
+						"text": "\"node qa\" <node8qa@gmail.com>",
+						"value": [
+							{
+								"address": "node8qa@gmail.com",
+								"name": "node qa"
+							}
+						]
+					},
+					"headers": {
+						"content-type": "Content-Type: multipart/alternative; boundary=\"0000000000009d58b60629241a22\"",
+						"date": "Date: Fri, 13 Dec 2024 11:15:01 +0100",
+						"from": "From: node qa <node8qa@gmail.com>",
+						"message-id": "Message-ID: <CAEGAProwudGnKXxqrhMjOuxamTh7yArjwP7OD9UBq-Jpkb0X9w@mail.gmail.com>",
+						"mime-version": "MIME-Version: 1.0",
+						"subject": "Subject: Test draft",
+						"to": "To: test@gmail.com"
+					},
+					"html": "<div dir=\"ltr\">draft body<br></div>\n",
+					"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+					"messageId": "a1b2c3d4e5f6g7h8",
+					"sizeEstimate": 67890,
+					"subject": "Test draft",
+					"text": "draft body\n",
+					"textAsHtml": "<p>draft body</p>",
+					"threadId": "a1b2c3d4e5f6g7h8",
+					"to": {
+						"html": "<span class=\"mp_address_group\"><a href=\"mailto:test@gmail.com\" class=\"mp_address_email\">test@gmail.com</a></span>",
+						"text": "test@gmail.com",
+						"value": [
+							{
+								"address": "test@gmail.com",
+								"name": ""
+							}
+						]
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Gmail - Drafts - All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Drafts - Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Drafts - Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Attachment": {
+			"main": [
+				[
+					{
+						"node": "Gmail - Drafts - Create",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Attachment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "59109e41-be89-484a-b8d0-8f5c8f0407f9",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+	},
+	"id": "dbQv4DRzYXIcTNNs",
+	"tags": []
+}

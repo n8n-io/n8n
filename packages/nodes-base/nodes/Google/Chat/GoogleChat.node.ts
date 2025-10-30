@@ -13,7 +13,7 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import {
 	// attachmentFields,
@@ -39,7 +39,11 @@ import {
 import type { IMessage, IMessageUi } from './MessageInterface';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,8 +58,9 @@ export class GoogleChat implements INodeType {
 			name: 'Google Chat',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 		webhooks: sendAndWaitWebhooksDescription,
 		credentials: [
 			{

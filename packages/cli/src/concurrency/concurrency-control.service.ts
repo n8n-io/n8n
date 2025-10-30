@@ -1,10 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { capitalize } from 'lodash';
-import { Logger } from 'n8n-core';
+import capitalize from 'lodash/capitalize';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
-import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
@@ -34,12 +34,15 @@ export class ConcurrencyControlService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('concurrency');
 
+		const { productionLimit, evaluationLimit } = this.globalConfig.executions.concurrency;
+
 		this.limits = new Map([
-			['production', config.getEnv('executions.concurrency.productionLimit')],
-			['evaluation', config.getEnv('executions.concurrency.evaluationLimit')],
+			['production', productionLimit],
+			['evaluation', evaluationLimit],
 		]);
 
 		this.limits.forEach((limit, type) => {
@@ -54,7 +57,7 @@ export class ConcurrencyControlService {
 
 		if (
 			Array.from(this.limits.values()).every((limit) => limit === -1) ||
-			config.getEnv('executions.mode') === 'queue'
+			this.globalConfig.executions.mode === 'queue'
 		) {
 			this.isEnabled = false;
 			return;
@@ -185,7 +188,7 @@ export class ConcurrencyControlService {
 	}
 
 	private shouldReport(capacity: number) {
-		return config.getEnv('deployment.type') === 'cloud' && this.limitsToReport.includes(capacity);
+		return this.globalConfig.deployment.type === 'cloud' && this.limitsToReport.includes(capacity);
 	}
 
 	/**

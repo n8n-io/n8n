@@ -169,12 +169,13 @@ export async function componentsRequest(
 	return requestOptions;
 }
 
+export const sanitizePhoneNumber = (phoneNumber: string) => phoneNumber.replace(/[\-\(\)\+]/g, '');
+
 export async function cleanPhoneNumber(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	let phoneNumber = this.getNodeParameter('recipientPhoneNumber') as string;
-	phoneNumber = phoneNumber.replace(/[\-\(\)\+]/g, '');
+	const phoneNumber = sanitizePhoneNumber(this.getNodeParameter('recipientPhoneNumber') as string);
 
 	if (!requestOptions.body) {
 		requestOptions.body = {};

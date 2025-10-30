@@ -1,32 +1,33 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { Time } from '@n8n/constants';
+import type { CredentialsEntity, User } from '@n8n/db';
+import { CredentialsRepository, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import { type Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
-import { Cipher, type InstanceSettings, Logger } from 'n8n-core';
+import { Cipher, type InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
+import * as pkceChallenge from 'pkce-challenge';
 
-import { CREDENTIAL_BLANKING_VALUE, Time } from '@/constants';
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
-import { SecretsHelper } from '@/secrets-helpers.ee';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { mockInstance } from '@test/mocking';
 
 jest.mock('@/workflow-execute-additional-data');
 
 describe('OAuth2CredentialController', () => {
 	mockInstance(Logger);
-	mockInstance(SecretsHelper);
+	mockInstance(ExternalSecretsProxy);
 	mockInstance(VariablesService, {
 		getAllCached: async () => [],
 	});
@@ -39,14 +40,14 @@ describe('OAuth2CredentialController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const credentialsRepository = mockInstance(CredentialsRepository);
-	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
+	const credentialsFinderService = mockInstance(CredentialsFinderService);
 
 	const csrfSecret = 'csrf-secret';
 	const user = mock<User>({
 		id: '123',
 		password: 'password',
 		authIdentities: [],
-		role: 'global:owner',
+		role: GLOBAL_OWNER_ROLE,
 	});
 	const credential = mock<CredentialsEntity>({
 		id: '1',
@@ -64,7 +65,7 @@ describe('OAuth2CredentialController', () => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
 
-		credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
+		credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
 			clientId: 'test-client-id',
 			clientSecret: 'oauth-secret',
 			authUrl: 'https://example.domain/o/oauth2/v2/auth',
@@ -81,7 +82,7 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('should throw a NotFoundError when no matching credential is found for the user', async () => {
-			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(null);
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
 			await expect(controller.getAuthUri(req)).rejects.toThrowError(
@@ -92,7 +93,7 @@ describe('OAuth2CredentialController', () => {
 		it('should return a valid auth URI', async () => {
 			jest.spyOn(Csrf.prototype, 'secretSync').mockReturnValueOnce(csrfSecret);
 			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
-			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
@@ -129,6 +130,122 @@ describe('OAuth2CredentialController', () => {
 				false,
 			);
 		});
+
+		it.each([
+			[
+				['authorization_code', 'refresh_token'],
+				['client_secret_basic', 'client_secret_post', 'none'],
+				['authorization_code', 'refresh_token'],
+				'none',
+				{
+					code_challenge: 'code-challenge',
+					code_challenge_method: 'S256',
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['authorization_code', 'refresh_token'],
+				['client_secret_basic', 'client_secret_post'],
+				['authorization_code', 'refresh_token'],
+				'client_secret_basic',
+				{
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['authorization_code', 'refresh_token'],
+				['client_secret_post'],
+				['authorization_code', 'refresh_token'],
+				'client_secret_post',
+				{
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['client_credentials'],
+				['client_secret_basic', 'client_secret_post'],
+				['client_credentials'],
+				'client_secret_basic',
+				{
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['client_credentials'],
+				['client_secret_post'],
+				['client_credentials'],
+				'client_secret_post',
+				{
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+		])(
+			'should return a valid auth URI for dynamic client registration',
+			async (
+				supportedGrantTypes,
+				supportedTokenEndpointAuthMethods,
+				expectedGrantTypes,
+				expectedTokenEndpointAuthMethod,
+				expectedQueryParams,
+			) => {
+				jest.spyOn(Csrf.prototype, 'secretSync').mockReturnValueOnce(csrfSecret);
+				jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
+				jest.spyOn(pkceChallenge, 'default').mockResolvedValueOnce({
+					code_verifier: 'code-verifier',
+					code_challenge: 'code-challenge',
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+				credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+				credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+					useDynamicClientRegistration: true,
+					serverUrl: 'https://example.com',
+				});
+				nock('https://example.com')
+					.get('/.well-known/oauth-authorization-server')
+					.reply(200, {
+						authorization_endpoint: 'https://example.com/auth',
+						token_endpoint: 'https://example.com/token',
+						registration_endpoint: 'https://example.com/registration',
+						grant_types_supported: supportedGrantTypes,
+						token_endpoint_auth_methods_supported: supportedTokenEndpointAuthMethods,
+						code_challenge_methods_supported: ['S256'],
+					})
+					.post('/registration', {
+						redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
+						token_endpoint_auth_method: expectedTokenEndpointAuthMethod,
+						grant_types: expectedGrantTypes,
+						response_types: ['code'],
+						client_name: 'n8n',
+						client_uri: 'https://n8n.io/',
+					})
+					.reply(200, { client_id: 'test-client-id', client_secret: 'test-client-secret' });
+
+				const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+				const authUri = await controller.getAuthUri(req);
+
+				const url = new URL(authUri);
+				expect(url.origin).toEqual('https://example.com');
+				expect(url.pathname).toEqual('/auth');
+				Object.entries(expectedQueryParams).forEach(([param, value]) => {
+					expect(url.searchParams.get(param)).toEqual(value);
+				});
+			},
+		);
 	});
 
 	describe('handleCallback', () => {
@@ -239,6 +356,30 @@ describe('OAuth2CredentialController', () => {
 				error: {
 					message: 'Code could not be exchanged',
 					reason: '{"error":"Code could not be exchanged"}',
+				},
+			});
+		});
+
+		it('should render the error page when code exchange fails, and the server responses with html', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post(
+					'/token',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+				)
+				.reply(403, '<html><body>Code could not be exchanged</body></html>', {
+					'Content-Type': 'text/html',
+				});
+
+			await controller.handleCallback(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalled();
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'Unsupported content type: text/html',
+					reason: '"<html><body>Code could not be exchanged</body></html>"',
 				},
 			});
 		});

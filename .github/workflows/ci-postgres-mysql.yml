@@ -7,6 +7,13 @@ on:
   pull_request:
     paths:
       - packages/cli/src/databases/**
+      - packages/cli/src/modules/*/database/**
+      - packages/cli/src/modules/**/*.entity.ts
+      - packages/cli/src/modules/**/*.repository.ts
+      - packages/cli/test/integration/**
+      - packages/cli/test/shared/db/**
+      - packages/@n8n/db/**
+      - packages/cli/**/__tests__/**
       - .github/workflows/ci-postgres-mysql.yml
       - .github/docker-compose.yml
   pull_request_review:
@@ -14,106 +21,60 @@ on:
 
 concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=3072'
 
 jobs:
   build:
     name: Install & Build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
-        with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
-
-      - name: Build Backend
-        run: pnpm build:backend
-
-      - name: Cache build artifacts
-        uses: actions/cache/save@v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
   sqlite-pooled:
     name: SQLite Pooled
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_TYPE: sqlite
       DB_SQLITE_POOL_SIZE: 4
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
-        with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Test SQLite Pooled
         working-directory: packages/cli
-        run: pnpm jest
+        run: pnpm test:sqlite
 
   mariadb:
     name: MariaDB
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
+      DB_MYSQLDB_POOL_SIZE: 1
+      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
+      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
+      DB_MYSQLDB_TIMEOUT: 120000
+      NODE_OPTIONS: '--max-old-space-size=7168'
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
-        with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Start MariaDB
-        uses: isbang/compose-action@v2.0.0
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
@@ -121,85 +82,52 @@ jobs:
 
       - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 30000
+        run: pnpm test:mariadb --testTimeout 120000
 
   mysql:
-    name: MySQL (${{ matrix.service-name }})
-    runs-on: ubuntu-latest
+    name: MySQL 8.4
     needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
-    strategy:
-      matrix:
-        service-name: [ 'mysql-8.0.13', 'mysql-8.4' ]
     env:
       DB_MYSQLDB_PASSWORD: password
+      DB_MYSQLDB_POOL_SIZE: 1
+      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
+      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
+      DB_MYSQLDB_TIMEOUT: 120000
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
-        with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Start MySQL
-        uses: isbang/compose-action@v2.0.0
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
-          services: |
-            ${{ matrix.service-name }}
+          services: mysql-8.4
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 30000
+        # We sleep here due to flakiness with DB tests if we connect to the database too soon
+        run: sleep 2s && pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_POSTGRESDB_PASSWORD: password
       DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
-        with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Start Postgres
-        uses: isbang/compose-action@v2.0.0
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
@@ -212,10 +140,10 @@ jobs:
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [mariadb, postgres, mysql]
+    needs: [sqlite-pooled, mariadb, postgres, mysql]
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}

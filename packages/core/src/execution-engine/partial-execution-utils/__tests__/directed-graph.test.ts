@@ -10,7 +10,7 @@
 // PD denotes that the node has pinned data
 
 import type { INode } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { createNodeData, defaultWorkflowParameter } from './helpers';
 import { DirectedGraph } from '../directed-graph';
@@ -327,7 +327,7 @@ describe('DirectedGraph', () => {
 			expect(newConnections[0]).toEqual({
 				from: node0,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 0,
 				to: node2,
 			});
@@ -372,7 +372,7 @@ describe('DirectedGraph', () => {
 			expect(newConnections[0]).toEqual({
 				from: node0,
 				outputIndex: 1,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 4,
 				to: node2,
 			});
@@ -490,6 +490,37 @@ describe('DirectedGraph', () => {
 
 			// ACT & ASSERT
 			expect(graph.hasNode(node.name + 'foo')).toBe(false);
+		});
+	});
+
+	describe('getNodesByNames', () => {
+		test('returns empty Set when no names are provided', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const graph = new DirectedGraph().addNodes(node1, node2);
+
+			// ACT
+			const result = graph.getNodesByNames([]);
+
+			// ASSERT
+			expect(result.size).toBe(0);
+			expect(result).toEqual(new Set());
+		});
+
+		test('returns Set with only nodes that exist in the graph', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const graph = new DirectedGraph().addNodes(node1, node2, node3);
+
+			// ACT
+			const result = graph.getNodesByNames(['Node1', 'Node3', 'Node4']);
+
+			// ASSERT
+			expect(result.size).toBe(2);
+			expect(result).toEqual(new Set([node1, node3]));
 		});
 	});
 });

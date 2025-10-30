@@ -1,16 +1,16 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "1.11.0",
+  "version": "1.28.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint .",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
     "start": "./bin/n8n-benchmark",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"WARNING: no test specified\" && exit 0",
     "typecheck": "tsc --noEmit",
     "benchmark": "zx scripts/run.mjs",
     "benchmark-in-cloud": "pnpm benchmark --env cloud",
@@ -20,7 +20,7 @@
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },
   "engines": {
-    "node": ">=20.10"
+    "node": ">=22.16"
   },
   "keywords": [
     "automate",
@@ -40,6 +40,7 @@
     "zx": "^8.1.4"
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/convict": "^6.1.1",
     "@types/k6": "^0.52.0"
   },

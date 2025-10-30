@@ -1,14 +1,12 @@
+import { inProduction, inTest, Logger } from '@n8n/backend-common';
+import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import type { ReportingOptions } from '@n8n/errors';
+import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
-import { close } from '@sentry/node';
-import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import type { ReportingOptions } from 'n8n-workflow';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-
-import type { InstanceType } from '@/instance-settings';
-import { Logger } from '@/logging/logger';
 
 type ErrorReporterInitOptions = {
 	serverType: InstanceType | 'task_runner';
@@ -17,6 +15,10 @@ type ErrorReporterInitOptions = {
 	environment: string;
 	serverName: string;
 	releaseDate?: Date;
+
+	/** Whether to enable event loop block detection, if Sentry is enabled. */
+	withEventLoopBlockDetection: boolean;
+
 	/**
 	 * Function to allow filtering out errors before they are sent to Sentry.
 	 * Return true if the error should be filtered out.
@@ -24,7 +26,8 @@ type ErrorReporterInitOptions = {
 	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 };
 
-const SIX_WEEKS_IN_MS = 6 * 7 * 24 * 60 * 60 * 1000;
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
+const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
 const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
 
@@ -61,7 +64,10 @@ export class ErrorReporter {
 					meta = e.extra;
 				}
 				const msg = [e.message + context, stack].join('');
-				this.logger.error(msg, meta);
+				// Default to logging the error if option is not specified
+				if (options?.shouldBeLogged ?? true) {
+					this.logger.error(msg, meta);
+				}
 				e = e.cause as Error;
 			} while (e);
 		}
@@ -69,6 +75,7 @@ export class ErrorReporter {
 
 	async shutdown(timeoutInMs = 1000) {
 		clearTimeout(this.expirationTimer);
+		const { close } = await import('@sentry/node');
 		await close(timeoutInMs);
 	}
 
@@ -80,23 +87,32 @@ export class ErrorReporter {
 		environment,
 		serverName,
 		releaseDate,
+		withEventLoopBlockDetection,
 	}: ErrorReporterInitOptions) {
+		if (inTest) return;
+
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
 
 		if (releaseDate) {
-			const releaseExpiresInMs = releaseDate.getTime() + SIX_WEEKS_IN_MS - Date.now();
-			if (releaseExpiresInMs <= 0) {
+			const releaseExpiresAtMs = releaseDate.getTime() + SIX_WEEKS_IN_MS;
+			const releaseExpiresInMs = () => releaseExpiresAtMs - Date.now();
+			if (releaseExpiresInMs() <= 0) {
 				this.logger.warn(RELEASE_EXPIRATION_WARNING);
 				return;
 			}
-			// Once this release expires, reject all events
-			this.expirationTimer = setTimeout(() => {
-				this.logger.warn(RELEASE_EXPIRATION_WARNING);
-				// eslint-disable-next-line @typescript-eslint/unbound-method
-				this.report = this.defaultReport;
-			}, releaseExpiresInMs);
+			const checkForExpiration = () => {
+				// Once this release expires, reject all events
+				if (releaseExpiresInMs() <= 0) {
+					this.logger.warn(RELEASE_EXPIRATION_WARNING);
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					this.report = this.defaultReport;
+				} else {
+					this.expirationTimer = setTimeout(checkForExpiration, ONE_DAY_IN_MS);
+				}
+			};
+			checkForExpiration();
 		}
 
 		if (!dsn) return;
@@ -115,17 +131,26 @@ export class ErrorReporter {
 			'ContextLines',
 		];
 
+		const eventLoopBlockIntegration = withEventLoopBlockDetection
+			? // The EventLoopBlockIntegration doesn't automatically include the
+				// same tags, so we set them explicitly.
+				await this.getEventLoopBlockIntegration({
+					server_name: serverName,
+					server_type: serverType,
+				})
+			: [];
+
 		init({
 			dsn,
 			release,
 			environment,
-			enableTracing: false,
+			tracesSampleRate: inProduction ? 0.01 : 0,
 			serverName,
 			beforeBreadcrumb: () => null,
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
-				rewriteFramesIntegration({ root: process.cwd() }),
+				rewriteFramesIntegration({ root: '/' }),
 				requestDataIntegration({
 					include: {
 						cookies: false,
@@ -133,9 +158,9 @@ export class ErrorReporter {
 						headers: false,
 						query_string: false,
 						url: true,
-						user: false,
 					},
 				}),
+				...eventLoopBlockIntegration,
 			],
 		});
 
@@ -172,8 +197,8 @@ export class ErrorReporter {
 		}
 
 		if (this.isIgnoredSqliteError(originalException)) return null;
-		if (originalException instanceof ApplicationError) {
-			if (this.isIgnoredApplicationError(originalException)) return null;
+		if (originalException instanceof ApplicationError || originalException instanceof BaseError) {
+			if (this.isIgnoredN8nError(originalException)) return null;
 
 			this.extractEventDetailsFromN8nError(event, originalException);
 		}
@@ -183,7 +208,7 @@ export class ErrorReporter {
 			'cause' in originalException &&
 			originalException.cause instanceof Error &&
 			'level' in originalException.cause &&
-			originalException.cause.level === 'warning'
+			(originalException.cause.level === 'warning' || originalException.cause.level === 'info')
 		) {
 			// handle underlying errors propagating from dependencies like ai-assistant-sdk
 			return null;
@@ -223,12 +248,13 @@ export class ErrorReporter {
 		return (
 			error instanceof Error &&
 			error.name === 'QueryFailedError' &&
+			typeof error.message === 'string' &&
 			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => error.message.includes(errMsg))
 		);
 	}
 
-	private isIgnoredApplicationError(error: ApplicationError) {
-		return error.level === 'warning';
+	private isIgnoredN8nError(error: ApplicationError | BaseError) {
+		return error.level === 'warning' || error.level === 'info';
 	}
 
 	private extractEventDetailsFromN8nError(
@@ -239,5 +265,21 @@ export class ErrorReporter {
 		event.level = level;
 		if (extra) event.extra = { ...event.extra, ...extra };
 		if (tags) event.tags = { ...event.tags, ...tags };
+	}
+
+	private async getEventLoopBlockIntegration(tags: Record<string, string>) {
+		try {
+			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
+			return [
+				eventLoopBlockIntegration({
+					staticTags: tags,
+				}),
+			];
+		} catch {
+			this.logger.debug(
+				"Sentry's event loop block integration is disabled, because the native binary for `@sentry/node-native` was not found",
+			);
+			return [];
+		}
 	}
 }

@@ -1,222 +1,158 @@
 {
-	"type": "object",
-	"properties": {
-		"type": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"file_version": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"id": {
-					"type": "string"
-				},
-				"sha1": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"type",
-				"id",
-				"sha1"
-			]
-		},
-		"sequence_id": {
-			"type": "string"
-		},
-		"etag": {
-			"type": "string"
-		},
-		"sha1": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"description": {
-			"type": "string"
-		},
-		"size": {
-			"type": "integer"
-		},
-		"path_collection": {
-			"type": "object",
-			"properties": {
-				"total_count": {
-					"type": "integer"
-				},
-				"entries": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"type": {
-								"type": "string"
-							},
-							"id": {
-								"type": "string"
-							},
-							"name": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"type",
-							"id",
-							"sequence_id",
-							"etag",
-							"name"
-						]
-					}
-				}
-			},
-			"required": [
-				"total_count",
-				"entries"
-			]
-		},
-		"created_at": {
-			"type": "string"
-		},
-		"modified_at": {
-			"type": "string"
-		},
-		"trashed_at": {
-			"type": "null"
-		},
-		"purged_at": {
-			"type": "null"
-		},
-		"content_created_at": {
-			"type": "string"
-		},
-		"content_modified_at": {
-			"type": "string"
-		},
-		"created_by": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				},
-				"login": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"type",
-				"id",
-				"name",
-				"login"
-			]
-		},
-		"modified_by": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				},
-				"login": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"type",
-				"id",
-				"name",
-				"login"
-			]
-		},
-		"owned_by": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				},
-				"login": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"type",
-				"id",
-				"name",
-				"login"
-			]
-		},
-		"shared_link": {
-			"type": "null"
-		},
-		"parent": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"type",
-				"id",
-				"sequence_id",
-				"etag",
-				"name"
-			]
-		},
-		"item_status": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"type",
-		"id",
-		"file_version",
-		"sequence_id",
-		"etag",
-		"sha1",
-		"name",
-		"description",
-		"size",
-		"path_collection",
-		"created_at",
-		"modified_at",
-		"trashed_at",
-		"purged_at",
-		"content_created_at",
-		"content_modified_at",
-		"created_by",
-		"modified_by",
-		"owned_by",
-		"shared_link",
-		"parent",
-		"item_status"
-	]
+    "type": "object",
+    "properties": {
+        "content_created_at": {
+            "type": "string"
+        },
+        "content_modified_at": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_by": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "description": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "file_version": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "sha1": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "item_status": {
+            "type": "string"
+        },
+        "modified_at": {
+            "type": "string"
+        },
+        "modified_by": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "owned_by": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "parent": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "path_collection": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "purged_at": {
+            "type": "null"
+        },
+        "sequence_id": {
+            "type": "string"
+        },
+        "sha1": {
+            "type": "string"
+        },
+        "shared_link": {
+            "type": "null"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "trashed_at": {
+            "type": "null"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

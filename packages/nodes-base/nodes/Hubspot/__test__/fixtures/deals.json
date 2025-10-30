@@ -1,0 +1,90 @@
+{
+	"deals": [
+		{
+			"portalId": 62515,
+			"dealId": 18039629,
+			"isDeleted": false,
+			"associations": {
+				"associatedVids": [393873, 734934],
+				"associatedCompanyIds": [237892],
+				"associatedDealIds": []
+			},
+			"properties": {
+				"dealname": {
+					"value": "Company",
+					"timestamp": 1457040864519,
+					"source": "API",
+					"sourceId": null,
+					"versions": [
+						{
+							"name": "dealname",
+							"value": "Company Name",
+							"timestamp": 1457040864519,
+							"source": "API",
+							"sourceVid": []
+						}
+					]
+				},
+				"num_associated_contacts": {
+					"value": "2",
+					"timestamp": 0,
+					"source": "CALCULATED",
+					"sourceId": null,
+					"versions": [
+						{
+							"name": "num_associated_contacts",
+							"value": "2",
+							"source": "CALCULATED",
+							"sourceVid": []
+						}
+					]
+				}
+			},
+			"imports": []
+		},
+		{
+			"portalId": 62515,
+			"dealId": 18040854,
+			"isDeleted": false,
+			"associations": {
+				"associatedVids": [],
+				"associatedCompanyIds": [],
+				"associatedDealIds": []
+			},
+			"properties": {
+				"dealname": {
+					"value": "5678",
+					"timestamp": 1457042290572,
+					"source": "API",
+					"sourceId": null,
+					"versions": [
+						{
+							"name": "dealname",
+							"value": "5678",
+							"timestamp": 1457042290572,
+							"source": "API",
+							"sourceVid": []
+						}
+					]
+				},
+				"num_associated_contacts": {
+					"value": "0",
+					"timestamp": 0,
+					"source": "CALCULATED",
+					"sourceId": null,
+					"versions": [
+						{
+							"name": "num_associated_contacts",
+							"value": "0",
+							"source": "CALCULATED",
+							"sourceVid": []
+						}
+					]
+				}
+			},
+			"imports": []
+		}
+	],
+	"hasMore": false,
+	"offset": 18040854
+}

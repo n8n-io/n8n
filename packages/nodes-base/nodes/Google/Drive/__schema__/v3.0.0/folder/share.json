@@ -1,17 +1,21 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
-            "type": "string"
+        "allowFileDiscovery": {
+            "type": "boolean"
         },
         "id": {
             "type": "string"
         },
-        "type": {
+        "kind": {
             "type": "string"
         },
         "role": {
             "type": "string"
+        },
+        "type": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

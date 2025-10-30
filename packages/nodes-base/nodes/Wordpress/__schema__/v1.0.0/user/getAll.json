@@ -85,5 +85,6 @@
         "slug",
         "meta",
         "_links"
-    ]
+    ],
+    "version": 1
 }

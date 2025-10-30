@@ -20,6 +20,7 @@ import type {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
@@ -54,13 +55,16 @@ export abstract class TaskRequester {
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
 
-	pendingRequests: Map<string, TaskRequest> = new Map();
-
 	tasks: Map<string, Task> = new Map();
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
 
-	constructor(private readonly nodeTypes: NodeTypes) {}
+	private readonly executionIdsToTaskIds: Map<string, Set<string>> = new Map();
+
+	constructor(
+		private readonly nodeTypes: NodeTypes,
+		private readonly eventService: EventService,
+	) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -110,8 +114,6 @@ export abstract class TaskRequester {
 			data,
 		};
 
-		this.pendingRequests.set(request.requestId, request);
-
 		const taskIdPromise = new Promise<string>((resolve, reject) => {
 			this.requestAcceptRejects.set(request.requestId, {
 				accept: resolve,
@@ -134,6 +136,19 @@ export abstract class TaskRequester {
 		};
 		this.tasks.set(task.taskId, task);
 
+		if (additionalData.executionId) {
+			const taskIds = this.executionIdsToTaskIds.get(additionalData.executionId) ?? new Set();
+			taskIds.add(taskId);
+			this.executionIdsToTaskIds.set(additionalData.executionId, taskIds);
+		}
+
+		this.eventService.emit('runner-task-requested', {
+			taskId: task.taskId,
+			nodeId: task.data.node.id,
+			workflowId: task.data.workflow.id,
+			executionId: task.data.additionalData.executionId ?? 'unknown',
+		});
+
 		try {
 			const dataPromise = new Promise<TaskResultData>((resolve, reject) => {
 				this.taskAcceptRejects.set(task.taskId, {
@@ -149,6 +164,14 @@ export abstract class TaskRequester {
 			});
 
 			const resultData = await dataPromise;
+
+			this.eventService.emit('runner-response-received', {
+				taskId: task.taskId,
+				nodeId: task.data.node.id,
+				workflowId: task.data.workflow.id,
+				executionId: task.data.additionalData.executionId ?? 'unknown',
+			});
+
 			// Set custom execution data (`$execution.customData`) if sent
 			if (resultData.customData) {
 				Object.entries(resultData.customData).forEach(([k, v]) => {
@@ -169,6 +192,48 @@ export abstract class TaskRequester {
 			return createResultError(e as TError);
 		} finally {
 			this.tasks.delete(taskId);
+			this.clearExecutionsMap(taskId);
+		}
+	}
+
+	cancelTasks(executionId: string) {
+		for (const taskId of this.getTaskIds(executionId)) {
+			this.cancelTask(taskId);
+		}
+	}
+
+	private getTaskIds(executionId: string): Set<string> {
+		return this.executionIdsToTaskIds.get(executionId) ?? new Set();
+	}
+
+	private cancelTask(taskId: string, reason = 'Task cancelled by user') {
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		this.tasks.delete(taskId);
+
+		this.sendMessage({
+			type: 'requester:taskcancel',
+			taskId,
+			reason,
+		});
+
+		const acceptReject = this.taskAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.reject(new Error(`Task cancelled: ${reason}`));
+			this.taskAcceptRejects.delete(taskId);
+		}
+	}
+
+	private clearExecutionsMap(taskId: string) {
+		for (const [executionId, taskIds] of this.executionIdsToTaskIds.entries()) {
+			if (taskIds.has(taskId)) {
+				taskIds.delete(taskId);
+				if (taskIds.size === 0) {
+					this.executionIdsToTaskIds.delete(executionId);
+				}
+				break;
+			}
 		}
 	}
 

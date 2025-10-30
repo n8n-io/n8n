@@ -9,16 +9,16 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { entryFields, entryOperations } from './EntryDescription';
 import {
 	getToken,
-	removeTrailingSlash,
 	strapiApiRequest,
 	strapiApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
+import { removeTrailingSlash } from '../../utils/utilities';
 
 export class Strapi implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,8 +33,8 @@ export class Strapi implements INodeType {
 			name: 'Strapi',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'strapiApi',

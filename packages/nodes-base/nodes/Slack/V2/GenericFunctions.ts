@@ -12,6 +12,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type { SendAndWaitMessageBody } from './MessageInterface';
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
+import { createUtmCampaignLink } from '../../../utils/utilities';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -123,7 +124,7 @@ export async function slackApiRequestAllItems(
 	if (endpoint.includes('files.list')) {
 		query.count = 100;
 	} else {
-		query.limit = 100;
+		query.limit = query.limit ?? 100;
 	}
 	do {
 		responseData = await slackApiRequest.call(this, method, endpoint, body as IDataObject, query);
@@ -259,6 +260,22 @@ export function getTarget(
 	return target;
 }
 
+export function processThreadOptions(threadOptions: IDataObject | undefined): IDataObject {
+	const result: IDataObject = {};
+
+	if (threadOptions?.replyValues) {
+		const replyValues = threadOptions.replyValues as IDataObject;
+		if (replyValues.thread_ts) {
+			result.thread_ts = replyValues.thread_ts;
+		}
+		if (replyValues.reply_broadcast !== undefined) {
+			result.reply_broadcast = replyValues.reply_broadcast;
+		}
+	}
+
+	return result;
+}
+
 export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const select = context.getNodeParameter('select', 0) as 'user' | 'channel';
 	const target = getTarget(context, 0, select);
@@ -300,12 +317,25 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 							text: option.label,
 							emoji: true,
 						},
-						url: `${config.url}?approved=${option.value}`,
+						url: option.url,
 					};
 				}),
 			},
 		],
 	};
+
+	if (config.appendAttribution) {
+		const instanceId = context.getInstanceId();
+		const attributionText = 'This message was sent automatically with ';
+		const link = createUtmCampaignLink('n8n-nodes-base.slack', instanceId);
+		body.blocks.push({
+			type: 'section',
+			text: {
+				type: 'mrkdwn',
+				text: `${attributionText} _<${link}|n8n>_`,
+			},
+		});
+	}
 
 	if (context.getNode().typeVersion > 2.2 && body.blocks?.[1]?.type === 'section') {
 		delete body.blocks[1].text.emoji;

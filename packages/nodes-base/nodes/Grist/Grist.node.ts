@@ -9,7 +9,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IRequestOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -44,8 +44,8 @@ export class Grist implements INodeType {
 			name: 'Grist',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'gristApi',

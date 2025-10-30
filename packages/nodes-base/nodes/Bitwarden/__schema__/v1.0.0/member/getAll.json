@@ -1,55 +1,42 @@
 {
-	"type": "object",
-	"properties": {
-		"object": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"userId": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"email": {
-			"type": "string"
-		},
-		"twoFactorEnabled": {
-			"type": "boolean"
-		},
-		"status": {
-			"type": "integer"
-		},
-		"collections": {
-			"type": "null"
-		},
-		"resetPasswordEnrolled": {
-			"type": "boolean"
-		},
-		"ssoExternalId": {
-			"type": "null"
-		},
-		"type": {
-			"type": "integer"
-		},
-		"permissions": {
-			"type": "null"
-		}
-	},
-	"required": [
-		"object",
-		"id",
-		"userId",
-		"name",
-		"email",
-		"twoFactorEnabled",
-		"status",
-		"collections",
-		"resetPasswordEnrolled",
-		"type",
-		"externalId",
-		"permissions"
-	]
+    "type": "object",
+    "properties": {
+        "collections": {
+            "type": "null"
+        },
+        "email": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "object": {
+            "type": "string"
+        },
+        "permissions": {
+            "type": "null"
+        },
+        "resetPasswordEnrolled": {
+            "type": "boolean"
+        },
+        "ssoExternalId": {
+            "type": "null"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "twoFactorEnabled": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "userId": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

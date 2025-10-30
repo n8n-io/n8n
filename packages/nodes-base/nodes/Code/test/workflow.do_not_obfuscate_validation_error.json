@@ -1,86 +1,77 @@
 {
-  "name": "errors falsely flagged as internal",
-  "nodes": [
-    {
-      "parameters": {},
-      "id": "d2ff695c-4ca0-457d-ae9e-666d2dc53a53",
-      "name": "When clicking ‘Test workflow’",
-      "type": "n8n-nodes-base.manualTrigger",
-      "position": [
-        360,
-        420
-      ],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "jsCode": "return {json: \"test\"}"
-      },
-      "id": "fc540f62-d671-49a2-b35d-aead4ed8bd10",
-      "name": "Code",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        620,
-        420
-      ],
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {},
-      "id": "d8335277-61af-42d8-9cf5-02a8b85df42b",
-      "name": "No Operation, do nothing",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        900,
-        500
-      ]
-    }
-  ],
-  "pinData": {
-    "No Operation, do nothing": [
-      {
-        "json": {
-          "error": "A 'json' property isn't an object [item 0]"
-        }
-      }
-    ]
-  },
-  "connections": {
-    "When clicking ‘Test workflow’": {
-      "main": [
-        [
-          {
-            "node": "Code",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code": {
-      "main": [
-        [],
-        [
-          {
-            "node": "No Operation, do nothing",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "1aa448f4-ac5f-497b-ae3c-62a5e9db63d4",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
-  },
-  "id": "TlJvElz9tvmByCh3",
-  "tags": []
+	"name": "errors falsely flagged as internal",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d2ff695c-4ca0-457d-ae9e-666d2dc53a53",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [360, 420],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {
+				"jsCode": "return {json: \"test\"}"
+			},
+			"id": "fc540f62-d671-49a2-b35d-aead4ed8bd10",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [620, 420],
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {},
+			"id": "d8335277-61af-42d8-9cf5-02a8b85df42b",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [900, 500]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"error": "A 'json' property isn't an object [item 0]"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "1aa448f4-ac5f-497b-ae3c-62a5e9db63d4",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "TlJvElz9tvmByCh3",
+	"tags": []
 }

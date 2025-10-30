@@ -1,24 +1,24 @@
+import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import { ExecutionRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
-	ApplicationError,
 	BINARY_ENCODING,
 	sleep,
 	jsonStringify,
 	ensureError,
-	ExecutionCancelledError,
+	UnexpectedError,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
-import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
@@ -47,7 +47,6 @@ export class ScalingService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('scaling');
@@ -58,6 +57,9 @@ export class ScalingService {
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
 		const { RedisClientService } = await import('@/services/redis-client.service');
+
+		if (this.queue) return;
+
 		const service = Container.get(RedisClientService);
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
@@ -71,15 +73,7 @@ export class ScalingService {
 
 		this.registerListeners();
 
-		const { isLeader, isMultiMain } = this.instanceSettings;
-
-		if (isLeader) this.scheduleQueueRecovery();
-
-		if (isMultiMain) {
-			this.orchestrationService.multiMainSetup
-				.on('leader-takeover', () => this.scheduleQueueRecovery())
-				.on('leader-stepdown', () => this.stopQueueRecovery());
-		}
+		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery(0);
 
 		this.scheduleQueueMetrics();
 
@@ -92,8 +86,15 @@ export class ScalingService {
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
+				this.eventService.emit('job-dequeued', {
+					executionId: job.data.executionId,
+					workflowId: job.data.workflowId,
+					hostId: this.instanceSettings.hostId,
+					jobId: job.id.toString(),
+				});
+
 				if (!this.hasValidJobData(job)) {
-					throw new ApplicationError('Worker received invalid job', {
+					throw new UnexpectedError('Worker received invalid job', {
 						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
 					});
 				}
@@ -139,17 +140,21 @@ export class ScalingService {
 		else if (instanceType === 'worker') await this.stopWorker();
 	}
 
+	private async pauseQueue() {
+		await this.queue.pause(true, true); // no more jobs will be enqueued or picked up
+		this.logger.debug('Paused queue');
+	}
+
 	private async stopMain() {
-		if (this.instanceSettings.isSingleMain) {
-			await this.queue.pause(true, true); // no more jobs will be picked up
-			this.logger.debug('Queue paused');
-		}
+		if (this.instanceSettings.isSingleMain) await this.pauseQueue();
 
 		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
 	}
 
 	private async stopWorker() {
+		await this.pauseQueue();
+
 		let count = 0;
 
 		while (this.getRunningJobsCount() !== 0) {
@@ -198,6 +203,12 @@ export class ScalingService {
 		const jobId = job.id;
 
 		this.logger.info(`Enqueued execution ${executionId} (job ${jobId})`, { executionId, jobId });
+		this.eventService.emit('job-enqueued', {
+			executionId,
+			workflowId: jobData.workflowId,
+			hostId: this.instanceSettings.hostId,
+			jobId: jobId.toString(),
+		});
 
 		return job;
 	}
@@ -219,7 +230,7 @@ export class ScalingService {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
 				await job.discard(); // prevent retries
-				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId), true); // remove from queue
+				await job.moveToFailed(new ManualExecutionCancelledError(job.data.executionId), true); // remove from queue
 				return true;
 			}
 
@@ -305,11 +316,15 @@ export class ScalingService {
 			// than natively provided by Bull in `global:completed` and `global:failed` events
 
 			switch (msg.kind) {
+				case 'send-chunk':
+					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
+					break;
 				case 'respond-to-webhook':
 					const decodedResponse = this.decodeWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
+					this.activeExecutions.resolveResponsePromise(msg.executionId, {});
 					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
 						workerId: msg.workerId,
 						executionId: msg.executionId,
@@ -369,13 +384,13 @@ export class ScalingService {
 	private assertQueue() {
 		if (this.queue) return;
 
-		throw new ApplicationError('This method must be called after `setupQueue`');
+		throw new UnexpectedError('This method must be called after `setupQueue`');
 	}
 
 	private assertWorker() {
 		if (this.instanceSettings.instanceType === 'worker') return;
 
-		throw new ApplicationError('This method must be called on a `worker` instance');
+		throw new UnexpectedError('This method must be called on a `worker` instance');
 	}
 
 	// #region Queue metrics
@@ -384,13 +399,12 @@ export class ScalingService {
 	private readonly jobCounters = { completed: 0, failed: 0 };
 
 	/** Interval for collecting queue metrics to expose via Prometheus. */
-	private queueMetricsInterval: NodeJS.Timer | undefined;
+	private queueMetricsInterval: NodeJS.Timeout | undefined;
 
 	get isQueueMetricsEnabled() {
 		return (
 			this.globalConfig.endpoints.metrics.includeQueueMetrics &&
-			this.instanceSettings.instanceType === 'main' &&
-			this.instanceSettings.isSingleMain
+			this.instanceSettings.instanceType === 'main'
 		);
 	}
 
@@ -426,10 +440,11 @@ export class ScalingService {
 	// #region Queue recovery
 
 	private readonly queueRecoveryContext: QueueRecoveryContext = {
-		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
-		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
+		batchSize: this.globalConfig.executions.queueRecovery.batchSize,
+		waitMs: this.globalConfig.executions.queueRecovery.interval * 60 * 1000,
 	};
 
+	@OnLeaderTakeover()
 	private scheduleQueueRecovery(waitMs = this.queueRecoveryContext.waitMs) {
 		this.queueRecoveryContext.timeout = setTimeout(async () => {
 			try {
@@ -445,12 +460,17 @@ export class ScalingService {
 			}
 		}, waitMs);
 
+		if (waitMs === 0) return;
+
 		const wait = [this.queueRecoveryContext.waitMs / Time.minutes.toMilliseconds, 'min'].join(' ');
 
 		this.logger.debug(`Scheduled queue recovery check for next ${wait}`);
 	}
 
+	@OnLeaderStepdown()
 	private stopQueueRecovery() {
+		if (!this.queueRecoveryContext.timeout) return;
+
 		clearTimeout(this.queueRecoveryContext.timeout);
 
 		this.logger.debug('Queue recovery stopped');
@@ -460,7 +480,7 @@ export class ScalingService {
 	 * Mark in-progress executions as `crashed` if stored in DB as `new` or `running`
 	 * but absent from the queue. Return time until next recovery cycle.
 	 */
-	private async recoverFromQueue() {
+	async recoverFromQueue() {
 		const { waitMs, batchSize } = this.queueRecoveryContext;
 
 		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
@@ -471,16 +491,9 @@ export class ScalingService {
 		}
 
 		const runningJobs = await this.findJobsByStatus(['active', 'waiting']);
-
 		const queuedIds = new Set(runningJobs.map((job) => job.data.executionId));
 
-		if (queuedIds.size === 0) {
-			this.logger.debug('Completed queue recovery check, no dangling executions');
-			return waitMs;
-		}
-
 		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
-
 		if (danglingIds.length === 0) {
 			this.logger.debug('Completed queue recovery check, no dangling executions');
 			return waitMs;

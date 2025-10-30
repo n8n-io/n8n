@@ -10,34 +10,57 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "EmailBouncedDate": {
+            "type": "null"
+        },
+        "EmailBouncedReason": {
+            "type": "null"
+        },
+        "GeocodeAccuracy": {
+            "type": "null"
+        },
+        "HasOptedOutOfEmail": {
+            "type": "boolean"
         },
         "Id": {
             "type": "string"
         },
+        "IndividualId": {
+            "type": "null"
+        },
+        "IsConverted": {
+            "type": "boolean"
+        },
         "IsDeleted": {
             "type": "boolean"
         },
-        "MasterRecordId": {
+        "IsPriorityRecord": {
+            "type": "boolean"
+        },
+        "IsUnreadByOwner": {
+            "type": "boolean"
+        },
+        "Jigsaw": {
             "type": "null"
+        },
+        "JigsawContactId": {
+            "type": "null"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
         },
         "LastName": {
-            "type": "string"
-        },
-        "MiddleName": {
-            "type": "null"
-        },
-        "Suffix": {
-            "type": "null"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "Company": {
             "type": "string"
         },
         "Latitude": {
@@ -46,104 +69,24 @@
         "Longitude": {
             "type": "null"
         },
-        "GeocodeAccuracy": {
+        "MasterRecordId": {
             "type": "null"
         },
-        "Address": {
-            "type": "object",
-            "properties": {
-                "geocodeAccuracy": {
-                    "type": "null"
-                },
-                "latitude": {
-                    "type": "null"
-                },
-                "longitude": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "geocodeAccuracy",
-                "latitude",
-                "longitude",
-                "postalCode",
-                "state",
-                "street"
-            ]
+        "Name": {
+            "type": "string"
         },
-        "Fax": {
-            "type": "null"
-        },
-        "PhotoUrl": {
+        "OwnerId": {
             "type": "string"
         },
         "Status": {
             "type": "string"
         },
-        "AnnualRevenue": {
+        "Suffix": {
             "type": "null"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "HasOptedOutOfEmail": {
-            "type": "boolean"
-        },
-        "IsConverted": {
-            "type": "boolean"
-        },
-        "IsUnreadByOwner": {
-            "type": "boolean"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
         },
         "SystemModstamp": {
             "type": "string"
-        },
-        "DoNotCall": {
-            "type": "boolean"
-        },
-        "HasOptedOutOfFax": {
-            "type": "boolean"
-        },
-        "LastTransferDate": {
-            "type": "string"
-        },
-        "Jigsaw": {
-            "type": "null"
-        },
-        "JigsawContactId": {
-            "type": "null"
-        },
-        "EmailBouncedReason": {
-            "type": "null"
-        },
-        "EmailBouncedDate": {
-            "type": "null"
-        },
-        "IndividualId": {
-            "type": "null"
-        },
-        "Pronouns": {
-            "type": "null"
-        },
-        "GenderIdentity": {
-            "type": "null"
-        },
-        "IsPriorityRecord": {
-            "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

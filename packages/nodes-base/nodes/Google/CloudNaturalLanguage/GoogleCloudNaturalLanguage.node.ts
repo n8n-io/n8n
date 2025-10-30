@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -23,8 +23,8 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 			name: 'Google Cloud Natural Language',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'googleCloudNaturalLanguageOAuth2Api',

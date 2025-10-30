@@ -4,11 +4,12 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
 import { URL } from 'url';
+
+import { generatePairedItemData } from '../../utils/utilities';
 
 // Utility function
 
@@ -28,15 +29,15 @@ export class RssFeedRead implements INodeType {
 		icon: 'fa:rss',
 		iconColor: 'orange-red',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Reads data from an RSS Feed',
 		defaults: {
 			name: 'RSS Read',
 			color: '#b02020',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'URL',
@@ -53,6 +54,14 @@ export class RssFeedRead implements INodeType {
 				placeholder: 'Add option',
 				default: {},
 				options: [
+					{
+						displayName: 'Custom Fields',
+						name: 'customFields',
+						type: 'string',
+						default: '',
+						description:
+							'A comma-separated list of custom fields to include in the output. For example, "author, contentSnippet".',
+					},
 					{
 						displayName: 'Ignore SSL Issues (Insecure)',
 						name: 'ignoreSSL',
@@ -76,7 +85,7 @@ export class RssFeedRead implements INodeType {
 		if (nodeVersion >= 1.1) {
 			itemsLength = items.length;
 		} else {
-			fallbackPairedItems = [] as IPairedItemData[];
+			fallbackPairedItems = generatePairedItemData(items.length);
 		}
 
 		for (let i = 0; i < itemsLength; i++) {
@@ -97,11 +106,27 @@ export class RssFeedRead implements INodeType {
 					});
 				}
 
-				const parser = new Parser({
+				const parserOptions: IDataObject = {
 					requestOptions: {
 						rejectUnauthorized: !ignoreSSL,
 					},
-				});
+				};
+
+				if (nodeVersion >= 1.2) {
+					parserOptions.headers = {
+						Accept:
+							'application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4',
+					};
+				}
+
+				if (options.customFields) {
+					const customFields = options.customFields as string;
+					parserOptions.customFields = {
+						item: customFields.split(',').map((field) => field.trim()),
+					};
+				}
+
+				const parser = new Parser(parserOptions);
 
 				let feed: Parser.Output<IDataObject>;
 				try {
@@ -122,13 +147,12 @@ export class RssFeedRead implements INodeType {
 					});
 				}
 
-				// For now we just take the items and ignore everything else
 				if (feed.items) {
 					const feedItems = (feed.items as IDataObject[]).map((item) => ({
 						json: item,
 					})) as INodeExecutionData[];
 
-					const itemData = fallbackPairedItems || [{ item: i }];
+					const itemData = fallbackPairedItems ?? [{ item: i }];
 
 					const executionData = this.helpers.constructExecutionMetaData(feedItems, {
 						itemData,
@@ -140,7 +164,7 @@ export class RssFeedRead implements INodeType {
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: { error: error.message },
-						pairedItem: fallbackPairedItems || [{ item: i }],
+						pairedItem: fallbackPairedItems ?? [{ item: i }],
 					});
 					continue;
 				}

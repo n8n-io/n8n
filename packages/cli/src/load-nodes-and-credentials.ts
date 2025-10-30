@@ -1,5 +1,7 @@
+import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
+import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
@@ -12,37 +14,23 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
-	Logger,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	INodeTypeData,
-	ICredentialTypeData,
 	LoadedClass,
 	ICredentialType,
 	INodeType,
 	IVersionedNodeType,
 	INodeProperties,
+	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
-import {
-	CUSTOM_API_CALL_KEY,
-	CUSTOM_API_CALL_NAME,
-	inTest,
-	CLI_DIR,
-	inE2ETests,
-} from '@/constants';
-import { isContainedWithin } from '@/utils/path-util';
-
-interface LoadedNodesAndCredentials {
-	nodes: INodeTypeData;
-	credentials: ICredentialTypeData;
-}
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -68,10 +56,11 @@ export class LoadNodesAndCredentials {
 		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async init() {
-		if (inTest) throw new ApplicationError('Not available in tests');
+		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
@@ -100,11 +89,9 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		// Load nodes from any other `n8n-nodes-*` packages in the download directory
-		// This includes the community nodes
-		await this.loadNodesFromNodeModules(
-			path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-		);
+		for (const dir of this.moduleRegistry.loadDirs) {
+			await this.loadNodesFromNodeModules(dir);
+		}
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -195,6 +182,14 @@ export class LoadNodesAndCredentials {
 		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
 
 		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
+	}
+
+	findLastCalloutIndex(properties: INodeProperties[]): number {
+		for (let i = properties.length - 1; i >= 0; i--) {
+			if (properties[i].type === 'callout') return i;
+		}
+
+		return -1;
 	}
 
 	getCustomDirectories(): string[] {
@@ -293,7 +288,7 @@ export class LoadNodesAndCredentials {
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
-			throw new ApplicationError(
+			throw new UserError(
 				picocolors.red(
 					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
 				),
@@ -311,16 +306,22 @@ export class LoadNodesAndCredentials {
 	 * the connected tools.
 	 */
 	createAiTools() {
-		const usableNodes: Array<INodeTypeBaseDescription | INodeTypeDescription> =
-			this.types.nodes.filter((nodetype) => nodetype.usableAsTool === true);
+		const usableNodes: INodeTypeDescription[] = this.types.nodes.filter(
+			(nodeType) => nodeType.usableAsTool,
+		);
 
 		for (const usableNode of usableNodes) {
-			const description: INodeTypeBaseDescription | INodeTypeDescription =
-				structuredClone(usableNode);
+			const description =
+				typeof usableNode.usableAsTool === 'object'
+					? {
+							...deepCopy(usableNode),
+							...usableNode.usableAsTool?.replacements,
+						}
+					: deepCopy(usableNode);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);
-			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
+			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };
 
 			const credentialNames = Object.entries(this.known.credentials)
 				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
@@ -346,23 +347,41 @@ export class LoadNodesAndCredentials {
 					name: `${packageName}.${name}`,
 				})),
 			);
-			this.types.credentials = this.types.credentials.concat(
-				types.credentials.map(({ supportedNodes, ...rest }) => ({
-					...rest,
+
+			const processedCredentials = types.credentials.map((credential) => {
+				if (this.shouldAddDomainRestrictions(credential)) {
+					const clonedCredential = { ...credential };
+					clonedCredential.properties = this.injectDomainRestrictionFields([
+						...(clonedCredential.properties ?? []),
+					]);
+					return {
+						...clonedCredential,
+						supportedNodes:
+							loader instanceof PackageDirectoryLoader
+								? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+								: undefined,
+					};
+				}
+				return {
+					...credential,
 					supportedNodes:
 						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
-				})),
-			);
+				};
+			});
 
-			// Nodes and credentials that have been loaded immediately
-			for (const nodeTypeName in loader.nodeTypes) {
-				this.loaded.nodes[`${packageName}.${nodeTypeName}`] = loader.nodeTypes[nodeTypeName];
-			}
+			this.types.credentials = this.types.credentials.concat(processedCredentials);
 
+			// Add domain restriction fields to loaded credentials
 			for (const credentialTypeName in loader.credentialTypes) {
-				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+				const credentialType = loader.credentialTypes[credentialTypeName];
+				if (this.shouldAddDomainRestrictions(credentialType)) {
+					// Access properties through the type field
+					credentialType.type.properties = this.injectDomainRestrictionFields([
+						...(credentialType.type.properties ?? []),
+					]);
+				}
 			}
 
 			for (const type in known.nodes) {
@@ -399,6 +418,13 @@ export class LoadNodesAndCredentials {
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
 		}
+	}
+
+	recognizesNode(fullNodeType: string): boolean {
+		const [packageName, nodeType] = fullNodeType.split('.');
+		const { loaders } = this;
+		const loader = loaders[packageName];
+		return !!loader && nodeType in loader.known.nodes;
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
@@ -444,7 +470,7 @@ export class LoadNodesAndCredentials {
 		if (isFullDescription(item.description)) {
 			item.description.name += 'Tool';
 			item.description.inputs = [];
-			item.description.outputs = [NodeConnectionType.AiTool];
+			item.description.outputs = [NodeConnectionTypes.AiTool];
 			item.description.displayName += ' Tool';
 			delete item.description.usableAsTool;
 
@@ -481,15 +507,16 @@ export class LoadNodesAndCredentials {
 					typeOptions: { rows: 2 },
 					description:
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-					placeholder: `e.g. ${item.description.description}`,
 				};
 
-				item.description.properties.unshift(descProp);
+				const lastCallout = this.findLastCalloutIndex(item.description.properties);
+
+				item.description.properties.splice(lastCallout + 1, 0, descProp);
 
 				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property
+				// so we add the descriptionType property as the first property after possible callout param(s).
 				if (hasResource || hasOperation) {
-					item.description.properties.unshift(descriptionType);
+					item.description.properties.splice(lastCallout + 1, 0, descriptionType);
 
 					descProp.displayOptions = {
 						show: {
@@ -506,7 +533,7 @@ export class LoadNodesAndCredentials {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
-				Tools: ['Other Tools'],
+				Tools: item.description.codex?.subcategories?.Tools ?? ['Other Tools'],
 			},
 			resources,
 		};
@@ -515,47 +542,148 @@ export class LoadNodesAndCredentials {
 
 	async setupHotReload() {
 		const { default: debounce } = await import('lodash/debounce');
-		// eslint-disable-next-line import/no-extraneous-dependencies
-		const { watch } = await import('chokidar');
+
+		const { subscribe } = await import('@parcel/watcher');
 
 		const { Push } = await import('@/push');
 		const push = Container.get(Push);
 
-		Object.values(this.loaders).forEach(async (loader) => {
+		for (const loader of Object.values(this.loaders)) {
+			const { directory } = loader;
 			try {
-				await fsPromises.access(loader.directory);
+				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
-				return;
+				continue;
 			}
 
-			const realModulePath = path.join(await fsPromises.realpath(loader.directory), path.sep);
 			const reloader = debounce(async () => {
-				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
-					filePath.startsWith(realModulePath),
-				);
-				modulesToUnload.forEach((filePath) => {
-					delete require.cache[filePath];
-				});
-
-				loader.reset();
-				await loader.loadAll();
-				await this.postProcessLoaders();
-				push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+				try {
+					loader.reset();
+					await loader.loadAll();
+					await this.postProcessLoaders();
+					push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				} catch (error) {
+					this.logger.error(`Hot reload failed for ${loader.packageName}`);
+				}
 			}, 100);
 
-			const toWatch = loader.isLazyLoaded
-				? ['**/nodes.json', '**/credentials.json']
-				: ['**/*.js', '**/*.json'];
-			const files = await glob(toWatch, {
-				cwd: realModulePath,
-				ignore: ['node_modules/**'],
+			// For lazy loaded packages, we need to watch the dist directory
+			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];
+			const customNodesRoot = path.join(directory, 'node_modules');
+
+			if (loader.packageName === 'CUSTOM') {
+				const customNodeEntries = await fsPromises.readdir(customNodesRoot, {
+					withFileTypes: true,
+				});
+
+				// Custom nodes are usually symlinked using npm link. Resolve symlinks to support file watching
+				const realCustomNodesPaths = await Promise.all(
+					customNodeEntries
+						.filter(
+							(entry) =>
+								(entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.'),
+						)
+						.map(
+							async (entry) =>
+								await fsPromises.realpath(path.join(customNodesRoot, entry.name)).catch(() => null),
+						),
+				);
+
+				watchPaths.push.apply(
+					watchPaths,
+					realCustomNodesPaths.filter((path): path is string => !!path),
+				);
+			}
+
+			this.logger.debug('Watching node folders for hot reload', {
+				loader: loader.packageName,
+				paths: watchPaths,
 			});
-			const watcher = watch(files, {
-				cwd: realModulePath,
-				ignoreInitial: true,
-			});
-			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);
-		});
+
+			for (const watchPath of watchPaths) {
+				const onFileEvent: ParcelWatcher.SubscribeCallback = async (_error, events) => {
+					if (events.some((event) => event.type !== 'delete')) {
+						const modules = Object.keys(require.cache).filter((module) =>
+							module.startsWith(watchPath),
+						);
+
+						for (const module of modules) {
+							delete require.cache[module];
+						}
+						await reloader();
+					}
+				};
+
+				// Ignore nested node_modules folders
+				const ignore = ['**/node_modules/**/node_modules/**'];
+
+				await subscribe(watchPath, onFileEvent, { ignore });
+			}
+		}
+	}
+
+	private shouldAddDomainRestrictions(
+		credential: ICredentialType | LoadedClass<ICredentialType>,
+	): boolean {
+		// Handle both credential types by extracting the actual ICredentialType
+		const credentialType = 'type' in credential ? credential.type : credential;
+
+		return (
+			credentialType.authenticate !== undefined ||
+			credentialType.genericAuth === true ||
+			(Array.isArray(credentialType.extends) &&
+				(credentialType.extends.includes('oAuth2Api') ||
+					credentialType.extends.includes('oAuth1Api') ||
+					credentialType.extends.includes('googleOAuth2Api')))
+		);
+	}
+
+	private injectDomainRestrictionFields(properties: INodeProperties[]): INodeProperties[] {
+		// Check if fields already exist to avoid duplicates
+		if (properties.some((prop) => prop.name === 'allowedHttpRequestDomains')) {
+			return properties;
+		}
+		const domainFields: INodeProperties[] = [
+			{
+				displayName: 'Allowed HTTP Request Domains',
+				name: 'allowedHttpRequestDomains',
+				type: 'options',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Allow all requests when used in the HTTP Request node',
+					},
+					{
+						name: 'Specific Domains',
+						value: 'domains',
+						description: 'Restrict requests to specific domains',
+					},
+					{
+						name: 'None',
+						value: 'none',
+						description: 'Block all requests when used in the HTTP Request node',
+					},
+				],
+				default: 'all',
+				description: 'Control which domains this credential can be used with in HTTP Request nodes',
+			},
+			{
+				displayName: 'Allowed Domains',
+				name: 'allowedDomains',
+				type: 'string',
+				default: '',
+				placeholder: 'example.com, *.subdomain.com',
+				description: 'Comma-separated list of allowed domains (supports wildcards with *)',
+				displayOptions: {
+					show: {
+						allowedHttpRequestDomains: ['domains'],
+					},
+				},
+			},
+		];
+		return [...properties, ...domainFields];
 	}
 }

@@ -1,12 +1,12 @@
 import { createHeartbeatMessage, type PushMessage } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
-import { Logger } from 'n8n-core';
 import type WebSocket from 'ws';
 
-import type { User } from '@/databases/entities/user';
 import { WebSocketPush } from '@/push/websocket.push';
-import { mockInstance } from '@test/mocking';
 
 jest.useFakeTimers();
 
@@ -75,7 +75,7 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToOne(pushMessage, pushRef1);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
 	});
 
@@ -84,8 +84,8 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToAll(pushMessage);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
 	it('pings all connections', () => {
@@ -103,8 +103,8 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToUsers(pushMessage, [userId]);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
 	it('emits message event when connection receives data', async () => {

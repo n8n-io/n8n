@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nLink > should render external links 1`] = `"<a href="https://example.com/" target="_blank" class="n8n-link"><span class="primary"><span class="n8n-text size-medium regular">External Link</span></span></a>"`;
+
+exports[`N8nLink > should render internal router links 1`] = `"<router-link-stub to="/test" replace="false" custom="false" ariacurrentvalue="page" role="link" class="n8n-link"></router-link-stub>"`;
+
+exports[`N8nLink > should render with bold text 1`] = `"<router-link-stub to="/test" replace="false" custom="false" ariacurrentvalue="page" role="link" class="n8n-link"></router-link-stub>"`;
+
+exports[`N8nLink > should render with different themes 1`] = `"<router-link-stub to="/test" replace="false" custom="false" ariacurrentvalue="page" role="link" class="n8n-link"></router-link-stub>"`;
+
+exports[`N8nLink > should render with underline 1`] = `"<router-link-stub to="/test" replace="false" custom="false" ariacurrentvalue="page" role="link" class="n8n-link"></router-link-stub>"`;

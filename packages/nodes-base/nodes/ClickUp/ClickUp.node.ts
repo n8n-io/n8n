@@ -1,14 +1,14 @@
 import moment from 'moment-timezone';
 import type {
-	IExecuteFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { checklistFields, checklistOperations } from './ChecklistDescription';
 import { checklistItemFields, checklistItemOperations } from './ChecklistItemDescription';
@@ -41,8 +41,8 @@ export class ClickUp implements INodeType {
 			name: 'ClickUp',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'clickUpApi',
@@ -992,7 +992,19 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'get') {
 						const taskId = this.getNodeParameter('id', i) as string;
-						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`);
+						const includeSubtasks = this.getNodeParameter('includeSubtasks', i, false) as boolean;
+						if (includeSubtasks) {
+							qs.include_subtasks = true;
+						}
+						const includeMarkdownDescription = this.getNodeParameter(
+							'includeMarkdownDescription',
+							i,
+							false,
+						) as boolean;
+						if (includeMarkdownDescription) {
+							qs.include_markdown_description = true;
+						}
+						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`, {}, qs);
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);

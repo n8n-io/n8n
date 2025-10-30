@@ -1,6 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import type { Project, User, CreateExecutionPayload } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, Logger } from 'n8n-core';
+import type { Response } from 'express';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -16,17 +20,12 @@ import type {
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
-import config from '@/config';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { CreateExecutionPayload, IWorkflowErrorData } from '@/interfaces';
+import { ExecutionDataService } from '@/executions/execution-data.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
-import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
@@ -42,6 +41,7 @@ export class WorkflowExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly executionDataService: ExecutionDataService,
 	) {}
 
 	async runWorkflow(
@@ -107,16 +107,19 @@ export class WorkflowExecutionService {
 			destinationNode,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			agentRequest,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
-		partialExecutionVersion: 1 | 2 = 1,
+		streamingEnabled?: boolean,
+		httpResponse?: Response,
 	) {
 		const pinData = workflowData.pinData;
 		let pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
+			destinationNode,
 		);
 
 		// TODO: Reverse the order of events, first find out if the execution is
@@ -150,7 +153,10 @@ export class WorkflowExecutionService {
 				startNodes.length === 0 ||
 				destinationNode === undefined)
 		) {
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase({
+				userId: user.id,
+				workflowId: workflowData.id,
+			});
 
 			const needsWebhook = await this.testWebhooks.needsWebhook({
 				userId: user.id,
@@ -178,9 +184,11 @@ export class WorkflowExecutionService {
 			startNodes,
 			workflowData,
 			userId: user.id,
-			partialExecutionVersion,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			agentRequest,
+			streamingEnabled,
+			httpResponse,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
@@ -197,7 +205,7 @@ export class WorkflowExecutionService {
 		 * so we persist all details to give workers full access to them.
 		 */
 		if (
-			config.getEnv('executions.mode') === 'queue' &&
+			this.globalConfig.executions.mode === 'queue' &&
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
 		) {
 			data.executionData = {
@@ -207,11 +215,11 @@ export class WorkflowExecutionService {
 				},
 				resultData: {
 					pinData,
-					runData: runData ?? {},
+					// @ts-expect-error CAT-752
+					runData,
 				},
 				manualData: {
 					userId: data.userId,
-					partialExecutionVersion: data.partialExecutionVersion,
 					dirtyNodeNames,
 					triggerToStartFrom,
 				},
@@ -219,6 +227,29 @@ export class WorkflowExecutionService {
 		}
 
 		const executionId = await this.workflowRunner.run(data);
+
+		return {
+			executionId,
+		};
+	}
+
+	async executeChatWorkflow(
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		user: User,
+		httpResponse: Response,
+		streamingEnabled: boolean = true,
+	) {
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'chat',
+			workflowData,
+			userId: user.id,
+			executionData,
+			streamingEnabled,
+			httpResponse,
+		};
+
+		const executionId = await this.workflowRunner.run(data, undefined, true);
 
 		return {
 			executionId,
@@ -273,7 +304,7 @@ export class WorkflowExecutionService {
 					);
 
 					// Create a fake execution and save it to DB.
-					const fakeExecution = WorkflowHelpers.generateFailedExecutionFromError(
+					const fakeExecution = this.executionDataService.generateFailedExecutionFromError(
 						'error',
 						errorWorkflowPermissionError,
 						initialNode,
@@ -316,6 +347,14 @@ export class WorkflowExecutionService {
 				return;
 			}
 
+			const parentExecution =
+				workflowErrorData.execution?.id && workflowErrorData.workflow?.id
+					? {
+							executionId: workflowErrorData.execution.id,
+							workflowId: workflowErrorData.workflow.id,
+						}
+					: undefined;
+
 			// Can execute without webhook so go on
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
@@ -331,6 +370,11 @@ export class WorkflowExecutionService {
 					],
 				},
 				source: null,
+				...(parentExecution && {
+					metadata: {
+						parentExecution,
+					},
+				}),
 			});
 
 			const runExecutionData: IRunExecutionData = {
@@ -376,7 +420,12 @@ export class WorkflowExecutionService {
 	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
 	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
-	selectPinnedActivatorStarter(workflow: IWorkflowBase, startNodes?: string[], pinData?: IPinData) {
+	selectPinnedActivatorStarter(
+		workflow: IWorkflowBase,
+		startNodes?: string[],
+		pinData?: IPinData,
+		destinationNode?: string,
+	) {
 		if (!pinData || !startNodes) return null;
 
 		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
@@ -387,7 +436,27 @@ export class WorkflowExecutionService {
 
 		// full manual execution
 
-		if (startNodes?.length === 0) return firstPinnedActivator ?? null;
+		if (startNodes?.length === 0) {
+			// If there is a destination node, find the pinned activator that is a parent of the destination node
+			if (destinationNode) {
+				const destinationParents = new Set(
+					new Workflow({
+						nodes: workflow.nodes,
+						connections: workflow.connections,
+						active: workflow.active,
+						nodeTypes: this.nodeTypes,
+					}).getParentNodes(destinationNode),
+				);
+
+				const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));
+
+				if (activator) {
+					return activator;
+				}
+			}
+
+			return firstPinnedActivator ?? null;
+		}
 
 		// partial manual execution
 

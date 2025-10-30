@@ -2,11 +2,10 @@ import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
+import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import { MissingAuthTokenError } from '@/task-runners/errors/missing-auth-token.error';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
-
-import { DefaultTaskRunnerDisconnectAnalyzer } from '../../../src/task-runners/default-task-runner-disconnect-analyzer';
 
 describe('TaskRunnerModule in external mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
@@ -33,7 +32,7 @@ describe('TaskRunnerModule in external mode', () => {
 			runnerConfig.enabled = true;
 			runnerConfig.authToken = '';
 
-			const module = new TaskRunnerModule(mock(), mock(), runnerConfig);
+			const module = new TaskRunnerModule(mock(), mock(), runnerConfig, mock());
 
 			await expect(module.start()).rejects.toThrowError(MissingAuthTokenError);
 		});

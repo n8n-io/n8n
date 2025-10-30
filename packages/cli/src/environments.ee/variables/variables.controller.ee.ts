@@ -1,20 +1,12 @@
-import { VariableListRequestDto } from '@n8n/api-types';
+import { CreateVariableRequestDto, VariableListRequestDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Body, Delete, Get, Licensed, Patch, Post, Query, RestController } from '@n8n/decorators';
+import type { Response } from 'express';
 
-import {
-	Delete,
-	Get,
-	GlobalScope,
-	Licensed,
-	Patch,
-	Post,
-	Query,
-	RestController,
-} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { VariablesRequest } from '@/requests';
 
 import { VariablesService } from './variables.service.ee';
 
@@ -23,19 +15,23 @@ export class VariablesController {
 	constructor(private readonly variablesService: VariablesService) {}
 
 	@Get('/')
-	@GlobalScope('variable:list')
-	async getVariables(_req: unknown, _res: unknown, @Query query: VariableListRequestDto) {
-		return await this.variablesService.getAllCached(query.state);
+	async getVariables(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Query query: VariableListRequestDto,
+	) {
+		return await this.variablesService.getAllForUser(req.user, query);
 	}
 
 	@Post('/')
 	@Licensed('feat:variables')
-	@GlobalScope('variable:create')
-	async createVariable(req: VariablesRequest.Create) {
-		const variable = req.body;
-		delete variable.id;
+	async createVariable(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: CreateVariableRequestDto,
+	) {
 		try {
-			return await this.variablesService.create(variable);
+			return await this.variablesService.create(req.user, payload);
 		} catch (error) {
 			if (error instanceof VariableCountLimitReachedError) {
 				throw new BadRequestError(error.message);
@@ -47,10 +43,8 @@ export class VariablesController {
 	}
 
 	@Get('/:id')
-	@GlobalScope('variable:read')
-	async getVariable(req: VariablesRequest.Get) {
-		const id = req.params.id;
-		const variable = await this.variablesService.getCached(id);
+	async getVariable(req: AuthenticatedRequest<{ id: string }>) {
+		const variable = await this.variablesService.getForUser(req.user, req.params.id);
 		if (variable === null) {
 			throw new NotFoundError(`Variable with id ${req.params.id} not found`);
 		}
@@ -59,13 +53,14 @@ export class VariablesController {
 
 	@Patch('/:id')
 	@Licensed('feat:variables')
-	@GlobalScope('variable:update')
-	async updateVariable(req: VariablesRequest.Update) {
+	async updateVariable(
+		req: AuthenticatedRequest<{ id: string }>,
+		_res: Response,
+		@Body payload: CreateVariableRequestDto,
+	) {
 		const id = req.params.id;
-		const variable = req.body;
-		delete variable.id;
 		try {
-			return await this.variablesService.update(id, variable);
+			return await this.variablesService.update(req.user, id, payload);
 		} catch (error) {
 			if (error instanceof VariableCountLimitReachedError) {
 				throw new BadRequestError(error.message);
@@ -76,11 +71,9 @@ export class VariablesController {
 		}
 	}
 
-	@Delete('/:id(\\w+)')
-	@GlobalScope('variable:delete')
-	async deleteVariable(req: VariablesRequest.Delete) {
-		const id = req.params.id;
-		await this.variablesService.delete(id);
+	@Delete('/:id')
+	async deleteVariable(req: AuthenticatedRequest<{ id: string }>) {
+		await this.variablesService.deleteForUser(req.user, req.params.id);
 
 		return true;
 	}

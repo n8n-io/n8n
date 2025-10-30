@@ -4,14 +4,15 @@
         "id": {
             "type": "string"
         },
-        "name": {
+        "labelListVisibility": {
             "type": "string"
         },
         "messageListVisibility": {
             "type": "string"
         },
-        "labelListVisibility": {
+        "name": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
@@ -26,8 +26,8 @@ export class MicrosoftOneDrive implements INodeType {
 			name: 'Microsoft OneDrive',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftOneDriveOAuth2Api',

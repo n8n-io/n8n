@@ -24,7 +24,6 @@ import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
-
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
 
@@ -144,7 +143,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			{ json: this.additionalData.httpRequest?.body || {} },
 		];
-		const runExecutionData: IRunExecutionData = {
+		const runExecutionData: IRunExecutionData = this.runExecutionData ?? {
 			resultData: {
 				runData: {},
 			},

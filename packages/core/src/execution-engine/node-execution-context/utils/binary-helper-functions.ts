@@ -4,6 +4,7 @@ import FileType from 'file-type';
 import { IncomingMessage } from 'http';
 import iconv from 'iconv-lite';
 import { extension, lookup } from 'mime-types';
+import type { StringValue as TimeUnitValue } from 'ms';
 import type {
 	BinaryHelperFunctions,
 	IBinaryData,
@@ -11,7 +12,12 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { NodeOperationError, fileTypeFromMimeType, ApplicationError } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	fileTypeFromMimeType,
+	ApplicationError,
+	UnexpectedError,
+} from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
@@ -49,18 +55,44 @@ async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promis
 	return await Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
+/**
+ * Check if object is a binary data
+ */
+function isBinaryData(obj: unknown): obj is IBinaryData {
+	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
+}
+
+/**
+ * If parameterData is a string, returns the binary data the given item index and
+ * property name from the input data.
+ * Else if parameterData is a binary data object, returns the binary data object.
+ */
 export function assertBinaryData(
 	inputData: ITaskDataConnections,
 	node: INode,
 	itemIndex: number,
-	propertyName: string,
+	parameterData: string | IBinaryData,
 	inputIndex: number,
 ): IBinaryData {
+	if (isBinaryData(parameterData)) {
+		return parameterData;
+	}
+	if (typeof parameterData !== 'string') {
+		throw new NodeOperationError(
+			node,
+			'Provided parameter is not a string or binary data object.',
+			{
+				itemIndex,
+				description:
+					'Specify the property name of the binary data in input item or use an expression to access the binary data in previous nodes, e.g. "{{ $(_target_node_).item.binary[_binary_property_name_] }}"',
+			},
+		);
+	}
 	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 	if (binaryKeyData === undefined) {
 		throw new NodeOperationError(
 			node,
-			`This operation expects the node's input data to contain a binary file '${propertyName}', but none was found [item ${itemIndex}]`,
+			`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
 			{
 				itemIndex,
 				description: 'Make sure that the previous node outputs a binary file',
@@ -68,11 +100,11 @@ export function assertBinaryData(
 		);
 	}
 
-	const binaryPropertyData = binaryKeyData[propertyName];
+	const binaryPropertyData = binaryKeyData[parameterData];
 	if (binaryPropertyData === undefined) {
 		throw new NodeOperationError(
 			node,
-			`The item has no binary field '${propertyName}' [item ${itemIndex}]`,
+			`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
 			{
 				itemIndex,
 				description:
@@ -85,15 +117,26 @@ export function assertBinaryData(
 }
 
 /**
- * Returns binary data buffer for given item index and property name.
+ * If parameterData is a string, returns the binary data buffer for the given item index and
+ * property name from the input data.
+ * Else returns the binary data buffer for the given binary data object.
  */
 export async function getBinaryDataBuffer(
 	inputData: ITaskDataConnections,
 	itemIndex: number,
-	propertyName: string,
+	parameterData: string | IBinaryData,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
+	let binaryData: IBinaryData;
+
+	if (isBinaryData(parameterData)) {
+		binaryData = parameterData;
+	} else if (typeof parameterData === 'string') {
+		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
+	} else {
+		throw new UnexpectedError('Provided parameter is not a string or binary data object.');
+	}
+
 	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
@@ -186,7 +229,7 @@ export async function copyBinaryFile(
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  */
-// eslint-disable-next-line complexity
+
 export async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
@@ -271,7 +314,7 @@ export async function prepareBinaryData(
 }
 
 export const getBinaryHelperFunctions = (
-	{ executionId }: IWorkflowExecuteAdditionalData,
+	{ executionId, restApiUrl }: IWorkflowExecuteAdditionalData,
 	workflowId: string,
 ): BinaryHelperFunctions => ({
 	getBinaryPath,
@@ -279,6 +322,10 @@ export const getBinaryHelperFunctions = (
 	getBinaryMetadata,
 	binaryToBuffer,
 	binaryToString,
+	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: TimeUnitValue) {
+		const token = Container.get(BinaryDataService).createSignedToken(binaryData, expiresIn);
+		return `${restApiUrl}/binary-data/signed?token=${token}`;
+	},
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>

@@ -5,10 +5,11 @@ import { createReadStream, createWriteStream } from 'fs';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { pipeline } from 'stream/promises';
-import packageJson from '../../package.json' assert { type: 'json' };
+import packageJson from '../../package.json' with { type: 'json' };
 
 const baseDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const fullChangelogFile = resolve(baseDir, 'CHANGELOG.md');
+// Version includes experimental versions (e.g., 1.2.3-exp.0)
 const versionChangelogFile = resolve(baseDir, `CHANGELOG-${packageJson.version}.md`);
 
 const changelogStream = conventionalChangelog({

@@ -19,9 +19,14 @@ Great that you are here and you want to contribute to n8n
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
 	- [Development cycle](#development-cycle)
-		-	[Community PR Guidelines](#community-pr-guidelines)
+		- [Community PR Guidelines](#community-pr-guidelines)
+			- [**1. Change Request/Comment**](#1-change-requestcomment)
+			- [**2. General Requirements**](#2-general-requirements)
+			- [**3. PR Specific Requirements**](#3-pr-specific-requirements)
+			- [**4. Workflow Summary for Non-Compliant PRs**](#4-workflow-summary-for-non-compliant-prs)
 		- [Test suite](#test-suite)
 			- [Unit tests](#unit-tests)
+			- [Code Coverage](#code-coverage)
 			- [E2E tests](#e2e-tests)
 	- [Releasing](#releasing)
 	- [Create custom nodes](#create-custom-nodes)
@@ -42,15 +47,15 @@ n8n is split up in different modules which are all in a single mono repository.
 
 The most important directories:
 
-- [/docker/image](/docker/images) - Dockerfiles to create n8n containers
+- [/docker/images](/docker/images) - Dockerfiles to create n8n containers
 - [/packages](/packages) - The different n8n modules
 - [/packages/cli](/packages/cli) - CLI code to run front- & backend
 - [/packages/core](/packages/core) - Core code which handles workflow
   execution, active webhooks and
   workflows. **Contact n8n before
   starting on any changes here**
-- [/packages/design-system](/packages/design-system) - Vue frontend components
-- [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
+- [/packages/frontend/@n8n/design-system](/packages/design-system) - Vue frontend components
+- [/packages/frontend/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
 - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
 - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
 - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
@@ -69,11 +74,11 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### Node.js
 
-[Node.js](https://nodejs.org/en/) version 20.15 or newer is required for development purposes.
+[Node.js](https://nodejs.org/en/) version 22.16 or newer is required for development purposes.
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 9.1 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 10.2 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 
@@ -85,11 +90,11 @@ This automatically sets up file-links between modules which depend on each other
 
 We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`.
 
-With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 9.15 of pnpm via: `corepack prepare pnpm@9.15.5 --activate`.
+You can install the correct version of pnpm using `corepack prepare --activate`.
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
-**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare pnpm --activate` in a terminal as an administrator.
+**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare --activate` in a terminal as an administrator.
 
 #### Build tools
 
@@ -116,6 +121,16 @@ npm add -g windows-build-tools
 MacOS:
 
 No additional packages required.
+
+#### actionlint (for GitHub Actions workflow development)
+
+If you plan to modify GitHub Actions workflow files (`.github/workflows/*.yml`), you'll need [actionlint](https://github.com/rhysd/actionlint) for workflow validation:
+
+**macOS (Homebrew):**
+```
+brew install actionlint
+```
+> **Note:** actionlint is only required if you're modifying workflow files. It runs automatically via git hooks when workflow files are changed.
 
 ### Actual n8n setup
 
@@ -175,22 +190,120 @@ While iterating on n8n modules code, you can run `pnpm dev`. It will then
 automatically build your code, restart the backend and refresh the frontend
 (editor-ui) on every change you make.
 
+### Basic Development Workflow
+
 1. Start n8n in development mode:
    ```
    pnpm dev
    ```
-1. Hack, hack, hack
-1. Check if everything still runs in production mode:
+2. Hack, hack, hack
+3. Check if everything still runs in production mode:
    ```
    pnpm build
    pnpm start
    ```
-1. Create tests
-1. Run all [tests](#test-suite):
+4. Create tests
+5. Run all [tests](#test-suite):
    ```
    pnpm test
    ```
-1. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+6. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+
+### Hot Reload for Nodes (N8N_DEV_RELOAD)
+
+When developing custom nodes or credentials, you can enable hot reload to automatically detect changes without restarting the server:
+
+```bash
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+**Performance considerations:**
+- File watching adds overhead to your system, especially on slower machines
+- The watcher monitors potentially thousands of files, which can impact CPU and memory usage
+- On resource-constrained systems, consider developing without hot reload and manually restarting when needed
+
+### Selective Package Development
+
+Running all packages in development mode can be resource-intensive. For better performance, run only the packages relevant to your work:
+
+#### Available Filtered Commands
+
+- **Backend-only development:**
+  ```bash
+  pnpm dev:be
+  ```
+  Excludes frontend packages like editor-ui and design-system
+
+- **Frontend-only development:**
+  ```bash
+  pnpm dev:fe
+  ```
+  Runs the backend server and editor-ui development server
+
+- **AI/LangChain nodes development:**
+  ```bash
+  pnpm dev:ai
+  ```
+  Runs only essential packages for AI node development
+
+#### Custom Selective Development
+
+For even more focused development, you can run packages individually:
+
+**Example 1: Working on custom nodes**
+```bash
+# Terminal 1: Build and watch nodes package
+cd packages/nodes-base
+pnpm dev
+
+# Terminal 2: Run the CLI with hot reload
+cd packages/cli
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+**Example 2: Pure frontend development**
+```bash
+# Terminal 1: Start the backend server (no watching)
+pnpm start
+
+# Terminal 2: Run frontend dev server
+cd packages/editor-ui
+pnpm dev
+```
+
+**Example 3: Working on a specific node package**
+```bash
+# Terminal 1: Watch your node package
+cd packages/nodes-base  # or your custom node package
+pnpm watch
+
+# Terminal 2: Run CLI with hot reload
+cd packages/cli
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+### Performance Considerations
+
+The full development mode (`pnpm dev`) runs multiple processes in parallel:
+
+1. **TypeScript compilation** for each package
+2. **File watchers** monitoring source files
+3. **Nodemon** restarting the backend on changes
+4. **Vite dev server** for the frontend with HMR
+5. **Multiple build processes** for various packages
+
+**Performance impact:**
+- Can consume significant CPU and memory resources
+- File system watching creates overhead, especially on:
+  - Networked file systems
+  - Virtual machines with shared folders
+  - Systems with slower I/O performance
+- The more packages you run in dev mode, the more system resources are consumed
+
+**Recommendations for resource-constrained environments:**
+1. Use selective development commands based on your task
+2. Close unnecessary applications to free up resources
+3. Monitor system performance and adjust your development approach accordingly
 
 ---
 
@@ -225,7 +338,7 @@ Please address the requested changes or provide feedback within 14 days. If ther
 - **Naming Convention:**
   - Follow [n8n's PR Title Conventions](https://github.com/n8n-io/n8n/blob/master/.github/pull_request_title_conventions.md#L36).
 - **New Nodes:**
-  - PRs that introduce new nodes will be **auto-closed** unless they are explicitly requested by the n8n team and aligned with an agreed project scope. However, you can still explore [building your own nodes](https://docs.n8n.io/integrations/creating-nodes/) , as n8n offers the flexibility to create your own custom nodes.
+  - PRs that introduce new nodes will be **auto-closed** unless they are explicitly requested by the n8n team and aligned with an agreed project scope. However, you can still explore [building your own nodes](https://docs.n8n.io/integrations/creating-nodes/overview/), as n8n offers the flexibility to create your own custom nodes.
 - **Typo-Only PRs:**
   - Typos are not sufficient justification for a PR and will be rejected.
 
@@ -251,17 +364,23 @@ If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
 
+If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
+
+#### Code Coverage
+We track coverage for all our code on [Codecov](https://app.codecov.io/gh/n8n-io/n8n).
+But when you are working on tests locally, we recommend running your tests with env variable `COVERAGE_ENABLED` set to `true`. You can then view the code coverage in the `coverage` folder, or you can use [this VSCode extension](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) to visualize the coverage directly in VSCode.
+
 #### E2E tests
 
-⚠️ You have to run `pnpm cypress:install` to install cypress before running the tests for the first time and to update cypress.
+n8n uses [Playwright](https://playwright.dev) for E2E testing.
 
 E2E tests can be started via one of the following commands:
 
-- `pnpm test:e2e:ui`: Start n8n and run e2e tests interactively using built UI code. Does not react to code changes (i.e. runs `pnpm start` and `cypress open`)
-- `pnpm test:e2e:dev`: Start n8n in development mode and run e2e tests interactively. Reacts to code changes (i.e. runs `pnpm dev` and `cypress open`)
-- `pnpm test:e2e:all`: Start n8n and run e2e tests headless (i.e. runs `pnpm start` and `cypress run --headless`)
+- `pnpm --filter=n8n-playwright test:local` - Run tests locally (starts local server on port 5680 and runs UI tests)
+- `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
+- `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
-⚠️ Remember to stop your dev server before. Otherwise port binding will fail.
+See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
 
 ## Releasing
 
@@ -281,7 +400,7 @@ This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows
 
 ## Create custom nodes
 
-Learn about [building nodes](https://docs.n8n.io/integrations/creating-nodes/) to create custom nodes for n8n. You can create community nodes and make them available using [npm](https://www.npmjs.com/).
+Learn about [building nodes](https://docs.n8n.io/integrations/creating-nodes/overview/) to create custom nodes for n8n. You can create community nodes and make them available using [npm](https://www.npmjs.com/).
 
 ## Extend documentation
 

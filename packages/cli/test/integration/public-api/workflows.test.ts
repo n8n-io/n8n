@@ -1,25 +1,25 @@
+import {
+	createTeamProject,
+	createWorkflow,
+	createWorkflowWithTrigger,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { Project, TagEntity, User } from '@n8n/db';
+import { ProjectRepository, WorkflowHistoryRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
-import type { Project } from '@/databases/entities/project';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
-import { createTeamProject } from '@test-integration/db/projects';
 
-import { mockInstance } from '../../shared/mocking';
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -42,6 +42,7 @@ mockInstance(ExecutionService);
 
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
+	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
@@ -63,9 +64,9 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'SharedCredentials',
 		'SharedWorkflow',
-		'Tag',
-		'Workflow',
-		'Credentials',
+		'TagEntity',
+		'WorkflowEntity',
+		'CredentialsEntity',
 		'WorkflowHistory',
 	]);
 
@@ -832,6 +833,8 @@ describe('POST /workflows', () => {
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
 				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 
@@ -1071,6 +1074,8 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 
@@ -1240,6 +1245,8 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 

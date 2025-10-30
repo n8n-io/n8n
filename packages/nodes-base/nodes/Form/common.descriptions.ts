@@ -46,7 +46,7 @@ export const formFields: INodeProperties = {
 	name: 'formFields',
 	placeholder: 'Add Form Element',
 	type: 'fixedCollection',
-	default: { values: [{ label: '', fieldType: 'text' }] },
+	default: {},
 	typeOptions: {
 		multipleValues: true,
 		sortable: true,
@@ -71,12 +71,30 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
+						},
+					},
+				},
+				{
 					displayName: 'Element Type',
 					name: 'fieldType',
 					type: 'options',
 					default: 'text',
 					description: 'The type of field to add to the form',
+					// Update ALLOWED_FIELD_TYPES in packages/workflow/src/type-validation.ts when adding new field types
 					options: [
+						{
+							name: 'Checkboxes',
+							value: 'checkbox',
+						},
 						{
 							name: 'Custom HTML',
 							value: 'html',
@@ -86,7 +104,7 @@ export const formFields: INodeProperties = {
 							value: 'date',
 						},
 						{
-							name: 'Dropdown List',
+							name: 'Dropdown',
 							value: 'dropdown',
 						},
 						{
@@ -108,6 +126,10 @@ export const formFields: INodeProperties = {
 						{
 							name: 'Password',
 							value: 'password',
+						},
+						{
+							name: 'Radio Buttons',
+							value: 'radio',
 						},
 						{
 							name: 'Text',
@@ -141,20 +163,7 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField'],
-						},
-					},
-				},
-				{
-					displayName: 'Field Name',
-					name: 'fieldName',
-					description:
-						'The name of the field, used in input attributes and referenced by the workflow',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						show: {
-							fieldType: ['hiddenField'],
+							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
 						},
 					},
 				},
@@ -171,6 +180,7 @@ export const formFields: INodeProperties = {
 						},
 					},
 				},
+
 				{
 					displayName: 'Field Options',
 					name: 'fieldOptions',
@@ -204,6 +214,82 @@ export const formFields: INodeProperties = {
 					],
 				},
 				{
+					displayName: 'Checkboxes',
+					name: 'fieldOptions',
+					placeholder: 'Add Checkbox',
+					type: 'fixedCollection',
+					default: { values: [{ option: '' }] },
+					required: true,
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+						sortable: true,
+					},
+					options: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							values: [
+								{
+									displayName: 'Checkbox Label',
+									name: 'option',
+									type: 'string',
+									default: '',
+								},
+							],
+						},
+					],
+				},
+				{
+					displayName: 'Radio Buttons',
+					name: 'fieldOptions',
+					placeholder: 'Add Radio Button',
+					type: 'fixedCollection',
+					default: { values: [{ option: '' }] },
+					required: true,
+					displayOptions: {
+						show: {
+							fieldType: ['radio'],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+						sortable: true,
+					},
+					options: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							values: [
+								{
+									displayName: 'Radio Button Label',
+									name: 'option',
+									type: 'string',
+									default: '',
+								},
+							],
+						},
+					],
+				},
+				{
+					displayName:
+						'Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead',
+					name: 'multiselectLegacyNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							multiselect: [true],
+							fieldType: ['dropdown'],
+							'@version': [{ _cnd: { lt: 2.3 } }],
+						},
+					},
+				},
+				{
 					displayName: 'Multiple Choice',
 					name: 'multiselect',
 					type: 'boolean',
@@ -213,6 +299,80 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown'],
+							'@version': [{ _cnd: { lt: 2.3 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Limit Selection',
+					name: 'limitSelection',
+					type: 'options',
+					default: 'unlimited',
+					options: [
+						{
+							name: 'Exact Number',
+							value: 'exact',
+						},
+						{
+							name: 'Range',
+							value: 'range',
+						},
+						{
+							name: 'Unlimited',
+							value: 'unlimited',
+						},
+					],
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
+						},
+					},
+				},
+				{
+					displayName: 'Number of Selections',
+					name: 'numberOfSelections',
+					type: 'number',
+					default: 1,
+					typeOptions: {
+						numberPrecision: 0,
+						minValue: 1,
+					},
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
+							limitSelection: ['exact'],
+						},
+					},
+				},
+				{
+					displayName: 'Minimum Selections',
+					name: 'minSelections',
+					type: 'number',
+					default: 0,
+					typeOptions: {
+						numberPrecision: 0,
+						minValue: 0,
+					},
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
+							limitSelection: ['range'],
+						},
+					},
+				},
+				{
+					displayName: 'Maximum Selections',
+					name: 'maxSelections',
+					type: 'number',
+					default: 1,
+					typeOptions: {
+						numberPrecision: 0,
+						minValue: 1,
+					},
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
+							limitSelection: ['range'],
 						},
 					},
 				},
@@ -318,9 +478,9 @@ export const formTriggerPanel = {
 	header: 'Pull in a test form submission',
 	executionsHelp: {
 		inactive:
-			"Form Trigger has two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Test step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
+			"Form Trigger has two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Execute step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
 		active:
-			"Form Trigger has two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Test step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
+			"Form Trigger has two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Execute step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
 	},
 	activationHint: {
 		active:

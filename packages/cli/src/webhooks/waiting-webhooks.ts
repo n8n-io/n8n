@@ -1,6 +1,15 @@
+import { Logger } from '@n8n/backend-common';
+import type { IExecutionResponse } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import crypto from 'crypto';
 import type express from 'express';
-import { Logger } from 'n8n-core';
+import {
+	InstanceSettings,
+	WAITING_TOKEN_QUERY_PARAM,
+	prepareUrlForSigning,
+	generateUrlSignature,
+} from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	type INodes,
@@ -10,20 +19,19 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/interfaces';
-import { NodeTypes } from '@/node-types';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
 	WaitingWebhookRequest,
 } from './webhook.types';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeTypes } from '@/node-types';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -39,6 +47,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly webhookService: WebhookService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -81,6 +90,31 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
+	validateSignatureInRequest(req: express.Request) {
+		try {
+			const actualToken = req.query[WAITING_TOKEN_QUERY_PARAM];
+
+			if (typeof actualToken !== 'string') return false;
+
+			// req.host is set correctly even when n8n is behind a reverse proxy
+			// as long as N8N_PROXY_HOPS is set correctly
+			const parsedUrl = new URL(req.url, `http://${req.host}`);
+			parsedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+
+			const urlForSigning = prepareUrlForSigning(parsedUrl);
+
+			const expectedToken = generateUrlSignature(
+				urlForSigning,
+				this.instanceSettings.hmacSignatureSecret,
+			);
+
+			const valid = crypto.timingSafeEqual(Buffer.from(actualToken), Buffer.from(expectedToken));
+			return valid;
+		} catch (error) {
+			return false;
+		}
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -89,10 +123,23 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		this.logReceivedWebhook(req.method, executionId);
 
+		sanitizeWebhookRequest(req);
+
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.getExecution(executionId);
+
+		if (execution?.data.validateSignature) {
+			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+			const lastNode = execution.workflowData.nodes.find((node) => node.name === lastNodeExecuted);
+			const shouldValidate = lastNode?.parameters.operation === SEND_AND_WAIT_OPERATION;
+
+			if (shouldValidate && !this.validateSignatureInRequest(req)) {
+				res.status(401).json({ error: 'Invalid token' });
+				return { noWebhookResponse: true };
+			}
+		}
 
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
@@ -120,12 +167,6 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-
-		/**
-		 * A manual execution resumed by a webhook call needs to be marked as such
-		 * so workers in scaling mode reuse the existing execution data.
-		 */
-		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
 
 		return await this.getWebhookExecutionData({
 			execution,
@@ -170,7 +211,9 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+		});
 		const webhookData = this.webhookService
 			.getNodeWebhooks(workflow, workflowStartNode, additionalData)
 			.find(
@@ -178,7 +221,7 @@ export class WaitingWebhooks implements IWebhookManager {
 					webhook.httpMethod === req.method &&
 					webhook.path === (suffix ?? '') &&
 					webhook.webhookDescription.restartWebhook === true &&
-					(webhook.webhookDescription.isForm || false) === this.includeForms,
+					(webhook.webhookDescription.nodeType === 'form' || false) === this.includeForms,
 			);
 
 		if (webhookData === undefined) {
@@ -213,13 +256,12 @@ export class WaitingWebhooks implements IWebhookManager {
 		const runExecutionData = execution.data;
 
 		return await new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
 				workflowData,
 				workflowStartNode,
-				executionMode,
+				execution.mode,
 				runExecutionData.pushRef,
 				runExecutionData,
 				execution.id,

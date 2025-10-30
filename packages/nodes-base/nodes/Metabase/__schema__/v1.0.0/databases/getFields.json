@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "base_type": {
+            "type": "string"
+        },
+        "display_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "table_id": {
+            "type": "integer"
+        },
+        "table_name": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

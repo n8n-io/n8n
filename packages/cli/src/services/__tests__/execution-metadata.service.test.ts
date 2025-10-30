@@ -1,8 +1,8 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionMetadataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
-import { mockInstance } from '@test/mocking';
 
 describe('ExecutionMetadataService', () => {
 	const repository = mockInstance(ExecutionMetadataRepository);

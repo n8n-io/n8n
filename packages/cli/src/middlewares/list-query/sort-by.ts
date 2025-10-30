@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import type { RequestHandler } from 'express';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
@@ -27,7 +27,7 @@ export const sortByQueryMiddleware: RequestHandler = (req: ListQuery.Request, re
 
 		if (validationResponse.length) {
 			const validationError = validationResponse[0];
-			throw new ApplicationError(validationError.constraints?.workflowSortBy ?? '');
+			throw new UnexpectedError(validationError.constraints?.workflowSortBy ?? '');
 		}
 
 		req.listQueryOptions = { ...req.listQueryOptions, sortBy };

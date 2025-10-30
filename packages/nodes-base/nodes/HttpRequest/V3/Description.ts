@@ -1,6 +1,25 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { optimizeResponseProperties } from '../shared/optimizeResponse';
+
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Try the HTTP request tool with our pre-built',
+	name: 'preBuiltAgentsCalloutHttpRequest',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Joke agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'joke_agent_with_http_tool',
+		},
+	},
+	default: '',
+};
+
 export const mainProperties: INodeProperties[] = [
+	preBuiltAgentsCallout,
 	{
 		displayName: '',
 		name: 'curlImport',
@@ -947,7 +966,7 @@ export const mainProperties: INodeProperties[] = [
 							},
 							{
 								displayName:
-									'Use the $response variables to access the data of the previous response. Refer to the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httpRequest" target="_blank">docs</a> for more info about pagination/',
+									'Use the $response variables to access the data of the previous response. Refer to the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httprequest" target="_blank">docs</a> for more info about pagination/',
 								name: 'webhookNotice',
 								displayOptions: {
 									hide: {
@@ -1167,6 +1186,13 @@ export const mainProperties: INodeProperties[] = [
 			},
 		],
 	},
+	...optimizeResponseProperties.map((prop) => ({
+		...prop,
+		displayOptions: {
+			...prop.displayOptions,
+			show: { ...prop.displayOptions?.show, '@tool': [true] },
+		},
+	})),
 	{
 		displayName:
 			"You can view the raw requests this node makes in your browser's developer console",

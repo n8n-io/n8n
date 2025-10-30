@@ -1,9 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { LogMetadata } from 'n8n-workflow';
 
-import config from '@/config';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
@@ -22,9 +23,10 @@ export class Publisher {
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, assert in the next line.
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (this.executionsConfig.mode !== 'queue') return;
 
 		this.logger = this.logger.scoped(['scaling', 'pubsub']);
 
@@ -47,7 +49,7 @@ export class Publisher {
 	/** Publish a command into the `n8n.commands` channel. */
 	async publishCommand(msg: PubSub.Command) {
 		// @TODO: Once this class is only ever used in scaling mode, remove next line.
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (this.executionsConfig.mode !== 'queue') return;
 
 		await this.client.publish(
 			'n8n.commands',
@@ -86,10 +88,9 @@ export class Publisher {
 
 	// @TODO: The following methods are not pubsub-specific. Consider a dedicated client for multi-main setup.
 
-	async setIfNotExists(key: string, value: string) {
-		const success = await this.client.setnx(key, value);
-
-		return !!success;
+	async setIfNotExists(key: string, value: string, ttl: number) {
+		const result = await this.client.set(key, value, 'EX', ttl, 'NX');
+		return result === 'OK';
 	}
 
 	async setExpiration(key: string, ttl: number) {

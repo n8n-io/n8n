@@ -1,0 +1,57 @@
+name: 'Release: Standalone Package'
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to release'
+        required: true
+        type: choice
+        options:
+          - '@n8n/node-cli'
+          - '@n8n/create-node'
+          - '@n8n/scan-community-package'
+          - '@n8n/eslint-plugin-community-nodes'
+
+concurrency:
+  group: release-package-${{ github.event.inputs.package }}
+  cancel-in-progress: false
+
+env:
+  CACHE_KEY: ${{ github.sha }}-${{ github.event.inputs.package }}-build
+
+jobs:
+  publish-to-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+    env:
+      NPM_CONFIG_PROVENANCE: true
+
+    steps:
+      - name: Check branch
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::This workflow can only be run from the master branch"
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs-github
+        with:
+          build-command: 'pnpm turbo build --filter "...${{ github.event.inputs.package }}"'
+
+      - name: Pre publishing changes
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          node .github/scripts/ensure-provenance-fields.mjs
+
+      - name: Publish package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PACKAGE: ${{ github.event.inputs.package }}
+        run: pnpm --filter "$PACKAGE" publish --access public --no-git-checks --publish-branch master

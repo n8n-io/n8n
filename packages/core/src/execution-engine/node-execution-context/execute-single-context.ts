@@ -11,7 +11,7 @@ import type {
 	ITaskDataConnections,
 	IExecuteData,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, NodeConnectionType } from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -76,7 +76,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 		return super.evaluateExpression(expression, itemIndex);
 	}
 
-	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
 		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return { json: {} };

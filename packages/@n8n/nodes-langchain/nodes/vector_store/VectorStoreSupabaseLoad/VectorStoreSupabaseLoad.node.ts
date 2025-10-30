@@ -7,15 +7,15 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { getMetadataFiltersValues } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { metadataFilterField } from '@utils/sharedFields';
 
+import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseLoad implements INodeType {
@@ -54,11 +54,11 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: NodeConnectionTypes.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: [NodeConnectionTypes.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			supabaseTableNameRLC,
@@ -93,11 +93,10 @@ export class VectorStoreSupabaseLoad implements INodeType {
 
 		const credentials = await this.getCredentials('supabaseApi');
 		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
+			NodeConnectionTypes.AiEmbedding,
 			0,
 		)) as Embeddings;
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 		const config: SupabaseLibArgs = {
 			client,

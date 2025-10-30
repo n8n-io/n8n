@@ -1,13 +1,15 @@
-import { Container } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
+import { ExecutionRepository } from '@n8n/db';
+import { LifecycleMetadata } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 import { stringify } from 'flatted';
-import { ErrorReporter, Logger, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
@@ -15,6 +17,7 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { isWorkflowIdValid } from '@/utils';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+// eslint-disable-next-line import-x/no-cycle
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
 import { saveExecutionProgress } from './save-execution-progress';
@@ -24,6 +27,73 @@ import {
 	updateExistingExecution,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
+import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
+
+@Service()
+class ModulesHooksRegistry {
+	addHooks(hooks: ExecutionLifecycleHooks) {
+		const handlers = Container.get(LifecycleMetadata).getHandlers();
+
+		for (const { handlerClass, methodName, eventName } of handlers) {
+			const instance = Container.get(handlerClass);
+
+			switch (eventName) {
+				case 'workflowExecuteAfter':
+					hooks.addHandler(eventName, async function (runData, newStaticData) {
+						const context = {
+							type: 'workflowExecuteAfter',
+							workflow: this.workflowData,
+							runData,
+							newStaticData,
+						};
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						return await instance[methodName].call(instance, context);
+					});
+					break;
+
+				case 'nodeExecuteBefore':
+					hooks.addHandler(eventName, async function (nodeName, taskData) {
+						const context = {
+							type: 'nodeExecuteBefore',
+							workflow: this.workflowData,
+							nodeName,
+							taskData,
+						};
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						return await instance[methodName].call(instance, context);
+					});
+					break;
+
+				case 'nodeExecuteAfter':
+					hooks.addHandler(eventName, async function (nodeName, taskData, executionData) {
+						const context = {
+							type: 'nodeExecuteAfter',
+							workflow: this.workflowData,
+							nodeName,
+							taskData,
+							executionData,
+						};
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						return await instance[methodName].call(instance, context);
+					});
+					break;
+
+				case 'workflowExecuteBefore':
+					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
+						const context = {
+							type: 'workflowExecuteBefore',
+							workflow: this.workflowData,
+							workflowInstance,
+							executionData,
+						};
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						return await instance[methodName].call(instance, context);
+					});
+					break;
+			}
+		}
+	}
+}
 
 type HooksSetupParameters = {
 	saveSettings: ExecutionSaveSettings;
@@ -41,6 +111,15 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 		if (runData.status === 'waiting') return;
 
 		const { executionId, workflowData: workflow } = this;
+
+		if (runData.data.startData) {
+			const originalDestination = runData.data.startData.originalDestinationNode;
+			if (originalDestination) {
+				runData.data.startData.destinationNode = originalDestination;
+				runData.data.startData.originalDestinationNode = undefined;
+			}
+		}
+
 		eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
 	});
 }
@@ -49,11 +128,27 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-pre-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-post-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-post-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 }
 
@@ -67,7 +162,7 @@ function hookFunctionsPush(
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
-	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
+	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
 		const { executionId } = this;
 		// Push data to session which started workflow before each
 		// node which starts rendering
@@ -77,7 +172,10 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		pushInstance.send({ type: 'nodeExecuteBefore', data: { executionId, nodeName } }, pushRef);
+		pushInstance.send(
+			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data } },
+			pushRef,
+		);
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
 		const { executionId } = this;
@@ -88,7 +186,32 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		pushInstance.send({ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } }, pushRef);
+		const itemCountByConnectionType = getItemCountByConnectionType(data?.data);
+		const { data: _, ...taskData } = data;
+
+		pushInstance.send(
+			{
+				type: 'nodeExecuteAfter',
+				data: { executionId, nodeName, itemCountByConnectionType, data: taskData },
+			},
+			pushRef,
+		);
+
+		// We send the node execution data as a WS binary message to the FE. Not
+		// because it's more efficient on the wire: the content is a JSON string
+		// so both text and binary would end the same on the wire. The reason
+		// is that the FE can then receive the data directly as an ArrayBuffer,
+		// and we can pass it directly to a web worker for processing without
+		// extra copies.
+		const asBinary = true;
+		pushInstance.send(
+			{
+				type: 'nodeExecuteAfterData',
+				data: { executionId, nodeName, itemCountByConnectionType, data },
+			},
+			pushRef,
+			asBinary,
+		);
 	});
 	hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
 		const { executionId } = this;
@@ -130,9 +253,8 @@ function hookFunctionsPush(
 		if (status === 'waiting') {
 			pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
 		} else {
-			const rawData = stringify(fullRunData.data);
 			pushInstance.send(
-				{ type: 'executionFinished', data: { executionId, workflowId, status, rawData } },
+				{ type: 'executionFinished', data: { executionId, workflowId, status } },
 				pushRef,
 			);
 		}
@@ -394,11 +516,13 @@ export function getLifecycleHooksForScalingWorker(
 		hookFunctionsPush(hooks, optionalParameters);
 	}
 
+	Container.get(ModulesHooksRegistry).addHooks(hooks);
+
 	return hooks;
 }
 
 /**
- * Returns ExecutionLifecycleHooks instance for main process if workflow runs via worker
+ * Returns ExecutionLifecycleHooks instance for main process in scaling mode.
  */
 export function getLifecycleHooksForScalingMain(
 	data: IWorkflowExecutionDataProcess,
@@ -454,11 +578,13 @@ export function getLifecycleHooksForScalingMain(
 	hooks.handlers.nodeExecuteBefore = [];
 	hooks.handlers.nodeExecuteAfter = [];
 
+	Container.get(ModulesHooksRegistry).addHooks(hooks);
+
 	return hooks;
 }
 
 /**
- * Returns ExecutionLifecycleHooks instance for running the main workflow
+ * Returns ExecutionLifecycleHooks instance for the main process in regular mode
  */
 export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
@@ -476,5 +602,6 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }

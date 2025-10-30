@@ -34,7 +34,7 @@ export function copyInputItem(item: INodeExecutionData, properties: string[]): I
  * @param {function} getNodeParam getter for the Node's Parameters
  */
 export function createTableStruct(
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	getNodeParam: Function,
 	items: INodeExecutionData[],
 	additionalProperties: string[] = [],

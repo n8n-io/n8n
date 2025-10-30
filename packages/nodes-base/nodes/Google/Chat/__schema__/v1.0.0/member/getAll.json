@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "createTime": {
+            "type": "string"
+        },
+        "member": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "domainId": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "role": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

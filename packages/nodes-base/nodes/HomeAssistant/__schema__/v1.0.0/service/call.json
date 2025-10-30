@@ -1,0 +1,43 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "friendly_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "context": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "null"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity_id": {
+            "type": "string"
+        },
+        "last_changed": {
+            "type": "string"
+        },
+        "last_reported": {
+            "type": "string"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

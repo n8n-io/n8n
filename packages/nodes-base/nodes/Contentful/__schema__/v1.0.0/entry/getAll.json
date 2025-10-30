@@ -3,12 +3,7 @@
     "properties": {
         "name": {
             "type": "string"
-        },
-        "code": {
-            "type": "string"
-        },
-        "inventoryStatus": {
-            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

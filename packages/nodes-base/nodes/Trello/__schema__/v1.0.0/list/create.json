@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "closed": {
+            "type": "boolean"
+        },
+        "color": {
+            "type": "null"
+        },
+        "datasource": {
+            "type": "object",
+            "properties": {
+                "filter": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "null"
+        }
+    },
+    "version": 1
+}

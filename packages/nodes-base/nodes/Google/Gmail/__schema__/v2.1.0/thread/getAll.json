@@ -1,19 +1,15 @@
 {
     "type": "object",
     "properties": {
+        "historyId": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
         "snippet": {
             "type": "string"
-        },
-        "historyId": {
-            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "snippet",
-        "historyId"
-    ]
+    "version": 1
 }

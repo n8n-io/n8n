@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
 
@@ -21,6 +21,7 @@ import {
 import { tableFields, tableOperations } from './TableDescription';
 import { workbookFields, workbookOperations } from './WorkbookDescription';
 import { worksheetFields, worksheetOperations } from './WorksheetDescription';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Excel',
@@ -33,8 +34,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Excel',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'microsoftExcelOAuth2Api',
@@ -172,6 +173,7 @@ export class MicrosoftExcelV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const itemData = generatePairedItemData(items.length);
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let qs: IDataObject = {};
@@ -243,12 +245,18 @@ export class MicrosoftExcelV1 implements INodeType {
 						{ 'workbook-session-id': id },
 					);
 
-					const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{ itemData },
+					);
 
 					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						const executionErrorData = this.helpers.returnJsonArray({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData },
+						);
 						returnData.push(...executionErrorData);
 					} else {
 						throw error;

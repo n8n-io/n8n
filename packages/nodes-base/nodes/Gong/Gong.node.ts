@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
@@ -24,8 +24,8 @@ export class Gong implements INodeType {
 			name: 'Gong',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'gongApi',

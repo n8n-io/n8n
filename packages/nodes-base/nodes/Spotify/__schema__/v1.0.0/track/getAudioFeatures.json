@@ -1,14 +1,29 @@
 {
     "type": "object",
     "properties": {
+        "acousticness": {
+            "type": "number"
+        },
+        "analysis_url": {
+            "type": "string"
+        },
         "danceability": {
             "type": "number"
+        },
+        "duration_ms": {
+            "type": "integer"
         },
         "energy": {
             "type": "number"
         },
+        "id": {
+            "type": "string"
+        },
         "key": {
             "type": "integer"
+        },
+        "liveness": {
+            "type": "number"
         },
         "loudness": {
             "type": "number"
@@ -19,38 +34,24 @@
         "speechiness": {
             "type": "number"
         },
-        "acousticness": {
-            "type": "number"
-        },
-        "liveness": {
-            "type": "number"
-        },
-        "valence": {
-            "type": "number"
-        },
         "tempo": {
             "type": "number"
         },
-        "type": {
+        "time_signature": {
+            "type": "integer"
+        },
+        "track_href": {
             "type": "string"
         },
-        "id": {
+        "type": {
             "type": "string"
         },
         "uri": {
             "type": "string"
         },
-        "track_href": {
-            "type": "string"
-        },
-        "analysis_url": {
-            "type": "string"
-        },
-        "duration_ms": {
-            "type": "integer"
-        },
-        "time_signature": {
-            "type": "integer"
+        "valence": {
+            "type": "number"
         }
-    }
+    },
+    "version": 1
 }

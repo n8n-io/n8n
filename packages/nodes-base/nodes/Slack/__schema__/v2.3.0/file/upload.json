@@ -1,70 +1,67 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
+        "channels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "comments_count": {
+            "type": "integer"
         },
         "created": {
             "type": "integer"
         },
-        "timestamp": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "mimetype": {
-            "type": "string"
-        },
-        "filetype": {
-            "type": "string"
-        },
-        "pretty_type": {
-            "type": "string"
-        },
-        "user": {
-            "type": "string"
-        },
-        "user_team": {
-            "type": "string"
-        },
-        "editable": {
+        "display_as_bot": {
             "type": "boolean"
         },
-        "size": {
-            "type": "integer"
-        },
-        "mode": {
-            "type": "string"
-        },
-        "is_external": {
+        "editable": {
             "type": "boolean"
         },
         "external_type": {
             "type": "string"
         },
+        "file_access": {
+            "type": "string"
+        },
+        "filetype": {
+            "type": "string"
+        },
+        "groups": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "has_more_shares": {
+            "type": "boolean"
+        },
+        "has_rich_preview": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_external": {
+            "type": "boolean"
+        },
         "is_public": {
             "type": "boolean"
         },
-        "public_url_shared": {
+        "is_starred": {
             "type": "boolean"
-        },
-        "display_as_bot": {
-            "type": "boolean"
-        },
-        "username": {
-            "type": "string"
-        },
-        "url_private": {
-            "type": "string"
-        },
-        "url_private_download": {
-            "type": "string"
         },
         "media_display_type": {
+            "type": "string"
+        },
+        "mimetype": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "name": {
             "type": "string"
         },
         "permalink": {
@@ -73,20 +70,36 @@
         "permalink_public": {
             "type": "string"
         },
-        "comments_count": {
+        "pretty_type": {
+            "type": "string"
+        },
+        "public_url_shared": {
+            "type": "boolean"
+        },
+        "size": {
             "type": "integer"
         },
-        "is_starred": {
-            "type": "boolean"
+        "timestamp": {
+            "type": "integer"
         },
-        "has_more_shares": {
-            "type": "boolean"
+        "title": {
+            "type": "string"
         },
-        "has_rich_preview": {
-            "type": "boolean"
+        "url_private": {
+            "type": "string"
         },
-        "file_access": {
+        "url_private_download": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
+        },
+        "user_team": {
+            "type": "string"
+        },
+        "username": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

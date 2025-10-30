@@ -1,26 +1,31 @@
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { User } from '@/databases/entities/user';
-import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
-import { createTeamProject } from '@test-integration/db/projects';
+import {
+	createManyWorkflows,
+	createTeamProject,
+	createWorkflow,
+	mockInstance,
+	shareWorkflowWithUsers,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { ExecutionEntity, User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { UnexpectedError, type ExecutionStatus } from 'n8n-workflow';
 
 import {
+	createdExecutionWithStatus,
 	createErrorExecution,
 	createExecution,
 	createManyExecutions,
 	createSuccessfulExecution,
-	createWaitingExecution,
 } from '../shared/db/executions';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import {
-	createManyWorkflows,
-	createWorkflow,
-	shareWorkflowWithUsers,
-} from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExecutionService } from '@/executions/execution.service';
+import { Telemetry } from '@/telemetry';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 
 let owner: User;
 let user1: User;
@@ -50,9 +55,9 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'SharedCredentials',
 		'SharedWorkflow',
-		'Workflow',
-		'Credentials',
-		'Execution',
+		'WorkflowEntity',
+		'CredentialsEntity',
+		'ExecutionEntity',
 		'Settings',
 	]);
 
@@ -233,48 +238,111 @@ describe('DELETE /executions/:id', () => {
 	});
 });
 
+describe('POST /executions/:id/retry', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/retry', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/executions/1/retry', 'abcXYZ'),
+	);
+
+	test('should retry an execution', async () => {
+		const mockedExecutionResponse = { status: 'waiting' } as any;
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(mockedExecutionResponse);
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(mockedExecutionResponse);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 404 when execution is not found', async () => {
+		const nonExistentExecutionId = 99999999;
+
+		const response = await authUser1Agent.post(`/executions/${nonExistentExecutionId}/retry`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
+	});
+
+	test('should return 409 when trying to retry a queued execution', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockRejectedValue(new QueuedExecutionRetryError());
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'new', finished: false }, workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toBe(
+			'Execution is queued to run (not yet started) so it cannot be retried',
+		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 409 when trying to retry an aborted execution without execution data', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockRejectedValue(new AbortedExecutionRetryError());
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				status: 'error',
+				finished: false,
+				data: JSON.stringify({ executionData: null }),
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toBe(
+			'The execution was aborted before starting, so it cannot be retried',
+		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 400 when trying to retry a finished execution', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockRejectedValue(new UnexpectedError('The execution succeeded, so it cannot be retried.'));
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				status: 'success',
+				finished: true,
+				data: JSON.stringify({ executionData: null }),
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('The execution succeeded, so it cannot be retried.');
+
+		executionServiceSpy.mockRestore();
+	});
+});
+
 describe('GET /executions', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/executions', null));
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions', 'abcXYZ'));
-
-	test('should retrieve all successful executions', async () => {
-		const workflow = await createWorkflow({}, owner);
-
-		const successfulExecution = await createSuccessfulExecution(workflow);
-
-		await createErrorExecution(workflow);
-
-		const response = await authOwnerAgent.get('/executions').query({
-			status: 'success',
-		});
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(1);
-		expect(response.body.nextCursor).toBe(null);
-
-		const {
-			id,
-			finished,
-			mode,
-			retryOf,
-			retrySuccessId,
-			startedAt,
-			stoppedAt,
-			workflowId,
-			waitTill,
-		} = response.body.data[0];
-
-		expect(id).toBeDefined();
-		expect(finished).toBe(true);
-		expect(mode).toEqual(successfulExecution.mode);
-		expect(retrySuccessId).toBeNull();
-		expect(retryOf).toBeNull();
-		expect(startedAt).not.toBeNull();
-		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(successfulExecution.workflowId);
-		expect(waitTill).toBeNull();
-	});
 
 	test('should paginate two executions', async () => {
 		const workflow = await createWorkflow({}, owner);
@@ -317,6 +385,7 @@ describe('GET /executions', () => {
 				stoppedAt,
 				workflowId,
 				waitTill,
+				status,
 			} = executions[i];
 
 			expect(id).toBeDefined();
@@ -328,85 +397,50 @@ describe('GET /executions', () => {
 			expect(stoppedAt).not.toBeNull();
 			expect(workflowId).toBe(successfulExecutions[i].workflowId);
 			expect(waitTill).toBeNull();
+			expect(status).toBe(successfulExecutions[i].status);
 		}
 	});
 
-	test('should retrieve all error executions', async () => {
-		const workflow = await createWorkflow({}, owner);
+	describe('with query status', () => {
+		type AllowedQueryStatus = 'canceled' | 'error' | 'running' | 'success' | 'waiting';
+		test.each`
+			queryStatus   | entityStatus
+			${'canceled'} | ${'canceled'}
+			${'error'}    | ${'error'}
+			${'error'}    | ${'crashed'}
+			${'running'}  | ${'running'}
+			${'success'}  | ${'success'}
+			${'waiting'}  | ${'waiting'}
+		`(
+			'should retrieve all $queryStatus executions',
+			async ({
+				queryStatus,
+				entityStatus,
+			}: { queryStatus: AllowedQueryStatus; entityStatus: ExecutionStatus }) => {
+				const workflow = await createWorkflow({}, owner);
 
-		await createSuccessfulExecution(workflow);
+				await createdExecutionWithStatus(workflow, queryStatus === 'success' ? 'error' : 'success');
+				if (queryStatus !== 'running') {
+					// ensure there is a running execution that gets excluded unless filtering by `running`
+					await createdExecutionWithStatus(workflow, 'running');
+				}
 
-		const errorExecution = await createErrorExecution(workflow);
+				const expectedExecution = await createdExecutionWithStatus(workflow, entityStatus);
 
-		const response = await authOwnerAgent.get('/executions').query({
-			status: 'error',
-		});
+				const response = await authOwnerAgent.get('/executions').query({
+					status: queryStatus,
+				});
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(1);
-		expect(response.body.nextCursor).toBe(null);
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.length).toBe(1);
+				expect(response.body.nextCursor).toBe(null);
 
-		const {
-			id,
-			finished,
-			mode,
-			retryOf,
-			retrySuccessId,
-			startedAt,
-			stoppedAt,
-			workflowId,
-			waitTill,
-		} = response.body.data[0];
+				const { id, status } = response.body.data[0];
 
-		expect(id).toBeDefined();
-		expect(finished).toBe(false);
-		expect(mode).toEqual(errorExecution.mode);
-		expect(retrySuccessId).toBeNull();
-		expect(retryOf).toBeNull();
-		expect(startedAt).not.toBeNull();
-		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(errorExecution.workflowId);
-		expect(waitTill).toBeNull();
-	});
-
-	test('should return all waiting executions', async () => {
-		const workflow = await createWorkflow({}, owner);
-
-		await createSuccessfulExecution(workflow);
-
-		await createErrorExecution(workflow);
-
-		const waitingExecution = await createWaitingExecution(workflow);
-
-		const response = await authOwnerAgent.get('/executions').query({
-			status: 'waiting',
-		});
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(1);
-		expect(response.body.nextCursor).toBe(null);
-
-		const {
-			id,
-			finished,
-			mode,
-			retryOf,
-			retrySuccessId,
-			startedAt,
-			stoppedAt,
-			workflowId,
-			waitTill,
-		} = response.body.data[0];
-
-		expect(id).toBeDefined();
-		expect(finished).toBe(false);
-		expect(mode).toEqual(waitingExecution.mode);
-		expect(retrySuccessId).toBeNull();
-		expect(retryOf).toBeNull();
-		expect(startedAt).not.toBeNull();
-		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(waitingExecution.workflowId);
-		expect(new Date(waitTill).getTime()).toBeGreaterThan(Date.now() - 1000);
+				expect(id).toBeDefined();
+				expect(status).toBe(expectedExecution.status);
+			},
+		);
 	});
 
 	test('should retrieve all executions of specific workflow', async () => {
@@ -434,6 +468,7 @@ describe('GET /executions', () => {
 				stoppedAt,
 				workflowId,
 				waitTill,
+				status,
 			} = execution;
 
 			expect(savedExecutions.some((exec) => exec.id === id)).toBe(true);
@@ -445,6 +480,7 @@ describe('GET /executions', () => {
 			expect(stoppedAt).not.toBeNull();
 			expect(workflowId).toBe(workflow.id);
 			expect(waitTill).toBeNull();
+			expect(status).toBe(execution.status);
 		}
 	});
 

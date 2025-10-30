@@ -1,840 +1,1897 @@
-import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { stringify } from 'flatted';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
+import type {
+	TestRun,
+	TestCaseExecutionRepository,
+	TestRunRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { readFileSync } from 'fs';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
-import type { ITaskData } from 'n8n-workflow';
+import {
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
+import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { TestDefinition } from '@/databases/entities/test-definition.ee';
-import type { TestMetric } from '@/databases/entities/test-metric.ee';
-import type { TestRun } from '@/databases/entities/test-run.ee';
-import type { User } from '@/databases/entities/user';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import type { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
-import type { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
-
-jest.mock('@/db', () => ({
-	transaction: (cb: any) => cb(),
-}));
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
 );
 
-const wfUnderTestRenamedNodesJson = JSON.parse(
-	readFileSync(path.join(__dirname, './mock-data/workflow.under-test-renamed-nodes.json'), {
-		encoding: 'utf-8',
-	}),
-);
-
-const wfEvaluationJson = JSON.parse(
-	readFileSync(path.join(__dirname, './mock-data/workflow.evaluation.json'), { encoding: 'utf-8' }),
-);
-
-const wfMultipleTriggersJson = JSON.parse(
-	readFileSync(path.join(__dirname, './mock-data/workflow.multiple-triggers.json'), {
-		encoding: 'utf-8',
-	}),
-);
-
-const executionDataJson = JSON.parse(
-	readFileSync(path.join(__dirname, './mock-data/execution-data.json'), { encoding: 'utf-8' }),
-);
-
-const executionDataRenamedNodesJson = JSON.parse(
-	readFileSync(path.join(__dirname, './mock-data/execution-data-renamed-nodes.json'), {
-		encoding: 'utf-8',
-	}),
-);
-
-const executionDataMultipleTriggersJson = JSON.parse(
-	readFileSync(path.join(__dirname, './mock-data/execution-data.multiple-triggers.json'), {
-		encoding: 'utf-8',
-	}),
-);
-
-const executionDataMultipleTriggersJson2 = JSON.parse(
-	readFileSync(path.join(__dirname, './mock-data/execution-data.multiple-triggers-2.json'), {
-		encoding: 'utf-8',
-	}),
-);
-
-const executionMocks = [
-	mock<ExecutionEntity>({
-		id: 'past-execution-id',
-		workflowId: 'workflow-under-test-id',
-		status: 'success',
-		executionData: {
-			data: stringify(executionDataJson),
-			workflowData: wfUnderTestJson,
-		},
-		metadata: [
-			{
-				key: 'testRunId',
-				value: 'test-run-id',
-			},
-		],
-	}),
-	mock<ExecutionEntity>({
-		id: 'past-execution-id-2',
-		workflowId: 'workflow-under-test-id',
-		status: 'success',
-		executionData: {
-			data: stringify(executionDataRenamedNodesJson),
-			workflowData: wfUnderTestRenamedNodesJson,
-		},
-		metadata: [],
-	}),
-];
-
-function mockExecutionData() {
-	return mock<IRun>({
-		data: {
-			resultData: {
-				runData: {
-					'When clicking ‘Test workflow’': mock<ITaskData[]>(),
-				},
-				// error is an optional prop, but jest-mock-extended will mock it by default,
-				// which affects the code logic. So, we need to explicitly set it to undefined.
-				error: undefined,
-			},
-		},
-	});
-}
-
-function mockErrorExecutionData() {
-	return mock<IRun>({
-		data: {
-			resultData: {
-				error: mock<ExecutionError>(),
-			},
-		},
-	});
-}
-
-function mockEvaluationExecutionData(metrics: Record<string, GenericValue>) {
-	return mock<IRun>({
-		data: {
-			resultData: {
-				lastNodeExecuted: 'lastNode',
-				runData: {
-					lastNode: [
-						{
-							data: {
-								main: [
-									[
-										{
-											json: metrics,
-										},
-									],
-								],
-							},
-						},
-					],
-				},
-				// error is an optional prop, but jest-mock-extended will mock it by default,
-				// which affects the code logic. So, we need to explicitly set it to undefined.
-				error: undefined,
-			},
-		},
-	});
-}
-
 const errorReporter = mock<ErrorReporter>();
 const logger = mockLogger();
 const telemetry = mock<Telemetry>();
 
-async function mockLongExecutionPromise(data: IRun, delay: number): Promise<IRun> {
-	return await new Promise((resolve) => {
-		setTimeout(() => resolve(data), delay);
-	});
-}
-
 describe('TestRunnerService', () => {
-	const executionRepository = mock<ExecutionRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
-	const testMetricRepository = mock<TestMetricRepository>();
 	const testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
+	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
+	let testRunnerService: TestRunnerService;
 
-	const mockNodeTypes = mockInstance(NodeTypes);
 	mockInstance(LoadNodesAndCredentials, {
-		loadedNodes: mockNodeTypesData(['manualTrigger', 'set', 'if', 'code']),
+		loadedNodes: mockNodeTypesData(['manualTrigger', 'set', 'if', 'code', 'evaluation']),
 	});
 
 	beforeEach(() => {
-		const executionsQbMock = mockDeep<SelectQueryBuilder<ExecutionEntity>>({
-			fallbackMockImplementation: jest.fn().mockReturnThis(),
-		});
-
-		executionsQbMock.getMany.mockResolvedValueOnce(executionMocks);
-		executionRepository.createQueryBuilder.mockReturnValueOnce(executionsQbMock);
-		executionRepository.findOne
-			.calledWith(expect.objectContaining({ where: { id: 'past-execution-id' } }))
-			.mockResolvedValueOnce(executionMocks[0]);
-		executionRepository.findOne
-			.calledWith(expect.objectContaining({ where: { id: 'past-execution-id-2' } }))
-			.mockResolvedValueOnce(executionMocks[1]);
+		testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			errorReporter,
+			executionsConfig,
+		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
-
-		testMetricRepository.find.mockResolvedValue([
-			mock<TestMetric>({ name: 'metric1' }),
-			mock<TestMetric>({ name: 'metric2' }),
-		]);
 	});
 
 	afterEach(() => {
 		jest.resetAllMocks();
-		testRunRepository.incrementFailed.mockClear();
-		testRunRepository.incrementPassed.mockClear();
 	});
 
-	test('should create an instance of TestRunnerService', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
+	describe('findEvaluationTriggerNode', () => {
+		test('should find the trigger node in a workflow', () => {
+			// Setup a test workflow with a trigger node
+			const workflowWithTrigger = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Dataset Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node2',
+						name: 'Regular Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
 
-		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
+			// Use the protected method via any type casting
+			const result = (testRunnerService as any).findEvaluationTriggerNode(workflowWithTrigger);
+
+			// Assert the result is the correct node
+			expect(result).toBeDefined();
+			expect(result.type).toBe(EVALUATION_TRIGGER_NODE_TYPE);
+			expect(result.name).toBe('Dataset Trigger');
+		});
+
+		test('should return undefined when no trigger node is found', () => {
+			// Setup a test workflow without a trigger node
+			const workflowWithoutTrigger = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Regular Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node2',
+						name: 'Regular Node 2',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Call the function and expect undefined result
+			const result = (testRunnerService as any).findEvaluationTriggerNode(workflowWithoutTrigger);
+			expect(result).toBeUndefined();
+		});
+
+		test('should work with the actual workflow.under-test.json', () => {
+			const result = (testRunnerService as any).findEvaluationTriggerNode(wfUnderTestJson);
+
+			// Assert the result is the correct node
+			expect(result).toBeDefined();
+			expect(result.type).toBe(EVALUATION_TRIGGER_NODE_TYPE);
+			expect(result.name).toBe('When fetching a dataset row');
+		});
 	});
 
-	test('should create and run test cases from past executions', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
+	describe('extractDatasetTriggerOutput', () => {
+		test('should extract trigger output data from execution', () => {
+			// Create workflow with a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: 'TriggerNode',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
 
-		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
-			id: 'workflow-under-test-id',
-			...wfUnderTestJson,
-		});
+			// Create execution data with output for the trigger node
+			const mockOutputItems = [
+				{ json: { id: 1, name: 'Test 1' } },
+				{ json: { id: 2, name: 'Test 2' } },
+			];
 
-		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
-			id: 'evaluation-workflow-id',
-			...wfEvaluationJson,
-		});
-
-		workflowRunner.run.mockResolvedValue('some-execution-id');
-
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
-
-		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
-		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
-		expect(workflowRunner.run).toHaveBeenCalled();
-	});
-
-	test('should run both workflow under test and evaluation workflow', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
-
-		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
-			id: 'workflow-under-test-id',
-			...wfUnderTestJson,
-		});
-
-		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
-			id: 'evaluation-workflow-id',
-			...wfEvaluationJson,
-		});
-
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
-
-		// Mock executions of workflow under test
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id')
-			.mockResolvedValue(mockExecutionData());
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-3')
-			.mockResolvedValue(mockExecutionData());
-
-		// Mock executions of evaluation workflow
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-2')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-4')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5, metric2: 100 }));
-
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
-
-		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
-
-		// Check workflow under test was executed
-		expect(workflowRunner.run).toHaveBeenCalledWith(
-			expect.objectContaining({
-				executionMode: 'evaluation',
-				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							TriggerNode: [
+								{
+									data: {
+										main: [mockOutputItems],
+									},
+									error: undefined,
+								},
+							],
+						},
+					},
 				},
-				workflowData: expect.objectContaining({
-					id: 'workflow-under-test-id',
-				}),
-			}),
-		);
+			});
 
-		// Check evaluation workflow was executed
-		expect(workflowRunner.run).toHaveBeenCalledWith(
-			expect.objectContaining({
-				executionMode: 'integrated',
-				executionData: expect.objectContaining({
-					executionData: expect.objectContaining({
-						nodeExecutionStack: expect.arrayContaining([
-							expect.objectContaining({ data: expect.anything() }),
-						]),
-					}),
-				}),
-				workflowData: expect.objectContaining({
-					id: 'evaluation-workflow-id',
-				}),
-			}),
-		);
+			// Call the method
+			const result = (testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
 
-		// Check Test Run status was updated correctly
-		expect(testRunRepository.createTestRun).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.markAsRunning).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id', expect.any(Number));
-		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
-			metric1: 0.75,
-			metric2: 50,
+			// Verify results
+			expect(result).toEqual(mockOutputItems);
 		});
 
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
-		expect(testRunRepository.incrementFailed).not.toHaveBeenCalled();
-	});
+		test('should throw an error if trigger node output is not present', () => {
+			// Create workflow with a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: 'TriggerNode',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
 
-	test('should properly count passed and failed executions', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
-
-		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
-			id: 'workflow-under-test-id',
-			...wfUnderTestJson,
-		});
-
-		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
-			id: 'evaluation-workflow-id',
-			...wfEvaluationJson,
-		});
-
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
-
-		// Mock executions of workflow under test
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id')
-			.mockResolvedValue(mockExecutionData());
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-3')
-			.mockResolvedValue(mockExecutionData());
-
-		// Mock executions of evaluation workflow
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-2')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-4')
-			.mockRejectedValue(new Error('Some error'));
-
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
-			}),
-		);
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
-	});
-
-	test('should properly count failed test executions', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
-
-		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
-			id: 'workflow-under-test-id',
-			...wfUnderTestJson,
-		});
-
-		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
-			id: 'evaluation-workflow-id',
-			...wfEvaluationJson,
-		});
-
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
-
-		// Mock executions of workflow under test
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id')
-			.mockResolvedValue(mockExecutionData());
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-3')
-			.mockResolvedValue(mockErrorExecutionData());
-
-		// Mock executions of evaluation workflow
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-2')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
-
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
-			}),
-		);
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
-	});
-
-	test('should properly count failed evaluations', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
-
-		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
-			id: 'workflow-under-test-id',
-			...wfUnderTestJson,
-		});
-
-		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
-			id: 'evaluation-workflow-id',
-			...wfEvaluationJson,
-		});
-
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
-
-		// Mock executions of workflow under test
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id')
-			.mockResolvedValue(mockExecutionData());
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-3')
-			.mockResolvedValue(mockExecutionData());
-
-		// Mock executions of evaluation workflow
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-2')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-4')
-			.mockResolvedValue(mockErrorExecutionData());
-
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
-			}),
-		);
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
-	});
-
-	test('should specify correct start nodes when running workflow under test', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
-
-		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
-			id: 'workflow-under-test-id',
-			...wfUnderTestJson,
-		});
-
-		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
-			id: 'evaluation-workflow-id',
-			...wfEvaluationJson,
-		});
-
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
-		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
-
-		// Mock executions of workflow under test
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id')
-			.mockResolvedValue(mockExecutionData());
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-3')
-			.mockResolvedValue(mockExecutionData());
-
-		// Mock executions of evaluation workflow
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-2')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
-
-		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-4')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5 }));
-
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
-
-		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
-
-		// Check workflow under test was executed
-		expect(workflowRunner.run).toHaveBeenCalledWith(
-			expect.objectContaining({
-				executionMode: 'evaluation',
-				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+			// Create execution data with missing output
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {},
+					},
 				},
-				workflowData: expect.objectContaining({
-					id: 'workflow-under-test-id',
-				}),
-				triggerToStartFrom: expect.objectContaining({
-					name: 'When clicking ‘Test workflow’',
-				}),
-			}),
-		);
-	});
+			});
 
-	test('should properly choose trigger and start nodes', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
+			// Expect the method to throw an error
+			expect(() => {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			}).toThrow(TestRunError);
 
-		const startNodesData = (testRunnerService as any).getStartNodesData(
-			wfMultipleTriggersJson,
-			executionDataMultipleTriggersJson,
-			wfMultipleTriggersJson, // Test case where workflow didn't change
-		);
+			// Verify the error has the correct code
+			try {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('TEST_CASES_NOT_FOUND');
+			}
+		});
 
-		expect(startNodesData).toEqual({
-			startNodes: expect.arrayContaining([expect.objectContaining({ name: 'NoOp' })]),
-			triggerToStartFrom: expect.objectContaining({
-				name: 'When clicking ‘Test workflow’',
-			}),
+		test('should throw an error if evaluation trigger could not fetch data', () => {
+			// Create workflow with a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: 'TriggerNode',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Create execution data with missing output
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							TriggerNode: [
+								{
+									error: mock<ExecutionError>(),
+								},
+							],
+						},
+					},
+				},
+			});
+
+			// Expect the method to throw an error
+			expect(() => {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			}).toThrow(TestRunError);
+
+			// Verify the error has the correct code
+			try {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('CANT_FETCH_TEST_CASES');
+			}
+		});
+
+		test('should throw an error if trigger node output is empty list', () => {
+			// Create workflow with a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: 'TriggerNode',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Create execution data with missing output
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							TriggerNode: [
+								{
+									data: {
+										main: [[]], // Empty list
+									},
+									error: undefined,
+								},
+							],
+						},
+					},
+				},
+			});
+
+			// Expect the method to throw an error
+			expect(() => {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			}).toThrow(TestRunError);
+
+			// Verify the error has the correct code
+			try {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('TEST_CASES_NOT_FOUND');
+			}
+		});
+
+		test('should work with actual execution data format', () => {
+			// Create workflow with a trigger node that matches the name in the actual data
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: "When clicking 'Execute workflow'",
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Mock execution data similar to actual format
+			const expectedItems = [
+				{ json: { query: 'First item' }, pairedItem: { item: 0 } },
+				{ json: { query: 'Second item' }, pairedItem: { item: 0 } },
+				{ json: { query: 'Third item' }, pairedItem: { item: 0 } },
+			];
+
+			// TODO: change with actual data
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							"When clicking 'Execute workflow'": [
+								{
+									data: {
+										main: [expectedItems],
+									},
+									error: undefined,
+								},
+							],
+						},
+					},
+				},
+			});
+
+			// Call the method
+			const result = (testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+
+			// Verify results
+			expect(result).toEqual(expectedItems);
 		});
 	});
 
-	test('should properly choose trigger and start nodes 2', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
+	describe('runDatasetTrigger', () => {
+		beforeEach(() => {
+			// Setup mock execution response
+			const mockExecutionId = 'mock-execution-id';
+			const mockExecutionData = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			});
 
-		const startNodesData = (testRunnerService as any).getStartNodesData(
-			wfMultipleTriggersJson,
-			executionDataMultipleTriggersJson2,
-			wfMultipleTriggersJson, // Test case where workflow didn't change
-		);
+			// Setup workflowRunner mock
+			workflowRunner.run.mockResolvedValue(mockExecutionId);
 
-		expect(startNodesData).toEqual({
-			startNodes: expect.arrayContaining([expect.objectContaining({ name: 'NoOp' })]),
-			triggerToStartFrom: expect.objectContaining({
-				name: 'When chat message received',
-			}),
-		});
-	});
-
-	test('should properly run test when nodes were renamed', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
-
-		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
-			id: 'workflow-under-test-id',
-			...wfUnderTestJson,
+			// Setup activeExecutions mock
+			activeExecutions.getPostExecutePromise.mockResolvedValue(mockExecutionData);
 		});
 
-		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
-			id: 'evaluation-workflow-id',
-			...wfEvaluationJson,
+		test('should throw an error if trigger node is not found', async () => {
+			// Create workflow without a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Regular Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			// Call the method and expect it to throw an error
+			await expect(
+				(testRunnerService as any).runDatasetTrigger(workflow, metadata),
+			).rejects.toThrow(TestRunError);
+
+			// Verify the error has the correct code
+			try {
+				await (testRunnerService as any).runDatasetTrigger(workflow, metadata);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('EVALUATION_TRIGGER_NOT_FOUND');
+			}
 		});
 
-		workflowRunner.run.mockResolvedValue('test-execution-id');
+		test('should call workflowRunner.run with correct data in normal execution mode', async () => {
+			// Create workflow with a trigger node
+			const triggerNodeName = 'Dataset Trigger';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				settings: {
+					saveDataErrorExecution: 'all',
+				},
+			});
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
 
-		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
-		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
-		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
-	});
+			// Call the method
+			await (testRunnerService as any).runDatasetTrigger(workflow, metadata);
 
-	test('should properly choose trigger when it was renamed', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			testMetricRepository,
-			mockNodeTypes,
-			errorReporter,
-		);
+			// Verify workflowRunner.run was called
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 
-		const startNodesData = (testRunnerService as any).getStartNodesData(
-			wfUnderTestRenamedNodesJson, // Test case where workflow didn't change
-			executionDataJson,
-			wfUnderTestJson,
-		);
+			// Get the argument passed to workflowRunner.run
+			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
-		expect(startNodesData).toEqual({
-			startNodes: expect.arrayContaining([expect.objectContaining({ name: 'Set attribute' })]),
-			triggerToStartFrom: expect.objectContaining({
-				name: 'Manual Run',
-			}),
+			// Verify it has the correct structure
+			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('executionMode', 'manual');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
+			expect(runCallArg).toHaveProperty('userId', metadata.userId);
+
+			expect(runCallArg).toHaveProperty('executionData.executionData.nodeExecutionStack');
+			const nodeExecutionStack = runCallArg.executionData?.executionData?.nodeExecutionStack;
+			expect(nodeExecutionStack).toBeInstanceOf(Array);
+			expect(nodeExecutionStack).toHaveLength(1);
+			expect(nodeExecutionStack?.[0]).toHaveProperty('node.name', triggerNodeName);
+			expect(nodeExecutionStack?.[0]).toHaveProperty('node.forceCustomOperation', {
+				resource: 'dataset',
+				operation: 'getRows',
+			});
+			expect(nodeExecutionStack?.[0]).toHaveProperty('data.main[0][0].json', {});
+			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
+				resource: 'dataset',
+				operation: 'getRows',
+			});
 		});
-	});
 
-	describe('Test Run cancellation', () => {
-		beforeAll(() => {
-			jest.useFakeTimers();
-		});
-
-		test('should cancel test run', async () => {
+		test('should call workflowRunner.run with correct data in queue execution mode and manual offload', async () => {
+			const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
 			const testRunnerService = new TestRunnerService(
 				logger,
 				telemetry,
 				workflowRepository,
 				workflowRunner,
-				executionRepository,
 				activeExecutions,
 				testRunRepository,
 				testCaseExecutionRepository,
-				testMetricRepository,
-				mockNodeTypes,
 				errorReporter,
+				queueModeConfig,
 			);
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
-			workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
-				id: 'workflow-under-test-id',
-				...wfUnderTestJson,
+			// Create workflow with a trigger node
+			const triggerNodeName = 'Dataset Trigger';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				settings: {
+					saveDataErrorExecution: 'all',
+				},
 			});
 
-			workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
-				id: 'evaluation-workflow-id',
-				...wfEvaluationJson,
-			});
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
 
-			workflowRunner.run.mockResolvedValueOnce('some-execution-id');
-			workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
-			workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
-			workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
+			// Call the method
+			await (testRunnerService as any).runDatasetTrigger(workflow, metadata);
 
-			// Mock long execution of workflow under test
-			activeExecutions.getPostExecutePromise
-				.calledWith('some-execution-id')
-				.mockReturnValue(mockLongExecutionPromise(mockExecutionData(), 1000));
-
-			activeExecutions.getPostExecutePromise
-				.calledWith('some-execution-id-3')
-				.mockReturnValue(mockLongExecutionPromise(mockExecutionData(), 1000));
-
-			// Mock executions of evaluation workflow
-			activeExecutions.getPostExecutePromise
-				.calledWith('some-execution-id-2')
-				.mockReturnValue(
-					mockLongExecutionPromise(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }), 1000),
-				);
-
-			activeExecutions.getPostExecutePromise
-				.calledWith('some-execution-id-4')
-				.mockReturnValue(
-					mockLongExecutionPromise(mockEvaluationExecutionData({ metric1: 0.5 }), 1000),
-				);
-
-			// Do not await here to test canceling
-			void testRunnerService.runTest(
-				mock<User>(),
-				mock<TestDefinition>({
-					workflowId: 'workflow-under-test-id',
-					evaluationWorkflowId: 'evaluation-workflow-id',
-					mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-				}),
-			);
-
-			// Simulate the moment when first test case is running (wf under test execution)
-			await jest.advanceTimersByTimeAsync(100);
+			// Verify workflowRunner.run was called
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 
-			const abortController = (testRunnerService as any).abortControllers.get('test-run-id');
-			expect(abortController).toBeDefined();
+			// Get the argument passed to workflowRunner.run
+			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
-			await testRunnerService.cancelTestRun('test-run-id');
+			// Verify it has the correct structure
+			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('executionMode', 'manual');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
+			expect(runCallArg).toHaveProperty('userId', metadata.userId);
 
-			expect(abortController.signal.aborted).toBe(true);
-			expect(activeExecutions.stopExecution).toBeCalledWith('some-execution-id');
+			expect(runCallArg).not.toHaveProperty('executionData.executionData');
+			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
+			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
+				resource: 'dataset',
+				operation: 'getRows',
+			});
+
+			// after reset
+			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		});
 
-		afterAll(() => {
-			jest.useRealTimers();
+		test('should wait for execution to finish and return result', async () => {
+			// Create workflow with a trigger node
+			const triggerNodeName = 'Dataset Trigger';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			// Setup mock for execution ID and result
+			const mockExecutionId = 'dataset-execution-id';
+			const mockExecutionResult = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							[triggerNodeName]: [
+								{
+									data: {
+										main: [[{ json: { test: 'data1' } }, { json: { test: 'data2' } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			});
+
+			workflowRunner.run.mockResolvedValue(mockExecutionId);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(mockExecutionResult);
+
+			// Call the method
+			const result = await (testRunnerService as any).runDatasetTrigger(workflow, metadata);
+
+			// Verify the execution was waited for
+			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(mockExecutionId);
+
+			// Verify the result is correct
+			expect(result).toEqual(mockExecutionResult);
+		});
+	});
+
+	describe('runTestCase', () => {
+		beforeEach(() => {
+			// Setup mock execution response
+			const mockExecutionId = 'mock-execution-id';
+			const mockExecutionData = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			});
+
+			// Setup workflowRunner mock
+			workflowRunner.run.mockResolvedValue(mockExecutionId);
+
+			// Setup activeExecutions mock
+			activeExecutions.getPostExecutePromise.mockResolvedValue(mockExecutionData);
+		});
+
+		test('should return undefined if abortSignal is aborted', async () => {
+			// Create an aborted signal
+			const abortController = new AbortController();
+			abortController.abort();
+
+			// Create test data
+			const workflow = mock<IWorkflowBase>({
+				nodes: [],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			const testCase = { json: { id: 1, name: 'Test 1' } };
+
+			// Call the method
+			const result = await (testRunnerService as any).runTestCase(
+				workflow,
+				metadata,
+				testCase,
+				abortController.signal,
+			);
+
+			// Verify results
+			expect(result).toBeUndefined();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		test('should call workflowRunner.run with correct data', async () => {
+			// Setup test data
+			const triggerNodeName = 'TriggerNode';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			const testCase = { json: { id: 1, name: 'Test 1' } };
+			const abortController = new AbortController();
+
+			// Call the method
+			await (testRunnerService as any).runTestCase(
+				workflow,
+				metadata,
+				testCase,
+				abortController.signal,
+			);
+
+			// Verify workflowRunner.run was called with the correct data
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+			const runCallArg = workflowRunner.run.mock.calls[0][0];
+
+			// Verify the expected structure
+			expect(runCallArg).toEqual(
+				expect.objectContaining({
+					executionMode: 'evaluation',
+					pinData: {
+						[triggerNodeName]: [testCase],
+					},
+					workflowData: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataErrorExecution: 'all',
+							saveDataSuccessExecution: 'all',
+							saveExecutionProgress: false,
+						},
+					},
+					userId: metadata.userId,
+					triggerToStartFrom: {
+						name: triggerNodeName,
+					},
+				}),
+			);
+		});
+
+		test('should register abort event listener and return execution results', async () => {
+			// Setup test data
+			const triggerNodeName = 'TriggerNode';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			const testCase = { json: { id: 1, name: 'Test 1' } };
+			const abortController = new AbortController();
+
+			// Mock addEventListener on AbortSignal
+			const mockAddEventListener = jest.fn();
+			const originalAddEventListener = abortController.signal.addEventListener;
+			abortController.signal.addEventListener = mockAddEventListener;
+
+			try {
+				// Call the method
+				const result = await (testRunnerService as any).runTestCase(
+					workflow,
+					metadata,
+					testCase,
+					abortController.signal,
+				);
+
+				// Verify addEventListener was called
+				expect(mockAddEventListener).toHaveBeenCalledTimes(1);
+				expect(mockAddEventListener.mock.calls[0][0]).toBe('abort');
+
+				// Verify the expected result structure
+				expect(result).toHaveProperty('executionData');
+				expect(result.executionData?.data).toBeDefined();
+				expect(result).toHaveProperty('executionId');
+				expect(result.executionId).toEqual(expect.any(String));
+			} finally {
+				// Restore original method
+				abortController.signal.addEventListener = originalAddEventListener;
+			}
+		});
+
+		describe('runTestCase - Queue Mode', () => {
+			let testRunnerService: TestRunnerService;
+
+			beforeEach(() => {
+				const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
+				testRunnerService = new TestRunnerService(
+					logger,
+					telemetry,
+					workflowRepository,
+					workflowRunner,
+					activeExecutions,
+					testRunRepository,
+					testCaseExecutionRepository,
+					errorReporter,
+					queueModeConfig,
+				);
+			});
+
+			test('should call workflowRunner.run with correct data in queue mode', async () => {
+				// Setup test data
+				const triggerNodeName = 'TriggerNode';
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: triggerNodeName,
+							type: EVALUATION_TRIGGER_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							forceCustomOperation: undefined,
+						},
+					],
+					connections: {},
+				});
+
+				const metadata = {
+					testRunId: 'test-run-id',
+					userId: 'user-id',
+				};
+
+				const testCase = { json: { id: 1, name: 'Test 1' } };
+				const abortController = new AbortController();
+
+				// Call the method
+				await (testRunnerService as any).runTestCase(
+					workflow,
+					metadata,
+					testCase,
+					abortController.signal,
+				);
+
+				// Verify workflowRunner.run was called with the correct data
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				const runCallArg = workflowRunner.run.mock.calls[0][0];
+
+				// Verify the expected structure for queue mode
+				expect(runCallArg).toEqual(
+					expect.objectContaining({
+						executionMode: 'evaluation',
+						pinData: {
+							[triggerNodeName]: [testCase],
+						},
+						workflowData: {
+							...workflow,
+							settings: {
+								...workflow.settings,
+								saveManualExecutions: true,
+								saveDataErrorExecution: 'all',
+								saveDataSuccessExecution: 'all',
+								saveExecutionProgress: false,
+							},
+						},
+						userId: metadata.userId,
+						triggerToStartFrom: {
+							name: triggerNodeName,
+						},
+						executionData: {
+							resultData: {
+								pinData: {
+									[triggerNodeName]: [testCase],
+								},
+								runData: {},
+							},
+							manualData: {
+								userId: metadata.userId,
+								triggerToStartFrom: {
+									name: triggerNodeName,
+								},
+							},
+						},
+					}),
+				);
+			});
+		});
+	});
+
+	describe('validateSetMetricsNodes', () => {
+		it('should pass when metrics nodes are properly configured', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: {
+								assignments: [
+									{
+										id: '1',
+										name: 'accuracy',
+										value: 0.95,
+									},
+									{
+										id: '2',
+										name: 'precision',
+										value: 0.87,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).not.toThrow();
+		});
+
+		it('should throw SET_METRICS_NODE_NOT_FOUND when no metrics nodes exist', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Regular Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_FOUND');
+			}
+		});
+
+		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when metrics node has no parameters', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: undefined,
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+			}
+		});
+
+		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when metrics node has empty assignments', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: {
+								assignments: [],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+			}
+		});
+
+		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when assignment has no name', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: {
+								assignments: [
+									{
+										id: '1',
+										name: '',
+										value: 0.95,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+			}
+		});
+
+		it('should throw SET_METRICS_NODE_NOT_FOUND when metrics node is disabled', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: true,
+						parameters: {
+							operation: 'setMetrics',
+							metrics: {
+								assignments: [
+									{
+										id: '1',
+										name: 'assignment1',
+										value: 0.95,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_FOUND');
+				expect(error.extra).toEqual({});
+			}
+		});
+
+		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when assignment has null value', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: {
+								assignments: [
+									{
+										id: '1',
+										name: 'accuracy',
+										value: null,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+			}
+		});
+
+		it('should validate multiple metrics nodes successfully', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics 1',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: {
+								assignments: [
+									{
+										id: '1',
+										name: 'accuracy',
+										value: 0.95,
+									},
+								],
+							},
+						},
+					},
+					{
+						id: 'node2',
+						name: 'Set Metrics 2',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: {
+								assignments: [
+									{
+										id: '2',
+										name: 'precision',
+										value: 0.87,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).not.toThrow();
+		});
+
+		describe('Version-based validation', () => {
+			it('should pass for version < 4.7 with valid custom metrics (no metric parameter needed)', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter - this is expected for versions < 4.7
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should fail for version < 4.7 with invalid custom metrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter - this is expected for versions < 4.7
+								metrics: {
+									assignments: [], // Empty assignments should fail
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).toThrow(TestRunError);
+
+				try {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TestRunError);
+					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				}
+			});
+
+			it('should pass for version >= 4.7 with missing metric parameter (uses default correctness) when model connected', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'model1',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [100, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// metric parameter is undefined, which means it uses the default value 'correctness'
+								// This should pass since correctness is valid and has model connected
+							},
+						},
+					],
+					connections: {
+						'OpenAI Model': {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+							],
+						},
+					},
+				});
+
+				// Missing metric parameter - this should pass for versions >= 4.7 since it defaults to 'correctness' and has model
+				workflow.nodes[1].parameters.metric = undefined;
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should pass for version >= 4.7 with valid customMetrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'customMetrics',
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should pass for version >= 4.7 with non-AI metric (no model connection needed)', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'stringSimilarity',
+								// Non-AI metrics don't need model connection
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should fail for version >= 4.7 with customMetrics but invalid metrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'customMetrics',
+								metrics: {
+									assignments: [], // Empty assignments should fail
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).toThrow(TestRunError);
+
+				try {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TestRunError);
+					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				}
+			});
+
+			it('should handle mixed versions correctly', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'model1',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'node1',
+							name: 'Set Metrics Old',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [100, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter for old version
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+						{
+							id: 'node2',
+							name: 'Set Metrics New',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [200, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'correctness',
+								// Correctness needs model connection for version 4.7+
+							},
+						},
+					],
+					connections: {
+						'OpenAI Model': {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[{ node: 'Set Metrics New', type: 'ai_languageModel', index: 0 }],
+							],
+						},
+					},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			describe('Model connection validation', () => {
+				it('should pass when correctness metric has model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'model1',
+								name: 'OpenAI Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [100, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'correctness',
+								},
+							},
+						],
+						connections: {
+							'OpenAI Model': {
+								[NodeConnectionTypes.AiLanguageModel]: [
+									[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+								],
+							},
+						},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should fail when correctness metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'correctness',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should pass when helpfulness metric has model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'model1',
+								name: 'OpenAI Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [100, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'helpfulness',
+								},
+							},
+						],
+						connections: {
+							'OpenAI Model': {
+								[NodeConnectionTypes.AiLanguageModel]: [
+									[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+								],
+							},
+						},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should fail when helpfulness metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'helpfulness',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should fail when default correctness metric (undefined) has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: undefined, // explicitly set to undefined to test default behavior
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should pass when non-AI metrics (customMetrics) have no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'customMetrics',
+									metrics: {
+										assignments: [
+											{
+												id: '1',
+												name: 'accuracy',
+												value: 0.95,
+											},
+										],
+									},
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should pass when stringSimilarity metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'stringSimilarity',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+			});
+		});
+	});
+
+	describe('validateSetOutputsNodes', () => {
+		it('should pass when outputs nodes are properly configured', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Outputs',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setOutputs',
+							outputs: {
+								assignments: [
+									{
+										id: '1',
+										name: 'result',
+										value: 'success',
+									},
+									{
+										id: '2',
+										name: 'score',
+										value: 95,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			}).not.toThrow();
+		});
+
+		it('should pass when operation is default (undefined)', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Outputs',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: undefined,
+							outputs: {
+								assignments: [
+									{
+										id: '1',
+										name: 'result',
+										value: 'success',
+									},
+									{
+										id: '2',
+										name: 'score',
+										value: 95,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			}).not.toThrow();
+		});
+
+		it('should throw SET_OUTPUTS_NODE_NOT_CONFIGURED when outputs node has no parameters', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Outputs',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setOutputs',
+							outputs: undefined,
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_OUTPUTS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Outputs' });
+			}
+		});
+
+		it('should throw SET_OUTPUTS_NODE_NOT_CONFIGURED when outputs node has empty assignments', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Outputs',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setOutputs',
+							outputs: {
+								assignments: [],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_OUTPUTS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Outputs' });
+			}
+		});
+
+		it('should throw SET_OUTPUTS_NODE_NOT_CONFIGURED when assignment has no name', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Outputs',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setOutputs',
+							outputs: {
+								assignments: [
+									{
+										id: '1',
+										name: '',
+										value: 'result',
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_OUTPUTS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Outputs' });
+			}
+		});
+
+		it('should throw SET_OUTPUTS_NODE_NOT_CONFIGURED when assignment has null value', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Outputs',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setOutputs',
+							outputs: {
+								assignments: [
+									{
+										id: '1',
+										name: 'result',
+										value: null,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_OUTPUTS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Outputs' });
+			}
+		});
+
+		it('should validate multiple outputs nodes successfully', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Outputs 1',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: 'setOutputs',
+							outputs: {
+								assignments: [
+									{
+										id: '1',
+										name: 'result',
+										value: 'success',
+									},
+								],
+							},
+						},
+					},
+					{
+						id: 'node2',
+						name: 'Set Outputs 2',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {
+							operation: 'setOutputs',
+							outputs: {
+								assignments: [
+									{
+										id: '2',
+										name: 'score',
+										value: 95,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			}).not.toThrow();
 		});
 	});
 });

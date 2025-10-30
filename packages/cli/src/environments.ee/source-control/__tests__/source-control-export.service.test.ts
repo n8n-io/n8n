@@ -1,41 +1,65 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type {
+	Folder,
+	FolderRepository,
+	Project,
+	ProjectRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
+	SharedWorkflow,
+	SharedWorkflowRepository,
+	TagEntity,
+	TagRepository,
+	WorkflowRepository,
+	WorkflowTagMapping,
+	WorkflowTagMappingRepository,
+	Variables,
+} from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock, captor } from 'jest-mock-extended';
+import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { TagRepository } from '@/databases/repositories/tag.repository';
-import type { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-
 import type { VariablesService } from '../../variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { SourceControlContext } from '../types/source-control-context';
 
 describe('SourceControlExportService', () => {
+	const globalAdminContext = new SourceControlContext(
+		Object.assign(new User(), {
+			role: GLOBAL_ADMIN_ROLE,
+		}),
+	);
+
 	const cipher = Container.get(Cipher);
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const tagRepository = mock<TagRepository>();
+	const projectRepository = mock<ProjectRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const variablesService = mock<VariablesService>();
+	const folderRepository = mock<FolderRepository>();
+	const sourceControlScopedService = mock<SourceControlScopedService>();
 
 	const service = new SourceControlExportService(
 		mock(),
 		variablesService,
 		tagRepository,
+		projectRepository,
 		sharedCredentialsRepository,
 		sharedWorkflowRepository,
 		workflowRepository,
 		workflowTagMappingRepository,
+		folderRepository,
+		sourceControlScopedService,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 	);
 
 	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
+	const fsReadFile = jest.spyOn(fsp, 'readFile');
 
 	beforeEach(() => jest.clearAllMocks());
 
@@ -68,7 +92,7 @@ describe('SourceControlExportService', () => {
 						type: 'personal',
 						projectRelations: [
 							{
-								role: 'project:personalOwner',
+								role: PROJECT_OWNER_ROLE,
 								user: mock({ email: 'user@example.com' }),
 							},
 						],
@@ -166,27 +190,148 @@ describe('SourceControlExportService', () => {
 	describe('exportTagsToWorkFolder', () => {
 		it('should export tags to work folder', async () => {
 			// Arrange
-			tagRepository.find.mockResolvedValue([mock()]);
-			workflowTagMappingRepository.find.mockResolvedValue([mock()]);
+			const mockTag = mock<TagEntity>({
+				id: 'tag1',
+				name: 'Tag 1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const mockWorkflow = mock<WorkflowTagMapping>({
+				tagId: 'tag1',
+				workflowId: 'workflow1',
+			});
+			tagRepository.find.mockResolvedValue([mockTag]);
+			workflowTagMappingRepository.find.mockResolvedValue([mockWorkflow]);
+			const fileName = '/mock/n8n/git/tags.json';
 
 			// Act
-			const result = await service.exportTagsToWorkFolder();
+			const result = await service.exportTagsToWorkFolder(globalAdminContext);
+
+			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				fileName,
+				JSON.stringify(
+					{
+						tags: [
+							{
+								id: mockTag.id,
+								name: mockTag.name,
+							},
+						],
+						mappings: [mockWorkflow],
+					},
+					null,
+					2,
+				),
+			);
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
+		});
+
+		it('should clear tags file and export it when there are no tags', async () => {
+			// Arrange
+			tagRepository.find.mockResolvedValue([]);
+			const fileName = '/mock/n8n/git/tags.json';
+
+			// Act
+			const result = await service.exportTagsToWorkFolder(globalAdminContext);
+
+			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				fileName,
+				JSON.stringify({ tags: [], mappings: [] }, null, 2),
+			);
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(1);
+			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
+		});
+	});
+
+	describe('exportFoldersToWorkFolder', () => {
+		it('should export folders to work folder', async () => {
+			// Arrange
+			folderRepository.find.mockResolvedValue([
+				mock({ updatedAt: new Date(), createdAt: new Date() }),
+			]);
+			workflowRepository.find.mockResolvedValue([mock()]);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(1);
 			expect(result.files).toHaveLength(1);
 		});
 
-		it('should not export empty tags', async () => {
+		it('should not export empty folders', async () => {
 			// Arrange
-			tagRepository.find.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportTagsToWorkFolder();
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(0);
 			expect(result.files).toHaveLength(0);
+		});
+
+		it('should not duplicate folders on push', async () => {
+			// Arrange
+			const newFolders = [
+				{
+					id: 'folder-id',
+					name: 'Folder Name',
+					parentFolderId: null,
+					homeProject: { id: 'project-id' },
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				} as Folder,
+			];
+			folderRepository.find.mockResolvedValue(newFolders);
+			workflowRepository.find.mockResolvedValue([mock()]);
+			const existingFolders = [
+				{
+					id: 'folder-id',
+					name: 'Folder Name',
+					parentFolderId: null,
+					homeProjectId: 'project-id',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
+			];
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					folders: existingFolders,
+				}),
+			);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+
+			// Assert
+			// new json file should contain only the new folders
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/folders.json',
+				JSON.stringify(
+					{
+						folders: newFolders.map((f) => ({
+							id: f.id,
+							name: f.name,
+							parentFolderId: f.parentFolderId,
+							homeProjectId: f.homeProject.id,
+							createdAt: f.createdAt.toISOString(),
+							updatedAt: f.updatedAt.toISOString(),
+						})),
+					},
+					null,
+					2,
+				),
+			);
+
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
 		});
 	});
 
@@ -196,7 +341,7 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([mock()]);
 
 			// Act
-			const result = await service.exportVariablesToWorkFolder();
+			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(1);
@@ -208,7 +353,7 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportVariablesToWorkFolder();
+			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(0);
@@ -224,7 +369,7 @@ describe('SourceControlExportService', () => {
 				mock<SharedWorkflow>({
 					project: mock({
 						type: 'personal',
-						projectRelations: [{ role: 'project:personalOwner', user: mock() }],
+						projectRelations: [{ role: PROJECT_OWNER_ROLE, user: mock() }],
 					}),
 					workflow: mock(),
 				}),
@@ -256,6 +401,106 @@ describe('SourceControlExportService', () => {
 			// Act & Assert
 			await expect(service.exportWorkflowsToWorkFolder([mock()])).rejects.toThrow(
 				'Workflow "TestWorkflow" (ID: test-workflow-id) has no owner',
+			);
+		});
+	});
+
+	describe('exportTeamProjectsToWorkFolder', () => {
+		it('should export projects to work folder', async () => {
+			// Arrange
+			const candidates = [
+				mock<SourceControlledFile>({ id: 'project-id-1' }),
+				mock<SourceControlledFile>({ id: 'project-id-2' }),
+			];
+
+			const project1 = mock<Project>({
+				id: 'project-id-1',
+				name: 'Project 1',
+				icon: { type: 'icon', value: 'icon.png' },
+				description: 'Project 1',
+				type: 'team',
+				variables: [],
+			});
+			const project2 = mock<Project>({
+				id: 'project-id-2',
+				name: 'Team Project',
+				icon: null,
+				description: 'Team Project',
+				type: 'team',
+				variables: [mock<Variables>({ key: 'VAR1', value: 'value1' })],
+			});
+
+			const expectedProject1Json = JSON.stringify(
+				{
+					id: project1.id,
+					name: project1.name,
+					icon: project1.icon,
+					description: project1.description,
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: project1.id,
+						teamName: project1.name,
+					},
+					variableStubs: [],
+				},
+				null,
+				2,
+			);
+			const expectedProject2Json = JSON.stringify(
+				{
+					id: project2.id,
+					name: project2.name,
+					icon: project2.icon,
+					description: project2.description,
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: project2.id,
+						teamName: project2.name,
+					},
+					variableStubs: [
+						{
+							key: 'VAR1',
+							value: '',
+						},
+					],
+				},
+				null,
+				2,
+			);
+
+			projectRepository.find.mockResolvedValue([project1, project2]);
+
+			// Act
+			const result = await service.exportTeamProjectsToWorkFolder(candidates);
+
+			// Assert
+			expect(projectRepository.find).toHaveBeenCalledWith({
+				where: { id: In([project1.id, project2.id]), type: 'team' },
+				relations: ['variables'],
+			});
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/projects/project-id-1.json',
+				expectedProject1Json,
+			);
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/projects/project-id-2.json',
+				expectedProject2Json,
+			);
+			expect(result.count).toBe(2);
+			expect(result.files).toHaveLength(2);
+			expect(result.files).toEqual(
+				expect.arrayContaining([
+					{
+						id: 'project-id-1',
+						name: '/mock/n8n/git/projects/project-id-1.json',
+					},
+					{
+						id: 'project-id-2',
+						name: '/mock/n8n/git/projects/project-id-2.json',
+					},
+				]),
 			);
 		});
 	});

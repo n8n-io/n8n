@@ -1,34 +1,42 @@
+import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import type { Project, WebhookEntity } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Logger } from 'n8n-core';
+import { InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
+import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
+import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { NodeApiError, Workflow } from 'n8n-workflow';
-import type { IWebhookData, IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
+import type {
+	IWebhookData,
+	IWorkflowBase,
+	WorkflowActivateMode,
+	INodeTypeData,
+} from 'n8n-workflow';
+
+import { createOwner } from './shared/db/users';
+import * as utils from './shared/utils/';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { SecretsHelper } from '@/secrets-helpers.ee';
+import { OwnershipService } from '@/services/ownership.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { createOwner } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
-import * as utils from './shared/utils/';
-import { mockInstance } from '../shared/mocking';
-
 mockInstance(ActiveExecutions);
-mockInstance(Logger);
 mockInstance(Push);
-mockInstance(SecretsHelper);
+mockInstance(ExternalSecretsProxy);
 mockInstance(ExecutionService);
 mockInstance(WorkflowService);
+mockInstance(OwnershipService, {
+	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+});
 
 const webhookService = mockInstance(WebhookService);
 const externalHooks = mockInstance(ExternalHooks);
@@ -43,16 +51,28 @@ beforeAll(async () => {
 
 	activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-	await utils.initNodeTypes();
+	const nodes: INodeTypeData = {
+		'n8n-nodes-base.scheduleTrigger': {
+			type: new ScheduleTrigger(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.formTrigger': {
+			type: new FormTrigger(),
+			sourcePath: '',
+		},
+	};
+
+	await utils.initNodeTypes(nodes);
 
 	const owner = await createOwner();
 	createActiveWorkflow = async () => await createWorkflow({ active: true }, owner);
 	createInactiveWorkflow = async () => await createWorkflow({ active: false }, owner);
+	Container.get(InstanceSettings).markAsLeader();
 });
 
 afterEach(async () => {
 	await activeWorkflowManager.removeAll();
-	await testDb.truncate(['Workflow', 'Webhook']);
+	await testDb.truncate(['WorkflowEntity', 'WebhookEntity']);
 	jest.clearAllMocks();
 });
 
@@ -135,6 +155,43 @@ describe('add()', () => {
 				expect(_argWorkflow.id).toBe(dbWorkflow.id);
 			},
 		);
+	});
+
+	test('should count workflow triggers correctly when node has multiple webhooks', async () => {
+		const workflowRepositoryInstance = Container.get(WorkflowRepository);
+		const updateWorkflowTriggerCountSpy = jest.spyOn(
+			workflowRepositoryInstance,
+			'updateWorkflowTriggerCount',
+		);
+		await activeWorkflowManager.init();
+
+		// Mock all of the webhooks
+		const mockWebhooks: IWebhookData[] = [
+			mock<IWebhookData>({ node: 'Form Trigger', httpMethod: 'GET', path: '/webhook-path' }),
+			mock<IWebhookData>({ node: 'Form Trigger', httpMethod: 'POST', path: '/webhook-path' }),
+		];
+		webhookService.getNodeWebhooks.mockReturnValue(mockWebhooks);
+		webhookService.createWebhook.mockReturnValue(
+			mock<WebhookEntity>({ webhookPath: '/webhook-path' }),
+		);
+
+		// Create a workflow which has a form trigger
+		const dbWorkflow = await createWorkflow({
+			nodes: [
+				{
+					id: 'uuid-1',
+					parameters: { path: 'test-webhook-path', options: {} },
+					name: 'Form Trigger',
+					type: 'n8n-nodes-base.formTrigger',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		});
+
+		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
+
+		expect(updateWorkflowTriggerCountSpy).toHaveBeenCalledWith(dbWorkflow.id, 1);
 	});
 });
 
@@ -236,7 +293,7 @@ describe('addWebhooks()', () => {
 
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
 
-		const additionalData = await AdditionalData.getBase('some-user-id');
+		const additionalData = await AdditionalData.getBase({ userId: 'some-user-id' });
 
 		const dbWorkflow = await createActiveWorkflow();
 

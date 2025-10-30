@@ -4,5 +4,6 @@
         "available": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

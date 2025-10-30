@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { aliasFields, aliasOperations } from './AliasDescription';
 import { eventFields, eventOperations } from './EventDescription';
@@ -28,8 +28,8 @@ export class PostHog implements INodeType {
 			name: 'PostHog',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'postHogApi',

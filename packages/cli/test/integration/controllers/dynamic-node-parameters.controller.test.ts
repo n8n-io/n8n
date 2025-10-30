@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import type {
 	INodeListSearchResult,
@@ -8,7 +9,6 @@ import type {
 
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
-import { mockInstance } from '@test/mocking';
 
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';

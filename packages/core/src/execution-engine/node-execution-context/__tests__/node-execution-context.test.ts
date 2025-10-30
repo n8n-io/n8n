@@ -10,7 +10,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -19,7 +19,11 @@ import { NodeExecutionContext } from '../node-execution-context';
 class TestContext extends NodeExecutionContext {}
 
 describe('NodeExecutionContext', () => {
-	const instanceSettings = mock<InstanceSettings>({ instanceId: 'abc123' });
+	const instanceSettings = mock<InstanceSettings>({
+		instanceId: 'abc123',
+		encryptionKey: 'testEncryptionKey',
+		hmacSignatureSecret: 'testHmacSignatureSecret',
+	});
 	Container.set(InstanceSettings, instanceSettings);
 
 	const node = mock<INode>();
@@ -34,7 +38,7 @@ describe('NodeExecutionContext', () => {
 		timezone: 'UTC',
 		expression,
 	});
-	let additionalData = mock<IWorkflowExecuteAdditionalData>({
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: mock(),
 	});
 
@@ -115,6 +119,31 @@ describe('NodeExecutionContext', () => {
 		});
 	});
 
+	describe('getChatTrigger', () => {
+		it('should return a chat trigger node if it exists in the workflow', () => {
+			const chatNode = mock<INode>({ name: 'Chat', type: CHAT_TRIGGER_NODE_TYPE });
+
+			workflow.nodes = {
+				Chat: chatNode,
+			};
+
+			const result = testContext.getChatTrigger();
+
+			expect(result).toEqual(chatNode);
+		});
+		it('should return a null if there is no chat trigger node in the workflow', () => {
+			const someNode = mock<INode>({ name: 'Some Node', type: 'someType' });
+
+			workflow.nodes = {
+				'Some Node': someNode,
+			};
+
+			const result = testContext.getChatTrigger();
+
+			expect(result).toBeNull();
+		});
+	});
+
 	describe('getKnownNodeTypes', () => {
 		it('should call getKnownTypes method of nodeTypes', () => {
 			testContext.getKnownNodeTypes();
@@ -178,27 +207,27 @@ describe('NodeExecutionContext', () => {
 
 	describe('getNodeInputs', () => {
 		it('should return static inputs array when inputs is an array', () => {
-			nodeType.description.inputs = [NodeConnectionType.Main, NodeConnectionType.AiLanguageModel];
+			nodeType.description.inputs = [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel];
 
 			const result = testContext.getNodeInputs();
 
 			expect(result).toEqual([
-				{ type: NodeConnectionType.Main },
-				{ type: NodeConnectionType.AiLanguageModel },
+				{ type: NodeConnectionTypes.Main },
+				{ type: NodeConnectionTypes.AiLanguageModel },
 			]);
 		});
 
 		it('should return input objects when inputs contains configurations', () => {
 			nodeType.description.inputs = [
-				{ type: NodeConnectionType.Main },
-				{ type: NodeConnectionType.AiLanguageModel, required: true },
+				{ type: NodeConnectionTypes.Main },
+				{ type: NodeConnectionTypes.AiLanguageModel, required: true },
 			];
 
 			const result = testContext.getNodeInputs();
 
 			expect(result).toEqual([
-				{ type: NodeConnectionType.Main },
-				{ type: NodeConnectionType.AiLanguageModel, required: true },
+				{ type: NodeConnectionTypes.Main },
+				{ type: NodeConnectionTypes.AiLanguageModel, required: true },
 			]);
 		});
 
@@ -206,15 +235,15 @@ describe('NodeExecutionContext', () => {
 			const inputsExpressions = '={{ ["main", "ai_languageModel"] }}';
 			nodeType.description.inputs = inputsExpressions;
 			expression.getSimpleParameterValue.mockReturnValue([
-				NodeConnectionType.Main,
-				NodeConnectionType.AiLanguageModel,
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.AiLanguageModel,
 			]);
 
 			const result = testContext.getNodeInputs();
 
 			expect(result).toEqual([
-				{ type: NodeConnectionType.Main },
-				{ type: NodeConnectionType.AiLanguageModel },
+				{ type: NodeConnectionTypes.Main },
+				{ type: NodeConnectionTypes.AiLanguageModel },
 			]);
 			expect(expression.getSimpleParameterValue).toHaveBeenCalledWith(
 				node,
@@ -227,27 +256,30 @@ describe('NodeExecutionContext', () => {
 
 	describe('getNodeOutputs', () => {
 		it('should return static outputs array when outputs is an array', () => {
-			nodeType.description.outputs = [NodeConnectionType.Main, NodeConnectionType.AiLanguageModel];
-
-			const result = testContext.getNodeOutputs();
-
-			expect(result).toEqual([
-				{ type: NodeConnectionType.Main },
-				{ type: NodeConnectionType.AiLanguageModel },
-			]);
-		});
-
-		it('should return output objects when outputs contains configurations', () => {
 			nodeType.description.outputs = [
-				{ type: NodeConnectionType.Main },
-				{ type: NodeConnectionType.AiLanguageModel, required: true },
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.AiLanguageModel,
 			];
 
 			const result = testContext.getNodeOutputs();
 
 			expect(result).toEqual([
-				{ type: NodeConnectionType.Main },
-				{ type: NodeConnectionType.AiLanguageModel, required: true },
+				{ type: NodeConnectionTypes.Main },
+				{ type: NodeConnectionTypes.AiLanguageModel },
+			]);
+		});
+
+		it('should return output objects when outputs contains configurations', () => {
+			nodeType.description.outputs = [
+				{ type: NodeConnectionTypes.Main },
+				{ type: NodeConnectionTypes.AiLanguageModel, required: true },
+			];
+
+			const result = testContext.getNodeOutputs();
+
+			expect(result).toEqual([
+				{ type: NodeConnectionTypes.Main },
+				{ type: NodeConnectionTypes.AiLanguageModel, required: true },
 			]);
 		});
 
@@ -255,15 +287,15 @@ describe('NodeExecutionContext', () => {
 			const outputsExpressions = '={{ ["main", "ai_languageModel"] }}';
 			nodeType.description.outputs = outputsExpressions;
 			expression.getSimpleParameterValue.mockReturnValue([
-				NodeConnectionType.Main,
-				NodeConnectionType.AiLanguageModel,
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.AiLanguageModel,
 			]);
 
 			const result = testContext.getNodeOutputs();
 
 			expect(result).toEqual([
-				{ type: NodeConnectionType.Main },
-				{ type: NodeConnectionType.AiLanguageModel },
+				{ type: NodeConnectionTypes.Main },
+				{ type: NodeConnectionTypes.AiLanguageModel },
 			]);
 			expect(expression.getSimpleParameterValue).toHaveBeenCalledWith(
 				node,
@@ -276,13 +308,13 @@ describe('NodeExecutionContext', () => {
 		it('should add error output when node has continueOnFail error handling', () => {
 			const nodeWithError = mock<INode>({ onError: 'continueErrorOutput' });
 			const contextWithError = new TestContext(workflow, nodeWithError, additionalData, mode);
-			nodeType.description.outputs = [NodeConnectionType.Main];
+			nodeType.description.outputs = [NodeConnectionTypes.Main];
 
 			const result = contextWithError.getNodeOutputs();
 
 			expect(result).toEqual([
-				{ type: NodeConnectionType.Main, displayName: 'Success' },
-				{ type: NodeConnectionType.Main, displayName: 'Error', category: 'error' },
+				{ type: NodeConnectionTypes.Main, displayName: 'Success' },
+				{ type: NodeConnectionTypes.Main, displayName: 'Error', category: 'error' },
 			]);
 		});
 	});
@@ -299,10 +331,10 @@ describe('NodeExecutionContext', () => {
 				return null;
 			});
 
-			const result = testContext.getConnectedNodes(NodeConnectionType.Main);
+			const result = testContext.getConnectedNodes(NodeConnectionTypes.Main);
 
 			expect(result).toEqual([node1, node2]);
-			expect(workflow.getParentNodes).toHaveBeenCalledWith(node.name, NodeConnectionType.Main, 1);
+			expect(workflow.getParentNodes).toHaveBeenCalledWith(node.name, NodeConnectionTypes.Main, 1);
 		});
 
 		it('should filter out disabled nodes', () => {
@@ -316,7 +348,7 @@ describe('NodeExecutionContext', () => {
 				return null;
 			});
 
-			const result = testContext.getConnectedNodes(NodeConnectionType.Main);
+			const result = testContext.getConnectedNodes(NodeConnectionTypes.Main);
 
 			expect(result).toEqual([node1]);
 		});
@@ -330,9 +362,46 @@ describe('NodeExecutionContext', () => {
 				return null;
 			});
 
-			const result = testContext.getConnectedNodes(NodeConnectionType.Main);
+			const result = testContext.getConnectedNodes(NodeConnectionTypes.Main);
 
 			expect(result).toEqual([node1]);
+		});
+	});
+
+	describe('getSignedResumeUrl', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			testContext = new TestContext(
+				workflow,
+				mock<INode>({
+					id: 'node456',
+				}),
+				mock<IWorkflowExecuteAdditionalData>({
+					executionId: '123',
+					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+				}),
+				mode,
+				{
+					validateSignature: true,
+					resultData: { runData: {} },
+				},
+			);
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+		});
+		it('should return a signed resume URL with no query parameters', () => {
+			const result = testContext.getSignedResumeUrl();
+
+			expect(result).toBe(
+				'http://localhost/waiting-webhook/123/node456?signature=8e48dfd1107c1a736f70e7399493ffc50a2e8edd44f389c5f9c058da961682e7',
+			);
+		});
+
+		it('should return a signed resume URL with query parameters', () => {
+			const result = testContext.getSignedResumeUrl({ approved: 'true' });
+
+			expect(result).toBe(
+				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
+			);
 		});
 	});
 });

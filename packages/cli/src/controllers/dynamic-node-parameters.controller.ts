@@ -4,10 +4,10 @@ import {
 	ResourceMapperFieldsRequestDto,
 	ActionResultRequestDto,
 } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Post, RestController, Body } from '@n8n/decorators';
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
-import { Post, RestController, Body } from '@/decorators';
-import { AuthenticatedRequest } from '@/requests';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -21,6 +21,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: OptionsRequestDto,
 	): Promise<INodePropertyOptions[]> {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			credentials,
 			currentNodeParameters,
@@ -28,9 +30,15 @@ export class DynamicNodeParametersController {
 			path,
 			methodName,
 			loadOptions,
+			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
 		if (methodName) {
 			return await this.service.getOptionsViaMethodName(
@@ -62,6 +70,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceLocatorRequestDto,
 	) {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			path,
 			methodName,
@@ -70,9 +80,15 @@ export class DynamicNodeParametersController {
 			credentials,
 			currentNodeParameters,
 			nodeTypeAndVersion,
+			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceLocatorResults(
 			methodName,
@@ -92,9 +108,17 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceMapperFieldsRequestDto,
 	) {
-		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion } = payload;
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion, projectId } =
+			payload;
+
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceMappingFields(
 			methodName,
@@ -112,9 +136,15 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceMapperFieldsRequestDto,
 	) {
-		const { path, methodName, currentNodeParameters, nodeTypeAndVersion } = payload;
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const { path, methodName, currentNodeParameters, nodeTypeAndVersion, projectId } = payload;
+
+		const additionalData = await getBase({
+			userId: req.user.id,
+			currentNodeParameters,
+			projectId,
+		});
 
 		return await this.service.getLocalResourceMappingFields(
 			methodName,
@@ -130,6 +160,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ActionResultRequestDto,
 	): Promise<NodeParameterValueType> {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			currentNodeParameters,
 			nodeTypeAndVersion,
@@ -137,9 +169,14 @@ export class DynamicNodeParametersController {
 			credentials,
 			handler,
 			payload: actionPayload,
+			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
 
 		return await this.service.getActionResult(
 			handler,

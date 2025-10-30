@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -20,8 +20,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Remove Duplicates',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		{
 			displayName: 'Compare',

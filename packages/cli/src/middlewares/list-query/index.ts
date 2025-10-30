@@ -13,6 +13,9 @@ export type ListQueryMiddleware = (
 	next: NextFunction,
 ) => void;
 
+/**
+ * @deprecated Please create Zod validators in `@n8n/api-types` instead.
+ */
 export const listQueryMiddleware: ListQueryMiddleware[] = [
 	filterListQueryMiddleware,
 	selectListQueryMiddleware,

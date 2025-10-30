@@ -1,33 +1,35 @@
+import {
+	getPersonalProject,
+	createWorkflow,
+	getAllSharedWorkflows,
+	getWorkflowById,
+	newWorkflow,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { Project, User } from '@n8n/db';
+import {
+	TagEntity,
+	CredentialsRepository,
+	TagRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { Project } from '@/databases/entities/project';
-import { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportService } from '@/services/import.service';
 
-import { getPersonalProject } from './shared/db/projects';
 import { createMember, createOwner } from './shared/db/users';
-import {
-	createWorkflow,
-	getAllSharedWorkflows,
-	getWorkflowById,
-	newWorkflow,
-} from './shared/db/workflows';
-import * as testDb from './shared/test-db';
-import { mockInstance } from '../shared/mocking';
 
 describe('ImportService', () => {
 	let importService: ImportService;
 	let tagRepository: TagRepository;
 	let owner: User;
 	let ownerPersonalProject: Project;
+	let mockActiveWorkflowManager: ActiveWorkflowManager;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -37,15 +39,22 @@ describe('ImportService', () => {
 
 		tagRepository = Container.get(TagRepository);
 
-		const credentialsRepository = mockInstance(CredentialsRepository);
+		const credentialsRepository = Container.get(CredentialsRepository);
 
-		credentialsRepository.find.mockResolvedValue([]);
+		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 
-		importService = new ImportService(mock(), credentialsRepository, tagRepository);
+		importService = new ImportService(
+			mock(),
+			credentialsRepository,
+			tagRepository,
+			mock(),
+			mock(),
+			mockActiveWorkflowManager,
+		);
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', 'WorkflowTagMapping']);
+		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'TagEntity', 'WorkflowTagMapping']);
 	});
 
 	afterAll(async () => {
@@ -203,5 +212,12 @@ describe('ImportService', () => {
 		const dbTag = await tagRepository.findOneOrFail({ where: { name: tag.name } });
 
 		expect(dbTag.name).toBe(tag.name); // tag created
+	});
+
+	test('should remove workflow from ActiveWorkflowManager when workflow has ID', async () => {
+		const workflowWithId = await createWorkflow({ active: true });
+		await importService.importWorkflows([workflowWithId], ownerPersonalProject.id);
+
+		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(workflowWithId.id);
 	});
 });

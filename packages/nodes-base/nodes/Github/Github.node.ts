@@ -6,8 +6,16 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import {
 	getFileSha,
@@ -16,23 +24,47 @@ import {
 	isBase64,
 	validateJSON,
 } from './GenericFunctions';
-import { getRepositories, getUsers, getWorkflows } from './SearchFunctions';
+import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
+import { removeTrailingSlash } from '../../utils/utilities';
+import { defaultWebhookDescription } from '../Webhook/description';
+
+const waitingTooltip = (parameters: { operation: string }, resumeUrl: string) => {
+	if (parameters?.operation === 'dispatchAndWait') {
+		const message = 'Execution will continue when the following webhook URL is called: ';
+		return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+	}
+
+	return '';
+};
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
 		name: 'github',
-		icon: { light: 'file:github.svg', dark: 'file:github.dark.svg' },
+		icon: {
+			light: 'file:github.svg',
+			dark: 'file:github.dark.svg',
+		},
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume GitHub API',
 		defaults: {
 			name: 'GitHub',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl) }}`,
+		webhooks: [
+			{
+				...defaultWebhookDescription,
+				path: '',
+				restartWebhook: true,
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+			},
+		],
 		credentials: [
 			{
 				name: 'githubApi',
@@ -220,7 +252,7 @@ export class Github implements INodeType {
 						name: 'List',
 						value: 'list',
 						description: 'List contents of a folder',
-						action: 'List a file',
+						action: 'List files',
 					},
 				],
 				default: 'create',
@@ -301,6 +333,12 @@ export class Github implements INodeType {
 						value: 'getRepositories',
 						description: 'Returns the repositories of a user',
 						action: "Get a user's repositories",
+					},
+					{
+						name: 'Get Issues',
+						value: 'getUserIssues',
+						description: 'Returns the issues assigned to the user',
+						action: "Get a user's issues",
 					},
 					{
 						name: 'Invite',
@@ -396,9 +434,6 @@ export class Github implements INodeType {
 				default: 'create',
 			},
 
-			// ----------------------------------
-			//         workflow
-			// ----------------------------------
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -421,6 +456,13 @@ export class Github implements INodeType {
 						value: 'dispatch',
 						description: 'Dispatch a workflow event',
 						action: 'Dispatch a workflow event',
+					},
+					{
+						name: 'Dispatch and Wait for Completion',
+						value: 'dispatchAndWait',
+						description:
+							'Dispatch a workflow event and wait for a webhook to be called before proceeding',
+						action: 'Dispatch a workflow event and wait for completion',
 					},
 					{
 						name: 'Enable',
@@ -450,73 +492,17 @@ export class Github implements INodeType {
 				default: 'dispatch',
 			},
 			{
-				displayName: 'Workflow',
-				name: 'workflowId',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				required: true,
-				modes: [
-					{
-						displayName: 'Workflow',
-						name: 'list',
-						type: 'list',
-						placeholder: 'Select a workflow...',
-						typeOptions: {
-							searchListMethod: 'getWorkflows',
-							searchable: true,
-							searchFilterRequired: true,
-						},
-					},
-					{
-						displayName: 'By ID',
-						name: 'name',
-						type: 'string',
-						placeholder: 'e.g. 12345678',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '\\d+',
-									errorMessage: 'Not a valid Github Workflow ID',
-								},
-							},
-						],
-					},
-				],
+				displayName:
+					'Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input.',
+				name: 'webhookNotice',
+				type: 'notice',
 				displayOptions: {
 					show: {
 						resource: ['workflow'],
-						operation: ['disable', 'dispatch', 'get', 'getUsage', 'enable'],
+						operation: ['dispatchAndWait'],
 					},
 				},
-				description: 'The workflow to dispatch',
-			},
-			{
-				displayName: 'Ref',
-				name: 'ref',
-				type: 'string',
-				default: 'main',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-						operation: ['dispatch'],
-					},
-				},
-				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
-			},
-			{
-				displayName: 'Inputs',
-				name: 'inputs',
-				type: 'json',
-				default: '{}',
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-						operation: ['dispatch'],
-					},
-				},
-				description: 'JSON object with input parameters for the workflow',
+				default: '',
 			},
 
 			// ----------------------------------
@@ -537,7 +523,7 @@ export class Github implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
-							searchFilterRequired: true,
+							searchFilterRequired: false,
 						},
 					},
 					{
@@ -547,13 +533,13 @@ export class Github implements INodeType {
 						placeholder: 'e.g. https://github.com/n8n-io',
 						extractValue: {
 							type: 'regex',
-							regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)',
+							regex: 'https:\\/\\/(?:[^/]+)\\/([-_0-9a-zA-Z]+)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)(?:.*)',
+									regex: 'https:\\/\\/([^/]+)\\/([-_0-9a-zA-Z]+)(?:.*)',
 									errorMessage: 'Not a valid Github URL',
 								},
 							},
@@ -578,7 +564,7 @@ export class Github implements INodeType {
 				],
 				displayOptions: {
 					hide: {
-						operation: ['invite'],
+						operation: ['invite', 'getUserIssues'],
 					},
 				},
 			},
@@ -586,7 +572,10 @@ export class Github implements INodeType {
 				displayName: 'Repository Name',
 				name: 'repository',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {
+					mode: 'list',
+					value: '',
+				},
 				required: true,
 				modes: [
 					{
@@ -606,13 +595,13 @@ export class Github implements INodeType {
 						placeholder: 'e.g. https://github.com/n8n-io/n8n',
 						extractValue: {
 							type: 'regex',
-							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)',
+							regex: 'https:\\/\\/(?:[^/]+)\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
+									regex: 'https:\\/\\/([^/]+)\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
 									errorMessage: 'Not a valid Github Repository URL',
 								},
 							},
@@ -641,6 +630,142 @@ export class Github implements INodeType {
 						operation: ['getRepositories'],
 					},
 				},
+			},
+
+			// ----------------------------------
+			//         workflow
+			// ----------------------------------
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: '',
+				},
+				required: true,
+				modes: [
+					{
+						displayName: 'Workflow',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a workflow...',
+						typeOptions: {
+							searchListMethod: 'getWorkflows',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By File Name',
+						name: 'filename',
+						type: 'string',
+						placeholder: 'e.g. main.yaml or main.yml',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9_-]+.(yaml|yml)',
+									errorMessage: 'Not a valid Github Workflow File Name',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By ID',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. 12345678',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '\\d+',
+									errorMessage: 'Not a valid Github Workflow ID',
+								},
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['disable', 'dispatch', 'dispatchAndWait', 'get', 'getUsage', 'enable'],
+					},
+				},
+				description: 'The workflow to dispatch',
+			},
+			{
+				displayName: 'Ref',
+				name: 'ref',
+				type: 'string',
+				default: 'main',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch', 'dispatchAndWait'],
+						'@version': [{ _cnd: { lte: 1 } }],
+					},
+				},
+				description: 'The git reference for the workflow dispatch (branch or tag name)',
+			},
+			{
+				displayName: 'Ref',
+				name: 'ref',
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: '',
+				},
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a branch, tag, or commit...',
+						typeOptions: {
+							searchListMethod: 'getRefs',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. main',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^[a-zA-Z0-9/._-]+$',
+									errorMessage: 'Not a valid branch, tag',
+								},
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch', 'dispatchAndWait'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
+			},
+			{
+				displayName: 'Inputs',
+				name: 'inputs',
+				type: 'json',
+				default: '{}',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch', 'dispatchAndWait'],
+					},
+				},
+				description: 'JSON object with input parameters for the workflow',
 			},
 
 			// ----------------------------------
@@ -854,7 +979,6 @@ export class Github implements INodeType {
 				placeholder: '',
 				hint: 'The name of the output binary field to put the file in',
 			},
-
 			{
 				displayName: 'Additional Parameters',
 				name: 'additionalParameters',
@@ -1135,6 +1259,7 @@ export class Github implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         issue:get
 			// ----------------------------------
@@ -1150,7 +1275,7 @@ export class Github implements INodeType {
 						resource: ['issue'],
 					},
 				},
-				description: 'The number of the issue get data of',
+				description: 'The issue number to get data for',
 			},
 
 			// ----------------------------------
@@ -1168,7 +1293,7 @@ export class Github implements INodeType {
 						resource: ['issue'],
 					},
 				},
-				description: 'The number of the issue to lock',
+				description: 'The issue number to lock',
 			},
 			{
 				displayName: 'Lock Reason',
@@ -1203,7 +1328,7 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'resolved',
-				description: 'The reason to lock the issue',
+				description: 'The reason for locking the issue',
 			},
 
 			// ----------------------------------
@@ -1369,6 +1494,7 @@ export class Github implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         release:getAll
 			// ----------------------------------
@@ -1595,7 +1721,9 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'Max number of results to return',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-limit
+				description:
+					'Max number of results to return. Maximum value is <a href="https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-pull-requests">100</a>.',
 			},
 			{
 				displayName: 'Filters',
@@ -1687,9 +1815,11 @@ export class Github implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         rerview
 			// ----------------------------------
+
 			// ----------------------------------
 			//         review:getAll
 			// ----------------------------------
@@ -1770,6 +1900,7 @@ export class Github implements INodeType {
 				default: 50,
 				description: 'Max number of results to return',
 			},
+
 			// ----------------------------------
 			//         review:create
 			// ----------------------------------
@@ -1858,6 +1989,7 @@ export class Github implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         review:update
 			// ----------------------------------
@@ -1874,6 +2006,7 @@ export class Github implements INodeType {
 				default: '',
 				description: 'The body of the review',
 			},
+
 			// ----------------------------------
 			//       user:getRepositories
 			// ----------------------------------
@@ -1941,6 +2074,7 @@ export class Github implements INodeType {
 				},
 				description: 'The email address of the invited user',
 			},
+
 			// ----------------------------------
 			//    organization:getRepositories
 			// ----------------------------------
@@ -1975,16 +2109,163 @@ export class Github implements INodeType {
 				default: 50,
 				description: 'Max number of results to return',
 			},
+
+			// ----------------------------------
+			//         user:getIssues
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['getUserIssues'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['getUserIssues'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
+			},
+			{
+				displayName: 'Filters',
+				name: 'getUserIssuesFilters',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Filter',
+				},
+				displayOptions: {
+					show: {
+						operation: ['getUserIssues'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Mentioned',
+						name: 'mentioned',
+						type: 'string',
+						default: '',
+						description: 'Return only issues in which a specific user was mentioned',
+					},
+					{
+						displayName: 'Labels',
+						name: 'labels',
+						type: 'string',
+						default: '',
+						description:
+							'Return only issues with the given labels. Multiple labels can be separated by comma.',
+					},
+					{
+						displayName: 'Updated Since',
+						name: 'since',
+						type: 'dateTime',
+						default: '',
+						description: 'Return only issues updated at or after this time',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'options',
+						options: [
+							{
+								name: 'All',
+								value: 'all',
+								description: 'Returns issues with any state',
+							},
+							{
+								name: 'Closed',
+								value: 'closed',
+								description: 'Return issues with "closed" state',
+							},
+							{
+								name: 'Open',
+								value: 'open',
+								description: 'Return issues with "open" state',
+							},
+						],
+						default: 'open',
+						description: 'The state to set',
+					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'options',
+						options: [
+							{
+								name: 'Created',
+								value: 'created',
+								description: 'Sort by created date',
+							},
+							{
+								name: 'Updated',
+								value: 'updated',
+								description: 'Sort by updated date',
+							},
+							{
+								name: 'Comments',
+								value: 'comments',
+								description: 'Sort by comments',
+							},
+						],
+						default: 'created',
+						description: 'The order the issues should be returned in',
+					},
+					{
+						displayName: 'Direction',
+						name: 'direction',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'asc',
+								description: 'Sort in ascending order',
+							},
+							{
+								name: 'Descending',
+								value: 'desc',
+								description: 'Sort in descending order',
+							},
+						],
+						default: 'desc',
+						description: 'The sort order',
+					},
+				],
+			},
 		],
 	};
 
 	methods = {
 		listSearch: {
-			getUsers,
+			getRefs,
 			getRepositories,
+			getUsers,
 			getWorkflows,
 		},
 	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const requestObject = this.getRequestObject();
+
+		return {
+			workflowData: [this.helpers.returnJsonArray(requestObject.body)],
+		};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -2031,6 +2312,7 @@ export class Github implements INodeType {
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
+			'user:getUserIssues',
 			'release:getAll',
 			'review:getAll',
 			'organization:getRepositories',
@@ -2048,6 +2330,53 @@ export class Github implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const fullOperation = `${resource}:${operation}`;
 
+		if (resource === 'workflow' && operation === 'dispatchAndWait') {
+			const owner = this.getNodeParameter('owner', 0, '', { extractValue: true }) as string;
+			const repository = this.getNodeParameter('repository', 0, '', {
+				extractValue: true,
+			}) as string;
+			const workflowId = this.getNodeParameter('workflowId', 0, '', {
+				extractValue: true,
+			}) as string;
+			const ref = this.getNodeParameter('ref', 0, '', { extractValue: true }) as string;
+
+			const inputs = validateJSON(this.getNodeParameter('inputs', 0) as string) as IDataObject;
+			if (!inputs) {
+				throw new NodeOperationError(this.getNode(), 'Inputs: Invalid JSON');
+			}
+
+			endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
+
+			body = {
+				ref,
+				inputs,
+			};
+
+			// Generate a webhook URL for the GitHub workflow to call when done
+			const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
+
+			body.inputs = {
+				...inputs,
+				resumeUrl,
+			};
+
+			try {
+				responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
+			} catch (error) {
+				if (error.httpCode === '404' || error.statusCode === 404) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The workflow to dispatch could not be found. Adjust the "workflow" parameter setting to dispatch the workflow correctly.',
+						{ itemIndex: 0 },
+					);
+				}
+				throw new NodeApiError(this.getNode(), error as JsonObject);
+			}
+
+			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			return [this.getInputData()];
+		}
+
 		for (let i = 0; i < items.length; i++) {
 			try {
 				// Reset all values
@@ -2057,7 +2386,7 @@ export class Github implements INodeType {
 				qs = {};
 
 				let owner = '';
-				if (fullOperation !== 'user:invite') {
+				if (fullOperation !== 'user:invite' && fullOperation !== 'user:getUserIssues') {
 					// Request the parameters which almost all operations need
 					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
 				}
@@ -2065,6 +2394,7 @@ export class Github implements INodeType {
 				let repository = '';
 				if (
 					fullOperation !== 'user:getRepositories' &&
+					fullOperation !== 'user:getUserIssues' &&
 					fullOperation !== 'user:invite' &&
 					fullOperation !== 'organization:getRepositories'
 				) {
@@ -2079,7 +2409,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const filePath = this.getNodeParameter('filePath', i);
+						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
 
 						const additionalParameters = this.getNodeParameter(
 							'additionalParameters',
@@ -2155,7 +2485,7 @@ export class Github implements INodeType {
 							body.branch = (additionalParameters.branch as IDataObject).branch;
 						}
 
-						const filePath = this.getNodeParameter('filePath', i);
+						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
 						body.message = this.getNodeParameter('commitMessage', i) as string;
 
 						body.sha = await getFileSha.call(
@@ -2170,7 +2500,7 @@ export class Github implements INodeType {
 					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
-						const filePath = this.getNodeParameter('filePath', i);
+						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
 						const additionalParameters = this.getNodeParameter(
 							'additionalParameters',
 							i,
@@ -2183,7 +2513,7 @@ export class Github implements INodeType {
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'list') {
 						requestMethod = 'GET';
-						const filePath = this.getNodeParameter('filePath', i);
+						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					}
 				} else if (resource === 'issue') {
@@ -2458,6 +2788,20 @@ export class Github implements INodeType {
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
+					} else if (operation === 'getUserIssues') {
+						// ----------------------------------
+						//         getIssues
+						// ----------------------------------
+						requestMethod = 'GET';
+
+						endpoint = '/issues';
+
+						qs = this.getNodeParameter('getUserIssuesFilters', i, {}) as IDataObject;
+
+						returnAll = this.getNodeParameter('returnAll', 0);
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
 					} else if (operation === 'invite') {
 						// ----------------------------------
 						//            invite
@@ -2491,20 +2835,27 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`;
-					} else if (operation === 'dispatch') {
+					}
+					if (operation === 'dispatch') {
 						// ----------------------------------
 						//         dispatch
 						// ----------------------------------
 
 						requestMethod = 'POST';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
-						body.ref = this.getNodeParameter('ref', i) as string;
+
+						const ref = this.getNodeParameter('ref', i, '', { extractValue: true }) as string;
+						body.ref = ref;
 
 						const inputs = validateJSON(
 							this.getNodeParameter('inputs', i) as string,
@@ -2522,7 +2873,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`;
 					} else if (operation === 'get') {
@@ -2532,7 +2885,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}`;
 					} else if (operation === 'getUsage') {
@@ -2542,7 +2897,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`;
 					} else if (operation === 'list') {

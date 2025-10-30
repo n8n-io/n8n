@@ -7,7 +7,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	ensureError,
 } from 'n8n-workflow';
 
@@ -27,8 +27,8 @@ export class Mqtt implements INodeType {
 			name: 'MQTT',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mqtt',

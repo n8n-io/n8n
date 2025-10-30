@@ -1,7 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { CohereEmbeddings } from '@langchain/cohere';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -45,13 +44,13 @@ export class EmbeddingsCohere implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiEmbedding],
+
+		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName:
 					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',

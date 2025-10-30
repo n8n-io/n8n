@@ -5,7 +5,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "messageId"
-    ]
+    "version": 1
 }

@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "row_number": {
+            "type": "integer"
+        }
+    },
+    "version": 3
+}

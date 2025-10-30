@@ -1,5 +1,5 @@
+import { ApplicationError } from '@n8n/errors';
 import { mock } from 'jest-mock-extended';
-import { ApplicationError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,

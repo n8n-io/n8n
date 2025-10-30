@@ -1,19 +1,27 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
+import type { ExecutionRepository } from '@n8n/db';
+import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
+	StructuredChunk,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
+import {
+	ManualExecutionCancelledError,
+	randomInt,
+	sleep,
+	SystemShutdownExecutionCancelledError,
+} from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import config from '@/config';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { mockInstance } from '@test/mocking';
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
@@ -28,6 +36,10 @@ const executionRepository = mock<ExecutionRepository>();
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
 	isEnabled: false,
+});
+
+const executionsConfig = mockInstance(ExecutionsConfig, {
+	mode: 'regular',
 });
 
 describe('ActiveExecutions', () => {
@@ -53,6 +65,7 @@ describe('ActiveExecutions', () => {
 			id: '123',
 			name: 'Test workflow 1',
 			active: false,
+			isArchived: false,
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			nodes: [],
@@ -62,7 +75,13 @@ describe('ActiveExecutions', () => {
 	};
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions(mock(), executionRepository, concurrencyControl);
+		activeExecutions = new ActiveExecutions(
+			mock(),
+			executionRepository,
+			concurrencyControl,
+			mock(),
+			executionsConfig,
+		);
 
 		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
 
@@ -178,11 +197,80 @@ describe('ActiveExecutions', () => {
 
 			await expect(postExecutePromise).resolves.toEqual(fullRunData);
 		});
+
+		test('Should close response if it exists', async () => {
+			executionData.httpResponse = mock<Response>();
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.finalizeExecution(executionId, fullRunData);
+			expect(executionData.httpResponse.end).toHaveBeenCalled();
+		});
+
+		test('Should handle error when closing response', async () => {
+			const logger = mockInstance(Logger);
+			activeExecutions = new ActiveExecutions(
+				logger,
+				executionRepository,
+				concurrencyControl,
+				mock(),
+				executionsConfig,
+			);
+
+			executionData.httpResponse = mock<Response>();
+			jest.mocked(executionData.httpResponse.end).mockImplementation(() => {
+				throw new Error('Connection closed');
+			});
+
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.finalizeExecution(executionId, fullRunData);
+
+			expect(logger.error).toHaveBeenCalledWith('Error closing streaming response', {
+				executionId,
+				error: 'Connection closed',
+			});
+		});
 	});
 
 	describe('getPostExecutePromise', () => {
 		test('Should throw error when trying to create a promise with invalid execution', async () => {
 			await expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow();
+		});
+	});
+
+	describe('sendChunk', () => {
+		test('should send chunk to response', async () => {
+			executionData.httpResponse = mock<Response>();
+			const executionId = await activeExecutions.add(executionData);
+			const testChunk: StructuredChunk = {
+				content: 'test chunk',
+				type: 'item',
+				metadata: {
+					nodeName: 'testNode',
+					nodeId: uuid(),
+					runIndex: 0,
+					itemIndex: 0,
+					timestamp: Date.now(),
+				},
+			};
+			activeExecutions.sendChunk(executionId, testChunk);
+			expect(executionData.httpResponse.write).toHaveBeenCalledWith(
+				JSON.stringify(testChunk) + '\n',
+			);
+		});
+
+		test('should skip sending chunk to response if response is not set', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			const testChunk: StructuredChunk = {
+				content: 'test chunk',
+				type: 'item',
+				metadata: {
+					nodeName: 'testNode',
+					nodeId: uuid(),
+					runIndex: 0,
+					itemIndex: 0,
+					timestamp: Date.now(),
+				},
+			};
+			expect(() => activeExecutions.sendChunk(executionId, testChunk)).not.toThrow();
 		});
 	});
 
@@ -198,18 +286,22 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should cancel ongoing executions', async () => {
-			activeExecutions.stopExecution(executionId);
+			activeExecutions.stopExecution(executionId, new ManualExecutionCancelledError(executionId));
 
-			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
+			expect(responsePromise.reject).toHaveBeenCalledWith(
+				expect.any(ManualExecutionCancelledError),
+			);
 			expect(workflowExecution.cancel).toHaveBeenCalledTimes(1);
-			await expect(postExecutePromise).rejects.toThrow(ExecutionCancelledError);
+			await expect(postExecutePromise).rejects.toThrow(ManualExecutionCancelledError);
 		});
 
 		test('Should cancel waiting executions', async () => {
 			activeExecutions.setStatus(executionId, 'waiting');
-			activeExecutions.stopExecution(executionId);
+			activeExecutions.stopExecution(executionId, new ManualExecutionCancelledError(executionId));
 
-			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
+			expect(responsePromise.reject).toHaveBeenCalledWith(
+				expect.any(ManualExecutionCancelledError),
+			);
 			expect(workflowExecution.cancel).not.toHaveBeenCalled();
 		});
 	});
@@ -219,8 +311,6 @@ describe('ActiveExecutions', () => {
 		let waitingExecutionId1: string, waitingExecutionId2: string;
 
 		beforeEach(async () => {
-			config.set('executions.mode', 'regular');
-
 			executionRepository.createNewExecution.mockImplementation(async () =>
 				randomInt(1000, 2000).toString(),
 			);
@@ -259,8 +349,14 @@ describe('ActiveExecutions', () => {
 			expect(removeAllCaptor.value.sort()).toEqual([newExecutionId1, waitingExecutionId1].sort());
 
 			expect(stopExecutionSpy).toHaveBeenCalledTimes(2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
 
@@ -285,10 +381,22 @@ describe('ActiveExecutions', () => {
 			);
 
 			expect(stopExecutionSpy).toHaveBeenCalledTimes(4);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId2);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId2,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId2,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
 		});
 	});
 });

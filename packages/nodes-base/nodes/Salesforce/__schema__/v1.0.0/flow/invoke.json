@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "actionName": {
+            "type": "string"
+        },
+        "errors": {
+            "type": "null"
+        },
+        "invocationId": {
+            "type": "null"
+        },
+        "isSuccess": {
+            "type": "boolean"
+        },
+        "outcome": {
+            "type": "null"
+        },
+        "outputValues": {
+            "type": "object",
+            "properties": {
+                "Flow__InterviewGuid": {
+                    "type": "string"
+                },
+                "Flow__InterviewStatus": {
+                    "type": "string"
+                }
+            }
+        },
+        "sortOrder": {
+            "type": "integer"
+        },
+        "version": {
+            "type": "integer"
+        }
+    },
+    "version": 2
+}

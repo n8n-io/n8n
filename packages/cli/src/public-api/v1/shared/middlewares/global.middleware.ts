@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
+import type { BooleanLicenseFeature } from '@n8n/constants';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
+import type { NextFunction } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import type { BooleanLicenseFeature } from '@/interfaces';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { AuthenticatedRequest } from '@/requests';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
@@ -34,8 +37,16 @@ const buildScopeMiddleware = (
 				params.credentialId = req.params.id;
 			}
 		}
-		if (!(await userHasScopes(req.user, scopes, globalOnly, params))) {
-			return res.status(403).json({ message: 'Forbidden' });
+
+		try {
+			if (!(await userHasScopes(req.user, scopes, globalOnly, params))) {
+				return res.status(403).json({ message: 'Forbidden' });
+			}
+		} catch (error) {
+			if (error instanceof NotFoundError) {
+				return res.status(404).json({ message: error.message });
+			}
+			throw error;
 		}
 
 		return next();
@@ -74,6 +85,27 @@ export const validCursor = (
 	return next();
 };
 
+const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
+export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
+	return Container.get(License).isApiKeyScopesEnabled()
+		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
+		: emptyMiddleware;
+};
+
+export const apiKeyHasScopeWithGlobalScopeFallback = (
+	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
+) => {
+	if ('scope' in config) {
+		return Container.get(License).isApiKeyScopesEnabled()
+			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope)
+			: globalScope(config.scope);
+	} else {
+		return Container.get(License).isApiKeyScopesEnabled()
+			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope)
+			: globalScope(config.globalScope);
+	}
+};
+
 export const validLicenseWithUserQuota = (
 	_: express.Request,
 	res: express.Response,
@@ -91,7 +123,7 @@ export const validLicenseWithUserQuota = (
 
 export const isLicensed = (feature: BooleanLicenseFeature) => {
 	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		if (Container.get(License).isFeatureEnabled(feature)) return next();
+		if (Container.get(License).isLicensed(feature)) return next();
 
 		return res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 	};

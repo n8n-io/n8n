@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 import { Converter } from 'showdown';
 
@@ -25,8 +25,8 @@ export class Markdown implements INodeType {
 		defaults: {
 			name: 'Markdown',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			{

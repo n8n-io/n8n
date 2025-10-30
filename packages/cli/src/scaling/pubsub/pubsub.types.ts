@@ -1,10 +1,6 @@
-import type {
-	PubSubCommandMap,
-	PubSubEventMap,
-	PubSubWorkerResponseMap,
-} from '@/events/maps/pub-sub.event-map';
 import type { Resolve } from '@/utlity.types';
 
+import type { PubSubCommandMap, PubSubWorkerResponseMap } from './pubsub.event-map';
 import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
 
 export namespace PubSub {
@@ -44,6 +40,9 @@ export namespace PubSub {
 
 	namespace Commands {
 		export type ReloadLicense = ToCommand<'reload-license'>;
+		export type ReloadOIDCConfiguration = ToCommand<'reload-oidc-config'>;
+		export type ReloadSamlConfiguration = ToCommand<'reload-saml-config'>;
+		export type ReloadCredentialsOverwrites = ToCommand<'reload-overwrite-credentials'>;
 		export type RestartEventBus = ToCommand<'restart-event-bus'>;
 		export type ReloadExternalSecretsProviders = ToCommand<'reload-external-secrets-providers'>;
 		export type CommunityPackageInstall = ToCommand<'community-package-install'>;
@@ -58,6 +57,8 @@ export namespace PubSub {
 		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
+		export type ReloadSsoProvisioningConfiguration =
+			ToCommand<'reload-sso-provisioning-configuration'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -76,7 +77,11 @@ export namespace PubSub {
 		| Commands.DisplayWorkflowDeactivation
 		| Commands.DisplayWorkflowActivationError
 		| Commands.RelayExecutionLifecycleEvent
-		| Commands.ClearTestWebhooks;
+		| Commands.ClearTestWebhooks
+		| Commands.ReloadOIDCConfiguration
+		| Commands.ReloadSamlConfiguration
+		| Commands.ReloadCredentialsOverwrites
+		| Commands.ReloadSsoProvisioningConfiguration;
 
 	// ----------------------------------
 	//         worker responses
@@ -104,34 +109,4 @@ export namespace PubSub {
 
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
 	export type WorkerResponse = ToWorkerResponse<'response-to-get-worker-status'>;
-
-	// ----------------------------------
-	//              events
-	// ----------------------------------
-
-	/**
-	 * Of all events emitted from pubsub messages, those whose handlers
-	 * are all present in main, worker, and webhook processes.
-	 */
-	export type CommonEvents = Pick<
-		PubSubEventMap,
-		| 'reload-license'
-		| 'restart-event-bus'
-		| 'reload-external-secrets-providers'
-		| 'community-package-install'
-		| 'community-package-update'
-		| 'community-package-uninstall'
-	>;
-
-	/** Multi-main events emitted from pubsub messages. */
-	export type MultiMainEvents = Pick<
-		PubSubEventMap,
-		| 'add-webhooks-triggers-and-pollers'
-		| 'remove-triggers-and-pollers'
-		| 'display-workflow-activation'
-		| 'display-workflow-deactivation'
-		| 'display-workflow-activation-error'
-		| 'relay-execution-lifecycle-event'
-		| 'clear-test-webhooks'
-	>;
 }

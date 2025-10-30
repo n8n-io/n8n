@@ -8,7 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { Builder } from 'xml2js';
 
@@ -37,8 +37,8 @@ export class AwsS3V2 implements INodeType {
 				name: 'AWS S3',
 			},
 			usableAsTool: true,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'aws',
@@ -656,6 +656,8 @@ export class AwsS3V2 implements INodeType {
 							fileName,
 							mimeType,
 						);
+
+						returnData.push(items[i]);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html
 					if (operation === 'delete') {
@@ -1058,16 +1060,11 @@ export class AwsS3V2 implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
-					continue;
+				} else {
+					throw error;
 				}
-				throw error;
 			}
 		}
-		if (resource === 'file' && operation === 'download') {
-			// For file downloads the files get attached to the existing items
-			return [items];
-		} else {
-			return [returnData];
-		}
+		return [returnData];
 	}
 }

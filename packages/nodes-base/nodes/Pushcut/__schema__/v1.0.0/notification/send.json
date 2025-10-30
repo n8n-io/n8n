@@ -1,19 +1,15 @@
 {
     "type": "object",
     "properties": {
-        "message": {
+        "id": {
             "type": "string"
         },
-        "id": {
+        "message": {
             "type": "string"
         },
         "notificationId": {
             "type": "string"
         }
     },
-    "required": [
-        "message",
-        "id",
-        "notificationId"
-    ]
+    "version": 1
 }

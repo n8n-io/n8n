@@ -11,7 +11,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
 	const date = moment(value, fromFormat, true);
@@ -56,8 +56,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Date & Time',
 		color: '#408000',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		{
 			displayName:

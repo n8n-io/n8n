@@ -1,0 +1,149 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 0],
+			"id": "4c4f02e3-f0cc-4e1a-b084-9888dd75ccaf",
+			"name": "Schedule Trigger"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "553f50d9-5023-433f-8f62-eebc9c9e2269",
+							"leftValue": "={{ $json.data }}",
+							"rightValue": 5,
+							"operator": {
+								"type": "number",
+								"operation": "lt"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [660, 80],
+			"id": "3273dcdb-845c-43cc-8ed0-ffaef7b68b1c",
+			"name": "If"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "71475f04-571e-4e99-bdf8-adff367533fb",
+							"name": "data",
+							"value": "={{ $json.data }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [880, 0],
+			"id": "0522012f-fe99-41e0-ba19-7e18f22758d9",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"jsCode": "return Array.from({length:10}).map((_,i)=>({data:i}))"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [440, 0],
+			"id": "268c2da4-23c8-46c5-8992-37a92b8e4aad",
+			"name": "Code"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "0e2d1621-607d-4d53-98a3-07afc0d6230d",
+			"name": "Edit Fields1",
+			"disabled": true
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "ddb4b2493e5f30d4af3bb43dd3c9acf1f60cbaa91c89e84d2967725474533c77"
+	}
+}

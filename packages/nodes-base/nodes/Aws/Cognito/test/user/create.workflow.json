@@ -1,0 +1,70 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"userPool": {
+					"__rl": true,
+					"value": "eu-central-1_W3WwpiBXV",
+					"mode": "list",
+					"cachedResultName": "UserPoolSimple"
+				},
+				"newUserName": "Johnn12",
+				"additionalFields": {},
+				"requestOptions": {}
+			},
+			"id": "ea53747b-2354-486c-9a9d-bac3dd88bacb",
+			"name": "createUser",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [460, 360],
+			"alwaysOutputData": true,
+			"credentials": {
+				"aws": {
+					"id": "testId",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"createUser": [
+			{
+				"json": {
+					"Attributes": [
+						{
+							"Name": "sub",
+							"Value": "03d43812-00c1-7098-075e-8a535fdefc1b"
+						}
+					],
+					"Enabled": true,
+					"UserCreateDate": 1743068750.761,
+					"UserLastModifiedDate": 1743068750.761,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "Johnn12"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "createUser",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

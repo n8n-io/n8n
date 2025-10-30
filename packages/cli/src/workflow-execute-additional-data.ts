@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-use-before-define */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Logger, WorkflowExecute } from 'n8n-core';
-import { ApplicationError, Workflow } from 'n8n-workflow';
+import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import { UnexpectedError, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -14,7 +16,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRun,
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
@@ -33,19 +34,19 @@ import type {
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionDataService } from '@/executions/execution-data.service';
+import {
+	CredentialsPermissionChecker,
+	SubworkflowPolicyChecker,
+} from '@/executions/pre-execution-checks';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { SecretsHelper } from '@/secrets-helpers.ee';
 import { UrlService } from '@/services/url.service';
-import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
-import { PermissionChecker } from '@/user-management/permission-checker';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -105,7 +106,7 @@ export async function getWorkflowData(
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
-		throw new ApplicationError(
+		throw new UnexpectedError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
 		);
 	}
@@ -120,7 +121,7 @@ export async function getWorkflowData(
 		);
 
 		if (workflowData === undefined || workflowData === null) {
-			throw new ApplicationError('Workflow does not exist.', {
+			throw new UnexpectedError('Workflow does not exist.', {
 				extra: { workflowId: workflowInfo.id },
 			});
 		}
@@ -204,9 +205,11 @@ async function startExecution(
 	 */
 	await executionRepository.setRunning(executionId);
 
+	const startTime = Date.now();
+
 	let data;
 	try {
-		await Container.get(PermissionChecker).check(workflowData.id, workflowData.nodes);
+		await Container.get(CredentialsPermissionChecker).check(workflowData.id, workflowData.nodes);
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,
@@ -230,6 +233,11 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		if (additionalData.httpResponse) {
+			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
+		}
+		// Propagate streaming state to subworkflows
+		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
 		const workflowSettings = workflowData.settings;
@@ -239,7 +247,7 @@ async function startExecution(
 			// If no timeout was given from the parent, then we use our timeout.
 			subworkflowTimeout = Math.min(
 				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				Date.now() + workflowSettings.executionTimeout * 1000,
+				startTime + workflowSettings.executionTimeout * 1000,
 			);
 		}
 
@@ -257,20 +265,14 @@ async function startExecution(
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
 	} catch (error) {
-		const executionError = error ? (error as ExecutionError) : undefined;
-		const fullRunData: IRun = {
-			data: {
-				resultData: {
-					error: executionError,
-					runData: {},
-				},
-			},
-			finished: false,
-			mode: 'integrated',
-			startedAt: new Date(),
-			stoppedAt: new Date(),
-			status: 'error',
-		};
+		const executionError = error as ExecutionError;
+		const fullRunData = Container.get(ExecutionDataService).generateFailedExecutionFromError(
+			runData.executionMode,
+			executionError,
+			'node' in executionError ? executionError.node : undefined,
+			startTime,
+		);
+
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.
 		// Force an update to db as there should be no harm doing this
@@ -360,21 +362,36 @@ export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) 
 
 /**
  * Returns the base additional data without webhooks
+ * @returns {IWorkflowExecuteAdditionalData}
+ * param userId - The ID of the user executing the workflow, if available
+ * param workflowId - The ID of the workflow being executed, if available
+ * param projectId - The ID of the project the workflow is owned by, if available
+ * param currentNodeParameters - The parameters of the currently executing node
+ * param executionTimeoutTimestamp - The timestamp (in ms) when the execution should time out
  */
-export async function getBase(
-	userId?: string,
-	currentNodeParameters?: INodeParameters,
-	executionTimeoutTimestamp?: number,
-): Promise<IWorkflowExecuteAdditionalData> {
+export async function getBase({
+	userId,
+	workflowId,
+	projectId,
+	currentNodeParameters,
+	executionTimeoutTimestamp,
+}: {
+	userId?: string;
+	workflowId?: string;
+	projectId?: string;
+	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
+} = {}): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
 
-	const variables = await WorkflowHelpers.getVariables();
+	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
 
 	const eventService = Container.get(EventService);
 
-	return {
+	const additionalData: IWorkflowExecuteAdditionalData = {
+		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
@@ -388,7 +405,16 @@ export async function getBase(
 		userId,
 		setExecutionStatus,
 		variables,
-		secretsHelpers: Container.get(SecretsHelper),
+		async getRunExecutionData(executionId) {
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionData = await executionRepository.findSingleExecution(executionId, {
+				unflattenData: true,
+				includeData: true,
+			});
+
+			return executionData?.data;
+		},
+		externalSecretsProxy: Container.get(ExternalSecretsProxy),
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,
@@ -429,4 +455,12 @@ export async function getBase(
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
 	};
+
+	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
+		// @ts-expect-error Adding an index signature `[key: string]: unknown`
+		// to `IWorkflowExecuteAdditionalData` triggers complex type errors for derived types.
+		additionalData[moduleName] = moduleContext;
+	}
+
+	return additionalData;
 }

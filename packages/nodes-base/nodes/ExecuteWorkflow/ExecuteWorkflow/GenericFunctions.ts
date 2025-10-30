@@ -45,7 +45,9 @@ export async function getWorkflowInfo(
 			throw error;
 		}
 
-		workflowInfo.code = jsonParse(workflowJson);
+		workflowInfo.code = jsonParse(workflowJson, {
+			errorMessage: 'The file content is not valid JSON', // pass a custom error message to not expose the file contents
+		});
 	} else if (source === 'parameter') {
 		// Read workflow from parameter
 		const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;

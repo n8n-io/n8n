@@ -1,7 +1,9 @@
 import type {
 	AINodeConnectionType,
 	CallbackManager,
+	ChunkType,
 	CloseFunction,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -12,15 +14,16 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
-	Result,
+	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
+	EngineResponse,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
-	createEnvProviderState,
-	NodeConnectionType,
+	jsonParse,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
@@ -33,6 +36,7 @@ import {
 } from './utils/binary-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { copyInputItems } from './utils/copy-input-items';
+import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
@@ -62,6 +66,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
+		public subNodeExecutionResults?: EngineResponse,
 	) {
 		super(
 			workflow,
@@ -90,6 +95,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				connectionInputData,
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getDataTableHelperFunctions(additionalData, workflow, node),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getDeduplicationHelperFunctions(workflow, node),
@@ -127,29 +133,44 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
-	async startJob<T = unknown, E = unknown>(
-		jobType: string,
-		settings: unknown,
+	isStreaming(): boolean {
+		// Check if we have sendChunk handlers
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+
+		// Check if streaming was enabled for this execution
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+
+		// Check current execution mode supports streaming
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
+		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
+
+		return hasHandlers && isStreamingMode && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
 		itemIndex: number,
-	): Promise<Result<T, E>> {
-		return await this.additionalData.startRunnerTask<T, E>(
-			this.additionalData,
-			jobType,
-			settings,
-			this,
-			this.inputData,
-			this.node,
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
+		content?: IDataObject | string,
+	): Promise<void> {
+		const node = this.getNode();
+		const metadata = {
+			nodeId: node.id,
+			nodeName: node.name,
 			itemIndex,
-			this.node.name,
-			this.connectionInputData,
-			{},
-			this.mode,
-			createEnvProviderState(),
-			this.executeData,
-		);
+			runIndex: this.runIndex,
+			timestamp: Date.now(),
+		};
+
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+		const message: StructuredChunk = {
+			type,
+			content: parsedContent,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async getInputConnectionData(
@@ -173,7 +194,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		);
 	}
 
-	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
 		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
@@ -183,7 +204,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	logNodeOutput(...args: unknown[]): void {
 		if (this.mode === 'manual') {
-			this.sendMessageToUI(...args);
+			const parsedLogArgs = args.map((arg) =>
+				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
+			);
+			this.sendMessageToUI(...parsedLogArgs);
 			return;
 		}
 

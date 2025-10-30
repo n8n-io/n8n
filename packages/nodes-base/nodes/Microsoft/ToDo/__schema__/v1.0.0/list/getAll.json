@@ -7,6 +7,9 @@
         "displayName": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "isOwner": {
             "type": "boolean"
         },
@@ -15,17 +18,7 @@
         },
         "wellknownListName": {
             "type": "string"
-        },
-        "id": {
-            "type": "string"
         }
     },
-    "required": [
-        "@odata.etag",
-        "displayName",
-        "isOwner",
-        "isShared",
-        "wellknownListName",
-        "id"
-    ]
+    "version": 1
 }

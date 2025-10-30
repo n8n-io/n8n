@@ -1,6 +1,9 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { SettingsRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import {
+	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
 	UnrecognizedNodeTypeError,
@@ -9,6 +12,7 @@ import {
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
+import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
@@ -18,13 +22,9 @@ import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-
-import { mockInstance } from '../../../shared/mocking';
 
 export { setupTestServer } from './test-server';
 
@@ -36,6 +36,7 @@ export { setupTestServer } from './test-server';
  * Initialize node types.
  */
 export async function initActiveWorkflowManager() {
+	mockInstance(BinaryDataConfig);
 	mockInstance(InstanceSettings, {
 		isMultiMain: false,
 	});
@@ -67,9 +68,8 @@ export async function initCredentialsTypes(): Promise<void> {
 /**
  * Initialize node types.
  */
-export async function initNodeTypes() {
-	ScheduleTrigger.prototype.trigger = async () => ({});
-	const nodes: INodeTypeData = {
+export async function initNodeTypes(customNodes?: INodeTypeData) {
+	const defaultNodes: INodeTypeData = {
 		'n8n-nodes-base.start': {
 			type: new Start(),
 			sourcePath: '',
@@ -86,7 +86,14 @@ export async function initNodeTypes() {
 			type: new ScheduleTrigger(),
 			sourcePath: '',
 		},
+		'n8n-nodes-base.formTrigger': {
+			type: new FormTrigger(),
+			sourcePath: '',
+		},
 	};
+
+	ScheduleTrigger.prototype.trigger = async () => ({});
+	const nodes = customNodes ?? defaultNodes;
 	const loader = mock<DirectoryLoader>();
 	loader.getNode.mockImplementation((nodeType) => {
 		const node = nodes[`n8n-nodes-base.${nodeType}`];
@@ -103,12 +110,13 @@ export async function initNodeTypes() {
  * Initialize a BinaryDataService for test runs.
  */
 export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
-	const binaryDataService = new BinaryDataService();
-	await binaryDataService.init({
+	const config = mock<BinaryDataConfig>({
 		mode,
 		availableModes: [mode],
 		localStoragePath: '',
 	});
+	const binaryDataService = new BinaryDataService(config);
+	await binaryDataService.init();
 	Container.set(BinaryDataService, binaryDataService);
 }
 
@@ -127,7 +135,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 
 	const match = authCookie.match(new RegExp(`(^| )${authCookieName}=(?<token>[^;]+)`));
 
-	if (!match || !match.groups) return undefined;
+	if (!match?.groups) return undefined;
 
 	return match.groups.token;
 }

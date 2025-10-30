@@ -1,70 +1,32 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "channel_id": {
             "type": "string"
         },
         "create_at": {
             "type": "integer"
         },
-        "update_at": {
+        "delete_at": {
             "type": "integer"
         },
         "edit_at": {
             "type": "integer"
         },
-        "delete_at": {
-            "type": "integer"
+        "hashtags": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
         },
         "is_pinned": {
             "type": "boolean"
         },
-        "user_id": {
-            "type": "string"
-        },
-        "channel_id": {
-            "type": "string"
-        },
-        "root_id": {
-            "type": "string"
-        },
-        "original_id": {
-            "type": "string"
-        },
-        "message": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "props": {
-            "type": "object",
-            "properties": {
-                "from_bot": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "attachments"
-            ]
-        },
-        "hashtags": {
-            "type": "string"
-        },
-        "pending_post_id": {
-            "type": "string"
-        },
-        "remote_id": {
-            "type": "string"
-        },
-        "reply_count": {
-            "type": "integer"
-        },
         "last_reply_at": {
             "type": "integer"
         },
-        "participants": {
-            "type": "null"
+        "message": {
+            "type": "string"
         },
         "metadata": {
             "type": "object",
@@ -77,16 +39,46 @@
                             "type": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "type"
-                        ]
+                        }
                     }
                 }
-            },
-            "required": [
-                "embeds"
-            ]
+            }
+        },
+        "original_id": {
+            "type": "string"
+        },
+        "participants": {
+            "type": "null"
+        },
+        "pending_post_id": {
+            "type": "string"
+        },
+        "props": {
+            "type": "object",
+            "properties": {
+                "from_bot": {
+                    "type": "string"
+                }
+            }
+        },
+        "remote_id": {
+            "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "root_id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "update_at": {
+            "type": "integer"
+        },
+        "user_id": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

@@ -1,9 +1,9 @@
 import type { Iso8601DateTimeString } from '@n8n/api-types';
+import { Time } from '@n8n/constants';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Workflow } from 'n8n-workflow';
 
-import { Time } from '@/constants';
-import type { User } from '@/databases/entities/user';
 import { CacheService } from '@/services/cache/cache.service';
 
 type WorkflowCacheHash = Record<User['id'], Iso8601DateTimeString>;

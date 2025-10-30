@@ -1,17 +1,72 @@
-import alasql from 'alasql';
-import type { Database } from 'alasql';
+import { Container } from '@n8n/di';
+import alasqlImport from 'alasql';
+import { ErrorReporter } from 'n8n-core';
+
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
+import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
+
+type AlaSQLBase = typeof alasqlImport;
+type AlaSQLExtended = AlaSQLBase & {
+	// Access `engines` internal structure to override file access engines
+	engines?: AlaSQLBase['fn'];
+	// Fix Database constructor typing
+	Database: AlaSQLBase['Database'] & { new (databaseId: string): AlaSQLBase['Database'] };
+};
+
+const alasql = alasqlImport as AlaSQLExtended;
+
+function disableAlasqlFileAccess() {
+	const disabledFunction = () => {
+		throw new Error('File access operations are disabled for security reasons');
+	};
+
+	// Disable file reading functions that could be used to access the file system
+	if (alasql.fn) {
+		alasql.fn.FILE = disabledFunction;
+		alasql.fn.JSON = disabledFunction;
+		alasql.fn.TXT = disabledFunction;
+		alasql.fn.CSV = disabledFunction;
+		alasql.fn.XLSX = disabledFunction;
+		alasql.fn.XLS = disabledFunction;
+		alasql.fn.LOAD = disabledFunction;
+		alasql.fn.SAVE = disabledFunction;
+	}
+
+	// Also disable the FROM handlers which are used for file operations
+	if (alasql.from) {
+		alasql.from.FILE = disabledFunction;
+		alasql.from.JSON = disabledFunction;
+		alasql.from.TXT = disabledFunction;
+		alasql.from.CSV = disabledFunction;
+		alasql.from.XLSX = disabledFunction;
+		alasql.from.XLS = disabledFunction;
+	}
+
+	// Override the engines that handle file operations
+	if (alasql.engines) {
+		alasql.engines.FILE = disabledFunction;
+		alasql.engines.JSON = disabledFunction;
+		alasql.engines.TXT = disabledFunction;
+		alasql.engines.CSV = disabledFunction;
+		alasql.engines.XLSX = disabledFunction;
+		alasql.engines.XLS = disabledFunction;
+	}
+}
+
+type OperationOptions = {
+	emptyQueryResult: 'success' | 'empty';
+};
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
@@ -29,6 +84,37 @@ export const properties: INodeProperties[] = [
 			editor: 'sqlEditor',
 		},
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Empty Query Result',
+				name: 'emptyQueryResult',
+				type: 'options',
+				description: 'What to return if the query executed successfully but returned no results',
+				options: [
+					{
+						name: 'Success',
+						value: 'success',
+					},
+					{
+						name: 'Empty Result',
+						value: 'empty',
+					},
+				],
+				default: 'empty',
+			},
+		],
+		displayOptions: {
+			show: {
+				'@version': [3.2],
+			},
+		},
+	},
 ];
 
 const displayOptions = {
@@ -39,15 +125,113 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+const prepareError = (node: INode, error: Error) => {
+	let message = '';
+	if (typeof error === 'string') {
+		message = error;
+	} else {
+		message = error.message;
+	}
+	throw new NodeOperationError(node, error, {
+		message: 'Issue while executing query',
+		description: message,
+		itemIndex: 0,
+	});
+};
+
+async function executeSelectWithMappedPairedItems(
+	node: INode,
+	inputsData: INodeExecutionData[][],
+	query: string,
+	returnSuccessItemIfEmpty: boolean,
+): Promise<INodeExecutionData[][]> {
+	const returnData: INodeExecutionData[] = [];
+
+	const db = new alasql.Database(node.id);
+
+	try {
+		for (let i = 0; i < inputsData.length; i++) {
+			const inputData = inputsData[i];
+
+			db.exec(`CREATE TABLE input${i + 1}`);
+			db.tables[`input${i + 1}`].data = inputData.map((entry) => ({
+				...entry.json,
+				pairedItem: entry.pairedItem,
+			}));
+		}
+	} catch (error) {
+		throw new NodeOperationError(node, error, {
+			message: 'Issue while creating table from',
+			description: error.message,
+			itemIndex: 0,
+		});
+	}
+
+	try {
+		const result = db.exec(modifySelectQuery(query, inputsData.length)) as IDataObject[];
+
+		for (const item of result) {
+			if (Array.isArray(item)) {
+				returnData.push.apply(returnData, item.map(rowToExecutionData));
+			} else if (typeof item === 'object') {
+				returnData.push(rowToExecutionData(item));
+			}
+		}
+
+		if (!returnData.length && returnSuccessItemIfEmpty) {
+			returnData.push({ json: { success: true } });
+		}
+	} catch (error) {
+		prepareError(node, error as Error);
+	} finally {
+		delete alasql.databases[node.id];
+	}
+
+	return [returnData];
+}
+
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
 ): Promise<INodeExecutionData[][]> {
-	const nodeId = this.getNode().id;
+	disableAlasqlFileAccess();
+
+	const node = this.getNode();
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as OperationOptions;
 
-	const db: typeof Database = new (alasql as any).Database(nodeId);
+	let query = this.getNodeParameter('query', 0) as string;
+
+	for (const resolvable of getResolvables(query)) {
+		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
+	}
+
+	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
+	const returnSuccessItemIfEmpty =
+		node.typeVersion <= 3.1 ? true : options.emptyQueryResult === 'success';
+
+	if (isSelectQuery) {
+		try {
+			return await executeSelectWithMappedPairedItems(
+				node,
+				inputsData,
+				query,
+				returnSuccessItemIfEmpty,
+			);
+		} catch (error) {
+			Container.get(ErrorReporter).error(error, {
+				extra: {
+					nodeName: node.name,
+					nodeType: node.type,
+					nodeVersion: node.typeVersion,
+					workflowId: this.getWorkflow().id,
+				},
+			});
+		}
+	}
+
+	const db = new alasql.Database(node.id);
 
 	try {
 		for (let i = 0; i < inputsData.length; i++) {
@@ -76,7 +260,7 @@ export async function execute(
 								input: i,
 							};
 						});
-					pairedItem.push(...pairedItems);
+					pairedItem.push.apply(pairedItem, pairedItems);
 					return;
 				}
 
@@ -90,7 +274,7 @@ export async function execute(
 			db.tables[`input${i + 1}`].data = inputData.map((entry) => entry.json);
 		}
 	} catch (error) {
-		throw new NodeOperationError(this.getNode(), error, {
+		throw new NodeOperationError(node, error, {
 			message: 'Issue while creating table from',
 			description: error.message,
 			itemIndex: 0,
@@ -98,40 +282,27 @@ export async function execute(
 	}
 
 	try {
-		let query = this.getNodeParameter('query', 0) as string;
-
-		for (const resolvable of getResolvables(query)) {
-			query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
-		}
-
 		const result: IDataObject[] = db.exec(query);
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
-				returnData.push(...item.map((json) => ({ json, pairedItem })));
+				returnData.push.apply(
+					returnData,
+					item.map((json) => ({ json, pairedItem })),
+				);
 			} else if (typeof item === 'object') {
 				returnData.push({ json: item, pairedItem });
 			}
 		}
 
-		if (!returnData.length) {
+		if (!returnData.length && returnSuccessItemIfEmpty) {
 			returnData.push({ json: { success: true }, pairedItem });
 		}
 	} catch (error) {
-		let message = '';
-		if (typeof error === 'string') {
-			message = error;
-		} else {
-			message = error.message;
-		}
-		throw new NodeOperationError(this.getNode(), error, {
-			message: 'Issue while executing query',
-			description: message,
-			itemIndex: 0,
-		});
+		prepareError(node, error as Error);
+	} finally {
+		delete alasql.databases[node.id];
 	}
-
-	delete alasql.databases[nodeId];
 
 	return [returnData];
 }

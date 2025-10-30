@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { wrapData } from '../../../../../../utils/utilities';
+import { generatePairedItemData, wrapData } from '../../../../../../utils/utilities';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import type { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { getColumnNumber, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
@@ -166,7 +166,10 @@ export async function execute(
 		await sheet.spreadsheetBatchUpdate(requests);
 	}
 
-	const returnData = wrapData({ success: true });
+	const itemData = generatePairedItemData(this.getInputData().length);
+	const returnData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {
+		itemData,
+	});
 
 	return returnData;
 }

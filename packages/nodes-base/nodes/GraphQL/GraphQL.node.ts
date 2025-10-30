@@ -10,7 +10,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,8 +25,8 @@ export class GraphQL implements INodeType {
 			name: 'GraphQL',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'httpBasicAuth',
@@ -497,9 +497,20 @@ export class GraphQL implements INodeType {
 				if (oAuth1Api !== undefined) {
 					response = await this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
 				} else if (oAuth2Api !== undefined) {
-					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
-						tokenType: 'Bearer',
-					});
+					response = await this.helpers.requestOAuth2.call(
+						this,
+						'oAuth2Api',
+						{
+							...requestOptions,
+							// needed for the refresh mechanism to work properly
+							resolveWithFullResponse: true,
+						},
+						{
+							tokenType: 'Bearer',
+						},
+					);
+					// since we are using `resolveWithFullResponse: true`, we need to grab the body
+					response = response.body;
 				} else {
 					response = await this.helpers.request(requestOptions);
 				}

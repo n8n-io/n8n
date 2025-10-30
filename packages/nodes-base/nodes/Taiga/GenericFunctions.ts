@@ -11,6 +11,7 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { LoadedResource, Resource } from './types';
 
 export async function getAuthorization(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -48,7 +49,7 @@ export async function taigaApiRequest(
 	resource: string,
 	body = {},
 	query = {},
-	uri?: string | undefined,
+	uri?: string,
 	option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('taigaApi');

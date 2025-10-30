@@ -1,10 +1,67 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "date": {
             "type": "string"
         },
-        "threadId": {
+        "from": {
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "headers": {
+            "type": "object",
+            "properties": {
+                "content-transfer-encoding": {
+                    "type": "string"
+                },
+                "content-type": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "message-id": {
+                    "type": "string"
+                },
+                "mime-version": {
+                    "type": "string"
+                },
+                "received": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
             "type": "string"
         },
         "labelIds": {
@@ -13,45 +70,14 @@
                 "type": "string"
             }
         },
+        "messageId": {
+            "type": "string"
+        },
         "sizeEstimate": {
             "type": "integer"
         },
-        "headers": {
-            "type": "object",
-            "properties": {
-                "mime-version": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "message-id": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "from": {
-                    "type": "string"
-                },
-                "to": {
-                    "type": "string"
-                },
-                "content-type": {
-                    "type": "string"
-                },
-                "received": {
-                    "type": "string"
-                },
-                "content-transfer-encoding": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "date",
-                "message-id",
-                "from"
-            ]
+        "subject": {
+            "type": "string"
         },
         "text": {
             "type": "string"
@@ -59,15 +85,18 @@
         "textAsHtml": {
             "type": "string"
         },
-        "subject": {
-            "type": "string"
-        },
-        "date": {
+        "threadId": {
             "type": "string"
         },
         "to": {
             "type": "object",
             "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
                 "value": {
                     "type": "array",
                     "items": {
@@ -79,73 +108,11 @@
                             "name": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
+                        }
                     }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
-                    }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
-        },
-        "messageId": {
-            "type": "string"
+            }
         }
     },
-    "required": [
-        "id",
-        "threadId",
-        "labelIds",
-        "sizeEstimate",
-        "headers",
-        "html",
-        "date",
-        "from",
-        "messageId"
-    ]
+    "version": 1
 }

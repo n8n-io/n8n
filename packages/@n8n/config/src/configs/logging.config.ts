@@ -1,5 +1,7 @@
+import { z } from 'zod';
+
+import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env, Nested } from '../decorators';
-import { StringArray } from '../utils';
 
 /** Scopes (areas of functionality) to filter logs by. */
 export const LOG_SCOPES = [
@@ -14,9 +16,31 @@ export const LOG_SCOPES = [
 	'scaling',
 	'waiting-executions',
 	'task-runner',
+	'task-runner-js',
+	'task-runner-py',
+	'insights',
+	'workflow-activation',
+	'ssh-client',
+	'data-table',
+	'cron',
+	'community-nodes',
+	'legacy-sqlite-execution-recovery',
+	'chat-hub',
+	'breaking-changes',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
+
+@Config
+export class CronLoggingConfig {
+	/**
+	 * Interval in minutes to log currently active cron jobs. Set to `0` to disable.
+	 *
+	 * @example `N8N_LOG_CRON_ACTIVE_INTERVAL=30` will log active crons every 30 minutes.
+	 */
+	@Env('N8N_LOG_CRON_ACTIVE_INTERVAL')
+	activeInterval: number = 0;
+}
 
 @Config
 class FileLoggingConfig {
@@ -40,6 +64,9 @@ class FileLoggingConfig {
 	location: string = 'logs/n8n.log';
 }
 
+const logLevelSchema = z.enum(['error', 'warn', 'info', 'debug', 'silent']);
+type LogLevel = z.infer<typeof logLevelSchema>;
+
 @Config
 export class LoggingConfig {
 	/**
@@ -48,8 +75,8 @@ export class LoggingConfig {
 	 *
 	 * @example `N8N_LOG_LEVEL=info` will output `error`, `warn` and `info` logs, but not `debug`.
 	 */
-	@Env('N8N_LOG_LEVEL')
-	level: 'error' | 'warn' | 'info' | 'debug' | 'silent' = 'info';
+	@Env('N8N_LOG_LEVEL', logLevelSchema)
+	level: LogLevel = 'info';
 
 	/**
 	 * Where to output logs to. Options are: `console` or `file` or both in a comma separated list.
@@ -57,10 +84,22 @@ export class LoggingConfig {
 	 * @example `N8N_LOG_OUTPUT=console,file` will output to both console and file.
 	 */
 	@Env('N8N_LOG_OUTPUT')
-	outputs: StringArray<'console' | 'file'> = ['console'];
+	outputs: CommaSeparatedStringArray<'console' | 'file'> = ['console'];
+
+	/**
+	 * What format the logs should have.
+	 * `text` is only printing the human readable messages.
+	 * `json` is printing one JSON object per line containing the message, level,
+	 * timestamp and all the metadata.
+	 */
+	@Env('N8N_LOG_FORMAT')
+	format: 'text' | 'json' = 'text';
 
 	@Nested
 	file: FileLoggingConfig;
+
+	@Nested
+	cron: CronLoggingConfig;
 
 	/**
 	 * Scopes to filter logs by. Nothing is filtered by default.
@@ -77,12 +116,16 @@ export class LoggingConfig {
 	 * - `redis`
 	 * - `scaling`
 	 * - `waiting-executions`
-	 * - `task-runner`
+	 * - `task-runner-js`
+	 * - `task-runner-py`
+	 * - `workflow-activation`
+	 * - `insights`
+	 * - `chat-hub`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`
 	 * `N8N_LOG_SCOPES=license,waiting-executions`
 	 */
 	@Env('N8N_LOG_SCOPES')
-	scopes: StringArray<LogScope> = [];
+	scopes: CommaSeparatedStringArray<LogScope> = [];
 }

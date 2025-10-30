@@ -1,0 +1,81 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`useCanvasOperations > copyNodes > should copy nodes 1`] = `
+[
+  [
+    "{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Node 1",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        40,
+        40
+      ],
+      "typeVersion": 1,
+      "draggable": true
+    },
+    {
+      "parameters": {},
+      "id": "2",
+      "name": "Node 2",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        40,
+        40
+      ],
+      "typeVersion": 1,
+      "draggable": true
+    }
+  ],
+  "connections": {},
+  "pinData": {},
+  "meta": {
+    "instanceId": ""
+  }
+}",
+  ],
+]
+`;
+
+exports[`useCanvasOperations > cutNodes > should copy and delete nodes 1`] = `
+[
+  [
+    "{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Node 1",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        40,
+        40
+      ],
+      "typeVersion": 1,
+      "draggable": true
+    },
+    {
+      "parameters": {},
+      "id": "2",
+      "name": "Node 2",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        40,
+        40
+      ],
+      "typeVersion": 1,
+      "draggable": true
+    }
+  ],
+  "connections": {},
+  "pinData": {},
+  "meta": {
+    "instanceId": ""
+  }
+}",
+  ],
+]
+`;

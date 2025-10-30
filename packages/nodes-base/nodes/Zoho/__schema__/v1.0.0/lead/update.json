@@ -1,23 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Modified_By": {
+        "Created_By": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "id"
-            ]
+            }
         },
         "Created_Time": {
             "type": "string"
@@ -25,27 +18,20 @@
         "id": {
             "type": "string"
         },
-        "Created_By": {
+        "Modified_By": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "id"
-            ]
+            }
+        },
+        "Modified_Time": {
+            "type": "string"
         }
     },
-    "required": [
-        "Modified_Time",
-        "Modified_By",
-        "Created_Time",
-        "id",
-        "Created_By"
-    ]
+    "version": 1
 }

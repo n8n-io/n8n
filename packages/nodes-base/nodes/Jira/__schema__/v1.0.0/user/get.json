@@ -1,90 +1,18 @@
 {
     "type": "object",
     "properties": {
-        "self": {
-            "type": "string"
-        },
         "accountId": {
             "type": "string"
         },
         "accountType": {
             "type": "string"
         },
-        "avatarUrls": {
-            "type": "object",
-            "properties": {
-                "48x48": {
-                    "type": "string"
-                },
-                "24x24": {
-                    "type": "string"
-                },
-                "16x16": {
-                    "type": "string"
-                },
-                "32x32": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "48x48",
-                "24x24",
-                "16x16",
-                "32x32"
-            ]
-        },
-        "displayName": {
-            "type": "string"
-        },
         "active": {
             "type": "boolean"
-        },
-        "timeZone": {
-            "type": "string"
-        },
-        "locale": {
-            "type": "string"
-        },
-        "groups": {
-            "type": "object",
-            "properties": {
-                "size": {
-                    "type": "integer"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "groupId": {
-                                "type": "string"
-                            },
-                            "self": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "groupId",
-                            "self"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "size",
-                "items"
-            ]
         },
         "applicationRoles": {
             "type": "object",
             "properties": {
-                "size": {
-                    "type": "integer"
-                },
                 "items": {
                     "type": "array",
                     "items": {
@@ -96,37 +24,74 @@
                             "name": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "key",
-                            "name"
-                        ]
+                        }
                     }
+                },
+                "size": {
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "size",
-                "items"
-            ]
+            }
         },
-        "expand": {
+        "avatarUrls": {
+            "type": "object",
+            "properties": {
+                "16x16": {
+                    "type": "string"
+                },
+                "24x24": {
+                    "type": "string"
+                },
+                "32x32": {
+                    "type": "string"
+                },
+                "48x48": {
+                    "type": "string"
+                }
+            }
+        },
+        "displayName": {
             "type": "string"
         },
         "emailAddress": {
             "type": "string"
+        },
+        "expand": {
+            "type": "string"
+        },
+        "groups": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "groupId": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "self": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "locale": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
+        },
+        "timeZone": {
+            "type": "string"
         }
     },
-    "required": [
-        "self",
-        "accountId",
-        "accountType",
-        "avatarUrls",
-        "displayName",
-        "active",
-        "timeZone",
-        "locale",
-        "groups",
-        "applicationRoles",
-        "expand"
-    ]
+    "version": 1
 }

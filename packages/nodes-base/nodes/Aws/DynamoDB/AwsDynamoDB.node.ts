@@ -7,7 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type NodeParameterValue,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
@@ -40,8 +40,8 @@ export class AwsDynamoDB implements INodeType {
 		defaults: {
 			name: 'AWS DynamoDB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -107,7 +107,7 @@ export class AwsDynamoDB implements INodeType {
 							[],
 						) as IAttributeValueUi[];
 						const conditionExpession = this.getNodeParameter(
-							'conditionExpression',
+							'additionalFields.conditionExpression',
 							i,
 							'',
 						) as string;
@@ -130,7 +130,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (conditionExpession) {
@@ -180,7 +180,7 @@ export class AwsDynamoDB implements INodeType {
 						};
 
 						const eavUi = this.getNodeParameter(
-							'additionalFields.eavUi.eavValues',
+							'additionalFields.expressionAttributeUi.expressionAttributeValues',
 							i,
 							[],
 						) as IAttributeValueUi[];
@@ -213,7 +213,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						const headers = {
@@ -260,7 +260,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (additionalFields.readType) {

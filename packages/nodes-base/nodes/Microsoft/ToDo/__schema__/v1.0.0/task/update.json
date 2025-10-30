@@ -7,30 +7,6 @@
         "@odata.etag": {
             "type": "string"
         },
-        "importance": {
-            "type": "string"
-        },
-        "isReminderOn": {
-            "type": "boolean"
-        },
-        "status": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "id": {
-            "type": "string"
-        },
         "body": {
             "type": "object",
             "properties": {
@@ -40,25 +16,32 @@
                 "contentType": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "content",
-                "contentType"
-            ]
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "isReminderOn": {
+            "type": "boolean"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
         }
     },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "importance",
-        "isReminderOn",
-        "status",
-        "title",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "hasAttachments",
-        "categories",
-        "id",
-        "body"
-    ]
+    "version": 1
 }

@@ -1,23 +1,24 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "createdAt": {
             "type": "integer"
         },
+        "id": {
+            "type": "string"
+        },
         "launchedAt": {
             "type": "integer"
-        },
-        "status": {
-            "type": "string"
         },
         "launchType": {
             "type": "string"
         },
         "retryNumber": {
             "type": "integer"
+        },
+        "status": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

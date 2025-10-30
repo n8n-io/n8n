@@ -1,10 +1,36 @@
 {
     "type": "object",
     "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "custom_fields": {
+            "type": "object",
+            "properties": {
+                "cf_reference_number": {
+                    "type": "null"
+                }
+            }
+        },
+        "description": {
+            "type": "string"
+        },
+        "description_text": {
+            "type": "string"
+        },
         "fr_escalated": {
             "type": "boolean"
         },
-        "spam": {
+        "id": {
+            "type": "integer"
+        },
+        "is_escalated": {
+            "type": "boolean"
+        },
+        "nr_due_by": {
+            "type": "null"
+        },
+        "nr_escalated": {
             "type": "boolean"
         },
         "priority": {
@@ -16,6 +42,9 @@
         "source": {
             "type": "integer"
         },
+        "spam": {
+            "type": "boolean"
+        },
         "status": {
             "type": "integer"
         },
@@ -25,75 +54,18 @@
         "support_email": {
             "type": "null"
         },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "to_emails": {
             "type": "null"
         },
-        "id": {
-            "type": "integer"
-        },
-        "is_escalated": {
-            "type": "boolean"
-        },
-        "description": {
-            "type": "string"
-        },
-        "description_text": {
-            "type": "string"
-        },
-        "custom_fields": {
-            "type": "object",
-            "properties": {
-                "cf_reference_number": {
-                    "type": "null"
-                }
-            }
-        },
-        "created_at": {
-            "type": "string"
-        },
         "updated_at": {
             "type": "string"
-        },
-        "form_id": {
-            "type": "integer"
-        },
-        "nr_due_by": {
-            "type": "null"
-        },
-        "nr_escalated": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "cc_emails",
-        "fwd_emails",
-        "reply_cc_emails",
-        "ticket_cc_emails",
-        "fr_escalated",
-        "spam",
-        "email_config_id",
-        "group_id",
-        "priority",
-        "requester_id",
-        "responder_id",
-        "source",
-        "company_id",
-        "status",
-        "subject",
-        "support_email",
-        "to_emails",
-        "product_id",
-        "id",
-        "type",
-        "due_by",
-        "fr_due_by",
-        "is_escalated",
-        "description",
-        "description_text",
-        "custom_fields",
-        "created_at",
-        "updated_at",
-        "tags",
-        "attachments"
-    ]
+    "version": 1
 }

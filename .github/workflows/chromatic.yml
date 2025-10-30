@@ -8,21 +8,13 @@ on:
     types: [submitted]
 
 concurrency:
-  group: chromatic-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
+  group: chromatic-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  get-metadata:
-    name: Get Metadata
-    runs-on: ubuntu-latest
-    if: github.event.review.state == 'approved'
+  changeset:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
-      - name: Check out current commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 2
-
       - name: Determine changed files
         uses: tomi/paths-filter-action@v3.0.2
         id: changed
@@ -30,56 +22,48 @@ jobs:
         with:
           filters: |
             design_system:
-              - packages/design-system/**
-              - .github/workflows/chromatic.yml
-
+              - 'packages/frontend/@n8n/design-system/**'
+              - '.github/workflows/storybook.yml'
     outputs:
-      design_system_files_changed: ${{ steps.changed.outputs.design_system == 'true' }}
-      is_community_pr: ${{ contains(github.event.pull_request.labels.*.name, 'community') }}
-      is_pr_target_master: ${{ github.event.pull_request.base.ref == 'master' }}
-      is_dispatch: ${{ github.event_name == 'workflow_dispatch' }}
-      is_pr_approved: ${{ github.event.review.state == 'approved' }}
+      has_changes: ${{ steps.changed.outputs.design_system || 'false' }}
 
   chromatic:
-    needs: [get-metadata]
+    needs: [changeset]
     if: |
-      needs.get-metadata.outputs.is_dispatch == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
       (
-       needs.get-metadata.outputs.design_system_files_changed == 'true' &&
-       needs.get-metadata.outputs.is_community_pr == 'false' &&
-       needs.get-metadata.outputs.is_pr_target_master == 'true' &&
-       needs.get-metadata.outputs.is_pr_approved == 'true'
+        github.event_name == 'pull_request_review' &&
+        needs.changeset.outputs.has_changes == 'true' &&
+        github.event.review.state == 'approved' &&
+        !contains(github.event.pull_request.labels.*.name, 'community')
       )
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4.2.0
+      - name: Setup Node.js
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
+          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
 
       - name: Publish to Chromatic
-        uses: chromaui/action@v11
+        uses: chromaui/action@1cfa065cbdab28f6ca3afaeb3d761383076a35aa # v11
         id: chromatic_tests
         continue-on-error: true
         with:
-          workingDir: packages/design-system
+          workingDir: packages/frontend/@n8n/design-system
+          autoAcceptChanges: 'master'
+          skip: 'release/**'
           onlyChanged: true
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           exitZeroOnChanges: false
 
       - name: Success comment
         if: steps.chromatic_tests.outcome == 'success' && github.ref != 'refs/heads/master'
-        uses: peter-evans/create-or-update-comment@v4.0.0
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -89,7 +73,7 @@ jobs:
 
       - name: Fail comment
         if: steps.chromatic_tests.outcome != 'success' && github.ref != 'refs/heads/master'
-        uses: peter-evans/create-or-update-comment@v4.0.0
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           token: ${{ secrets.GITHUB_TOKEN }}

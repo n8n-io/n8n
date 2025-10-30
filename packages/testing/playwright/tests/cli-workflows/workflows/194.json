@@ -1,0 +1,113 @@
+{
+	"createdAt": "2021-04-30T10:58:10.188Z",
+	"updatedAt": "2021-04-30T10:58:10.188Z",
+	"id": "194",
+	"name": "Mailjet:Email:send sendTemplate",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "0a7bd7bf-38ad-4d4f-9e74-390a5a008663"
+		},
+		{
+			"parameters": {
+				"operation": "sendTemplate",
+				"subject": "test",
+				"fromEmail": "node8qa@gmail.com",
+				"toEmail": "node8qa@gmail.com",
+				"templateId": "2850185",
+				"additionalFields": {}
+			},
+			"name": "Mailjet",
+			"type": "n8n-nodes-base.mailjet",
+			"typeVersion": 1,
+			"position": [480, 240],
+			"credentials": {
+				"mailjetEmailApi": {
+					"id": "157",
+					"name": "Mailjet Email API creds"
+				}
+			},
+			"id": "ad66d136-3fcc-4173-871e-545e451c3fdb"
+		},
+		{
+			"parameters": {
+				"fromEmail": "node8qa@gmail.com",
+				"toEmail": "node8qa@gmail.com",
+				"subject": "test",
+				"text": "test",
+				"additionalFields": {}
+			},
+			"name": "Mailjet1",
+			"type": "n8n-nodes-base.mailjet",
+			"typeVersion": 1,
+			"position": [620, 240],
+			"credentials": {
+				"mailjetEmailApi": {
+					"id": "157",
+					"name": "Mailjet Email API creds"
+				}
+			},
+			"id": "9a786724-7be7-4cc8-bac6-f168b1afa8b7"
+		},
+		{
+			"parameters": {
+				"resource": "sms",
+				"subject": "test",
+				"text": "test"
+			},
+			"name": "Mailjet2",
+			"type": "n8n-nodes-base.mailjet",
+			"typeVersion": 1,
+			"position": [480, 390],
+			"credentials": {
+				"mailjetSmsApi": {
+					"id": "158",
+					"name": "Mailjet SMS API creds"
+				}
+			},
+			"disabled": true,
+			"id": "20d1d0dd-e801-41c9-a1b1-1aae62a2a1bf"
+		}
+	],
+	"connections": {
+		"Mailjet": {
+			"main": [
+				[
+					{
+						"node": "Mailjet1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Mailjet",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mailjet2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

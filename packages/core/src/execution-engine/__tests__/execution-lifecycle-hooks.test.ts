@@ -6,13 +6,14 @@ import type {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	ITaskStartedData,
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
 
 import type {
 	ExecutionLifecycleHookName,
-	ExecutionLifecyleHookHandlers,
+	ExecutionLifecycleHookHandlers,
 } from '../execution-lifecycle-hooks';
 import { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 
@@ -38,6 +39,7 @@ describe('ExecutionLifecycleHooks', () => {
 				sendResponse: [],
 				workflowExecuteAfter: [],
 				workflowExecuteBefore: [],
+				sendChunk: [],
 			});
 		});
 	});
@@ -45,14 +47,16 @@ describe('ExecutionLifecycleHooks', () => {
 	describe('addHandler()', () => {
 		const hooksHandlers =
 			mock<{
-				[K in keyof ExecutionLifecyleHookHandlers]: ExecutionLifecyleHookHandlers[K][number];
+				[K in keyof ExecutionLifecycleHookHandlers]: ExecutionLifecycleHookHandlers[K][number];
 			}>();
 
 		const testCases: Array<{
 			hook: ExecutionLifecycleHookName;
-			args: Parameters<ExecutionLifecyleHookHandlers[keyof ExecutionLifecyleHookHandlers][number]>;
+			args: Parameters<
+				ExecutionLifecycleHookHandlers[keyof ExecutionLifecycleHookHandlers][number]
+			>;
 		}> = [
-			{ hook: 'nodeExecuteBefore', args: ['testNode'] },
+			{ hook: 'nodeExecuteBefore', args: ['testNode', mock<ITaskStartedData>()] },
 			{
 				hook: 'nodeExecuteAfter',
 				args: ['testNode', mock<ITaskData>(), mock<IRunExecutionData>()],
@@ -84,7 +88,7 @@ describe('ExecutionLifecycleHooks', () => {
 			});
 
 			hooks.addHandler('nodeExecuteBefore', hook1, hook2);
-			await hooks.runHook('nodeExecuteBefore', ['testNode']);
+			await hooks.runHook('nodeExecuteBefore', ['testNode', mock()]);
 
 			expect(executionOrder).toEqual(['hook1', 'hook2']);
 			expect(hook1).toHaveBeenCalled();
@@ -98,7 +102,7 @@ describe('ExecutionLifecycleHooks', () => {
 			});
 
 			hooks.addHandler('nodeExecuteBefore', hook);
-			await hooks.runHook('nodeExecuteBefore', ['testNode']);
+			await hooks.runHook('nodeExecuteBefore', ['testNode', mock()]);
 
 			expect(hook).toHaveBeenCalled();
 		});
@@ -107,7 +111,9 @@ describe('ExecutionLifecycleHooks', () => {
 			const errorHook = jest.fn().mockRejectedValue(new Error('Hook failed'));
 			hooks.addHandler('nodeExecuteBefore', errorHook);
 
-			await expect(hooks.runHook('nodeExecuteBefore', ['testNode'])).rejects.toThrow('Hook failed');
+			await expect(hooks.runHook('nodeExecuteBefore', ['testNode', mock()])).rejects.toThrow(
+				'Hook failed',
+			);
 		});
 	});
 });

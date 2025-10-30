@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { DynamicTool } from '@langchain/core/tools';
 import type {
 	INodeType,
@@ -8,7 +7,11 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	tryToParseAlphanumericString,
+} from 'n8n-workflow';
 
 import { N8nTool } from '@utils/N8nTool';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -59,13 +62,15 @@ export class ToolHttpRequest implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+		// Replaced by a `usableAsTool` version of the standalone HttpRequest node
+		hidden: true,
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Description',
 				name: 'toolDescription',

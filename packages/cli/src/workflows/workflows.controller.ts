@@ -1,26 +1,17 @@
-import {
-	ImportWorkflowFromUrlDto,
-	ManualRunQueryDto,
-	TransferWorkflowBodyDto,
-} from '@n8n/api-types';
+import { ImportWorkflowFromUrlDto, ROLE, TransferWorkflowBodyDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import axios from 'axios';
-import express from 'express';
-import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
-
-import type { Project } from '@/databases/entities/project';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as Db from '@/db';
+import type { Project } from '@n8n/db';
+import {
+	SharedWorkflow,
+	WorkflowEntity,
+	ProjectRelationRepository,
+	ProjectRepository,
+	TagRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+	AuthenticatedRequest,
+} from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -33,32 +24,42 @@ import {
 	Put,
 	Query,
 	RestController,
-} from '@/decorators';
+} from '@n8n/decorators';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In, type FindOptionsRelations } from '@n8n/typeorm';
+import axios from 'axios';
+import express from 'express';
+import { UnexpectedError } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+
+import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
+import { WorkflowRequest } from './workflow.request';
+import { WorkflowService } from './workflow.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { CredentialsService } from '../credentials/credentials.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { AuthenticatedRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
+import { FolderService } from '@/services/folder.service';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
-
-import { WorkflowExecutionService } from './workflow-execution.service';
-import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
-import { WorkflowRequest } from './workflow.request';
-import { WorkflowService } from './workflow.service';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
-import { CredentialsService } from '../credentials/credentials.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -82,6 +83,9 @@ export class WorkflowsController {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderService: FolderService,
+		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly executionService: ExecutionService,
 	) {}
 
 	@Post('/')
@@ -129,11 +133,11 @@ export class WorkflowsController {
 			}
 		}
 
-		let project: Project | null;
-		const savedWorkflow = await Db.transaction(async (transactionManager) => {
-			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+		const { manager: dbManager } = this.projectRepository;
 
-			const { projectId } = req.body;
+		let project: Project | null;
+		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
+			const { projectId, parentFolderId } = req.body;
 			project =
 				projectId === undefined
 					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
@@ -152,7 +156,20 @@ export class WorkflowsController {
 
 			// Safe guard in case the personal project does not exist for whatever reason.
 			if (project === null) {
-				throw new ApplicationError('No personal project found');
+				throw new UnexpectedError('No personal project found');
+			}
+
+			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+
+			if (parentFolderId) {
+				try {
+					const parentFolder = await this.folderService.findFolderInProjectOrFail(
+						parentFolderId,
+						project.id,
+						transactionManager,
+					);
+					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
+				} catch {}
 			}
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
@@ -163,11 +180,11 @@ export class WorkflowsController {
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
-			return await this.sharedWorkflowRepository.findWorkflowForUser(
+			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				req.user,
 				['workflow:read'],
-				{ em: transactionManager, includeTags: true },
+				{ em: transactionManager, includeTags: true, includeParentFolder: true },
 			);
 		});
 
@@ -198,6 +215,7 @@ export class WorkflowsController {
 			publicApi: false,
 			projectId: project!.id,
 			projectType: project!.type,
+			uiContext: req.body.uiContext,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
@@ -212,6 +230,8 @@ export class WorkflowsController {
 				req.user,
 				req.listQueryOptions,
 				!!req.query.includeScopes,
+				!!req.query.includeFolders,
+				!!req.query.onlySharedWithMe,
 			);
 
 			res.json({ count, data });
@@ -278,11 +298,11 @@ export class WorkflowsController {
 				relations.tags = true;
 			}
 
-			const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
 				workflowId,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !this.globalConfig.tags.disabled },
+				{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
 			);
 
 			if (!workflow) {
@@ -306,11 +326,11 @@ export class WorkflowsController {
 
 		// sharing disabled
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			req.user,
 			['workflow:read'],
-			{ includeTags: !this.globalConfig.tags.disabled },
+			{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
 		);
 
 		if (!workflow) {
@@ -335,7 +355,7 @@ export class WorkflowsController {
 		const forceSave = req.query.forceSave === 'true';
 
 		let updateData = new WorkflowEntity();
-		const { tags, ...rest } = req.body;
+		const { tags, parentFolderId, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
 		const isSharingEnabled = this.license.isSharingEnabled();
@@ -352,6 +372,7 @@ export class WorkflowsController {
 			updateData,
 			workflowId,
 			tags,
+			parentFolderId,
 			isSharingEnabled ? forceSave : true,
 		);
 
@@ -362,40 +383,72 @@ export class WorkflowsController {
 
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
-	async delete(req: WorkflowRequest.Delete) {
-		const { workflowId } = req.params;
-
+	async delete(req: AuthenticatedRequest, _res: Response, @Param('workflowId') workflowId: string) {
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new BadRequestError(
-				'Could not delete the workflow - you can only remove workflows owned by you',
+			throw new ForbiddenError(
+				'Could not delete the workflow - workflow was not found in your projects',
 			);
 		}
 
 		return true;
 	}
 
+	@Post('/:workflowId/archive')
+	@ProjectScope('workflow:delete')
+	async archive(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		const workflow = await this.workflowService.archive(req.user, workflowId);
+		if (!workflow) {
+			this.logger.warn('User attempted to archive a workflow without permissions', {
+				workflowId,
+				userId: req.user.id,
+			});
+			throw new ForbiddenError(
+				'Could not archive the workflow - workflow was not found in your projects',
+			);
+		}
+
+		return workflow;
+	}
+
+	@Post('/:workflowId/unarchive')
+	@ProjectScope('workflow:delete')
+	async unarchive(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		const workflow = await this.workflowService.unarchive(req.user, workflowId);
+		if (!workflow) {
+			this.logger.warn('User attempted to unarchive a workflow without permissions', {
+				workflowId,
+				userId: req.user.id,
+			});
+			throw new ForbiddenError(
+				'Could not unarchive the workflow - workflow was not found in your projects',
+			);
+		}
+
+		return workflow;
+	}
+
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
-	async runManually(
-		req: WorkflowRequest.ManualRun,
-		_res: unknown,
-		@Query query: ManualRunQueryDto,
-	) {
+	async runManually(req: WorkflowRequest.ManualRun, _res: unknown) {
 		if (!req.body.workflowData.id) {
-			throw new ApplicationError('You cannot execute a workflow without an ID', {
-				level: 'warning',
-			});
+			throw new UnexpectedError('You cannot execute a workflow without an ID');
 		}
 
 		if (req.params.workflowId !== req.body.workflowData.id) {
-			throw new ApplicationError('Workflow ID in body does not match workflow ID in URL', {
-				level: 'warning',
-			});
+			throw new UnexpectedError('Workflow ID in body does not match workflow ID in URL');
 		}
 
 		if (this.license.isSharingEnabled()) {
@@ -413,7 +466,6 @@ export class WorkflowsController {
 			req.body,
 			req.user,
 			req.headers['push-ref'],
-			query.partialExecutionVersion,
 		);
 	}
 
@@ -431,7 +483,7 @@ export class WorkflowsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, req.user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
 			'workflow:share',
 		]);
 
@@ -440,7 +492,8 @@ export class WorkflowsController {
 		}
 
 		let newShareeIds: string[] = [];
-		await Db.transaction(async (trx) => {
+		const { manager: dbManager } = this.projectRepository;
+		await dbManager.transaction(async (trx) => {
 			const currentPersonalProjectIDs = workflow.shared
 				.filter((sw) => sw.role === 'workflow:editor')
 				.map((sw) => sw.projectId);
@@ -474,7 +527,7 @@ export class WorkflowsController {
 
 		const projectsRelations = await this.projectRelationRepository.findBy({
 			projectId: In(newShareeIds),
-			role: 'project:personalOwner',
+			role: { slug: PROJECT_OWNER_ROLE_SLUG },
 		});
 
 		await this.mailer.notifyWorkflowShared({
@@ -492,11 +545,55 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: TransferWorkflowBodyDto,
 	) {
-		return await this.enterpriseWorkflowService.transferOne(
+		return await this.enterpriseWorkflowService.transferWorkflow(
 			req.user,
 			workflowId,
 			body.destinationProjectId,
 			body.shareCredentials,
+			body.destinationParentFolderId,
 		);
+	}
+
+	@Get('/:workflowId/executions/last-successful')
+	@ProjectScope('workflow:read')
+	async getLastSuccessfulExecution(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+	) {
+		const lastExecution = await this.executionService.getLastSuccessfulExecution(workflowId);
+
+		if (lastExecution === undefined) {
+			throw new NotFoundError('No successful execution found for the workflow');
+		}
+
+		return lastExecution;
+	}
+
+	@Post('/with-node-types')
+	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
+		try {
+			const hasPermission = req.user.role.slug === ROLE.Owner || req.user.role.slug === ROLE.Admin;
+
+			if (!hasPermission) {
+				res.json({ data: [], count: 0 });
+				return;
+			}
+
+			const { nodeTypes } = req.body as { nodeTypes: string[] };
+			const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(
+				req.user,
+				nodeTypes,
+			);
+
+			res.json({
+				data: workflows,
+				count: workflows.length,
+			});
+		} catch (maybeError) {
+			const error = utils.toError(maybeError);
+			ResponseHelper.reportError(error);
+			ResponseHelper.sendErrorResponse(res, error);
+		}
 	}
 }

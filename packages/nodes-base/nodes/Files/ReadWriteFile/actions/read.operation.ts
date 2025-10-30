@@ -124,7 +124,6 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 						mimeType: binaryData.mimeType,
 						fileType: binaryData.fileType,
 						fileName: binaryData.fileName,
-						directory: binaryData.directory,
 						fileExtension: binaryData.fileExtension,
 						fileSize: binaryData.fileSize,
 					},

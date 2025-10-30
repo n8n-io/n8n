@@ -1,19 +1,32 @@
-import type { ProjectRole } from '@n8n/api-types';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	createWorkflow,
+	getWorkflowSharing,
+	shareWorkflowWithProjects,
+	shareWorkflowWithUsers,
+	randomCredentialPayload,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { Project, User, WorkflowWithSharingsMetaDataAndCredentials } from '@n8n/db';
+import {
+	ProjectRepository,
+	WorkflowHistoryRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+	GLOBAL_MEMBER_ROLE,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ProjectRole } from '@n8n/permissions';
 import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { UserManagementMailer } from '@/user-management/email';
-import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
-import { mockInstance } from '@test/mocking';
+import { createFolder } from '@test-integration/db/folders';
 
 import {
 	affixRoleToSaveCredential,
@@ -21,19 +34,9 @@ import {
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createTag } from '../shared/db/tags';
 import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users';
-import {
-	createWorkflow,
-	getWorkflowSharing,
-	shareWorkflowWithProjects,
-	shareWorkflowWithUsers,
-} from '../shared/db/workflows';
-import { randomCredentialPayload } from '../shared/random';
-import * as testDb from '../shared/test-db';
-import type { SaveCredentialFunction } from '../shared/types';
-import type { SuperAgentTest } from '../shared/types';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow } from '../shared/utils/';
 
@@ -68,9 +71,9 @@ beforeAll(async () => {
 	owner = await createOwner();
 	admin = await createAdmin();
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
-	member = await createUser({ role: 'global:member' });
+	member = await createUser({ role: { slug: 'global:member' } });
 	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
-	anotherMember = await createUser({ role: 'global:member' });
+	anotherMember = await createUser({ role: { slug: 'global:member' } });
 	anotherMemberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 		anotherMember.id,
 	);
@@ -88,7 +91,7 @@ beforeEach(async () => {
 	activeWorkflowManager.add.mockReset();
 	activeWorkflowManager.remove.mockReset();
 
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory', 'Tag']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'WorkflowHistory', 'TagEntity']);
 });
 
 afterEach(() => {
@@ -157,7 +160,7 @@ describe('PUT /workflows/:workflowId/share', () => {
 
 	test('should allow sharing with pending users', async () => {
 		const workflow = await createWorkflow({}, owner);
-		const memberShell = await createUserShell('global:member');
+		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
 		const memberShellPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			memberShell.id,
 		);
@@ -270,7 +273,7 @@ describe('PUT /workflows/:workflowId/share', () => {
 	test('should not allow sharing by another non-shared member', async () => {
 		const workflow = await createWorkflow({}, member);
 
-		const tempUser = await createUser({ role: 'global:member' });
+		const tempUser = await createUser({ role: { slug: 'global:member' } });
 		const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			tempUser.id,
 		);
@@ -1617,6 +1620,104 @@ describe('PUT /:workflowId/transfer', () => {
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+	});
+
+	test('should move workflow to project root if `destinationParentFolderId` is not provided', async () => {
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
+
+		const workflow = await createWorkflow({ active: true, parentFolder: folder }, member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		const workflowFromDB = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(workflowFromDB.parentFolder).toBeNull();
+	});
+
+	test('should move workflow to the parent folder in source project if `destinationParentFolderId` is provided', async () => {
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
+
+		const workflow = await createWorkflow({ active: true, parentFolder: folder }, member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id, destinationParentFolderId: folder.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		const workflowFromDB = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(workflowFromDB.parentFolder?.id).toBe(folder.id);
+	});
+
+	test('should fail destination parent folder does not exist in project', async () => {
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const anotherProject = await createTeamProject('Another Project', member);
+
+		const folderInDestinationProject = await createFolder(destinationProject, {
+			name: 'Test Folder',
+		});
+
+		const anotherFolder = await createFolder(destinationProject, {
+			name: 'Another Test Folder',
+		});
+
+		const workflow = await createWorkflow(
+			{ active: true, parentFolder: folderInDestinationProject },
+			member,
+		);
+
+		//
+		// ACT
+		//
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({
+				destinationProjectId: anotherProject.id,
+				destinationParentFolderId: anotherFolder.id,
+			})
+			.expect(400);
 	});
 
 	test('deactivates the workflow if it cannot be added to the active workflow manager again and returns the WorkflowActivationError as data', async () => {

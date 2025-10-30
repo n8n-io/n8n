@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	asanaApiRequest,
@@ -33,8 +33,8 @@ export class Asana implements INodeType {
 			name: 'Asana',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'asanaApi',
