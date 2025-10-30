@@ -52,7 +52,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		dependencies: WorkflowDependencies,
 	): Promise<boolean> {
 		if (this.databaseConfig.isLegacySqlite) {
-			console.log('Throwing error');
 			throw new Error('Workflow dependency indexing is not supported on legacy SQLite databases');
 		}
 		return await this.manager.transaction(async (tx) => {
