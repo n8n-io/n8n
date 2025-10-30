@@ -791,9 +791,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	 * Find workflows that need indexing - either unindexed (no entries in workflow_dependency)
 	 * or outdated (versionCounter > workflowVersionId in workflow_dependency).
 	 */
-	async findWorkflowsNeedingIndexing(pagination: { take?: number; skip?: number }): Promise<
-		WorkflowEntity[]
-	> {
+	async findWorkflowsNeedingIndexing(batchSize?: number): Promise<WorkflowEntity[]> {
 		const qb = this.createQueryBuilder('workflow').leftJoin(
 			(subQuery) => {
 				return subQuery
@@ -810,11 +808,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		// 1. Unindexed (no dependency entries exist)
 		// 2. Outdated (workflow version is newer than indexed version)
 		qb.where('dep.workflowId IS NULL').orWhere('workflow.versionCounter > dep.maxVersionId');
-		if (pagination.take) {
-			qb.take(pagination.take);
-		}
-		if (pagination.skip) {
-			qb.skip(pagination.skip);
+		if (batchSize) {
+			qb.limit(batchSize);
 		}
 
 		return await qb.getMany();

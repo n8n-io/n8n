@@ -24,15 +24,11 @@ export class WorkflowIndexService {
 
 	async buildIndex() {
 		const batchSize = this.batchSize;
-		let skip = 0;
 		let processedCount = 0;
 
 		while (true) {
 			// Get only workflows that need indexing (unindexed or outdated).
-			const workflows = await this.workflowRepository.findWorkflowsNeedingIndexing({
-				take: batchSize,
-				skip,
-			});
+			const workflows = await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize);
 
 			if (workflows.length === 0) {
 				break;
@@ -50,8 +46,6 @@ export class WorkflowIndexService {
 			if (workflows.length < batchSize) {
 				break;
 			}
-
-			skip += batchSize;
 		}
 
 		this.logger.info(

@@ -220,7 +220,7 @@ describe('WorkflowRepository', () => {
 			//
 			// ACT
 			//
-			const workflowsNeedingIndexing = await workflowRepository.findWorkflowsNeedingIndexing({});
+			const workflowsNeedingIndexing = await workflowRepository.findWorkflowsNeedingIndexing();
 
 			//
 			// ASSERT
@@ -230,6 +230,30 @@ describe('WorkflowRepository', () => {
 			expect(workflowIds).toContain(workflow1.id);
 			expect(workflowIds).toContain(workflow2.id);
 			expect(workflowIds).not.toContain(workflow3.id);
+		});
+
+		it('should respect the batch size limit', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			// Create 5 workflows with no dependencies
+			for (let i = 0; i < 5; i++) {
+				await createWorkflow({ versionCounter: 1 });
+			}
+
+			//
+			// ACT
+			//
+			const batchSize = 3;
+			const workflowsNeedingIndexing =
+				await workflowRepository.findWorkflowsNeedingIndexing(batchSize);
+
+			//
+			// ASSERT
+			//
+			expect(workflowsNeedingIndexing).toHaveLength(batchSize);
 		});
 	});
 });
