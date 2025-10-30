@@ -131,8 +131,8 @@ const getFilteredRange = () => {
 	const endDate = toCalendarDateTime(range.value.end, now(timezone)).toDate(timezone);
 
 	return {
-		startDate: startDate.toISOString() as unknown as Date,
-		endDate: endDate.toISOString() as unknown as Date,
+		startDate,
+		endDate,
 	};
 };
 
