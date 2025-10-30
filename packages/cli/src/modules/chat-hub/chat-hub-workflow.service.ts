@@ -20,6 +20,7 @@ import {
 	IWorkflowBase,
 	MEMORY_BUFFER_WINDOW_NODE_TYPE,
 	MEMORY_MANAGER_NODE_TYPE,
+	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
 	type IBinaryData,
@@ -197,6 +198,7 @@ export class ChatHubWorkflowService {
 		const memoryNode = this.buildMemoryNode(20);
 		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
 		const clearMemoryNode = this.buildClearMemoryNode();
+		const mergeNode = this.buildMergeNode();
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -205,15 +207,22 @@ export class ChatHubWorkflowService {
 			memoryNode,
 			restoreMemoryNode,
 			clearMemoryNode,
+			mergeNode,
 		];
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
 				main: [
-					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
+					[
+						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 },
+						{ node: NODE_NAMES.MERGE, type: NodeConnectionTypes.Main, index: 0 },
+					],
 				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
+				main: [[{ node: NODE_NAMES.MERGE, type: NodeConnectionTypes.Main, index: 1 }]],
+			},
+			[NODE_NAMES.MERGE]: {
 				main: [[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
@@ -487,6 +496,22 @@ export class ChatHubWorkflowService {
 			position: [976, 0],
 			id: uuidv4(),
 			name: NODE_NAMES.CLEAR_CHAT_MEMORY,
+		};
+	}
+
+	private buildMergeNode(): INode {
+		return {
+			parameters: {
+				mode: 'combine',
+				fieldsToMatchString: 'chatInput',
+				joinMode: 'enrichInput1',
+				options: {},
+			},
+			type: MERGE_NODE_TYPE,
+			typeVersion: 3.2,
+			position: [976, 0],
+			id: uuidv4(),
+			name: NODE_NAMES.MERGE,
 		};
 	}
 
