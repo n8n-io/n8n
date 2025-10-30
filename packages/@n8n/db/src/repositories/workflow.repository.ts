@@ -790,6 +790,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	/**
 	 * Find workflows that need indexing - either unindexed (no entries in workflow_dependency)
 	 * or outdated (versionCounter > workflowVersionId in workflow_dependency).
+	 *
+	 * NOTE: we use a simple batch limit instead of proper pagination because we use this
+	 * method to retrieve workflows and then index them immediately - so they won't be returned
+	 * again in the next call anyway.
+	 *
 	 */
 	async findWorkflowsNeedingIndexing(batchSize?: number): Promise<WorkflowEntity[]> {
 		const qb = this.createQueryBuilder('workflow').leftJoin(
