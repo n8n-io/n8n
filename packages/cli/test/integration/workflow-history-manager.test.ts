@@ -139,7 +139,7 @@ describe('Workflow History Manager', () => {
 	const pruneAndAssertCount = async (finalCount = 10, initialCount = 10) => {
 		expect(await repo.count()).toBe(initialCount);
 
-		const deleteSpy = jest.spyOn(repo, 'delete');
+		const deleteSpy = jest.spyOn(repo, 'deleteEarlierThanExceptCurrent');
 		await manager.prune();
 
 		if (initialCount === finalCount) {
