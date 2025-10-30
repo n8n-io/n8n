@@ -128,9 +128,10 @@ export class McpOAuthService implements OAuthServerProvider {
 			}
 
 			// Try to authenticate user
-			const [user] = await this.authService.resolveJwt(req, res);
-
-			if (!user) {
+			let user;
+			try {
+				[user] = await this.authService.resolveJwt(req, res);
+			} catch (error) {
 				// User is not authenticated - redirect to login with current URL as redirect
 				const currentUrl = req.originalUrl;
 				const loginUrl = `/signin?redirect=${encodeURIComponent(currentUrl)}`;
