@@ -33,7 +33,7 @@ export type ItemContext = {
  * @param response - Optional engine response with previous tool calls
  * @returns ItemContext containing all item-specific state
  */
-export async function processItem(
+export async function prepareItemContext(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	response?: EngineResponse<RequestResponseMetadata>,

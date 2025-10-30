@@ -8,7 +8,7 @@ import * as outputParsers from '@utils/output_parsers/N8nOutputParser';
 
 import * as commonHelpers from '../../common';
 import type { RequestResponseMetadata } from '../types';
-import { processItem } from './processItem';
+import { prepareItemContext } from './processItem';
 
 jest.mock('@utils/helpers', () => ({
 	getPromptInputByType: jest.fn(),
@@ -39,7 +39,7 @@ describe('processItem', () => {
 			metadata: { itemIndex: 0, previousRequests: [] },
 		};
 
-		const result = await processItem(mockContext, 0, response);
+		const result = await prepareItemContext(mockContext, 0, response);
 
 		expect(result).toBeNull();
 	});
@@ -66,7 +66,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await processItem(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0);
 
 		expect(result).not.toBeNull();
 		expect(result?.itemIndex).toBe(0);
@@ -96,7 +96,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await processItem(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0);
 
 		expect(result?.options.enableStreaming).toBe(true);
 	});
@@ -121,7 +121,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await processItem(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0);
 
 		expect(result?.options.enableStreaming).toBe(false);
 	});
@@ -146,7 +146,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await processItem(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0);
 
 		expect(result?.outputParser).toBe(mockOutputParser);
 	});
@@ -172,7 +172,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		await processItem(mockContext, 0);
+		await prepareItemContext(mockContext, 0);
 
 		expect(commonHelpers.prepareMessages).toHaveBeenCalledWith(mockContext, 0, {
 			systemMessage: 'Test system message',
@@ -201,7 +201,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		await processItem(mockContext, 0);
+		await prepareItemContext(mockContext, 0);
 
 		expect(commonHelpers.prepareMessages).toHaveBeenCalledWith(
 			mockContext,

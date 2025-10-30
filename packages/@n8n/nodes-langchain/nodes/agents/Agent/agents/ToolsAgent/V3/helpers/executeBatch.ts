@@ -15,7 +15,7 @@ import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import type { RequestResponseMetadata, AgentResult } from '../types';
 import { createAgentSequence } from './createAgentSequence';
 import { finalizeResult } from './finalizeResult';
-import { processItem } from './processItem';
+import { prepareItemContext } from './processItem';
 import { runAgent } from './runAgent';
 
 type BatchResult = AgentResult | EngineRequest<RequestResponseMetadata>;
@@ -50,7 +50,7 @@ export async function executeBatch(
 	const batchPromises = batch.map(async (_item, batchItemIndex) => {
 		const itemIndex = startIndex + batchItemIndex;
 
-		const itemContext = await processItem(ctx, itemIndex, response);
+		const itemContext = await prepareItemContext(ctx, itemIndex, response);
 
 		// Skip if item was already processed
 		if (!itemContext) {
