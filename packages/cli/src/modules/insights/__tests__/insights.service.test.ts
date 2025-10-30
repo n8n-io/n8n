@@ -137,11 +137,11 @@ describe('InsightsService', () => {
 							currentSuccess: 2,
 							currentFailure: 1,
 							currentRuntime: 600,
-							currentTimeSaved: 50, // Should not influence average runtime
+							currentTimeSaved: 50,
 							previousSuccess: 1,
 							previousFailure: 1,
 							previousRuntime: 400,
-							previousTimeSaved: 25, // Should not influence average runtime
+							previousTimeSaved: 25,
 						}),
 					);
 
@@ -216,7 +216,6 @@ describe('InsightsService', () => {
 					});
 
 					// Current: 410ms / 3 executions = 136.666... rounded to 136.67
-					// No previous period data, so deviation is null
 					expect(result.averageRunTime).toEqual({
 						value: 136.67,
 						unit: 'millisecond',
@@ -252,7 +251,6 @@ describe('InsightsService', () => {
 						createMockAggregates({
 							currentSuccess: 5,
 							currentFailure: 2,
-							// currentRuntime intentionally omitted (missing type)
 						}),
 					);
 
@@ -261,7 +259,6 @@ describe('InsightsService', () => {
 						endDate,
 					});
 
-					// Even with executions, if runtime is missing, average should be 0
 					expect(result.averageRunTime).toEqual({
 						value: 0,
 						unit: 'millisecond',
@@ -274,7 +271,7 @@ describe('InsightsService', () => {
 						createMockAggregates({
 							currentSuccess: 10,
 							currentFailure: 5,
-							currentRuntime: 0, // All executions had 0ms runtime
+							currentRuntime: 0,
 						}),
 					);
 
@@ -316,12 +313,446 @@ describe('InsightsService', () => {
 			});
 		});
 
-		describe('failed', () => {});
+		describe('failure rate', () => {
+			describe('Core Calculation Logic', () => {
+				it('should calculate failure rate from failures and total executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 6,
+							currentFailure: 4,
+							previousSuccess: 8,
+							previousFailure: 2,
+						}),
+					);
 
-		describe('failure rate', () => {});
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
 
-		describe('time saved', () => {});
+					expect(result.failureRate).toEqual({
+						value: 0.4,
+						unit: 'ratio',
+						deviation: 0.2,
+					});
+				});
 
-		describe('total', () => {});
+				it('should handle decimal values with 3 decimal rounding', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 2,
+							previousSuccess: 8,
+							previousFailure: 1,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					// Current: 2 / 7 = 0.285714... rounded to 0.286
+					// Previous: 1 / 9 = 0.111111... rounded to 0.111
+					expect(result.failureRate).toEqual({
+						value: 0.286,
+						unit: 'ratio',
+						deviation: 0.175,
+					});
+				});
+
+				it('should calculate 0% failure rate with only successes', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 0,
+							previousSuccess: 5,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 0,
+						unit: 'ratio',
+						deviation: 0,
+					});
+				});
+
+				it('should calculate 100% failure rate with only failures', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 5,
+							previousSuccess: 0,
+							previousFailure: 3,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 1,
+						unit: 'ratio',
+						deviation: 0,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no executions exist', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 0,
+						unit: 'ratio',
+						deviation: null,
+					});
+				});
+
+				it('returns 0 when failure data is null/undefined', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 0,
+						unit: 'ratio',
+						deviation: null,
+					});
+				});
+
+				it('handles all failures correctly', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 10,
+							previousSuccess: 0,
+							previousFailure: 5,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 1,
+						unit: 'ratio',
+						deviation: 0,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 7,
+							currentFailure: 3,
+							previousSuccess: 0,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate.value).toBe(0.3);
+					expect(result.failureRate.deviation).toBeNull();
+				});
+			});
+		});
+
+		describe('failed', () => {
+			describe('Core Logic', () => {
+				it('should extract failure count correctly', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 5,
+							previousSuccess: 8,
+							previousFailure: 3,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failed).toEqual({
+						value: 5,
+						unit: 'count',
+						deviation: 2,
+					});
+				});
+
+				it('should calculate deviation with previous period data', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 15,
+							previousSuccess: 10,
+							previousFailure: 20,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failed).toEqual({
+						value: 15,
+						unit: 'count',
+						deviation: -5,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no failures exist', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failed).toEqual({
+						value: 0,
+						unit: 'count',
+						deviation: null,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 3,
+							previousSuccess: 0,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failed.value).toBe(3);
+					expect(result.failed.deviation).toBeNull();
+				});
+			});
+		});
+
+		describe('total', () => {
+			describe('Core Logic', () => {
+				it('should sum success and failure counts correctly', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 12,
+							currentFailure: 8,
+							previousSuccess: 10,
+							previousFailure: 5,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.total).toEqual({
+						value: 20,
+						unit: 'count',
+						deviation: 5,
+					});
+				});
+
+				it('should calculate deviation with previous period data', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 5,
+							previousSuccess: 15,
+							previousFailure: 10,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.total).toEqual({
+						value: 10,
+						unit: 'count',
+						deviation: -15,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no executions exist', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.total).toEqual({
+						value: 0,
+						unit: 'count',
+						deviation: null,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 5,
+							previousSuccess: 0,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.total.value).toBe(15);
+					expect(result.total.deviation).toBeNull();
+				});
+			});
+		});
+
+		describe('time saved', () => {
+			describe('Core Logic', () => {
+				it('should extract time saved value correctly', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentTimeSaved: 150,
+							previousSuccess: 8,
+							previousTimeSaved: 100,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.timeSaved).toEqual({
+						value: 150,
+						unit: 'minute',
+						deviation: 50,
+					});
+				});
+
+				it('should calculate deviation with previous period data', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentTimeSaved: 75,
+							previousSuccess: 10,
+							previousTimeSaved: 200,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.timeSaved).toEqual({
+						value: 75,
+						unit: 'minute',
+						deviation: -125,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no time saved data exists', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.timeSaved).toEqual({
+						value: 0,
+						unit: 'minute',
+						deviation: null,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentTimeSaved: 120,
+							previousSuccess: 0,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.timeSaved.value).toBe(120);
+					expect(result.timeSaved.deviation).toBeNull();
+				});
+			});
+		});
 	});
 });
