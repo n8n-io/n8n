@@ -26,7 +26,6 @@ import {
 } from '../service-provider.ee';
 import type { SamlLoginBinding } from '../types';
 import { getInitSSOFormView } from '../views/init-sso-post';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -35,7 +34,6 @@ export class SamlController {
 		private readonly samlService: SamlService,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
-		private readonly provisioningService: ProvisioningService,
 	) {}
 
 	@Get('/metadata', { skipAuth: true })
@@ -130,16 +128,6 @@ export class SamlController {
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
 					this.authService.issueCookie(res, loginResult.authenticatedUser, true, req.browserId);
-
-					const isRoleProvisioningEnabled =
-						await this.provisioningService.isInstanceRoleProvisioningEnabled();
-
-					if (isRoleProvisioningEnabled && loginResult.attributes.n8nInstanceRole) {
-						await this.provisioningService.provisionInstanceRoleForUser(
-							loginResult.authenticatedUser,
-							loginResult.attributes.n8nInstanceRole,
-						);
-					}
 
 					if (loginResult.onboardingRequired) {
 						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');
