@@ -79,6 +79,7 @@ export type OracleDBNodeCredentials = {
 	poolMin: number;
 	poolMax: number;
 	poolIncrement: number;
+	privilege?: number;
 	sslServerCertDN?: string;
 	sslServerDNMatch?: boolean;
 	sslAllowWeakDNMatch?: boolean;
