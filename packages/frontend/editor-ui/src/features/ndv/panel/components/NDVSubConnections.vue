@@ -405,30 +405,31 @@ defineExpose({
 	}
 }
 .container {
-	--node-size: 45px;
-	--plus-button-size: 30px;
-	--animation-duration: 150ms;
-	--collapsed-offset: 10px;
-	padding-top: calc(var(--node-size) + var(--spacing--3xs));
+	--node--size: 45px;
+	--plus-button--size: 30px;
+	--ndv--sub-connections--duration: 150ms;
+	--collapsed--offset: 10px;
+	padding-top: calc(var(--node--size) + var(--spacing--3xs));
 }
 .connections {
 	// Make sure container has matching height if there's no connections
 	// since the plus button is absolutely positioned
-	min-height: calc(var(--node-size) + var(--spacing--md));
+	min-height: calc(var(--node--size) + var(--spacing--md));
 	position: absolute;
-	bottom: calc((var(--node-size) / 2) * -1);
+	bottom: calc((var(--node--size) / 2) * -1);
 	left: 0;
 	right: 0;
 	user-select: none;
 	justify-content: space-between;
 	display: grid;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	grid-template-columns: repeat(var(--possible-connections), 1fr);
 }
 .connectionType {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	transition: all calc((var(--animation-duration) - 50ms)) ease;
+	transition: all calc((var(--ndv--sub-connections--duration) - 50ms)) ease;
 }
 .connectionLabel {
 	margin-bottom: var(--spacing--2xs);
@@ -448,7 +449,7 @@ defineExpose({
 	position: relative;
 }
 .plusButton {
-	transition: all var(--animation-duration) ease;
+	transition: all var(--ndv--sub-connections--duration) ease;
 	position: absolute;
 	top: var(--spacing--2xs);
 
@@ -463,7 +464,7 @@ defineExpose({
 	&:not(:last-child) {
 		z-index: 1;
 		right: 100%;
-		margin-right: calc((var(--plus-button-size) * -1) * 0.9);
+		margin-right: calc((var(--plus-button--size) * -1) * 0.9);
 		pointer-events: none;
 
 		.connectedNodesWrapperExpanded & {
@@ -476,7 +477,7 @@ defineExpose({
 }
 
 .connectedNodesMultiple {
-	transition: all var(--animation-duration) ease;
+	transition: all var(--ndv--sub-connections--duration) ease;
 }
 .connectedNodesWrapperExpanded {
 	z-index: 1;
@@ -495,7 +496,7 @@ defineExpose({
 	padding: var(--spacing--xs);
 	cursor: pointer;
 	pointer-events: all;
-	transition: all var(--animation-duration) ease;
+	transition: all var(--ndv--sub-connections--duration) ease;
 	position: relative;
 	display: flex;
 	justify-self: center;
@@ -504,18 +505,19 @@ defineExpose({
 .connectedNodes {
 	display: flex;
 	justify-content: center;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	margin-right: calc(
-		(var(--nodes-length) - 1) * (-1 * (var(--node-size) - var(--collapsed-offset)))
+		(var(--nodes-length) - 1) * (-1 * (var(--node--size) - var(--collapsed--offset)))
 	);
 	.connectedNodesWrapperExpanded & {
 		margin-right: 0;
 		// Negative margin to offset the absolutely positioned plus button
 		// when the nodes are expanded to center the nodes
-		margin-right: calc((var(--spacing--2xs) + var(--plus-button-size)) * -1);
+		margin-right: calc((var(--spacing--2xs) + var(--plus-button--size)) * -1);
 	}
 }
 .nodeWrapper {
-	transition: all var(--animation-duration) ease;
+	transition: all var(--ndv--sub-connections--duration) ease;
 	transform-origin: center;
 	z-index: 1;
 	.connectedNodesWrapperExpanded &:not(:first-child) {
@@ -529,8 +531,9 @@ defineExpose({
 	}
 
 	&:not(:first-child) {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
 		transform: translateX(
-			calc(var(--node-index) * (-1 * (var(--node-size) - var(--collapsed-offset))))
+			calc(var(--node-index) * (-1 * (var(--node--size) - var(--collapsed--offset))))
 		);
 	}
 

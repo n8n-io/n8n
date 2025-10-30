@@ -573,7 +573,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 .spinner {
 	display: flex;
 	justify-content: center;
-	margin-bottom: var(--ndv-spacing);
+	margin-bottom: var(--ndv--spacing);
 
 	* {
 		color: var(--color--primary);
