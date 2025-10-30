@@ -94,17 +94,52 @@ export class ElasticsearchApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
+		// Explicitly using Basic Auth
 		if (credentials.authType === 'basicAuth') {
+			if (
+				!credentials.username ||
+				!credentials.password ||
+				typeof credentials.username !== 'string' ||
+				typeof credentials.password !== 'string'
+			) {
+				throw new Error('Username and password are required for Basic Auth');
+			}
 			requestOptions.auth = {
-				username: credentials.username as string,
-				password: credentials.password as string,
+				username: credentials.username,
+				password: credentials.password,
 			};
-		} else {
-			// Default to API Key authentication
+		}
+		// Explicitly using API Key Auth
+		else if (credentials.authType === 'apiKey') {
+			if (!credentials.apiKey || typeof credentials.apiKey !== 'string') {
+				throw new Error('API Key is required for API Key authentication');
+			}
 			requestOptions.headers = {
 				...requestOptions.headers,
 				Authorization: `ApiKey ${credentials.apiKey}`,
 			};
+		}
+		// Backwards compatibility: authType not set (legacy credentials)
+		// If username/password exist, use Basic Auth, otherwise use API Key
+		else if (
+			credentials.username &&
+			credentials.password &&
+			typeof credentials.username === 'string' &&
+			typeof credentials.password === 'string'
+		) {
+			requestOptions.auth = {
+				username: credentials.username,
+				password: credentials.password,
+			};
+		} else if (credentials.apiKey && typeof credentials.apiKey === 'string') {
+			requestOptions.headers = {
+				...requestOptions.headers,
+				Authorization: `ApiKey ${credentials.apiKey}`,
+			};
+		} else {
+			throw new Error(
+				'Authentication credentials missing. Please provide either API Key or username/password.',
+			);
 		}
 		return requestOptions;
 	}

@@ -89,8 +89,29 @@ describe('ElasticsearchApi', () => {
 		});
 	});
 
-	describe('authenticate - Default Behavior', () => {
-		it('should default to API Key auth when authType is not specified', async () => {
+	describe('authenticate - Backwards Compatibility', () => {
+		it('should use Basic Auth for legacy credentials with username/password but no authType', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				// Legacy credential format (no authType field)
+				username: 'legacy-user',
+				password: 'legacy-pass',
+				baseUrl: 'https://test.es.io:9243',
+				ignoreSSLIssues: false,
+			};
+			const requestOptions: IHttpRequestOptions = {
+				url: 'https://test.es.io:9243/test',
+				method: 'GET',
+			};
+
+			const result = await elasticsearchApi.authenticate(credentials, requestOptions);
+
+			// Should use Basic Auth for backwards compatibility
+			expect(result.auth?.username).toBe('legacy-user');
+			expect(result.auth?.password).toBe('legacy-pass');
+			expect(result.headers?.Authorization).toBeUndefined();
+		});
+
+		it('should use API Key when authType is not specified but apiKey exists', async () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: 'default-key',
 				baseUrl: 'https://test.es.io:9243',
@@ -104,15 +125,34 @@ describe('ElasticsearchApi', () => {
 
 			const result = await elasticsearchApi.authenticate(credentials, requestOptions);
 
-			// Should default to API Key authentication
+			// Should use API Key authentication
 			expect(result.headers?.Authorization).toBe('ApiKey default-key');
 			expect(result.auth).toBeUndefined();
 		});
 
-		it('should default to API Key auth when authType is invalid', async () => {
+		it('should throw error when authType is invalid and no valid credentials exist', async () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				authType: 'invalid' as any,
-				apiKey: 'fallback-key',
+				baseUrl: 'https://test.es.io:9243',
+				ignoreSSLIssues: false,
+				// No apiKey, username, or password
+			};
+			const requestOptions: IHttpRequestOptions = {
+				url: 'https://test.es.io:9243/test',
+				method: 'GET',
+			};
+
+			await expect(elasticsearchApi.authenticate(credentials, requestOptions)).rejects.toThrow(
+				'Authentication credentials missing',
+			);
+		});
+	});
+
+	describe('authenticate - Validation', () => {
+		it('should throw error when API Key is missing for API Key auth', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				authType: 'apiKey',
+				// apiKey intentionally missing
 				baseUrl: 'https://test.es.io:9243',
 				ignoreSSLIssues: false,
 			};
@@ -121,11 +161,62 @@ describe('ElasticsearchApi', () => {
 				method: 'GET',
 			};
 
-			const result = await elasticsearchApi.authenticate(credentials, requestOptions);
+			await expect(elasticsearchApi.authenticate(credentials, requestOptions)).rejects.toThrow(
+				'API Key is required for API Key authentication',
+			);
+		});
 
-			// Should fallback to API Key authentication
-			expect(result.headers?.Authorization).toBe('ApiKey fallback-key');
-			expect(result.auth).toBeUndefined();
+		it('should throw error when username is missing for Basic Auth', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				authType: 'basicAuth',
+				// username missing
+				password: 'testpass',
+				baseUrl: 'https://test.es.io:9243',
+				ignoreSSLIssues: false,
+			};
+			const requestOptions: IHttpRequestOptions = {
+				url: 'https://test.es.io:9243/test',
+				method: 'GET',
+			};
+
+			await expect(elasticsearchApi.authenticate(credentials, requestOptions)).rejects.toThrow(
+				'Username and password are required for Basic Auth',
+			);
+		});
+
+		it('should throw error when password is missing for Basic Auth', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				authType: 'basicAuth',
+				username: 'testuser',
+				// password missing
+				baseUrl: 'https://test.es.io:9243',
+				ignoreSSLIssues: false,
+			};
+			const requestOptions: IHttpRequestOptions = {
+				url: 'https://test.es.io:9243/test',
+				method: 'GET',
+			};
+
+			await expect(elasticsearchApi.authenticate(credentials, requestOptions)).rejects.toThrow(
+				'Username and password are required for Basic Auth',
+			);
+		});
+
+		it('should throw error when both username and password are missing for Basic Auth', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				authType: 'basicAuth',
+				// username and password both missing
+				baseUrl: 'https://test.es.io:9243',
+				ignoreSSLIssues: false,
+			};
+			const requestOptions: IHttpRequestOptions = {
+				url: 'https://test.es.io:9243/test',
+				method: 'GET',
+			};
+
+			await expect(elasticsearchApi.authenticate(credentials, requestOptions)).rejects.toThrow(
+				'Username and password are required for Basic Auth',
+			);
 		});
 	});
 });
