@@ -33,9 +33,13 @@ export class AIBuilderPage {
 
 	async waitForWorkflowBuildComplete(options?: { timeout?: number }) {
 		const timeout = options?.timeout ?? 300000; // Default 5 minutes
-		// Wait for the "Working..." indicator to disappear from the canvas
-		// This indicates the workflow builder has finished creating and adding nodes
-		await this.page.getByText('Working...').waitFor({ state: 'hidden', timeout });
+		const workingIndicator = this.page.getByText('Working...');
+
+		// First wait for the indicator to appear (building has started)
+		await workingIndicator.waitFor({ state: 'visible', timeout });
+
+		// Then wait for it to disappear (building is complete)
+		await workingIndicator.waitFor({ state: 'hidden', timeout });
 	}
 
 	// #endregion

@@ -11,9 +11,11 @@ const getAnthropicKey = () => {
 	if (testEnv) {
 		try {
 			const config = JSON.parse(testEnv);
-			return config.N8N_AI_ANTHROPIC_KEY ?? config.ANTHROPIC_API_KEY;
+			const key = config.N8N_AI_ANTHROPIC_KEY ?? config.ANTHROPIC_API_KEY;
+			if (key) return key;
+			// Fall through to check process.env if N8N_TEST_ENV doesn't have the key
 		} catch {
-			return undefined;
+			// Fall through to check process.env if JSON parsing fails
 		}
 	}
 	// Check N8N_AI_ANTHROPIC_KEY first (local development), then ANTHROPIC_API_KEY (CI)

@@ -132,7 +132,7 @@ export class AIAssistantPage extends BasePage {
 				) as HTMLButtonElement;
 				return sendButton && !sendButton.disabled;
 			},
-			{ timeout: 10000 },
+			{ timeout },
 		);
 	}
 
