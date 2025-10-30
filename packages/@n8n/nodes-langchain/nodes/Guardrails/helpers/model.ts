@@ -6,6 +6,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { GuardrailError, type GuardrailResult, type LLMConfig } from '../actions/types';
+import { MessageContent } from '@langchain/core/messages';
 
 const LlmResponseSchema = z.object({
 	confidenceScore: z.number().min(0).max(1).describe('Confidence score between 0.0 and 1.0'),
@@ -83,14 +84,27 @@ async function runLLM(
 		['placeholder', '{agent_scratchpad}'],
 	]);
 
-	const chain = chatPrompt.pipe(model).pipe(outputParser);
+	const chain = chatPrompt.pipe(model);
 
 	try {
-		const { confidenceScore, flagged } = await chain.invoke({
+		const result = await chain.invoke({
 			steps: [],
 			input: inputText,
 			system_message: fullPrompt,
 		});
+
+		const extractText = (content: MessageContent) => {
+			if (typeof content === 'string') {
+				return content;
+			}
+			if (content[0].type === 'text') {
+				return content[0].text;
+			}
+			throw new Error('Invalid content type');
+		};
+
+		const text = extractText(result.content);
+		const { confidenceScore, flagged } = await outputParser.parse(text);
 
 		return { confidenceScore, flagged };
 	} catch (error) {
