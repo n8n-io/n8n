@@ -1,6 +1,6 @@
 #cm-tooltip-container {
 	position: relative;
-	z-index: var(--z-index-codemirror-tooltip);
+	z-index: var(--codemirror-tooltip--z);
 	max-width: 0;
 	max-height: 0;
 }

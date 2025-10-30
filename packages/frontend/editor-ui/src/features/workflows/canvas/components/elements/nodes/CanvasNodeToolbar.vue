@@ -201,6 +201,7 @@ function onFocusNode() {
 		justify-content: space-between;
 		align-items: center;
 		padding-bottom: var(--spacing--3xs);
+		/* stylelint-disable-next-line @n8n/css-var-naming */
 		zoom: var(--canvas-zoom-compensation-factor, 1);
 		margin-bottom: var(--spacing--2xs);
 	}

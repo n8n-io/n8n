@@ -13,7 +13,7 @@
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 	box-sizing: border-box;
 	align-content: start;
 	padding: var(--spacing--lg) var(--spacing--2xl) 0;

@@ -189,7 +189,7 @@ const commonClasses = computed(() => [
 		position: absolute;
 		left: 0;
 		top: 0;
-		padding: var(--canvas-node--status-icons-offset);
+		padding: var(--canvas-node--status-icons--margin);
 	}
 
 	&.spinnerScrim {

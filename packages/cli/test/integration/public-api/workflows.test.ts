@@ -1635,3 +1635,222 @@ describe('PUT /workflows/:id/transfer', () => {
 		expect(response.statusCode).toBe(400);
 	});
 });
+
+describe('PAY-3418: Node parameter persistence via Public API', () => {
+	test('should create workflow with Code node with jsCode parameter and persist it', async () => {
+		/**
+		 * Test for PAY-3418: Verify that node parameters like jsCode are not stripped
+		 * when submitted via the Public API. The fix adds additionalProperties: true to node.yml schema.
+		 *
+		 * Arrange: Create a workflow with a Code node containing jsCode parameter
+		 */
+		const jsCodeValue = `
+return [
+  {
+    json: {
+      message: 'Hello from Code node',
+      timestamp: new Date().toISOString()
+    }
+  }
+];
+`;
+
+		const payload = {
+			name: 'Test Code Node Parameters',
+			nodes: [
+				{
+					id: 'code-node-1',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [250, 300],
+					parameters: {
+						mode: 'runOnceForAllItems',
+						language: 'javaScript',
+						jsCode: jsCodeValue,
+					},
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
+			},
+		};
+
+		/**
+		 * Act: Create the workflow via POST /workflows
+		 */
+		const createResponse = await authMemberAgent.post('/workflows').send(payload);
+
+		/**
+		 * Assert: Verify creation was successful and parameters are present
+		 */
+		expect(createResponse.statusCode).toBe(200);
+		expect(createResponse.body.id).toBeDefined();
+
+		const createdWorkflowId = createResponse.body.id;
+		const codeNode = createResponse.body.nodes.find(
+			(node: INode) => node.type === 'n8n-nodes-base.code',
+		);
+
+		expect(codeNode).toBeDefined();
+		expect(codeNode.parameters).toBeDefined();
+		expect(codeNode.parameters.jsCode).toBe(jsCodeValue);
+		expect(codeNode.parameters.mode).toBe('runOnceForAllItems');
+		expect(codeNode.parameters.language).toBe('javaScript');
+
+		/**
+		 * Act: Retrieve the workflow via GET /workflows/:id
+		 */
+		const getResponse = await authMemberAgent.get(`/workflows/${createdWorkflowId}`);
+
+		/**
+		 * Assert: Verify the jsCode parameter is persisted and returned
+		 */
+		expect(getResponse.statusCode).toBe(200);
+
+		const retrievedCodeNode = getResponse.body.nodes.find(
+			(node: INode) => node.type === 'n8n-nodes-base.code',
+		);
+
+		expect(retrievedCodeNode).toBeDefined();
+		expect(retrievedCodeNode.parameters).toBeDefined();
+		expect(retrievedCodeNode.parameters.jsCode).toBe(jsCodeValue);
+		expect(retrievedCodeNode.parameters.mode).toBe('runOnceForAllItems');
+		expect(retrievedCodeNode.parameters.language).toBe('javaScript');
+	});
+
+	test('should update workflow with Code node parameters and preserve them', async () => {
+		/**
+		 * Test for PAY-3418: Verify that node parameters are preserved on workflow updates.
+		 *
+		 * Arrange: Create a workflow with initial Code node
+		 */
+		const initialCode = 'return [{ json: { initial: true } }];';
+
+		const initialPayload = {
+			name: 'Initial Code Node Workflow',
+			nodes: [
+				{
+					id: 'code-node-1',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [250, 300],
+					parameters: {
+						mode: 'runOnceForAllItems',
+						language: 'javaScript',
+						jsCode: initialCode,
+					},
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
+			},
+		};
+
+		const createResponse = await authMemberAgent.post('/workflows').send(initialPayload);
+		expect(createResponse.statusCode).toBe(200);
+
+		const workflowId = createResponse.body.id;
+
+		/**
+		 * Act: Update the workflow with modified Code node parameter
+		 */
+		const updatedCode = `
+const result = {
+  data: 'Updated workflow data',
+  count: 42
+};
+return [{ json: result }];
+`;
+
+		const updatePayload = {
+			name: 'Updated Code Node Workflow',
+			nodes: [
+				{
+					id: 'code-node-1',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [250, 300],
+					parameters: {
+						mode: 'runOnceForEachItem',
+						language: 'javaScript',
+						jsCode: updatedCode,
+					},
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: false,
+				saveManualExecutions: false,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
+			},
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflowId}`)
+			.send(updatePayload);
+
+		/**
+		 * Assert: Verify update was successful and parameters are preserved
+		 */
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.name).toBe('Updated Code Node Workflow');
+
+		const updatedCodeNode = updateResponse.body.nodes.find(
+			(node: INode) => node.type === 'n8n-nodes-base.code',
+		);
+
+		expect(updatedCodeNode).toBeDefined();
+		expect(updatedCodeNode.parameters.jsCode).toBe(updatedCode);
+		expect(updatedCodeNode.parameters.mode).toBe('runOnceForEachItem');
+		expect(updatedCodeNode.parameters.language).toBe('javaScript');
+
+		/**
+		 * Act: Retrieve the updated workflow
+		 */
+		const getResponse = await authMemberAgent.get(`/workflows/${workflowId}`);
+
+		/**
+		 * Assert: Verify all parameters are still present after retrieval
+		 */
+		expect(getResponse.statusCode).toBe(200);
+
+		const retrievedUpdatedNode = getResponse.body.nodes.find(
+			(node: INode) => node.type === 'n8n-nodes-base.code',
+		);
+
+		expect(retrievedUpdatedNode).toBeDefined();
+		expect(retrievedUpdatedNode.parameters.jsCode).toBe(updatedCode);
+		expect(retrievedUpdatedNode.parameters.mode).toBe('runOnceForEachItem');
+		expect(retrievedUpdatedNode.parameters.language).toBe('javaScript');
+	});
+});
