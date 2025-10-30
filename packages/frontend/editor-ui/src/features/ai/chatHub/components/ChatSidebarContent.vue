@@ -30,6 +30,7 @@ const renamingSessionId = ref<string>();
 const currentSessionId = computed(() =>
 	typeof route.params.id === 'string' ? route.params.id : undefined,
 );
+const readyToShowConversations = computed(() => chatStore.agentsReady && chatStore.sessionsReady);
 
 const groupedConversations = computed(() => groupConversationsByDate(chatStore.sessions));
 
@@ -76,8 +77,8 @@ async function handleDeleteSession(sessionId: string) {
 	}
 }
 
-onMounted(async () => {
-	await chatStore.fetchSessions();
+onMounted(() => {
+	void Promise.all([chatStore.fetchSessions(), chatStore.fetchCustomAgents()]);
 });
 </script>
 
@@ -123,7 +124,7 @@ onMounted(async () => {
 			/>
 		</div>
 		<N8nScrollArea as-child type="scroll">
-			<div :class="$style.items">
+			<div v-if="readyToShowConversations" :class="$style.items">
 				<div v-for="group in groupedConversations" :key="group.group" :class="$style.group">
 					<N8nText :class="$style.groupHeader" size="small" bold color="text-light">
 						{{ group.group }}

@@ -59,19 +59,19 @@ const { APP_Z_INDEXES } = useStyles();
 const styles = computed(() => {
 	const styles: { [prop: string]: string } = {};
 	if (props.height) {
-		styles['--dialog-height'] = props.height;
+		styles['--dialog--height'] = props.height;
 	}
 	if (props.minHeight) {
-		styles['--dialog-min-height'] = props.minHeight;
+		styles['--dialog--min-height'] = props.minHeight;
 	}
 	if (props.maxHeight) {
-		styles['--dialog-max-height'] = props.maxHeight;
+		styles['--dialog--max-height'] = props.maxHeight;
 	}
 	if (props.maxWidth) {
-		styles['--dialog-max-width'] = props.maxWidth;
+		styles['--dialog--max-width'] = props.maxWidth;
 	}
 	if (props.minWidth) {
-		styles['--dialog-min-width'] = props.minWidth;
+		styles['--dialog--min-width'] = props.minWidth;
 	}
 	return styles;
 });
@@ -82,7 +82,7 @@ onMounted(() => {
 	window.addEventListener('keydown', onWindowKeydown);
 	props.eventBus?.on('close', closeDialog);
 	const activeElement = document.activeElement as HTMLElement;
-	if (activeElement) {
+	if (activeElement && uiStore.modalsById[props.name]?.open) {
 		activeElement.blur();
 	}
 });
@@ -195,11 +195,11 @@ function getCustomClass() {
 	&.el-dialog {
 		display: flex;
 		flex-direction: column;
-		max-width: var(--dialog-max-width, 80%);
-		min-width: var(--dialog-min-width, 420px);
-		height: var(--dialog-height);
-		min-height: var(--dialog-min-height);
-		max-height: var(--dialog-max-height);
+		max-width: var(--dialog--max-width, 80%);
+		min-width: var(--dialog--min-width, 420px);
+		height: var(--dialog--height);
+		min-height: var(--dialog--min-height);
+		max-height: var(--dialog--max-height);
 	}
 
 	.el-dialog__body {

@@ -88,7 +88,7 @@ watchOnce(isVisible, (visible) => {
 			node?.disabled ? $style.disabled : '',
 		]"
 		:style="{
-			'--max-height-on-focus': `${maxHeightOnFocus / experimentalNdvStore.maxCanvasZoom}px`,
+			'--input--max-height--focus': `${maxHeightOnFocus / experimentalNdvStore.maxCanvasZoom}px`,
 			pointerEvents: isPaneMoving ? 'none' : 'auto', // Don't interrupt canvas panning
 		}"
 	>
@@ -140,9 +140,9 @@ watchOnce(isVisible, (visible) => {
 	overflow: hidden;
 
 	--canvas-node--border-color: var(--color--text--tint-2);
-	--expanded-max-height: min(
+	--embedded-ndv--max-height--expanded: min(
 		calc(var(--canvas-node--height) * 2),
-		var(--max-height-on-focus),
+		var(--input--max-height--focus),
 		300px
 	);
 
@@ -150,11 +150,11 @@ watchOnce(isVisible, (visible) => {
 		user-select: text;
 		cursor: auto;
 		height: auto;
-		max-height: var(--expanded-max-height);
+		max-height: var(--embedded-ndv--max-height--expanded);
 		min-height: var(--spacing--3xl);
 
 		:global(.selected) & {
-			max-height: var(--max-height-on-focus);
+			max-height: var(--input--max-height--focus);
 		}
 	}
 	&.collapsed {
@@ -177,11 +177,11 @@ watchOnce(isVisible, (visible) => {
 	width: 100%;
 
 	height: auto;
-	max-height: calc(var(--expanded-max-height) - var(--border-width) * 2);
+	max-height: calc(var(--embedded-ndv--max-height--expanded) - var(--border-width) * 2);
 	min-height: var(--spacing--2xl); // should be multiple of GRID_SIZE
 
 	:global(.selected) & {
-		max-height: calc(var(--max-height-on-focus) - var(--border-width) * 2);
+		max-height: calc(var(--input--max-height--focus) - var(--border-width) * 2);
 	}
 }
 
@@ -200,6 +200,7 @@ watchOnce(isVisible, (visible) => {
 	}
 
 	& > * {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
 		zoom: var(--canvas-zoom-compensation-factor, 1);
 		flex-grow: 0;
 		flex-shrink: 0;
@@ -222,6 +223,7 @@ watchOnce(isVisible, (visible) => {
 
 .settingsView {
 	& > * {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
 		zoom: var(--canvas-zoom-compensation-factor, 1);
 	}
 }

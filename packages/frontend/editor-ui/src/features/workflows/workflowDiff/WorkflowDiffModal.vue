@@ -9,7 +9,7 @@ import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue';
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
-import { NodeDiffStatus, useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
+import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -19,7 +19,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import { NodeDiffStatus, type IWorkflowSettings } from 'n8n-workflow';
 import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
@@ -857,7 +857,7 @@ const modifiers = [
 }
 
 .deleted {
-	--canvas-node--background: var(--diff--color--deleted--faint);
+	--canvas-node--color--background: var(--diff--color--deleted--faint);
 	--canvas-node--border-color: var(--diff--color--deleted);
 	--sticky--color--background: var(--diff--color--deleted--faint);
 	--sticky--border-color: var(--diff--color--deleted);
@@ -879,7 +879,7 @@ const modifiers = [
 }
 .added {
 	--canvas-node--border-color: var(--diff--color--new);
-	--canvas-node--background: var(--diff--color--new--faint);
+	--canvas-node--color--background: var(--diff--color--new--faint);
 	--sticky--color--background: var(--diff--color--new--faint);
 	--sticky--border-color: var(--diff--color--new);
 	position: relative;
@@ -905,7 +905,7 @@ const modifiers = [
 	pointer-events: none;
 	cursor: default;
 	--sticky--color--background: rgba(126, 129, 134, 0.2);
-	--canvas-node-icon-color: var(--color--foreground--shade-2);
+	--canvas-node--icon-color: var(--color--foreground--shade-2);
 	--sticky--border-color: var(--color--foreground--shade-2);
 	&:deep(img) {
 		filter: contrast(0) grayscale(100%);
@@ -913,7 +913,7 @@ const modifiers = [
 }
 .modified {
 	--canvas-node--border-color: var(--diff--color--modified);
-	--canvas-node--background: var(--diff--color--modified--faint);
+	--canvas-node--color--background: var(--diff--color--modified--faint);
 	--sticky--color--background: var(--diff--color--modified--faint);
 	--sticky--border-color: var(--diff--color--modified);
 	position: relative;
@@ -935,12 +935,12 @@ const modifiers = [
 }
 
 .edge-deleted {
-	--canvas-edge-color: var(--diff--color--deleted);
-	--edge-highlight-color: var(--diff--color--deleted--light);
+	--canvas-edge--color: var(--diff--color--deleted);
+	--edge--color--highlight: var(--diff--color--deleted--light);
 }
 .edge-added {
-	--canvas-edge-color: var(--diff--color--new);
-	--edge-highlight-color: var(--diff--color--new--light);
+	--canvas-edge--color: var(--diff--color--new);
+	--edge--color--highlight: var(--diff--color--new--light);
 }
 .edge-equal {
 	opacity: 0.5;

@@ -12,6 +12,7 @@ import {
 	ChatHubMessageStatus,
 	chatHubProviderSchema,
 	type EnrichedStructuredChunk,
+	emptyChatModelsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -152,13 +153,7 @@ export class ChatHubService {
 				acc[provider] = res;
 				return acc;
 			},
-			{
-				openai: { models: [] },
-				anthropic: { models: [] },
-				google: { models: [] },
-				n8n: { models: [] },
-				'custom-agent': { models: [] },
-			},
+			{ ...emptyChatModelsResponse },
 		);
 	}
 

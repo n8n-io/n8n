@@ -98,6 +98,14 @@ export type ChatModelsResponse = Record<
 	}
 >;
 
+export const emptyChatModelsResponse: ChatModelsResponse = {
+	openai: { models: [] },
+	anthropic: { models: [] },
+	google: { models: [] },
+	n8n: { models: [] },
+	'custom-agent': { models: [] },
+};
+
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
@@ -202,7 +210,7 @@ export interface ChatHubAgentDto {
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
-	provider: ChatHubProvider;
+	provider: ChatHubLLMProvider;
 	model: string;
 	createdAt: string;
 	updatedAt: string;
