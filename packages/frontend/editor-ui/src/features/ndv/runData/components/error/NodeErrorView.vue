@@ -879,7 +879,7 @@ async function onAskAssistantClick() {
 		flex-grow: 0;
 		flex-shrink: 0;
 		width: 120px;
-		color: var(--color-text);
+		color: var(--color--text);
 		font-size: var(--font-size--2xs);
 	}
 
@@ -887,7 +887,7 @@ async function onAskAssistantClick() {
 		flex: 1;
 		overflow: hidden;
 		margin-right: auto;
-		color: var(--color-text);
+		color: var(--color--text);
 		font-size: var(--font-size--2xs);
 		word-wrap: break-word;
 

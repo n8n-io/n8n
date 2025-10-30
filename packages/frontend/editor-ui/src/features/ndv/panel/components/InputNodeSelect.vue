@@ -167,8 +167,8 @@ function onInputNodeChange(value: string) {
 
 <style lang="scss" module>
 .select {
-	--max-select-width: 224px;
-	max-width: var(--max-select-width);
+	--node-input--select--max-width: 224px;
+	max-width: var(--node-input--select--max-width);
 
 	:global(.el-input--suffix .el-input__inner) {
 		padding-left: calc(var(--spacing--lg) + var(--spacing--4xs));
@@ -191,7 +191,7 @@ function onInputNodeChange(value: string) {
 .title {
 	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight--regular);
-	max-width: var(--max-select-width);
+	max-width: var(--node-input--select--max-width);
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;

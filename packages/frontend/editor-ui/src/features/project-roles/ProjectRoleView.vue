@@ -432,7 +432,7 @@ const displayNameValidationRules = [
 .cardContainer {
 	padding: 8px 16px;
 	border-radius: 4px;
-	border: var(--border-base);
+	border: var(--border);
 	background-color: var(--color--background--light-3);
 	:global(.el-skeleton__p) {
 		margin-bottom: 8px;
@@ -445,7 +445,7 @@ const displayNameValidationRules = [
 }
 
 .card:not(:last-child) {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 .cardTitle {
