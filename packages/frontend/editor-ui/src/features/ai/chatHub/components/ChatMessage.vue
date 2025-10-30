@@ -14,6 +14,8 @@ import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
 import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
+import { convertBinaryDataToFile } from '@/utils/fileUtils';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -32,6 +34,7 @@ const emit = defineEmits<{
 	update: [message: ChatMessage];
 	regenerate: [message: ChatMessage];
 	switchAlternative: [messageId: ChatMessageId];
+	openExecution: [messageId: ChatMessage];
 }>();
 
 const clipboard = useClipboard();
@@ -92,6 +95,10 @@ function handleReadAloud() {
 
 function handleSwitchAlternative(messageId: ChatMessageId) {
 	emit('switchAlternative', messageId);
+}
+
+function handleOpenExecution() {
+	emit('openExecution', message);
 }
 
 const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
@@ -174,22 +181,31 @@ onBeforeMount(() => {
 						:options="markdownOptions"
 						:plugins="[linksNewTabPlugin]"
 					/>
+					<div v-if="message.attachments.length > 0" :class="$style.attachments">
+						<ChatFile
+							v-for="(attachment, index) in message.attachments"
+							:key="index"
+							:file="convertBinaryDataToFile(attachment)"
+							:is-removable="false"
+							:is-previewable="true"
+						/>
+					</div>
 				</div>
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:type="message.type"
 					:just-copied="justCopied"
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
-					:message-id="message.id"
+					:message="message"
 					:alternatives="message.alternatives"
 					@copy="handleCopy"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"
 					@switchAlternative="handleSwitchAlternative"
+					@open-execution="handleOpenExecution"
 				/>
 			</template>
 		</div>
@@ -226,8 +242,17 @@ onBeforeMount(() => {
 	flex-direction: column;
 }
 
+.attachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--xs);
+}
+
 .chatMessage {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	position: relative;
 	max-width: fit-content;
 

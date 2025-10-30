@@ -22,6 +22,8 @@ import {
 	MEMORY_MANAGER_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
+	type IBinaryData,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -48,6 +50,7 @@ export class ChatHubWorkflowService {
 		projectId: string,
 		history: ChatHubMessage[],
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		systemMessage?: string,
@@ -63,6 +66,7 @@ export class ChatHubWorkflowService {
 				sessionId,
 				history,
 				humanMessage,
+				attachments,
 				credentials,
 				model,
 				systemMessage,
@@ -138,11 +142,30 @@ export class ChatHubWorkflowService {
 		});
 	}
 
+	createChatNodeExecutionData(
+		sessionId: string,
+		message: string,
+		attachments: IBinaryData[],
+	): INodeExecutionData {
+		return {
+			json: {
+				sessionId,
+				action: 'sendMessage',
+				chatInput: message,
+				files: attachments.map(({ data, ...metadata }) => metadata),
+			},
+			binary: Object.fromEntries(
+				attachments.map((attachment, index) => [`data${index}`, attachment]),
+			),
+		};
+	}
+
 	private buildChatWorkflow({
 		userId,
 		sessionId,
 		history,
 		humanMessage,
+		attachments,
 		credentials,
 		model,
 		systemMessage,
@@ -151,6 +174,7 @@ export class ChatHubWorkflowService {
 		sessionId: ChatSessionId;
 		history: ChatHubMessage[];
 		humanMessage: string;
+		attachments: IBinaryData[];
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
 		systemMessage?: string;
@@ -212,17 +236,7 @@ export class ChatHubWorkflowService {
 			{
 				node: chatTriggerNode,
 				data: {
-					main: [
-						[
-							{
-								json: {
-									sessionId,
-									action: 'sendMessage',
-									chatInput: humanMessage,
-								},
-							},
-						],
-					],
+					main: [[this.createChatNodeExecutionData(sessionId, humanMessage, attachments)]],
 				},
 				source: null,
 			},

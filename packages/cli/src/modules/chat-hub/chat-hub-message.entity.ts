@@ -11,6 +11,7 @@ import {
 } from '@n8n/typeorm';
 
 import type { ChatHubSession } from './chat-hub-session.entity';
+import type { IBinaryData } from 'n8n-workflow';
 
 @Entity({ name: 'chat_hub_messages' })
 export class ChatHubMessage extends WithTimestamps {
@@ -167,4 +168,11 @@ export class ChatHubMessage extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'success' })
 	status: ChatHubMessageStatus;
+
+	/**
+	 * File attachments for the message (if any), stored as JSON.
+	 * Files are stored as base64-encoded data URLs (matching existing chat implementation).
+	 */
+	@Column({ type: 'json', nullable: true })
+	attachments: Array<IBinaryData> | null;
 }

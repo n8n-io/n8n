@@ -38,6 +38,7 @@ import {
 } from '@n8n/api-types';
 import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
 import { retry } from '@n8n/utils/retry';
+import { convertFileToBinaryData } from '@/utils/fileUtils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -307,6 +308,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			revisionOfMessageId: null,
 			responses: [],
 			alternatives: [],
+			attachments: [],
 		});
 	}
 
@@ -341,6 +343,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			responses: [],
 			alternatives: [],
 			agentId: null,
+			attachments: [],
 		});
 	}
 
@@ -412,17 +415,20 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	function sendMessage(
+	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		files: File[] = [],
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.activeMessageChain.length
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
+
+		const attachments = await Promise.all(files.map(convertFileToBinaryData));
 
 		addMessage(sessionId, {
 			id: messageId,
@@ -443,6 +449,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			revisionOfMessageId: null,
 			responses: [],
 			alternatives: [],
+			attachments,
 		});
 
 		sendMessageApi(
@@ -454,6 +461,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials,
 				previousMessageId,
+				attachments,
 			},
 			(chunk: EnrichedStructuredChunk) => onStreamMessage(sessionId, chunk),
 			async () => await onStreamDone(sessionId),
@@ -494,6 +502,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				revisionOfMessageId: editId,
 				responses: [],
 				alternatives: [],
+				attachments: message.attachments ?? null,
 			});
 		} else if (message?.type === 'ai') {
 			replaceMessageContent(sessionId, editId, content);
@@ -617,6 +626,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			description: agent.description ?? null,
 			createdAt: agent.createdAt,
 			updatedAt: agent.updatedAt,
+			allowFileUploads: true,
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
 

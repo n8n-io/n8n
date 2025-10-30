@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
+import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL, VIEWS } from '@/constants';
 import {
 	findOneFromModelsResponse,
 	restoreConversationModelFromMessageOrSession,
@@ -35,6 +35,7 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useUIStore } from '@/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
+import type { ChatMessage as ChatMessageType } from '@/features/ai/chatHub/chat.types';
 
 const router = useRouter();
 const route = useRoute();
@@ -245,7 +246,7 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string) {
+function onSubmit(message: string, attachments?: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -257,11 +258,12 @@ function onSubmit(message: string) {
 
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.sendMessage(
+	void chatStore.sendMessage(
 		sessionId.value,
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
+		attachments,
 	);
 
 	inputRef.value?.setText('');
@@ -369,6 +371,24 @@ function openNewAgentCreator() {
 function closeAgentEditor() {
 	editingAgentId.value = undefined;
 }
+
+function handleOpenWorkflow(workflowId: string) {
+	void router.push({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+}
+
+function handleOpenExecution(message: ChatMessageType) {
+	debugger;
+	const model = restoreConversationModelFromMessageOrSession(message);
+
+	if (model?.provider !== 'n8n') {
+		return;
+	}
+
+	void router.push({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: { name: model.workflowId, executionId: message.executionId },
+	});
+}
 </script>
 
 <template>
@@ -389,6 +409,7 @@ function closeAgentEditor() {
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
+			@open-workflow="handleOpenWorkflow"
 		/>
 
 		<AgentEditorModal
@@ -435,6 +456,7 @@ function closeAgentEditor() {
 						@regenerate="handleRegenerateMessage"
 						@update="handleEditMessage"
 						@switch-alternative="handleSwitchAlternative"
+						@open-execution="handleOpenExecution"
 					/>
 				</div>
 

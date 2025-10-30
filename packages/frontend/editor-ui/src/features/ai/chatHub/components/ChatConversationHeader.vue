@@ -19,6 +19,7 @@ const emit = defineEmits<{
 	editCustomAgent: [agentId: string];
 	createCustomAgent: [];
 	selectCredential: [provider: ChatHubProvider, credentialId: string];
+	openWorkflow: [workflowId: string];
 }>();
 
 const sidebar = useChatHubSidebarState();
@@ -80,6 +81,15 @@ defineExpose({
 			icon="cog"
 			label="Edit Agent"
 			@click="emit('editCustomAgent', selectedModel.model.agentId)"
+		/>
+		<N8nButton
+			v-if="selectedModel?.model.provider === 'n8n'"
+			:class="$style.editAgent"
+			type="secondary"
+			size="small"
+			icon="cog"
+			label="Open Workflow"
+			@click="emit('openWorkflow', selectedModel.model.workflowId)"
 		/>
 	</div>
 </template>

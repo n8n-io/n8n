@@ -2,6 +2,7 @@
 import { useToast } from '@/composables/useToast';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -14,14 +15,16 @@ const { selectedModel, isMissingCredentials } = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	submit: [string];
+	submit: [message: string, attachments: File[]];
 	stop: [];
 	selectModel: [];
 	setCredentials: [ChatHubLLMProvider];
 }>();
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
+const attachments = ref<File[]>([]);
 
 const toast = useToast();
 
@@ -53,12 +56,41 @@ function onStop() {
 	emit('stop');
 }
 
+function onAttach() {
+	fileInputRef.value?.click();
+}
+
+function handleFileSelect(e: Event) {
+	const target = e.target as HTMLInputElement;
+	const files = target.files;
+
+	if (!files || files.length === 0) {
+		return;
+	}
+
+	// Store File objects directly instead of converting to base64
+	for (const file of Array.from(files)) {
+		attachments.value.push(file);
+	}
+
+	// Reset input
+	if (target) {
+		target.value = '';
+	}
+}
+
+function removeAttachment(removed: File) {
+	attachments.value = attachments.value.filter((attachment) => attachment !== removed);
+}
+
 function handleSubmitForm() {
 	const trimmed = message.value.trim();
 
 	if (trimmed) {
 		speechInput.stop();
-		emit('submit', trimmed);
+		emit('submit', trimmed, attachments.value);
+		message.value = '';
+		attachments.value = [];
 	}
 }
 
@@ -68,7 +100,9 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
 		e.preventDefault();
 		speechInput.stop();
-		emit('submit', trimmed);
+		emit('submit', trimmed, attachments.value);
+		message.value = '';
+		attachments.value = [];
 	}
 }
 
@@ -128,58 +162,81 @@ defineExpose({
 					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
 				</template>
 			</N8nText>
-			<N8nInput
-				ref="inputRef"
-				v-model="message"
-				:class="$style.input"
-				type="textarea"
-				:placeholder="placeholder"
-				autocomplete="off"
-				:autosize="{ minRows: 1, maxRows: 6 }"
-				autofocus
-				:disabled="isMissingCredentials || !selectedModel"
-				@keydown="handleKeydownTextarea"
+			<input
+				ref="fileInputRef"
+				type="file"
+				:class="$style.fileInput"
+				multiple
+				accept="image/*,.pdf,.doc,.docx,.txt"
+				@change="handleFileSelect"
 			/>
 
-			<div :class="$style.actions">
-				<!-- TODO: Implement attachments
-				<N8nIconButton
-					native-type="button"
-					type="secondary"
-					title="Attach"
-					:disabled="isMissingCredentials || !selectedModel || isResponding"
-					icon="paperclip"
-					icon-size="large"
-					text
-					@click="onAttach"
-				/> -->
-				<N8nIconButton
-					v-if="speechInput.isSupported"
-					native-type="button"
-					:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
-					type="secondary"
-					:disabled="isMissingCredentials || !selectedModel || isResponding"
-					:icon="speechInput.isListening.value ? 'square' : 'mic'"
-					:class="{ [$style.recording]: speechInput.isListening.value }"
-					icon-size="large"
-					@click="onMic"
+			<div :class="$style.inputWrapper">
+				<N8nInput
+					ref="inputRef"
+					v-model="message"
+					type="textarea"
+					:placeholder="placeholder"
+					autocomplete="off"
+					:autosize="{ minRows: 1, maxRows: 6 }"
+					autofocus
+					:disabled="isMissingCredentials || !selectedModel"
+					@keydown="handleKeydownTextarea"
 				/>
-				<N8nIconButton
-					v-if="!isResponding"
-					native-type="submit"
-					:disabled="isMissingCredentials || !selectedModel || !message.trim()"
-					title="Send"
-					icon="arrow-up"
-					icon-size="large"
-				/>
-				<N8nIconButton
-					v-else
-					native-type="button"
-					title="Stop generating"
-					icon="square"
-					icon-size="large"
-					@click="onStop"
-				/>
+
+				<div :class="$style.footer">
+					<div :class="$style.attachments">
+						<ChatFile
+							v-for="(file, index) in attachments"
+							:key="index"
+							:file="file"
+							:is-previewable="true"
+							:is-removable="true"
+							@remove="removeAttachment"
+						/>
+					</div>
+
+					<div :class="$style.actions">
+						<N8nIconButton
+							v-if="selectedModel?.allowFileUploads"
+							native-type="button"
+							type="secondary"
+							title="Attach"
+							:disabled="isMissingCredentials || isResponding"
+							icon="paperclip"
+							icon-size="large"
+							text
+							@click="onAttach"
+						/>
+						<N8nIconButton
+							v-if="speechInput.isSupported"
+							native-type="button"
+							:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
+							type="secondary"
+							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:icon="speechInput.isListening.value ? 'square' : 'mic'"
+							:class="{ [$style.recording]: speechInput.isListening.value }"
+							icon-size="large"
+							@click="onMic"
+						/>
+						<N8nIconButton
+							v-if="!isResponding"
+							native-type="submit"
+							:disabled="isMissingCredentials || !selectedModel || !message.trim()"
+							title="Send"
+							icon="arrow-up"
+							icon-size="large"
+						/>
+						<N8nIconButton
+							v-else
+							native-type="button"
+							title="Stop generating"
+							icon="square"
+							icon-size="large"
+							@click="onStop"
+						/>
+					</div>
+				</div>
 			</div>
 		</div>
 	</form>
@@ -217,24 +274,43 @@ defineExpose({
 	}
 }
 
-.input {
+.fileInput {
+	display: none;
+}
+
+.inputWrapper {
+	width: 100%;
+	border-radius: 16px !important;
+	padding: 16px;
+	box-shadow: 0 10px 24px 0 #00000010;
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+
+	&:focus-within,
+	&:has(:hover) {
+		border-color: var(--color--secondary);
+	}
+
 	& textarea {
 		font: inherit;
 		line-height: 1.5em;
-		border-radius: 16px !important;
 		resize: none;
-		padding: 16px 16px 48px;
-		box-shadow: 0 10px 24px 0 #00000010;
-		background-color: var(--color--background--light-3);
+		background-color: transparent !important;
+		border: none !important;
+		padding: 0 !important;
 	}
 }
 
-/* Right-side actions */
+.footer {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--spacing--sm);
+}
+
 .actions {
-	position: absolute;
-	right: 0;
-	bottom: 0;
-	padding: var(--spacing--sm);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
@@ -242,6 +318,14 @@ defineExpose({
 	& button path {
 		stroke-width: 2.5;
 	}
+}
+
+.attachments {
+	flex-grow: 1;
+	flex-shrink: 1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
 }
 
 .recording {

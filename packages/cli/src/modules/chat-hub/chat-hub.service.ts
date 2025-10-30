@@ -37,6 +37,7 @@ import {
 	IRunExecutionData,
 	INodeParameters,
 	INode,
+	type IBinaryData,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -53,17 +54,18 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService, CredentialWithProjectId } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import type {
-	HumanMessagePayload,
-	RegenerateMessagePayload,
-	EditMessagePayload,
-	ModelWithCredentials,
+import {
+	type HumanMessagePayload,
+	type RegenerateMessagePayload,
+	type EditMessagePayload,
+	type ModelWithCredentials,
+	validChatTriggerParamsShape,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
+import type { ChatHubWorkflowService } from './chat-hub-workflow.service';
 
 @Service()
 export class ChatHubService {
@@ -185,6 +187,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				allowFileUploads: true,
 			})),
 		};
 	}
@@ -212,6 +215,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				allowFileUploads: true,
 			})),
 		};
 	}
@@ -277,6 +281,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				allowFileUploads: true,
 			})),
 		};
 	}
@@ -300,30 +305,25 @@ export class ChatHubService {
 						return [];
 					}
 
-					if (chatTrigger.parameters.availableInChat !== true) {
+					const chatTriggerParams = validChatTriggerParamsShape.safeParse(
+						chatTrigger.parameters,
+					).data;
+
+					if (!chatTriggerParams) {
 						return [];
 					}
 
-					const name =
-						typeof chatTrigger.parameters.agentName === 'string' &&
-						chatTrigger.parameters.agentName.length > 0
-							? chatTrigger.parameters.agentName
-							: workflow.name;
-
 					return [
 						{
-							name: name ?? 'Unknown Agent',
-							description:
-								typeof chatTrigger.parameters.agentDescription === 'string' &&
-								chatTrigger.parameters.agentDescription.length > 0
-									? chatTrigger.parameters.agentDescription
-									: null,
+							name: chatTriggerParams.agentName ?? workflow.name ?? 'Unknown Agent',
+							description: chatTriggerParams.agentDescription ?? null,
 							model: {
 								provider: 'n8n',
 								workflowId: workflow.id,
 							},
 							createdAt: workflow.createdAt ? workflow.createdAt.toISOString() : null,
 							updatedAt: workflow.updatedAt ? workflow.updatedAt.toISOString() : null,
+							allowFileUploads: chatTriggerParams.options?.allowFileUploads ?? false,
 						},
 					];
 				}),
@@ -375,7 +375,8 @@ export class ChatHubService {
 	}
 
 	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
-		const { sessionId, messageId, message, model, credentials, previousMessageId } = payload;
+		const { sessionId, messageId, message, model, credentials, previousMessageId, attachments } =
+			payload;
 		const { provider } = model;
 
 		const selectedModel = this.getModelWithCredentials(model, credentials);
@@ -397,7 +398,13 @@ export class ChatHubService {
 				);
 
 				if (provider === 'n8n') {
-					return await this.prepareCustomAgentWorkflow(user, sessionId, model.workflowId, message);
+					return await this.prepareCustomAgentWorkflow(
+						user,
+						sessionId,
+						model.workflowId,
+						message,
+						attachments,
+					);
 				}
 
 				if (provider === 'custom-agent') {
@@ -407,6 +414,7 @@ export class ChatHubService {
 						sessionId,
 						history,
 						message,
+						attachments,
 						trx,
 					);
 				}
@@ -419,6 +427,7 @@ export class ChatHubService {
 					history,
 					message,
 					undefined,
+					attachments,
 					trx,
 				);
 			},
@@ -474,7 +483,11 @@ export class ChatHubService {
 				const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
 
 				await this.saveHumanMessage(
-					payload,
+					{
+						...payload,
+						// TODO: should we allow to update attachments as well when editing?
+						attachments: messageToEdit.attachments ?? [],
+					},
 					user,
 					messageToEdit.previousMessageId,
 					selectedModel,
@@ -483,7 +496,13 @@ export class ChatHubService {
 				);
 
 				if (provider === 'n8n') {
-					return await this.prepareCustomAgentWorkflow(user, sessionId, model.workflowId, message);
+					return await this.prepareCustomAgentWorkflow(
+						user,
+						sessionId,
+						model.workflowId,
+						message,
+						messageToEdit.attachments ?? [],
+					);
 				}
 
 				if (provider === 'custom-agent') {
@@ -493,6 +512,7 @@ export class ChatHubService {
 						sessionId,
 						history,
 						message,
+						messageToEdit.attachments ?? [],
 						trx,
 					);
 				}
@@ -505,6 +525,7 @@ export class ChatHubService {
 					history,
 					message,
 					undefined,
+					messageToEdit.attachments ?? [],
 					trx,
 				);
 			}
@@ -566,6 +587,7 @@ export class ChatHubService {
 			// If the message being retried is itself a retry, we want to point to the original message
 			const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
 			const message = lastHumanMessage ? lastHumanMessage.content : '';
+			const attachments = lastHumanMessage.attachments ?? [];
 
 			let workflow;
 			if (provider === 'n8n') {
@@ -574,6 +596,7 @@ export class ChatHubService {
 					sessionId,
 					model.workflowId,
 					message,
+					attachments,
 				);
 			} else if (provider === 'custom-agent') {
 				workflow = await this.prepareChatAgentWorkflow(
@@ -582,6 +605,7 @@ export class ChatHubService {
 					sessionId,
 					history,
 					message,
+					attachments,
 					trx,
 				);
 			} else {
@@ -593,6 +617,7 @@ export class ChatHubService {
 					history,
 					message,
 					undefined,
+					attachments,
 					trx,
 				);
 			}
@@ -625,6 +650,7 @@ export class ChatHubService {
 		history: ChatHubMessage[],
 		message: string,
 		systemMessage: string | undefined,
+		attachments: IBinaryData[],
 		trx: EntityManager,
 	) {
 		const credential = await this.chatHubCredentialsService.ensureCredentials(
@@ -640,6 +666,7 @@ export class ChatHubService {
 			credential.projectId,
 			history,
 			message,
+			attachments,
 			credentials,
 			model,
 			systemMessage,
@@ -653,6 +680,7 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		history: ChatHubMessage[],
 		message: string,
+		attachments: IBinaryData[],
 		trx: EntityManager,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id);
@@ -696,6 +724,7 @@ export class ChatHubService {
 			history,
 			message,
 			systemMessage,
+			attachments,
 			trx,
 		);
 	}
@@ -705,6 +734,7 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		workflowId: string,
 		message: string,
+		attachments: IBinaryData[],
 	) {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -743,13 +773,11 @@ export class ChatHubService {
 				data: {
 					main: [
 						[
-							{
-								json: {
-									sessionId,
-									action: 'sendMessage',
-									chatInput: message,
-								},
-							},
+							this.chatHubWorkflowService.createChatNodeExecutionData(
+								sessionId,
+								message,
+								attachments,
+							),
 						],
 					],
 				},
@@ -1268,7 +1296,7 @@ export class ChatHubService {
 	}
 
 	private async saveHumanMessage(
-		payload: HumanMessagePayload | EditMessagePayload,
+		payload: (HumanMessagePayload | EditMessagePayload) & { attachments: IBinaryData[] },
 		user: User,
 		previousMessageId: ChatMessageId | null,
 		selectedModel: ModelWithCredentials,
@@ -1286,6 +1314,7 @@ export class ChatHubService {
 				revisionOfMessageId,
 				...selectedModel,
 				name: user.firstName || 'User',
+				attachments: payload.attachments,
 			},
 			trx,
 		);
@@ -1488,6 +1517,8 @@ export class ChatHubService {
 			previousMessageId: message.previousMessageId,
 			retryOfMessageId: message.retryOfMessageId,
 			revisionOfMessageId: message.revisionOfMessageId,
+
+			attachments: message.attachments ?? [],
 		};
 	}
 

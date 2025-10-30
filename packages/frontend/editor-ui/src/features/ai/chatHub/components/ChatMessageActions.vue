@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import type { ChatHubMessageType, ChatMessageId } from '@n8n/api-types';
-import { N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
+import type { ChatMessageId } from '@n8n/api-types';
+import {
+	type ActionDropdownItem,
+	N8nActionDropdown,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-const i18n = useI18n();
+type MenuAction = 'open-execution';
 
-const { type, justCopied, messageId, alternatives, isSpeaking, isSpeechSynthesisAvailable } =
-	defineProps<{
-		type: ChatHubMessageType;
-		justCopied: boolean;
-		messageId: ChatMessageId;
-		alternatives: ChatMessageId[];
-		isSpeechSynthesisAvailable: boolean;
-		isSpeaking: boolean;
-	}>();
+const { justCopied, message, alternatives, isSpeaking, isSpeechSynthesisAvailable } = defineProps<{
+	justCopied: boolean;
+	message: ChatMessage;
+	alternatives: ChatMessageId[];
+	isSpeechSynthesisAvailable: boolean;
+	isSpeaking: boolean;
+}>();
 
 const emit = defineEmits<{
 	copy: [];
@@ -22,15 +27,22 @@ const emit = defineEmits<{
 	regenerate: [];
 	switchAlternative: [messageId: ChatMessageId];
 	readAloud: [];
+	openExecution: [];
 }>();
+
+const i18n = useI18n();
 
 const copyTooltip = computed(() => {
 	return justCopied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy');
 });
 
 const currentAlternativeIndex = computed(() => {
-	return alternatives.findIndex((id) => id === messageId);
+	return alternatives.findIndex((id) => id === message.id);
 });
+
+const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() =>
+	message.executionId ? [{ id: 'open-execution', label: 'Open execution' }] : [],
+);
 
 function handleCopy() {
 	emit('copy');
@@ -47,6 +59,13 @@ function handleRegenerate() {
 function handleReadAloud() {
 	emit('readAloud');
 }
+
+function handleSelectMenu(action: MenuAction) {
+	switch (action) {
+		case 'open-execution':
+			emit('openExecution');
+	}
+}
 </script>
 
 <template>
@@ -62,7 +81,7 @@ function handleReadAloud() {
 			<template #content>{{ copyTooltip }}</template>
 		</N8nTooltip>
 		<N8nTooltip
-			v-if="isSpeechSynthesisAvailable && type === 'ai'"
+			v-if="isSpeechSynthesisAvailable && message.type === 'ai'"
 			placement="bottom"
 			:show-after="300"
 		>
@@ -79,7 +98,7 @@ function handleReadAloud() {
 			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />
 			<template #content>Edit</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="type === 'ai'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="message.type === 'ai'" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="refresh-cw"
 				type="tertiary"
@@ -110,6 +129,17 @@ function handleReadAloud() {
 				@click="$emit('switchAlternative', alternatives[currentAlternativeIndex + 1])"
 			/>
 		</template>
+		<N8nActionDropdown
+			v-if="menuItems.length > 0"
+			:items="menuItems"
+			placement="bottom-start"
+			@select="handleSelectMenu"
+			@click.stop
+		>
+			<template #activator>
+				<N8nIconButton icon="ellipsis-vertical" type="tertiary" text />
+			</template>
+		</N8nActionDropdown>
 	</div>
 </template>
 

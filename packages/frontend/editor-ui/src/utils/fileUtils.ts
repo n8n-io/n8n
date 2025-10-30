@@ -1,7 +1,4 @@
-/**
- * Filename sanitization utilities
- * For handling cross-platform filename compatibility issues
- */
+import type { BinaryFileType, IBinaryData } from 'n8n-workflow';
 
 // Constants definition
 const INVALID_CHARS_REGEX = /[<>:"/\\|?*\u0000-\u001F\u007F-\u009F]/g;
@@ -87,3 +84,38 @@ export const sanitizeFilename = (
 
 	return baseName;
 };
+
+export async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
+	const reader = new FileReader();
+	return await new Promise((resolve, reject) => {
+		reader.onload = () => {
+			const binaryData: IBinaryData = {
+				data: (reader.result as string).split('base64,')?.[1] ?? '',
+				mimeType: file.type,
+				fileName: file.name,
+				fileSize: `${file.size} bytes`,
+				fileExtension: file.name.split('.').pop() ?? '',
+				fileType: file.type.split('/')[0] as BinaryFileType,
+			};
+			resolve(binaryData);
+		};
+		reader.onerror = () => {
+			reject(new Error('Failed to convert file to binary data'));
+		};
+		reader.readAsDataURL(file);
+	});
+}
+
+export function convertBinaryDataToFile(binaryData: IBinaryData): File {
+	const base64Data = binaryData.data;
+	const binaryString = atob(base64Data);
+	const bytes = new Uint8Array(binaryString.length);
+
+	for (let i = 0; i < binaryString.length; i++) {
+		bytes[i] = binaryString.charCodeAt(i);
+	}
+
+	return new File([bytes], binaryData.fileName ?? 'unnamed file', {
+		type: binaryData.mimeType,
+	});
+}
