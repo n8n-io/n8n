@@ -21,6 +21,7 @@ import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import {
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EnterpriseEditionFeature,
+	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
@@ -38,6 +39,7 @@ import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTempl
 import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import type {
 	BaseFilters,
 	FolderResource,
@@ -68,7 +70,7 @@ import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
 	trackTemplatesClick,
-} from '@/utils/experiments';
+} from '@/experiments/utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -145,6 +147,7 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
+const templatesDataQualityStore = useTemplatesDataQualityStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -918,6 +921,11 @@ const openTemplatesRepository = async () => {
 
 	if (templatesStore.hasCustomTemplatesHost) {
 		await router.push({ name: VIEWS.TEMPLATES });
+		return;
+	}
+
+	if (templatesDataQualityStore.isFeatureEnabled()) {
+		uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 		return;
 	}
 
@@ -1809,8 +1817,8 @@ const onNameSubmit = async (name: string) => {
 	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
-		ref="resourcesListLayout"
 		v-else
+		ref="resourcesListLayout"
 		v-model:filters="filters"
 		resource-key="workflows"
 		type="list-paginated"
