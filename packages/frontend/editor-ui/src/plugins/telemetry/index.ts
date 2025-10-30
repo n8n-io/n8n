@@ -62,7 +62,8 @@ export class Telemetry {
 		this.identify(instanceId, userId, versionCli, projectId);
 
 		this.flushPageEvents();
-		this.track('Session started', { session_id: rootStore.pushRef });
+
+		this.track('Session started', { session_id: rootStore.pushRef, instance_id: instanceId });
 	}
 
 	identify(instanceId: string, userId?: string, versionCli?: string, projectId?: string) {
