@@ -184,8 +184,8 @@ watch(
 		}
 
 		void insightsStore.charts.execute(0, {
-			startDate: startDate,
-			endDate: endDate,
+			startDate,
+			endDate,
 			projectId: selectedProject.value?.id,
 		});
 
