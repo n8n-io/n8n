@@ -203,22 +203,21 @@ export class McpOAuthService implements OAuthServerProvider {
 				return;
 			}
 
-			// User needs to consent - create pending authorization and redirect to consent screen
-			const sessionId = randomUUID();
-			await this.authorizationCodeRepository.save({
-				code: sessionId,
+			// User needs to consent - save OAuth state in a signed cookie and redirect to consent screen
+			const sessionPayload: OAuthSessionPayload = {
 				clientId: client.client_id,
-				userId: user.id,
 				redirectUri: params.redirectUri,
 				codeChallenge: params.codeChallenge,
-				codeChallengeMethod: 'S256',
 				state: params.state ?? null,
-				expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-				used: false,
+			};
+
+			// Sign the OAuth session data as a JWT
+			const sessionToken = this.jwtService.sign(sessionPayload, {
+				expiresIn: '10m',
 			});
 
-			// Set session cookie for consent flow
-			res.cookie('n8n-oauth-session', sessionId, {
+			// Set session cookie with the signed JWT
+			res.cookie('n8n-oauth-session', sessionToken, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === 'production',
 				sameSite: 'lax',
