@@ -2,21 +2,23 @@
 import { ref, computed } from 'vue';
 import ParameterInputList from './ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
-import { computed, ref } from 'vue';
 
-import type {
-	INodeParameters,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
+import {
+	deepCopy,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
 } from 'n8n-workflow';
+
+import get from 'lodash/get';
 
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
-import { getOptionParameterData } from './utils';
+import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
@@ -123,7 +125,42 @@ async function optionSelected(optionName: string) {
 	const option = options[0];
 	const name = `${props.path}.${option.name}`;
 
-	const parameterData = getOptionParameterData(name, option);
+	let parameterData;
+	if (
+		'typeOptions' in option &&
+		option.typeOptions !== undefined &&
+		option.typeOptions.multipleValues === true
+	) {
+		// Multiple values are allowed
+		let newValue;
+		if (option.type === 'fixedCollection') {
+			// The "fixedCollection" entries are different as they save values
+			// in an object and then underneath there is an array. So initialize
+			// them differently.
+			const retrievedObjectValue = get(props.nodeValues, [props.path, optionName], {});
+			newValue = retrievedObjectValue;
+		} else {
+			// Everything else saves them directly as an array.
+			const retrievedArrayValue = get(props.nodeValues, [props.path, optionName], []) as Array<
+				typeof option.default
+			>;
+			if (Array.isArray(retrievedArrayValue)) {
+				newValue = retrievedArrayValue;
+				newValue.push(deepCopy(option.default));
+			}
+		}
+		parameterData = {
+			name,
+			value: newValue,
+		};
+	} else {
+		// Add a new option
+		parameterData = {
+			name,
+			value: 'default' in option ? deepCopy(option.default) : null,
+		};
+	}
+
 	emit('valueChanged', parameterData);
 	selectedOption.value = undefined;
 }
