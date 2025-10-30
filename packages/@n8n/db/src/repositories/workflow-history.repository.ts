@@ -25,7 +25,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.where('w.versionId IS NOT NULL')
 			.getQuery();
 
-		return this.manager
+		return await this.manager
 			.createQueryBuilder()
 			.delete()
 			.from(WorkflowHistory)
