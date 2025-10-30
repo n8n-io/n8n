@@ -6,7 +6,7 @@ import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 
 import { License } from '@/license';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
 

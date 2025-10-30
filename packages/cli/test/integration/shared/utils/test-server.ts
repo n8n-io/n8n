@@ -260,7 +260,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
+						await import('@/workflows/workflow-history/workflow-history.controller');
 						break;
 
 					case 'binaryData':

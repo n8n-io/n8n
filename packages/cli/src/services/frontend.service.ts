@@ -33,7 +33,7 @@ import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
+} from '@/workflows/workflow-history/workflow-history-helper';
 
 import { UrlService } from './url.service';
 
