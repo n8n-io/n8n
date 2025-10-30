@@ -260,10 +260,7 @@ describe('WorkflowIndexService', () => {
 			await service.buildIndex();
 
 			// Verify findWorkflowsNeedingIndexing was called with correct pagination
-			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith({
-				take: 100,
-				skip: 0,
-			});
+			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith(100); // default batch size
 
 			// Verify updateDependenciesForWorkflow was called for each workflow
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledTimes(
@@ -311,18 +308,18 @@ describe('WorkflowIndexService', () => {
 
 			// Verify findWorkflowsNeedingIndexing was called 3 times with correct pagination
 			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledTimes(3);
-			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenNthCalledWith(1, {
-				take: batchSize,
-				skip: 0,
-			});
-			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenNthCalledWith(2, {
-				take: batchSize,
-				skip: 2,
-			});
-			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenNthCalledWith(3, {
-				take: batchSize,
-				skip: 4,
-			});
+			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenNthCalledWith(
+				1,
+				batchSize,
+			);
+			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenNthCalledWith(
+				2,
+				batchSize,
+			);
+			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenNthCalledWith(
+				3,
+				batchSize,
+			);
 
 			// Verify all 5 workflows were processed
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledTimes(
