@@ -122,6 +122,25 @@ const range = shallowRef<{
 	end: maxDate.copy(),
 });
 
+/**
+ * Converts the range to a UTC date range with the current time
+ */
+const getFilteredRange = () => {
+	const endRange = range.value.end?.toDate(getLocalTimeZone());
+	const startRange = range.value.start?.toDate(getLocalTimeZone());
+
+	const startDate = new Date();
+	startDate.setFullYear(startRange?.getFullYear(), startRange?.getMonth(), startRange?.getDate());
+
+	const endDate = new Date();
+	endDate.setFullYear(endRange?.getFullYear(), endRange?.getMonth(), endRange?.getDate());
+
+	return {
+		startDate: startDate.toISOString() as unknown as Date,
+		endDate: endDate.toISOString() as unknown as Date,
+	};
+};
+
 const fetchPaginatedTableData = ({
 	page = 0,
 	itemsPerPage = 25,
@@ -138,9 +157,7 @@ const fetchPaginatedTableData = ({
 
 	const sortKey = sortBy.length ? transformFilter(sortBy[0]) : undefined;
 
-	const startDate = range.value.start?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
-	const endDate = range.value.end?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
-
+	const { startDate, endDate } = getFilteredRange();
 	void insightsStore.table.execute(0, {
 		skip,
 		take,
@@ -156,10 +173,7 @@ watch(
 	() => {
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
-		const startDate = range.value.start
-			?.toDate(getLocalTimeZone())
-			.toISOString() as unknown as Date;
-		const endDate = range.value.end?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
+		const { startDate, endDate } = getFilteredRange();
 
 		if (insightsStore.isSummaryEnabled) {
 			void insightsStore.summary.execute(0, {
@@ -170,10 +184,11 @@ watch(
 		}
 
 		void insightsStore.charts.execute(0, {
-			startDate,
-			endDate,
+			startDate: startDate,
+			endDate: endDate,
 			projectId: selectedProject.value?.id,
 		});
+
 		if (insightsStore.isDashboardEnabled) {
 			fetchPaginatedTableData({
 				sortBy: sortTableBy.value,
