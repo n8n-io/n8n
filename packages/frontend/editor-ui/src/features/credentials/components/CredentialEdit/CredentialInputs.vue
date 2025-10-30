@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type {
 	ICredentialDataDecryptedObject,
-	INodeParameters,
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
@@ -43,12 +42,11 @@ function valueChanged(parameterData: IUpdateInformation) {
 		>
 			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
 			<N8nNotice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
-			<!-- FIXME: type cast -->
 			<ParameterInputExpanded
 				v-else
 				:parameter="parameter"
 				:value="credentialDataValues[parameter.name]"
-				:values="credentialDataValues as Record<string, INodeParameters[]>"
+				:node-values="credentialDataValues"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
 				:label="{ size: 'medium' }"

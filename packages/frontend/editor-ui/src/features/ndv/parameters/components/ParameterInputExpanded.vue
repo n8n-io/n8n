@@ -5,12 +5,13 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isValueExpression as isValueExpressionUtil } from '@/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	INodeParameterResourceLocator,
-	INodeParameters,
-	INodeProperties,
-	IParameterLabel,
-	NodeParameterValueType,
+import {
+	isINodePropertyCollection,
+	type INodeParameterResourceLocator,
+	type INodeParameters,
+	type INodeProperties,
+	type IParameterLabel,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
@@ -27,8 +28,7 @@ const LazyFixedCollectionParameter = defineAsyncComponent(
 type Props = {
 	parameter: INodeProperties;
 	value: NodeParameterValueType;
-	// TODO: better name and maybe type
-	values?: Record<string, INodeParameters[]>;
+	nodeValues?: INodeParameters;
 	showValidationWarnings?: boolean;
 	documentationUrl?: string;
 	eventSource?: string;
@@ -37,7 +37,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
-	values: () => ({}),
+	nodeValues: () => ({}),
 	documentationUrl: undefined,
 	eventSource: undefined,
 });
@@ -57,6 +57,31 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { activeCredentialType } = storeToRefs(uiStore);
+
+const isFixedCollectionType = computed(() => {
+	return props.parameter.type === 'fixedCollection';
+});
+
+const hiddenIssuesInputs = computed(() => {
+	if (!isFixedCollectionType.value) {
+		return [];
+	}
+
+	const option = props.parameter.options?.[0];
+	if (!option || !isINodePropertyCollection(option)) {
+		return [];
+	}
+
+	return option.values.map((value) => value.name);
+});
+
+const fixedCollectionValues = computed(() => {
+	if (!isFixedCollectionType.value || !props.value) {
+		return {};
+	}
+
+	return props.value as Record<string, INodeParameters[]>;
+});
 
 const showRequiredErrors = computed(() => {
 	if (!props.parameter.required) {
@@ -93,10 +118,6 @@ const isValueExpression = computed(() => {
 		props.parameter,
 		props.value as string | INodeParameterResourceLocator,
 	);
-});
-
-const isFixedCollectionType = computed(() => {
-	return props.parameter.type === 'fixedCollection';
 });
 
 function onFocus() {
@@ -199,9 +220,10 @@ function onDocumentationUrlClick(): void {
 		<div v-if="isFixedCollectionType" class="fixed-collection-wrapper">
 			<LazyFixedCollectionParameter
 				:parameter="parameter"
-				:values="value as Record<string, INodeParameters[]>"
-				:node-values="values"
+				:values="fixedCollectionValues"
+				:node-values="nodeValues"
 				:path="parameter.name"
+				:hidden-issues-inputs="hiddenIssuesInputs"
 				@value-changed="valueChanged"
 			/>
 		</div>
