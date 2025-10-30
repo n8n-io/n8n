@@ -747,7 +747,7 @@ onMounted(async () => {
 }
 
 .enableFeatureContainer {
-	margin-bottom: var(--spacing-1xl);
+	margin-bottom: var(--spacing--xl);
 
 	> span {
 		font-size: var(--font-size--sm);

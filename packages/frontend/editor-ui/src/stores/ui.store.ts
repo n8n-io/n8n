@@ -411,7 +411,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const headerHeight = computed(() => {
 		const style = getComputedStyle(document.body);
-		return Number(style.getPropertyValue('--header-height'));
+		return Number(style.getPropertyValue('--header--height'));
 	});
 
 	const isAnyModalOpen = computed(() => {

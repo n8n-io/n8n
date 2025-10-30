@@ -189,7 +189,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	}
 
 	if (
-		(workflowPermissions.value.delete === true && !props.readOnly && !props.isArchived) ||
+		(workflowPermissions.value.update === true && !props.readOnly && !props.isArchived) ||
 		isNewWorkflow.value
 	) {
 		actions.unshift({

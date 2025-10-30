@@ -129,7 +129,7 @@ async function downloadBinaryData(index: number, key: string | number) {
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding: 0 var(--ndv-spacing) var(--spacing--3xl) var(--ndv-spacing);
+	padding: 0 var(--ndv--spacing) var(--spacing--3xl) var(--ndv--spacing);
 	right: 0;
 	overflow-y: auto;
 	line-height: var(--line-height--xl);
@@ -165,11 +165,11 @@ async function downloadBinaryData(index: number, key: string | number) {
 	width: 300px;
 	overflow: hidden;
 	background-color: var(--color--foreground--tint-2);
-	margin-right: var(--ndv-spacing);
-	margin-bottom: var(--ndv-spacing);
+	margin-right: var(--ndv--spacing);
+	margin-bottom: var(--ndv--spacing);
 	border-radius: var(--radius);
 	border: var(--border);
-	padding: var(--ndv-spacing);
+	padding: var(--ndv--spacing);
 }
 
 .binaryHeader {
