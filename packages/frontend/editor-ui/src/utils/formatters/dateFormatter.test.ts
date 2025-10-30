@@ -73,3 +73,33 @@ describe('formatTimeAgo', () => {
 		expect(formatTimeAgo(exactlyThirtyOneDaysAgo)).toBe('June 14, 2023');
 	});
 });
+
+import { formatDateForUI } from './dateFormatter';
+
+describe('formatDateForUI', () => {
+	test('returns empty strings for null/undefined/empty input', () => {
+		expect(formatDateForUI(null as any)).toEqual({ date: '', time: '' });
+		expect(formatDateForUI(undefined as any)).toEqual({ date: '', time: '' });
+		expect(formatDateForUI('' as any)).toEqual({ date: '', time: '' });
+	});
+
+	test('returns Invalid Date for unparsable input', () => {
+		const res = formatDateForUI('not-a-date');
+		expect(res.date).toBe('Invalid Date');
+		expect(res.time).toBe('');
+	});
+
+	test('returns non-empty date and time for a valid ISO string (no timezone param)', () => {
+		const res = formatDateForUI('2025-10-02T14:00:00Z');
+		expect(typeof res).toBe('object');
+		expect(res.date.length).toBeGreaterThan(0);
+		expect(res.time.length).toBeGreaterThan(0);
+	});
+
+	test('when timeZone provided, returns time that looks like a time (contains a colon)', () => {
+		const res = formatDateForUI('2025-10-02T14:00:00Z', 'UTC');
+		expect(res.date.length).toBeGreaterThan(0);
+		expect(res.time.length).toBeGreaterThan(0);
+		expect(res.time.includes(':')).toBe(true);
+	});
+});
