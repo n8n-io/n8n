@@ -295,7 +295,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					: undefined, // if it's a full execution we don't want to send any run data
 				startNodes,
 				triggerToStartFrom,
-				sessionId: options.sessionId,
+				chatSessionId: options.sessionId,
 			};
 
 			if ('destinationNode' in options) {
