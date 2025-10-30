@@ -51,6 +51,12 @@ export class WorkflowIndexService {
 			}
 		}
 
+		if (processedCount >= LOOP_LIMIT) {
+			const message = `Stopping workflow indexing because we hit the limit of ${LOOP_LIMIT} workflows. There's probably a bug causing an infinite loop.`;
+			this.logger.warn(message);
+			this.errorReporter.warn(new Error(message));
+		}
+
 		this.logger.info(
 			`Finished building workflow dependency index. Processed ${processedCount} workflows.`,
 		);
