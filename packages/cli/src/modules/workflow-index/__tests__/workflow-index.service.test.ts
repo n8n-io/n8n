@@ -29,6 +29,14 @@ describe('WorkflowIndexService', () => {
 		service = new WorkflowIndexService(mockRepository, mockLogger, mockErrorReporter);
 	});
 
+	const createNode = (overrides: Partial<INode> & { id: string; type: string }): INode => ({
+		name: overrides.id,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+		...overrides,
+	});
+
 	const createWorkflow = (nodes: INode[]): IWorkflowBase => ({
 		id: 'workflow-123',
 		name: 'Test Workflow',
@@ -45,42 +53,29 @@ describe('WorkflowIndexService', () => {
 		mockRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 		const workflow = createWorkflow([
-			{
+			createNode({
 				id: 'node-1',
-				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
-				typeVersion: 1,
-				position: [0, 0],
 				parameters: { path: 'webhook-1' },
-			},
-			{
+			}),
+			createNode({
 				id: 'node-2',
-				name: 'HTTP Request',
 				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [100, 0],
 				credentials: {
 					httpAuth: { id: 'cred-1', name: 'Auth 1' },
 					apiKey: { id: 'cred-2', name: 'Auth 2' },
 				},
-				parameters: {},
-			},
-			{
+			}),
+			createNode({
 				id: 'node-3',
-				name: 'Execute Workflow (string)',
 				type: 'n8n-nodes-base.executeWorkflow',
-				typeVersion: 1,
-				position: [200, 0],
 				parameters: { workflowId: 'sub-workflow-1' },
-			},
-			{
+			}),
+			createNode({
 				id: 'node-4',
-				name: 'Execute Workflow (object)',
 				type: 'n8n-nodes-base.executeWorkflow',
-				typeVersion: 1,
-				position: [300, 0],
 				parameters: { workflowId: { value: 'sub-workflow-2' } },
-			},
+			}),
 		]);
 
 		await service.updateIndexFor(workflow);
@@ -148,14 +143,10 @@ describe('WorkflowIndexService', () => {
 		mockRepository.updateDependenciesForWorkflow.mockRejectedValue(error);
 
 		const workflow = createWorkflow([
-			{
+			createNode({
 				id: 'node-1',
-				name: 'Node',
 				type: 'n8n-nodes-base.start',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			},
+			}),
 		]);
 
 		await service.updateIndexFor(workflow);
@@ -164,5 +155,40 @@ describe('WorkflowIndexService', () => {
 			'Failed to update workflow dependency index for workflow workflow-123: Database error',
 		);
 		expect(mockErrorReporter.error).toHaveBeenCalledWith(error);
+	});
+
+	it('should not create workflowCall dependencies for parameter, localFile, and url sources', async () => {
+		mockRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+		const workflow = createWorkflow([
+			createNode({
+				id: 'node-1',
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: { source: 'parameter' },
+			}),
+			createNode({
+				id: 'node-2',
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: { source: 'localFile' },
+			}),
+			createNode({
+				id: 'node-3',
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: { source: 'url' },
+			}),
+		]);
+
+		await service.updateIndexFor(workflow);
+
+		expect(mockRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+			'workflow-123',
+			expect.objectContaining({
+				dependencies: expect.not.arrayContaining([
+					expect.objectContaining({
+						dependencyType: 'workflowCall',
+					}),
+				]),
+			}),
+		);
 	});
 });
