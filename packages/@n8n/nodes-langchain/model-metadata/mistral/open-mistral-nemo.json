@@ -1,0 +1,26 @@
+{
+	"id": "open-mistral-nemo",
+	"name": "Mistral NeMo",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.15,
+		"completionPerMilTokenUsd": 0.15
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["multilingual", "general-purpose", "cost-effective"],
+	"description": "12B parameter model built with NVIDIA offering state-of-the-art multilingual capabilities. Strong in 10+ languages including English, French, German, Spanish, Chinese, Japanese, Korean, and Arabic.",
+	"trainingCutoff": "2024-07",
+	"notes": "Released under Apache 2.0 license. Trained with quantisation awareness for FP8 inference. 50% price reduction in 2024. Best multilingual open-source model in its class."
+}

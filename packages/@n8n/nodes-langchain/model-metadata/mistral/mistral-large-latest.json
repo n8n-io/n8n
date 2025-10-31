@@ -1,0 +1,26 @@
+{
+	"id": "mistral-large-latest",
+	"name": "Mistral Large",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 6.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling", "enterprise"],
+	"description": "Mistral's flagship model excelling at complex reasoning, coding, and enterprise tasks. Top-tier performance with 123B parameters.",
+	"trainingCutoff": "2024-11",
+	"notes": "Best for high-complexity tasks requiring advanced reasoning. Supports function calling and structured outputs. Version 2.1 released November 2024."
+}

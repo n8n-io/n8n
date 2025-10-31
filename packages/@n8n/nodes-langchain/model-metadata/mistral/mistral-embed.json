@@ -1,0 +1,26 @@
+{
+	"id": "mistral-embed",
+	"name": "Mistral Embed",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.1
+	},
+	"contextLength": 8192,
+	"maxOutputTokens": 0,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["embedding"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["embeddings", "semantic-search", "retrieval"],
+	"description": "State-of-the-art semantic embeddings model optimized for generating high-quality text representations.",
+	"trainingCutoff": "2023-12",
+	"notes": "Released December 2023. Specialized embedding model for semantic search and retrieval-augmented generation (RAG) applications."
+}

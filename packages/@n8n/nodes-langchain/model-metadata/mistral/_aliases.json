@@ -1,0 +1,10 @@
+{
+	"mistral-large": "mistral-large-latest",
+	"mistral-medium": "mistral-medium-latest",
+	"mistral-small": "mistral-small-latest",
+	"codestral": "codestral-latest",
+	"magistral-medium": "magistral-medium-latest",
+	"magistral-small": "magistral-small-latest",
+	"mistral-nemo": "open-mistral-nemo",
+	"pixtral-large": "pixtral-large-latest"
+}

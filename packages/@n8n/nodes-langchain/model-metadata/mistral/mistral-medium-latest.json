@@ -1,0 +1,26 @@
+{
+	"id": "mistral-medium-latest",
+	"name": "Mistral Medium 3",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.4,
+		"completionPerMilTokenUsd": 2.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["general-purpose", "multimodal", "function-calling", "cost-effective"],
+	"description": "Frontier-class multimodal model with excellent balance between performance and cost. Supports document Q&A and chat completions.",
+	"trainingCutoff": "2025-08",
+	"notes": "Released August 2025. Ideal for applications requiring multimodal understanding with strong performance-to-cost ratio."
+}

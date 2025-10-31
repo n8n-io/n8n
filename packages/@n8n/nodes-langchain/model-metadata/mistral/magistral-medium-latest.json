@@ -1,0 +1,26 @@
+{
+	"id": "magistral-medium-latest",
+	"name": "Magistral Medium",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 5.0
+	},
+	"contextLength": 40000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"],
+	"description": "Enterprise reasoning model with transparent step-by-step thinking. Excels at multi-step logic and complex problem-solving.",
+	"trainingCutoff": "2025-09",
+	"notes": "Released September 2025. Uses reinforcement learning for chain-of-thought reasoning. Recommended max context: 40K tokens for optimal performance."
+}

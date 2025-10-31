@@ -1,0 +1,26 @@
+{
+	"id": "codestral-latest",
+	"name": "Codestral",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.3,
+		"completionPerMilTokenUsd": 0.9
+	},
+	"contextLength": 256000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "code-generation", "fill-in-middle"],
+	"description": "Cutting-edge language model specialized for code generation across 80+ programming languages. Supports Fill-In-the-Middle (FIM) completion.",
+	"trainingCutoff": "2025-07",
+	"notes": "Released July 2025. Optimized for code generation, multi-file editing, and codebase exploration. Extended 256K context window ideal for large codebases."
+}
