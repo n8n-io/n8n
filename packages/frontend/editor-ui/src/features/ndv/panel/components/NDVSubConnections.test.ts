@@ -61,13 +61,13 @@ const getNodeType = vi.fn();
 let mockWorkflowData = workflow;
 let mockGetNodeByName = vi.fn(() => node);
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
 	})),
 }));
 
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
 		workflowObject: new Workflow(mockWorkflowData),
 		getNodeByName: mockGetNodeByName,

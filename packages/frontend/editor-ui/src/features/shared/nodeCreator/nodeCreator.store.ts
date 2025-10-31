@@ -7,7 +7,7 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
-} from '@/constants';
+} from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type {
 	NodeFilterType,
@@ -27,23 +27,23 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, isCommunityPackageName } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useViewStacks } from './composables/useViewStacks';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	createCanvasConnectionHandleString,
 	parseCanvasConnectionHandleString,
 } from '@/features/workflows/canvas/canvas.utils';
 import type { Connection } from '@vue-flow/core';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
-import { isVueFlowConnection } from '@/utils/typeGuards';
-import type { PartialBy } from '@/utils/typeHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
-import type { TelemetryNdvType } from '@/types/telemetry';
-import { getNodeIconSource } from '@/utils/nodeIcon';
+import { isVueFlowConnection } from '@/app/utils/typeGuards';
+import type { PartialBy } from '@/app/utils/typeHelpers';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import type { TelemetryNdvType } from '@/app/types/telemetry';
+import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import get from 'lodash/get';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {

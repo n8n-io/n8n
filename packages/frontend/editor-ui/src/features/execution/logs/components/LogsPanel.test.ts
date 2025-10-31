@@ -5,7 +5,7 @@ import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createRouter, createWebHistory } from 'vue-router';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed, h, nextTick, ref } from 'vue';
 import {
 	aiAgentNode,
@@ -16,24 +16,24 @@ import {
 	chatTriggerNode,
 	nodeTypes,
 } from '../__test__/data';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/constants';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
-import { useLogsStore } from '@/stores/logs.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useLogsStore } from '@/app/stores/logs.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { LOGS_PANEL_STATE } from '../logs.constants';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { userEvent } from '@testing-library/user-event';
 import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import { useToast } from '@/composables/useToast';
-import { useWorkflowState, type WorkflowState } from '@/composables/useWorkflowState';
+import { useToast } from '@/app/composables/useToast';
+import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 
-vi.mock('@/composables/useToast', () => {
+vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -47,7 +47,7 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/stores/pushConnection.store', () => ({
+vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
 	}),

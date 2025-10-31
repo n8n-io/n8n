@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed, ref, watch } from 'vue';
 import { NodeHelpers } from 'n8n-workflow';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import NodeIcon from '@/components/NodeIcon.vue';
-import TitledList from '@/components/TitledList.vue';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import TitledList from '@/app/components/TitledList.vue';
 import type {
 	NodeConnectionType,
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	Workflow,
 } from 'n8n-workflow';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';

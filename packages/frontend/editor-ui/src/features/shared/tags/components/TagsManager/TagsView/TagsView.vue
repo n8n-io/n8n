@@ -5,7 +5,7 @@ import type { ITagRow } from '../../../tags.types';
 import { useI18n } from '@n8n/i18n';
 import TagsTableHeader from './TagsTableHeader.vue';
 import TagsTable from './TagsTable.vue';
-import { useRBACStore } from '@/stores/rbac.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import type { BaseTextKey } from '@n8n/i18n';
 
 defineOptions({ name: 'TagsView' });

@@ -50,9 +50,9 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
-} from '@/constants';
+} from '@/app/constants';
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import type { BulkCommand, Undoable } from '@/models/history';
+import type { BulkCommand, Undoable } from '@/app/models/history';
 
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';

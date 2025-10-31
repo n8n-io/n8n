@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';

@@ -7,7 +7,7 @@ interface WorkflowNodeIssue {
 	value: string | string[];
 }
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { N8nIcon } from '@n8n/design-system';
 
 interface Props {

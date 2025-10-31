@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import InlineExpressionEditorOutput from '../InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { useExpressionEditor } from '../../composables/useExpressionEditor';
-import { codeNodeEditorEventBus } from '@/event-bus';
+import { codeNodeEditorEventBus } from '@/app/event-bus';
 import { n8nCompletionSources } from '../../plugins/codemirror/completions/addCompletions';
 import { dropInExpressionEditor, mappingDropCursor } from '../../plugins/codemirror/dragAndDrop';
 import { editorKeymap } from '../../plugins/codemirror/keymap';

@@ -5,7 +5,7 @@ import { setActivePinia } from 'pinia';
 import { n8nLang } from '@/features/shared/editors/plugins/codemirror/n8nLang';
 import { hoverTooltipSource, infoBoxTooltips } from './InfoBoxTooltip';
 import * as utils from '@/features/shared/editors/plugins/codemirror/completions/utils';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { completionStatus } from '@codemirror/autocomplete';
 
 vi.mock('@codemirror/autocomplete', async (importOriginal) => {

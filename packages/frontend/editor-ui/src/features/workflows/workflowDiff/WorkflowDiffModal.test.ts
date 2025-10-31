@@ -4,9 +4,9 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { reactive, ref } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
@@ -24,7 +24,7 @@ const mockRouterBack = vi.fn();
 const mockRouterReplace = vi.fn();
 const mockShowError = vi.fn();
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: mockShowError,
 	})),

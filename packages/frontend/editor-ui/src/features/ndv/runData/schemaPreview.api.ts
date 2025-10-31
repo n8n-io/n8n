@@ -1,7 +1,7 @@
 import { request } from '@n8n/rest-api-client';
 import type { JSONSchema7 } from 'json-schema';
 import type { NodeParameterValueType } from 'n8n-workflow';
-import { isEmpty } from '@/utils/typesUtils';
+import { isEmpty } from '@/app/utils/typesUtils';
 
 export type GetSchemaPreviewOptions = {
 	nodeType: string;

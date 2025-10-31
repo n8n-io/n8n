@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 const pageRedirectionHelper = usePageRedirectionHelper();

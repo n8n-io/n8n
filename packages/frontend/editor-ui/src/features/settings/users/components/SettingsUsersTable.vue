@@ -8,7 +8,7 @@ import SettingsUsersRoleCell from './SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
 import SettingsUsersActionsCell from './SettingsUsersActionsCell.vue';
 import SettingsUsersLastActiveCell from './SettingsUsersLastActiveCell.vue';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
 import {

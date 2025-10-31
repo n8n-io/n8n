@@ -3,7 +3,7 @@ import {
 	REQUEST_NODE_FORM_URL,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
-} from '@/constants';
+} from '@/app/constants';
 import type { NodeFilterType } from '@/Interface';
 
 import NoResultsIcon from './NoResultsIcon.vue';

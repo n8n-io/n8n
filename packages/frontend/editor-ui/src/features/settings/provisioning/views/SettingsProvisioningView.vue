@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { onMounted, ref, computed, reactive } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useToast } from '@/composables/useToast';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useToast } from '@/app/composables/useToast';
 import { useProvisioningStore } from '../provisioning.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import {
 	N8nHeading,
 	N8nText,
