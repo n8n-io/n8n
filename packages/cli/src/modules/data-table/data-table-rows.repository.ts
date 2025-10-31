@@ -668,7 +668,7 @@ export class DataTableRowsRepository {
 		for (const col of allColumnNames) {
 			const colRef = `${tableRefQuoted}.${quoteIdentifier(col, dbType)}`;
 			if (isSqlite) {
-				conditions.push(`UPPER(CAST(${colRef} AS TEXT)) GLOB UPPER(:search)`);
+				conditions.push(`UPPER(CAST(${colRef} AS TEXT)) GLOB UPPER(:search) ESCAPE '\\'`);
 				continue;
 			}
 
@@ -678,7 +678,7 @@ export class DataTableRowsRepository {
 			}
 
 			if (isPg) {
-				conditions.push(`CAST(${colRef} AS TEXT) ILIKE :search ESCAPE '\'`);
+				conditions.push(`CAST(${colRef} AS TEXT) ILIKE :search ESCAPE '\\'`);
 				continue;
 			}
 
