@@ -7,15 +7,7 @@ import { useProvisioningStore } from '../provisioning.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
-import {
-	N8nHeading,
-	N8nText,
-	N8nSpinner,
-	N8nInput,
-	N8nButton,
-	N8nSelect,
-	N8nOption,
-} from '@n8n/design-system';
+import { N8nHeading, N8nText, N8nSpinner, N8nInput, N8nButton } from '@n8n/design-system';
 import { type ProvisioningConfig } from '@n8n/rest-api-client';
 
 const i18n = useI18n();
