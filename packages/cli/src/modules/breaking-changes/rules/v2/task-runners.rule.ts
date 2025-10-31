@@ -2,11 +2,11 @@ import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class TaskRunnersRule implements IBreakingChangeInstanceRule {
@@ -14,19 +14,19 @@ export class TaskRunnersRule implements IBreakingChangeInstanceRule {
 
 	id: string = 'task-runners-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Enable Task Runners by default',
 			description:
 				'Task Runners are now enabled by default, changing execution model and resource usage',
 			category: BreakingChangeCategory.infrastructure,
-			severity: BreakingChangeSeverity.medium,
+			severity: 'medium',
 		};
 	}
 
-	async detect(): Promise<InstanceDetectionResult> {
-		const result: InstanceDetectionResult = {
+	async detect(): Promise<InstanceDetectionReport> {
+		const result: InstanceDetectionReport = {
 			isAffected: false,
 			instanceIssues: [],
 			recommendations: [],
@@ -40,7 +40,7 @@ export class TaskRunnersRule implements IBreakingChangeInstanceRule {
 				title: 'Task Runners will be enabled by default',
 				description:
 					'Task Runners change the execution model to use separate processes for workflow execution. This may affect memory footprint and execution latency. N8N_RUNNERS_MAX_CONCURRENCY will default to 5 (previously 10).',
-				level: IssueLevel.warning,
+				level: 'warning',
 			});
 
 			result.recommendations.push({
@@ -58,7 +58,6 @@ export class TaskRunnersRule implements IBreakingChangeInstanceRule {
 			result.recommendations.push({
 				action: 'Consider external task runners',
 				description: 'For better scalability, consider migrating to external task runner mode',
-				documentationUrl: 'https://docs.n8n.io/hosting/configuration/task-runners/',
 			});
 		}
 

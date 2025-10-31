@@ -2,11 +2,11 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRule {
@@ -14,19 +14,19 @@ export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRu
 
 	id: string = 'queue-worker-max-stalled-count-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Remove QUEUE_WORKER_MAX_STALLED_COUNT',
 			description:
 				'The QUEUE_WORKER_MAX_STALLED_COUNT environment variable has been removed and will be ignored',
 			category: BreakingChangeCategory.environment,
-			severity: BreakingChangeSeverity.low,
+			severity: 'low',
 		};
 	}
 
-	async detect(): Promise<InstanceDetectionResult> {
-		const result: InstanceDetectionResult = {
+	async detect(): Promise<InstanceDetectionReport> {
+		const result: InstanceDetectionReport = {
 			isAffected: false,
 			instanceIssues: [],
 			recommendations: [],
@@ -42,7 +42,7 @@ export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRu
 			title: 'QUEUE_WORKER_MAX_STALLED_COUNT is deprecated',
 			description:
 				'The QUEUE_WORKER_MAX_STALLED_COUNT environment variable has been removed. Any customization will be ignored in v2.',
-			level: IssueLevel.warning,
+			level: 'warning',
 		});
 
 		result.recommendations.push({

@@ -26,7 +26,7 @@ describe('FileAccessRule', () => {
 
 	describe('getRecommendations()', () => {
 		it('should return recommendations', async () => {
-			const recommendations = await rule.getRecommendations();
+			const recommendations = await rule.getRecommendations([]);
 
 			expect(recommendations).toHaveLength(1);
 			expect(recommendations[0]).toMatchObject({

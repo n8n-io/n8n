@@ -1,35 +1,35 @@
 import { Service } from '@n8n/di';
 
 import type {
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class TunnelOptionRule implements IBreakingChangeInstanceRule {
 	id: string = 'tunnel-option-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Remove n8n --tunnel option',
 			description: 'The --tunnel CLI option has been removed and will be ignored',
 			category: BreakingChangeCategory.instance,
-			severity: BreakingChangeSeverity.low,
+			severity: 'low',
 		};
 	}
 
-	async detect(): Promise<InstanceDetectionResult> {
-		const result: InstanceDetectionResult = {
+	async detect(): Promise<InstanceDetectionReport> {
+		const result: InstanceDetectionReport = {
 			isAffected: true,
 			instanceIssues: [
 				{
 					title: '--tunnel option removed',
 					description:
 						'The --tunnel CLI option is no longer available. If you were using this feature, calls with the --tunnel flag will ignore the flag and not run the tunnel system.',
-					level: IssueLevel.info,
+					level: 'info',
 				},
 			],
 			recommendations: [],

@@ -2,11 +2,11 @@ import { Service } from '@n8n/di';
 import { BinaryDataConfig } from 'n8n-core';
 
 import type {
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
@@ -14,18 +14,18 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 
 	id: string = 'binary-data-storage-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Disable binary data in-memory mode by default',
 			description:
 				'Binary files are now stored on disk by default instead of in memory, removing the 512MB file size limit',
 			category: BreakingChangeCategory.infrastructure,
-			severity: BreakingChangeSeverity.medium,
+			severity: 'medium',
 		};
 	}
 
-	async detect(): Promise<InstanceDetectionResult> {
+	async detect(): Promise<InstanceDetectionReport> {
 		if (this.config.mode !== 'default') {
 			return {
 				isAffected: false,
@@ -34,14 +34,14 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 			};
 		}
 
-		const result: InstanceDetectionResult = {
+		const result: InstanceDetectionReport = {
 			isAffected: true,
 			instanceIssues: [
 				{
 					title: 'Binary data storage mode changed',
 					description:
 						'Binary files are now stored in ~/.n8n/binaryData/ directory by default instead of in memory. This removes the previous 512MB file size limit but increases disk usage.',
-					level: IssueLevel.info,
+					level: 'info',
 				},
 			],
 			recommendations: [

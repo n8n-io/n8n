@@ -2,11 +2,11 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class RemovedDatabaseTypesRule implements IBreakingChangeInstanceRule {
@@ -14,19 +14,19 @@ export class RemovedDatabaseTypesRule implements IBreakingChangeInstanceRule {
 
 	id: string = 'removed-database-types-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'MySQL/MariaDB database types removed',
 			description:
 				'MySQL and MariaDB database types have been completely removed and will cause n8n to fail on startup',
 			category: BreakingChangeCategory.database,
-			severity: BreakingChangeSeverity.critical,
+			severity: 'critical',
 		};
 	}
 
-	async detect(): Promise<InstanceDetectionResult> {
-		const result: InstanceDetectionResult = {
+	async detect(): Promise<InstanceDetectionReport> {
+		const result: InstanceDetectionReport = {
 			isAffected: false,
 			instanceIssues: [],
 			recommendations: [],
@@ -40,7 +40,7 @@ export class RemovedDatabaseTypesRule implements IBreakingChangeInstanceRule {
 				title: `${dbType === 'mysqldb' ? 'MySQL' : 'MariaDB'} database type removed`,
 				description:
 					'MySQL and MariaDB database types have been completely removed in v2. n8n will fail to start with this database configuration.',
-				level: IssueLevel.error,
+				level: 'error',
 			});
 
 			result.recommendations.push({

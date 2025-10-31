@@ -2,11 +2,11 @@ import { InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class SettingsFilePermissionsRule implements IBreakingChangeInstanceRule {
@@ -14,18 +14,18 @@ export class SettingsFilePermissionsRule implements IBreakingChangeInstanceRule 
 
 	id: string = 'settings-file-permissions-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Enforce settings file permissions',
 			description:
 				'n8n now enforces stricter permissions on configuration files for improved security',
 			category: BreakingChangeCategory.infrastructure,
-			severity: BreakingChangeSeverity.medium,
+			severity: 'medium',
 		};
 	}
 
-	async detect(): Promise<InstanceDetectionResult> {
+	async detect(): Promise<InstanceDetectionReport> {
 		// If enforceSettingsFilePermissions is explicitly set to 'false', users are not affected
 		// because they've configured the system to not enforce file permissions
 		if (!this.instanceSettingsConfig.enforceSettingsFilePermissions) {
@@ -36,14 +36,14 @@ export class SettingsFilePermissionsRule implements IBreakingChangeInstanceRule 
 			};
 		}
 
-		const result: InstanceDetectionResult = {
+		const result: InstanceDetectionReport = {
 			isAffected: true,
 			instanceIssues: [
 				{
 					title: 'Settings file permissions will be enforced',
 					description:
 						'n8n will now enforce chmod 600 permissions on configuration files. This may affect Docker/Kubernetes setups with volume mounts.',
-					level: IssueLevel.warning,
+					level: 'warning',
 				},
 			],
 			recommendations: [

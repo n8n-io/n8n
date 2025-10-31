@@ -2,11 +2,11 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class SqliteLegacyDriverRule implements IBreakingChangeInstanceRule {
@@ -14,19 +14,19 @@ export class SqliteLegacyDriverRule implements IBreakingChangeInstanceRule {
 
 	id: string = 'sqlite-legacy-driver-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Remove SQLite legacy driver',
 			description:
 				'SQLite now uses WAL (Write-Ahead Logging) mode exclusively, with additional database files',
 			category: BreakingChangeCategory.database,
-			severity: BreakingChangeSeverity.high,
+			severity: 'high',
 		};
 	}
 
-	async detect(): Promise<InstanceDetectionResult> {
-		const result: InstanceDetectionResult = {
+	async detect(): Promise<InstanceDetectionReport> {
+		const result: InstanceDetectionReport = {
 			isAffected: false,
 			instanceIssues: [],
 			recommendations: [],
@@ -42,14 +42,14 @@ export class SqliteLegacyDriverRule implements IBreakingChangeInstanceRule {
 				title: 'SQLite legacy driver removed',
 				description:
 					'SQLite now uses WAL (Write-Ahead Logging) mode exclusively. The legacy driver (DB_SQLITE_POOL_SIZE=0) has been removed. Three database files will be created: database.sqlite (main), database.sqlite-wal (write-ahead log), and database.sqlite-shm (shared memory).',
-				level: IssueLevel.warning,
+				level: 'warning',
 			});
 
 			result.instanceIssues.push({
 				title: 'File system compatibility requirements',
 				description:
 					'Incompatible file systems include: NFS versions < 4, CIFS/SMB network shares, read-only file systems, and some container overlay filesystems.',
-				level: IssueLevel.warning,
+				level: 'warning',
 			});
 
 			result.recommendations.push({

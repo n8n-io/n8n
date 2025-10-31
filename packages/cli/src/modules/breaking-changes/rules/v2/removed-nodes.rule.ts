@@ -1,7 +1,7 @@
-import { BreakingChangeRecommendation } from '@n8n/api-types';
+import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import type {
 	BreakingChangeRuleMetadata,
@@ -30,7 +30,9 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 		};
 	}
 
-	async getRecommendations(): Promise<BreakingChangeRecommendation[]> {
+	async getRecommendations(
+		_workflowResults: BreakingChangeAffectedWorkflow[],
+	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
 				action: 'Update affected workflows',

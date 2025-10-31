@@ -4,23 +4,23 @@ import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type {
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
 	id: string = 'dotenv-upgrade-v2';
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Upgrade dotenv',
 			description:
 				'The dotenv library has been upgraded, which may affect how .env files are parsed',
 			category: BreakingChangeCategory.environment,
-			severity: BreakingChangeSeverity.medium,
+			severity: 'medium',
 		};
 	}
 
@@ -33,8 +33,8 @@ export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
 		}
 	}
 
-	async detect(): Promise<InstanceDetectionResult> {
-		const result: InstanceDetectionResult = {
+	async detect(): Promise<InstanceDetectionReport> {
+		const result: InstanceDetectionReport = {
 			isAffected: false,
 			instanceIssues: [],
 			recommendations: [],
@@ -74,7 +74,7 @@ export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
 			title: 'dotenv library upgrade detected',
 			description:
 				'The dotenv library has been upgraded, which changes how values containing # or newlines are parsed. This may affect .env file parsing.',
-			level: IssueLevel.warning,
+			level: 'warning',
 		});
 
 		result.recommendations.push({

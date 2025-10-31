@@ -1,14 +1,14 @@
+import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
 import type {
-	BreakingChangeMetadata,
-	WorkflowDetectionResult,
-	Recommendation,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
+	WorkflowDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
@@ -19,18 +19,20 @@ export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 
 	id: string = 'disabled-nodes-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Disable ExecuteCommand and LocalFileTrigger nodes by default',
 			description:
 				'ExecuteCommand and LocalFileTrigger nodes are now disabled by default for security reasons',
 			category: BreakingChangeCategory.workflow,
-			severity: BreakingChangeSeverity.critical,
+			severity: 'critical',
 		};
 	}
 
-	async getRecommendations(): Promise<Recommendation[]> {
+	async getRecommendations(
+		_workflowResults: BreakingChangeAffectedWorkflow[],
+	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
 				action: 'Enable nodes if required',
@@ -48,7 +50,7 @@ export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 	async detectWorkflow(
 		_workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
-	): Promise<WorkflowDetectionResult> {
+	): Promise<WorkflowDetectionReport> {
 		const disabledNodes = this.DISABLED_NODES.flatMap((type) => nodesGroupedByType.get(type) ?? []);
 		if (disabledNodes.length === 0) return { isAffected: false, issues: [] };
 
@@ -58,7 +60,9 @@ export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 				title: `Node '${node.type}' with name '${node.name}' will be disabled`,
 				description:
 					'This node is disabled by default in v2 and will not execute unless explicitly enabled through settings or environment variables.',
-				level: IssueLevel.error,
+				level: 'error',
+				nodeId: node.id,
+				nodeName: node.name,
 			})),
 		};
 	}
