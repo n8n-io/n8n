@@ -193,15 +193,32 @@ export class LoadNodesAndCredentials {
 		modelId: string;
 		nodeType?: string;
 	}): string | undefined {
+		const fs = require('fs');
+
+		// Helper to resolve aliases
+		const resolveAlias = (baseDir: string, providerId: string, originalModelId: string): string => {
+			const aliasPath = path.resolve(baseDir, providerId, '_aliases.json');
+			try {
+				if (fs.existsSync(aliasPath)) {
+					const aliases = JSON.parse(fs.readFileSync(aliasPath, 'utf-8'));
+					return aliases[originalModelId] || originalModelId;
+				}
+			} catch {}
+			return originalModelId;
+		};
+
 		// 1. Check per-node override first (if nodeType provided)
 		if (nodeType) {
 			const nodePath = this.known.nodes[nodeType]?.sourcePath;
 			if (nodePath) {
 				const nodeParentPath = path.dirname(nodePath);
-				const overridePath = path.resolve(nodeParentPath, '__model_metadata__', `${modelId}.json`);
+				const metadataDir = path.resolve(nodeParentPath, '__model_metadata__');
+				const resolvedModelId = resolveAlias(metadataDir, '', modelId);
+				const overridePath = path.resolve(metadataDir, `${resolvedModelId}.json`);
+
 				if (isContainedWithin(nodeParentPath, overridePath)) {
 					try {
-						if (require('fs').existsSync(overridePath)) {
+						if (fs.existsSync(overridePath)) {
 							return overridePath;
 						}
 					} catch {}
@@ -210,7 +227,6 @@ export class LoadNodesAndCredentials {
 		}
 
 		// 2. Check global model-metadata directory in nodes-langchain package
-		// Find any nodes-langchain node to get the package path
 		const nodesLangchainNode = Object.keys(this.known.nodes).find((key) =>
 			key.includes('nodes-langchain'),
 		);
@@ -225,15 +241,19 @@ export class LoadNodesAndCredentials {
 						? nodePath.substring(0, distIndex)
 						: path.dirname(path.dirname(nodePath));
 
+				const metadataBaseDir = path.resolve(packageRoot, 'model-metadata');
+
+				// Resolve alias (e.g., chatgpt-4o-latest -> gpt-4o)
+				const resolvedModelId = resolveAlias(metadataBaseDir, provider, modelId);
+
 				const globalMetadataPath = path.resolve(
-					packageRoot,
-					'model-metadata',
+					metadataBaseDir,
 					provider,
-					`${modelId}.json`,
+					`${resolvedModelId}.json`,
 				);
 
 				try {
-					if (require('fs').existsSync(globalMetadataPath)) {
+					if (fs.existsSync(globalMetadataPath)) {
 						return globalMetadataPath;
 					}
 				} catch {}

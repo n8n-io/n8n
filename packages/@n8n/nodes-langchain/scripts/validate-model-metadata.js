@@ -126,7 +126,7 @@ async function validateAll() {
 
 	const files = await glob('model-metadata/**/*.json', {
 		cwd: baseDir,
-		ignore: ['**/node_modules/**', '**/schema.json', '**/README.md'],
+		ignore: ['**/node_modules/**', '**/schema.json', '**/README.md', '**/_aliases.json'],
 	});
 
 	if (files.length === 0) {

@@ -42,5 +42,8 @@
 	"gpt-4o-audio-preview-2025-06-03": "gpt-4o-audio-preview",
 	"gpt-4o-mini-audio-preview-2024-12-17": "gpt-4o-mini-audio-preview",
 	"gpt-4o-mini-search-preview-2025-03-11": "gpt-4o-mini-search-preview",
-	"gpt-4o-search-preview-2025-03-11": "gpt-4o-search-preview"
+	"gpt-4o-search-preview-2025-03-11": "gpt-4o-search-preview",
+	"gpt-4o-transcribe-2025-03-20": "gpt-4o-transcribe",
+	"gpt-4o-mini-transcribe-2025-03-20": "gpt-4o-mini-transcribe",
+	"gpt-4o-transcribe-diarize-2025-10-15": "gpt-4o-transcribe-diarize"
 }

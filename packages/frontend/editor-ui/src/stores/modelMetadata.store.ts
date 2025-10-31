@@ -23,7 +23,7 @@ export const useModelMetadataStore = defineStore('modelMetadata', {
 
 			// Fetch from API
 			const rootStore = useRootStore();
-			const metadata = await getModelMetadata(rootStore.restApiContext.baseUrl, options);
+			const metadata = await getModelMetadata(rootStore.baseUrl, options);
 
 			// Cache result (including null for 404s to avoid repeated failed requests)
 			this.cache.set(cacheKey, metadata);
