@@ -118,7 +118,7 @@ export class MessageEventBusDestinationWebhook
 		} as AxiosRequestConfig;
 
 		if (options.options?.redirect?.followRedirects) {
-			axiosSetting.maxRedirects = this.options.redirect?.maxRedirects;
+			axiosSetting.maxRedirects = options.options.redirect?.maxRedirects;
 		}
 
 		axiosSetting.proxy = options.options?.proxy;
@@ -140,7 +140,7 @@ export class MessageEventBusDestinationWebhook
 			...agentOptions,
 		};
 
-		if (this.options.allowUnauthorizedCerts) {
+		if (options.options?.allowUnauthorizedCerts) {
 			httpsAgentOptions.rejectUnauthorized = false;
 		}
 

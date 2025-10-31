@@ -74,7 +74,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 					} catch (error) {
 						if (error instanceof CircuitBreakerOpen) {
 							this.logger.warn(
-								`Webhook destination ${this.label} failed to send message: circuit break open!`,
+								`${this.__type}(${this.id}) event destination ${this.label} failed to send message: circuit break open!`,
 							);
 							return;
 						}

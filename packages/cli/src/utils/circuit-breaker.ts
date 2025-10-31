@@ -20,7 +20,7 @@ export class CircuitBreaker {
 	) {
 		this.state = 'CLOSED';
 		this.failureCount = 0;
-		this.lastFailureTime = Date.now();
+		this.lastFailureTime = 0;
 	}
 
 	currentState(): CircuitBreakerState {

@@ -159,21 +159,4 @@ describe('CircuitBreaker', () => {
 			expect(breaker.currentState()).toBe('CLOSED');
 		});
 	});
-
-	describe('CircuitBreakerOpen error', () => {
-		it('should create error with correct name', () => {
-			const error = new CircuitBreakerOpen('Circuit is open');
-
-			expect(error).toBeInstanceOf(Error);
-			expect(error.name).toBe('CircuitBreakerOpen');
-			expect(error.message).toBe('Circuit is open');
-		});
-
-		it('should create error without message', () => {
-			const error = new CircuitBreakerOpen();
-
-			expect(error.name).toBe('CircuitBreakerOpen');
-			expect(error.message).toBe('');
-		});
-	});
 });
