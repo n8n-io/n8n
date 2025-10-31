@@ -1,4 +1,4 @@
-import { getSchemaPreview } from './schemaPreview';
+import { getSchemaPreview } from './schemaPreview.api';
 import * as apiUtils from '@n8n/rest-api-client';
 
 vi.mock('@n8n/rest-api-client');

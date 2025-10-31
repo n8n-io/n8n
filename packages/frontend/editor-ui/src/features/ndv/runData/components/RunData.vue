@@ -66,7 +66,7 @@ import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
 import RunDataItemCount from './RunDataItemCount.vue';

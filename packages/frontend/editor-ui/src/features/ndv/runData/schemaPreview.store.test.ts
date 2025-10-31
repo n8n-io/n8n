@@ -1,14 +1,14 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useSchemaPreviewStore } from './schemaPreview.store';
-import * as schemaPreviewApi from '@/api/schemaPreview';
+import * as schemaPreviewApi from './schemaPreview.api';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
 import type { PushPayload } from '@n8n/api-types';
-import { useTelemetry } from '../composables/useTelemetry';
+import { useTelemetry } from '@/composables/useTelemetry';
 import type { INode } from 'n8n-workflow';
-import { useWorkflowsStore } from './workflows.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
-vi.mock('@/api/schemaPreview');
+vi.mock('./schemaPreview.api');
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
