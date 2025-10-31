@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -34,7 +34,7 @@ vi.mock('vue-router', async () => {
 		}),
 	};
 });
-vi.mock('@/composables/useWorkflowHelpers', () => {
+vi.mock('@/app/composables/useWorkflowHelpers', () => {
 	return {
 		useWorkflowHelpers: vi.fn(() => ({
 			resolveExpression: vi.fn().mockImplementation((val) => val),
@@ -42,7 +42,7 @@ vi.mock('@/composables/useWorkflowHelpers', () => {
 		})),
 	};
 });
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 

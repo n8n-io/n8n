@@ -24,7 +24,7 @@ import {
 	GITHUB_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { VNode } from 'vue';
 
@@ -39,7 +39,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
 		activeExecutionId: '123',
 	}),
@@ -62,7 +62,7 @@ vi.mock('@n8n/i18n', () => ({
 	},
 }));
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType: (type: string) => {
 			const nodeTypes: Record<string, { waitingNodeTooltip?: string }> = {

@@ -4,27 +4,27 @@ import { NodeConnectionTypes, type IRunData, type Workflow } from 'n8n-workflow'
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { storeToRefs } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
-import { useNodeType } from '@/composables/useNodeType';
-import { usePinnedData } from '@/composables/usePinnedData';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useNodeType } from '@/app/composables/useNodeType';
+import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
-import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/features/workflows/canvas/canvas.types';
-import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
-import { usePostHog } from '@/stores/posthog.store';
+import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
-import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;

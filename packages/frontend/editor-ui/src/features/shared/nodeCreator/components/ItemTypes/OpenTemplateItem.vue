@@ -2,7 +2,7 @@
 import type { OpenTemplateItemProps } from '@/Interface';
 
 import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 export interface Props {
 	openTemplate: OpenTemplateItemProps;
 }

@@ -19,10 +19,10 @@ import {
 	DEFAULT_OPERATOR_VALUE,
 } from './constants';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
+import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
 
 import { N8nButton, N8nInputLabel } from '@n8n/design-system';

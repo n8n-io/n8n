@@ -1,20 +1,20 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule, watch } from 'vue';
-import { useNodeConnections } from '@/composables/useNodeConnections';
+import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { useCanvas } from '../../../../composables/useCanvas';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { calculateNodeSize } from '@/utils/nodeViewUtils';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '../../../../experimental/components/ExperimentalEmbeddedNodeDetails.vue';
 import CanvasNodeTooltip from './parts/CanvasNodeTooltip.vue';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 const $style = useCssModule();
 const i18n = useI18n();

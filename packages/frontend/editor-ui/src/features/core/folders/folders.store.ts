@@ -10,8 +10,8 @@ import type {
 	DropTarget,
 } from './folders.types';
 import * as foldersApi from './folders.api';
-import * as workflowsApi from '@/api/workflows';
-import * as workflowsEEApi from '@/api/workflows.ee';
+import * as workflowsApi from '@/app/api/workflows';
+import * as workflowsEEApi from '@/app/api/workflows.ee';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';

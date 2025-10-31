@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';

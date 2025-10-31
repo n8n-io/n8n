@@ -1,4 +1,4 @@
-import { LOCAL_STORAGE_CHAT_HUB_CREDENTIALS } from '@/constants';
+import { LOCAL_STORAGE_CHAT_HUB_CREDENTIALS } from '@/app/constants';
 import { credentialsMapSchema, type CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import {

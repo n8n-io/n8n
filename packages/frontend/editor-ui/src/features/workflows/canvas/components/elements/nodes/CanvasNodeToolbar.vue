@@ -4,8 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../composables/useCanvasNode';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { useCanvas } from '../../../composables/useCanvas';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
 

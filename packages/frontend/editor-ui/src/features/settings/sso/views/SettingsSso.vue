@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import CopyInput from '@/components/CopyInput.vue';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useMessage } from '@/composables/useMessage';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { MODAL_CONFIRM } from '@/constants';
+import CopyInput from '@/app/components/CopyInput.vue';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useMessage } from '@/app/composables/useMessage';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';

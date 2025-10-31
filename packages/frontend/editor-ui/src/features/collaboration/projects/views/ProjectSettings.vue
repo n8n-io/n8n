@@ -8,20 +8,20 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
-import { useToast } from '@/composables/useToast';
-import { VIEWS } from '@/constants';
+import { useToast } from '@/app/composables/useToast';
+import { VIEWS } from '@/app/constants';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
-import { useRolesStore } from '@/stores/roles.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useRolesStore } from '@/app/stores/roles.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UserAction } from '@n8n/design-system';
-import { isProjectRole } from '@/utils/typeGuards';
+import { isProjectRole } from '@/app/utils/typeGuards';
 
 import {
 	N8nButton,

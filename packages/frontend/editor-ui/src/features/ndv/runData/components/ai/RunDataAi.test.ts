@@ -5,8 +5,8 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
-import { AGENT_NODE_TYPE, OPEN_AI_NODE_TYPE, WIKIPEDIA_TOOL_NODE_TYPE } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { AGENT_NODE_TYPE, OPEN_AI_NODE_TYPE, WIKIPEDIA_TOOL_NODE_TYPE } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, within } from '@testing-library/vue';
 import { NodeConnectionTypes } from 'n8n-workflow';

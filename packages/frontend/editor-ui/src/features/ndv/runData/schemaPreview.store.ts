@@ -5,9 +5,9 @@ import { reactive } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { JSONSchema7 } from 'json-schema';
 import type { PushPayload } from '@n8n/api-types';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { generateJsonSchema } from '@/utils/json-schema';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { generateJsonSchema } from '@/app/utils/json-schema';
 
 export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 	// Type cast to avoid 'Type instantiation is excessively deep and possibly infinite'

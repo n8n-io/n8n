@@ -5,8 +5,8 @@ import { useInstallNode } from '@/features/settings/communityNodes/composables/u
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { TestingPinia } from '@pinia/testing';
@@ -17,7 +17,7 @@ import { ref } from 'vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
 
 vi.mock('@/features/settings/communityNodes/composables/useInstallNode');
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),
 	}),

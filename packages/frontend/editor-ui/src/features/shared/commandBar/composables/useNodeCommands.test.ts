@@ -1,14 +1,14 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodeCommands } from './useNodeCommands';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 const mockEditableWorkflow = {
@@ -22,7 +22,7 @@ const mockEditableWorkflow = {
 	},
 };
 
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		addNodes: vi.fn(),
 		setNodeActive: vi.fn(),
