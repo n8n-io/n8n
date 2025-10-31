@@ -52,4 +52,8 @@ describe('sso/saml/samlHelpers', () => {
 			expect(userRepository.update).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('getMappedSamlAttributesFromFlowResult', () => {
+		// TODO: add tests
+	});
 });

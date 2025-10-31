@@ -2,7 +2,7 @@ import type { SamlPreferences } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
-import type { UserRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import type { Settings } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
@@ -22,6 +22,7 @@ import { SAML_PREFERENCES_DB_KEY } from '../constants';
 import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
 import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
 import { SamlValidator } from '../saml-validator';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -149,6 +150,8 @@ describe('SamlService', () => {
 	let settingsRepository: SettingsRepository;
 	let instanceSettings: InstanceSettings;
 	let globalConfig: GlobalConfig;
+	let userRepository: UserRepository;
+	let provisioningService: ProvisioningService;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -188,6 +191,8 @@ describe('SamlService', () => {
 		instanceSettings = mock<InstanceSettings>({
 			isMultiMain: true,
 		});
+		provisioningService = mock<ProvisioningService>();
+		userRepository = mock<UserRepository>();
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
 		});
@@ -201,9 +206,10 @@ describe('SamlService', () => {
 			logger,
 			mock<UrlService>(),
 			validator,
-			mock<UserRepository>(),
+			userRepository,
 			settingsRepository,
 			instanceSettings,
+			provisioningService,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -308,6 +314,78 @@ describe('SamlService', () => {
 
 			// ASSERT
 			expect(samlService.reset).toHaveBeenCalledTimes(0);
+		});
+	});
+
+	describe.only('handleSamlLogin', () => {
+		it('throws error for invalid email', async () => {
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				email: 'invalid',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: '',
+			});
+
+			await expect(
+				samlService.handleSamlLogin(mock<express.Request>(), 'post'),
+			).rejects.toThrowError(new BadRequestError('Invalid email format'));
+		});
+
+		it('logs in user that has already completed onboarding', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: mockUser,
+				attributes: samlAttributes,
+				onboardingRequired: false,
+			});
+		});
+
+		it('provisions instance and project role for onboarded user', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+				n8nInstanceRole: 'global:admin',
+				n8nProjectRoles: ['rgjhURvl0rnEQL3v:viewer', 'ussa2R6P7aDtuRaZ:viewer'],
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
+				mockUser,
+				samlAttributes.n8nInstanceRole,
+			);
+			expect(provisioningService.provisionProjectRolesForUser).toHaveBeenCalledWith(
+				mockUser.id,
+				samlAttributes.n8nProjectRoles,
+			);
 		});
 	});
 
