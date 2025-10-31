@@ -1,0 +1,26 @@
+{
+	"id": "gpt-realtime",
+	"name": "GPT Realtime",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 32.0,
+		"completionPerMilTokenUsd": 64.0
+	},
+	"contextLength": 32768,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "audio"],
+	"outputModalities": ["text", "audio"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["conversation", "multimodal", "function-calling"],
+	"description": "Most advanced speech-to-speech model optimized for low-latency real-time voice conversations with natural and expressive speech.",
+	"trainingCutoff": "2023-10",
+	"notes": "Optimized for production voice agents with improvements in following complex instructions, tool calling precision, and natural speech output. Supports WebSocket streaming, function calling, and cached input tokens at $0.40/1M. 20% cheaper than gpt-4o-realtime-preview."
+}

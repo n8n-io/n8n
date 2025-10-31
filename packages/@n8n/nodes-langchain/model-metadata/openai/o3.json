@@ -1,0 +1,26 @@
+{
+	"id": "o3",
+	"name": "o3",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 8.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 100000,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "complex-reasoning", "analysis"],
+	"description": "Most powerful reasoning model pushing the frontier across coding, math, science, and visual perception with extended thinking capabilities.",
+	"trainingCutoff": "2023-10",
+	"notes": "OpenAI's most advanced reasoning model with 80% price reduction. Sets new state-of-the-art on benchmarks including Codeforces and SWE-bench. Released June 2025."
+}

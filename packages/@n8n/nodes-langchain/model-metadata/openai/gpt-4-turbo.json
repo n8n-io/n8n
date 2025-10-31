@@ -21,6 +21,6 @@
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "function-calling"],
 	"description": "Previous generation flagship model with strong performance across all tasks and vision capabilities.",
-	"trainingCutoff": "2023-12",
-	"notes": "Solid choice for applications requiring high quality output and multimodal understanding"
+	"trainingCutoff": "2023-04",
+	"notes": "Solid choice for applications requiring high quality output and multimodal understanding. Consider GPT-4o for better performance at lower cost."
 }

@@ -20,7 +20,7 @@
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "coding", "analysis", "creative-writing", "multimodal"],
-	"description": "Most capable Claude model with exceptional performance on coding, reasoning, and analysis tasks. Excellent at following complex instructions.",
+	"description": "Most capable Claude 3.5 model with exceptional performance on coding, reasoning, and analysis tasks. Excellent at following complex instructions.",
 	"trainingCutoff": "2024-04",
-	"notes": "Excels at long-form content generation, nuanced understanding, and agentic coding tasks"
+	"notes": "Legacy model - consider upgrading to Claude Sonnet 4.5 for enhanced performance. Excels at long-form content generation, nuanced understanding, and agentic coding tasks."
 }

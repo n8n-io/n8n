@@ -1,0 +1,26 @@
+{
+	"id": "claude-haiku-4-5-20251001",
+	"name": "Claude Haiku 4.5",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 1.0,
+		"completionPerMilTokenUsd": 5.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 64000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "summarization", "function-calling", "coding"],
+	"description": "Fastest Claude model with near-frontier intelligence and lowest latency. Ideal for high-volume applications requiring quick responses.",
+	"trainingCutoff": "2025-02",
+	"notes": "Best choice for real-time applications and high-throughput workloads where speed and cost efficiency are critical. Supports extended thinking and vision capabilities."
+}

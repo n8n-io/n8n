@@ -13,14 +13,14 @@
 		"structuredOutput": true,
 		"vision": true,
 		"imageGeneration": false,
-		"audio": false,
+		"audio": true,
 		"extendedThinking": false
 	},
-	"inputModalities": ["text", "image"],
-	"outputModalities": ["text"],
+	"inputModalities": ["text", "image", "audio"],
+	"outputModalities": ["text", "audio"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "function-calling"],
-	"description": "GPT-4o is OpenAI's flagship model, excelling at complex reasoning, coding, and multimodal understanding with vision capabilities.",
+	"description": "GPT-4o is OpenAI's flagship model, excelling at complex reasoning, coding, and multimodal understanding with vision and audio capabilities.",
 	"trainingCutoff": "2023-10",
-	"notes": "Best choice for production applications requiring high accuracy and advanced capabilities"
+	"notes": "Best choice for production applications requiring high accuracy and advanced capabilities. Supports real-time audio streaming via Realtime API."
 }

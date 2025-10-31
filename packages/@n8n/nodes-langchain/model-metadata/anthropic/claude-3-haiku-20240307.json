@@ -20,7 +20,7 @@
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["conversation", "summarization", "function-calling"],
-	"description": "Fast and affordable Claude model for everyday tasks with vision support.",
+	"description": "Fast and affordable Claude 3 model for everyday tasks with vision support.",
 	"trainingCutoff": "2023-08",
-	"notes": "Most cost-effective Claude 3 model for high-throughput applications"
+	"notes": "Legacy model - consider upgrading to Claude Haiku 4.5 or Claude 3.5 Haiku for better performance. Most cost-effective Claude 3 model for high-throughput applications."
 }

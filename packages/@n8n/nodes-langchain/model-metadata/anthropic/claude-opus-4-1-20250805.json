@@ -1,0 +1,26 @@
+{
+	"id": "claude-opus-4-1-20250805",
+	"name": "Claude Opus 4.1",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 15.0,
+		"completionPerMilTokenUsd": 75.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 32000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "analysis", "creative-writing", "multimodal"],
+	"description": "Exceptional model for specialized reasoning tasks requiring the deepest level of understanding and complex problem-solving.",
+	"trainingCutoff": "2025-01",
+	"notes": "Premium model optimized for agentic tasks, real-world coding, and advanced reasoning. Upgrade to Claude Opus 4 focused on tasks where accuracy and nuanced understanding are paramount."
+}

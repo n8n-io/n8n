@@ -1,0 +1,26 @@
+{
+	"id": "claude-opus-4-20250514",
+	"name": "Claude Opus 4",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 15.0,
+		"completionPerMilTokenUsd": 75.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 32000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "analysis", "creative-writing", "multimodal"],
+	"description": "Most powerful Claude 4 model designed for highly complex tasks requiring deep reasoning. Supports extended thinking mode and up to 1M token context for Enterprise.",
+	"trainingCutoff": "2025-01",
+	"notes": "Legacy model - consider upgrading to Claude Opus 4.1 for enhanced performance on agentic tasks and real-world coding. Premium pricing for maximum capability."
+}

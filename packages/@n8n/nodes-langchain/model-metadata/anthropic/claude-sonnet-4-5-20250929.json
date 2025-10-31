@@ -1,0 +1,26 @@
+{
+	"id": "claude-sonnet-4-5-20250929",
+	"name": "Claude Sonnet 4.5",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 3.0,
+		"completionPerMilTokenUsd": 15.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 64000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "complex-reasoning", "analysis", "function-calling", "multimodal"],
+	"description": "Anthropic's most capable model with exceptional performance on complex agents and coding tasks. Supports 1M context window in beta mode.",
+	"trainingCutoff": "2025-01",
+	"notes": "Recommended starting point for most use cases. Best balance of intelligence, speed, and cost. Supports extended thinking capability and up to 1M token context window with beta header. Long context pricing ($6 input/$22.50 output) applies for requests exceeding 200K tokens."
+}

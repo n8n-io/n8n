@@ -22,5 +22,5 @@
 	"recommendedFor": ["complex-reasoning", "creative-writing", "analysis", "multimodal"],
 	"description": "Claude 3's most capable model, excelling at highly complex tasks requiring deep understanding and reasoning.",
 	"trainingCutoff": "2023-08",
-	"notes": "Premium model for tasks where accuracy and nuanced understanding are critical"
+	"notes": "Legacy model - consider upgrading to Claude Opus 4.1 or Claude Sonnet 4.5 for better performance. Premium pricing for tasks where accuracy and nuanced understanding are critical."
 }

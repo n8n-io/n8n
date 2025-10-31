@@ -20,7 +20,7 @@
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal"],
-	"description": "Balanced model offering strong performance across a wide range of tasks with good speed and cost efficiency.",
+	"description": "Balanced Claude 3 model offering strong performance across a wide range of tasks with good speed and cost efficiency.",
 	"trainingCutoff": "2023-08",
-	"notes": "Great all-around model for most production use cases"
+	"notes": "Legacy model - consider upgrading to Claude Sonnet 4.5 or Claude 3.5 Sonnet for enhanced capabilities. Great all-around model for most production use cases."
 }

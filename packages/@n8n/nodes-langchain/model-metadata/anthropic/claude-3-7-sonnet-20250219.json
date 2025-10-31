@@ -1,0 +1,26 @@
+{
+	"id": "claude-3-7-sonnet-20250219",
+	"name": "Claude 3.7 Sonnet",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 3.0,
+		"completionPerMilTokenUsd": 15.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 128000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "complex-reasoning", "analysis", "creative-writing"],
+	"description": "Pioneering hybrid AI reasoning model offering choice between rapid responses and extended step-by-step thinking visible to users. Supports up to 128K output tokens.",
+	"trainingCutoff": "2024-10",
+	"notes": "Legacy model - migration to Claude Sonnet 4.5 recommended. First hybrid reasoning model combining instant responses with visible extended thinking. Requires beta header 'output-128k-2025-02-19' for 128K output capability."
+}
