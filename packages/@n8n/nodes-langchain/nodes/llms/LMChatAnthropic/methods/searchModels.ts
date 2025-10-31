@@ -36,6 +36,7 @@ export async function searchModels(
 					name: model.display_name,
 					value: model.id,
 					metadata: mapAnthropicModel(model),
+					_metadataProvider: 'anthropic',
 				});
 			}
 		}
@@ -44,6 +45,7 @@ export async function searchModels(
 			name: model.display_name,
 			value: model.id,
 			metadata: mapAnthropicModel(model),
+			_metadataProvider: 'anthropic',
 		}));
 	}
 

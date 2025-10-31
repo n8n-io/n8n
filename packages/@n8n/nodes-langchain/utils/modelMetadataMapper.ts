@@ -64,7 +64,35 @@ export function mapOpenRouterModel(model: OpenRouterModel): IModelMetadata {
 	const pricing = endpoint?.pricing;
 	const features = endpoint?.features;
 
+	// Simple heuristic for intelligence level based on model name
+	const determineIntelligenceLevel = (modelName: string): 'low' | 'medium' | 'high' => {
+		const lowerName = modelName.toLowerCase();
+		// High intelligence: o1, opus, pro, gpt-4, claude-3-5-sonnet
+		if (
+			lowerName.includes('opus') ||
+			lowerName.includes(' pro') ||
+			lowerName.includes('gpt-4') ||
+			lowerName.includes('o1') ||
+			lowerName.includes('o3') ||
+			lowerName.includes('3.5-sonnet') ||
+			lowerName.includes('3-5-sonnet')
+		) {
+			return 'high';
+		}
+		// Low intelligence: older models, small models
+		if (
+			lowerName.includes('gpt-3.5') ||
+			lowerName.includes('claude-2') ||
+			lowerName.includes('llama-2')
+		) {
+			return 'low';
+		}
+		// Default to medium
+		return 'medium';
+	};
+
 	return {
+		id: model.slug,
 		name: model.name,
 		shortName: model.short_name,
 		provider: endpoint?.provider_display_name || model.author,
@@ -76,6 +104,7 @@ export function mapOpenRouterModel(model: OpenRouterModel): IModelMetadata {
 		},
 		contextLength: model.context_length || 0,
 		maxOutputTokens: endpoint?.max_completion_tokens,
+		intelligenceLevel: determineIntelligenceLevel(model.name),
 		capabilities: {
 			functionCalling:
 				endpoint?.supported_parameters?.includes('tools') ||
@@ -86,6 +115,7 @@ export function mapOpenRouterModel(model: OpenRouterModel): IModelMetadata {
 			vision: model.input_modalities?.includes('image'),
 			imageGeneration: model.output_modalities?.includes('image'),
 			audio: model.input_modalities?.includes('audio') || features?.supports_input_audio === true,
+			extendedThinking: endpoint?.supports_reasoning === true,
 		},
 		inputModalities: model.input_modalities,
 		outputModalities: model.output_modalities,
@@ -98,13 +128,23 @@ export function mapOpenRouterModel(model: OpenRouterModel): IModelMetadata {
  * Note: OpenAI API provides very limited metadata, so we use hardcoded data for known models
  */
 export function mapOpenAIModel(model: OpenAIModel): IModelMetadata {
+	// Development warning for fallback usage
+	if (process.env.NODE_ENV === 'development') {
+		console.warn(
+			`[DEV] Using fallback metadata for OpenAI model: ${model.id}\n` +
+				`Consider adding metadata file: model-metadata/openai/${model.id}.json`,
+		);
+	}
+
 	// Known OpenAI models with their capabilities
 	const knownModels: Record<string, Partial<IModelMetadata>> = {
 		'gpt-4o': {
+			id: 'gpt-4o',
 			name: 'GPT-4o',
 			provider: 'OpenAI',
 			contextLength: 128000,
 			maxOutputTokens: 16384,
+			intelligenceLevel: 'high',
 			capabilities: {
 				functionCalling: true,
 				structuredOutput: true,
@@ -116,10 +156,12 @@ export function mapOpenAIModel(model: OpenAIModel): IModelMetadata {
 			},
 		},
 		'gpt-4o-mini': {
+			id: 'gpt-4o-mini',
 			name: 'GPT-4o Mini',
 			provider: 'OpenAI',
 			contextLength: 128000,
 			maxOutputTokens: 16384,
+			intelligenceLevel: 'medium',
 			capabilities: {
 				functionCalling: true,
 				structuredOutput: true,
@@ -131,10 +173,12 @@ export function mapOpenAIModel(model: OpenAIModel): IModelMetadata {
 			},
 		},
 		'gpt-4-turbo': {
+			id: 'gpt-4-turbo',
 			name: 'GPT-4 Turbo',
 			provider: 'OpenAI',
 			contextLength: 128000,
 			maxOutputTokens: 4096,
+			intelligenceLevel: 'high',
 			capabilities: {
 				functionCalling: true,
 				structuredOutput: true,
@@ -146,10 +190,12 @@ export function mapOpenAIModel(model: OpenAIModel): IModelMetadata {
 			},
 		},
 		'gpt-4': {
+			id: 'gpt-4',
 			name: 'GPT-4',
 			provider: 'OpenAI',
 			contextLength: 8192,
 			maxOutputTokens: 8192,
+			intelligenceLevel: 'high',
 			capabilities: {
 				functionCalling: true,
 			},
@@ -159,10 +205,12 @@ export function mapOpenAIModel(model: OpenAIModel): IModelMetadata {
 			},
 		},
 		'gpt-3.5-turbo': {
+			id: 'gpt-3.5-turbo',
 			name: 'GPT-3.5 Turbo',
 			provider: 'OpenAI',
 			contextLength: 16385,
 			maxOutputTokens: 4096,
+			intelligenceLevel: 'medium',
 			capabilities: {
 				functionCalling: true,
 			},
@@ -176,14 +224,7 @@ export function mapOpenAIModel(model: OpenAIModel): IModelMetadata {
 	// Check if it's a known model
 	const knownModel = knownModels[model.id];
 	if (knownModel) {
-		return {
-			name: knownModel.name!,
-			provider: knownModel.provider!,
-			contextLength: knownModel.contextLength!,
-			maxOutputTokens: knownModel.maxOutputTokens,
-			capabilities: knownModel.capabilities || {},
-			pricing: knownModel.pricing!,
-		};
+		return knownModel as IModelMetadata;
 	}
 
 	// Fallback for unknown models
@@ -194,13 +235,23 @@ export function mapOpenAIModel(model: OpenAIModel): IModelMetadata {
  * Maps an Anthropic API model to IModelMetadata
  */
 export function mapAnthropicModel(model: AnthropicModel): IModelMetadata {
+	// Development warning for fallback usage
+	if (process.env.NODE_ENV === 'development') {
+		console.warn(
+			`[DEV] Using fallback metadata for Anthropic model: ${model.id}\n` +
+				`Consider adding metadata file: model-metadata/anthropic/${model.id}.json`,
+		);
+	}
+
 	// Known Anthropic models with their capabilities
-	const knownModels: Record<string, Partial<IModelMetadata>> = {
+	const knownModels: Record<string, IModelMetadata> = {
 		'claude-3-5-sonnet-20241022': {
+			id: 'claude-3-5-sonnet-20241022',
 			name: 'Claude 3.5 Sonnet',
 			provider: 'Anthropic',
 			contextLength: 200000,
 			maxOutputTokens: 8192,
+			intelligenceLevel: 'high',
 			capabilities: {
 				functionCalling: true,
 				vision: true,
@@ -211,10 +262,12 @@ export function mapAnthropicModel(model: AnthropicModel): IModelMetadata {
 			},
 		},
 		'claude-3-opus-20240229': {
+			id: 'claude-3-opus-20240229',
 			name: 'Claude 3 Opus',
 			provider: 'Anthropic',
 			contextLength: 200000,
 			maxOutputTokens: 4096,
+			intelligenceLevel: 'high',
 			capabilities: {
 				functionCalling: true,
 				vision: true,
@@ -225,10 +278,12 @@ export function mapAnthropicModel(model: AnthropicModel): IModelMetadata {
 			},
 		},
 		'claude-3-sonnet-20240229': {
+			id: 'claude-3-sonnet-20240229',
 			name: 'Claude 3 Sonnet',
 			provider: 'Anthropic',
 			contextLength: 200000,
 			maxOutputTokens: 4096,
+			intelligenceLevel: 'high',
 			capabilities: {
 				functionCalling: true,
 				vision: true,
@@ -239,10 +294,12 @@ export function mapAnthropicModel(model: AnthropicModel): IModelMetadata {
 			},
 		},
 		'claude-3-haiku-20240307': {
+			id: 'claude-3-haiku-20240307',
 			name: 'Claude 3 Haiku',
 			provider: 'Anthropic',
 			contextLength: 200000,
 			maxOutputTokens: 4096,
+			intelligenceLevel: 'medium',
 			capabilities: {
 				functionCalling: true,
 				vision: true,
@@ -257,27 +314,11 @@ export function mapAnthropicModel(model: AnthropicModel): IModelMetadata {
 	// Check if it's a known model
 	const knownModel = knownModels[model.id];
 	if (knownModel) {
-		return {
-			name: knownModel.name!,
-			provider: knownModel.provider!,
-			contextLength: knownModel.contextLength!,
-			maxOutputTokens: knownModel.maxOutputTokens,
-			capabilities: knownModel.capabilities || {},
-			pricing: knownModel.pricing!,
-		};
+		return knownModel;
 	}
 
 	// Fallback for unknown models
-	return {
-		name: model.display_name || model.id,
-		provider: 'Anthropic',
-		contextLength: 200000, // Default Anthropic context
-		capabilities: {},
-		pricing: {
-			promptPerMilTokenUsd: 0,
-			completionPerMilTokenUsd: 0,
-		},
-	};
+	return createGenericMetadata(model.display_name || model.id, 'Anthropic');
 }
 
 /**
@@ -288,9 +329,11 @@ export function createGenericMetadata(
 	provider: string = 'Unknown',
 ): IModelMetadata {
 	return {
+		id: modelId,
 		name: modelId,
 		provider,
 		contextLength: 0,
+		intelligenceLevel: 'medium',
 		capabilities: {},
 		pricing: {
 			promptPerMilTokenUsd: 0,

@@ -1,0 +1,26 @@
+{
+	"id": "gpt-3.5-turbo",
+	"name": "GPT-3.5 Turbo",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.5,
+		"completionPerMilTokenUsd": 1.5
+	},
+	"contextLength": 16385,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "summarization", "function-calling"],
+	"description": "Fast and affordable model for simple tasks and high-volume applications.",
+	"trainingCutoff": "2021-09",
+	"notes": "Good for straightforward tasks. Consider GPT-4o Mini for better quality at similar cost."
+}

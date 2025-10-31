@@ -1,0 +1,26 @@
+{
+	"id": "o3-mini",
+	"name": "o3-mini",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 1.1,
+		"completionPerMilTokenUsd": 4.4
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 100000,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "complex-reasoning", "analysis"],
+	"description": "Latest reasoning model with enhanced performance on coding, mathematics, and scientific reasoning tasks.",
+	"trainingCutoff": "2023-10",
+	"notes": "Excellent at STEM reasoning with improved cost-efficiency compared to o1 models."
+}

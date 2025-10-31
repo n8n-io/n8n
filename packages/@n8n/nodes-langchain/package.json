@@ -9,14 +9,17 @@
     "typecheck": "tsc --noEmit",
     "copy-nodes-json": "node ../../nodes-base/scripts/copy-nodes-json.js .",
     "copy-tokenizer-json": "node scripts/copy-tokenizer-json.js .",
-    "build": "tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
+    "copy-model-metadata": "node scripts/copy-model-metadata.js .",
+    "validate-metadata": "node scripts/validate-model-metadata.js .",
+    "build": "tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm copy-model-metadata && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint nodes credentials utils --quiet",
     "lint:fix": "eslint nodes credentials utils --fix",
     "watch": "tsup --watch nodes --watch credentials --watch utils --watch types --tsconfig tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
     "test": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+    "pretest": "pnpm validate-metadata"
   },
   "files": [
     "dist"

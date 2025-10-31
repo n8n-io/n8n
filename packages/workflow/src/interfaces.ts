@@ -1638,6 +1638,7 @@ export interface INodePropertyOptions {
 }
 
 export interface IModelMetadata {
+	id: string;
 	name: string;
 	shortName?: string;
 	provider: string;
@@ -1653,11 +1654,16 @@ export interface IModelMetadata {
 		vision?: boolean;
 		imageGeneration?: boolean;
 		audio?: boolean;
+		extendedThinking?: boolean;
 	};
 	inputModalities?: string[];
 	outputModalities?: string[];
-	intelligenceScore?: number;
+	intelligenceLevel: 'low' | 'medium' | 'high';
+	recommendedFor?: string[];
 	description?: string;
+	trainingCutoff?: string;
+	notes?: string;
+	intelligenceScore?: number; // Deprecated - kept for backward compatibility
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {

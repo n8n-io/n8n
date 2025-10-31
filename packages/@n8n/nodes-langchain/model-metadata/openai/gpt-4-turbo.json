@@ -1,0 +1,26 @@
+{
+	"id": "gpt-4-turbo",
+	"name": "GPT-4 Turbo",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 10.0,
+		"completionPerMilTokenUsd": 30.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "function-calling"],
+	"description": "Previous generation flagship model with strong performance across all tasks and vision capabilities.",
+	"trainingCutoff": "2023-12",
+	"notes": "Solid choice for applications requiring high quality output and multimodal understanding"
+}

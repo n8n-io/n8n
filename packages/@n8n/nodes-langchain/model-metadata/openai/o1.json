@@ -1,0 +1,26 @@
+{
+	"id": "o1",
+	"name": "o1",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 15.0,
+		"completionPerMilTokenUsd": 60.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 100000,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis"],
+	"description": "Advanced reasoning model with extended thinking capabilities for complex problem-solving and deep analysis.",
+	"trainingCutoff": "2023-10",
+	"notes": "Uses chain-of-thought reasoning internally. Excellent for problems requiring deep analysis. Does not support function calling or vision."
+}

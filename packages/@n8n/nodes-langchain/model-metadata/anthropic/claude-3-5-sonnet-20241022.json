@@ -1,0 +1,26 @@
+{
+	"id": "claude-3-5-sonnet-20241022",
+	"name": "Claude 3.5 Sonnet",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 3.0,
+		"completionPerMilTokenUsd": 15.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "creative-writing", "multimodal"],
+	"description": "Most capable Claude model with exceptional performance on coding, reasoning, and analysis tasks. Excellent at following complex instructions.",
+	"trainingCutoff": "2024-04",
+	"notes": "Excels at long-form content generation, nuanced understanding, and agentic coding tasks"
+}

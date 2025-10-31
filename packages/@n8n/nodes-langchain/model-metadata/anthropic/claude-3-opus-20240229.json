@@ -1,0 +1,26 @@
+{
+	"id": "claude-3-opus-20240229",
+	"name": "Claude 3 Opus",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 15.0,
+		"completionPerMilTokenUsd": 75.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "creative-writing", "analysis", "multimodal"],
+	"description": "Claude 3's most capable model, excelling at highly complex tasks requiring deep understanding and reasoning.",
+	"trainingCutoff": "2023-08",
+	"notes": "Premium model for tasks where accuracy and nuanced understanding are critical"
+}

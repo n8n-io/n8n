@@ -184,6 +184,65 @@ export class LoadNodesAndCredentials {
 		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
 	}
 
+	resolveModelMetadata({
+		provider,
+		modelId,
+		nodeType,
+	}: {
+		provider: string;
+		modelId: string;
+		nodeType?: string;
+	}): string | undefined {
+		// 1. Check per-node override first (if nodeType provided)
+		if (nodeType) {
+			const nodePath = this.known.nodes[nodeType]?.sourcePath;
+			if (nodePath) {
+				const nodeParentPath = path.dirname(nodePath);
+				const overridePath = path.resolve(nodeParentPath, '__model_metadata__', `${modelId}.json`);
+				if (isContainedWithin(nodeParentPath, overridePath)) {
+					try {
+						if (require('fs').existsSync(overridePath)) {
+							return overridePath;
+						}
+					} catch {}
+				}
+			}
+		}
+
+		// 2. Check global model-metadata directory in nodes-langchain package
+		// Find any nodes-langchain node to get the package path
+		const nodesLangchainNode = Object.keys(this.known.nodes).find((key) =>
+			key.includes('nodes-langchain'),
+		);
+
+		if (nodesLangchainNode) {
+			const nodePath = this.known.nodes[nodesLangchainNode]?.sourcePath;
+			if (nodePath) {
+				// Navigate up to the package root (from dist/nodes/... to package root)
+				const distIndex = nodePath.indexOf('/dist/');
+				const packageRoot =
+					distIndex !== -1
+						? nodePath.substring(0, distIndex)
+						: path.dirname(path.dirname(nodePath));
+
+				const globalMetadataPath = path.resolve(
+					packageRoot,
+					'model-metadata',
+					provider,
+					`${modelId}.json`,
+				);
+
+				try {
+					if (require('fs').existsSync(globalMetadataPath)) {
+						return globalMetadataPath;
+					}
+				} catch {}
+			}
+		}
+
+		return undefined;
+	}
+
 	findLastCalloutIndex(properties: INodeProperties[]): number {
 		for (let i = properties.length - 1; i >= 0; i--) {
 			if (properties[i].type === 'callout') return i;

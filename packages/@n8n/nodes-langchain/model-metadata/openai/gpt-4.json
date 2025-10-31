@@ -1,0 +1,26 @@
+{
+	"id": "gpt-4",
+	"name": "GPT-4",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 30.0,
+		"completionPerMilTokenUsd": 60.0
+	},
+	"contextLength": 8192,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis"],
+	"description": "Original GPT-4 model with strong reasoning and coding capabilities.",
+	"trainingCutoff": "2021-09",
+	"notes": "Limited context window. Consider using GPT-4 Turbo or GPT-4o for better performance and larger context."
+}

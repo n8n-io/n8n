@@ -1,0 +1,26 @@
+{
+	"id": "claude-3-sonnet-20240229",
+	"name": "Claude 3 Sonnet",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 3.0,
+		"completionPerMilTokenUsd": 15.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal"],
+	"description": "Balanced model offering strong performance across a wide range of tasks with good speed and cost efficiency.",
+	"trainingCutoff": "2023-08",
+	"notes": "Great all-around model for most production use cases"
+}

@@ -377,6 +377,26 @@ export class Server extends AbstractServer {
 			};
 			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
 
+			const serveModelMetadata: express.RequestHandler = async (req, res) => {
+				const { provider, modelId } = req.params;
+				const { nodeType } = req.query;
+
+				const filePath = this.loadNodesAndCredentials.resolveModelMetadata({
+					provider,
+					modelId,
+					nodeType: nodeType as string | undefined,
+				});
+
+				if (filePath) {
+					try {
+						await fsAccess(filePath);
+						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
+					} catch {}
+				}
+				res.sendStatus(404);
+			};
+			this.app.use('/model-metadata/:provider/:modelId.json', serveModelMetadata);
+
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';

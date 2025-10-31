@@ -1,0 +1,26 @@
+{
+	"id": "claude-3-5-haiku-20241022",
+	"name": "Claude 3.5 Haiku",
+	"provider": "Anthropic",
+	"pricing": {
+		"promptPerMilTokenUsd": 1.0,
+		"completionPerMilTokenUsd": 5.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "summarization", "function-calling", "coding"],
+	"description": "Fast and efficient model with improved capabilities over previous Haiku versions. Great for real-time applications.",
+	"trainingCutoff": "2024-07",
+	"notes": "Best for high-volume, low-latency applications where speed and cost matter"
+}

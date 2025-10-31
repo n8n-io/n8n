@@ -1,0 +1,26 @@
+{
+	"id": "o1-mini",
+	"name": "o1-mini",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 3.0,
+		"completionPerMilTokenUsd": 12.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 65536,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "complex-reasoning", "analysis"],
+	"description": "Faster and more affordable reasoning model with extended thinking, optimized for STEM reasoning tasks.",
+	"trainingCutoff": "2023-10",
+	"notes": "Good balance of reasoning capability and cost. Particularly strong at coding and mathematics."
+}
