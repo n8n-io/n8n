@@ -108,6 +108,10 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 	}
 }
 
+function handleClickInputWrapper() {
+	inputRef.value?.focus();
+}
+
 watch(speechInput.result, (spoken) => {
 	if (spoken) {
 		message.value = spoken;
@@ -173,7 +177,7 @@ defineExpose({
 				@change="handleFileSelect"
 			/>
 
-			<div :class="$style.inputWrapper">
+			<div :class="$style.inputWrapper" @click="handleClickInputWrapper">
 				<N8nInput
 					ref="inputRef"
 					v-model="message"
@@ -208,7 +212,7 @@ defineExpose({
 							icon="paperclip"
 							icon-size="large"
 							text
-							@click="onAttach"
+							@click.stop="onAttach"
 						/>
 						<N8nIconButton
 							v-if="speechInput.isSupported"
@@ -219,7 +223,7 @@ defineExpose({
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
 							:class="{ [$style.recording]: speechInput.isListening.value }"
 							icon-size="large"
-							@click="onMic"
+							@click.stop="onMic"
 						/>
 						<N8nIconButton
 							v-if="!isResponding"
@@ -228,6 +232,7 @@ defineExpose({
 							title="Send"
 							icon="arrow-up"
 							icon-size="large"
+							@click.stop
 						/>
 						<N8nIconButton
 							v-else
@@ -235,7 +240,7 @@ defineExpose({
 							title="Stop generating"
 							icon="square"
 							icon-size="large"
-							@click="onStop"
+							@click.stop="onStop"
 						/>
 					</div>
 				</div>
@@ -292,7 +297,7 @@ defineExpose({
 	gap: var(--spacing--sm);
 
 	&:focus-within,
-	&:has(:hover) {
+	&:hover {
 		border-color: var(--color--secondary);
 	}
 
