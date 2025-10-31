@@ -179,7 +179,10 @@ export class ChatHubWorkflowService {
 			memoryNode,
 			restoreMemoryNode,
 			clearMemoryNode,
-			...tools,
+			...tools.map((tool, i) => ({
+				...tool,
+				position: [700 + i * 100, 300] satisfies [number, number],
+			})),
 		];
 
 		const connections: IConnections = {

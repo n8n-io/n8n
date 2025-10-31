@@ -1434,6 +1434,7 @@ export class ChatHubService {
 			agentName: session.agentName,
 			createdAt: session.createdAt.toISOString(),
 			updatedAt: session.updatedAt.toISOString(),
+			tools: session.tools,
 		}));
 	}
 
@@ -1462,6 +1463,7 @@ export class ChatHubService {
 				agentName: session.agentName,
 				createdAt: session.createdAt.toISOString(),
 				updatedAt: session.updatedAt.toISOString(),
+				tools: session.tools,
 			},
 			conversation: {
 				messages: Object.fromEntries(messages.map((m) => [m.id, this.convertMessageToDto(m)])),

@@ -10,6 +10,8 @@ import type {
 	OnError,
 	ResourceMapperValue,
 	StructuredChunk,
+	JINA_AI_TOOL_NODE_TYPE,
+	SEAR_XNG_TOOL_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
@@ -39,6 +41,8 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
 };
+
+export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SEAR_XNG_TOOL_NODE_TYPE;
 
 /**
  * Chat Hub conversation model configuration
@@ -291,6 +295,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 	model: z.string().max(64).optional(),
 	workflowId: z.string().max(36).optional(),
 	agentId: z.string().uuid().optional(),
+	tools: z.array(INodeSchema).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -312,6 +317,7 @@ export interface ChatHubSessionDto {
 	agentName: string | null;
 	createdAt: string;
 	updatedAt: string;
+	tools: INodeDto[];
 }
 
 export interface ChatHubMessageDto {

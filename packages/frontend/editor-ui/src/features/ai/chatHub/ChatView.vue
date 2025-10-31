@@ -32,6 +32,8 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
+import ToolsSelector from './components/ToolsSelector.vue';
+import type { INode } from 'n8n-workflow';
 
 const router = useRouter();
 const route = useRoute();
@@ -59,10 +61,14 @@ const currentConversation = computed(() =>
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 const readyToShowMessages = computed(() => chatStore.agentsReady);
 
+const tools = ref<INode[]>([]);
+const selectedTools = computed<INode[]>(() => currentConversation.value?.tools ?? tools.value);
+
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
 	offset: { bottom: 100 },
 });
+
 const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -158,6 +164,7 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 const editingAgentId = ref<string | undefined>(undefined);
+const isToolsSelectorOpen = ref(false);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -273,6 +280,7 @@ function onSubmit(message: string) {
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
+		selectedTools.value,
 	);
 
 	inputRef.value?.setText('');
@@ -361,6 +369,19 @@ function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
+function handleConfigureTools() {
+	isToolsSelectorOpen.value = true;
+	uiStore.openModal('toolsSelector');
+}
+
+async function onUpdateTools(newTools: INode[]) {
+	tools.value = newTools;
+
+	if (currentConversation.value) {
+		await chatStore.updateToolsInSession(sessionId.value, newTools);
+	}
+}
+
 async function handleEditAgent(agentId: string) {
 	try {
 		await chatStore.fetchCustomAgent(agentId);
@@ -418,6 +439,12 @@ function handleOpenWorkflow(workflowId: string) {
 			@close="closeAgentEditor"
 		/>
 
+		<ToolsSelector
+			v-if="isToolsSelectorOpen"
+			:initial-value="selectedTools"
+			@update="onUpdateTools"
+		/>
+
 		<N8nScrollArea
 			v-if="readyToShowMessages"
 			type="scroll"
@@ -472,11 +499,13 @@ function handleOpenWorkflow(workflowId: string) {
 						:class="$style.prompt"
 						:is-responding="isResponding"
 						:selected-model="selectedModel ?? null"
+						:selected-tools="selectedTools"
 						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
+						@select-tools="handleConfigureTools"
 						@set-credentials="handleConfigureCredentials"
 					/>
 				</div>

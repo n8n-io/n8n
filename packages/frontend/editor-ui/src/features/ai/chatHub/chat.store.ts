@@ -46,6 +46,7 @@ import { retry } from '@n8n/utils/retry';
 import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { type INode } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -312,6 +313,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				agentName: null,
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
+				tools: [],
 				...flattenModel(streaming.value.model),
 			},
 		];
@@ -428,6 +430,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		tools: INode[],
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
@@ -467,28 +470,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials,
 				previousMessageId,
-				tools: [
-					{
-						parameters: {
-							url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', '', 'string') }}",
-							simplify:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Simplify', '', 'boolean') }}",
-							options: {},
-							requestOptions: {},
-						},
-						type: 'n8n-nodes-base.jinaAiTool',
-						typeVersion: 1,
-						position: [800, 320],
-						id: uuidv4(),
-						name: 'Read URL content in Jina AI',
-						credentials: {
-							jinaAiApi: {
-								id: 'B4nKenuSx2Y3P7aw',
-								name: 'Jina AI account',
-							},
-						},
-					},
-				],
+				tools,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -606,6 +588,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 					}
 				: session,
 		);
+	}
+
+	async function updateToolsInSession(sessionId: ChatSessionId, tools: INode[]) {
+		const session = sessions.value?.find((s) => s.id === sessionId);
+		if (!session) {
+			throw new Error(`Session with ID ${sessionId} not found`);
+		}
+
+		const updated = await updateConversationApi(rootStore.restApiContext, sessionId, {
+			tools,
+		});
+
+		updateSession(sessionId, updated.session);
 	}
 
 	async function renameSession(sessionId: ChatSessionId, title: string) {
@@ -735,6 +730,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		renameSession,
 		updateSessionModel,
 		deleteSession,
+		updateToolsInSession,
 
 		/**
 		 * conversation
