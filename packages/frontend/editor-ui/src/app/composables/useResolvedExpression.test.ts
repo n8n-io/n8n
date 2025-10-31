@@ -2,7 +2,7 @@ import { defineComponent, h, nextTick, ref, toValue } from 'vue';
 import { useResolvedExpression } from './useResolvedExpression';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import * as workflowHelpers from './useWorkflowHelpers';
-import { renderComponent } from '../__tests__/render';
+import { renderComponent } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { injectWorkflowState, useWorkflowState, type WorkflowState } from './useWorkflowState';
