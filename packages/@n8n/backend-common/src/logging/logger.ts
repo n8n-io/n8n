@@ -34,13 +34,9 @@ export class Logger implements LoggerType {
 	/** https://no-color.org/ */
 	private readonly noColor = process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '';
 
-	// Check FORCE_COLOR at runtime to allow opt-in coloring in production
+	// Allow opt-in coloring in production by setting NO_COLOR to 'false' or '0'
 	private readonly noColorDefaultTrue =
-		process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== ''
-			? true
-			: process.env.FORCE_COLOR !== undefined && process.env.FORCE_COLOR !== ''
-				? false
-				: true; // Default to no colors in production unless FORCE_COLOR is set
+		process.env.NO_COLOR === 'false' || process.env.NO_COLOR === '0' ? false : true;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
