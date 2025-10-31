@@ -46,6 +46,7 @@ import { sortNodeCreateElements, transformNodeType } from '../nodeCreator.utils'
 import { useI18n } from '@n8n/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { DEFAULT_NODE_SIZE, PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 
 export const useActions = () => {
 	const workflowState = injectWorkflowState();
@@ -346,6 +347,7 @@ export const useActions = () => {
 					nodes.push({
 						type: NO_OP_NODE_TYPE,
 						isAutoAdd: true,
+						positionOffset: [0, PUSH_NODES_OFFSET],
 						name: i18n.baseText('nodeView.replaceMe'),
 					});
 					connections.push(

@@ -887,6 +887,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	positionOffset?: XYPosition;
 	actionName?: string;
 } & Partial<INodeUi>;
 
