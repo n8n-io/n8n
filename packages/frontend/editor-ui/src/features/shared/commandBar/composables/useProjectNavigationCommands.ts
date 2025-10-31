@@ -7,7 +7,6 @@ import type { ProjectListItem } from '@/features/collaboration/projects/projects
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CommandBarItem } from '../types';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
-import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	CREATE_PROJECT: 'create-project',
