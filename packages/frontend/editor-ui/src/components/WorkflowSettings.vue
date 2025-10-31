@@ -937,6 +937,7 @@ onBeforeUnmount(() => {
 	:global(.el-row) {
 		display: flex;
 		align-items: center;
+		min-height: 42px;
 	}
 
 	:global(.el-switch) {
