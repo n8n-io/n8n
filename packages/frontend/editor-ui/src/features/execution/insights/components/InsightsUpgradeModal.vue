@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 

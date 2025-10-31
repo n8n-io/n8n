@@ -17,7 +17,7 @@ import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constant
 import type { LogEntry } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { HTML_NODE_TYPE } from '@/constants';
+import { HTML_NODE_TYPE } from '@/app/constants';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;

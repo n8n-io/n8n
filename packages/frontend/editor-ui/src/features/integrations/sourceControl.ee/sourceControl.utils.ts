@@ -3,10 +3,10 @@ import type { Router } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
-import type { useToast } from '@/composables/useToast';
-import { telemetry } from '@/plugins/telemetry';
+import type { useToast } from '@/app/composables/useToast';
+import { telemetry } from '@/app/plugins/telemetry';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 

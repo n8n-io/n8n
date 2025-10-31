@@ -43,6 +43,7 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
+import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
@@ -675,15 +676,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function getAgent(model: ChatHubConversationModel) {
 		if (!agents.value) return;
 
-		return agents.value[model.provider].models.find((m) => {
-			if (model.provider === 'n8n') {
-				return m.model.provider === 'n8n' && m.model.workflowId === model.workflowId;
-			} else if (model.provider === 'custom-agent') {
-				return m.model.provider === 'custom-agent' && m.model.agentId === model.agentId;
-			} else {
-				return m.model.provider === model.provider && m.model.model === model.model;
-			}
-		});
+		return agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
 	}
 
 	return {

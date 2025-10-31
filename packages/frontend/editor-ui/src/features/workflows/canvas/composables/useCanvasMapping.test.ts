@@ -18,9 +18,9 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
@@ -32,12 +32,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createTestingPinia } from '@pinia/testing';
 import { MarkerType } from '@vue-flow/core';
 import { mock } from 'vitest-mock-extended';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	injectWorkflowState,
 	useWorkflowState,
 	type WorkflowState,
-} from '@/composables/useWorkflowState';
+} from '@/app/composables/useWorkflowState';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -58,8 +58,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-vi.mock('@/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowState');
+vi.mock('@/app/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/app/composables/useWorkflowState');
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(),

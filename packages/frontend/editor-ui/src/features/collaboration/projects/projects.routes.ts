@@ -1,10 +1,10 @@
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from './projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
 
-const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
+const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
+const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
 const CredentialsView = async () =>
 	await import('@/features/credentials/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('./views/ProjectSettings.vue');

@@ -3,10 +3,10 @@ import { computed, inject, ref, type StyleValue, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useEventListener } from '@vueuse/core';
-import { PopOutWindowKey } from '@/constants';
+import { PopOutWindowKey } from '@/app/constants';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
 import { N8nIcon, N8nInput } from '@n8n/design-system';
@@ -185,7 +185,7 @@ watch(
 </template>
 
 <style lang="scss" module>
-@use '@/styles/variables' as *;
+@use '@/app/styles/variables' as *;
 
 .ioSearch {
 	transition: max-width 0.3s $ease-out-expo;

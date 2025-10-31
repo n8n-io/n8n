@@ -11,8 +11,8 @@ import type { INodeUi } from '@/Interface';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const httpNode: INodeUi = {
 	parameters: {

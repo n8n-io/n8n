@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { i18n } from '@n8n/i18n';
 
 import { N8nButton, N8nCallout } from '@n8n/design-system';

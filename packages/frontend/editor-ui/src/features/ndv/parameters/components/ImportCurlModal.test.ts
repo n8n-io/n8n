@@ -1,21 +1,21 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ImportCurlModal from './ImportCurlModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { IMPORT_CURL_MODAL_KEY } from '@/constants';
+import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { nextTick } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import userEvent from '@testing-library/user-event';
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
-vi.mock('@/composables/useImportCurlCommand', () => ({
+vi.mock('@/app/composables/useImportCurlCommand', () => ({
 	useImportCurlCommand: (options: {
 		onImportSuccess: () => void;
 		onAfterImport: () => void;

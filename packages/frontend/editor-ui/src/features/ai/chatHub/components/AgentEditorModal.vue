@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import Modal from '@/components/Modal.vue';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
+import Modal from '@/app/components/Modal.vue';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -91,7 +91,7 @@ function resetForm() {
 
 // Watch for modal opening
 watch(
-	() => uiStore.isModalActiveById.agentEditor,
+	() => uiStore.modalsById.agentEditor?.open,
 	(isOpen) => {
 		if (isOpen) {
 			if (props.agentId) {

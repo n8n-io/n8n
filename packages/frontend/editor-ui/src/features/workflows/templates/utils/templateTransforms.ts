@@ -3,8 +3,8 @@ import type {
 	IWorkflowTemplateNodeCredentials,
 } from '@n8n/rest-api-client/api/templates';
 
-import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
-import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
+import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
+import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
 import type { NormalizedTemplateNodeCredentials } from '../templates.types';
 import type {
 	INodeCredentialDescription,

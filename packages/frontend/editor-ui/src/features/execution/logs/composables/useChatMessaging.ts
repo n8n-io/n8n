@@ -11,10 +11,10 @@ import type {
 	BinaryFileType,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { usePinnedData } from '@/composables/usePinnedData';
-import { MODAL_CONFIRM } from '@/constants';
+import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { usePinnedData } from '@/app/composables/usePinnedData';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionPushResponse } from '@/features/execution/executions/executions.types';

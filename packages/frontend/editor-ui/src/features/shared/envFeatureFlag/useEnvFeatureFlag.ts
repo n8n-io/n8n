@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import type { N8nEnvFeatFlags } from '@n8n/api-types';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export const useEnvFeatureFlag = () => {
 	const settingsStore = useSettingsStore();

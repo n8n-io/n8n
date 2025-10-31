@@ -1,5 +1,5 @@
 import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
@@ -7,12 +7,12 @@ import { computed } from 'vue';
 import { AGENT_WITH_MEMORY } from '../workflows/1_agent_with_memory';
 import { AGENT_WITH_TOOLS } from '../workflows/2_agent_with_tools';
 import { AGENT_WITH_KNOWLEDGE } from '../workflows/3_agent_with_knowledge';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { usePostHog } from '@/stores/posthog.store';
-import { TEMPLATE_ONBOARDING_EXPERIMENT } from '@/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { TEMPLATE_ONBOARDING_EXPERIMENT } from '@/app/constants';
 import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_AI_TEMPLATES_STARTER_COLLECTION_CALL_OUT_DISMISSED';
 

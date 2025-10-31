@@ -1,5 +1,5 @@
 import { renderComponent } from '@/__tests__/render';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { n8nLang } from '../plugins/codemirror/n8nLang';
 import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -11,7 +11,7 @@ import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
 import { useExpressionEditor } from './useExpressionEditor';
 
-vi.mock('@/composables/useAutocompleteTelemetry', () => ({
+vi.mock('@/app/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
 }));
 

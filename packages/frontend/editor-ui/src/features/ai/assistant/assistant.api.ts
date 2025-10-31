@@ -1,5 +1,5 @@
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
-import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/constants';
+import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/app/constants';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
@@ -8,7 +8,7 @@ import type {
 	ReplaceCodeRequest,
 } from '@/features/ai/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
-import { getObjectSizeInKB } from '@/utils/objectUtils';
+import { getObjectSizeInKB } from '@/app/utils/objectUtils';
 import type { IDataObject } from 'n8n-workflow';
 
 export function chatWithBuilder(

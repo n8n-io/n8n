@@ -19,7 +19,7 @@ import {
 	getDefaultExecutionFilters,
 } from './executions.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();

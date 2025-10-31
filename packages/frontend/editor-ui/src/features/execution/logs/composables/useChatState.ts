@@ -1,10 +1,10 @@
 import type { RunWorkflowChatPayload } from '@/features/execution/logs/composables/useChatMessaging';
 import { useChatMessaging } from '@/features/execution/logs/composables/useChatMessaging';
 import { useI18n } from '@n8n/i18n';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ChatOptionsSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -13,12 +13,12 @@ import { v4 as uuid } from 'uuid';
 import type { InjectionKey, Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { useLogsStore } from '@/stores/logs.store';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
 import type { INodeParameters } from 'n8n-workflow';
-import { isChatNode } from '@/utils/aiUtils';
+import { isChatNode } from '@/app/utils/aiUtils';
 import { constructChatWebsocketUrl } from '@n8n/chat/utils';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 type IntegratedChat = Omit<Chat, 'sendMessage'> & {
 	sendMessage: (text: string, files: File[]) => Promise<void>;

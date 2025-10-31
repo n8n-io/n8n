@@ -24,7 +24,7 @@ import cssParser from 'prettier/plugins/postcss';
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, toValue } from 'vue';
 
 import { useExpressionEditor } from '../../composables/useExpressionEditor';
-import { htmlEditorEventBus } from '@/event-bus';
+import { htmlEditorEventBus } from '@/app/event-bus';
 import { n8nCompletionSources } from '../../plugins/codemirror/completions/addCompletions';
 import { dropInExpressionEditor, mappingDropCursor } from '../../plugins/codemirror/dragAndDrop';
 import {
@@ -38,7 +38,7 @@ import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges, pasteHandler } from './utils';
 import type { TargetNodeParameterContext } from '@/Interface';
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
 type Props = {
 	modelValue: string;
