@@ -624,7 +624,8 @@ export class Redis implements INodeType {
 						} else if (operation === 'llen') {
 							const redisList = this.getNodeParameter('list', itemIndex) as string;
 							const length = await client.lLen(redisList);
-							returnItems.push({ json: { [redisList]: length } });
+							item.json = { [redisList]: length };
+							returnItems.push(item);
 						} else if (operation === 'set') {
 							const keySet = this.getNodeParameter('key', itemIndex) as string;
 							const value = this.getNodeParameter('value', itemIndex) as string;
