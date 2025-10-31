@@ -5,14 +5,13 @@ import picocolors from 'picocolors';
 
 import { createSymlink, ensureFolder } from '../../utils/filesystem';
 import { detectPackageManager } from '../../utils/package-manager';
-import { onCancel, printCommandHeader } from '../../utils/prompts';
+import { getCommandHeader, onCancel } from '../../utils/prompts';
 import { validateNodeName } from '../../utils/validation';
 import { copyStaticFiles } from '../build';
 import {
 	buildHelpText,
 	type CommandConfig,
 	createOpenN8nHandler,
-	createQuitHandler,
 	createSpinner,
 	readPackageName,
 	runCommands,
@@ -70,9 +69,12 @@ export default class Dev extends Command {
 		let n8nReady = false;
 		const hasN8n = !flags['external-n8n'];
 
-		const n8nSpinner = createSpinner(
-			`Installing n8n... ${picocolors.dim('(this can take a while on first run)')}`,
-		);
+		let spinnerMessage = 'Starting n8n...';
+		setTimeout(() => {
+			spinnerMessage = `Installing n8n... ${picocolors.dim('(this can take a while on first run)')}`;
+		}, 10_000);
+
+		const n8nSpinner = createSpinner(() => spinnerMessage);
 
 		const commandsList: CommandConfig[] = [
 			{
@@ -104,17 +106,18 @@ export default class Dev extends Command {
 			});
 		}
 
-		const keyHandlers = [createQuitHandler()];
+		const keyHandlers = [];
 		if (hasN8n) {
 			keyHandlers.push(createOpenN8nHandler());
 		}
 
-		await printCommandHeader('n8n-node dev');
+		const headerText = await getCommandHeader('n8n-node dev');
 
 		runCommands({
 			commands: commandsList,
 			keyHandlers,
 			helpText: () => buildHelpText(hasN8n, n8nReady),
+			headerText,
 		});
 	}
 }

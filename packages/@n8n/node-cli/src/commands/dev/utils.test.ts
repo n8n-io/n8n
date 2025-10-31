@@ -1,6 +1,6 @@
-import { exec } from 'node:child_process';
+import { execSync } from 'node:child_process';
 
-import { clearScreen, createSpinner, openUrl, sleep } from './utils';
+import { createSpinner, openUrl, sleep } from './utils';
 
 vi.mock('node:child_process');
 
@@ -32,17 +32,6 @@ describe('dev utils', () => {
 
 			expect(resolved).toBe(true);
 			await expect(promise).resolves.toBeUndefined();
-		});
-	});
-
-	describe('clearScreen', () => {
-		it('should write clear screen escape sequences', () => {
-			const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-
-			clearScreen();
-
-			expect(writeSpy).toHaveBeenCalledWith('\n\x1b[2J\x1b[0;0H\n');
-			writeSpy.mockRestore();
 		});
 	});
 
@@ -81,18 +70,18 @@ describe('dev utils', () => {
 
 			openUrl('http://localhost:5678');
 
-			expect(exec).toHaveBeenCalledWith('open http://localhost:5678', expect.any(Function));
+			expect(execSync).toHaveBeenCalledWith('open "http://localhost:5678"');
 
 			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
 
-		it('should use "start" command on win32 platform', () => {
+		it('should use "start" command on win32 platform with empty window title', () => {
 			const originalPlatform = process.platform;
 			Object.defineProperty(process, 'platform', { value: 'win32' });
 
 			openUrl('http://localhost:5678');
 
-			expect(exec).toHaveBeenCalledWith('start http://localhost:5678', expect.any(Function));
+			expect(execSync).toHaveBeenCalledWith('start "" "http://localhost:5678"');
 
 			Object.defineProperty(process, 'platform', { value: originalPlatform });
 		});
@@ -103,9 +92,28 @@ describe('dev utils', () => {
 
 			openUrl('http://localhost:5678');
 
-			expect(exec).toHaveBeenCalledWith('xdg-open http://localhost:5678', expect.any(Function));
+			expect(execSync).toHaveBeenCalledWith('xdg-open "http://localhost:5678"');
 
 			Object.defineProperty(process, 'platform', { value: originalPlatform });
+		});
+
+		it('should escape double quotes in URL', () => {
+			const originalPlatform = process.platform;
+			Object.defineProperty(process, 'platform', { value: 'darwin' });
+
+			openUrl('http://localhost:5678?query="value"');
+
+			expect(execSync).toHaveBeenCalledWith('open "http://localhost:5678?query=\\"value\\""');
+
+			Object.defineProperty(process, 'platform', { value: originalPlatform });
+		});
+
+		it('should not throw if execSync fails', () => {
+			vi.mocked(execSync).mockImplementation(() => {
+				throw new Error('Command failed');
+			});
+
+			expect(() => openUrl('http://localhost:5678')).not.toThrow();
 		});
 	});
 });

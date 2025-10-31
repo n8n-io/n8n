@@ -16,9 +16,7 @@ vi.mock('./utils', async () => {
 		runCommands: vi.fn(),
 		createSpinner: vi.fn(() => vi.fn(() => 'spinner')),
 		openUrl: vi.fn(),
-		clearScreen: vi.fn(),
 		sleep: vi.fn(),
-		createQuitHandler: vi.fn(() => ({ key: 'q', handler: vi.fn() })),
 		createOpenN8nHandler: vi.fn(() => ({ key: 'o', handler: vi.fn() })),
 		buildHelpText: vi.fn(() => 'Press q to quit | o to open n8n'),
 	};
@@ -29,6 +27,7 @@ vi.mock('../../utils/prompts', () => ({
 		throw new Error(`EEXIT: ${code ?? 0}`);
 	}),
 	printCommandHeader: vi.fn(),
+	getCommandHeader: vi.fn().mockResolvedValue('Command Header'),
 }));
 
 vi.mock('../../utils/filesystem', async () => {
@@ -147,7 +146,7 @@ describe('dev command', () => {
 		});
 	});
 
-	tmpdirTest('includes key handlers for quit and open', async ({ tmpdir }) => {
+	tmpdirTest('includes open n8n key handler when n8n is enabled', async ({ tmpdir }) => {
 		await setupTestPackage(tmpdir, {
 			packageJson: { name: 'n8n-nodes-test' },
 		});
@@ -157,12 +156,11 @@ describe('dev command', () => {
 
 		const calls = vi.mocked(runCommands).mock.calls[0]?.[0];
 		expect(calls?.keyHandlers).toBeDefined();
-		expect(calls?.keyHandlers).toHaveLength(2);
-		expect(calls?.keyHandlers?.[0]?.key).toBe('q');
-		expect(calls?.keyHandlers?.[1]?.key).toBe('o');
+		expect(calls?.keyHandlers).toHaveLength(1);
+		expect(calls?.keyHandlers?.[0]?.key).toBe('o');
 	});
 
-	tmpdirTest('includes only quit handler with external-n8n flag', async ({ tmpdir }) => {
+	tmpdirTest('includes no key handlers with external-n8n flag', async ({ tmpdir }) => {
 		await setupTestPackage(tmpdir, {
 			packageJson: { name: 'n8n-nodes-test' },
 		});
@@ -172,7 +170,6 @@ describe('dev command', () => {
 
 		const calls = vi.mocked(runCommands).mock.calls[0]?.[0];
 		expect(calls?.keyHandlers).toBeDefined();
-		expect(calls?.keyHandlers).toHaveLength(1);
-		expect(calls?.keyHandlers?.[0]?.key).toBe('q');
+		expect(calls?.keyHandlers).toHaveLength(0);
 	});
 });
