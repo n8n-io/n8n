@@ -230,9 +230,9 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								v-model="outputRenderMode"
 								size="small"
 								:options="[
-									{ label: 'Text', value: 'text' },
-									{ label: 'Html', value: 'html' },
-									{ label: 'Markdown', value: 'markdown' },
+									{ label: i18n.baseText('ndv.render.text'), value: 'text' },
+									{ label: i18n.baseText('ndv.render.html'), value: 'html' },
+									{ label: i18n.baseText('ndv.render.markdown'), value: 'markdown' },
 								]"
 							/>
 						</div>
