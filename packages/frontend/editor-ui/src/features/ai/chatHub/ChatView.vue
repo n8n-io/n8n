@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/app/constants';
+import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL, VIEWS } from '@/app/constants';
 import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -245,6 +245,17 @@ watch(
 	{ immediate: true },
 );
 
+// Reload models when credentials are updated
+watch(
+	credentialsByProvider,
+	(credentials) => {
+		if (credentials) {
+			void chatStore.fetchAgents(credentials);
+		}
+	},
+	{ immediate: true },
+);
+
 function onSubmit(message: string) {
 	if (
 		!message.trim() ||
@@ -369,6 +380,12 @@ function openNewAgentCreator() {
 function closeAgentEditor() {
 	editingAgentId.value = undefined;
 }
+
+function handleOpenWorkflow(workflowId: string) {
+	const routeData = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+
+	window.open(routeData.href, '_blank');
+}
 </script>
 
 <template>
@@ -385,10 +402,12 @@ function closeAgentEditor() {
 			ref="headerRef"
 			:selected-model="selectedModel ?? null"
 			:credentials="credentialsByProvider"
+			:ready-to-show-model-selector="chatStore.agentsReady"
 			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
+			@open-workflow="handleOpenWorkflow"
 		/>
 
 		<AgentEditorModal

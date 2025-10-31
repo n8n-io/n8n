@@ -40,7 +40,7 @@ const emit = defineEmits<{
 			</div>
 		</div>
 
-		<div v-if="agent.model.provider === 'custom-agent'" :class="$style.actions">
+		<div :class="$style.actions">
 			<N8nIconButton
 				icon="pen"
 				type="tertiary"
@@ -49,6 +49,7 @@ const emit = defineEmits<{
 				@click.prevent="emit('edit')"
 			/>
 			<N8nIconButton
+				v-if="agent.model.provider === 'custom-agent'"
 				icon="trash-2"
 				type="tertiary"
 				size="medium"

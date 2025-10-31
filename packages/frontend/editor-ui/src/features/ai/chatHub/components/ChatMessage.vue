@@ -178,12 +178,11 @@ onBeforeMount(() => {
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:type="message.type"
 					:just-copied="justCopied"
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
-					:message-id="message.id"
+					:message="message"
 					:alternatives="message.alternatives"
 					@copy="handleCopy"
 					@edit="handleEdit"
