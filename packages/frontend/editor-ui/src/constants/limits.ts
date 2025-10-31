@@ -4,6 +4,3 @@ export const MAX_PINNED_DATA_SIZE = 1024 * 1024 * 12; // 12 MB; Workflow pinned 
 export const MAX_DISPLAY_DATA_SIZE = 1024 * 1024; // 1 MB
 export const MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW = 1024 * 1024 * 4; // 4 MB
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
-
-// tags
-export const MAX_TAG_NAME_LENGTH = 24;

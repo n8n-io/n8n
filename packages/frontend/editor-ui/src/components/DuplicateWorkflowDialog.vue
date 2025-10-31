@@ -2,7 +2,7 @@
 import { ref, watch, onMounted, nextTick } from 'vue';
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useToast } from '@/composables/useToast';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

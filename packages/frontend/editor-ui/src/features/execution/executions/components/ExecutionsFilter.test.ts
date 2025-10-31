@@ -26,14 +26,14 @@ vi.mock('@/composables/usePageRedirectionHelper', () => ({
 	}),
 }));
 
-vi.mock('@/components/AnnotationTagsDropdown.ee.vue', () => ({
+vi.mock('@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue', () => ({
 	default: {
 		name: 'AnnotationTagsDropdown',
 		template: '<div data-test-id="executions-filter-annotation-tags-select"></div>',
 	},
 }));
 
-vi.mock('@/components/WorkflowTagsDropdown.vue', () => ({
+vi.mock('@/features/shared/tags/components/WorkflowTagsDropdown.vue', () => ({
 	default: {
 		name: 'WorkflowTagsDropdown',
 		template: '<div data-test-id="executions-filter-tags-select"></div>',

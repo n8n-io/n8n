@@ -1,5 +1,5 @@
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 /**
