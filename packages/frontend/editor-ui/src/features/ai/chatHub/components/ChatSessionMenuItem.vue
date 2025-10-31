@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
+import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
 import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { PROVIDER_CREDENTIAL_TYPE_MAP, type ChatHubSessionDto } from '@n8n/api-types';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { type ChatHubSessionDto } from '@n8n/api-types';
+import { N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
@@ -24,6 +26,9 @@ const input = useTemplateRef('input');
 const editedLabel = ref('');
 
 type SessionAction = 'rename' | 'delete';
+
+const model = computed(() => unflattenModel(session));
+const agent = useAgent(model);
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 	{
@@ -102,12 +107,7 @@ watch(
 			/>
 		</template>
 		<template #icon>
-			<N8nIcon v-if="session.provider === null" size="medium" icon="message-circle" />
-			<CredentialIcon
-				v-else
-				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[session.provider]"
-				:size="16"
-			/>
+			<ChatAgentAvatar :agent="agent ?? null" size="sm" />
 		</template>
 	</ChatSidebarLink>
 </template>

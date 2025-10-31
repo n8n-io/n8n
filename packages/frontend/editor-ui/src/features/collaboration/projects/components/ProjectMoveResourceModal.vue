@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import ProjectMoveResourceModalCredentialsList from './ProjectMoveResourceModalCredentialsList.vue';
 import ProjectMoveSuccessToastMessage from './ProjectMoveSuccessToastMessage.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { VIEWS } from '@/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { VIEWS } from '@/app/constants';
 import type {
 	ICredentialsResponse,
 	IUsedCredential,
@@ -13,8 +13,8 @@ import type { IWorkflowDb } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '../projects.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { ProjectTypes } from '../projects.types';
 import {
 	getTruncatedProjectName,

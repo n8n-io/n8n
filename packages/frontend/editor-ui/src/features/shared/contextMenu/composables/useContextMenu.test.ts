@@ -1,11 +1,11 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from './useContextMenu';
-import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants';
 import { faker } from '@faker-js/faker';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,

@@ -85,14 +85,16 @@ export function getPromptInputByType(options: {
 	let input;
 	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
+	} else if (promptType === 'guardrails') {
+		input = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
 	} else {
 		input = ctx.getNodeParameter(inputKey, i) as string;
 	}
 
 	if (input === undefined) {
+		const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
 		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
+			description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
 		});
 	}
 

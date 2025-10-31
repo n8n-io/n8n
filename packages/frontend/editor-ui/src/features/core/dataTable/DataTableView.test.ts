@@ -49,14 +49,14 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 const mockToast = {
 	showError: vi.fn(),
 };
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 
 const mockDocumentTitle = {
 	set: vi.fn(),
 };
-vi.mock('@/composables/useDocumentTitle', () => ({
+vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: vi.fn(() => mockDocumentTitle),
 }));
 
@@ -64,7 +64,7 @@ const mockDebounce = {
 	callDebounced: vi.fn((fn) => fn()),
 	debounce: vi.fn(),
 };
-vi.mock('@/composables/useDebounce', () => ({
+vi.mock('@/app/composables/useDebounce', () => ({
 	useDebounce: vi.fn(() => mockDebounce),
 }));
 

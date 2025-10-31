@@ -42,6 +42,9 @@ const isModeRootExecution = {
 	internal: false,
 
 	manual: false,
+
+	// n8n Chat hub messages
+	chat: true,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {

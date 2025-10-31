@@ -1,10 +1,5 @@
-import type { VIEWS } from '@/constants';
-import {
-	DEFAULT_NEW_WORKFLOW_NAME,
-	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
-	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/constants';
+import type { VIEWS } from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -12,25 +7,30 @@ import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/type
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { usePostHog } from '@/stores/posthog.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions, getBuilderCredits, getSessionsMetadata } from '@/api/ai';
+import {
+	chatWithBuilder,
+	getAiSessions,
+	getBuilderCredits,
+	getSessionsMetadata,
+} from '@/features/ai/assistant/assistant.api';
 import { generateMessageId, createBuilderPayload } from './builder.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
-import { useToast } from '@/composables/useToast';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useToast } from '@/app/composables/useToast';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
-import { stringSizeInBytes } from '@/utils/typesUtils';
+import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
+import { stringSizeInBytes } from '@/app/utils/typesUtils';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -53,11 +53,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
-
+	const ndvStore = useNDVStore();
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
-	const posthogStore = usePostHog();
 
 	// Composables
 	const {
@@ -81,23 +80,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return firstUserMessage?.content;
 	});
 
-	const isAIBuilderEnabled = computed(() => {
-		// Check license first
-		if (!settings.isAiBuilderEnabled) {
-			return false;
-		}
-
-		const releaseExperimentVariant = posthogStore.getVariant(
-			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
-		);
-		if (releaseExperimentVariant === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant) {
-			return true;
-		}
-
-		return (
-			posthogStore.getVariant(WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name) ===
-			WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant
-		);
+	const isAIBuilderEnabled = computed((): boolean => {
+		return settings.isAiBuilderEnabled;
 	});
 
 	const toolMessages = computed(() => chatMessages.value.filter(isToolMessage));
@@ -171,6 +155,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			const userMsg = createAssistantMessage(
 				locale.baseText('aiAssistant.builder.streamAbortedMessage'),
 				'aborted-streaming',
+				{ aborted: true },
 			);
 			chatMessages.value = [...chatMessages.value, userMsg];
 			return;
@@ -240,6 +225,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
+		// Close NDV on new message
+		ndvStore.unsetActiveNodeName();
+
 		const {
 			text,
 			source = 'chat',
@@ -305,12 +293,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			streamingAbortController.value.abort();
 		}
 
-		const useDeprecatedCredentials =
-			posthogStore.getVariant(WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) !==
-				WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant &&
-			posthogStore.getVariant(WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name) ===
-				WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
-
 		streamingAbortController.value = new AbortController();
 		try {
 			chatWithBuilder(
@@ -335,7 +317,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				() => stopStreaming(),
 				(e) => handleServiceError(e, messageId, retry),
 				streamingAbortController.value?.signal,
-				useDeprecatedCredentials,
 			);
 		} catch (e: unknown) {
 			handleServiceError(e, messageId, retry);
@@ -508,10 +489,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	async function fetchBuilderCredits() {
-		const releaseExperimentVariant = posthogStore.getVariant(
-			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
-		);
-		if (releaseExperimentVariant !== WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant) {
+		if (!isAIBuilderEnabled.value) {
 			return;
 		}
 

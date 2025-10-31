@@ -3,16 +3,16 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { UsageTelemetry } from '../usage.store';
 import { useUsageStore } from '../usage.store';
-import { telemetry } from '@/plugins/telemetry';
+import { telemetry } from '@/app/plugins/telemetry';
 import { i18n as locale } from '@n8n/i18n';
-import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables/useToast';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useToast } from '@/app/composables/useToast';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
 import { ElDialog } from 'element-plus';
@@ -26,6 +26,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import EulaAcceptanceModal from '../components/EulaAcceptanceModal.vue';
+
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
@@ -45,6 +47,8 @@ const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCa
 const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
+const eulaModal = ref(false);
+const eulaUrl = ref('');
 
 const canUserActivateLicense = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'license:manage' } }),
@@ -83,18 +87,55 @@ const showActivationSuccess = () => {
 	});
 };
 
-const showActivationError = (error: Error) => {
+const showActivationError = (error: unknown) => {
 	toast.showError(error, locale.baseText('settings.usageAndPlan.license.activation.error.title'));
 };
 
-const onLicenseActivation = async () => {
+interface EulaErrorResponse {
+	httpStatusCode: number;
+	meta: { eulaUrl: string };
+}
+
+const isEulaError = (error: unknown): error is EulaErrorResponse => {
+	const e = error as EulaErrorResponse;
+	return e.httpStatusCode === 400 && !!e.meta?.eulaUrl;
+};
+
+const onLicenseActivation = async (eulaUri?: string) => {
 	try {
-		await usageStore.activateLicense(activationKey.value);
+		await usageStore.activateLicense(activationKey.value, eulaUri);
 		activationKeyModal.value = false;
+		eulaModal.value = false;
+		activationKey.value = '';
 		showActivationSuccess();
-	} catch (error) {
+	} catch (error: unknown) {
+		// Check if error requires EULA acceptance using type guard
+		if (isEulaError(error)) {
+			activationKeyModal.value = false;
+			eulaUrl.value = error.meta.eulaUrl;
+			eulaModal.value = true;
+			return;
+		}
+
 		showActivationError(error);
 	}
+};
+
+const onEulaAccept = async () => {
+	try {
+		await onLicenseActivation(eulaUrl.value);
+	} catch (error) {
+		// Error is already handled in onLicenseActivation
+		// This catch ensures modal errors don't break the UI
+		eulaModal.value = false;
+		showActivationError(error);
+	}
+};
+
+const onEulaCancel = () => {
+	eulaModal.value = false;
+	eulaUrl.value = '';
+	activationKey.value = '';
 };
 
 onMounted(async () => {
@@ -280,17 +321,24 @@ const openCommunityRegisterModal = () => {
 					<N8nButton type="secondary" @click="activationKeyModal = false">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</N8nButton>
-					<N8nButton @click="onLicenseActivation">
+					<N8nButton :disabled="!activationKey" @click="onLicenseActivation">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 					</N8nButton>
 				</template>
 			</ElDialog>
+
+			<EulaAcceptanceModal
+				v-model="eulaModal"
+				:eula-url="eulaUrl"
+				@accept="onEulaAccept"
+				@cancel="onEulaCancel"
+			/>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '@/styles/variables' as *;
+@use '@/app/styles/variables' as *;
 
 .center > div {
 	justify-content: center;

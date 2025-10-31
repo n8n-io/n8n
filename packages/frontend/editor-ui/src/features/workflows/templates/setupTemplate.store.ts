@@ -2,18 +2,18 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { Router } from 'vue-router';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { createWorkflowFromTemplate } from './utils/templateActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCredentialSetupState } from './composables/useCredentialSetupState';
-import { tryToParseNumber } from '@/utils/typesUtils';
+import { tryToParseNumber } from '@/app/utils/typesUtils';
 
 export type NodeAndType = {
 	node: INodeUi;
