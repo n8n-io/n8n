@@ -164,8 +164,11 @@ export function getMappedSamlAttributesFromFlowResult(
 		if (jitClaimNames.instanceRole && typeof attributes[jitClaimNames.instanceRole] === 'string') {
 			result.attributes.n8nInstanceRole = attributes[jitClaimNames.instanceRole] as string;
 		}
-		if (jitClaimNames.projectRoles && Array.isArray(attributes[jitClaimNames.projectRoles])) {
-			result.attributes.n8nProjectRoles = attributes[jitClaimNames.projectRoles] as string[];
+		if (jitClaimNames.projectRoles && attributes[jitClaimNames.projectRoles]) {
+			const projectRolesFromFlowResult = attributes[jitClaimNames.projectRoles];
+			result.attributes.n8nProjectRoles = Array.isArray(projectRolesFromFlowResult)
+				? projectRolesFromFlowResult
+				: [projectRolesFromFlowResult];
 		}
 		if (!email) result.missingAttributes.push(attributeMapping.email);
 		if (!userPrincipalName) result.missingAttributes.push(attributeMapping.userPrincipalName);
