@@ -766,11 +766,12 @@ export class ChatHubService {
 			);
 		}
 
-		const nodeExecutionStack = this.chatHubWorkflowService.prepareExecutionData(
+		const nodeExecutionStack = await this.chatHubWorkflowService.prepareExecutionData(
 			chatTriggerNode,
 			sessionId,
 			message,
 			attachments,
+			workflowId,
 		);
 
 		const executionData: IRunExecutionData = {

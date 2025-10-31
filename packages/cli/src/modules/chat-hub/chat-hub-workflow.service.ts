@@ -24,8 +24,10 @@ import {
 	NodeConnectionTypes,
 	OperationalError,
 	type IBinaryData,
+	BINARY_ENCODING,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
+import { BinaryDataService } from 'n8n-core';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import {
@@ -42,6 +44,7 @@ export class ChatHubWorkflowService {
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly binaryDataService: BinaryDataService,
 	) {}
 
 	async createChatWorkflow(
@@ -61,23 +64,13 @@ export class ChatHubWorkflowService {
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
 			);
 
-			const { nodes, connections, executionData } = this.buildChatWorkflow({
-				userId,
-				sessionId,
-				history,
-				humanMessage,
-				attachments,
-				credentials,
-				model,
-				systemMessage,
-			});
-
 			const newWorkflow = new WorkflowEntity();
+
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
-			newWorkflow.nodes = nodes;
-			newWorkflow.connections = connections;
+			newWorkflow.nodes = []; // Set later
+			newWorkflow.connections = {}; // Set later
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
 
@@ -88,6 +81,22 @@ export class ChatHubWorkflowService {
 					workflow,
 				}),
 			);
+
+			const { nodes, connections, executionData } = await this.buildChatWorkflow({
+				userId,
+				sessionId,
+				history,
+				humanMessage,
+				attachments,
+				credentials,
+				model,
+				systemMessage,
+				workflowId: workflow.id,
+			});
+
+			workflow.nodes = nodes;
+			workflow.connections = connections;
+			await em.save(workflow);
 
 			return {
 				workflowData: workflow,
@@ -142,12 +151,32 @@ export class ChatHubWorkflowService {
 		});
 	}
 
-	prepareExecutionData(
+	async prepareExecutionData(
 		triggerNode: INode,
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
-	): IExecuteData[] {
+		workflowId: string,
+	): Promise<IExecuteData[]> {
+		// Store binary data through BinaryDataService
+		const processedAttachments: IBinaryData[] = await Promise.all(
+			attachments.map(async (attachment) => {
+				// If attachment already has an ID (filesystem reference) or data is missing, return as-is
+				if (attachment.id || !attachment.data) {
+					return attachment;
+				}
+
+				const buffer = Buffer.from(attachment.data, BINARY_ENCODING);
+
+				return await this.binaryDataService.store(
+					workflowId,
+					'temp', // TODO: execution ID isn't available here yet
+					buffer,
+					attachment,
+				);
+			}),
+		);
+
 		return [
 			{
 				node: triggerNode,
@@ -159,10 +188,10 @@ export class ChatHubWorkflowService {
 									sessionId,
 									action: 'sendMessage',
 									chatInput: message,
-									files: attachments.map(({ data, ...metadata }) => metadata),
+									files: processedAttachments.map(({ data, ...metadata }) => metadata),
 								},
 								binary: Object.fromEntries(
-									attachments.map((attachment, index) => [`data${index}`, attachment]),
+									processedAttachments.map((attachment, index) => [`data${index}`, attachment]),
 								),
 							},
 						],
@@ -173,7 +202,7 @@ export class ChatHubWorkflowService {
 		];
 	}
 
-	private buildChatWorkflow({
+	private async buildChatWorkflow({
 		userId,
 		sessionId,
 		history,
@@ -182,6 +211,7 @@ export class ChatHubWorkflowService {
 		credentials,
 		model,
 		systemMessage,
+		workflowId,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -191,6 +221,7 @@ export class ChatHubWorkflowService {
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
 		systemMessage?: string;
+		workflowId: string;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -253,11 +284,12 @@ export class ChatHubWorkflowService {
 			},
 		};
 
-		const nodeExecutionStack = this.prepareExecutionData(
+		const nodeExecutionStack = await this.prepareExecutionData(
 			chatTriggerNode,
 			sessionId,
 			humanMessage,
 			attachments,
+			workflowId,
 		);
 
 		const executionData: IRunExecutionData = {
