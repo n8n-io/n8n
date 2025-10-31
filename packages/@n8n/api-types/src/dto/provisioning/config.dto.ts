@@ -4,6 +4,8 @@ import { Z } from 'zod-class';
 export class ProvisioningConfigDto extends Z.class({
 	scopesProvisionInstanceRole: z.boolean(),
 	scopesProvisionProjectRoles: z.boolean(),
+	// TODO: understand why 'never' frequency exists.
+	// Shouldn't this be achieved by setting scopesProvisionInstanceRole and scopesProvisionProjectRoles to null?
 	scopesProvisioningFrequency: z.enum(['never', 'first_login', 'every_login']),
 	scopesName: z.string(),
 	scopesInstanceRoleClaimName: z.string(),
