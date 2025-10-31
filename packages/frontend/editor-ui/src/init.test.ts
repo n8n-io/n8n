@@ -9,7 +9,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
-import { useBannersStore } from '@/app/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { STORES } from '@n8n/stores';
