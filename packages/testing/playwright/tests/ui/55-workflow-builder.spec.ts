@@ -25,10 +25,7 @@ test.use({
 	addContainerCapability: {
 		proxyServerEnabled: true,
 		env: {
-			// Provide a dummy API key for testing (real API calls are mocked by proxy)
 			N8N_AI_ANTHROPIC_KEY: 'sk-ant-test-key-for-mocked-tests',
-			// Mocked responses seem to lead to workflow builder hitting recursion limit - increase it to avoid this
-			N8N_AI_WORKFLOW_BUILDER_RECURSION_LIMIT: '100',
 		},
 	},
 });
