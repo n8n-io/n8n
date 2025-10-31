@@ -99,7 +99,7 @@ export default defineComponent({
 		margin: var(--spacing--sm) 0;
 		color: var(--color--text--tint-1);
 		border-left: 0.25em solid var(--border-color);
-		background-color: var(--color--background--light-1);
+		background-color: var(--color--background--light-2);
 		border-radius: var(--radius--sm);
 	}
 
@@ -110,14 +110,14 @@ export default defineComponent({
 	}
 
 	code {
-		background-color: var(--color--background--light-1);
+		background-color: var(--color--background--light-2);
 		padding: 0.2em 0.4em;
 		border-radius: var(--radius--sm);
 		color: var(--code--color--foreground);
 	}
 
 	pre {
-		background-color: var(--color--background--light-2);
+		background-color: var(--color--background--light-3);
 		padding: var(--spacing--sm);
 		border-radius: var(--radius--lg);
 		overflow-x: auto;
