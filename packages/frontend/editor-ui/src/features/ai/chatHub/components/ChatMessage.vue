@@ -53,6 +53,10 @@ const speech = useSpeechSynthesis(messageContent, {
 const model = computed(() => unflattenModel(message));
 const agent = useAgent(model);
 
+const attachmentFiles = computed(() => {
+	return message.attachments.map((attachment) => convertBinaryDataToFile(attachment));
+});
+
 async function handleCopy() {
 	const text = message.content;
 	await clipboard.copy(text);
@@ -176,11 +180,11 @@ onBeforeMount(() => {
 						:options="markdownOptions"
 						:plugins="[linksNewTabPlugin]"
 					/>
-					<div v-if="message.attachments.length > 0" :class="$style.attachments">
+					<div v-if="attachmentFiles.length > 0" :class="$style.attachments">
 						<ChatFile
-							v-for="(attachment, index) in message.attachments"
+							v-for="(file, index) in attachmentFiles"
 							:key="index"
-							:file="convertBinaryDataToFile(attachment)"
+							:file="file"
 							:is-removable="false"
 							:is-previewable="true"
 						/>
