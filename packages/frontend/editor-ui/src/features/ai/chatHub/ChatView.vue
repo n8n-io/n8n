@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
 import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
-import {
-	findOneFromModelsResponse,
-	restoreConversationModelFromMessageOrSession,
-} from '@/features/ai/chatHub/chat.utils';
+import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
@@ -60,6 +57,7 @@ const currentConversation = computed(() =>
 		: undefined,
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
+const readyToShowMessages = computed(() => chatStore.agentsReady);
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -176,25 +174,22 @@ function scrollToMessage(messageId: ChatMessageId) {
 
 // Scroll to the bottom when a new message is added
 watch(
-	() => chatMessages.value[chatMessages.value.length - 1]?.id,
-	(lastMessageId) => {
-		if (!lastMessageId) {
+	[readyToShowMessages, () => chatMessages.value[chatMessages.value.length - 1]?.id],
+	([ready, lastMessageId]) => {
+		if (!ready || !lastMessageId) {
 			return;
 		}
 
 		// Prevent "scroll to bottom" button from appearing when not necessary
 		void nextTick(measure);
+
+		if (chatStore.streaming) {
+			// Scroll to user's prompt when the message is being generated
+			scrollToMessage(chatStore.streaming.promptId);
 			return;
 		}
 
-		const message = chatStore
-			.getActiveMessages(sessionId.value)
-			.find((m) => m.id === lastMessageId);
-
-		if (message?.previousMessageId) {
-			// Scroll to user's prompt when the message is being generated
-			scrollToMessage(message.previousMessageId);
-		}
+		scrollToBottom(false);
 	},
 	{ immediate: true, flush: 'post' },
 );
@@ -291,7 +286,7 @@ function handleCancelEditMessage() {
 
 function handleEditMessage(message: ChatHubMessageDto) {
 	if (
-		chatStore.isResponding(message.sessionId) ||
+		isResponding.value ||
 		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
@@ -313,7 +308,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 
 function handleRegenerateMessage(message: ChatHubMessageDto) {
 	if (
-		chatStore.isResponding(message.sessionId) ||
+		isResponding.value ||
 		message.type !== 'ai' ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
@@ -405,7 +400,7 @@ function closeAgentEditor() {
 		/>
 
 		<N8nScrollArea
-			v-if="chatStore.agentsReady"
+			v-if="readyToShowMessages"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
