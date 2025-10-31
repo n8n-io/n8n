@@ -242,9 +242,9 @@ export async function getColumnMetaData(
 	try {
 		conn = await pool.getConnection();
 
-		const is12cOrHigher = conn.oracleServerVersion >= 1200000000;
+		const isCDBSupported = conn.oracleServerVersion >= 1200000000;
 
-		const sql = is12cOrHigher
+		const sql = isCDBSupported
 			? `
 WITH constraint_info AS (
   SELECT
@@ -328,7 +328,7 @@ ORDER BY atc.COLUMN_NAME`;
 
 		return rows.map((row) => ({
 			columnName: row.COLUMN_NAME,
-			isGenerated: is12cOrHigher && row.IDENTITY_COLUMN === 'YES' ? 'ALWAYS' : 'NEVER',
+			isGenerated: isCDBSupported && row.IDENTITY_COLUMN === 'YES' ? 'ALWAYS' : 'NEVER',
 			columnDefault: row.HAS_DEFAULT,
 			dataType: row.DATA_TYPE,
 			isNullable: row.NULLABLE === 'Y',

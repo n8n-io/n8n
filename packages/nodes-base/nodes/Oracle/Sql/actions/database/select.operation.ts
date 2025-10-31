@@ -88,7 +88,7 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	const conn = await pool.getConnection();
-	const is12cOrHigher = conn.oracleServerVersion >= 1200000000;
+	const isCDBSupported = conn.oracleServerVersion >= 1200000000;
 	await conn.close();
 
 	for (let i = 0; i < items.length; i++) {
@@ -131,7 +131,7 @@ export async function execute(
 		if (!returnAll) {
 			const limit = this.getNodeParameter('limit', i, 50);
 
-			if (is12cOrHigher) {
+			if (isCDBSupported) {
 				// Oracle 12c+ (FETCH FIRST)
 				query += `${innerQuery} FETCH FIRST ${limit} ROWS ONLY`;
 			} else {
