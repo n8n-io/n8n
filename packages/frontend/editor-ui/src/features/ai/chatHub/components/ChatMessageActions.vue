@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import type { ChatMessageId } from '@n8n/api-types';
 import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
