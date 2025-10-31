@@ -1,0 +1,26 @@
+{
+	"id": "gemini-2.5-deep-think",
+	"name": "Gemini 2.5 Deep Think",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.3,
+		"completionPerMilTokenUsd": 3.5
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 192000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image", "audio"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "research", "mathematics", "coding", "problem-solving"],
+	"description": "First hybrid reasoning model with parallel thinking techniques. Uses extended reasoning for complex problem-solving, generating and evaluating multiple ideas simultaneously.",
+	"trainingCutoff": "2025-01",
+	"notes": "MoE transformer architecture. Can generate up to 192K output tokens. Achieves Bronze-level on IMO 2025 benchmark. State-of-the-art on LiveCodeBench V6 and Humanity's Last Exam. Automatically uses code execution and Google Search tools."
+}

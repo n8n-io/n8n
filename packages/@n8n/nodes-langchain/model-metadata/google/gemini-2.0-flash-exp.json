@@ -1,0 +1,26 @@
+{
+	"id": "gemini-2.0-flash-exp",
+	"name": "Gemini 2.0 Flash Experimental",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.0,
+		"completionPerMilTokenUsd": 0.0
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": true,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text", "image", "audio"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["testing", "experimentation", "multimodal", "agentic"],
+	"description": "Experimental version of Gemini 2.0 Flash with cutting-edge features. Free to use but may have instability and feature limitations.",
+	"trainingCutoff": "2024-11",
+	"notes": "EXPERIMENTAL - Free via Google AI Studio. Native image generation, multimodal Live API, complex function calling. May lack real-time info and some Gemini features. Performance may be inconsistent."
+}

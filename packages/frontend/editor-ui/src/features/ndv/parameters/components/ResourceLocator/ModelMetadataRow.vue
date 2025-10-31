@@ -20,35 +20,50 @@ const formatContextLength = (length: number): string => {
 	return length.toString();
 };
 
-const formatPrice = (pricePerMil: number): string => {
-	if (pricePerMil === 0) return 'Free';
-	if (pricePerMil < 1) return `$${pricePerMil.toFixed(3)} / 1M`;
-	return `$${pricePerMil.toFixed(2)} / 1M`;
+const formatPrice = (inputPrice: number, outputPrice: number): string => {
+	const formatSinglePrice = (price: number): string => {
+		if (price === 0) return '0';
+		if (price < 1) return `$${price.toFixed(3)}`;
+		return `$${price.toFixed(2)}`;
+	};
+
+	const input = formatSinglePrice(inputPrice);
+	const output = formatSinglePrice(outputPrice);
+
+	// If both are the same or output is 0, just show one price
+	if (inputPrice === outputPrice || outputPrice === 0) {
+		return `${input}/1M`;
+	}
+
+	// Show both with arrow indicating input → output
+	return `${input}→${output}/1M`;
 };
 
-const getIntelligenceIcon = (level: string): string => {
+const getIntelligenceIcon = (): string => {
 	return 'brain';
 };
 
+type CapabilityIcon = 'wrench' | 'eye' | 'code' | 'palette' | 'mic' | 'lightbulb';
+
 const capabilities = computed(() => {
-	const caps = [];
+	const caps: Array<{ icon: CapabilityIcon; label: string }> = [];
 	if (props.metadata.capabilities.functionCalling) {
-		caps.push({ icon: 'wrench', label: 'Functions' });
+		caps.push({ icon: 'wrench' as const, label: 'Functions' });
 	}
 	if (props.metadata.capabilities.vision) {
-		caps.push({ icon: 'eye', label: 'Vision' });
+		caps.push({ icon: 'eye' as const, label: 'Vision' });
 	}
 	if (props.metadata.capabilities.structuredOutput) {
-		caps.push({ icon: 'code', label: 'Structured Output' });
+		caps.push({ icon: 'code' as const, label: 'Structured Output' });
 	}
 	if (props.metadata.capabilities.imageGeneration) {
-		caps.push({ icon: 'palette', label: 'Image Generation' });
+		caps.push({ icon: 'palette' as const, label: 'Image Generation' });
 	}
 	if (props.metadata.capabilities.audio) {
-		caps.push({ icon: 'mic', label: 'Audio' });
+		caps.push({ icon: 'mic' as const, label: 'Audio' });
 	}
 	if (props.metadata.capabilities.extendedThinking) {
-		caps.push({ icon: 'lightbulb', label: 'Extended Thinking' });
+		caps.push({ icon: 'lightbulb' as const, label: 'Extended Thinking' });
 	}
 	return caps;
 });
@@ -74,21 +89,24 @@ const capabilities = computed(() => {
 				>
 			</template>
 
-			<!-- Price -->
-			<template v-if="metadata.pricing.promptPerMilTokenUsd > 0">
+			<!-- Price (Input → Output) -->
+			<template
+				v-if="
+					metadata.pricing.promptPerMilTokenUsd > 0 || metadata.pricing.completionPerMilTokenUsd > 0
+				"
+			>
 				<span :class="$style.separator">•</span>
 				<span :class="$style.metadataText">{{
-					formatPrice(metadata.pricing.promptPerMilTokenUsd)
+					formatPrice(
+						metadata.pricing.promptPerMilTokenUsd,
+						metadata.pricing.completionPerMilTokenUsd,
+					)
 				}}</span>
 			</template>
 
 			<!-- Intelligence Level -->
 			<span :class="$style.separator">•</span>
-			<N8nIcon
-				:icon="getIntelligenceIcon(metadata.intelligenceLevel)"
-				size="small"
-				:class="$style.intelligenceIcon"
-			/>
+			<N8nIcon icon="brain" size="small" :class="$style.intelligenceIcon" />
 			<span :class="$style.metadataText">{{ metadata.intelligenceLevel }}</span>
 
 			<!-- Capability Icons -->

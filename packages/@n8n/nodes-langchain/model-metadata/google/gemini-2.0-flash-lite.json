@@ -1,0 +1,26 @@
+{
+	"id": "gemini-2.0-flash-lite",
+	"name": "Gemini 2.0 Flash-Lite",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.075,
+		"completionPerMilTokenUsd": 0.3
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["high-volume", "cost-effective", "general-purpose", "batch-processing"],
+	"description": "Cost-efficient 2.0 model with same speed and cost as 1.5 Flash but improved quality. Optimized for low-latency, high-volume applications.",
+	"trainingCutoff": "2024-11",
+	"notes": "Public preview. Same 1M token context as 2.0 Flash. Ideal for cost-sensitive applications requiring good performance. Successor to 1.5 Flash pricing model."
+}

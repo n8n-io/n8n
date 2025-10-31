@@ -1,0 +1,26 @@
+{
+	"id": "gemini-1.5-flash",
+	"name": "Gemini 1.5 Flash",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.075,
+		"completionPerMilTokenUsd": 0.3
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["general-purpose", "high-volume", "cost-effective", "multimodal"],
+	"description": "Legacy Gemini Flash model optimized for high-volume, low-latency use cases. Most popular Gemini model among developers before 2.0 release.",
+	"trainingCutoff": "2024-04",
+	"notes": "DEPRECATED - All Gemini 1.5 models retired. Migrate to 2.0 Flash-Lite or 2.5 Flash-Lite. Pricing: $0.075/1M input (≤128K), $0.3/1M output. 64% input and 52% output price reduction applied Oct 2024."
+}

@@ -1,0 +1,26 @@
+{
+	"id": "gemini-2.0-flash-thinking-exp",
+	"name": "Gemini 2.0 Flash Thinking Experimental",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.0,
+		"completionPerMilTokenUsd": 0.0
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "testing", "problem-solving", "research"],
+	"description": "Experimental 2.0 Flash variant with extended thinking capabilities for complex reasoning tasks. Free for testing and experimentation.",
+	"trainingCutoff": "2024-11",
+	"notes": "EXPERIMENTAL - Free via Google AI Studio. Features extended reasoning mode for complex problems. Updated in January 2025. May have inconsistent performance."
+}

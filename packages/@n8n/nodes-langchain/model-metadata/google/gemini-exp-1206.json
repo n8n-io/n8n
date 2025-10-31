@@ -1,0 +1,26 @@
+{
+	"id": "gemini-exp-1206",
+	"name": "Gemini Experimental 1206",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.0,
+		"completionPerMilTokenUsd": 0.0
+	},
+	"contextLength": 2097152,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "mathematics", "research", "testing"],
+	"description": "Experimental model with 2M+ token context achieving highest LMArena score. Exceptional performance on coding, math, and complex reasoning tasks.",
+	"trainingCutoff": "2024-12",
+	"notes": "EXPERIMENTAL - Free via Google AI Studio and API. Highest Arena Score (1379) on LMArena. Available to Gemini Advanced subscribers. Enhanced RL processes. May lack real-time info and some features. Performance inconsistencies possible."
+}
