@@ -52,6 +52,9 @@ describe('Salesforce', () => {
 		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data) =>
 			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
 		);
+
+		// Set up common mock implementations that are used in most tests
+		sortOptionsSpy.mockImplementation((options) => options);
 	});
 
 	afterEach(() => {
@@ -150,7 +153,6 @@ describe('Salesforce', () => {
 				salesforceApiRequestAllItemsSpy
 					.mockResolvedValueOnce(mockQueues)
 					.mockResolvedValueOnce(mockUsers);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getCaseOwners.call(mockLoadOptionsFunctions);
 
@@ -183,7 +185,6 @@ describe('Salesforce', () => {
 				salesforceApiRequestAllItemsSpy
 					.mockResolvedValueOnce([])
 					.mockResolvedValueOnce([{ Id: 'user1', Name: 'John Doe' }]);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getCaseOwners.call(mockLoadOptionsFunctions);
 
@@ -199,7 +200,6 @@ describe('Salesforce', () => {
 				salesforceApiRequestAllItemsSpy
 					.mockResolvedValueOnce(mockQueues)
 					.mockResolvedValueOnce(mockUsers);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getLeadOwners.call(mockLoadOptionsFunctions);
 
@@ -237,7 +237,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getLeadSources.call(mockLoadOptionsFunctions);
 
@@ -262,7 +261,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getCustomFields.call(mockLoadOptionsFunctions);
@@ -285,7 +283,6 @@ describe('Salesforce', () => {
 				];
 
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockTypes);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
 
@@ -316,7 +313,6 @@ describe('Salesforce', () => {
 				];
 
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockTypes);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
 
@@ -345,7 +341,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getExternalIdFields.call(mockLoadOptionsFunctions);
@@ -371,7 +366,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getExternalIdFields.call(mockLoadOptionsFunctions);
@@ -392,7 +386,6 @@ describe('Salesforce', () => {
 				];
 
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockAccounts);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getAccounts.call(mockLoadOptionsFunctions);
 
@@ -418,7 +411,6 @@ describe('Salesforce', () => {
 				];
 
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockCampaigns);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getCampaigns.call(mockLoadOptionsFunctions);
 
@@ -452,7 +444,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getStages.call(mockLoadOptionsFunctions);
 
@@ -484,7 +475,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getAccountTypes.call(mockLoadOptionsFunctions);
@@ -514,7 +504,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getAccountSources.call(mockLoadOptionsFunctions);
@@ -544,7 +533,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getCaseTypes.call(mockLoadOptionsFunctions);
 
@@ -573,7 +561,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getCaseStatuses.call(mockLoadOptionsFunctions);
@@ -599,7 +586,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockSobjects);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getCustomObjects.call(mockLoadOptionsFunctions);
@@ -624,7 +610,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getCustomObjectFields.call(mockLoadOptionsFunctions);
@@ -652,7 +637,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getAccountFields.call(mockLoadOptionsFunctions);
@@ -674,7 +658,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getCaseFields.call(mockLoadOptionsFunctions);
 
@@ -694,7 +677,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getLeadFields.call(mockLoadOptionsFunctions);
 
@@ -714,7 +696,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getOpportunityFields.call(mockLoadOptionsFunctions);
@@ -738,7 +719,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getTaskFields.call(mockLoadOptionsFunctions);
 
@@ -758,7 +738,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getUserFields.call(mockLoadOptionsFunctions);
 
@@ -778,7 +757,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getContactFields.call(mockLoadOptionsFunctions);
@@ -799,7 +777,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getAtachmentFields.call(mockLoadOptionsFunctions);
@@ -831,7 +808,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getTaskStatuses.call(mockLoadOptionsFunctions);
@@ -859,7 +835,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getTaskTypes.call(mockLoadOptionsFunctions);
 
@@ -885,7 +860,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getTaskSubjects.call(mockLoadOptionsFunctions);
@@ -911,7 +885,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getTaskCallTypes.call(mockLoadOptionsFunctions);
@@ -937,7 +910,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getTaskPriorities.call(mockLoadOptionsFunctions);
@@ -964,7 +936,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getTaskRecurrenceTypes.call(mockLoadOptionsFunctions);
@@ -993,7 +964,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getTaskRecurrenceInstances.call(mockLoadOptionsFunctions);
@@ -1024,7 +994,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getCaseReasons.call(mockLoadOptionsFunctions);
 
@@ -1050,7 +1019,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result = await node.methods.loadOptions.getCaseOrigins.call(mockLoadOptionsFunctions);
 
@@ -1076,7 +1044,6 @@ describe('Salesforce', () => {
 				};
 
 				salesforceApiRequestSpy.mockResolvedValue(mockDescribe);
-				sortOptionsSpy.mockImplementation((options) => options);
 
 				const result =
 					await node.methods.loadOptions.getCasePriorities.call(mockLoadOptionsFunctions);

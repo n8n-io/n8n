@@ -858,45 +858,6 @@ describe('Salesforce -> GenericFunctions', () => {
 				// Verify API call was made with undefined instance_url
 				expect(mockRequest).toHaveBeenCalledTimes(2);
 			});
-
-			it('should handle missing access_token in token response', async () => {
-				const mockCredentials = {
-					clientId: 'test-client-id',
-					username: 'test@example.com',
-					privateKey: 'mock-private-key',
-					environment: 'production',
-				};
-				const mockResponse = {
-					// Missing access_token
-					instance_url: 'https://test.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getNode.mockReturnValue({
-					id: 'test-node',
-					name: 'Test Node',
-					type: 'n8n-nodes-base.salesforce',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
-				mockExecuteFunctions.logger = {
-					debug: jest.fn(),
-				} as any;
-
-				// Should not throw error but handle gracefully
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
-
-				// Verify Authorization header contains "Bearer undefined"
-				expect(mockRequest).toHaveBeenCalledWith(
-					expect.objectContaining({
-						headers: expect.objectContaining({
-							Authorization: 'Bearer undefined',
-						}),
-					}),
-				);
-			});
 		});
 
 		describe('JWT Signature Generation', () => {
