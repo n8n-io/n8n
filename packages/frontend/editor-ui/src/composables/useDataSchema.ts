@@ -474,7 +474,7 @@ export const useFlattenSchema = () => {
 			}
 
 			if (isEmptySchema(item.schema)) {
-				if (!item.isNodeExecuted) {
+				if (!item.isNodeExecuted && !item.lastSuccessfulPreview) {
 					acc.push(emptyItem('executeSchema', { level: 1 }));
 					return acc;
 				}

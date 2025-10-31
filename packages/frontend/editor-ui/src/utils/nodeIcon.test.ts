@@ -8,7 +8,7 @@ import {
 } from './nodeIcon';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getThemedValue } from './nodeTypesUtils';
-import { removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
@@ -31,7 +31,7 @@ vi.mock('./nodeTypesUtils', () => ({
 	}),
 }));
 
-vi.mock('../components/Node/NodeCreator/utils', () => ({
+vi.mock('@/features/shared/nodeCreator/nodeCreator.utils', () => ({
 	removePreviewToken: vi.fn((nodeType: string) => nodeType.replace('__preview__', '')),
 }));
 

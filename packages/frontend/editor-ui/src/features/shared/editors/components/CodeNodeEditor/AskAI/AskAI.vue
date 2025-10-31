@@ -9,13 +9,13 @@ import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import type { INodeUi, Schema } from '@/Interface';
-import { generateCodeForPrompt } from '@/api/ai';
+import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';

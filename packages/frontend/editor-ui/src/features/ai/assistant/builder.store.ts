@@ -13,7 +13,12 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions, getBuilderCredits, getSessionsMetadata } from '@/api/ai';
+import {
+	chatWithBuilder,
+	getAiSessions,
+	getBuilderCredits,
+	getSessionsMetadata,
+} from '@/features/ai/assistant/assistant.api';
 import { generateMessageId, createBuilderPayload } from './builder.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -25,7 +30,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/utils/typesUtils';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -150,6 +155,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			const userMsg = createAssistantMessage(
 				locale.baseText('aiAssistant.builder.streamAbortedMessage'),
 				'aborted-streaming',
+				{ aborted: true },
 			);
 			chatMessages.value = [...chatMessages.value, userMsg];
 			return;

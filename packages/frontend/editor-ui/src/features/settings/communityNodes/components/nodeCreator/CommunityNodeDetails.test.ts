@@ -46,7 +46,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	})),
 }));
 
-vi.mock('@/stores/nodeCreator.store', () => ({
+vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		actions: [],
 		removeNodeFromMergedNodes,
@@ -78,7 +78,7 @@ vi.mock('@/composables/useToast', () => ({
 	})),
 }));
 
-vi.mock('@/components/Node/NodeCreator/composables/useViewStacks', () => ({
+vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 	useViewStacks: vi.fn(() => ({
 		activeViewStack: {
 			communityNodeDetails: {

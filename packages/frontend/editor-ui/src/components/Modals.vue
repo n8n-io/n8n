@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
 	ABOUT_MODAL_KEY,
-	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
@@ -16,7 +15,6 @@ import {
 	NPS_SURVEY_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
 	PRE_BUILT_AGENTS_MODAL_KEY,
@@ -29,8 +27,13 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 } from '@/constants';
+import {
+	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
+	TAGS_MANAGER_MODAL_KEY,
+} from '@/features/shared/tags/tags.constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import {
@@ -77,7 +80,7 @@ import DeleteUserModal from '@/features/settings/users/components/DeleteUserModa
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
-import ImportCurlModal from '@/components/ImportCurlModal.vue';
+import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
 import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
 import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
@@ -90,8 +93,8 @@ import EventDestinationSettingsModal from '@/features/integrations/logStreaming.
 import SetupWorkflowCredentialsModal from '@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
 import SourceControlPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue';
-import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
-import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
+import AnnotationTagsManager from '@/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue';
+import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import WhatsNewModal from '@/components/WhatsNewModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
@@ -105,6 +108,7 @@ import PromptMfaCodeModal from '@/features/core/auth/components/PromptMfaCodeMod
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
+import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 </script>
 
@@ -378,6 +382,12 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V3_KEY">
 			<template #default="{ modalName, data }">
 				<NodeRecommendationModalV3 :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY">
+			<template #default="{ modalName, data }">
+				<NodeRecommendationModalTDQ :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

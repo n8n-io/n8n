@@ -33,6 +33,7 @@ const classes = computed(() => ({
 	position: absolute;
 	top: -20px;
 	left: 50%;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
 	font-size: var(--font-size--2xs);
 	color: var(--node-type--supplemental--color);
@@ -44,10 +45,5 @@ const classes = computed(() => ({
 .required .label::after {
 	content: '*';
 	color: var(--color--danger);
-}
-
-:global(.vue-flow__handle:not(.connectionindicator)) .plus {
-	display: none;
-	position: absolute;
 }
 </style>

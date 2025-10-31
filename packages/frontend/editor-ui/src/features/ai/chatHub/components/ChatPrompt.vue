@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import type { ChatHubConversationModel, ChatHubLLMProvider } from '@n8n/api-types';
-import { N8nIconButton, N8nInput } from '@n8n/design-system';
+import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
+import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 
 const { selectedModel, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
-	selectedModel: ChatHubConversationModel | null;
+	isNewSession: boolean;
+	selectedModel: ChatModelDto | null;
 	isMissingCredentials: boolean;
 }>();
 
@@ -30,13 +31,15 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-const placeholder = computed(() => {
-	if (!selectedModel) {
-		return 'Select a model';
-	}
+const placeholder = computed(() =>
+	selectedModel ? `Message ${selectedModel.name ?? 'a model'}...` : 'Select a model',
+);
 
-	return `Message ${selectedModel.name}`;
-});
+const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
+	selectedModel?.model.provider === 'n8n' || selectedModel?.model.provider === 'custom-agent'
+		? undefined
+		: selectedModel?.model.provider,
+);
 
 function onMic() {
 	if (speechInput.isListening.value) {
@@ -103,20 +106,28 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
-			<div v-if="!selectedModel" :class="$style.callout">
-				Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
-				conversation
-			</div>
-			<div v-else-if="isMissingCredentials" :class="$style.callout">
-				Please
-				<a
-					href=""
-					@click.prevent="emit('setCredentials', selectedModel.provider as ChatHubLLMProvider)"
-				>
-					set credentials
-				</a>
-				for {{ providerDisplayNames[selectedModel.provider] }} to start a conversation
-			</div>
+			<N8nText v-if="!selectedModel" :class="$style.callout">
+				<template v-if="isNewSession">
+					Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
+					conversation
+				</template>
+				<template v-else>
+					Please <a href="" @click.prevent="emit('selectModel')">reselect a model</a> to continue
+					the conversation
+				</template>
+			</N8nText>
+			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
+				<template v-if="isNewSession">
+					Please
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					for {{ providerDisplayNames[llmProvider] }} to start a conversation
+				</template>
+				<template v-else>
+					Please
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
+				</template>
+			</N8nText>
 			<N8nInput
 				ref="inputRef"
 				v-model="message"
@@ -191,7 +202,7 @@ defineExpose({
 .callout {
 	color: var(--color--secondary);
 	background-color: hsla(247, 49%, 53%, 0.1);
-	padding: 16px 16px 32px;
+	padding: 12px 16px 24px;
 	border-top-left-radius: 16px;
 	border-top-right-radius: 16px;
 	width: 100%;

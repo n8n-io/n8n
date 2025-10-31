@@ -210,7 +210,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				margin: 0 0 var(--spacing--xs);
 				color: var(--color--text--tint-1);
 				font-size: var(--font-size--2xs);
-				font-weight: var(--font-weight-normal);
+				font-weight: var(--font-weight--regular);
 			}
 
 			span {

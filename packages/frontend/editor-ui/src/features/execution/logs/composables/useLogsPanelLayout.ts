@@ -118,11 +118,11 @@ export function useLogsPanelLayout(
 
 			if (state === LOGS_PANEL_STATE.FLOATING) {
 				popOutWindow?.value?.document.documentElement.style.setProperty(
-					'--logs-panel-height',
+					'--logs-panel--height',
 					'100vh',
 				);
 			} else {
-				document.documentElement.style.setProperty('--logs-panel-height', `${updatedHeight}px`);
+				document.documentElement.style.setProperty('--logs-panel--height', `${updatedHeight}px`);
 			}
 
 			logsStore.setHeight(updatedHeight);

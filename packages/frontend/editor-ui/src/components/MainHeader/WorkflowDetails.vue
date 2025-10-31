@@ -8,8 +8,8 @@ import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
-import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
+import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -28,7 +28,7 @@ import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useTagsStore } from '@/stores/tags.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -189,7 +189,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	}
 
 	if (
-		(workflowPermissions.value.delete === true && !props.readOnly && !props.isArchived) ||
+		(workflowPermissions.value.update === true && !props.readOnly && !props.isArchived) ||
 		isNewWorkflow.value
 	) {
 		actions.unshift({

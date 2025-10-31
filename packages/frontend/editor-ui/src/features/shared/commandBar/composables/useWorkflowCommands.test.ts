@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach, type MockInstance } from 'vitest';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import * as useCanvasOperations from '@/composables/useCanvasOperations';
-import { useTagsStore } from '@/stores/tags.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

@@ -1,4 +1,4 @@
-import { chatWithAssistant, replaceCode } from '@/api/ai';
+import { chatWithAssistant, replaceCode } from '@/features/ai/assistant/assistant.api';
 import { type VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
@@ -17,8 +17,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { ndvEventBus } from '@/features/ndv/ndv.eventBus';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
