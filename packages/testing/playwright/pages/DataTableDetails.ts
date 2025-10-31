@@ -393,12 +393,10 @@ export class DataTableDetails extends BasePage {
 		await searchInput.fill(query);
 		// Wait for debounce
 		await this.page.waitForTimeout(300);
+		await this.page.getByText('Loading...').waitFor({ state: 'hidden' });
 	}
 
 	async clearSearch() {
-		const searchInput = this.getSearchInput();
-		await searchInput.fill('');
-		// Wait for debounce
-		await this.page.waitForTimeout(300);
+		await this.search('');
 	}
 }
