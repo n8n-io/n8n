@@ -2060,6 +2060,8 @@
 	"settings.mcp.empty.description": "Enable MCP access in each workflow's settings to see them here.",
 	"settings.mcp.toggle.disabled.tooltip": "Only instance admins can change this",
 	"settings.mcp.toggle.error": "Error updating MCP access",
+	"settings.mcp.instructions.tabs.oath": "oAuth",
+	"settings.mcp.instructions.tabs.apiKey": "Access Token",
 	"settings.mcp.instructions.enableAccess": "Enable workflow access in at least one workflow via its settings",
 	"settings.mcp.instructions.serverUrl": "Server URL",
 	"settings.mcp.instructions.apiKey.label": "Access token",

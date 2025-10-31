@@ -179,15 +179,11 @@ onMounted(async () => {
 				:loading-api-key="mcpKeyLoading"
 				:base-url="rootStore.urlBaseEditor"
 				:api-key="apiKey"
+				:o-auth-clients="connectedOAuthClients"
+				:loading-o-auth-clients="oAuthClientsLoading"
 				@rotate-key="rotateKey"
-			/>
-			<OAuthClientsTable
-				v-if="oAuthClientsLoading || connectedOAuthClients.length > 0"
-				:data-test-id="'mcp-oauth-clients-table'"
-				:clients="connectedOAuthClients"
-				:loading="oAuthClientsLoading"
 				@revoke-client="revokeClientAccess"
-				@refresh="onRefreshOAuthClients"
+				@refresh-client-list="onRefreshOAuthClients"
 			/>
 			<WorkflowsTable
 				:data-test-id="'mcp-workflow-table'"
