@@ -4,30 +4,35 @@ import { i18n } from '@n8n/i18n';
 export const convertToDisplayDateComponents = (
 	fullDate: Date | string | number,
 ): { date: string; time: string } => {
-	const mask = `d mmm${
-		new Date(fullDate).getFullYear() === new Date().getFullYear() ? '' : ', yyyy'
-	}#HH:MM:ss`;
-	const formattedDate = dateformat(fullDate, mask);
-	const [date, time] = formattedDate.split('#');
-	return { date, time };
+	// Ensure we're working with a proper Date object that respects the local timezone
+	const date = new Date(fullDate);
+	const mask = `d mmm${date.getFullYear() === new Date().getFullYear() ? '' : ', yyyy'}#HH:MM:ss`;
+	const formattedDate = dateformat(date, mask);
+	const [dateStr, time] = formattedDate.split('#');
+	return { date: dateStr, time };
 };
 
 export function convertToDisplayDate(fullDate: Date | string | number): {
 	date: string;
 	time: string;
 } {
-	const mask = `mmm d${
-		new Date(fullDate).getFullYear() === new Date().getFullYear() ? '' : ', yyyy'
-	}#HH:MM:ss`;
-	const formattedDate = dateformat(fullDate, mask);
-	const [date, time] = formattedDate.split('#');
-	return { date, time };
+	// Ensure we're working with a proper Date object that respects the local timezone
+	const date = new Date(fullDate);
+	const mask = `mmm d${date.getFullYear() === new Date().getFullYear() ? '' : ', yyyy'}#HH:MM:ss`;
+	const formattedDate = dateformat(date, mask);
+	const [dateStr, time] = formattedDate.split('#');
+	return { date: dateStr, time };
 }
 
-export const toDayMonth = (fullDate: Date | string) => dateformat(fullDate, 'd mmm');
+export const toDayMonth = (fullDate: Date | string) => {
+	const date = new Date(fullDate);
+	return dateformat(date, 'd mmm');
+};
 
-export const toTime = (fullDate: Date | string, includeMillis: boolean = false) =>
-	dateformat(fullDate, includeMillis ? 'HH:MM:ss.l' : 'HH:MM:ss');
+export const toTime = (fullDate: Date | string, includeMillis: boolean = false) => {
+	const date = new Date(fullDate);
+	return dateformat(date, includeMillis ? 'HH:MM:ss.l' : 'HH:MM:ss');
+};
 
 export const formatTimeAgo = (fullDate: Date | string): string => {
 	const now = new Date();
