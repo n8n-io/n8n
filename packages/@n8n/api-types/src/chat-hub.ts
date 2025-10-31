@@ -268,5 +268,6 @@ export interface EnrichedStructuredChunk extends StructuredChunk {
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
 		retryOfMessageId: ChatMessageId | null;
+		executionId: number | null;
 	};
 }

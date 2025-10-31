@@ -933,6 +933,7 @@ export class ChatHubService {
 					messageId: message.id,
 					previousMessageId: message.previousMessageId,
 					retryOfMessageId: message.retryOfMessageId,
+					executionId: executionId ? +executionId : null,
 				},
 			};
 

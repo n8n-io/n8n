@@ -21,6 +21,10 @@ from src.constants import (
     ENV_TASK_TIMEOUT,
     ENV_AUTO_SHUTDOWN_TIMEOUT,
     ENV_GRACEFUL_SHUTDOWN_TIMEOUT,
+    PIPE_MSG_MAX_SIZE,
+    TYPICAL_PAYLOAD_RATIO,
+    PARSE_THROUGHPUT_BYTES_PER_SEC,
+    PIPE_READER_JOIN_TIMEOUT_SAFETY_BUFFER,
 )
 
 
@@ -56,6 +60,7 @@ class TaskRunnerConfig:
     external_allow: set[str]
     builtins_deny: set[str]
     env_deny: bool
+    pipe_reader_timeout: float
 
     @property
     def is_auto_shutdown_enabled(self) -> bool:
@@ -91,13 +96,23 @@ class TaskRunnerConfig:
                 f"Graceful shutdown timeout must be positive, got {graceful_shutdown_timeout}"
             )
 
+        max_payload_size = read_int_env(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)
+        if max_payload_size > PIPE_MSG_MAX_SIZE:
+            raise ConfigurationError(
+                f"Max payload size of {max_payload_size} bytes exceeds pipe message limit of {PIPE_MSG_MAX_SIZE} bytes. Reduce {ENV_MAX_PAYLOAD_SIZE}."
+            )
+
+        # Calculate pipe reader timeout based on configured max payload size (3s for default 1 GiB)
+        typical_payload = max_payload_size * TYPICAL_PAYLOAD_RATIO
+        pipe_reader_timeout = (
+            typical_payload / PARSE_THROUGHPUT_BYTES_PER_SEC
+        ) + PIPE_READER_JOIN_TIMEOUT_SAFETY_BUFFER
+
         return cls(
             grant_token=grant_token,
             task_broker_uri=read_str_env(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
             max_concurrency=read_int_env(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY),
-            max_payload_size=read_int_env(
-                ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE
-            ),
+            max_payload_size=max_payload_size,
             task_timeout=task_timeout,
             auto_shutdown_timeout=auto_shutdown_timeout,
             graceful_shutdown_timeout=graceful_shutdown_timeout,
@@ -114,4 +129,5 @@ class TaskRunnerConfig:
                 ).split(",")
             ),
             env_deny=read_bool_env(ENV_BLOCK_RUNNER_ENV_ACCESS, True),
+            pipe_reader_timeout=pipe_reader_timeout,
         )

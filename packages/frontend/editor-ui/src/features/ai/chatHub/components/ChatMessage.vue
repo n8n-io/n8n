@@ -12,7 +12,7 @@ import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'v
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
-import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
+import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { convertBinaryDataToFile } from '@/utils/fileUtils';
@@ -51,7 +51,7 @@ const speech = useSpeechSynthesis(messageContent, {
 	volume: 1,
 });
 
-const model = computed(() => restoreConversationModelFromMessageOrSession(message));
+const model = computed(() => unflattenModel(message));
 const agent = useAgent(model);
 
 async function handleCopy() {

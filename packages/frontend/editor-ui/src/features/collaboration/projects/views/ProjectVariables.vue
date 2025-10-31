@@ -65,8 +65,11 @@ const { showError, showMessage } = useToast();
 
 const projectId = route.params.projectId;
 
-const permissions = computed(
+const globalPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
+);
+const projectPermissions = computed(
+	() => getResourcePermissions(projectsStore.currentProject?.scopes).projectVariable,
 );
 
 const { isLoading, execute } = useAsyncState(environmentsStore.fetchAllVariables, [], {
@@ -104,7 +107,10 @@ const variables = computed<VariableResource[]>(() =>
 
 const globalVariables = computed(() => environmentsStore.variables.filter((v) => !v.project));
 
-const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
+const canCreateVariables = computed(
+	() =>
+		isFeatureEnabled.value && (globalPermissions.value.create ?? projectPermissions.value.create),
+);
 
 const columns = computed(() => {
 	const cols: DatatableColumn[] = [
@@ -308,7 +314,7 @@ onMounted(() => {
 		@click:add="openCreateVariableModal"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader main-button="variable">
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -316,27 +322,6 @@ onMounted(() => {
 					time-range="week"
 				/>
 			</ProjectHeader>
-		</template>
-		<template #add-button>
-			<N8nTooltip placement="top" :disabled="canCreateVariables">
-				<div>
-					<N8nButton
-						size="medium"
-						block
-						:disabled="!canCreateVariables"
-						data-test-id="resources-list-add"
-						@click="openCreateVariableModal"
-					>
-						{{ i18n.baseText(`variables.add`) }}
-					</N8nButton>
-				</div>
-				<template #content>
-					<span v-if="!isFeatureEnabled">{{
-						i18n.baseText(`variables.add.unavailable${variables.length === 0 ? '.empty' : ''}`)
-					}}</span>
-					<span v-else>{{ i18n.baseText('variables.add.onlyOwnerCanCreate') }}</span>
-				</template>
-			</N8nTooltip>
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
@@ -413,7 +398,6 @@ onMounted(() => {
 					})
 				"
 				:description="i18n.baseText('variables.empty.notAllowedToCreate.description')"
-				@click="goToUpgrade"
 			/>
 		</template>
 		<template #default="{ data }">
@@ -440,12 +424,12 @@ onMounted(() => {
 				</td>
 				<td v-if="isFeatureEnabled" align="right">
 					<div class="action-buttons">
-						<N8nTooltip :disabled="permissions.update" placement="top">
+						<N8nTooltip :disabled="globalPermissions.update" placement="top">
 							<N8nButton
 								data-test-id="variable-row-edit-button"
 								type="tertiary"
 								class="mr-xs"
-								:disabled="!permissions.update"
+								:disabled="!globalPermissions.update"
 								@click="openEditVariableModal(data)"
 							>
 								{{ i18n.baseText('variables.row.button.edit') }}
@@ -454,11 +438,11 @@ onMounted(() => {
 								{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
 							</template>
 						</N8nTooltip>
-						<N8nTooltip :disabled="permissions.delete" placement="top">
+						<N8nTooltip :disabled="globalPermissions.delete" placement="top">
 							<N8nButton
 								data-test-id="variable-row-delete-button"
 								type="tertiary"
-								:disabled="!permissions.delete"
+								:disabled="!globalPermissions.delete"
 								@click="handleDeleteVariable(data)"
 							>
 								{{ i18n.baseText('variables.row.button.delete') }}
