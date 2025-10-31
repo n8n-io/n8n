@@ -803,7 +803,7 @@ export class ChatHubService {
 			);
 		}
 
-		const nodeExecutionStack = await this.chatHubWorkflowService.prepareExecutionData(
+		const nodeExecutionStack = this.chatHubWorkflowService.prepareExecutionData(
 			chatTriggerNode,
 			sessionId,
 			message,
@@ -1503,6 +1503,15 @@ export class ChatHubService {
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
 
+		// Convert messages to DTOs and hydrate attachments with base64 data
+		const messageDtos = await Promise.all(
+			messages.map(async (m) => {
+				const dto = this.convertMessageToDto(m);
+				dto.attachments = await this.hydrateAttachmentsWithBase64(dto.attachments);
+				return [m.id, dto] as const;
+			}),
+		);
+
 		return {
 			session: {
 				id: session.id,
@@ -1519,9 +1528,34 @@ export class ChatHubService {
 				updatedAt: session.updatedAt.toISOString(),
 			},
 			conversation: {
-				messages: Object.fromEntries(messages.map((m) => [m.id, this.convertMessageToDto(m)])),
+				messages: Object.fromEntries(messageDtos),
 			},
 		};
+	}
+
+	/**
+	 * Hydrates attachments by converting binary data to base64.
+	 * BinaryDataService.getAsBuffer handles both external storage (filesystem-v2, s3, etc)
+	 * and in-memory base64 data automatically.
+	 */
+	private async hydrateAttachmentsWithBase64(attachments: IBinaryData[]): Promise<IBinaryData[]> {
+		return await Promise.all(
+			attachments.map(async (attachment) => {
+				try {
+					const buffer = await this.binaryDataService.getAsBuffer(attachment);
+					return {
+						...attachment,
+						data: buffer.toString(BINARY_ENCODING),
+					};
+				} catch (error) {
+					this.logger.error(
+						`Failed to hydrate attachment ${attachment.id ?? 'unknown'}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					);
+					// Return attachment as-is if we can't fetch the data
+					return attachment;
+				}
+			}),
+		);
 	}
 
 	private convertMessageToDto(message: ChatHubMessage): ChatHubMessageDto {

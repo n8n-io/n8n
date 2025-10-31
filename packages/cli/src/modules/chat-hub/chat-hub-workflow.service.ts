@@ -147,12 +147,12 @@ export class ChatHubWorkflowService {
 		});
 	}
 
-	async prepareExecutionData(
+	prepareExecutionData(
 		triggerNode: INode,
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
-	): Promise<IExecuteData[]> {
+	): IExecuteData[] {
 		// Attachments are already processed (id field populated) by the caller
 		return [
 			{
@@ -259,7 +259,7 @@ export class ChatHubWorkflowService {
 			},
 		};
 
-		const nodeExecutionStack = await this.prepareExecutionData(
+		const nodeExecutionStack = this.prepareExecutionData(
 			chatTriggerNode,
 			sessionId,
 			humanMessage,
