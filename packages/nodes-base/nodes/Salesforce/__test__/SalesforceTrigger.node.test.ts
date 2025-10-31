@@ -1,7 +1,7 @@
 import { mockDeep } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IPollFunctions, INode, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { SalesforceTrigger } from '../SalesforceTrigger.node';

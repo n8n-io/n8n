@@ -1,9 +1,8 @@
 import { mockDeep } from 'jest-mock-extended';
 import moment from 'moment-timezone';
 import type { IPollFunctions, INode, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../../constants';
 import { GoogleDriveTrigger } from '../GoogleDriveTrigger.node';
 import * as GenericFunctions from '../v1/GenericFunctions';
 import * as listSearch from '../v2/methods/listSearch';

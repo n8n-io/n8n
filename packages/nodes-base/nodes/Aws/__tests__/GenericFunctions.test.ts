@@ -1,10 +1,5 @@
 import { mockDeep } from 'jest-mock-extended';
-import type {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IWebhookFunctions,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, IWebhookFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { awsApiRequest, awsApiRequestREST, awsApiRequestSOAP } from '../GenericFunctions';
@@ -17,14 +12,12 @@ import { parseString as parseXml } from 'xml2js';
 
 describe('AWS GenericFunctions', () => {
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockHookFunctions: jest.Mocked<IHookFunctions>;
 	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
 	let mockWebhookFunctions: jest.Mocked<IWebhookFunctions>;
 	const mockParseXml = parseXml as jest.MockedFunction<typeof parseXml>;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockHookFunctions = mockDeep<IHookFunctions>();
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 		mockWebhookFunctions = mockDeep<IWebhookFunctions>();
 		jest.clearAllMocks();

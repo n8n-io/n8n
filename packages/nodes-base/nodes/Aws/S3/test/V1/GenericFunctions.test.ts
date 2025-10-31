@@ -19,9 +19,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 
 		it('should make AWS API request with basic parameters', async () => {
 			const mockResponse = { success: true };
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
-				mockResponse,
-			);
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(mockResponse);
 
 			const result = await awsApiRequest.call(
 				mockExecuteFunctions,
@@ -36,7 +36,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			);
 
 			expect(result).toEqual(mockResponse);
-			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockRequestWithAuth).toHaveBeenCalledWith(
 				'aws',
 				expect.objectContaining({
 					qs: expect.objectContaining({
@@ -53,9 +53,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 		it('should handle query parameters correctly', async () => {
 			const mockResponse = { data: 'test' };
 			const queryParams = { 'list-type': '2', 'max-keys': '10' };
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
-				mockResponse,
-			);
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(mockResponse);
 
 			await awsApiRequest.call(
 				mockExecuteFunctions,
@@ -68,7 +68,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				{},
 			);
 
-			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockRequestWithAuth).toHaveBeenCalledWith(
 				'aws',
 				expect.objectContaining({
 					qs: expect.objectContaining({
@@ -92,7 +92,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 
 		it('should parse valid JSON response', async () => {
 			const jsonString = JSON.stringify({ id: '123', name: 'test' });
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(jsonString);
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(jsonString);
 
 			const result = await awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
 
@@ -101,9 +103,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 
 		it('should return raw response when JSON parsing fails', async () => {
 			const rawResponse = 'not valid json';
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
-				rawResponse,
-			);
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(rawResponse);
 
 			const result = await awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
 
@@ -123,9 +125,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			const xmlResponse =
 				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Name>test-bucket</Name></ListBucketResult>';
 
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
-				xmlResponse,
-			);
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(xmlResponse);
 
 			const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
 
@@ -135,7 +137,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 		it('should return error when XML parsing fails', async () => {
 			const invalidXml = 'not valid xml';
 
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(invalidXml);
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(invalidXml);
 
 			const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
 
@@ -155,19 +159,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			const xmlResponse =
 				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Contents><Key>file1.txt</Key><Size>1024</Size></Contents><Contents><Key>file2.txt</Key><Size>2048</Size></Contents><IsTruncated>false</IsTruncated></ListBucketResult>';
 
-			const expectedParsedData = {
-				ListBucketResult: {
-					Contents: [
-						{ Key: 'file1.txt', Size: '1024' },
-						{ Key: 'file2.txt', Size: '2048' },
-					],
-					IsTruncated: 'false',
-				},
-			};
-
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
-				xmlResponse,
-			);
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(xmlResponse);
 
 			const result = await awsApiRequestSOAPAllItems.call(
 				mockExecuteFunctions,
@@ -177,27 +171,21 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'/bucket',
 			);
 
-			expect(result).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ Key: 'file1.txt' }),
-					expect.objectContaining({ Key: 'file2.txt' }),
-				]),
-			);
+			expect(result).toHaveLength(2);
+			expect(result).toEqual([
+				{ Key: 'file1.txt', Size: '1024' },
+				{ Key: 'file2.txt', Size: '2048' },
+			]);
+			expect(mockRequestWithAuth).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle empty response', async () => {
 			const xmlResponse =
 				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>';
 
-			const expectedParsedData = {
-				ListBucketResult: {
-					IsTruncated: 'false',
-				},
-			};
-
-			(mockExecuteFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
-				xmlResponse,
-			);
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(xmlResponse);
 
 			const result = await awsApiRequestSOAPAllItems.call(
 				mockExecuteFunctions,
@@ -208,6 +196,123 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			);
 
 			expect(result).toEqual([]);
+			expect(mockRequestWithAuth).toHaveBeenCalledTimes(1);
+		});
+
+		it('should handle pagination with NextContinuationToken', async () => {
+			const firstPageResponse =
+				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Contents><Key>file1.txt</Key><Size>1024</Size></Contents><IsTruncated>true</IsTruncated><NextContinuationToken>token123</NextContinuationToken></ListBucketResult>';
+
+			const secondPageResponse =
+				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Contents><Key>file2.txt</Key><Size>2048</Size></Contents><IsTruncated>false</IsTruncated></ListBucketResult>';
+
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth
+				.mockResolvedValueOnce(firstPageResponse)
+				.mockResolvedValueOnce(secondPageResponse);
+
+			const result = await awsApiRequestSOAPAllItems.call(
+				mockExecuteFunctions,
+				'ListBucketResult.Contents',
+				's3',
+				'GET',
+				'/bucket',
+				'',
+				{},
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result).toEqual([
+				{ Key: 'file1.txt', Size: '1024' },
+				{ Key: 'file2.txt', Size: '2048' },
+			]);
+			expect(mockRequestWithAuth).toHaveBeenCalledTimes(2);
+
+			// Verify that continuation token was passed in the second call
+			expect(mockRequestWithAuth).toHaveBeenNthCalledWith(
+				2,
+				'aws',
+				expect.objectContaining({
+					qs: expect.objectContaining({
+						'continuation-token': 'token123',
+					}),
+				}),
+			);
+		});
+
+		it('should respect limit parameter and stop early', async () => {
+			const firstPageResponse =
+				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Contents><Key>file1.txt</Key><Size>1024</Size></Contents><Contents><Key>file2.txt</Key><Size>2048</Size></Contents><IsTruncated>true</IsTruncated><NextContinuationToken>token123</NextContinuationToken></ListBucketResult>';
+
+			const secondPageResponse =
+				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Contents><Key>file3.txt</Key><Size>3072</Size></Contents><IsTruncated>false</IsTruncated></ListBucketResult>';
+
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth
+				.mockResolvedValueOnce(firstPageResponse)
+				.mockResolvedValueOnce(secondPageResponse);
+
+			const result = await awsApiRequestSOAPAllItems.call(
+				mockExecuteFunctions,
+				'ListBucketResult.Contents',
+				's3',
+				'GET',
+				'/bucket',
+				'',
+				{ limit: 2 },
+			);
+
+			// Should stop after collecting 2 items, even though there are more pages
+			expect(result).toHaveLength(2);
+			expect(result).toEqual([
+				{ Key: 'file1.txt', Size: '1024' },
+				{ Key: 'file2.txt', Size: '2048' },
+			]);
+			expect(mockRequestWithAuth).toHaveBeenCalledTimes(1);
+		});
+
+		it('should handle single item response (not an array)', async () => {
+			const xmlResponse =
+				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Contents><Key>single-file.txt</Key><Size>512</Size></Contents><IsTruncated>false</IsTruncated></ListBucketResult>';
+
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(xmlResponse);
+
+			const result = await awsApiRequestSOAPAllItems.call(
+				mockExecuteFunctions,
+				'ListBucketResult.Contents',
+				's3',
+				'GET',
+				'/bucket',
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result).toEqual([{ Key: 'single-file.txt', Size: '512' }]);
+			expect(mockRequestWithAuth).toHaveBeenCalledTimes(1);
+		});
+
+		it('should handle error responses from SOAP parsing', async () => {
+			const invalidXml = 'invalid xml response';
+
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(invalidXml);
+
+			const result = await awsApiRequestSOAPAllItems.call(
+				mockExecuteFunctions,
+				'ListBucketResult.Contents',
+				's3',
+				'GET',
+				'/bucket',
+			);
+
+			// When XML parsing fails, awsApiRequestSOAP returns an Error object
+			// and awsApiRequestSOAPAllItems should handle this gracefully
+			expect(result).toEqual([]);
+			expect(mockRequestWithAuth).toHaveBeenCalledTimes(1);
 		});
 
 		it('should work with different function contexts', async () => {
@@ -215,16 +320,9 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			const xmlResponse =
 				'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><Contents><Key>file1.txt</Key></Contents><IsTruncated>false</IsTruncated></ListBucketResult>';
 
-			const expectedParsedData = {
-				ListBucketResult: {
-					Contents: [{ Key: 'file1.txt' }],
-					IsTruncated: 'false',
-				},
-			};
-
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as any).mockResolvedValue(
-				xmlResponse,
-			);
+			const mockRequestWithAuth = mockLoadOptionsFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(xmlResponse);
 
 			const result = await awsApiRequestSOAPAllItems.call(
 				mockLoadOptionsFunctions,
@@ -234,9 +332,8 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'/bucket',
 			);
 
-			expect(result).toEqual(
-				expect.arrayContaining([expect.objectContaining({ Key: 'file1.txt' })]),
-			);
+			expect(result).toEqual([{ Key: 'file1.txt' }]);
+			expect(mockRequestWithAuth).toHaveBeenCalledTimes(1);
 		});
 	});
 });
