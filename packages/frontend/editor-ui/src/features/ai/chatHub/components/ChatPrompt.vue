@@ -77,6 +77,8 @@ function handleFileSelect(e: Event) {
 	if (target) {
 		target.value = '';
 	}
+
+	inputRef.value?.focus();
 }
 
 function removeAttachment(removed: File) {
