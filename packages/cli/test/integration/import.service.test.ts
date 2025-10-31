@@ -78,7 +78,11 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
-		expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport);
+		if (Container.get(DatabaseConfig).isLegacySqlite) {
+			expect(mockWorkflowIndexService.updateIndexFor).not.toHaveBeenCalled();
+		} else {
+			expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport);
+		}
 	});
 
 	test('should make user owner of imported workflow', async () => {

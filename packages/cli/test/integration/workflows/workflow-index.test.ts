@@ -45,15 +45,8 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-if (Container.get(DatabaseConfig).isLegacySqlite) {
-	describe('WorkflowIndexService Integration', () => {
-		it('should not run on legacy SQLite databases', async () => {
-			await expect(workflowIndexService.buildIndex()).rejects.toThrow(
-				'Workflow dependency indexing is not supported on legacy SQLite databases',
-			);
-		});
-	});
-} else {
+if (!Container.get(DatabaseConfig).isLegacySqlite) {
+	// NOTE: this feature isn't supported on legacy SQLite databases, so we skip the tests.
 	describe('WorkflowIndexService Integration', () => {
 		describe('workflow-created event', () => {
 			it('should index a new workflow with a single node', async () => {
