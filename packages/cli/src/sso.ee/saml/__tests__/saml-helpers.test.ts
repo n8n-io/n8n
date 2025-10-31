@@ -27,6 +27,7 @@ describe('sso/saml/samlHelpers', () => {
 				lastName: 'Nathaniel',
 				email: 'n@8.n',
 				userPrincipalName: 'Huh?',
+				n8nInstanceRole: 'n8n_instance_role',
 			};
 
 			userRepository.findOne.mockImplementationOnce(async (_) => user);

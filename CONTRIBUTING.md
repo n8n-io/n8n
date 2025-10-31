@@ -372,15 +372,15 @@ But when you are working on tests locally, we recommend running your tests with 
 
 #### E2E tests
 
-⚠️ You have to run `pnpm cypress:install` to install cypress before running the tests for the first time and to update cypress.
+n8n uses [Playwright](https://playwright.dev) for E2E testing.
 
 E2E tests can be started via one of the following commands:
 
-- `pnpm test:e2e:ui`: Start n8n and run e2e tests interactively using built UI code. Does not react to code changes (i.e. runs `pnpm start` and `cypress open`)
-- `pnpm test:e2e:dev`: Start n8n in development mode and run e2e tests interactively. Reacts to code changes (i.e. runs `pnpm dev` and `cypress open`)
-- `pnpm test:e2e:all`: Start n8n and run e2e tests headless (i.e. runs `pnpm start` and `cypress run --headless`)
+- `pnpm --filter=n8n-playwright test:local` - Run tests locally (starts local server on port 5680 and runs UI tests)
+- `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
+- `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
-⚠️ Remember to stop your dev server before. Otherwise port binding will fail.
+See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
 
 ## Releasing
 

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.115.0",
+  "version": "1.117.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -32,9 +32,11 @@
       "dist/credentials/GooglePalmApi.credentials.js",
       "dist/credentials/GroqApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",
+      "dist/credentials/McpOAuth2Api.credentials.js",
       "dist/credentials/MotorheadApi.credentials.js",
       "dist/credentials/MilvusApi.credentials.js",
       "dist/credentials/MistralCloudApi.credentials.js",
+      "dist/credentials/LemonadeApi.credentials.js",
       "dist/credentials/OllamaApi.credentials.js",
       "dist/credentials/OpenRouterApi.credentials.js",
       "dist/credentials/PineconeApi.credentials.js",
@@ -75,6 +77,7 @@
       "dist/nodes/embeddings/EmbeddingsHuggingFaceInference/EmbeddingsHuggingFaceInference.node.js",
       "dist/nodes/embeddings/EmbeddingsMistralCloud/EmbeddingsMistralCloud.node.js",
       "dist/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.js",
+      "dist/nodes/embeddings/EmbeddingsLemonade/EmbeddingsLemonade.node.js",
       "dist/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.js",
       "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
@@ -85,6 +88,7 @@
       "dist/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.js",
       "dist/nodes/llms/LmChatGroq/LmChatGroq.node.js",
       "dist/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.js",
+      "dist/nodes/llms/LMChatLemonade/LmChatLemonade.node.js",
       "dist/nodes/llms/LMChatOllama/LmChatOllama.node.js",
       "dist/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.js",
       "dist/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.js",
@@ -92,6 +96,7 @@
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
+      "dist/nodes/llms/LMLemonade/LmLemonade.node.js",
       "dist/nodes/llms/LMOllama/LmOllama.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
@@ -148,7 +153,8 @@
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
-      "dist/nodes/ModelSelector/ModelSelector.node.js"
+      "dist/nodes/ModelSelector/ModelSelector.node.js",
+      "dist/nodes/Guardrails/Guardrails.node.js"
     ]
   },
   "devDependencies": {
@@ -192,7 +198,7 @@
     "@langchain/redis": "0.1.1",
     "@langchain/textsplitters": "0.1.0",
     "@langchain/weaviate": "0.2.0",
-    "@modelcontextprotocol/sdk": "1.15.1",
+    "@modelcontextprotocol/sdk": "1.20.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
@@ -221,7 +227,7 @@
     "jsdom": "23.0.1",
     "langchain": "0.3.33",
     "lodash": "catalog:",
-    "mammoth": "1.7.2",
+    "mammoth": "1.11.0",
     "mime-types": "2.1.35",
     "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",

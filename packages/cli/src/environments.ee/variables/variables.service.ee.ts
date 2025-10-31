@@ -61,11 +61,19 @@ export class VariablesService {
 		return !!project;
 	}
 
-	async getAllCached(): Promise<Variables[]> {
-		const variables = await this.cacheService.get('variables', {
-			refreshFn: async () => await this.findAll(),
-		});
-		return variables ?? [];
+	async getAllCached(
+		filters: { globalOnly: boolean } = { globalOnly: false },
+	): Promise<Variables[]> {
+		const variables =
+			(await this.cacheService.get('variables', {
+				refreshFn: async () => await this.findAll(),
+			})) ?? [];
+
+		if (filters.globalOnly) {
+			return variables.filter((v) => !v.project);
+		}
+
+		return variables;
 	}
 
 	async getCached(id: string): Promise<Variables | null> {
@@ -147,6 +155,11 @@ export class VariablesService {
 
 	async delete(id: string): Promise<void> {
 		await this.variablesRepository.delete(id);
+		await this.updateCache();
+	}
+
+	async deleteByIds(ids: string[]): Promise<void> {
+		await this.variablesRepository.deleteByIds(ids);
 		await this.updateCache();
 	}
 

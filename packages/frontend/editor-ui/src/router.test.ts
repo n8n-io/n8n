@@ -1,10 +1,10 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import router from '@/router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useRBACStore } from '@/stores/rbac.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
 import * as init from '@/init';
@@ -116,6 +116,8 @@ describe('router', () => {
 		],
 		['/settings/ldap', VIEWS.WORKFLOWS, []],
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
+		['/settings/provisioning', VIEWS.WORKFLOWS, []],
+		['/settings/provisioning', VIEWS.PROVISIONING_SETTINGS, ['provisioning:manage']],
 	])(
 		'should resolve %s to %s with %s user permissions',
 		async (path, name, scopes) => {
