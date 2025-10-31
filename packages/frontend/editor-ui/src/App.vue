@@ -3,7 +3,7 @@ import '@/polyfills';
 
 import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
-import BannerStack from '@/components/banners/BannerStack.vue';
+import BannerStack from '@/features/shared/banners/components/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
@@ -17,7 +17,7 @@ import {
 } from '@/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -132,8 +132,8 @@ watch(
 	{ immediate: true },
 );
 
-useExposeCssVar('--toast-bottom-offset', toastBottomOffset);
-useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingButtonBottomOffset);
+useExposeCssVar('--toast--offset', toastBottomOffset);
+useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
 
 <template>
@@ -216,7 +216,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 
 .banners {
 	grid-area: banners;
-	z-index: var(--z-index-top-banners);
+	z-index: var(--top-banners--z);
 }
 
 .content {
@@ -256,14 +256,14 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 
 .header {
 	grid-area: header;
-	z-index: var(--z-index-app-header);
+	z-index: var(--app-header--z);
 	min-width: 0;
 	min-height: 0;
 }
 
 .sidebar {
 	grid-area: sidebar;
-	z-index: var(--z-index-app-sidebar);
+	z-index: var(--app-sidebar--z);
 }
 
 .modals {

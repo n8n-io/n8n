@@ -13,7 +13,13 @@ import type {
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
-import { WebhookEntity, TagEntity, WorkflowEntity, WorkflowTagMapping } from '../entities';
+import {
+	WebhookEntity,
+	TagEntity,
+	WorkflowEntity,
+	WorkflowTagMapping,
+	WorkflowDependency,
+} from '../entities';
 import type {
 	ListQueryDb,
 	FolderWithWorkflowAndSubFolderCount,
@@ -756,7 +762,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		);
 	}
 
-	async findWorkflowsWithNodeType(nodeTypes: string[]) {
+	async findWorkflowsWithNodeType(nodeTypes: string[], includeNodes: boolean = false) {
 		if (!nodeTypes?.length) return [];
 
 		const qb = this.createQueryBuilder('workflow');
@@ -766,11 +772,58 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			this.globalConfig.database.type,
 		);
 
-		const workflows: Array<{ id: string; name: string; active: boolean }> = await qb
-			.select(['workflow.id', 'workflow.name', 'workflow.active'])
+		const workflows: Array<
+			Pick<WorkflowEntity, 'id' | 'name' | 'active'> & Partial<Pick<WorkflowEntity, 'nodes'>>
+		> = await qb
+			.select([
+				'workflow.id',
+				'workflow.name',
+				'workflow.active',
+				...(includeNodes ? ['workflow.nodes'] : []),
+			])
 			.where(whereClause, parameters)
 			.getMany();
 
 		return workflows;
+	}
+
+	/**
+	 * Find workflows that need indexing - either unindexed (no entries in workflow_dependency)
+	 * or outdated (versionCounter > workflowVersionId in workflow_dependency).
+	 *
+	 * NOTE: we use a simple batch limit instead of proper pagination because we use this
+	 * method to retrieve workflows and then index them immediately - so they won't be returned
+	 * again in the next call anyway.
+	 *
+	 */
+	async findWorkflowsNeedingIndexing(batchSize?: number): Promise<WorkflowEntity[]> {
+		const qb = this.createQueryBuilder('workflow');
+		const workflowIdAlias = 'workflowId';
+		const maxVersionIdAlias = 'maxVersionId';
+		const depAlias = 'dep';
+
+		qb.leftJoin(
+			(subQuery) => {
+				return subQuery
+					.select('wd.workflowId', workflowIdAlias)
+					.addSelect('MAX(wd.workflowVersionId)', maxVersionIdAlias)
+					.from(WorkflowDependency, 'wd')
+					.groupBy('wd.workflowId');
+			},
+			depAlias,
+			`workflow.id = ${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)}`,
+		);
+
+		// Include workflows that are either:
+		// 1. Unindexed (no dependency entries exist)
+		// 2. Outdated (workflow version is newer than indexed version)
+		qb.where(`${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)} IS NULL`).orWhere(
+			`workflow.versionCounter > ${qb.escape(depAlias)}.${qb.escape(maxVersionIdAlias)}`,
+		);
+		if (batchSize) {
+			qb.limit(batchSize);
+		}
+
+		return await qb.getMany();
 	}
 }

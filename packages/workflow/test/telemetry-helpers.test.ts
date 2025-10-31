@@ -583,6 +583,7 @@ describe('generateNodesGraph', () => {
 					'0': {
 						id: 'openai-node-id',
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						use_responses_api: false,
 						version: 1,
 						position: [400, 400],
 					},
@@ -1290,6 +1291,7 @@ describe('generateNodesGraph', () => {
 					'2': {
 						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						use_responses_api: false,
 						version: 1,
 						position: [780, 500],
 					},
@@ -1550,6 +1552,54 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
+	test.each([
+		{ typeVersion: 1.2, parameterValue: undefined, expectedValue: false },
+		{ typeVersion: 1.3, parameterValue: true, expectedValue: true },
+		{ typeVersion: 1.3, parameterValue: false, expectedValue: false },
+		{ typeVersion: 1.3, parameterValue: undefined, expectedValue: true },
+	])(
+		'should handle LMChatOpenAi node with use_responses_api set to $expectedValue when typeVersion is $typeVersion and parameterValue is $parameterValue',
+		({ typeVersion, parameterValue, expectedValue }) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							responsesApiEnabled: parameterValue,
+						},
+						id: 'lmchatopenai-node-id',
+						name: 'LMChatOpenAi Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'lmchatopenai-node-id',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: typeVersion,
+							position: [100, 100],
+							use_responses_api: expectedValue,
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'LMChatOpenAi Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
 	test('should add package version to node graph', () => {
 		const workflow: Partial<IWorkflowBase> = {
 			nodes: [
@@ -1664,6 +1714,115 @@ describe('generateNodesGraph', () => {
 				},
 				notes: {},
 			},
+		});
+	});
+
+	test.each(['classify', 'sanitize'])(
+		'should handle Guardrails node with valid guardrails assignments for operation %s',
+		(operation) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							operation,
+							guardrails: {
+								promptInjection: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								nsfw: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								pii: {
+									type: 'all',
+									entities: ['email', 'phone'],
+									customRegex: {
+										regex: ['/1234567890/'],
+									},
+								},
+								urls: {
+									allowedUrls: 'https://example.com',
+									allowedSchemes: ['https'],
+									blockUserinfo: true,
+									allowSubdomains: true,
+								},
+							},
+						},
+						id: 'guardrails-node-id',
+						name: 'Guardrails Node',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'guardrails-node-id',
+							type: '@n8n/n8n-nodes-langchain.guardrails',
+							version: 1,
+							position: [100, 100],
+							operation,
+							used_guardrails: ['promptInjection', 'nsfw', 'pii', 'urls'],
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'Guardrails Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
+	test('should handle Guardrails node without guardrails assignments', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'classify',
+						guardrails: {},
+					},
+					id: 'guardrails-node-id',
+					name: 'Guardrails Node',
+					type: '@n8n/n8n-nodes-langchain.guardrails',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'guardrails-node-id',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						version: 1,
+						position: [100, 100],
+						operation: 'classify',
+						used_guardrails: [],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Guardrails Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 });

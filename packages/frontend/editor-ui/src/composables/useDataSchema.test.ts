@@ -1,5 +1,5 @@
 import jp from 'jsonpath';
-import { useDataSchema, useFlattenSchema, type SchemaNode } from '@/composables/useDataSchema';
+import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
 import type { INodeUi, Schema } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
@@ -866,6 +866,7 @@ describe('useFlattenSchema', () => {
 					mock<SchemaNode>({
 						node: { name: 'Test Node' },
 						isDataEmpty: true,
+						hasBinary: false,
 						schema: { type: 'object', value: [] },
 					}),
 				],
@@ -887,6 +888,7 @@ describe('useFlattenSchema', () => {
 					mock<SchemaNode>({
 						node: { name: 'Test Node' },
 						isNodeExecuted: false,
+						lastSuccessfulPreview: false,
 						schema: { type: 'object', value: [] },
 					}),
 				],
@@ -897,6 +899,36 @@ describe('useFlattenSchema', () => {
 			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
 			expect(result[1]).toEqual(
 				expect.objectContaining({ type: 'empty', key: 'executeSchema', level: 1 }),
+			);
+		});
+
+		it('should not show executeSchema empty item when node is unexecuted but has lastSuccessfulPreview', () => {
+			const { flattenMultipleSchemas } = useFlattenSchema();
+
+			const result = flattenMultipleSchemas(
+				[
+					mock<SchemaNode>({
+						node: { name: 'Test Node' },
+						isNodeExecuted: false,
+						lastSuccessfulPreview: true,
+						isDataEmpty: false,
+						hasBinary: false,
+						schema: { type: 'object', value: [] },
+					}),
+				],
+				vi.fn(),
+				600,
+			);
+			expect(result).toHaveLength(2);
+			expect(result[0]).toEqual(
+				expect.objectContaining({
+					type: 'header',
+					title: 'Test Node',
+					lastSuccessfulPreview: true,
+				}),
+			);
+			expect(result[1]).toEqual(
+				expect.objectContaining({ type: 'empty', key: 'emptySchema', level: 1 }),
 			);
 		});
 
@@ -980,6 +1012,7 @@ describe('useFlattenSchema', () => {
 						isDataEmpty: false,
 						hasBinary: false,
 						preview: false,
+						lastSuccessfulPreview: false,
 						schema,
 					}),
 					mock<SchemaNode>({
@@ -987,6 +1020,7 @@ describe('useFlattenSchema', () => {
 						isDataEmpty: false,
 						hasBinary: false,
 						preview: false,
+						lastSuccessfulPreview: false,
 						schema,
 					}),
 				],

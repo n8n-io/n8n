@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
-import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
+import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import type { IUpdateInformation } from '@/Interface';
 import type {
 	ExternalSecretsProviderData,

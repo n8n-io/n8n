@@ -22,10 +22,10 @@ import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	PROJECT_VARIABLES_EXPERIMENT,
 	RELEASE_NOTES_URL,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
+	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 } from '@/constants';
 import { EXTERNAL_LINKS } from '@/constants/externalLinks';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
@@ -48,17 +48,17 @@ import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
-import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
+import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { I18nT } from 'vue-i18n';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
+import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
-import { usePostHog } from '@/stores/posthog.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -72,6 +72,7 @@ const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
+const templatesDataQualityStore = useTemplatesDataQualityStore();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
@@ -80,7 +81,6 @@ const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
 const calloutHelpers = useCalloutHelpers();
-const posthogStore = usePostHog();
 
 useKeybindings({
 	ctrl_alt_o: () => handleSelect('about'),
@@ -101,12 +101,13 @@ const showWhatsNewNotification = computed(
 		),
 );
 
-const isProjectVariablesEnabled = computed(() =>
-	posthogStore.isVariantEnabled(
-		PROJECT_VARIABLES_EXPERIMENT.name,
-		PROJECT_VARIABLES_EXPERIMENT.variant,
-	),
-);
+const isTemplatesExperimentEnabled = computed(() => {
+	return (
+		personalizedTemplatesV2Store.isFeatureEnabled() ||
+		personalizedTemplatesV3Store.isFeatureEnabled() ||
+		templatesDataQualityStore.isFeatureEnabled()
+	);
+});
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
@@ -117,73 +118,63 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
+		id: 'chat',
+		icon: 'message-circle',
+		label: 'Chat',
+		position: 'bottom',
+		route: { to: { name: CHAT_VIEW } },
+		available:
+			settingsStore.isChatFeatureEnabled &&
+			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
+	},
+	{
 		// Link to in-app pre-built agent templates, available experiment is enabled
 		id: 'templates',
 		icon: 'package-open',
-		label: i18n.baseText('mainSidebar.templates'),
+		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
 			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!(
-				personalizedTemplatesV2Store.isFeatureEnabled() ||
-				personalizedTemplatesV3Store.isFeatureEnabled()
-			),
+			!isTemplatesExperimentEnabled.value,
 		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
 	},
 	{
-		// Link to personalized template modal, available when V2 or V3 experiment is enabled
+		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
 		id: 'templates',
 		icon: 'package-open',
-		label: i18n.baseText('mainSidebar.templates'),
+		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			(personalizedTemplatesV2Store.isFeatureEnabled() ||
-				personalizedTemplatesV3Store.isFeatureEnabled()),
+		available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
 	},
 	{
 		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
 		id: 'templates',
 		icon: 'package-open',
-		label: i18n.baseText('mainSidebar.templates'),
+		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
 			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			templatesStore.hasCustomTemplatesHost &&
-			!(
-				personalizedTemplatesV2Store.isFeatureEnabled() ||
-				personalizedTemplatesV3Store.isFeatureEnabled()
-			),
+			!isTemplatesExperimentEnabled.value,
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
 		// Link to website templates, available if custom templates are not enabled
 		id: 'templates',
 		icon: 'package-open',
-		label: i18n.baseText('mainSidebar.templates'),
+		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
 			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			!templatesStore.hasCustomTemplatesHost &&
-			!(
-				personalizedTemplatesV2Store.isFeatureEnabled() ||
-				personalizedTemplatesV3Store.isFeatureEnabled()
-			),
+			!isTemplatesExperimentEnabled.value,
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
 		},
-	},
-	{
-		id: 'variables',
-		icon: 'variable',
-		label: i18n.baseText('mainSidebar.variables'),
-		position: 'bottom',
-		route: { to: { name: VIEWS.VARIABLES } },
-		available: !isProjectVariablesEnabled.value,
 	},
 	{
 		id: 'insights',
@@ -194,16 +185,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
-	},
-	{
-		id: 'chat',
-		icon: 'bot',
-		label: 'Chat',
-		position: 'bottom',
-		route: { to: { name: CHAT_VIEW } },
-		available:
-			settingsStore.isChatFeatureEnabled &&
-			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		id: 'help',
@@ -364,7 +345,10 @@ const toggleCollapse = () => {
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
-			if (personalizedTemplatesV3Store.isFeatureEnabled()) {
+			if (templatesDataQualityStore.isFeatureEnabled()) {
+				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
+			} else if (personalizedTemplatesV3Store.isFeatureEnabled()) {
 				personalizedTemplatesV3Store.markTemplateRecommendationInteraction();
 				uiStore.openModalWithData({
 					name: EXPERIMENT_TEMPLATE_RECO_V3_KEY,
@@ -626,7 +610,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	flex-direction: column;
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 	width: $sidebar-expanded-width;
-	background-color: var(--menu-background, var(--color--background--light-3));
+	background-color: var(--menu--color--background, var(--color--background--light-3));
 
 	.logo {
 		display: flex;

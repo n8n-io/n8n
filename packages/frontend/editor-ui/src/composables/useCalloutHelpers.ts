@@ -6,10 +6,10 @@ import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import {
 	NODE_CREATOR_OPEN_SOURCES,

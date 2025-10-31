@@ -11,27 +11,46 @@ import {
 	fetchSingleConversationApi as fetchMessagesApi,
 	updateConversationTitleApi,
 	deleteConversationApi,
+	stopGenerationApi,
+	fetchSingleConversationApi,
+	fetchAgentApi,
+	createAgentApi,
+	updateAgentApi,
+	deleteAgentApi,
+	updateConversationApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type {
-	ChatHubConversationModel,
-	ChatHubSendMessageRequest,
-	ChatModelsResponse,
-	ChatHubSessionDto,
-	ChatMessageId,
-	ChatSessionId,
-	ChatHubMessageDto,
+import {
+	emptyChatModelsResponse,
+	type ChatHubConversationModel,
+	type ChatHubSendMessageRequest,
+	type ChatModelsResponse,
+	type ChatHubSessionDto,
+	type ChatMessageId,
+	type ChatSessionId,
+	type ChatHubMessageDto,
+	type ChatHubAgentDto,
+	type ChatHubCreateAgentRequest,
+	type ChatHubUpdateAgentRequest,
+	type EnrichedStructuredChunk,
+	type ChatHubMessageStatus,
+	type ChatModelDto,
 } from '@n8n/api-types';
-import type { StructuredChunk, CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type {
+	CredentialsMap,
+	ChatMessage,
+	ChatConversation,
+	ChatStreamingState,
+} from './chat.types';
+import { retry } from '@n8n/utils/retry';
+import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
-	const models = ref<ChatModelsResponse>();
-	const loadingModels = ref(false);
-	const streamingMessageId = ref<string>();
-	const sessions = ref<ChatHubSessionDto[]>([]);
-
-	const isResponding = computed(() => streamingMessageId.value !== undefined);
+	const agents = ref<ChatModelsResponse>();
+	const sessions = ref<ChatHubSessionDto[]>();
+	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
+	const streaming = ref<ChatStreamingState>();
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
@@ -59,6 +78,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		return conversation;
+	}
+
+	function lastMessage(sessionId: ChatSessionId): ChatMessage | null {
+		const conversation = getConversation(sessionId);
+		if (!conversation || conversation.activeMessageChain.length === 0) {
+			return null;
+		}
+
+		const messageId = conversation.activeMessageChain[conversation.activeMessageChain.length - 1];
+		return conversation.messages[messageId] ?? null;
+	}
+
+	function isResponding(sessionId: ChatSessionId) {
+		const last = lastMessage(sessionId);
+		return last?.status === 'running';
 	}
 
 	function computeActiveChain(
@@ -132,12 +166,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			const a = messagesGraph[first];
 			const b = messagesGraph[second];
 
-			// TODO: Disabled for now, messages retried don't get this at the FE before reload
-			// TOOD: Do we even need runIndex at all?
-			// if (a.runIndex !== b.runIndex) {
-			// 	return a.runIndex - b.runIndex;
-			// }
-
 			if (a.createdAt !== b.createdAt) {
 				return a.createdAt < b.createdAt ? -1 : 1;
 			}
@@ -184,6 +212,22 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		// TODO: Recomputing the entire graph shouldn't be needed here
 		conversation.messages = linkMessages(Object.values(conversation.messages));
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, message.id);
+
+		return message;
+	}
+
+	function replaceMessageContent(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		content: string,
+	) {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+		if (!message) {
+			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
+		}
+
+		message.content = content;
 	}
 
 	function appendMessage(sessionId: ChatSessionId, messageId: ChatMessageId, chunk: string) {
@@ -196,13 +240,26 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message.content += chunk;
 	}
 
-	async function fetchChatModels(credentialMap: CredentialsMap) {
-		loadingModels.value = true;
-		models.value = await fetchChatModelsApi(rootStore.restApiContext, {
+	function updateMessage(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		status: ChatHubMessageStatus,
+	) {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+		if (!message) {
+			throw new Error(`Message with ID ${messageId} not found in session ${sessionId}`);
+		}
+
+		message.status = status;
+		message.updatedAt = new Date().toISOString();
+	}
+
+	async function fetchAgents(credentialMap: CredentialsMap) {
+		agents.value = await fetchChatModelsApi(rootStore.restApiContext, {
 			credentials: credentialMap,
 		});
-		loadingModels.value = false;
-		return models.value;
+		return agents.value;
 	}
 
 	async function fetchSessions() {
@@ -214,7 +271,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		const messages = linkMessages(Object.values(conversation.messages));
 
-		// TOOD: Do we need 'state' column at all?
 		const latestMessage = Object.values(messages)
 			.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
 			.pop();
@@ -225,105 +281,152 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		});
 	}
 
-	function onBeginMessage(
-		sessionId: string,
-		messageId: string,
-		replyToMessageId: string,
-		retryOfMessageId: string | null,
-		_nodeId: string,
-		_runIndex?: number,
-	) {
-		streamingMessageId.value = messageId;
+	function onBeginMessage() {
+		if (!streaming.value?.messageId) {
+			return;
+		}
 
-		addMessage(sessionId, {
-			id: messageId,
-			sessionId,
-			type: 'ai',
-			name: 'AI',
-			content: '',
-			provider: null,
-			model: null,
-			workflowId: null,
-			executionId: null,
-			state: 'active',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			previousMessageId: replyToMessageId,
-			turnId: null,
-			retryOfMessageId,
-			revisionOfMessageId: null,
-			runIndex: 0,
-			responses: [],
-			alternatives: [],
-		});
+		const message = createAiMessageFromStreamingState(
+			streaming.value.sessionId,
+			streaming.value.messageId,
+			streaming.value,
+		);
+
+		addMessage(streaming.value.sessionId, message);
+
+		if (sessions.value?.some((session) => session.id === streaming.value?.sessionId)) {
+			return;
+		}
+
+		sessions.value = [
+			...(sessions.value ?? []),
+			{
+				id: streaming.value.sessionId,
+				title: 'New Chat',
+				ownerId: '',
+				lastMessageAt: new Date().toISOString(),
+				credentialId: null,
+				agentName: null,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				...flattenModel(streaming.value.model),
+			},
+		];
 	}
 
-	function onChunk(
-		sessionId: string,
-		messageId: string,
-		chunk: string,
-		_nodeId?: string,
-		_runIndex?: number,
-	) {
-		appendMessage(sessionId, messageId, chunk);
+	function ensureMessage(sessionId: ChatSessionId, messageId: ChatMessageId): ChatMessage {
+		const conversation = ensureConversation(sessionId);
+		const message = conversation.messages[messageId];
+
+		if (message) {
+			return message;
+		}
+
+		const newMessage = createAiMessageFromStreamingState(sessionId, messageId, streaming.value);
+
+		return addMessage(sessionId, newMessage);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onEndMessage(_messageId: string, _nodeId: string, _runIndex?: number) {
-		streamingMessageId.value = undefined;
+	function onChunk(chunk: string) {
+		if (streaming.value?.messageId) {
+			appendMessage(streaming.value.sessionId, streaming.value.messageId, chunk);
+		}
 	}
 
-	function onStreamMessage(
-		sessionId: string,
-		message: StructuredChunk,
-		messageId: string,
-		replyToMessageId: string,
-		retryOfMessageId: string | null,
-	) {
-		const nodeId = message.metadata?.nodeId || 'unknown';
-		const runIndex = message.metadata?.runIndex;
+	function onEndMessage() {
+		if (streaming.value?.messageId) {
+			updateMessage(streaming.value.sessionId, streaming.value.messageId, 'success');
+		}
+	}
 
-		switch (message.type) {
+	function onStreamMessage(chunk: EnrichedStructuredChunk) {
+		if (!streaming.value) {
+			return;
+		}
+
+		const { sessionId } = streaming.value;
+
+		streaming.value = { ...streaming.value, ...chunk.metadata };
+
+		switch (chunk.type) {
 			case 'begin':
-				onBeginMessage(sessionId, messageId, replyToMessageId, retryOfMessageId, nodeId, runIndex);
+				onBeginMessage();
 				break;
 			case 'item':
-				onChunk(sessionId, messageId, message.content ?? '', nodeId, runIndex);
+				onChunk(chunk.content ?? '');
 				break;
 			case 'end':
-				onEndMessage(messageId, nodeId, runIndex);
+				onEndMessage();
 				break;
-			case 'error':
-				onChunk(
-					sessionId,
-					messageId,
-					`Error: ${message.content ?? 'Unknown error'}`,
-					nodeId,
-					runIndex,
-				);
-				onEndMessage(messageId, nodeId, runIndex);
+			case 'error': {
+				// Ignore errors after cancellation
+				const message = ensureMessage(sessionId, chunk.metadata.messageId);
+
+				if (message.status === 'cancelled') {
+					return;
+				}
+
+				updateMessage(sessionId, chunk.metadata.messageId, 'error');
+				onChunk(message.content ?? '');
 				break;
+			}
 		}
 	}
 
 	async function onStreamDone() {
-		streamingMessageId.value = undefined;
-		await fetchSessions(); // update the conversation list
+		if (!streaming.value) {
+			return;
+		}
+
+		const { sessionId } = streaming.value;
+
+		streaming.value = undefined;
+
+		// wait up to 3 seconds until conversation title is generated
+		await retry(
+			async () => {
+				const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
+
+				return session.session.title !== 'New Chat';
+			},
+			1000,
+			3,
+		);
+
+		// update the conversation list
+		await fetchSessions();
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onStreamError(_e: Error) {
-		streamingMessageId.value = undefined;
+	function onStreamError() {
+		if (!streaming.value) {
+			return;
+		}
+
+		const { sessionId } = streaming.value;
+
+		streaming.value = undefined;
+
+		const conversation = getConversation(sessionId);
+		if (!conversation) {
+			return;
+		}
+
+		// TODO: Not sure if we want to mark all running messages as errored?
+		for (const messageId of conversation.activeMessageChain) {
+			const message = conversation.messages[messageId];
+			if (message.status === 'running') {
+				updateMessage(sessionId, messageId, 'error');
+			}
+		}
 	}
 
 	function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
-		model: ChatHubConversationModel | null,
-		credentials: ChatHubSendMessageRequest['credentials'] | null,
+		model: ChatHubConversationModel,
+		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const messageId = uuidv4();
-		const replyId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.activeMessageChain.length
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
@@ -336,45 +439,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: model?.model ?? null,
+			model: model.provider === 'n8n' || model.provider === 'custom-agent' ? null : model.model,
 			workflowId: null,
 			executionId: null,
-			state: 'active',
+			agentId: null,
+			status: 'success',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			previousMessageId,
-			turnId: null,
 			retryOfMessageId: null,
 			revisionOfMessageId: null,
-			runIndex: 0,
 			responses: [],
 			alternatives: [],
 		});
 
-		if (!model || !credentials) {
-			addMessage(sessionId, {
-				id: replyId,
-				sessionId,
-				type: 'ai',
-				name: 'AI',
-				content: '**ERROR:** Select a model to start a conversation.',
-				provider: null,
-				model: null,
-				workflowId: null,
-				executionId: null,
-				state: 'active',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				previousMessageId: messageId,
-				turnId: null,
-				retryOfMessageId: null,
-				revisionOfMessageId: null,
-				runIndex: 0,
-				responses: [],
-				alternatives: [],
-			});
-			return;
-		}
+		streaming.value = { promptId: messageId, sessionId, model };
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -382,12 +461,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model,
 				messageId,
 				sessionId,
-				replyId,
 				message,
 				credentials,
 				previousMessageId,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
+			onStreamMessage,
 			onStreamDone,
 			onStreamError,
 		);
@@ -396,50 +474,54 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function editMessage(
 		sessionId: ChatSessionId,
 		editId: ChatMessageId,
-		message: string,
+		content: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
-		const messageId = uuidv4();
-		const replyId = uuidv4();
+		const promptId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
-		const previousMessageId = conversation.messages[editId]?.previousMessageId ?? null;
+		const message = conversation.messages[editId];
+		const previousMessageId = message?.previousMessageId ?? null;
 
-		addMessage(sessionId, {
-			id: messageId,
-			sessionId,
-			type: 'human',
-			name: 'User',
-			content: message,
-			provider: null,
-			model: null,
-			workflowId: null,
-			executionId: null,
-			state: 'active',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			previousMessageId,
-			turnId: null,
-			retryOfMessageId: null,
-			revisionOfMessageId: editId,
-			runIndex: 0,
-			responses: [],
-			alternatives: [],
-		});
+		if (message?.type === 'human') {
+			addMessage(sessionId, {
+				id: promptId,
+				sessionId,
+				type: 'human',
+				name: message.name ?? 'User',
+				content,
+				provider: null,
+				model: null,
+				workflowId: null,
+				executionId: null,
+				agentId: null,
+				status: 'success',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				previousMessageId,
+				retryOfMessageId: null,
+				revisionOfMessageId: editId,
+				responses: [],
+				alternatives: [],
+			});
+		} else if (message?.type === 'ai') {
+			replaceMessageContent(sessionId, editId, content);
+		}
+
+		streaming.value = { promptId, sessionId, model };
 
 		editMessageApi(
 			rootStore.restApiContext,
+			sessionId,
+			editId,
 			{
 				model,
-				messageId,
-				sessionId,
-				replyId,
-				editId,
-				message,
+				messageId: promptId,
+				message: content,
 				credentials,
 			},
-			(chunk: StructuredChunk) => onStreamMessage(sessionId, chunk, replyId, messageId, null),
+			onStreamMessage,
 			onStreamDone,
 			onStreamError,
 		);
@@ -451,7 +533,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
-		const replyId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
 
@@ -459,34 +540,58 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			throw new Error('No previous message to base regeneration on');
 		}
 
+		streaming.value = { promptId: retryId, sessionId, model };
+
 		regenerateMessageApi(
 			rootStore.restApiContext,
+			sessionId,
+			retryId,
 			{
 				model,
-				sessionId,
-				retryId,
-				replyId,
 				credentials,
 			},
-			(chunk: StructuredChunk) =>
-				onStreamMessage(sessionId, chunk, replyId, previousMessageId, retryId),
+			onStreamMessage,
 			onStreamDone,
 			onStreamError,
+		);
+	}
+
+	async function stopStreamingMessage(sessionId: ChatSessionId) {
+		const currentMessage = lastMessage(sessionId);
+
+		if (currentMessage && currentMessage.status === 'running') {
+			updateMessage(sessionId, currentMessage.id, 'cancelled');
+			await stopGenerationApi(rootStore.restApiContext, sessionId, currentMessage.id);
+			streaming.value = undefined;
+		}
+	}
+
+	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
+		sessions.value = sessions.value?.map((session) =>
+			session.id === sessionId
+				? {
+						...session,
+						...toUpdate,
+					}
+				: session,
 		);
 	}
 
 	async function renameSession(sessionId: ChatSessionId, title: string) {
 		const updated = await updateConversationTitleApi(rootStore.restApiContext, sessionId, title);
 
-		sessions.value = sessions.value.map((session) =>
-			session.id === sessionId ? updated.session : session,
-		);
+		updateSession(sessionId, updated.session);
+	}
+
+	async function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
+		await updateConversationApi(rootStore.restApiContext, sessionId, model);
+		updateSession(sessionId, model);
 	}
 
 	async function deleteSession(sessionId: ChatSessionId) {
 		await deleteConversationApi(rootStore.restApiContext, sessionId);
 
-		sessions.value = sessions.value.filter((session) => session.id !== sessionId);
+		sessions.value = sessions.value?.filter((session) => session.id !== sessionId);
 	}
 
 	function switchAlternative(sessionId: ChatSessionId, messageId: ChatMessageId) {
@@ -501,23 +606,128 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
+	async function fetchCustomAgent(agentId: string): Promise<ChatHubAgentDto> {
+		const agent = await fetchAgentApi(rootStore.restApiContext, agentId);
+		currentEditingAgent.value = agent;
+		return agent;
+	}
+
+	function getCustomAgent(agentId: string) {
+		return agents.value?.['custom-agent'].models.find(
+			(model) => 'agentId' in model && model.agentId === agentId,
+		);
+	}
+
+	async function createCustomAgent(
+		payload: ChatHubCreateAgentRequest,
+		credentials: CredentialsMap,
+	): Promise<ChatModelDto> {
+		const agent = await createAgentApi(rootStore.restApiContext, payload);
+		const agentModel = {
+			model: {
+				provider: 'custom-agent' as const,
+				agentId: agent.id,
+			},
+			name: agent.name,
+			description: agent.description ?? null,
+			createdAt: agent.createdAt,
+			updatedAt: agent.updatedAt,
+		};
+		agents.value?.['custom-agent'].models.push(agentModel);
+
+		await fetchAgents(credentials);
+
+		return agentModel;
+	}
+
+	async function updateCustomAgent(
+		agentId: string,
+		payload: ChatHubUpdateAgentRequest,
+		credentials: CredentialsMap,
+	): Promise<ChatHubAgentDto> {
+		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+
+		// Update the agent in models as well
+		if (agents.value?.['custom-agent']) {
+			agents.value['custom-agent'].models = agents.value['custom-agent'].models.map((model) =>
+				'agentId' in model && model.agentId === agentId ? { ...model, name: agent.name } : model,
+			);
+		}
+
+		await fetchAgents(credentials);
+
+		return agent;
+	}
+
+	async function deleteCustomAgent(agentId: string, credentials: CredentialsMap) {
+		await deleteAgentApi(rootStore.restApiContext, agentId);
+
+		// Remove the agent from models as well
+		if (agents.value?.['custom-agent']) {
+			agents.value['custom-agent'].models = agents.value['custom-agent'].models.filter(
+				(model) => !('agentId' in model) || model.agentId !== agentId,
+			);
+		}
+
+		await fetchAgents(credentials);
+	}
+
+	function getAgent(model: ChatHubConversationModel) {
+		if (!agents.value) return;
+
+		return agents.value[model.provider].models.find((m) => {
+			if (model.provider === 'n8n') {
+				return m.model.provider === 'n8n' && m.model.workflowId === model.workflowId;
+			} else if (model.provider === 'custom-agent') {
+				return m.model.provider === 'custom-agent' && m.model.agentId === model.agentId;
+			} else {
+				return m.model.provider === model.provider && m.model.model === model.model;
+			}
+		});
+	}
+
 	return {
-		models,
-		sessions,
-		conversationsBySession,
-		loadingModels,
+		/**
+		 * models and agents
+		 */
+		agents: computed(() => agents.value ?? emptyChatModelsResponse),
+		agentsReady: computed(() => agents.value !== undefined),
+		currentEditingAgent,
+		getAgent,
+		fetchAgents,
+		getCustomAgent,
+		fetchCustomAgent,
+		createCustomAgent,
+		updateCustomAgent,
+		deleteCustomAgent,
+
+		/**
+		 * conversations
+		 */
+		sessions: computed(() => sessions.value ?? []),
+		sessionsReady: computed(() => sessions.value !== undefined),
+		fetchSessions,
+		renameSession,
+		updateSessionModel,
+		deleteSession,
+
+		/**
+		 * conversation
+		 */
+		getConversation,
+		fetchMessages,
+		getActiveMessages,
+		switchAlternative,
+		lastMessage,
+
+		/**
+		 * messaging
+		 */
+		streaming,
 		isResponding,
-		streamingMessageId,
-		fetchChatModels,
 		sendMessage,
 		editMessage,
 		regenerateMessage,
-		fetchSessions,
-		fetchMessages,
-		renameSession,
-		deleteSession,
-		getConversation,
-		getActiveMessages,
-		switchAlternative,
+		stopStreamingMessage,
 	};
 });

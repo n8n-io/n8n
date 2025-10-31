@@ -819,6 +819,11 @@ export interface RequestHelperFunctions {
 		requestOptions: IRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	refreshOAuth2Token(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		oAuth2Options?: IOAuth2Options,
+	): Promise<any>;
 }
 
 export type SSHCredentials = {
@@ -1071,6 +1076,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string): void;
+		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
 			runIndex: number;
 			inputData: INodeExecutionData[][];
@@ -1711,6 +1717,7 @@ export interface SupplyData {
 	metadata?: IDataObject;
 	response: unknown;
 	closeFunction?: CloseFunction;
+	hints?: NodeExecutionHint[];
 }
 
 export type NodeOutput =
@@ -2569,6 +2576,8 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	versionCounter?: number;
+	meta?: WorkflowFEMeta;
 }
 
 export interface IWorkflowCredentials {
@@ -2708,7 +2717,8 @@ export type WorkflowExecuteMode =
 	| 'retry'
 	| 'trigger'
 	| 'webhook'
-	| 'evaluation';
+	| 'evaluation'
+	| 'chat';
 
 export type WorkflowActivateMode =
 	| 'init'
@@ -2740,6 +2750,9 @@ export interface IWorkflowSettings {
 
 export interface WorkflowFEMeta {
 	onboardingId?: string;
+	templateId?: string;
+	instanceId?: string;
+	templateCredsSetupCompleted?: boolean;
 }
 
 export interface WorkflowTestData {
@@ -2880,6 +2893,7 @@ export interface INodeGraphItem {
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	is_streaming?: boolean; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
+	use_responses_api?: boolean; //@n8n/n8n-nodes-langchain.lmChatOpenAi
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
@@ -2890,6 +2904,7 @@ export interface INodeGraphItem {
 	metric_names?: string[];
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 	package_version?: string; // only for community nodes
+	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 }
 
 export interface INodeNameIndex {

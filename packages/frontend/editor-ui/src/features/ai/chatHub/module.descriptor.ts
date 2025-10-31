@@ -1,8 +1,9 @@
 import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
-import { CHAT_VIEW, CHAT_CONVERSATION_VIEW } from './constants';
+import { CHAT_VIEW, CHAT_CONVERSATION_VIEW, CHAT_AGENTS_VIEW } from './constants';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
+const ChatAgentsView = async () => await import('@/features/ai/chatHub/ChatAgentsView.vue');
 
 export const ChatModule: FrontendModuleDescription = {
 	id: 'chat-hub',
@@ -13,7 +14,7 @@ export const ChatModule: FrontendModuleDescription = {
 	routes: [
 		{
 			name: CHAT_VIEW,
-			path: '/ask',
+			path: '/home/chat',
 			components: {
 				default: ChatView,
 				sidebar: ChatSidebar,
@@ -24,9 +25,20 @@ export const ChatModule: FrontendModuleDescription = {
 		},
 		{
 			name: CHAT_CONVERSATION_VIEW,
-			path: '/ask/:id',
+			path: '/home/chat/:id',
 			components: {
 				default: ChatView,
+				sidebar: ChatSidebar,
+			},
+			meta: {
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			name: CHAT_AGENTS_VIEW,
+			path: '/home/chat/agents',
+			components: {
+				default: ChatAgentsView,
 				sidebar: ChatSidebar,
 			},
 			meta: {

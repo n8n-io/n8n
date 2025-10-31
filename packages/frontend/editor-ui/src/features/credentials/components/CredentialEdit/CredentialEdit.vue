@@ -27,7 +27,7 @@ import { useToast } from '@/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -1199,9 +1199,9 @@ const { width } = useElementSize(credNameRef);
 
 <style module lang="scss">
 .credentialModal {
-	--dialog-max-width: 1200px;
+	--dialog--max-width: 1200px;
 	--dialog--close--spacing--top: 31px;
-	--dialog-max-height: 750px;
+	--dialog--max-height: 750px;
 
 	:global(.el-dialog__header) {
 		padding-bottom: 0;

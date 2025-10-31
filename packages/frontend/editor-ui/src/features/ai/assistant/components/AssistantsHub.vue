@@ -151,7 +151,7 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .resizeWrapper {
-	z-index: var(--z-index-ask-assistant-chat);
+	z-index: var(--ask-assistant-chat--z);
 }
 
 .wrapper {
