@@ -1,0 +1,26 @@
+{
+	"id": "gpt-5-mini-2025-08-07",
+	"name": "GPT-5 mini (2025-08-07)",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.25,
+		"completionPerMilTokenUsd": 2.0
+	},
+	"contextLength": 272000,
+	"maxOutputTokens": 128000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "complex-reasoning", "analysis", "multimodal", "function-calling"],
+	"description": "GPT-5 mini is a cost and latency-optimized version of GPT-5, designed for practical workloads requiring strong performance at lower cost. Excellent for agent-like tasks and instruction-following.",
+	"trainingCutoff": "2024-05",
+	"notes": "Smaller, faster version of GPT-5 with reduced resource usage. Ideal for high-volume applications where GPT-5 performance isn't critical. 5x cheaper than GPT-5 for input tokens. This is the timestamped version from August 7, 2025."
+}

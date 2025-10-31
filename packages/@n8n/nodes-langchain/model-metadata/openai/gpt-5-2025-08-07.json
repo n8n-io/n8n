@@ -1,0 +1,34 @@
+{
+	"id": "gpt-5-2025-08-07",
+	"name": "GPT-5 (2025-08-07)",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 1.25,
+		"completionPerMilTokenUsd": 10.0
+	},
+	"contextLength": 272000,
+	"maxOutputTokens": 128000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": [
+		"complex-reasoning",
+		"coding",
+		"analysis",
+		"multimodal",
+		"function-calling",
+		"health",
+		"math"
+	],
+	"description": "GPT-5 is OpenAI's most advanced model released in August 2025, excelling at real-world coding (74.9% on SWE-bench), mathematics (94.6% on AIME 2025), multimodal understanding (84.2% on MMMU), and health-related reasoning. Described as a 'PhD-level expert in your pocket.'",
+	"trainingCutoff": "2024-09",
+	"notes": "Flagship model with state-of-the-art performance across coding, math, and multimodal tasks. Supports 90% cache discount for recently used tokens. Half the input cost of GPT-4o. This is the timestamped version from August 7, 2025."
+}

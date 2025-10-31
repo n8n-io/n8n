@@ -1,0 +1,31 @@
+{
+	"id": "gpt-4o-mini-audio-preview-2024-12-17",
+	"name": "GPT-4o Mini Audio Preview (Dec 2024)",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 10.0,
+		"completionPerMilTokenUsd": 20.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 16384,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "audio"],
+	"outputModalities": ["text", "audio"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": [
+		"audio-processing",
+		"speech-interaction",
+		"voice-agents",
+		"cost-efficient-audio"
+	],
+	"description": "GPT-4o Mini Audio Preview December 2024 release - a cost-efficient variant optimized for asynchronous audio input and output, offering 75% cost savings compared to GPT-4o Audio Preview.",
+	"trainingCutoff": "2023-10",
+	"notes": "December 17, 2024 release provides audio capabilities at 25% of the cost of GPT-4o audio models ($10/$20 per 1M tokens vs $40/$80). Focused on text and audio modalities only - does not support image/vision capabilities. Suitable for test and development with preview usage limits."
+}

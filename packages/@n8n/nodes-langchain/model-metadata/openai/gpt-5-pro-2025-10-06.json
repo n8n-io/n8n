@@ -1,0 +1,33 @@
+{
+	"id": "gpt-5-pro-2025-10-06",
+	"name": "GPT-5 Pro (2025-10-06)",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 15.0,
+		"completionPerMilTokenUsd": 120.0
+	},
+	"contextLength": 400000,
+	"maxOutputTokens": 272000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": [
+		"complex-reasoning",
+		"coding",
+		"math",
+		"research",
+		"analysis",
+		"critical-tasks"
+	],
+	"description": "GPT-5 Pro is OpenAI's most advanced model optimized for complex tasks requiring step-by-step reasoning, instruction following, and accuracy in high-stakes use cases. Released in October 2025, it offers major improvements in reasoning quality, code generation, and test-time routing capabilities.",
+	"trainingCutoff": "2024-09",
+	"notes": "Most capable model for critical workloads requiring maximum accuracy. Supports test-time routing features and advanced prompt understanding, including user-specified reasoning depth. Significantly slower than GPT-5 due to extended reasoning process. Can process up to 400K context window. This is the timestamped version from October 6, 2025."
+}

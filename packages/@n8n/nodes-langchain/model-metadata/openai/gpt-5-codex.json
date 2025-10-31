@@ -1,0 +1,33 @@
+{
+	"id": "gpt-5-codex",
+	"name": "GPT-5 Codex",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 1.25,
+		"completionPerMilTokenUsd": 10.0
+	},
+	"contextLength": 272000,
+	"maxOutputTokens": 128000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": [
+		"coding",
+		"code-review",
+		"debugging",
+		"refactoring",
+		"testing",
+		"complex-reasoning"
+	],
+	"description": "GPT-5 Codex is a version of GPT-5 optimized for agentic software engineering and developer workflows. Released in September 2025, it excels at building full projects from scratch, adding features and tests, debugging, performing large-scale refactors, and conducting code reviews.",
+	"trainingCutoff": "2024-09",
+	"notes": "Trained on complex, real-world engineering tasks. Adapts reasoning time dynamically based on task complexity—faster for small requests, longer for complex refactors. Can work independently for 7+ hours on large tasks. Available via API, GitHub Copilot, and ChatGPT."
+}

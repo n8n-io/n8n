@@ -1,0 +1,29 @@
+{
+	"id": "gpt-4o-mini-search-preview-2025-03-11",
+	"name": "GPT-4o Mini Search Preview (Mar 2025)",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.15,
+		"completionPerMilTokenUsd": 0.6,
+		"searchPerThousandUsd": 25.0,
+		"searchTokenPerMilUsd": 2.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 16384,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false,
+		"webSearch": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["web-search", "real-time-information", "cost-efficient-search"],
+	"description": "GPT-4o Mini Search Preview March 2025 release - a cost-efficient variant optimized for web search queries, with direct access to live web data at a lower token cost.",
+	"trainingCutoff": "2023-10",
+	"notes": "March 11, 2025 release. Complex pricing structure: $25 per 1K searches plus standard GPT-4o Mini token rates ($0.15/$0.6 per 1M tokens) and additional $2 per 1M search tokens. Supports geolocation-based search customization via 'user_location' parameter. Designed for Chat Completions API with web_search_options parameter."
+}

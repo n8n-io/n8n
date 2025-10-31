@@ -1,0 +1,34 @@
+{
+	"id": "gpt-4o-transcribe-diarize",
+	"name": "GPT-4o Transcribe Diarize",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 6.0,
+		"completionPerMilTokenUsd": 0.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 16384,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false,
+		"transcription": true,
+		"speakerDiarization": true
+	},
+	"inputModalities": ["audio"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": [
+		"speech-to-text",
+		"transcription",
+		"speaker-identification",
+		"meeting-transcription",
+		"multilingual-audio"
+	],
+	"description": "Advanced speech-to-text model with speaker diarization capabilities. Identifies who's speaking when, producing transcripts with precise speaker labels, segment timestamps, and speaker attribution for multi-speaker audio recordings.",
+	"trainingCutoff": "2024-10",
+	"notes": "Released October 2025. Extends gpt-4o-transcribe with automatic speaker identification and labeling. Produces diarized_json response format with speaker labels and precise segment start/end timestamps. Supports 100+ languages and dialects. Fast transcription: converts 10 minutes of audio in ~15 seconds. File uploads limited to 25MB. Same pricing as gpt-4o-transcribe (~$0.006 per minute). Ideal for meetings, interviews, and multi-speaker conversations."
+}

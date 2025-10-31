@@ -1,0 +1,26 @@
+{
+	"id": "gpt-4.1",
+	"name": "GPT-4.1",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 8.0
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 32000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "complex-reasoning", "analysis", "multimodal", "function-calling"],
+	"description": "GPT-4.1 is OpenAI's enhanced model with major improvements in coding and instruction following. It outperforms GPT-4o across benchmarks, achieving 21.4 percentage point gains on SWE-bench Verified.",
+	"trainingCutoff": "2024-06",
+	"notes": "Best choice for coding-intensive applications with 1 million token context window and 32,000 token output. No extra cost for extended context. Supports 75% discount for cached inputs."
+}

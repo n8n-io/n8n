@@ -1,0 +1,26 @@
+{
+	"id": "gpt-5-nano",
+	"name": "GPT-5 nano",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.05,
+		"completionPerMilTokenUsd": 0.4
+	},
+	"contextLength": 272000,
+	"maxOutputTokens": 128000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["high-volume", "batch-processing", "simple-tasks", "mobile", "edge-computing"],
+	"description": "GPT-5 nano is the lightest version of GPT-5, optimized for speed and high-volume tasks. Ideal for mobile applications, edge devices, and large-scale batch processing where ultra-low cost is critical.",
+	"trainingCutoff": "2024-05",
+	"notes": "Most cost-effective GPT-5 variant, 25x cheaper than standard GPT-5 for input. Optimized for lightweight deployment and high-speed processing. Performance declines compared to larger models but remains solid for simpler tasks."
+}

@@ -1,0 +1,31 @@
+{
+	"id": "gpt-4o-audio-preview",
+	"name": "GPT-4o Audio Preview",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 40.0,
+		"completionPerMilTokenUsd": 80.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 16384,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "audio"],
+	"outputModalities": ["text", "audio"],
+	"intelligenceLevel": "high",
+	"recommendedFor": [
+		"audio-processing",
+		"speech-interaction",
+		"sentiment-analysis",
+		"voice-agents"
+	],
+	"description": "GPT-4o Audio Preview is a specialized variant optimized for asynchronous audio input and output, with support for detecting audio nuances and sentiment in recordings.",
+	"trainingCutoff": "2023-10",
+	"notes": "Focused on text and audio modalities. Does not support image/vision capabilities. Audio token pricing reduced by 60% in December 2024 version (gpt-4o-audio-preview-2024-12-17). Cached audio input costs $2.50/1M tokens (87.5% reduction)."
+}

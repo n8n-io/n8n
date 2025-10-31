@@ -1,0 +1,26 @@
+{
+	"id": "o4-mini-deep-research",
+	"name": "o4-mini-deep-research",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 8.0
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 100000,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["research", "complex-reasoning", "analysis", "synthesis"],
+	"description": "Lightweight deep research model that's faster and more cost-efficient than o3-deep-research, ideal for latency-sensitive research applications while maintaining high quality.",
+	"trainingCutoff": "2024-06",
+	"notes": "Released June 2025. Powered by specialized variant of o4-mini for deep research tasks. Significantly cheaper than o3-deep-research. Available via Responses API with background mode support. Balances speed and research depth."
+}

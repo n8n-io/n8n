@@ -1,0 +1,26 @@
+{
+	"id": "gpt-4.1-mini-2025-04-14",
+	"name": "GPT-4.1 mini",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.4,
+		"completionPerMilTokenUsd": 1.6
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 32000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["coding", "function-calling", "multimodal", "conversation", "summarization"],
+	"description": "GPT-4.1 mini matches or exceeds GPT-4o in intelligence while reducing latency by nearly half and cost by 83%. Features extended context and fast response times.",
+	"trainingCutoff": "2024-06",
+	"notes": "Excellent balance of performance and cost with 1 million token context window. Nearly 50% faster than GPT-4o while maintaining comparable intelligence. Supports 75% discount for cached inputs."
+}

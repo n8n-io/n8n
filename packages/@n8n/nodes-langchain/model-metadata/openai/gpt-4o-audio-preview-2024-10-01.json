@@ -1,0 +1,31 @@
+{
+	"id": "gpt-4o-audio-preview-2024-10-01",
+	"name": "GPT-4o Audio Preview (Oct 2024)",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 100.0,
+		"completionPerMilTokenUsd": 200.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 16384,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "audio"],
+	"outputModalities": ["text", "audio"],
+	"intelligenceLevel": "high",
+	"recommendedFor": [
+		"audio-processing",
+		"speech-interaction",
+		"sentiment-analysis",
+		"voice-agents"
+	],
+	"description": "GPT-4o Audio Preview October 2024 release optimized for asynchronous audio input and output, with support for detecting audio nuances and sentiment in recordings.",
+	"trainingCutoff": "2023-10",
+	"notes": "First audio preview release (October 1, 2024). Focused on text and audio modalities only. Does not support image/vision capabilities or structured outputs. Audio processing costs approximately $0.06 per minute for input and $0.24 per minute for output."
+}

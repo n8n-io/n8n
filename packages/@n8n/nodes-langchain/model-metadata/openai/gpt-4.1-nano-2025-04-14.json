@@ -1,0 +1,32 @@
+{
+	"id": "gpt-4.1-nano-2025-04-14",
+	"name": "GPT-4.1 nano",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.4
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 32000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": [
+		"function-calling",
+		"conversation",
+		"summarization",
+		"translation",
+		"structured-output"
+	],
+	"description": "GPT-4.1 nano is OpenAI's fastest and cheapest model, designed for low-latency tasks. Despite its small size, it delivers strong performance with 80.1% on MMLU and 50.3% on GPQA.",
+	"trainingCutoff": "2024-06",
+	"notes": "Most cost-effective option with 1 million token context window and 32,000 token output. Optimized for speed and high-volume applications. Supports 75% discount for cached inputs."
+}

@@ -1,0 +1,33 @@
+{
+	"id": "o4-mini-high",
+	"name": "o4-mini (high)",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 1.1,
+		"completionPerMilTokenUsd": 4.4
+	},
+	"contextLength": 200000,
+	"maxOutputTokens": 100000,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": [
+		"coding",
+		"complex-reasoning",
+		"math",
+		"data-science",
+		"multimodal",
+		"analysis"
+	],
+	"description": "o4-mini-high is a high-performance variant of o4-mini with enhanced reasoning capabilities. Available exclusively to paid-tier ChatGPT users. Features the same tool-using abilities including web browsing, Python execution, and image analysis.",
+	"trainingCutoff": "2024-06",
+	"notes": "Premium reasoning model with enhanced performance compared to standard o4-mini. Same pricing but better performance on complex reasoning tasks. Paid-tier exclusive. Supports caching and batching for cost optimization."
+}

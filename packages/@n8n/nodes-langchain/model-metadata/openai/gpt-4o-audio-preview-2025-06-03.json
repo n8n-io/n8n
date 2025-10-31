@@ -1,0 +1,32 @@
+{
+	"id": "gpt-4o-audio-preview-2025-06-03",
+	"name": "GPT-4o Audio Preview (Jun 2025)",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 40.0,
+		"completionPerMilTokenUsd": 80.0,
+		"cachedPromptPerMilTokenUsd": 2.5
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 16384,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "audio"],
+	"outputModalities": ["text", "audio"],
+	"intelligenceLevel": "high",
+	"recommendedFor": [
+		"audio-processing",
+		"speech-interaction",
+		"sentiment-analysis",
+		"voice-agents"
+	],
+	"description": "GPT-4o Audio Preview June 2025 release with advanced audio processing capabilities, optimized for asynchronous audio input and output with prompt caching support.",
+	"trainingCutoff": "2023-10",
+	"notes": "June 3, 2025 update maintains the December 2024 pricing structure with $40/$80 per 1M audio tokens. Supports prompt caching at $2.50 per 1M tokens. Focused on text and audio modalities only - does not support image/vision capabilities."
+}

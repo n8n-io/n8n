@@ -1,0 +1,26 @@
+{
+	"id": "gpt-audio-mini",
+	"name": "GPT Audio Mini",
+	"provider": "OpenAI",
+	"pricing": {
+		"promptPerMilTokenUsd": 8.0,
+		"completionPerMilTokenUsd": 16.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 16384,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "audio"],
+	"outputModalities": ["text", "audio"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "audio-processing", "speech-interaction", "high-volume"],
+	"description": "GPT Audio Mini (gpt-realtime-mini) is a cost-optimized speech-to-speech model for real-time voice conversations. Released in October 2025, it's smaller, quicker, and more budget-friendly than the full GPT Audio model while maintaining strong audio capabilities.",
+	"trainingCutoff": "2024-05",
+	"notes": "Latest version released October 6, 2025. Cost-effective alternative providing 75% cost savings compared to GPT Audio. Native speech-to-speech processing without cascaded pipelines. Ideal for high-volume applications requiring frequent audio interactions. Supports real-time audio streaming and multi-turn conversations with natural, expressive responses."
+}
