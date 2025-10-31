@@ -1,4 +1,16 @@
-import type { StructuredChunk } from 'n8n-workflow';
+import type {
+	AssignmentCollectionValue,
+	FilterValue,
+	INodeCredentials,
+	INodeCredentialsDetails,
+	INodeParameterResourceLocator,
+	INodeParameters,
+	NodeConnectionType,
+	NodeParameterValueType,
+	OnError,
+	ResourceMapperValue,
+	StructuredChunk,
+} from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -107,8 +119,133 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	anthropic: { models: [] },
 	google: { models: [] },
 	n8n: { models: [] },
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'custom-agent': { models: [] },
 };
+
+export const NodeConnectionTypeSchema: z.ZodType<NodeConnectionType> = z.enum([
+	'ai_agent',
+	'ai_chain',
+	'ai_document',
+	'ai_embedding',
+	'ai_languageModel',
+	'ai_memory',
+	'ai_outputParser',
+	'ai_retriever',
+	'ai_reranker',
+	'ai_textSplitter',
+	'ai_tool',
+	'ai_vectorStore',
+	'main',
+]);
+
+export const OnErrorSchema: z.ZodType<OnError> = z.enum([
+	'continueErrorOutput',
+	'continueRegularOutput',
+	'stopWorkflow',
+]);
+
+export const INodeCredentialsDetailsSchema: z.ZodType<INodeCredentialsDetails> = z.object({
+	id: z.string().nullable(),
+	name: z.string(),
+});
+
+export const INodeCredentialsSchema: z.ZodType<INodeCredentials> = z.record(
+	z.string(),
+	INodeCredentialsDetailsSchema,
+);
+
+export const INodeParameterResourceLocatorSchema: z.ZodType<
+	INodeParameterResourceLocator,
+	z.ZodTypeDef,
+	Omit<INodeParameterResourceLocator, 'value'> & {
+		value?: string | number | null | undefined;
+	}
+> = z
+	.object({
+		__rl: z.literal(true),
+		mode: z.string(),
+		value: z.union([z.string(), z.number(), z.null()]).optional(),
+		cachedResultName: z.string().optional(),
+		cachedResultUrl: z.string().optional(),
+		__regex: z.string().optional(),
+	})
+	.strict()
+	.transform((obj) => {
+		// Zod doesn't like optional undefined...
+		if (!Object.prototype.hasOwnProperty.call(obj, 'value')) {
+			return { ...obj, value: undefined };
+		}
+		return obj as INodeParameterResourceLocator;
+	});
+
+const NodeParamPrimitiveSchema = z.union([
+	z.string(),
+	z.number(),
+	z.boolean(),
+	z.null(),
+	z.undefined(),
+]);
+
+const ResourceMapperValueSchema = z.any() as unknown as z.ZodType<ResourceMapperValue>;
+const FilterValueSchema = z.any() as unknown as z.ZodType<FilterValue>;
+const AssignmentCollectionValueSchema = z.any() as unknown as z.ZodType<AssignmentCollectionValue>;
+
+export const NodeParameterValueSchema: z.ZodType<NodeParameterValueType> = z.lazy(() =>
+	z.union([
+		NodeParamPrimitiveSchema,
+		INodeParameterResourceLocatorSchema,
+		ResourceMapperValueSchema,
+		FilterValueSchema,
+		AssignmentCollectionValueSchema,
+
+		INodeParametersSchema,
+
+		// only the shapes allowed by the TS union
+		z.array(NodeParamPrimitiveSchema),
+		z.array(INodeParametersSchema),
+		z.array(INodeParameterResourceLocatorSchema),
+		z.array(ResourceMapperValueSchema),
+	]),
+) as unknown as z.ZodType<NodeParameterValueType>; // cast keeps the exact output type
+
+export const INodeParametersSchema: z.ZodType<INodeParameters> = z.record(
+	z.string(),
+	NodeParameterValueSchema,
+);
+
+export const INodeSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		typeVersion: z.number(),
+		type: z.string(),
+		position: z.tuple([z.number(), z.number()]),
+		disabled: z.boolean().optional(),
+		notes: z.string().optional(),
+		notesInFlow: z.boolean().optional(),
+		retryOnFail: z.boolean().optional(),
+		maxTries: z.number().optional(),
+		waitBetweenTries: z.number().optional(),
+		alwaysOutputData: z.boolean().optional(),
+		executeOnce: z.boolean().optional(),
+		onError: OnErrorSchema.optional(),
+		continueOnFail: z.boolean().optional(),
+		webhookId: z.string().optional(),
+		extendsCredential: z.string().optional(),
+		rewireOutputLogTo: NodeConnectionTypeSchema.optional(),
+		parameters: INodeParametersSchema,
+		credentials: INodeCredentialsSchema.optional(),
+		forceCustomOperation: z
+			.object({
+				resource: z.string(),
+				operation: z.string(),
+			})
+			.optional(),
+	})
+	.strict();
+
+export type INodeDto = z.infer<typeof INodeSchema>;
 
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
@@ -122,6 +259,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	tools: z.array(INodeSchema),
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({

@@ -76,6 +76,9 @@ export class ChatHubWorkflowService {
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
+			newWorkflow.settings = {
+				executionOrder: 'v1',
+			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
 
@@ -122,6 +125,9 @@ export class ChatHubWorkflowService {
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
+			newWorkflow.settings = {
+				executionOrder: 'v1',
+			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
 

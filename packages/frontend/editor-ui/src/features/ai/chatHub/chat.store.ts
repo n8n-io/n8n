@@ -467,6 +467,28 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials,
 				previousMessageId,
+				tools: [
+					{
+						parameters: {
+							url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', '', 'string') }}",
+							simplify:
+								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Simplify', '', 'boolean') }}",
+							options: {},
+							requestOptions: {},
+						},
+						type: 'n8n-nodes-base.jinaAiTool',
+						typeVersion: 1,
+						position: [800, 320],
+						id: uuidv4(),
+						name: 'Read URL content in Jina AI',
+						credentials: {
+							jinaAiApi: {
+								id: 'B4nKenuSx2Y3P7aw',
+								name: 'Jina AI account',
+							},
+						},
+					},
+				],
 			},
 			onStreamMessage,
 			onStreamDone,

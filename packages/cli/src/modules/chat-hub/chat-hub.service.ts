@@ -39,6 +39,20 @@ import {
 	INode,
 } from 'n8n-workflow';
 
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubCredentialsService, CredentialWithProjectId } from './chat-hub-credentials.service';
+import type { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import type {
+	HumanMessagePayload,
+	RegenerateMessagePayload,
+	EditMessagePayload,
+} from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
+import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
+
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -49,21 +63,6 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubCredentialsService, CredentialWithProjectId } from './chat-hub-credentials.service';
-import type { ChatHubMessage } from './chat-hub-message.entity';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import type {
-	HumanMessagePayload,
-	RegenerateMessagePayload,
-	EditMessagePayload,
-	ModelWithCredentials,
-} from './chat-hub.types';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatHubSessionRepository } from './chat-session.repository';
-import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 
 @Service()
 export class ChatHubService {
@@ -375,32 +374,26 @@ export class ChatHubService {
 	}
 
 	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
-		const { sessionId, messageId, message, model, credentials, previousMessageId } = payload;
-		const { provider } = model;
+		const { sessionId, messageId, message, model, credentials, previousMessageId, tools } = payload;
 
-		const selectedModel = this.getModelWithCredentials(model, credentials);
+		const credentialId = this.getModelCredential(model, credentials);
 
 		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
 			async (trx) => {
-				const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
+				let session = await this.getChatSession(user, sessionId, trx);
+				session ??= await this.createChatSession(user, sessionId, model, credentialId, tools, trx);
+
 				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 				const history = this.buildMessageHistory(messages, previousMessageId);
 
-				await this.saveHumanMessage(
-					payload,
-					user,
-					previousMessageId,
-					selectedModel,
-					undefined,
-					trx,
-				);
+				await this.saveHumanMessage(payload, user, previousMessageId, model, undefined, trx);
 
-				if (provider === 'n8n') {
+				if (model.provider === 'n8n') {
 					return await this.prepareCustomAgentWorkflow(user, sessionId, model.workflowId, message);
 				}
 
-				if (provider === 'custom-agent') {
+				if (model.provider === 'custom-agent') {
 					return await this.prepareChatAgentWorkflow(
 						model.agentId,
 						user,
@@ -419,6 +412,7 @@ export class ChatHubService {
 					history,
 					message,
 					undefined,
+					session.tools,
 					trx,
 				);
 			},
@@ -431,8 +425,7 @@ export class ChatHubService {
 			executionData,
 			sessionId,
 			messageId,
-			selectedModel,
-			provider,
+			model,
 		);
 
 		// Generate title for the session on receiving the first human message.
@@ -450,10 +443,12 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, message, model, credentials } = payload;
 		const { provider } = model;
 
-		const selectedModel = this.getModelWithCredentials(model, credentials);
-
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
+			const session = await this.getChatSession(user, sessionId, trx);
+			if (!session) {
+				throw new NotFoundError('Chat session not found');
+			}
+
 			const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
 			if (!['ai', 'human'].includes(messageToEdit.type)) {
@@ -477,16 +472,16 @@ export class ChatHubService {
 					payload,
 					user,
 					messageToEdit.previousMessageId,
-					selectedModel,
+					model,
 					revisionOfMessageId,
 					trx,
 				);
 
-				if (provider === 'n8n') {
+				if (model.provider === 'n8n') {
 					return await this.prepareCustomAgentWorkflow(user, sessionId, model.workflowId, message);
 				}
 
-				if (provider === 'custom-agent') {
+				if (model.provider === 'custom-agent') {
 					return await this.prepareChatAgentWorkflow(
 						model.agentId,
 						user,
@@ -505,6 +500,7 @@ export class ChatHubService {
 					history,
 					message,
 					undefined,
+					session.tools,
 					trx,
 				);
 			}
@@ -524,7 +520,7 @@ export class ChatHubService {
 			executionData,
 			sessionId,
 			messageId,
-			selectedModel,
+			model,
 			provider,
 		);
 	}
@@ -533,14 +529,16 @@ export class ChatHubService {
 		const { sessionId, retryId, model, credentials } = payload;
 		const { provider } = model;
 
-		const selectedModel = this.getModelWithCredentials(model, credentials);
-
 		const {
 			workflow: { workflowData, executionData },
 			retryOfMessageId,
 			previousMessageId,
 		} = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, undefined, false, trx);
+			const session = await this.getChatSession(user, sessionId, trx);
+			if (!session) {
+				throw new NotFoundError('Chat session not found');
+			}
+
 			const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
 
 			if (messageToRetry.type !== 'ai') {
@@ -593,6 +591,7 @@ export class ChatHubService {
 					history,
 					message,
 					undefined,
+					session.tools,
 					trx,
 				);
 			}
@@ -611,8 +610,7 @@ export class ChatHubService {
 			executionData,
 			sessionId,
 			previousMessageId,
-			selectedModel,
-			provider,
+			model,
 			retryOfMessageId,
 		);
 	}
@@ -625,6 +623,7 @@ export class ChatHubService {
 		history: ChatHubMessage[],
 		message: string,
 		systemMessage: string | undefined,
+		tools: INode[],
 		trx: EntityManager,
 	) {
 		const credential = await this.chatHubCredentialsService.ensureCredentials(
@@ -643,6 +642,7 @@ export class ChatHubService {
 			credentials,
 			model,
 			systemMessage,
+			tools,
 			trx,
 		);
 	}
@@ -688,6 +688,8 @@ export class ChatHubService {
 			},
 		};
 
+		const tools: INode[] = [];
+
 		return await this.prepareBaseChatWorkflow(
 			user,
 			sessionId,
@@ -696,6 +698,7 @@ export class ChatHubService {
 			history,
 			message,
 			systemMessage,
+			tools,
 			trx,
 		);
 	}
@@ -804,6 +807,10 @@ export class ChatHubService {
 
 	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
 		const session = await this.getChatSession(user, sessionId);
+		if (!session) {
+			throw new NotFoundError('Chat session not found');
+		}
+
 		const message = await this.getChatMessage(session.id, messageId, [
 			'execution',
 			'execution.workflow',
@@ -832,7 +839,7 @@ export class ChatHubService {
 		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		selectedModel: ModelWithCredentials,
+		model: ChatHubConversationModel,
 		retryOfMessageId: ChatMessageId | null = null,
 	) {
 		this.logger.debug(
@@ -849,7 +856,7 @@ export class ChatHubService {
 					...message,
 					sessionId,
 					executionId,
-					selectedModel,
+					model,
 					retryOfMessageId,
 				});
 			},
@@ -970,8 +977,7 @@ export class ChatHubService {
 		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		selectedModel: ModelWithCredentials,
-		provider: ChatHubProvider,
+		model: ChatHubConversationModel,
 		retryOfMessageId: ChatMessageId | null = null,
 	) {
 		try {
@@ -982,11 +988,11 @@ export class ChatHubService {
 				executionData,
 				sessionId,
 				previousMessageId,
-				selectedModel,
+				model,
 				retryOfMessageId,
 			);
 		} finally {
-			if (provider !== 'n8n') {
+			if (model.provider !== 'n8n') {
 				await this.deleteChatWorkflow(workflowData.id);
 			}
 		}
@@ -1272,7 +1278,7 @@ export class ChatHubService {
 		payload: HumanMessagePayload | EditMessagePayload,
 		user: User,
 		previousMessageId: ChatMessageId | null,
-		selectedModel: ModelWithCredentials,
+		model: ChatHubConversationModel,
 		revisionOfMessageId?: ChatMessageId,
 		trx?: EntityManager,
 	) {
@@ -1285,8 +1291,8 @@ export class ChatHubService {
 				content: payload.message,
 				previousMessageId,
 				revisionOfMessageId,
-				...selectedModel,
 				name: user.firstName || 'User',
+				...model,
 			},
 			trx,
 		);
@@ -1298,7 +1304,7 @@ export class ChatHubService {
 		executionId,
 		previousMessageId,
 		content,
-		selectedModel,
+		model,
 		retryOfMessageId,
 		status,
 	}: {
@@ -1306,7 +1312,7 @@ export class ChatHubService {
 		sessionId: ChatSessionId;
 		previousMessageId: ChatMessageId | null;
 		content: string;
-		selectedModel: ModelWithCredentials;
+		model: ChatHubConversationModel;
 		executionId?: string;
 		retryOfMessageId: ChatMessageId | null;
 		editOfMessageId?: ChatMessageId;
@@ -1322,53 +1328,44 @@ export class ChatHubService {
 			status,
 			content,
 			retryOfMessageId,
-			...selectedModel,
+			...model,
 		});
 	}
 
-	private getModelWithCredentials(
-		selectedModel: ChatHubConversationModel,
-		credentials: INodeCredentials,
-	) {
-		const provider = selectedModel.provider;
+	private getModelCredential(model: ChatHubConversationModel, credentials: INodeCredentials) {
+		const credentialId =
+			model.provider !== 'n8n' ? this.pickCredentialId(model.provider, credentials) : null;
 
-		const modelWithCredentials: ModelWithCredentials = {
-			...selectedModel,
-			credentialId: provider !== 'n8n' ? this.pickCredentialId(provider, credentials) : null,
-		};
-
-		return modelWithCredentials;
+		return credentialId;
 	}
 
-	private async getChatSession(
+	private async getChatSession(user: User, sessionId: ChatSessionId, trx?: EntityManager) {
+		return await this.sessionRepository.getOneById(sessionId, user.id, trx);
+	}
+
+	private async createChatSession(
 		user: User,
 		sessionId: ChatSessionId,
-		selectedModel?: ModelWithCredentials,
-		initialize: boolean = false,
+		model: ChatHubConversationModel,
+		credentialId: string | null,
+		tools: INode[],
 		trx?: EntityManager,
 	) {
-		const existing = await this.sessionRepository.getOneById(sessionId, user.id, trx);
-		if (existing) {
-			return existing;
-		} else if (!initialize) {
-			throw new NotFoundError('Chat session not found');
-		}
-
 		let agentName: string | undefined = undefined;
 
-		if (selectedModel?.provider === 'custom-agent') {
+		if (model.provider === 'custom-agent') {
 			// Find the agent to get its name
-			const agent = await this.chatHubAgentService.getAgentById(selectedModel.agentId!, user.id);
+			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
 			if (!agent) {
 				throw new BadRequestError('Agent not found for chat session initialization');
 			}
 			agentName = agent.name;
 		}
 
-		if (selectedModel?.provider === 'n8n') {
+		if (model.provider === 'n8n') {
 			// Find the workflow to get its name
 			const workflow = await this.workflowFinderService.findWorkflowForUser(
-				selectedModel.workflowId!,
+				model.workflowId,
 				user,
 				['workflow:read'],
 				{ includeTags: false, includeParentFolder: false },
@@ -1397,7 +1394,9 @@ export class ChatHubService {
 				ownerId: user.id,
 				title: 'New Chat',
 				agentName,
-				...selectedModel,
+				tools,
+				credentialId,
+				...model,
 			},
 			trx,
 		);
