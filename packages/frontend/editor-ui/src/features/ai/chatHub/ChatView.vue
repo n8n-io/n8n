@@ -111,13 +111,17 @@ const selectedModel = computed<ChatModelDto | undefined>(() => {
 		return modelFromQuery.value;
 	}
 
-	if (!currentConversation.value?.provider) {
-		return defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined;
+	if (currentConversation.value?.provider) {
+		const model = unflattenModel(currentConversation.value);
+
+		return model ? chatStore.getAgent(model) : undefined;
 	}
 
-	const model = restoreConversationModelFromMessageOrSession(currentConversation.value);
+	if (chatStore.streaming?.sessionId === sessionId.value) {
+		return chatStore.getAgent(chatStore.streaming.model);
+	}
 
-	return model ? chatStore.getAgent(model) : undefined;
+	return defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined;
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
