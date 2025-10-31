@@ -21,6 +21,7 @@ import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
 import { Time } from '@n8n/constants';
+import { CircuitBreaker, CircuitBreakerOpen } from '@/utils/circuit-breaker';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -74,12 +75,18 @@ export class MessageEventBusDestinationWebhook
 
 	axiosInstance: AxiosInstance;
 
+	circuitBreaker: CircuitBreaker;
+
 	constructor(
 		eventBusInstance: MessageEventBus,
 		options: MessageEventBusDestinationWebhookOptions,
 	) {
 		super(eventBusInstance, options);
 		this.url = options.url;
+
+		// TODO: make configurable
+		// Circuit stays open for 10 minutes, after 10 failed attempts
+		this.circuitBreaker = new CircuitBreaker(10 * Time.minutes.toMilliseconds, 10);
 		this.label = options.label ?? 'Webhook Endpoint';
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.webhook;
 		if (options.responseCodeMustMatch) this.responseCodeMustMatch = options.responseCodeMustMatch;
@@ -278,8 +285,22 @@ export class MessageEventBusDestinationWebhook
 		return null;
 	}
 
-	// eslint-disable-next-line complexity
 	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
+		try {
+			return await this.circuitBreaker.execute(async () => await this.sendWebhook(emitterPayload));
+		} catch (error) {
+			if (error instanceof CircuitBreakerOpen) {
+				this.logger.warn(
+					`Webhook destination ${this.label} failed to send message to: ${this.url}: circuit break open!`,
+				);
+				return false;
+			}
+			throw error;
+		}
+	}
+
+	// eslint-disable-next-line complexity
+	async sendWebhook(emitterPayload: MessageWithCallback): Promise<boolean> {
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
