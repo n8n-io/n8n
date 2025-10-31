@@ -50,6 +50,10 @@ export class ProvisioningService {
 	}
 
 	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
+		if (!this.isInstanceRoleProvisioningEnabled()) {
+			return;
+		}
+
 		const globalOwnerRoleSlug = 'global:owner';
 
 		if (typeof roleSlug !== 'string') {
@@ -121,6 +125,10 @@ export class ProvisioningService {
 	 * ]
 	 */
 	async provisionProjectRolesForUser(userId: string, projectIdToRoles: unknown): Promise<void> {
+		if (!this.isProjectRolesProvisioningEnabled()) {
+			return;
+		}
+
 		if (!Array.isArray(projectIdToRoles)) {
 			console.log('skipping project role provisioning, invalid projectIdToRole type');
 			this.logger.warn(

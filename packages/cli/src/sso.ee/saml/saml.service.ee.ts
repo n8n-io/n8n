@@ -263,19 +263,11 @@ export class SamlService {
 		};
 	}
 
-	// TODO: move this logic into ProvisioningService to reduce duplication
-	// between oidc and saml and future implementations
 	private async applySsoProvisioning(user: User, attributes: SamlPreferencesAttributeMapping) {
-		if (
-			attributes?.n8nInstanceRole &&
-			(await this.provisioningService.isInstanceRoleProvisioningEnabled())
-		) {
+		if (attributes?.n8nInstanceRole) {
 			await this.provisioningService.provisionInstanceRoleForUser(user, attributes.n8nInstanceRole);
 		}
-		if (
-			attributes?.n8nProjectRoles &&
-			(await this.provisioningService.isProjectRolesProvisioningEnabled())
-		) {
+		if (attributes?.n8nProjectRoles) {
 			await this.provisioningService.provisionProjectRolesForUser(
 				user.id,
 				attributes.n8nProjectRoles,
