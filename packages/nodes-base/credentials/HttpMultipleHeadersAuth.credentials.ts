@@ -58,10 +58,13 @@ export class HttpMultipleHeadersAuth implements ICredentialType {
 			},
 			{} as Record<string, string>,
 		);
-		requestOptions.headers = {
-			...requestOptions.headers,
-			...headers,
+		const newRequestOptions = {
+			...requestOptions,
+			headers: {
+				...requestOptions.headers,
+				...headers,
+			},
 		};
-		return await Promise.resolve(requestOptions);
+		return await Promise.resolve(newRequestOptions);
 	};
 }
