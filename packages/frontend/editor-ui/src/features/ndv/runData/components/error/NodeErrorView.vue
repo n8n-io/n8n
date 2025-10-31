@@ -2,11 +2,11 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useClipboard } from '@/composables/useClipboard';
-import { useToast } from '@/composables/useToast';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useToast } from '@/app/composables/useToast';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -18,13 +18,13 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { isCommunityPackageName } from 'n8n-workflow';
-import { sanitizeHtml } from '@/utils/htmlUtils';
-import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
+import { sanitizeHtml } from '@/app/utils/htmlUtils';
+import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/app/constants';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import {
 	N8nInlineAskAssistantButton,

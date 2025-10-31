@@ -3,10 +3,10 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import { TEMPLATES_URLS, VIEWS, EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/constants';
-import { useSettingsStore } from '@/stores/settings.store';
+import { TEMPLATES_URLS, VIEWS, EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -31,7 +31,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/stores/posthog.store', () => ({
+vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
 		getVariant: vi.fn(() => 'variant'),
 	})),
@@ -48,7 +48,7 @@ vi.mock('@/experiments/utils', async (importOriginal) => {
 });
 
 const mockTrack = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: mockTrack,
 	})),

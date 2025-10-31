@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { sanitizeHtml } from '@/utils/htmlUtils';
+import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { computed, onMounted, ref } from 'vue';
 
 import { N8nText } from '@n8n/design-system';

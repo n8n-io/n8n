@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataPinButton from '@/features/ndv/runData/components/RunDataPinButton.vue';
 import { STORES } from '@n8n/stores';
-import type { usePinnedData } from '@/composables/usePinnedData';
+import type { usePinnedData } from '@/app/composables/usePinnedData';
 
 const renderComponent = createComponentRenderer(RunDataPinButton, {
 	global: {

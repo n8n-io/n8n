@@ -9,8 +9,8 @@ import {
 import type { InsightsByWorkflow } from '@n8n/api-types';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { VIEWS } from '@/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { VIEWS } from '@/app/constants';
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { type RouteLocationRaw, type LocationQueryRaw, RouterLink } from 'vue-router';
 

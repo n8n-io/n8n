@@ -16,7 +16,7 @@ import {
 	AI_SUBCATEGORY,
 	DEFAULT_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
-} from '@/constants';
+} from '@/app/constants';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { computed, nextTick, ref } from 'vue';
@@ -40,11 +40,11 @@ import { AINodesView } from '../views/viewsData';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export type CommunityNodeDetails = {
 	key: string;
@@ -57,9 +57,9 @@ export type CommunityNodeDetails = {
 	nodeIcon?: NodeIconSource;
 };
 
-import { useUIStore } from '@/stores/ui.store';
-import { type NodeIconSource } from '@/utils/nodeIcon';
-import { getThemedValue } from '@/utils/nodeTypesUtils';
+import { useUIStore } from '@/app/stores/ui.store';
+import { type NodeIconSource } from '@/app/utils/nodeIcon';
+import { getThemedValue } from '@/app/utils/nodeTypesUtils';
 
 import nodePopularity from 'virtual:node-popularity-data';
 

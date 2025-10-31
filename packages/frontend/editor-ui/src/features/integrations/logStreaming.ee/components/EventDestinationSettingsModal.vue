@@ -27,20 +27,20 @@ import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
-import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
-import Modal from '@/components/Modal.vue';
+import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
+import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import { useMessage } from '@/composables/useMessage';
-import { useUIStore } from '@/stores/ui.store';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { useMessage } from '@/app/composables/useMessage';
+import { useUIStore } from '@/app/stores/ui.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { destinationToFakeINodeUi } from '../logStreaming.utils';
 import type { BaseTextKey } from '@n8n/i18n';
-import SaveButton from '@/components/SaveButton.vue';
+import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
@@ -64,7 +64,7 @@ import {
 	injectWorkflowState,
 	type WorkflowStateBusEvents,
 	workflowStateEventBus,
-} from '@/composables/useWorkflowState';
+} from '@/app/composables/useWorkflowState';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 

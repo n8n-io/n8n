@@ -5,7 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createProjectListItem } from '../__tests__/utils';
 import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 vi.mock('vue-router', async () => {
@@ -22,7 +22,7 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-vi.mock('@/composables/useToast', () => {
+vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -33,7 +33,7 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/composables/usePageRedirectionHelper', () => {
+vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	const goToUpgrade = vi.fn();
 	return {
 		usePageRedirectionHelper: () => ({

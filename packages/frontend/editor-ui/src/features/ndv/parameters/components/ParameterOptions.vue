@@ -5,10 +5,10 @@ import {
 	type INodeProperties,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { isValueExpression } from '@/utils/nodeTypesUtils';
+import { isValueExpression } from '@/app/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { AI_TRANSFORM_NODE_TYPE } from '@/constants/nodeTypes';
+import { AI_TRANSFORM_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';

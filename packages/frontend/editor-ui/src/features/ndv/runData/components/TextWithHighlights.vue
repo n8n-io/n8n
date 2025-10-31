@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { splitTextBySearch } from '@/utils/stringUtils';
+import { splitTextBySearch } from '@/app/utils/stringUtils';
 import type { GenericValue } from 'n8n-workflow';
 import { computed } from 'vue';
 

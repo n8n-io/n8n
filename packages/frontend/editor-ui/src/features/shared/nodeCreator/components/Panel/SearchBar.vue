@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import { N8nIcon } from '@n8n/design-system';
 export interface Props {

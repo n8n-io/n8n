@@ -19,14 +19,14 @@ import router from './router';
 
 import { i18nInstance } from '@n8n/i18n';
 
-import { TelemetryPlugin } from './plugins/telemetry';
-import { GlobalComponentsPlugin } from './plugins/components';
-import { GlobalDirectivesPlugin } from './plugins/directives';
+import { TelemetryPlugin } from '@/app/plugins/telemetry';
+import { GlobalComponentsPlugin } from '@/app/plugins/components';
+import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
-import { ChartJSPlugin } from '@/plugins/chartjs';
-import { SentryPlugin } from '@/plugins/sentry';
-import { registerModuleRoutes } from '@/moduleInitializer/moduleInitializer';
+import { ChartJSPlugin } from '@/app/plugins/chartjs';
+import { SentryPlugin } from '@/app/plugins/sentry';
+import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 
 import type { VueScanOptions } from 'z-vue-scan';
 

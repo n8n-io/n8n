@@ -4,12 +4,12 @@ import * as schemaPreviewApi from './schemaPreview.api';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
 import type { PushPayload } from '@n8n/api-types';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { INode } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 vi.mock('./schemaPreview.api');
-vi.mock('@/composables/useTelemetry', () => {
+vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -24,7 +24,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
-vi.mock('@/stores/workflows.store', () => {
+vi.mock('@/app/stores/workflows.store', () => {
 	const getNodeByName = vi.fn();
 	return {
 		useWorkflowsStore: vi.fn(() => ({

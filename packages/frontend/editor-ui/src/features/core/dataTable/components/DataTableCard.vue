@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import TimeAgo from '@/components/TimeAgo.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 type Props = {

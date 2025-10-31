@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
 import type { IUpdateInformation } from '@/Interface';
-import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { resolveRequiredParameters } from '@/app/composables/useWorkflowHelpers';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type {
 	INode,
 	INodeParameters,
@@ -22,12 +22,12 @@ import {
 	fieldCannotBeDeleted,
 	isResourceMapperFieldListStale,
 	parseResourceMapperFieldName,
-} from '@/utils/nodeTypesUtils';
-import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
+} from '@/app/utils/nodeTypesUtils';
+import { isFullExecutionResponse, isResourceMapperValue } from '@/app/utils/typeGuards';
 import { i18n as locale } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ParameterInputFull from '../ParameterInputFull.vue';

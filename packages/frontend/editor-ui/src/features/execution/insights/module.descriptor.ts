@@ -1,9 +1,9 @@
 import { RouterView } from 'vue-router';
-import type { FrontendModuleDescription } from '@/moduleInitializer/module.types';
+import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
-const MainSidebar = async () => await import('@/components/MainSidebar.vue');
+const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const InsightsDashboard = async () =>
 	await import('@/features/execution/insights/components/InsightsDashboard.vue');
 

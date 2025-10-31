@@ -32,7 +32,7 @@ vi.mock('../../composables/useInstalledCommunityPackage', () => ({
 
 const getCommunityNodeAttributes = vi.fn();
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getCommunityNodeAttributes,
 	})),

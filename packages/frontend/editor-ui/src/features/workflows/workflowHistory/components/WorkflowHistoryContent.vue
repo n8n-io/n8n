@@ -6,7 +6,7 @@ import type {
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
 } from '@n8n/rest-api-client/api/workflowHistory';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';

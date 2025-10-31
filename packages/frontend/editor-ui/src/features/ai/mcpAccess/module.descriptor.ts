@@ -1,5 +1,5 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 
 const i18n = useI18n();
