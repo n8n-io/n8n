@@ -47,7 +47,8 @@
 							"connectionParametersReasoning": "Basic LLM Chain has dynamic inputs based on hasOutputParser parameter. Since we don't need output parser for this use case, setting hasOutputParser to false to only accept main input and language model connection.",
 							"connectionParameters": {
 								"hasOutputParser": false
-							}
+							},
+							"id": "12143dd5-e8ae-4837-8775-547521b10f7b"
 						}
 					}
 				],

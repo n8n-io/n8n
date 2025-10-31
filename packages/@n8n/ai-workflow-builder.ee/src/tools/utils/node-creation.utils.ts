@@ -63,6 +63,7 @@ export function requiresWebhook(nodeType: INodeTypeDescription): boolean {
  * @param name - The name for the node
  * @param position - The position of the node
  * @param parameters - Optional parameters for the node
+ * @param id - Optional specific ID to use for the node (for testing purposes)
  * @returns A complete node instance
  */
 export function createNodeInstance(
@@ -70,9 +71,10 @@ export function createNodeInstance(
 	name: string,
 	position: [number, number],
 	parameters: Record<string, NodeParameterValueType> = {},
+	id?: string,
 ): INode {
 	const node: INode = {
-		id: generateNodeId(),
+		id: id ?? generateNodeId(),
 		name,
 		type: nodeType.name,
 		typeVersion: getLatestVersion(nodeType),

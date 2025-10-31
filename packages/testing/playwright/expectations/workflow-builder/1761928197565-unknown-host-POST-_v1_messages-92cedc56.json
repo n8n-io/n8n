@@ -45,7 +45,8 @@
 							"nodeType": "n8n-nodes-base.manualTrigger",
 							"name": "Manual Trigger",
 							"connectionParametersReasoning": "Manual Trigger is a trigger node with static outputs, no connection parameters needed",
-							"connectionParameters": {}
+							"connectionParameters": {},
+							"id": "d123eb89-4451-42b7-910d-5c2e930acfd1"
 						}
 					},
 					{
@@ -56,7 +57,8 @@
 							"nodeType": "n8n-nodes-base.set",
 							"name": "Workflow Configuration",
 							"connectionParametersReasoning": "Set node has static inputs/outputs, no connection parameters needed",
-							"connectionParameters": {}
+							"connectionParameters": {},
+							"id": "262224c9-60a6-499d-9a8c-397342ad7474"
 						}
 					},
 					{
@@ -67,7 +69,8 @@
 							"nodeType": "n8n-nodes-base.youTube",
 							"name": "Get Video Details",
 							"connectionParametersReasoning": "YouTube node has static inputs/outputs, no connection parameters needed",
-							"connectionParameters": {}
+							"connectionParameters": {},
+							"id": "8ec7a72a-cd79-47e2-b598-f2200b5b3ccf"
 						}
 					},
 					{
@@ -78,7 +81,8 @@
 							"nodeType": "n8n-nodes-base.youTube",
 							"name": "Get Video Captions",
 							"connectionParametersReasoning": "YouTube node has static inputs/outputs, no connection parameters needed",
-							"connectionParameters": {}
+							"connectionParameters": {},
+							"id": "b1dcd8e3-1d2b-450f-bdc9-15932e811a53"
 						}
 					},
 					{
@@ -89,7 +93,8 @@
 							"nodeType": "n8n-nodes-base.set",
 							"name": "Merge Video Data",
 							"connectionParametersReasoning": "Set node has static inputs/outputs, no connection parameters needed",
-							"connectionParameters": {}
+							"connectionParameters": {},
+							"id": "12143dd5-e8ae-4837-8775-547521b10f7b"
 						}
 					},
 					{
@@ -103,7 +108,8 @@
 							"connectionParameters": {
 								"resource": "text",
 								"operation": "message"
-							}
+							},
+							"id": "d472a92f-5792-4e22-89f1-a5b5ecf7d7ce"
 						}
 					},
 					{
@@ -114,7 +120,8 @@
 							"nodeType": "n8n-nodes-base.code",
 							"name": "Format Chapters",
 							"connectionParametersReasoning": "Code node has static inputs/outputs, no connection parameters needed",
-							"connectionParameters": {}
+							"connectionParameters": {},
+							"id": "6c79cb79-bbfa-4754-aa57-3f306db18dca"
 						}
 					},
 					{
@@ -125,7 +132,8 @@
 							"nodeType": "n8n-nodes-base.youTube",
 							"name": "Update Video Description",
 							"connectionParametersReasoning": "YouTube node has static inputs/outputs, no connection parameters needed",
-							"connectionParameters": {}
+							"connectionParameters": {},
+							"id": "638257a9-de32-4968-9538-3cc0a6427f60"
 						}
 					},
 					{
@@ -136,7 +144,8 @@
 							"nodeType": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
 							"name": "Google Gemini Chat Model",
 							"connectionParametersReasoning": "Google Gemini Chat Model is an AI sub-node that provides ai_languageModel output, no connection parameters needed",
-							"connectionParameters": {}
+							"connectionParameters": {},
+							"id": "7080dd0f-5f71-4ad2-ae11-24a4062e4239"
 						}
 					}
 				],

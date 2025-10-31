@@ -34,6 +34,12 @@ export const nodeCreationSchema = z.object({
 		.describe(
 			'Parameters that affect node connections (e.g., mode: "insert" for Vector Store). Pass an empty object {} if no connection parameters are needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
 		),
+	id: z
+		.string()
+		.optional()
+		.describe(
+			'Optional: A specific ID to use for this node. If not provided, a unique ID will be generated automatically. This is primarily used for testing purposes to ensure deterministic node IDs.',
+		),
 });
 
 /**
@@ -45,6 +51,7 @@ function createNode(
 	existingNodes: INode[],
 	nodeTypes: INodeTypeDescription[],
 	connectionParameters?: INodeParameters,
+	id?: string,
 ): INode {
 	// Generate unique name
 	const baseName = customName ?? nodeType.defaults?.name ?? nodeType.displayName;
@@ -53,8 +60,8 @@ function createNode(
 	// Calculate position
 	const position = calculateNodePosition(existingNodes, isSubNode(nodeType), nodeTypes);
 
-	// Create the node instance with connection parameters
-	return createNodeInstance(nodeType, uniqueName, position, connectionParameters);
+	// Create the node instance with connection parameters and optional ID
+	return createNodeInstance(nodeType, uniqueName, position, connectionParameters, id);
 }
 
 /**
@@ -106,7 +113,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 			try {
 				// Validate input using Zod schema
 				const validatedInput = nodeCreationSchema.parse(input);
-				const { nodeType, name, connectionParametersReasoning, connectionParameters } =
+				const { nodeType, name, connectionParametersReasoning, connectionParameters, id } =
 					validatedInput;
 
 				// Report tool start
@@ -139,6 +146,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					workflow.nodes, // Use current workflow nodes
 					nodeTypes,
 					connectionParameters as INodeParameters,
+					id,
 				);
 
 				// Build node info
