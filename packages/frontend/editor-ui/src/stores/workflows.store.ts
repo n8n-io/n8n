@@ -1012,9 +1012,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		const storedPinData = payload.data.map((item) =>
-			isJsonKeyObject(item)
-				? { json: item.json, ...(item.binary && { binary: item.binary }) }
-				: { json: item },
+			// Store full item to preserve binary and paired item information
+			isJsonKeyObject(item) ? item : { json: item },
 		);
 
 		workflow.value.pinData[nodeName] = storedPinData;
