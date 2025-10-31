@@ -199,4 +199,105 @@ describe('WorkflowExecutionsCard', () => {
 		expect(executionTimeElement).toBeVisible();
 		expect(executionTimeElement.textContent).toBe('for -1727438401s');
 	});
+
+	describe('Running execution time display (PAY-3162)', () => {
+		test('displays "for" time when execution is running without stoppedAt', () => {
+			const createdAt = new Date('2024-09-27T12:00:00Z');
+			const startedAt = new Date('2024-09-27T12:05:00Z');
+			const now = new Date('2024-09-27T12:30:00Z');
+			vitest.useFakeTimers({ now });
+
+			const props: ComponentProps<typeof WorkflowExecutionsCard> = {
+				execution: {
+					id: '1',
+					mode: 'manual',
+					status: 'running',
+					createdAt: createdAt.toISOString(),
+					startedAt: startedAt.toISOString(),
+					// stoppedAt is undefined - execution is truly running
+				} as unknown as ExecutionSummary,
+				workflowPermissions: { execute: true },
+			};
+
+			const { queryByTestId } = renderComponent({ props });
+
+			// The "for" time indicator should be visible
+			const executionTimeInStatus = queryByTestId('execution-time-in-status');
+			expect(executionTimeInStatus).toBeVisible();
+			expect(executionTimeInStatus?.textContent).toContain('for');
+		});
+
+		test('hides "for" time when execution has stoppedAt (even if status is running)', () => {
+			const createdAt = new Date('2024-09-27T12:00:00Z');
+			const startedAt = new Date('2024-09-27T12:05:00Z');
+			const stoppedAt = new Date('2024-09-27T12:10:00Z');
+			const now = new Date('2024-09-27T12:30:00Z');
+			vitest.useFakeTimers({ now });
+
+			const props: ComponentProps<typeof WorkflowExecutionsCard> = {
+				execution: {
+					id: '2',
+					mode: 'manual',
+					status: 'running', // Status is still 'running' (race condition)
+					createdAt: createdAt.toISOString(),
+					startedAt: startedAt.toISOString(),
+					stoppedAt: stoppedAt.toISOString(), // But execution has been stopped
+				} as unknown as ExecutionSummary,
+				workflowPermissions: { execute: true },
+			};
+
+			const { queryByTestId } = renderComponent({ props });
+
+			// The "for" time indicator should NOT be visible
+			const executionTimeInStatus = queryByTestId('execution-time-in-status');
+			expect(executionTimeInStatus).toBeNull();
+		});
+
+		test('hides "for" time when execution status is not running', () => {
+			const createdAt = new Date('2024-09-27T12:00:00Z');
+			const stoppedAt = new Date('2024-09-27T12:10:00Z');
+
+			const props: ComponentProps<typeof WorkflowExecutionsCard> = {
+				execution: {
+					id: '3',
+					mode: 'manual',
+					status: 'success', // Status is 'success'
+					createdAt: createdAt.toISOString(),
+					stoppedAt: stoppedAt.toISOString(),
+				} as unknown as ExecutionSummary,
+				workflowPermissions: { execute: true },
+			};
+
+			const { queryByTestId } = renderComponent({ props });
+
+			// The "for" time indicator should NOT be visible for completed executions
+			const executionTimeInStatus = queryByTestId('execution-time-in-status');
+			expect(executionTimeInStatus).toBeNull();
+		});
+
+		test('shows running time for execution without startedAt but with running status', () => {
+			const createdAt = new Date('2024-09-27T12:00:00Z');
+			const now = new Date('2024-09-27T12:05:00Z');
+			vitest.useFakeTimers({ now });
+
+			const props: ComponentProps<typeof WorkflowExecutionsCard> = {
+				execution: {
+					id: '4',
+					mode: 'webhook',
+					status: 'running',
+					createdAt: createdAt.toISOString(),
+					// startedAt is undefined - it will fallback to createdAt
+					// stoppedAt is undefined - execution is running
+				} as unknown as ExecutionSummary,
+				workflowPermissions: { execute: true },
+			};
+
+			const { queryByTestId } = renderComponent({ props });
+
+			// The "for" time indicator should be visible and use createdAt as fallback
+			const executionTimeInStatus = queryByTestId('execution-time-in-status');
+			expect(executionTimeInStatus).toBeVisible();
+			expect(executionTimeInStatus?.textContent).toContain('for');
+		});
+	});
 });

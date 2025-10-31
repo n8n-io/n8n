@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
@@ -9,8 +9,8 @@ import ExecutionsFilter from '../components/ExecutionsFilter.vue';
 import type { IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterType } from '../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
-import * as telemetryModule from '@/composables/useTelemetry';
-import type { Telemetry } from '@/plugins/telemetry';
+import * as telemetryModule from '@/app/composables/useTelemetry';
+import type { Telemetry } from '@/app/plugins/telemetry';
 
 vi.mock('vue-router', () => ({
 	useRoute: () =>
@@ -20,20 +20,20 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/composables/usePageRedirectionHelper', () => ({
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({
 		goToUpgrade: vi.fn(),
 	}),
 }));
 
-vi.mock('@/components/AnnotationTagsDropdown.ee.vue', () => ({
+vi.mock('@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue', () => ({
 	default: {
 		name: 'AnnotationTagsDropdown',
 		template: '<div data-test-id="executions-filter-annotation-tags-select"></div>',
 	},
 }));
 
-vi.mock('@/components/WorkflowTagsDropdown.vue', () => ({
+vi.mock('@/features/shared/tags/components/WorkflowTagsDropdown.vue', () => ({
 	default: {
 		name: 'WorkflowTagsDropdown',
 		template: '<div data-test-id="executions-filter-tags-select"></div>',

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getLocalTimeZone, isToday } from '@internationalized/date';
 import type {
 	DateRange,
@@ -181,7 +181,7 @@ function isActiveRange(presetValue: number) {
 
 <style module>
 .PresetButton {
-	--button-border-color: transparent;
+	--button--border-color: transparent;
 	text-align: left;
 	display: flex;
 }

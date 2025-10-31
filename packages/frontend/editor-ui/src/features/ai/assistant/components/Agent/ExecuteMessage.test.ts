@@ -9,10 +9,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
-import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useLogsStore } from '@/stores/logs.store';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { useBuilderStore } from '../../builder.store';
 
 const workflowValidationIssuesRef = ref<
@@ -52,13 +52,13 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/composables/useRunWorkflow', () => ({
+vi.mock('@/app/composables/useRunWorkflow', () => ({
 	useRunWorkflow: () => ({
 		runWorkflow: runWorkflowMock,
 	}),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: showMessageMock,
 	}),

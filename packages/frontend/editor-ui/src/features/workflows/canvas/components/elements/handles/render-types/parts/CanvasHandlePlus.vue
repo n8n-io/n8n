@@ -143,6 +143,7 @@ function onClick(event: MouseEvent) {
 <style lang="scss" module>
 .wrapper {
 	position: relative;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: scale(var(--canvas-zoom-compensation-factor, 1));
 
 	&.right {

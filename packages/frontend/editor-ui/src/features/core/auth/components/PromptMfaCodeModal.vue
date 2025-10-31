@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import Modal from '@/components/Modal.vue';
-import { PROMPT_MFA_CODE_MODAL_KEY } from '@/constants';
+import Modal from '@/app/components/Modal.vue';
+import { PROMPT_MFA_CODE_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { promptMfaCodeBus } from '../auth.eventBus';
 import { type IFormInput } from '@/Interface';

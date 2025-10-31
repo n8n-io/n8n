@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import GoBackButton from '@/components/GoBackButton.vue';
+import GoBackButton from '@/app/components/GoBackButton.vue';
 
 interface Props {
 	goBackEnabled?: boolean;
@@ -30,7 +30,7 @@ withDefaults(defineProps<Props>(), {
 .template {
 	display: flex;
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 	padding: var(--spacing--lg) var(--spacing--lg) 0;
 	justify-content: center;
 	@media (min-width: 1200px) {

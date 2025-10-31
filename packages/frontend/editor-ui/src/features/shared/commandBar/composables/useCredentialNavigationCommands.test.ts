@@ -4,13 +4,13 @@ import * as permissionsModule from '@n8n/permissions';
 import { useCredentialNavigationCommands } from './useCredentialNavigationCommands';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({

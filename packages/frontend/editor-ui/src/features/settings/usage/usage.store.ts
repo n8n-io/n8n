@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import type { UsageState } from '@n8n/api-types';
 import * as usageApi from '@n8n/rest-api-client/api/usage';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export type UsageTelemetry = {
 	instance_id: string;
@@ -79,8 +79,11 @@ export const useUsageStore = defineStore('usage', () => {
 		setData(data);
 	};
 
-	const activateLicense = async (activationKey: string) => {
-		const data = await usageApi.activateLicenseKey(rootStore.restApiContext, { activationKey });
+	const activateLicense = async (activationKey: string, eulaUri?: string) => {
+		const data = await usageApi.activateLicenseKey(rootStore.restApiContext, {
+			activationKey,
+			eulaUri,
+		});
 		setData(data);
 		await settingsStore.getSettings();
 		await settingsStore.getModuleSettings();
