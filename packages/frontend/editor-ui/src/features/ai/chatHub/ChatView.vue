@@ -183,7 +183,7 @@ watch(
 		// Prevent "scroll to bottom" button from appearing when not necessary
 		void nextTick(measure);
 
-		if (chatStore.streaming) {
+		if (chatStore.streaming?.sessionId === sessionId.value) {
 			// Scroll to user's prompt when the message is being generated
 			scrollToMessage(chatStore.streaming.promptId);
 			return;
