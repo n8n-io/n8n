@@ -118,7 +118,8 @@ function truncateLine(line: string, maxWidth: number): string {
 }
 
 function processStreamData(data: Buffer, outputLines: string[]): void {
-	const segments = data.toString().split('\r');
+	const text = data.toString().replace(/\r\n/g, '\n');
+	const segments = text.split('\r');
 
 	for (let i = 0; i < segments.length; i++) {
 		if (i > 0 && outputLines.length > 0) {
@@ -335,13 +336,6 @@ function printAllCommandOutputs(outputs: CommandOutput[], headerText?: string): 
 	);
 }
 
-function getPlatformKillCommand(pid: number, graceful: boolean): string | null {
-	if (process.platform === 'win32') {
-		return graceful ? `taskkill /PID ${pid} /T` : `taskkill /PID ${pid} /T /F`;
-	}
-	return null;
-}
-
 async function killProcess(proc: ChildProcess, graceful: boolean): Promise<void> {
 	if (!proc.pid || proc.exitCode !== null) return;
 
@@ -371,9 +365,8 @@ async function killProcess(proc: ChildProcess, graceful: boolean): Promise<void>
 		});
 
 		try {
-			const killCmd = getPlatformKillCommand(pid, graceful);
-			if (killCmd) {
-				execSync(killCmd, { timeout: CONFIG.KILL_TIMEOUT_MS });
+			if (process.platform === 'win32') {
+				return execSync(`taskkill /PID ${pid} /T /F`);
 			} else {
 				process.kill(-pid, graceful ? 'SIGTERM' : 'SIGKILL');
 			}
