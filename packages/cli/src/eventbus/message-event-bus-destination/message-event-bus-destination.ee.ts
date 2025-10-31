@@ -11,6 +11,8 @@ import type { EventMessageTypes } from '../event-message-classes';
 import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
+import { CircuitBreaker, CircuitBreakerOpen } from '@/utils/circuit-breaker';
+import { Time } from '@n8n/constants';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
@@ -22,6 +24,8 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	protected readonly logger: Logger;
 
 	protected readonly license: License;
+
+	protected circuitBreaker: CircuitBreaker;
 
 	__type: MessageEventBusDestinationTypeNames;
 
@@ -39,6 +43,10 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		// @TODO: Use DI
 		this.logger = Container.get(Logger);
 		this.license = Container.get(License);
+
+		// TODO: make configurable
+		// Circuit stays open for 10 minutes, after 10 failed attempts
+		this.circuitBreaker = new CircuitBreaker(10 * Time.minutes.toMilliseconds, 10);
 
 		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;
@@ -59,7 +67,19 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 					msg: EventMessageTypes,
 					confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void,
 				) => {
-					await this.receiveFromEventBus({ msg, confirmCallback });
+					try {
+						await this.circuitBreaker.execute(async () => {
+							await this.receiveFromEventBus({ msg, confirmCallback });
+						});
+					} catch (error) {
+						if (error instanceof CircuitBreakerOpen) {
+							this.logger.warn(
+								`Webhook destination ${this.label} failed to send message: circuit break open!`,
+							);
+							return;
+						}
+						throw error;
+					}
 				},
 			);
 			this.logger.debug(`${this.id} listener started`);
