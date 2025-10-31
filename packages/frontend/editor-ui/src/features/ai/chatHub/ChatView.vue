@@ -29,7 +29,7 @@ import {
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -61,8 +61,10 @@ const currentConversation = computed(() =>
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 
-const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
-
+const { arrivedState, measure } = useScroll(scrollContainerRef, {
+	throttle: 100,
+	offset: { bottom: 100 },
+});
 const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -176,9 +178,8 @@ watch(
 			return;
 		}
 
-		const currentMessage = chatStore.lastMessage(sessionId.value);
-		if (lastMessageId !== currentMessage?.id) {
-			scrollToBottom(currentMessage !== null);
+		// Prevent "scroll to bottom" button from appearing when not necessary
+		void nextTick(measure);
 			return;
 		}
 
