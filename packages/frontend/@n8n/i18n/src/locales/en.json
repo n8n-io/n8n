@@ -3058,6 +3058,7 @@
 	"variables.add.unavailable": "Upgrade plan to keep using variables",
 	"variables.add.unavailable.empty": "Upgrade plan to start using variables",
 	"variables.add.onlyOwnerCanCreate": "Only owner can create variables",
+	"variables.add.button.label": "Create variable",
 	"variables.empty.heading": "{name}, let's set up a variable",
 	"variables.empty.heading.userNotSetup": "Set up a variable",
 	"variables.empty.description": "Variables can be used to store data that can be referenced easily across multiple workflows.",

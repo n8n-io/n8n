@@ -68,7 +68,7 @@ export function useGenericCommands(): CommandGroup {
 			title: i18n.baseText('mainSidebar.variables'),
 			section: i18n.baseText('commandBar.sections.general'),
 			handler: () => {
-				void router.push({ name: VIEWS.VARIABLES });
+				void router.push({ name: VIEWS.HOME_VARIABLES });
 			},
 			icon: {
 				component: N8nIcon,

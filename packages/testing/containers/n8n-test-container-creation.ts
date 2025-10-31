@@ -28,6 +28,7 @@ import {
 	setupTaskRunner,
 } from './n8n-test-container-dependencies';
 import { setupGitea } from './n8n-test-container-gitea';
+import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
 import { createSilentLogConsumer } from './n8n-test-container-utils';
 
 // --- Constants ---
@@ -87,6 +88,7 @@ export interface N8NConfig {
 	proxyServerEnabled?: boolean;
 	sourceControl?: boolean;
 	taskRunner?: boolean;
+	email?: boolean;
 }
 
 export interface N8NStack {
@@ -127,10 +129,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		resourceQuota,
 		taskRunner = false,
 		sourceControl = false,
+		email = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const taskRunnerEnabled = !!taskRunner;
 	const sourceControlEnabled = !!sourceControl;
+	const emailEnabled = !!email;
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
@@ -143,7 +147,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		needsLoadBalancer ||
 		proxyServerEnabled ||
 		taskRunnerEnabled ||
-		sourceControlEnabled;
+		sourceControlEnabled ||
+		emailEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -240,6 +245,27 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			N8N_RUNNERS_MODE: 'external',
 			N8N_RUNNERS_AUTH_TOKEN: 'test',
 			N8N_RUNNERS_BROKER_LISTEN_ADDRESS: '0.0.0.0',
+		};
+	}
+
+	// Set up Mailpit BEFORE creating n8n instances so they have the correct environment
+	if (emailEnabled && network) {
+		const hostname = 'mailpit';
+		const smtpPort = 1025;
+		const httpPort = 8025;
+
+		const mailpitContainer = await setupMailpit({
+			projectName: uniqueProjectName,
+			network,
+			hostname,
+			smtpPort,
+			httpPort,
+		});
+		containers.push(mailpitContainer);
+
+		environment = {
+			...environment,
+			...getMailpitEnvironment(hostname, smtpPort),
 		};
 	}
 

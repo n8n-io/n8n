@@ -1,6 +1,17 @@
 import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 
+import {
+	getMailpitApiBaseUrl,
+	mailpitWaitForMessage,
+	mailpitList,
+	mailpitClear,
+	mailpitGet,
+	type MailpitQuery,
+	type MailpitMessage,
+	type MailpitMessageSummary,
+} from './n8n-test-container-mailpit';
+
 export interface LogMatch {
 	container: StartedTestContainer;
 	containerName: string;
@@ -30,8 +41,18 @@ export class ContainerTestHelpers {
 	// Containers
 	private containers: StartedTestContainer[];
 
+	private _mailHelper?: MailHelper;
+
 	constructor(containers: StartedTestContainer[]) {
 		this.containers = containers;
+	}
+
+	/**
+	 * Mail helper facade for Mailpit interactions
+	 */
+	get mail(): MailHelper {
+		this._mailHelper ??= new MailHelper(this.containers);
+		return this._mailHelper;
 	}
 
 	/**
@@ -372,5 +393,39 @@ export class ContainerTestHelpers {
 		}
 
 		return matches;
+	}
+}
+
+class MailHelper {
+	constructor(private containers: StartedTestContainer[]) {}
+
+	private getMailpitContainer(): StartedTestContainer {
+		const container = this.containers.find((c) => /mailpit/i.test(c.getName()));
+		if (!container) throw new Error('Mailpit container not found');
+		return container;
+	}
+
+	private get apiBaseUrl(): string {
+		const mailpit = this.getMailpitContainer();
+		return getMailpitApiBaseUrl(mailpit);
+	}
+
+	async waitForMessage(
+		query: MailpitQuery,
+		options?: { timeoutMs?: number; pollMs?: number },
+	): Promise<MailpitMessageSummary> {
+		return await mailpitWaitForMessage(this.apiBaseUrl, query, options);
+	}
+
+	async list(): Promise<MailpitMessageSummary[]> {
+		return await mailpitList(this.apiBaseUrl);
+	}
+
+	async clear(): Promise<void> {
+		await mailpitClear(this.apiBaseUrl);
+	}
+
+	async get(id: string): Promise<MailpitMessage> {
+		return await mailpitGet(this.apiBaseUrl, id);
 	}
 }
