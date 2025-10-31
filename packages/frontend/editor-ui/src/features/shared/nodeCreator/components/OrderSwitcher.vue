@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NodeFilterType } from '@/Interface';
-import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
+import { REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
 
 defineProps<{
 	rootView: NodeFilterType;

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';

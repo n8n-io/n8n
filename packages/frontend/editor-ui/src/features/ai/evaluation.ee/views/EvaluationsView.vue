@@ -5,7 +5,7 @@ import { computed, ref, watch } from 'vue';
 import RunsSection from '../components/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '../evaluation.store';
 import orderBy from 'lodash/orderBy';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 
 import { N8nButton } from '@n8n/design-system';
 const props = defineProps<{

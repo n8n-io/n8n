@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ITaskData } from 'n8n-workflow';
-import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
+import { convertToDisplayDateComponents } from '@/app/utils/formatters/dateFormatter';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nInfoTip, N8nText } from '@n8n/design-system';

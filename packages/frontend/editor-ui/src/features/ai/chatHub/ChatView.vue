@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
-import {
-	findOneFromModelsResponse,
-	restoreConversationModelFromMessageOrSession,
-} from '@/features/ai/chatHub/chat.utils';
+import { useToast } from '@/app/composables/useToast';
+import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL, VIEWS } from '@/app/constants';
+import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
@@ -29,11 +26,11 @@ import {
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useUIStore } from '@/stores/ui.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 
 const router = useRouter();
@@ -60,9 +57,12 @@ const currentConversation = computed(() =>
 		: undefined,
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
+const readyToShowMessages = computed(() => chatStore.agentsReady);
 
-const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
-
+const { arrivedState, measure } = useScroll(scrollContainerRef, {
+	throttle: 100,
+	offset: { bottom: 100 },
+});
 const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -109,13 +109,17 @@ const selectedModel = computed<ChatModelDto | undefined>(() => {
 		return modelFromQuery.value;
 	}
 
-	if (!currentConversation.value?.provider) {
-		return defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined;
+	if (currentConversation.value?.provider) {
+		const model = unflattenModel(currentConversation.value);
+
+		return model ? chatStore.getAgent(model) : undefined;
 	}
 
-	const model = restoreConversationModelFromMessageOrSession(currentConversation.value);
+	if (chatStore.streaming?.sessionId === sessionId.value) {
+		return chatStore.getAgent(chatStore.streaming.model);
+	}
 
-	return model ? chatStore.getAgent(model) : undefined;
+	return defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined;
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -170,26 +174,22 @@ function scrollToMessage(messageId: ChatMessageId) {
 
 // Scroll to the bottom when a new message is added
 watch(
-	() => chatMessages.value[chatMessages.value.length - 1]?.id,
-	(lastMessageId) => {
-		if (!lastMessageId) {
+	[readyToShowMessages, () => chatMessages.value[chatMessages.value.length - 1]?.id],
+	([ready, lastMessageId]) => {
+		if (!ready || !lastMessageId) {
 			return;
 		}
 
-		const currentMessage = chatStore.lastMessage(sessionId.value);
-		if (lastMessageId !== currentMessage?.id) {
-			scrollToBottom(currentMessage !== null);
-			return;
-		}
+		// Prevent "scroll to bottom" button from appearing when not necessary
+		void nextTick(measure);
 
-		const message = chatStore
-			.getActiveMessages(sessionId.value)
-			.find((m) => m.id === lastMessageId);
-
-		if (message?.previousMessageId) {
+		if (chatStore.streaming?.sessionId === sessionId.value) {
 			// Scroll to user's prompt when the message is being generated
-			scrollToMessage(message.previousMessageId);
+			scrollToMessage(chatStore.streaming.promptId);
+			return;
 		}
+
+		scrollToBottom(false);
 	},
 	{ immediate: true, flush: 'post' },
 );
@@ -245,6 +245,17 @@ watch(
 	{ immediate: true },
 );
 
+// Reload models when credentials are updated
+watch(
+	credentialsByProvider,
+	(credentials) => {
+		if (credentials) {
+			void chatStore.fetchAgents(credentials);
+		}
+	},
+	{ immediate: true },
+);
+
 function onSubmit(message: string) {
 	if (
 		!message.trim() ||
@@ -286,7 +297,7 @@ function handleCancelEditMessage() {
 
 function handleEditMessage(message: ChatHubMessageDto) {
 	if (
-		chatStore.isResponding(message.sessionId) ||
+		isResponding.value ||
 		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
@@ -308,7 +319,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 
 function handleRegenerateMessage(message: ChatHubMessageDto) {
 	if (
-		chatStore.isResponding(message.sessionId) ||
+		isResponding.value ||
 		message.type !== 'ai' ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
@@ -369,6 +380,12 @@ function openNewAgentCreator() {
 function closeAgentEditor() {
 	editingAgentId.value = undefined;
 }
+
+function handleOpenWorkflow(workflowId: string) {
+	const routeData = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+
+	window.open(routeData.href, '_blank');
+}
 </script>
 
 <template>
@@ -385,10 +402,12 @@ function closeAgentEditor() {
 			ref="headerRef"
 			:selected-model="selectedModel ?? null"
 			:credentials="credentialsByProvider"
+			:ready-to-show-model-selector="chatStore.agentsReady"
 			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
+			@open-workflow="handleOpenWorkflow"
 		/>
 
 		<AgentEditorModal
@@ -400,7 +419,7 @@ function closeAgentEditor() {
 		/>
 
 		<N8nScrollArea
-			v-if="chatStore.agentsReady"
+			v-if="readyToShowMessages"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"

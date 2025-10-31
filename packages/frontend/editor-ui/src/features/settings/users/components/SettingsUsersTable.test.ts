@@ -14,7 +14,7 @@ const { emitters, addEmitter } = useEmitters<
 >();
 
 const hasPermission = vi.fn(() => true);
-vi.mock('@/utils/rbac/permissions', () => ({
+vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: () => hasPermission(),
 }));
 

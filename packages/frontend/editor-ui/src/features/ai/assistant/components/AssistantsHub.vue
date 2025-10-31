@@ -2,15 +2,15 @@
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useDebounce } from '@/composables/useDebounce';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useDebounce } from '@/app/composables/useDebounce';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
+import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 import { useRoute } from 'vue-router';
 import { BUILDER_ENABLED_VIEWS } from '../constants';
-import type { VIEWS } from '@/constants';
+import type { VIEWS } from '@/app/constants';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';

@@ -24,7 +24,7 @@ const mockResolveExpression = vi.fn();
 const mockGetNodeParametersWithResolvedExpressions = vi.fn((params) => params);
 
 // Mock useWorkflowHelpers
-vi.mock('@/composables/useWorkflowHelpers', () => ({
+vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: () => ({
 		resolveExpression: mockResolveExpression,
 		getNodeParametersWithResolvedExpressions: mockGetNodeParametersWithResolvedExpressions,

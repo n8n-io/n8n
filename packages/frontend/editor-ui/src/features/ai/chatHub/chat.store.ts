@@ -36,14 +36,22 @@ import {
 	type ChatHubMessageStatus,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import type { CredentialsMap, ChatMessage, ChatConversation } from './chat.types';
+import type {
+	CredentialsMap,
+	ChatMessage,
+	ChatConversation,
+	ChatStreamingState,
+} from './chat.types';
 import { retry } from '@n8n/utils/retry';
+import { isMatchedAgent } from './chat.utils';
+import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
+	const streaming = ref<ChatStreamingState>();
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
@@ -159,12 +167,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			const a = messagesGraph[first];
 			const b = messagesGraph[second];
 
-			// TODO: Disabled for now, messages retried don't get this at the FE before reload
-			// TOOD: Do we even need runIndex at all?
-			// if (a.runIndex !== b.runIndex) {
-			// 	return a.runIndex - b.runIndex;
-			// }
-
 			if (a.createdAt !== b.createdAt) {
 				return a.createdAt < b.createdAt ? -1 : 1;
 			}
@@ -270,7 +272,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		const messages = linkMessages(Object.values(conversation.messages));
 
-		// TOOD: Do we need 'state' column at all?
 		const latestMessage = Object.values(messages)
 			.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
 			.pop();
@@ -281,106 +282,107 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		});
 	}
 
-	function onBeginMessage(
-		sessionId: ChatSessionId,
-		messageId: ChatMessageId,
-		previousMessageId: ChatMessageId | null,
-		retryOfMessageId: ChatMessageId | null,
-		status: ChatHubMessageStatus = 'running',
-	) {
-		addMessage(sessionId, {
-			id: messageId,
-			sessionId,
-			type: 'ai',
-			name: 'AI',
-			content: '',
-			provider: null,
-			model: null,
-			workflowId: null,
-			executionId: null,
-			agentId: null,
-			status,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			previousMessageId,
-			retryOfMessageId,
-			revisionOfMessageId: null,
-			responses: [],
-			alternatives: [],
-		});
+	function onBeginMessage() {
+		if (!streaming.value?.messageId) {
+			return;
+		}
+
+		const message = createAiMessageFromStreamingState(
+			streaming.value.sessionId,
+			streaming.value.messageId,
+			streaming.value,
+		);
+
+		addMessage(streaming.value.sessionId, message);
+
+		if (sessions.value?.some((session) => session.id === streaming.value?.sessionId)) {
+			return;
+		}
+
+		sessions.value = [
+			...(sessions.value ?? []),
+			{
+				id: streaming.value.sessionId,
+				title: 'New Chat',
+				ownerId: '',
+				lastMessageAt: new Date().toISOString(),
+				credentialId: null,
+				agentName: null,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				...flattenModel(streaming.value.model),
+			},
+		];
 	}
 
-	function ensureMessage(
-		sessionId: ChatSessionId,
-		messageId: ChatMessageId,
-		previousMessageId: ChatMessageId | null,
-		retryOfMessageId: ChatMessageId | null,
-	): ChatMessage {
+	function ensureMessage(sessionId: ChatSessionId, messageId: ChatMessageId): ChatMessage {
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[messageId];
+
 		if (message) {
 			return message;
 		}
 
-		return addMessage(sessionId, {
-			id: messageId,
-			sessionId,
-			type: 'ai',
-			name: 'AI',
-			content: '',
-			provider: null,
-			model: null,
-			workflowId: null,
-			executionId: null,
-			status: 'running',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			previousMessageId,
-			retryOfMessageId,
-			revisionOfMessageId: null,
-			responses: [],
-			alternatives: [],
-			agentId: null,
-		});
+		const newMessage = createAiMessageFromStreamingState(sessionId, messageId, streaming.value);
+
+		return addMessage(sessionId, newMessage);
 	}
 
-	function onChunk(sessionId: string, messageId: string, chunk: string) {
-		appendMessage(sessionId, messageId, chunk);
+	function onChunk(chunk: string) {
+		if (streaming.value?.messageId) {
+			appendMessage(streaming.value.sessionId, streaming.value.messageId, chunk);
+		}
 	}
 
-	function onEndMessage(sessionId: ChatSessionId, messageId: ChatMessageId) {
-		updateMessage(sessionId, messageId, 'success');
+	function onEndMessage() {
+		if (streaming.value?.messageId) {
+			updateMessage(streaming.value.sessionId, streaming.value.messageId, 'success');
+		}
 	}
 
-	function onStreamMessage(sessionId: string, chunk: EnrichedStructuredChunk) {
-		const { messageId, previousMessageId, retryOfMessageId } = chunk.metadata;
+	function onStreamMessage(chunk: EnrichedStructuredChunk) {
+		if (!streaming.value) {
+			return;
+		}
+
+		const { sessionId } = streaming.value;
+
+		streaming.value = { ...streaming.value, ...chunk.metadata };
 
 		switch (chunk.type) {
 			case 'begin':
-				onBeginMessage(sessionId, messageId, previousMessageId, retryOfMessageId);
+				onBeginMessage();
 				break;
 			case 'item':
-				onChunk(sessionId, messageId, chunk.content ?? '');
+				onChunk(chunk.content ?? '');
 				break;
 			case 'end':
-				onEndMessage(sessionId, messageId);
+				onEndMessage();
 				break;
 			case 'error': {
 				// Ignore errors after cancellation
-				const message = ensureMessage(sessionId, messageId, previousMessageId, retryOfMessageId);
+				const message = ensureMessage(sessionId, chunk.metadata.messageId);
 
 				if (message.status === 'cancelled') {
 					return;
 				}
 
-				updateMessage(sessionId, messageId, 'error');
-				onChunk(sessionId, messageId, message.content ?? '');
+				updateMessage(sessionId, chunk.metadata.messageId, 'error');
+				onChunk(message.content ?? '');
 				break;
 			}
 		}
 	}
 
-	async function onStreamDone(sessionId: ChatSessionId) {
+	async function onStreamDone() {
+		if (!streaming.value) {
+			return;
+		}
+
+		const { sessionId } = streaming.value;
+
+		streaming.value = undefined;
+
 		// wait up to 3 seconds until conversation title is generated
 		await retry(
 			async () => {
@@ -396,8 +398,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchSessions();
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function onStreamError(sessionId: ChatSessionId, _e: Error) {
+	function onStreamError() {
+		if (!streaming.value) {
+			return;
+		}
+
+		const { sessionId } = streaming.value;
+
+		streaming.value = undefined;
+
 		const conversation = getConversation(sessionId);
 		if (!conversation) {
 			return;
@@ -445,6 +454,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
+		streaming.value = { promptId: messageId, sessionId, model };
+
 		sendMessageApi(
 			rootStore.restApiContext,
 			{
@@ -455,9 +466,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials,
 				previousMessageId,
 			},
-			(chunk: EnrichedStructuredChunk) => onStreamMessage(sessionId, chunk),
-			async () => await onStreamDone(sessionId),
-			(e) => onStreamError(sessionId, e),
+			onStreamMessage,
+			onStreamDone,
+			onStreamError,
 		);
 	}
 
@@ -468,7 +479,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
-		const messageId = uuidv4();
+		const promptId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[editId];
@@ -476,7 +487,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		if (message?.type === 'human') {
 			addMessage(sessionId, {
-				id: messageId,
+				id: promptId,
 				sessionId,
 				type: 'human',
 				name: message.name ?? 'User',
@@ -499,19 +510,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			replaceMessageContent(sessionId, editId, content);
 		}
 
+		streaming.value = { promptId, sessionId, model };
+
 		editMessageApi(
 			rootStore.restApiContext,
 			sessionId,
 			editId,
 			{
 				model,
-				messageId,
+				messageId: promptId,
 				message: content,
 				credentials,
 			},
-			(chunk: EnrichedStructuredChunk) => onStreamMessage(sessionId, chunk),
-			async () => await onStreamDone(sessionId),
-			(e) => onStreamError(sessionId, e),
+			onStreamMessage,
+			onStreamDone,
+			onStreamError,
 		);
 	}
 
@@ -528,6 +541,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			throw new Error('No previous message to base regeneration on');
 		}
 
+		streaming.value = { promptId: retryId, sessionId, model };
+
 		regenerateMessageApi(
 			rootStore.restApiContext,
 			sessionId,
@@ -536,9 +551,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				model,
 				credentials,
 			},
-			(chunk: EnrichedStructuredChunk) => onStreamMessage(sessionId, chunk),
-			async () => await onStreamDone(sessionId),
-			(e) => onStreamError(sessionId, e),
+			onStreamMessage,
+			onStreamDone,
+			onStreamError,
 		);
 	}
 
@@ -548,6 +563,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (currentMessage && currentMessage.status === 'running') {
 			updateMessage(sessionId, currentMessage.id, 'cancelled');
 			await stopGenerationApi(rootStore.restApiContext, sessionId, currentMessage.id);
+			streaming.value = undefined;
 		}
 	}
 
@@ -660,15 +676,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function getAgent(model: ChatHubConversationModel) {
 		if (!agents.value) return;
 
-		return agents.value[model.provider].models.find((m) => {
-			if (model.provider === 'n8n') {
-				return m.model.provider === 'n8n' && m.model.workflowId === model.workflowId;
-			} else if (model.provider === 'custom-agent') {
-				return m.model.provider === 'custom-agent' && m.model.agentId === model.agentId;
-			} else {
-				return m.model.provider === model.provider && m.model.model === model.model;
-			}
-		});
+		return agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
 	}
 
 	return {
@@ -708,6 +716,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		/**
 		 * messaging
 		 */
+		streaming,
 		isResponding,
 		sendMessage,
 		editMessage,

@@ -1,6 +1,6 @@
 import type { IAiDataContent } from '@/Interface';
 import type { ITaskData, ITaskDataConnections, NodeConnectionType } from 'n8n-workflow';
-import { splitTextBySearch } from '@/utils/stringUtils';
+import { splitTextBySearch } from '@/app/utils/stringUtils';
 import { escapeHtml } from 'xss';
 import type MarkdownIt from 'markdown-it';
 import { unescapeAll } from 'markdown-it/lib/common/utils';

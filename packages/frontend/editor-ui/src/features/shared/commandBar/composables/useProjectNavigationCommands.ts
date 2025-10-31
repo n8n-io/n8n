@@ -2,11 +2,11 @@ import { computed, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CommandBarItem } from '../types';
-import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {

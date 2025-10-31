@@ -2,7 +2,7 @@
 import { i18n } from '@n8n/i18n';
 
 import { N8nIconButton, N8nText } from '@n8n/design-system';
-import AiStarsIcon from '@/components/AiStarsIcon.vue';
+import AiStarsIcon from '@/app/components/AiStarsIcon.vue';
 defineProps<{
 	isReadOnly?: boolean;
 }>();
