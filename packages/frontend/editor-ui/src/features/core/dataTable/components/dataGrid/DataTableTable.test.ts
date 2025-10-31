@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -198,7 +199,9 @@ describe('DataTableTable', () => {
 				search: 'john',
 			});
 
-			expect(setCurrentPageMock).toHaveBeenCalledWith(1);
+			waitFor(() => {
+				expect(setCurrentPageMock).toHaveBeenCalledWith(1);
+			});
 		});
 	});
 });

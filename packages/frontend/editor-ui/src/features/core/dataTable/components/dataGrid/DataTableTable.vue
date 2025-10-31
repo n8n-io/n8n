@@ -24,7 +24,7 @@ import { useDataTableOperations } from '@/features/core/dataTable/composables/us
 import { useDataTableColumnFilters } from '@/features/core/dataTable/composables/useDataTableColumnFilters';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 
 import { ElPagination } from 'element-plus';
 registerAgGridModulesOnce();
