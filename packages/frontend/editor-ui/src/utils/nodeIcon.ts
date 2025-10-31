@@ -30,10 +30,16 @@ type IconNodeTypeDescription = Pick<
 type IconVersionNode = Pick<VersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults' | 'name'>;
 export type IconNodeType = IconNodeTypeDescription | IconVersionNode;
 
-const resolveIconExpression = (icon: string, node?: INode | null): string | null => {
+const resolveIconExpression = (
+	icon: string,
+	nodeType: IconNodeType,
+	node?: INode | null,
+): string | null => {
 	try {
 		const workflowsStore = useWorkflowsStore();
-		const parameters = node?.parameters ?? {};
+		const defaults =
+			nodeType.defaults && 'parameters' in nodeType.defaults ? nodeType.defaults.parameters : {};
+		const parameters = node?.parameters ?? defaults ?? {};
 
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {};
 		additionalKeys.$parameter = parameters;
@@ -51,7 +57,16 @@ const resolveIconExpression = (icon: string, node?: INode | null): string | null
 			false,
 		);
 
-		return typeof result === 'string' ? result : null;
+		if (typeof result !== 'string') {
+			return null;
+		}
+
+		const [prefix] = result.split(':');
+		if (prefix !== 'file' && prefix !== 'icon') {
+			return null;
+		}
+
+		return result;
 	} catch {
 		return null;
 	}
@@ -61,7 +76,7 @@ export const getNodeIcon = (nodeType: IconNodeType, node?: INode | null): string
 	const themedIcon = getThemedValue(nodeType.icon, useUIStore().appliedTheme);
 
 	if (isExpression(themedIcon)) {
-		return resolveIconExpression(themedIcon, node);
+		return resolveIconExpression(themedIcon, nodeType, node);
 	}
 
 	return themedIcon;

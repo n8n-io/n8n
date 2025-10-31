@@ -9,6 +9,8 @@ import {
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getThemedValue } from './nodeTypesUtils';
 import { removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { INode } from 'n8n-workflow';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
@@ -42,24 +44,13 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 	})),
 }));
 
+const resolveExpressionMock = vi.fn();
+
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
 		workflowObject: {
 			expression: {
-				getParameterValue: vi.fn((value) => {
-					// Mock expression resolution - handle {{ expression }} format
-					if (typeof value === 'string' && value.startsWith('={{') && value.endsWith('}}')) {
-						const expression = value.slice(3, -2).trim();
-						// Simple mock for parameter access
-						if (expression === '$parameter.mode') {
-							return 'python';
-						}
-						if (expression === '$parameter.mode === "python" ? "python" : "js"') {
-							return 'python';
-						}
-					}
-					return value;
-				}),
+				getParameterValue: resolveExpressionMock,
 			},
 		},
 	})),
@@ -80,8 +71,10 @@ describe('util: Node Icon', () => {
 		});
 
 		it('should resolve expression icon without a node using defaults', () => {
+			resolveExpressionMock.mockReturnValueOnce('file:python.svg');
+
 			const nodeType = mock<IconNodeType>({
-				icon: '={{ $parameter.mode === "python" ? "python" : "js" }}',
+				icon: '={{ $parameter.mode === "python" ? "file:python.svg" : "file:js.svg" }}',
 				defaults: {
 					parameters: {
 						mode: 'python',
@@ -90,12 +83,14 @@ describe('util: Node Icon', () => {
 			});
 
 			const result = getNodeIcon(nodeType, null);
-			expect(result).toBe('python');
+			expect(result).toBe('file:python.svg');
 		});
 
 		it('should resolve expression icon with a node using node parameters', () => {
+			resolveExpressionMock.mockReturnValueOnce('file:python.svg');
+
 			const nodeType = mock<IconNodeType>({
-				icon: '={{ $parameter.mode === "python" ? "python" : "js" }}',
+				icon: '={{ $parameter.mode === "python" ? "file:python.svg" : "file:js.svg" }}',
 				defaults: {
 					parameters: {
 						mode: 'js',
@@ -103,26 +98,48 @@ describe('util: Node Icon', () => {
 				},
 			});
 
-			const node = mock<{ parameters: { mode: string } }>({
+			const node = mock<INode>({
 				parameters: {
 					mode: 'python',
 				},
 			});
 
-			const result = getNodeIcon(nodeType, node as never);
-			expect(result).toBe('python');
+			const result = getNodeIcon(nodeType, node);
+			expect(result).toBe('file:python.svg');
 		});
 
 		it('should return null when expression resolution fails', () => {
+			vi.mocked(useWorkflowsStore).mockReturnValueOnce({
+				workflowObject: {
+					expression: {
+						getParameterValue: vi.fn().mockReturnValue({ invalid: 'object' }),
+					},
+				},
+			} as never);
+
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ invalid expression }}',
 			});
 
-			// Mock will not match this expression, so it should return null
 			const result = getNodeIcon(nodeType, null);
-			// Since our mock doesn't handle this expression, it returns the original value
-			// But the function should handle non-string results
-			expect(typeof result === 'string' || result === null).toBe(true);
+			expect(result).toBeNull();
+		});
+
+		it('should return null when expression resolves to invalid format', () => {
+			vi.mocked(useWorkflowsStore).mockReturnValueOnce({
+				workflowObject: {
+					expression: {
+						getParameterValue: vi.fn().mockReturnValue('invalid:prefix:name'),
+					},
+				},
+			} as never);
+
+			const nodeType = mock<IconNodeType>({
+				icon: '={{ $parameter.icon }}',
+			});
+
+			const result = getNodeIcon(nodeType, null);
+			expect(result).toBeNull();
 		});
 	});
 
