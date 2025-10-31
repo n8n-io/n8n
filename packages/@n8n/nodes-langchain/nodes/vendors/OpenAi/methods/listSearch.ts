@@ -9,6 +9,7 @@ import type { Model } from 'openai/resources/models';
 
 import { shouldIncludeModel } from '../helpers/modelFiltering';
 import { apiRequest } from '../transport';
+import { mapOpenAIModel } from '@utils/modelMetadataMapper';
 
 export async function fileSearch(
 	this: ILoadOptionsFunctions,
@@ -56,6 +57,12 @@ const getModelSearch =
 					results.push({
 						name: model.id.toUpperCase(),
 						value: model.id,
+						metadata: mapOpenAIModel({
+							id: model.id,
+							created: model.created,
+							owned_by: model.owned_by,
+						}),
+						_metadataProvider: 'openai',
 					});
 				}
 			}
@@ -63,6 +70,12 @@ const getModelSearch =
 			results = (data || []).map((model) => ({
 				name: model.id.toUpperCase(),
 				value: model.id,
+				metadata: mapOpenAIModel({
+					id: model.id,
+					created: model.created,
+					owned_by: model.owned_by,
+				}),
+				_metadataProvider: 'openai',
 			}));
 		}
 
