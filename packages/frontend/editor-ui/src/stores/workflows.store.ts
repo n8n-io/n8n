@@ -13,25 +13,29 @@ import {
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
-	IExecutionPushResponse,
-	IExecutionResponse,
-	IExecutionsListResponse,
 	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IStartRunData,
 	IUpdateInformation,
-	IUsedCredential,
-	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowsMap,
 	NodeMetadataMap,
-	WorkflowMetadata,
-	IExecutionFlattedResponse,
-	IWorkflowTemplateNode,
-	IWorkflowDataCreate,
 } from '@/Interface';
+import type {
+	IExecutionPushResponse,
+	IExecutionResponse,
+	IExecutionsListResponse,
+	IExecutionFlattedResponse,
+} from '@/features/execution/executions/executions.types';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
+import type {
+	WorkflowMetadata,
+	WorkflowDataCreate,
+	WorkflowDataUpdate,
+} from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type {
 	IConnection,
@@ -53,9 +57,14 @@ import type {
 	ITaskData,
 	IWorkflowSettings,
 	INodeType,
-	NodeConnectionType,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, SEND_AND_WAIT_OPERATION, Workflow } from 'n8n-workflow';
+import {
+	deepCopy,
+	NodeConnectionTypes,
+	NodeHelpers,
+	SEND_AND_WAIT_OPERATION,
+	Workflow,
+} from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -74,12 +83,11 @@ import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import {
 	clearPopupWindowState,
@@ -93,6 +101,7 @@ import { useExecutingNode } from '@/composables/useExecutingNode';
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
 	active: false,
+	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
 	connections: {},
@@ -117,14 +126,11 @@ let cachedWorkflow: Workflow | null = null;
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
-	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
-
-	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	// For paginated workflow lists
 	const totalWorkflowCount = ref(0);
@@ -1205,7 +1211,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				uiStore.stateIsDirty = true;
 
 				updateNodeAtIndex(nodeIndex, {
-					[key]: updateInformation.properties[key],
+					[key]: updateInformation.properties[key as keyof typeof updateInformation.properties],
 				});
 			}
 		}
@@ -1275,6 +1281,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			true,
 			false,
 			latestNode,
+			nodeType,
 		);
 
 		if (latestNode) {
@@ -1287,25 +1294,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (pushData.data.error) {
 			const node = getNodeByName(nodeName);
-			telemetry.track(
-				'Manual exec errored',
-				{
-					error_title: pushData.data.error.message,
-					node_type: node?.type,
-					node_type_version: node?.typeVersion,
-					node_id: node?.id,
-					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(
-							await workflowHelpers.getWorkflowDataToSave(),
-							workflowHelpers.getNodeTypes(),
-							{
-								isCloudDeployment: settingsStore.isCloudDeployment,
-							},
-						).nodeGraph,
-					),
-				},
-				{ withPostHog: true },
-			);
+			telemetry.track('Manual exec errored', {
+				error_title: pushData.data.error.message,
+				node_type: node?.type,
+				node_type_version: node?.typeVersion,
+				node_id: node?.id,
+				node_graph_string: JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						await workflowHelpers.getWorkflowDataToSave(),
+						workflowHelpers.getNodeTypes(),
+						{
+							isCloudDeployment: settingsStore.isCloudDeployment,
+						},
+					).nodeGraph,
+				),
+			});
 		}
 	}
 
@@ -1429,7 +1432,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * Ensures that the new workflow is not active upon creation.
 	 * If the project ID is not provided in the data, it assigns the current project ID from the project store.
 	 */
-	async function createNewWorkflow(sendData: IWorkflowDataCreate): Promise<IWorkflowDb> {
+	async function createNewWorkflow(sendData: WorkflowDataCreate): Promise<IWorkflowDb> {
 		// make sure that the new ones are not active
 		sendData.active = false;
 
@@ -1462,7 +1465,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function updateWorkflow(
 		id: string,
-		data: IWorkflowDataUpdate,
+		data: WorkflowDataUpdate,
 		forceSave = false,
 	): Promise<IWorkflowDb> {
 		if (data.settings === null) {
@@ -1498,7 +1501,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${version.value}`,
+				`/workflows/${startRunData.workflowData.id}/run`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {
@@ -1567,7 +1570,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function checkIfNodeHasChatParent(nodeName: string): boolean {
 		const workflow = getCurrentWorkflow();
-		const parents = workflow.getParentNodes(nodeName, NodeConnectionType.Main);
+		const parents = workflow.getParentNodes(nodeName, NodeConnectionTypes.Main);
 
 		const matchedChatNode = parents.find((parent) => {
 			const parentNodeType = getNodeByName(parent)?.type;
@@ -1626,7 +1629,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		uiStore.removeActiveAction('workflowRunning');
-		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
 
 		clearPopupWindowState();
 
