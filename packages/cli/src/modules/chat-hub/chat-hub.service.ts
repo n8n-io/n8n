@@ -23,6 +23,7 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
 import {
+	BINARY_ENCODING,
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
 	ManualExecutionCancelledError,
@@ -38,6 +39,7 @@ import {
 	INode,
 	type IBinaryData,
 } from 'n8n-workflow';
+import { BinaryDataService } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -84,7 +86,36 @@ export class ChatHubService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly binaryDataService: BinaryDataService,
 	) {}
+
+	/**
+	 * Processes attachments by storing binary data through BinaryDataService.
+	 * This populates the 'id' field for attachments. When external storage is used,
+	 * BinaryDataService replaces base64 data with the storage mode string (e.g., "filesystem-v2").
+	 */
+	private async processAttachments(
+		attachments: IBinaryData[],
+		workflowId: string,
+	): Promise<IBinaryData[]> {
+		return await Promise.all(
+			attachments.map(async (attachment) => {
+				// If attachment already has an ID (filesystem reference) or data is missing, return as-is
+				if (attachment.id || !attachment.data) {
+					return attachment;
+				}
+
+				const buffer = Buffer.from(attachment.data, BINARY_ENCODING);
+
+				return await this.binaryDataService.store(
+					workflowId,
+					'temp', // TODO: execution ID isn't available here yet
+					buffer,
+					attachment,
+				);
+			}),
+		);
+	}
 
 	async getModels(
 		user: User,
@@ -380,6 +411,9 @@ export class ChatHubService {
 
 		const selectedModel = this.getModelWithCredentials(model, credentials);
 
+		// Process attachments early to populate 'id' field via BinaryDataService
+		const processedAttachments = await this.processAttachments(attachments, sessionId);
+
 		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
 			async (trx) => {
 				const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
@@ -388,7 +422,7 @@ export class ChatHubService {
 				const history = this.buildMessageHistory(messages, previousMessageId);
 
 				await this.saveHumanMessage(
-					payload,
+					{ ...payload, attachments: processedAttachments },
 					user,
 					previousMessageId,
 					selectedModel,
@@ -402,7 +436,7 @@ export class ChatHubService {
 						sessionId,
 						model.workflowId,
 						message,
-						attachments,
+						processedAttachments,
 					);
 				}
 
@@ -413,7 +447,7 @@ export class ChatHubService {
 						sessionId,
 						history,
 						message,
-						attachments,
+						processedAttachments,
 						trx,
 					);
 				}
@@ -426,7 +460,7 @@ export class ChatHubService {
 					history,
 					message,
 					undefined,
-					attachments,
+					processedAttachments,
 					trx,
 				);
 			},
@@ -481,11 +515,14 @@ export class ChatHubService {
 				// If the message to edit isn't the original message, we want to point to the original message
 				const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
 
+				// Attachments are already processed (from the original message)
+				const attachments = messageToEdit.attachments ?? [];
+
 				await this.saveHumanMessage(
 					{
 						...payload,
 						// TODO: should we allow to update attachments as well when editing?
-						attachments: messageToEdit.attachments ?? [],
+						attachments,
 					},
 					user,
 					messageToEdit.previousMessageId,
@@ -500,7 +537,7 @@ export class ChatHubService {
 						sessionId,
 						model.workflowId,
 						message,
-						messageToEdit.attachments ?? [],
+						attachments,
 					);
 				}
 
@@ -511,7 +548,7 @@ export class ChatHubService {
 						sessionId,
 						history,
 						message,
-						messageToEdit.attachments ?? [],
+						attachments,
 						trx,
 					);
 				}
@@ -524,7 +561,7 @@ export class ChatHubService {
 					history,
 					message,
 					undefined,
-					messageToEdit.attachments ?? [],
+					attachments,
 					trx,
 				);
 			}
@@ -771,7 +808,6 @@ export class ChatHubService {
 			sessionId,
 			message,
 			attachments,
-			workflowId,
 		);
 
 		const executionData: IRunExecutionData = {

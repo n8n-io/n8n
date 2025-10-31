@@ -171,7 +171,9 @@ export class ChatHubMessage extends WithTimestamps {
 
 	/**
 	 * File attachments for the message (if any), stored as JSON.
-	 * Files are stored as base64-encoded data URLs (matching existing chat implementation).
+	 * Storage strategy depends on the binary data mode configuration:
+	 * - When using external storage (e.g., filesystem-v2): Only metadata is stored, with 'id' referencing the external location
+	 * - When using default mode: Base64-encoded data is stored directly in the 'data' field
 	 */
 	@Column({ type: 'json', nullable: true })
 	attachments: Array<IBinaryData> | null;
