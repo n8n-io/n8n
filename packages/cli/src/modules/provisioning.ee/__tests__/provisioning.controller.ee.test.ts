@@ -35,7 +35,6 @@ describe('ProvisioningController', () => {
 			const configResponse: ProvisioningConfigDto = {
 				scopesProvisionInstanceRole: true,
 				scopesProvisionProjectRoles: true,
-				scopesProvisioningFrequency: 'every_login',
 				scopesName: 'n8n_test_scope',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
@@ -68,7 +67,6 @@ describe('ProvisioningController', () => {
 			const configResponse: ProvisioningConfigDto = {
 				scopesProvisionInstanceRole: false,
 				scopesProvisionProjectRoles: false,
-				scopesProvisioningFrequency: 'never',
 				scopesName: 'n8n_test_scope',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles',

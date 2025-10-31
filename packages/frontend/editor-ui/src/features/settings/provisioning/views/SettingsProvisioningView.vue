@@ -54,15 +54,7 @@ const form = reactive({
 	scopesInstanceRoleClaimName: '',
 	scopesProjectsRolesClaimName: '',
 	provisioningEnabled: false,
-	scopesProvisioningFrequency: 'never',
 });
-
-// Frequency options
-const frequencyOptions = [
-	{ label: 'Never', value: 'never' },
-	{ label: 'First Login', value: 'first_login' },
-	{ label: 'Every Login', value: 'every_login' },
-];
 
 const isFormDirty = computed(() => {
 	const config = provisioningStore.provisioningConfig;
@@ -71,7 +63,6 @@ const isFormDirty = computed(() => {
 		'scopesName',
 		'scopesInstanceRoleClaimName',
 		'scopesProjectsRolesClaimName',
-		'scopesProvisioningFrequency',
 	];
 	const configChanged = formKeysThatMatchWithConfig.some(
 		(key) => (form as any)[key] !== (config as any)[key],
@@ -89,7 +80,6 @@ const loadFormData = () => {
 		scopesName: cfg.scopesName || '',
 		scopesInstanceRoleClaimName: cfg.scopesInstanceRoleClaimName || '',
 		scopesProjectsRolesClaimName: cfg.scopesProjectsRolesClaimName || '',
-		scopesProvisioningFrequency: cfg.scopesProvisioningFrequency || 'never',
 	});
 	form.provisioningEnabled = cfg.scopesProvisionInstanceRole;
 };
@@ -147,26 +137,6 @@ const onSave = async () => {
 					type="checkbox"
 					:class="$style.checkbox"
 				/>
-			</div>
-
-			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.provisioning.scopesProvisioningFrequency') }}</label>
-				<N8nSelect
-					:class="$style.frequencySelect"
-					v-model="form.scopesProvisioningFrequency"
-					size="large"
-					:placeholder="
-						i18n.baseText('settings.provisioning.scopesProvisioningFrequency.placeholder')
-					"
-				>
-					<N8nOption
-						v-for="option in frequencyOptions"
-						:key="option.value"
-						:value="option.value"
-						:label="option.label"
-					/>
-				</N8nSelect>
-				<small>{{ i18n.baseText('settings.provisioning.scopesProvisioningFrequency.help') }}</small>
 			</div>
 
 			<div :class="$style.group">

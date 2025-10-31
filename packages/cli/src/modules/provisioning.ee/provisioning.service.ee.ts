@@ -262,7 +262,6 @@ export class ProvisioningService {
 		const supportedPatchFields = [
 			'scopesProvisionInstanceRole',
 			'scopesProvisionProjectRoles',
-			'scopesProvisioningFrequency',
 			'scopesName',
 			'scopesInstanceRoleClaimName',
 			'scopesProjectsRolesClaimName',
@@ -356,8 +355,6 @@ export class ProvisioningService {
 
 	async isProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
-		// TODO: do we need a check like this here?:
-		//if (provisioningConfig.scopesProvisioningFrequency === 'never') return false;
 		return (
 			provisioningConfig.scopesProvisionInstanceRole ||
 			provisioningConfig.scopesProvisionProjectRoles
@@ -366,15 +363,11 @@ export class ProvisioningService {
 
 	private async isInstanceRoleProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
-		// TODO: do we need a check like this here?:
-		//if (provisioningConfig.scopesProvisioningFrequency === 'never') return false;
 		return provisioningConfig.scopesProvisionInstanceRole;
 	}
 
 	private async isProjectRolesProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
-		// TODO: do we need a check like this here?:
-		//if (provisioningConfig.scopesProvisioningFrequency === 'never') return false;
 		return provisioningConfig.scopesProvisionProjectRoles;
 	}
 }

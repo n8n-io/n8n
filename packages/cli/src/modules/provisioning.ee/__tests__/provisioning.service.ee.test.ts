@@ -56,7 +56,6 @@ describe('ProvisioningService', () => {
 	const provisioningConfigDto: ProvisioningConfigDto = {
 		scopesProvisionInstanceRole: true,
 		scopesProvisionProjectRoles: true,
-		scopesProvisioningFrequency: 'every_login',
 		scopesName: 'n8n_test_scope',
 		scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 		scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
@@ -143,7 +142,6 @@ describe('ProvisioningService', () => {
 			const overriddenConfig = {
 				scopesProvisionInstanceRole: false,
 				scopesProvisionProjectRoles: false,
-				scopesProvisioningFrequency: 'never',
 				scopesName: 'n8n_test_scope_overridden',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role_overridden',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles_overridden',
