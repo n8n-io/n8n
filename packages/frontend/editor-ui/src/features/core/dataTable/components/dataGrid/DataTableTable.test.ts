@@ -78,13 +78,14 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
+const setCurrentPageMock = vi.fn();
 vi.mock('@/features/core/dataTable/composables/useDataTablePagination', () => ({
 	useDataTablePagination: () => ({
 		totalItems: 0,
 		setTotalItems: vi.fn(),
 		ensureItemOnPage: vi.fn(),
 		currentPage: 1,
-		setCurrentPage: vi.fn(),
+		setCurrentPage: setCurrentPageMock,
 	}),
 }));
 
@@ -180,6 +181,24 @@ describe('DataTableTable', () => {
 			});
 
 			expect(getByTestId('ag-grid-vue')).toBeInTheDocument();
+		});
+	});
+
+	describe('Search behavior', () => {
+		it('resets to first page when search changes', async () => {
+			const { rerender } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					search: '',
+				},
+			});
+
+			await rerender({
+				dataTable: mockDataTable,
+				search: 'john',
+			});
+
+			expect(setCurrentPageMock).toHaveBeenCalledWith(1);
 		});
 	});
 });

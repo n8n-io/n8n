@@ -79,4 +79,5 @@ export class ListDataTableContentQueryDto extends Z.class({
 	skip: paginationSchema.skip.optional(),
 	filter: filterValidator.optional(),
 	sortBy: sortByValidator.optional(),
+	search: z.string().optional(),
 }) {}

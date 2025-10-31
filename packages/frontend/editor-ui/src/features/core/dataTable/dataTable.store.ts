@@ -194,12 +194,14 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		pageSize: number,
 		sortBy: string,
 		filter?: string,
+		search?: string,
 	) => {
 		return await getDataTableRowsApi(rootStore.restApiContext, dataTableId, projectId, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 			sortBy,
 			filter,
+			search,
 		});
 	};
 

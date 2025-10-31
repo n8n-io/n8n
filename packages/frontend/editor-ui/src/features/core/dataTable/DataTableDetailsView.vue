@@ -15,8 +15,8 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
+import { N8nButton, N8nInput, N8nLoading, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
 
-import { N8nButton, N8nLoading, N8nSpinner, N8nText } from '@n8n/design-system';
 type Props = {
 	id: string;
 	projectId: string;
@@ -35,6 +35,7 @@ const loading = ref(false);
 const saving = ref(false);
 const dataTable = ref<DataTable | null>(null);
 const dataTableTableRef = ref<InstanceType<typeof DataTableTable>>();
+const searchQuery = ref('');
 
 const { debounce } = useDebounce();
 
@@ -123,6 +124,18 @@ onMounted(async () => {
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<N8nInput
+						data-test-id="data-table-search-input"
+						size="small"
+						v-model="searchQuery"
+						clearable
+						:class="$style.search"
+						:placeholder="i18n.baseText('generic.search')"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
 					<N8nButton
 						data-test-id="data-table-header-add-row-button"
 						@click="dataTableTableRef?.addRow"
@@ -139,6 +152,7 @@ onMounted(async () => {
 				<DataTableTable
 					ref="dataTableTableRef"
 					:data-table="dataTable"
+					:search="searchQuery"
 					@toggle-save="onToggleSave"
 				/>
 			</div>
@@ -184,5 +198,9 @@ onMounted(async () => {
 	display: flex;
 	gap: var(--spacing--3xs);
 	margin-left: auto;
+}
+
+.search {
+	max-width: 196px;
 }
 </style>

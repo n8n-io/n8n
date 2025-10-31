@@ -28,8 +28,6 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { RoleService } from '@/services/role.service';
-
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableRowsRepository } from './data-table-rows.repository';
@@ -41,6 +39,8 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {
@@ -161,6 +161,7 @@ export class DataTableService {
 			const result = await this.dataTableRowsRepository.getManyAndCount(
 				dataTableId,
 				transformedDto,
+				columns,
 				em,
 			);
 			return {
