@@ -72,7 +72,6 @@ export class ProvisioningService {
 		try {
 			dbRole = await this.roleRepository.findOneOrFail({ where: { slug: roleSlug } });
 		} catch (error) {
-			console.log('instance role with slug ' + roleSlug + ' not found, skipping');
 			this.logger.warn(
 				`Skipping instance role provisioning, a role matching the slug ${roleSlug} was not found`,
 				{ userId: user.id, roleSlug, error },
@@ -81,7 +80,6 @@ export class ProvisioningService {
 		}
 
 		if (dbRole.roleType !== 'global') {
-			console.log('cannot assign non-global role ' + roleSlug + ' as instance role, skipping');
 			this.logger.warn(
 				`Skipping instance role provisioning. Role ${roleSlug} is not a global role`,
 				{ userId: user.id, roleSlug },
@@ -99,7 +97,6 @@ export class ProvisioningService {
 			});
 
 			if (otherOwners === 0) {
-				console.log('cannot remove last instance owner role from user ' + user.email);
 				this.logger.warn(
 					`Skipping instance role provisioning. Cannot remove last owner role: ${globalOwnerRoleSlug} from user: ${user.id}`,
 					{ userId: user.id, roleSlug },
@@ -107,8 +104,6 @@ export class ProvisioningService {
 				return;
 			}
 		}
-
-		console.log('provisioning instance role ' + dbRole.slug + ' for user ' + user.email);
 
 		// No need to update record if the role hasn't changed
 		if (user.role.slug !== dbRole.slug) {
@@ -130,7 +125,6 @@ export class ProvisioningService {
 		}
 
 		if (!Array.isArray(projectIdToRoles)) {
-			console.log('skipping project role provisioning, invalid projectIdToRole type');
 			this.logger.warn(
 				`Skipping project role provisioning. Invalid projectIdToRole type: expected array, received ${typeof projectIdToRoles}`,
 				{ userId, projectIdToRoles },
@@ -198,7 +192,6 @@ export class ProvisioningService {
 		// populate validProjectToRoleMappings
 		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
 			if (!existingProjectIds.has(projectId)) {
-				console.log('project id ' + projectId + ' does not exist or is personal, skipping');
 				this.logger.warn(
 					`Skipped provisioning project role for project with ID ${projectId}, because project does not exist or is a personal project.`,
 					{ userId, projectId, roleSlug },
@@ -207,9 +200,6 @@ export class ProvisioningService {
 			}
 			const role = existingRoles.find((role) => role.slug === roleSlug);
 			if (!role) {
-				console.log(
-					'role with slug ' + roleSlug + ' does not exist or is not project specific, skipping',
-				);
 				this.logger.warn(
 					`Skipping project role provisioning for role with slug ${roleSlug}, because role does not exist or is not specific to projects.`,
 					{ userId, projectId, roleSlug },
@@ -221,7 +211,6 @@ export class ProvisioningService {
 		}
 
 		if (validProjectToRoleMappings.length === 0) {
-			console.log('no valid project to role mappings found, nothing provisioned');
 			this.logger.warn(
 				'Skipping project role provisioning altogether. No valid project to role mappings found.',
 				{ userId, projectRoleMap },
@@ -246,12 +235,10 @@ export class ProvisioningService {
 
 		await this.projectRepository.manager.transaction(async (tx) => {
 			for (const project of projectsToRemoveAccessFrom) {
-				console.log('removing project access to ' + project.id + ' for user ' + userId);
 				await tx.delete(ProjectRelation, { projectId: project.id, userId });
 			}
 
 			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
-				console.log('setting project ' + projectId + ' role ' + roleSlug + ' for user ' + userId);
 				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
 			}
 		});
