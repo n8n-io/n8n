@@ -1,0 +1,26 @@
+{
+	"id": "voxtral-mini-transcribe-2507",
+	"name": "Voxtral Mini Transcribe (2507)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.001,
+		"completionPerMilTokenUsd": 0.001
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["audio"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation"],
+	"description": "Voxtral Mini variant fine-tuned specifically for transcription. Efficient audio input model released July 2025.",
+	"trainingCutoff": "2025-07",
+	"notes": "Specialized transcription-only variant. Outperforms Whisper large-v3 and GPT-4o mini on English short-form transcription."
+}

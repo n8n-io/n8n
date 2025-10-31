@@ -17,6 +17,7 @@ export interface OpenRouterModel {
 		provider_name?: string;
 		max_completion_tokens?: number;
 		supported_parameters?: string[];
+		supports_reasoning?: boolean;
 		pricing?: {
 			prompt?: string;
 			completion?: string;
@@ -54,6 +55,16 @@ export interface AnthropicModel {
 	display_name: string;
 	created_at: string;
 	type?: string;
+}
+
+/**
+ * Mistral API model structure
+ */
+export interface MistralModel {
+	id: string;
+	object: string;
+	created: number;
+	owned_by: string;
 }
 
 /**
@@ -359,6 +370,115 @@ export function mapGoogleGeminiModel(modelName: string): IModelMetadata {
 
 	// Create generic metadata with basic defaults
 	return createGenericMetadata(modelId, 'Google');
+}
+
+/**
+ * Maps a Mistral API model to IModelMetadata
+ */
+export function mapMistralModel(model: MistralModel): IModelMetadata {
+	// Development warning for fallback usage
+	if (process.env.NODE_ENV === 'development') {
+		console.warn(
+			`[DEV] Using fallback metadata for Mistral model: ${model.id}\n` +
+				`Consider adding metadata file: model-metadata/mistral/${model.id}.json`,
+		);
+	}
+
+	// Known Mistral models with their capabilities
+	const knownModels: Record<string, IModelMetadata> = {
+		'mistral-large-latest': {
+			id: 'mistral-large-latest',
+			name: 'Mistral Large',
+			provider: 'Mistral',
+			contextLength: 128000,
+			maxOutputTokens: 4096,
+			intelligenceLevel: 'high',
+			capabilities: {
+				functionCalling: true,
+				structuredOutput: true,
+			},
+			pricing: {
+				promptPerMilTokenUsd: 2.0,
+				completionPerMilTokenUsd: 6.0,
+			},
+		},
+		'mistral-medium-latest': {
+			id: 'mistral-medium-latest',
+			name: 'Mistral Medium 3',
+			provider: 'Mistral',
+			contextLength: 128000,
+			maxOutputTokens: 4096,
+			intelligenceLevel: 'high',
+			capabilities: {
+				functionCalling: true,
+				structuredOutput: true,
+				vision: true,
+			},
+			pricing: {
+				promptPerMilTokenUsd: 0.4,
+				completionPerMilTokenUsd: 2.0,
+			},
+		},
+		'mistral-small-latest': {
+			id: 'mistral-small-latest',
+			name: 'Mistral Small 3',
+			provider: 'Mistral',
+			contextLength: 128000,
+			maxOutputTokens: 4096,
+			intelligenceLevel: 'medium',
+			capabilities: {
+				functionCalling: true,
+				structuredOutput: true,
+				vision: true,
+			},
+			pricing: {
+				promptPerMilTokenUsd: 0.1,
+				completionPerMilTokenUsd: 0.3,
+			},
+		},
+		'codestral-latest': {
+			id: 'codestral-latest',
+			name: 'Codestral',
+			provider: 'Mistral',
+			contextLength: 256000,
+			maxOutputTokens: 8192,
+			intelligenceLevel: 'high',
+			capabilities: {
+				functionCalling: true,
+				structuredOutput: true,
+			},
+			pricing: {
+				promptPerMilTokenUsd: 0.3,
+				completionPerMilTokenUsd: 0.9,
+			},
+		},
+		'pixtral-large-latest': {
+			id: 'pixtral-large-latest',
+			name: 'Pixtral Large',
+			provider: 'Mistral',
+			contextLength: 128000,
+			maxOutputTokens: 4096,
+			intelligenceLevel: 'high',
+			capabilities: {
+				functionCalling: true,
+				structuredOutput: true,
+				vision: true,
+			},
+			pricing: {
+				promptPerMilTokenUsd: 2.0,
+				completionPerMilTokenUsd: 6.0,
+			},
+		},
+	};
+
+	// Check if it's a known model
+	const knownModel = knownModels[model.id];
+	if (knownModel) {
+		return knownModel;
+	}
+
+	// Fallback for unknown models
+	return createGenericMetadata(model.id, 'Mistral');
 }
 
 /**

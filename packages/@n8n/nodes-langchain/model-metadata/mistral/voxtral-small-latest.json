@@ -1,0 +1,26 @@
+{
+	"id": "voxtral-small-latest",
+	"name": "Voxtral Small (Latest)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.002,
+		"completionPerMilTokenUsd": 0.002
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["audio"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["analysis", "conversation", "summarization"],
+	"description": "Latest Voxtral Small model. 24B parameters for production audio understanding.",
+	"trainingCutoff": "2025-07",
+	"notes": "Pointer to latest Voxtral Small version. Currently maps to voxtral-small-2507."
+}

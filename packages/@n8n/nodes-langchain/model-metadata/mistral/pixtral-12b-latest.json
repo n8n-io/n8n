@@ -1,0 +1,26 @@
+{
+	"id": "pixtral-12b-latest",
+	"name": "Pixtral 12B (Latest)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.15,
+		"completionPerMilTokenUsd": 0.15
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["multimodal", "vision", "document-understanding"],
+	"description": "Latest Pixtral 12B model. Points to pixtral-12b / pixtral-12b-2409.",
+	"trainingCutoff": "2024-09",
+	"notes": "Pointer to latest Pixtral 12B version. Currently maps to pixtral-12b-2409."
+}

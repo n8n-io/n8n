@@ -1,0 +1,26 @@
+{
+	"id": "open-mistral-nemo-2407",
+	"name": "Open Mistral NeMo (2407)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.15,
+		"completionPerMilTokenUsd": 0.15
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["multilingual", "conversation", "function-calling"],
+	"description": "12B parameter model built with NVIDIA. Released July 2024. State-of-the-art multilingual with 128K context.",
+	"trainingCutoff": "2024-07",
+	"notes": "Same as open-mistral-nemo. Released under Apache 2.0. Trained with quantisation awareness for FP8 inference."
+}

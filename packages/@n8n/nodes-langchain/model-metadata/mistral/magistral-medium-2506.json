@@ -1,0 +1,26 @@
+{
+	"id": "magistral-medium-2506",
+	"name": "Magistral Medium 1.0 (2506)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 5.0
+	},
+	"contextLength": 40000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"],
+	"description": "Magistral Medium 1.0 released June 2025. First enterprise reasoning model with chain-of-thought capabilities.",
+	"trainingCutoff": "2025-06",
+	"notes": "Deprecated model with text output format. Includes <think></think> chunks as part of text content. Use magistral-medium-2507+ for JSON output."
+}

@@ -12,10 +12,16 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { searchModels } from './methods/searchModels';
 
 const deprecatedMagistralModelsWithTextOutput = ['magistral-small-2506', 'magistral-medium-2506'];
 
 export class LmChatMistralCloud implements INodeType {
+	methods = {
+		listSearch: {
+			searchModels,
+		},
+	};
 	description: INodeTypeDescription = {
 		displayName: 'Mistral Cloud Chat Model',
 
@@ -61,55 +67,43 @@ export class LmChatMistralCloud implements INodeType {
 			{
 				displayName: 'Model',
 				name: 'model',
-				type: 'options',
-				description:
-					'The model which will generate the completion. <a href="https://docs.mistral.ai/platform/endpoints/">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											pass: "={{ !$responseItem.id.includes('embed') }}",
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{ $responseItem.id }}',
-											value: '={{ $responseItem.id }}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: 'mistral-small-latest',
+					cachedResultName: 'Mistral Small 3',
+				},
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
 						},
 					},
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'mistral-large-latest',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^[a-zA-Z0-9_-]+$',
+									errorMessage:
+										'Model ID should only contain letters, numbers, hyphens, and underscores',
+								},
+							},
+						],
 					},
-				},
-				default: 'mistral-small',
+				],
+				description:
+					'The model which will generate the completion. <a href="https://docs.mistral.ai/platform/endpoints/">Learn more</a>.',
 			},
 			{
 				displayName: 'Options',
@@ -178,7 +172,9 @@ export class LmChatMistralCloud implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('mistralCloudApi');
 
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const modelName = this.getNodeParameter('model', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 		const options = this.getNodeParameter('options', itemIndex, {
 			maxRetries: 2,
 			topP: 1,

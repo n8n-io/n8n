@@ -1,0 +1,26 @@
+{
+	"id": "mistral-tiny-latest",
+	"name": "Mistral Tiny (Latest)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.04,
+		"completionPerMilTokenUsd": 0.04
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "low",
+	"recommendedFor": ["conversation", "summarization"],
+	"description": "Latest Mistral Tiny model. Ultra-lightweight 7B parameter model for basic tasks.",
+	"trainingCutoff": "2024-07",
+	"notes": "Pointer to latest Mistral Tiny version. Currently maps to mistral-tiny-2407."
+}

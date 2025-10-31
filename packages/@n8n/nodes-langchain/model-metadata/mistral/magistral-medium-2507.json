@@ -1,0 +1,26 @@
+{
+	"id": "magistral-medium-2507",
+	"name": "Magistral Medium 1.1 (2507)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 5.0
+	},
+	"contextLength": 40000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"],
+	"description": "Magistral Medium 1.1 with JSON output format. Enhanced reasoning model with transparent step-by-step thinking.",
+	"trainingCutoff": "2025-07",
+	"notes": "Released July 2025. Returns JSON output with 'thinking' types. Built on Medium 3 base model using reinforcement learning."
+}

@@ -1,0 +1,26 @@
+{
+	"id": "devstral-medium-latest",
+	"name": "Devstral Medium (Latest)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.4,
+		"completionPerMilTokenUsd": 2.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "complex-reasoning", "analysis"],
+	"description": "Latest Devstral Medium model. Enterprise-grade for advanced software engineering workflows and agent frameworks.",
+	"trainingCutoff": "2025-07",
+	"notes": "Pointer to latest Devstral Medium version. Currently maps to devstral-medium-2507."
+}

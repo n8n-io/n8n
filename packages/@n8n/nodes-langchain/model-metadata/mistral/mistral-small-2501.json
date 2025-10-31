@@ -1,0 +1,26 @@
+{
+	"id": "mistral-small-2501",
+	"name": "Mistral Small 3 (2501)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.3
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "function-calling", "cost-effective"],
+	"description": "Mistral Small 3 released January 2025. 24B parameters, latency-optimized with 50% price reduction. 81% MMLU accuracy, 150 tokens/sec.",
+	"trainingCutoff": "2025-01",
+	"notes": "Released under Apache 2.0. Major performance improvements with 32K context. Superseded by mistral-small-2503 with multimodal capabilities."
+}

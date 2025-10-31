@@ -1,10 +1,22 @@
 {
 	"mistral-large": "mistral-large-latest",
+	"mistral-large-2": "mistral-large-2411",
 	"mistral-medium": "mistral-medium-latest",
+	"mistral-medium-3": "mistral-medium-2508",
 	"mistral-small": "mistral-small-latest",
+	"mistral-small-3": "mistral-small-2506",
 	"codestral": "codestral-latest",
 	"magistral-medium": "magistral-medium-latest",
 	"magistral-small": "magistral-small-latest",
 	"mistral-nemo": "open-mistral-nemo",
-	"pixtral-large": "pixtral-large-latest"
+	"pixtral-large": "pixtral-large-latest",
+	"pixtral": "pixtral-12b",
+	"devstral-small": "devstral-small-latest",
+	"devstral-medium": "devstral-medium-latest",
+	"ministral-3b": "ministral-3b-latest",
+	"ministral-8b": "ministral-8b-latest",
+	"voxtral-mini": "voxtral-mini-latest",
+	"voxtral-small": "voxtral-small-latest",
+	"mistral-moderation": "mistral-moderation-latest",
+	"mistral-ocr": "mistral-ocr-latest"
 }

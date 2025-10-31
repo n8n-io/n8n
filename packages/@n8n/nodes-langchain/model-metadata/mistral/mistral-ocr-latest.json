@@ -1,0 +1,26 @@
+{
+	"id": "mistral-ocr-latest",
+	"name": "Mistral OCR (Latest)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.5,
+		"completionPerMilTokenUsd": 1.5
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["image", "text"],
+	"outputModalities": ["text", "image"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["multimodal", "document-understanding", "analysis"],
+	"description": "Latest Mistral OCR model for advanced document understanding and extraction.",
+	"trainingCutoff": "2025-05",
+	"notes": "Pointer to latest OCR version. Currently maps to mistral-ocr-2505."
+}

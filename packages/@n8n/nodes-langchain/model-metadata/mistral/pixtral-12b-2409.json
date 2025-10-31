@@ -1,0 +1,26 @@
+{
+	"id": "pixtral-12b-2409",
+	"name": "Pixtral 12B (2409)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.15,
+		"completionPerMilTokenUsd": 0.15
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["multimodal", "vision", "document-understanding"],
+	"description": "Same as pixtral-12b. 12B parameters with 400M vision encoder. Released September 2024.",
+	"trainingCutoff": "2024-09",
+	"notes": "Dated version identifier. Achieves 52.5% on MMMU reasoning benchmark. Supports variable image sizes."
+}

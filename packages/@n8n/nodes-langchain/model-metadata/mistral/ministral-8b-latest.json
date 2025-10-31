@@ -1,0 +1,26 @@
+{
+	"id": "ministral-8b-latest",
+	"name": "Ministral 8B (Latest)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.1
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "analysis", "function-calling"],
+	"description": "Latest Ministral 8B model. Balanced edge computing model with function calling support.",
+	"trainingCutoff": "2024-10",
+	"notes": "Pointer to latest Ministral 8B version. Currently maps to ministral-8b-2410."
+}

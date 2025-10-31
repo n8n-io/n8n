@@ -1,0 +1,26 @@
+{
+	"id": "codestral-2411-rc5",
+	"name": "Codestral 24.11 RC5",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.3,
+		"completionPerMilTokenUsd": 0.9
+	},
+	"contextLength": 256000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "code-generation"],
+	"description": "Release candidate 5 of Codestral 24.11. Testing version before final release.",
+	"trainingCutoff": "2024-11",
+	"notes": "Release candidate version. May have experimental features or changes before final 24.11 release."
+}

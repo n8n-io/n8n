@@ -1,0 +1,26 @@
+{
+	"id": "mistral-moderation-2411",
+	"name": "Mistral Moderation (2411)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.05,
+		"completionPerMilTokenUsd": 0.05
+	},
+	"contextLength": 8192,
+	"maxOutputTokens": 1024,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["analysis"],
+	"description": "Content moderation model for detecting harmful text. Released November 2024.",
+	"trainingCutoff": "2024-11",
+	"notes": "Specialized for moderation and guardrailing capabilities. Returns structured classification of content safety."
+}

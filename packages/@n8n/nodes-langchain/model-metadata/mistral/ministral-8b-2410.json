@@ -1,0 +1,26 @@
+{
+	"id": "ministral-8b-2410",
+	"name": "Ministral 8B (2410)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.1
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "analysis", "function-calling"],
+	"description": "8B parameter edge computing model with function calling. Optimized for on-device AI with specialized attention mechanism for faster inference.",
+	"trainingCutoff": "2024-10",
+	"notes": "Released October 2024 under Apache 2.0. Balances performance and efficiency for edge computing. Outperforms rivals in small-scale AI benchmarks."
+}

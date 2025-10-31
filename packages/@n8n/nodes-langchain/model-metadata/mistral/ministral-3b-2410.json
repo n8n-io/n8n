@@ -1,0 +1,26 @@
+{
+	"id": "ministral-3b-2410",
+	"name": "Ministral 3B (2410)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.04,
+		"completionPerMilTokenUsd": 0.04
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "low",
+	"recommendedFor": ["conversation", "summarization", "translation"],
+	"description": "3B parameter edge computing model. Optimized for on-device and edge deployment with interleaved sliding-window attention.",
+	"trainingCutoff": "2024-10",
+	"notes": "Released October 2024 under Apache 2.0. Ultra-efficient for phones and laptops. State-of-the-art in small-scale AI category."
+}

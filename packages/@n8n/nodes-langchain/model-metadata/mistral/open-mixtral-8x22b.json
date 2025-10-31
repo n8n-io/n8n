@@ -1,0 +1,26 @@
+{
+	"id": "open-mixtral-8x22b",
+	"name": "Open Mixtral 8x22B",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.7,
+		"completionPerMilTokenUsd": 2.1
+	},
+	"contextLength": 64000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "function-calling"],
+	"description": "Large Mixture of Experts with 8 experts of 22B each. 141B total parameters, 39B active. Function calling support.",
+	"trainingCutoff": "2024-04",
+	"notes": "Released April 2024 under Apache 2.0. Flagship open-source MoE model with 64K context window."
+}

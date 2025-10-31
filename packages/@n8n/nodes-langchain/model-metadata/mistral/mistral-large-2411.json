@@ -1,0 +1,26 @@
+{
+	"id": "mistral-large-2411",
+	"name": "Mistral Large 2.1 (2411)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 6.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling"],
+	"description": "Mistral Large 2.1 released November 2024. Enhanced version with improved performance. 123B parameters.",
+	"trainingCutoff": "2024-11",
+	"notes": "Latest version of Mistral Large. Top-tier performance with advanced function calling and structured outputs."
+}

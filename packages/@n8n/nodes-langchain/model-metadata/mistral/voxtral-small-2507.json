@@ -1,0 +1,26 @@
+{
+	"id": "voxtral-small-2507",
+	"name": "Voxtral Small (2507)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.002,
+		"completionPerMilTokenUsd": 0.002
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["audio"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["analysis", "conversation", "summarization"],
+	"description": "24B parameter production-level audio model. Handles up to 30min transcription, 40min understanding. Superior performance.",
+	"trainingCutoff": "2025-07",
+	"notes": "Released July 2025 under Apache 2.0. Enterprise-grade audio intelligence. Beats GPT-4o mini and Gemini 2.5 Flash across all tasks."
+}

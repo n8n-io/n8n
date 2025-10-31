@@ -1,0 +1,26 @@
+{
+	"id": "mistral-medium-2505",
+	"name": "Mistral Medium 3 (2505)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.4,
+		"completionPerMilTokenUsd": 2.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["function-calling", "analysis", "complex-reasoning"],
+	"description": "Mistral Medium 3 released May 2025. Balanced performance-to-cost ratio with 128K context window.",
+	"trainingCutoff": "2025-05",
+	"notes": "Initial release of Medium 3. Superseded by mistral-medium-2508 with multimodal capabilities."
+}

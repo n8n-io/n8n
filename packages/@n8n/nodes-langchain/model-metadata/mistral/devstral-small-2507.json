@@ -1,0 +1,26 @@
+{
+	"id": "devstral-small-2507",
+	"name": "Devstral Small 1.1 (2507)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.3
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "analysis", "function-calling"],
+	"description": "Updated Devstral Small 1.1 with improved agentic coding capabilities. 24B parameters optimized for software engineering workflows.",
+	"trainingCutoff": "2025-07",
+	"notes": "Released July 2025. Enhanced version with better codebase exploration and GitHub issue resolution capabilities."
+}

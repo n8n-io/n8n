@@ -1,0 +1,26 @@
+{
+	"id": "codestral-2508",
+	"name": "Codestral 25.08",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.3,
+		"completionPerMilTokenUsd": 0.9
+	},
+	"contextLength": 256000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "code-generation", "fill-in-middle"],
+	"description": "Latest Codestral with +30% increase in accepted code completions. Enterprise-ready coding model supporting 80+ languages.",
+	"trainingCutoff": "2025-08",
+	"notes": "Released August 2025. Significant improvements in code completion acceptance rate. Part of complete Mistral coding stack for enterprise."
+}

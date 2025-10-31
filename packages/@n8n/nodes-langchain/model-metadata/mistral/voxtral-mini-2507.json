@@ -1,0 +1,26 @@
+{
+	"id": "voxtral-mini-2507",
+	"name": "Voxtral Mini (2507)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.001,
+		"completionPerMilTokenUsd": 0.001
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["audio"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "summarization", "translation"],
+	"description": "3B parameter audio model for edge/local environments. Handles up to 30min transcription, 40min understanding. $0.001 per minute API pricing.",
+	"trainingCutoff": "2025-07",
+	"notes": "Released July 2025 under Apache 2.0. Supports automatic language detection in 9+ languages. Built-in Q&A and summarization."
+}

@@ -1,0 +1,26 @@
+{
+	"id": "codestral-2501",
+	"name": "Codestral 25.01",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.3,
+		"completionPerMilTokenUsd": 0.9
+	},
+	"contextLength": 256000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["coding", "code-generation", "fill-in-middle"],
+	"description": "Codestral 25.01 with improved architecture and tokenizer. Less than 100B parameters. 2x faster code generation than previous versions.",
+	"trainingCutoff": "2025-01",
+	"notes": "Released January 2025. Optimized for code generation with 256K context. Supports Fill-In-the-Middle (FIM) completion."
+}

@@ -1,0 +1,26 @@
+{
+	"id": "mistral-medium-2508",
+	"name": "Mistral Medium 3.1 (2508)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.4,
+		"completionPerMilTokenUsd": 2.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["multimodal", "function-calling", "document-understanding"],
+	"description": "Frontier-class multimodal model released August 2025. Supports document Q&A, chat completions, and batching.",
+	"trainingCutoff": "2025-08",
+	"notes": "Latest Medium 3.1 with multimodal support. Excellent balance between performance and cost for vision tasks."
+}

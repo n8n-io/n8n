@@ -1,0 +1,26 @@
+{
+	"id": "magistral-medium-2509",
+	"name": "Magistral Medium 1.2 (2509)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 5.0
+	},
+	"contextLength": 40000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis", "multimodal"],
+	"description": "Latest Magistral Medium with multimodal reasoning capabilities. Frontier-class multimodal reasoning model.",
+	"trainingCutoff": "2025-09",
+	"notes": "Released September 2025 (v25.09). First multimodal reasoning model from Mistral. Supports both text and image inputs."
+}

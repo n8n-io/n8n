@@ -1,0 +1,26 @@
+{
+	"id": "mistral-large-pixtral-2411",
+	"name": "Mistral Large Pixtral (2411)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 6.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["multimodal", "complex-reasoning", "vision", "document-understanding"],
+	"description": "Combination of Mistral Large and Pixtral vision capabilities. Released November 2024.",
+	"trainingCutoff": "2024-11",
+	"notes": "Merged model combining Mistral Large's reasoning with Pixtral's vision capabilities. Alias for pixtral-large-2411."
+}

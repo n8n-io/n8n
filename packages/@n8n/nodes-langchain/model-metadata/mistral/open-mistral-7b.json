@@ -1,0 +1,26 @@
+{
+	"id": "open-mistral-7b",
+	"name": "Open Mistral 7B",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.04,
+		"completionPerMilTokenUsd": 0.04
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "low",
+	"recommendedFor": ["conversation", "summarization"],
+	"description": "Open-source 7B parameter model. Same as mistral-tiny-2407. Released under Apache 2.0 license.",
+	"trainingCutoff": "2024-07",
+	"notes": "Open-weight variant of Mistral Tiny. Freely available for commercial use."
+}

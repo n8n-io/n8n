@@ -1,0 +1,26 @@
+{
+	"id": "mistral-large-2407",
+	"name": "Mistral Large 2 (2407)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 2.0,
+		"completionPerMilTokenUsd": 6.0
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling"],
+	"description": "Mistral Large 2 released July 2024. 123B parameters with large 128K context window. Top-tier performance for complex tasks.",
+	"trainingCutoff": "2024-07",
+	"notes": "Version 2407 of Mistral Large. Supports function calling and structured outputs. Superseded by mistral-large-2411."
+}

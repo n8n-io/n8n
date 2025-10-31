@@ -1,0 +1,26 @@
+{
+	"id": "mistral-tiny-2407",
+	"name": "Mistral Tiny (2407)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.04,
+		"completionPerMilTokenUsd": 0.04
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "low",
+	"recommendedFor": ["conversation", "summarization"],
+	"description": "Mistral Tiny from July 2024. 7B parameters for lightweight tasks. Also available as open-mistral-7b.",
+	"trainingCutoff": "2024-07",
+	"notes": "Updated version with improved performance. Ultra-cost-effective for simple tasks."
+}

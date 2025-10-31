@@ -1,0 +1,26 @@
+{
+	"id": "mistral-small-2312",
+	"name": "Mistral Small (2312)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.2,
+		"completionPerMilTokenUsd": 0.6
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "summarization", "translation"],
+	"description": "Original Mistral Small from December 2023. Also known as open-mixtral-8x7B. 32K context window.",
+	"trainingCutoff": "2023-12",
+	"notes": "Deprecated - Legacy model from December 2023. Superseded by mistral-small-2409 and newer versions."
+}

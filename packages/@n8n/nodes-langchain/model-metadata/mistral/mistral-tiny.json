@@ -1,0 +1,26 @@
+{
+	"id": "mistral-tiny",
+	"name": "Mistral Tiny",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.04,
+		"completionPerMilTokenUsd": 0.04
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "low",
+	"recommendedFor": ["conversation", "summarization"],
+	"description": "Alias for mistral-tiny-latest. Ultra-lightweight model for basic tasks.",
+	"trainingCutoff": "2024-07",
+	"notes": "Pointer to latest tiny model version. Currently maps to mistral-tiny-2407 / open-mistral-7b."
+}

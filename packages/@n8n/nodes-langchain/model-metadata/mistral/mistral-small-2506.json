@@ -1,0 +1,26 @@
+{
+	"id": "mistral-small-2506",
+	"name": "Mistral Small 3.2 (2506)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.3
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["multimodal", "function-calling", "cost-effective"],
+	"description": "Latest Mistral Small 3.2 released June 2025. Enhanced multimodal understanding with improved text performance.",
+	"trainingCutoff": "2025-06",
+	"notes": "Updated version with better image understanding and text capabilities. Expanded context window to 128K tokens. Delivers 150 tokens/sec inference."
+}

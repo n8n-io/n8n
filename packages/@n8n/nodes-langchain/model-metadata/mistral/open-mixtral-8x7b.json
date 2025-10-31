@@ -1,0 +1,26 @@
+{
+	"id": "open-mixtral-8x7b",
+	"name": "Open Mixtral 8x7B",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.2,
+		"completionPerMilTokenUsd": 0.6
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": false,
+		"structuredOutput": false,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "analysis", "translation"],
+	"description": "Open-source Mixture of Experts (MoE) model with 8 experts of 7B each. Released under Apache 2.0.",
+	"trainingCutoff": "2023-12",
+	"notes": "Also known as mistral-small-2312. Sparse MoE architecture for efficient inference. 46.7B total parameters, 12.9B active per token."
+}

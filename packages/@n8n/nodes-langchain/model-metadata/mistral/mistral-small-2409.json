@@ -1,0 +1,26 @@
+{
+	"id": "mistral-small-2409",
+	"name": "Mistral Small (2409)",
+	"provider": "Mistral",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.2,
+		"completionPerMilTokenUsd": 0.6
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 4096,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": false,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["conversation", "function-calling", "analysis"],
+	"description": "Mistral Small from September 2024. 22B parameters with 128K context. Improved function calling and structured outputs.",
+	"trainingCutoff": "2024-09",
+	"notes": "Released September 2024. Superseded by mistral-small-2501 with better performance and lower pricing."
+}
