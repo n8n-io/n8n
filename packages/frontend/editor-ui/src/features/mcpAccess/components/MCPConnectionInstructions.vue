@@ -4,6 +4,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nButton,
+	N8nHeading,
 	N8nInfoAccordion,
 	N8nInfoTip,
 	N8nLoading,
@@ -75,6 +76,9 @@ const apiKeyText = computed(() => {
 
 <template>
 	<div :class="$style.container">
+		<N8nHeading size="medium" :bold="true">
+			{{ i18n.baseText('settings.mcp.connection.info.heading') }}
+		</N8nHeading>
 		<div :class="$style['instructions-container']">
 			<ol :class="$style.instructions">
 				<li>

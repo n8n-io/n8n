@@ -224,7 +224,9 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 
 <style module lang="scss">
 .workflow-table-container {
-	width: 100%;
+	:global(.table-pagination) {
+		display: none;
+	}
 }
 
 .header {

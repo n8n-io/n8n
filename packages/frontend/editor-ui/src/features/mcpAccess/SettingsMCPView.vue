@@ -11,9 +11,9 @@ import { useUsersStore } from '@/features/users/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/mcpAccess/mcp.constants';
 import WorkflowsTable from '@/features/mcpAccess/components/WorkflowsTable.vue';
+import McpAccessToggle from './components/McpAccessToggle.vue';
 
-import { ElSwitch } from 'element-plus';
-import { N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nHeading } from '@n8n/design-system';
 import { useMcp } from './composables/useMcp';
 const i18n = useI18n();
 const toast = useToast();
@@ -49,18 +49,18 @@ const fetchAvailableWorkflows = async () => {
 	}
 };
 
-const onUpdateMCPEnabled = async (value: string | number | boolean) => {
+const onToggleMCPAccess = async (enabled: boolean) => {
 	try {
 		mcpStatusLoading.value = true;
-		const boolValue = typeof value === 'boolean' ? value : Boolean(value);
-		const updated = await mcpStore.setMcpAccessEnabled(boolValue);
+		const updated = await mcpStore.setMcpAccessEnabled(enabled);
 		if (updated) {
 			await fetchAvailableWorkflows();
 			await fetchApiKey();
+			await fetchoAuthCLients();
 		} else {
 			workflowsLoading.value = false;
 		}
-		mcp.trackUserToggledMcpAccess(boolValue);
+		mcp.trackUserToggledMcpAccess(enabled);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {
@@ -124,58 +124,32 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<div :class="$style.headingContainer">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
-		</div>
-		<div :class="$style.mainToggleContainer">
-			<div :class="$style.mainToggleInfo">
-				<N8nText :bold="true">{{ i18n.baseText('settings.mcp.toggle.label') }}</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.mcp.toggle.description') }}
-				</N8nText>
-			</div>
-			<div :class="$style.mainTooggle" data-test-id="mcp-toggle-container">
-				<N8nTooltip
-					:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
-					:disabled="canToggleMCP"
-					placement="top"
-				>
-					<ElSwitch
-						size="large"
-						data-test-id="mcp-access-toggle"
-						:model-value="mcpStore.mcpAccessEnabled"
-						:disabled="!canToggleMCP"
-						:loading="mcpStatusLoading"
-						@update:model-value="onUpdateMCPEnabled"
-					/>
-				</N8nTooltip>
-			</div>
-		</div>
+		<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+		<McpAccessToggle
+			:data-test-id="'mcp-access-toggle'"
+			:model-value="mcpStore.mcpAccessEnabled"
+			:disabled="!canToggleMCP"
+			:loading="mcpStatusLoading"
+			@toggle-mcp-access="onToggleMCPAccess"
+		/>
 		<div
 			v-if="mcpStore.mcpAccessEnabled"
 			:class="$style.container"
 			data-test-id="mcp-enabled-section"
 		>
-			<div>
-				<N8nHeading size="medium" :bold="true">
-					{{ i18n.baseText('settings.mcp.connection.info.heading') }}
-				</N8nHeading>
-				<MCPConnectionInstructions
-					v-if="apiKey"
-					:loading-api-key="mcpKeyLoading"
-					:base-url="rootStore.urlBaseEditor"
-					:api-key="apiKey"
-					@rotate-key="rotateKey"
-				/>
-			</div>
-			<div :class="$style['workflow-list-container']" data-test-id="mcp-workflow-list">
-				<WorkflowsTable
-					:data-test-id="'mcp-workflow-table'"
-					:workflows="availableWorkflows"
-					:loading="workflowsLoading"
-					@remove-mcp-access="onRemoveMCPAccess"
-				/>
-			</div>
+			<MCPConnectionInstructions
+				v-if="apiKey"
+				:loading-api-key="mcpKeyLoading"
+				:base-url="rootStore.urlBaseEditor"
+				:api-key="apiKey"
+				@rotate-key="rotateKey"
+			/>
+			<WorkflowsTable
+				:data-test-id="'mcp-workflow-table'"
+				:workflows="availableWorkflows"
+				:loading="workflowsLoading"
+				@remove-mcp-access="onRemoveMCPAccess"
+			/>
 		</div>
 	</div>
 </template>
@@ -185,38 +159,5 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
-
-	:global(.table-pagination) {
-		display: none;
-	}
-}
-
-.headingContainer {
-	margin-bottom: var(--spacing--xs);
-}
-
-.mainToggleContainer {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--sm);
-	justify-content: space-between;
-	flex-shrink: 0;
-
-	border-radius: var(--radius);
-	border: var(--border);
-}
-
-.mainToggleInfo {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
-}
-
-.mainTooggle {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-	flex-shrink: 0;
 }
 </style>
