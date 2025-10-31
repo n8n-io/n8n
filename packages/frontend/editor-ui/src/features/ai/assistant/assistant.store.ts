@@ -1,4 +1,4 @@
-import { chatWithAssistant, replaceCode } from '@/api/ai';
+import { chatWithAssistant, replaceCode } from '@/features/ai/assistant/assistant.api';
 import { type VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';

@@ -19,7 +19,7 @@ import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/stores/posthog.store.test';
 import { VIEWS } from '@/constants';
 import { reactive } from 'vue';
-import * as chatAPI from '@/api/ai';
+import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';

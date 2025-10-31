@@ -9,7 +9,7 @@ import { useProjectsStore } from '../projects.store';
 import ProjectTabs from './ProjectTabs.vue';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
-import { VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from './ProjectCreateResource.vue';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -23,6 +23,9 @@ import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
 
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useUsersStore } from '@/features/settings/users/users.store';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -30,6 +33,8 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
+const usersStore = useUsersStore();
 
 const projectPages = useProjectPages();
 
@@ -71,6 +76,9 @@ const projectName = computed(() => {
 
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
+);
+const globalPermissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
 );
 
 const showSettings = computed(
@@ -115,6 +123,7 @@ const ACTION_TYPES = {
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
 	DATA_TABLE: 'dataTable',
+	VARIABLE: 'variable',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -148,6 +157,16 @@ const createDataTableButton = computed(() => ({
 		!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
 }));
 
+const createVariableButton = computed(() => ({
+	value: ACTION_TYPES.VARIABLE,
+	label: i18n.baseText('variables.add.button.label'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		(!projectPermissions.value.create && !globalPermissions.value.create),
+}));
+
 const selectedMainButtonType = computed(() => props.mainButton ?? ACTION_TYPES.WORKFLOW);
 
 const mainButtonConfig = computed(() => {
@@ -156,6 +175,8 @@ const mainButtonConfig = computed(() => {
 			return createCredentialButton.value;
 		case ACTION_TYPES.DATA_TABLE:
 			return createDataTableButton.value;
+		case ACTION_TYPES.VARIABLE:
+			return createVariableButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -184,6 +205,19 @@ const menu = computed(() => {
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).credential.create,
+		});
+	}
+
+	if (
+		selectedMainButtonType.value !== ACTION_TYPES.VARIABLE &&
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]
+	) {
+		items.push({
+			value: ACTION_TYPES.VARIABLE,
+			label: i18n.baseText('variables.add.button.label'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes).projectVariable.create,
 		});
 	}
 
@@ -282,6 +316,10 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			name: PROJECT_DATA_TABLES,
 			params: { projectId, new: 'new' },
 		});
+	},
+	[ACTION_TYPES.VARIABLE]: () => {
+		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
+		telemetry.track('User clicked header add variable button');
 	},
 } as const;
 

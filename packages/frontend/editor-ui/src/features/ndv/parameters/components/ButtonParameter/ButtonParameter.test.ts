@@ -14,7 +14,7 @@ vi.mock('@/features/ndv/shared/ndv.store');
 vi.mock('@/stores/workflows.store');
 vi.mock('@/stores/posthog.store');
 vi.mock('@n8n/stores/useRootStore');
-vi.mock('@/api/ai');
+vi.mock('@/features/ai/assistant/assistant.api');
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({

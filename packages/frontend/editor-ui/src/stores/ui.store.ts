@@ -32,6 +32,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 } from '@/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
@@ -242,6 +243,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			data: {
 				nodeName: '',
 			},
+		},
+		[EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY]: {
+			open: false,
+			data: {},
 		},
 	});
 

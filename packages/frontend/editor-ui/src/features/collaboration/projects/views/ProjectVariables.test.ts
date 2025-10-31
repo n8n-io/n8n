@@ -15,6 +15,10 @@ import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { Scope } from '@n8n/permissions';
 import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -113,7 +117,28 @@ describe('ProjectVariables', () => {
 
 		const uiStore = mockedStore(useUIStore);
 
-		return { usersStore, settingsStore, environmentsStore, uiStore };
+		// Mock project store so that project header renders correctly
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = {
+			id: 'personal-project-id',
+			name: 'Current Project',
+			scopes: ['projectVariable:create', 'projectVariable:read'],
+		} as Project;
+		projectsStore.currentProject = projectsStore.personalProject;
+
+		const sourceControlStore = mockedStore(useSourceControlStore);
+		sourceControlStore.preferences = {
+			branchReadOnly: false,
+		} as SourceControlPreferences;
+
+		return {
+			usersStore,
+			settingsStore,
+			environmentsStore,
+			uiStore,
+			projectsStore,
+			sourceControlStore,
+		};
 	};
 
 	it('should render variable entries', async () => {
@@ -239,9 +264,9 @@ describe('ProjectVariables', () => {
 			]);
 
 			const { getByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(getByTestId('add-resource-variable')).toBeVisible());
 
-			await userEvent.click(getByTestId('resources-list-add'));
+			await userEvent.click(getByTestId('add-resource-variable'));
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: VARIABLE_MODAL_KEY,
@@ -261,7 +286,7 @@ describe('ProjectVariables', () => {
 			const { uiStore } = userWithPrivileges(variables);
 
 			const { getByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
 
 			await userEvent.hover(getByTestId('variables-row'));
 			expect(getByTestId('variable-row-edit-button')).toBeVisible();
@@ -298,10 +323,8 @@ describe('ProjectVariables', () => {
 
 			userWithPrivileges(variables);
 
-			const { getByTestId, queryAllByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
-
-			expect(queryAllByTestId('variables-row').length).toBe(2);
+			const { queryAllByTestId } = renderComponent();
+			await waitFor(() => expect(queryAllByTestId('variables-row')).toHaveLength(2));
 
 			await userEvent.hover(queryAllByTestId('variables-row')[0]);
 			expect(queryAllByTestId('variable-row-delete-button')[0]).toBeVisible();
@@ -324,13 +347,11 @@ describe('ProjectVariables', () => {
 			]);
 
 			const { getByTestId, queryAllByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
-
-			expect(queryAllByTestId('variables-row').length).toBe(2);
+			await waitFor(() => expect(queryAllByTestId('variables-row')).toHaveLength(2));
 
 			await userEvent.click(getByTestId('variable-filter-incomplete'));
 
-			expect(queryAllByTestId('variables-row').length).toBe(1);
+			expect(queryAllByTestId('variables-row')).toHaveLength(1);
 		});
 	});
 
@@ -350,9 +371,8 @@ describe('ProjectVariables', () => {
 			]);
 
 			const { getByTestId, queryAllByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(queryAllByTestId('variables-row')).toHaveLength(2));
 
-			expect(queryAllByTestId('variables-row').length).toBe(2);
 			// Default sort should be ascending
 			expect(queryAllByTestId('variables-row')[0].querySelector('td')?.textContent).toBe('ALPHA');
 
@@ -418,7 +438,7 @@ describe('ProjectVariables', () => {
 			];
 
 			const { getByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
 
 			await userEvent.hover(getByTestId('variables-row'));
 			const editButton = getByTestId('variable-row-edit-button');
@@ -442,7 +462,8 @@ describe('ProjectVariables', () => {
 			];
 
 			const { getByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
 
 			await userEvent.hover(getByTestId('variables-row'));
 			const deleteButton = getByTestId('variable-row-delete-button');

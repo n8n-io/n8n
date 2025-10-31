@@ -15,6 +15,7 @@ import {
 	Body,
 	Delete,
 	Get,
+	Middleware,
 	Param,
 	Patch,
 	Post,
@@ -22,6 +23,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { NextFunction, Response } from 'express';
 import { DataTableRowReturn } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -36,10 +38,30 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
+import { ProjectService } from '@/services/project.service.ee';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataTableController {
-	constructor(private readonly dataTableService: DataTableService) {}
+	constructor(
+		private readonly dataTableService: DataTableService,
+		private readonly projectService: ProjectService,
+	) {}
+
+	@Middleware()
+	async validateProjectExists(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		next: NextFunction,
+	) {
+		try {
+			const { projectId } = req.params;
+			await this.projectService.getProject(projectId);
+			next();
+		} catch (e) {
+			res.status(404).send('Project not found');
+			return;
+		}
+	}
 
 	@Post('/')
 	@ProjectScope('dataTable:create')
