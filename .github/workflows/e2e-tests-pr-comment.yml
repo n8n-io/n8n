@@ -1,0 +1,108 @@
+# Manually trigger E2E tests by commenting `/test-e2e` on a PR.
+# Dispatches the official "PR E2E" workflow to create the required "E2E - Checks" status.
+
+name: E2E Tests on PR Comment
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: read
+  contents: read
+  actions: write
+
+jobs:
+  validate_and_prepare:
+    name: Validate User and Get PR Details
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/test-e2e')
+    runs-on: ubuntu-latest
+    outputs:
+      permission_granted: ${{ steps.check_permissions.outputs.permission_granted }}
+      head_sha: ${{ steps.check_permissions.outputs.head_sha }}
+
+    steps:
+      - name: Validate User and Get PR Details
+        id: check_permissions
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commenter = context.actor;
+            const issueOwner = context.repo.owner;
+            const issueRepo = context.repo.repo;
+            const commentId = context.payload.comment.id;
+            const prNumber = context.issue.number;
+
+            // Function to add a reaction to the comment
+            async function addReaction(content) {
+              try {
+                await github.rest.reactions.createForIssueComment({
+                  owner: issueOwner,
+                  repo: issueRepo,
+                  comment_id: commentId,
+                  content: content
+                });
+              } catch (reactionError) {
+                console.log(`Failed to add reaction '${content}': ${reactionError.message}`);
+              }
+            }
+
+            // Initialize outputs
+            core.setOutput('permission_granted', 'false');
+            core.setOutput('head_sha', '');
+
+            // 1. Check user permissions
+            try {
+              const { data: permissions } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: issueOwner,
+                repo: issueRepo,
+                username: commenter
+              });
+
+              const allowedPermissions = ['admin', 'write', 'maintain'];
+              if (!allowedPermissions.includes(permissions.permission)) {
+                console.log(`User @${commenter} has '${permissions.permission}' permission. Needs 'admin', 'write', or 'maintain'.`);
+                await addReaction('-1');
+                return;
+              }
+              console.log(`User @${commenter} has '${permissions.permission}' permission.`);
+            } catch (error) {
+              console.log(`Could not verify permissions for @${commenter}: ${error.message}`);
+              await addReaction('confused');
+              return;
+            }
+
+            // 2. Fetch PR details
+            try {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: issueOwner,
+                repo: issueRepo,
+                pull_number: prNumber,
+              });
+              const headSha = pr.head.sha;
+              console.log(`Fetched PR details: SHA - ${headSha}, PR Number - ${prNumber}`);
+
+              // Set outputs for next job
+              core.setOutput('permission_granted', 'true');
+              core.setOutput('head_sha', headSha);
+              await addReaction('+1');
+            } catch (error) {
+              console.log(`Failed to fetch PR details for PR #${prNumber}: ${error.message}`);
+              await addReaction('confused');
+            }
+
+  dispatch_workflow:
+    name: Dispatch E2E Workflow
+    needs: validate_and_prepare
+    if: needs.validate_and_prepare.outputs.permission_granted == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger E2E Workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run e2e-tests-pr.yml \
+            --ref ${{ needs.validate_and_prepare.outputs.head_sha }} \
+            --repo ${{ github.repository }}
