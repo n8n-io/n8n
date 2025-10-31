@@ -74,12 +74,19 @@ describe('GET /data-tables-global', () => {
 		expect(response.body.data.data).toHaveLength(0);
 	});
 
-	test("should not list data tables from another user's personal project", async () => {
+	test("should only return data tables from another user's personal project for admins", async () => {
 		await createDataTable(ownerProject, { name: 'Personal Data Table' });
 
-		const response = await authAdminAgent.get('/data-tables-global').expect(200);
-		expect(response.body.data.count).toBe(0);
-		expect(response.body.data.data).toHaveLength(0);
+		{
+			const response = await authAdminAgent.get('/data-tables-global').expect(200);
+			expect(response.body.data.count).toBe(1);
+			expect(response.body.data.data[0].name).toBe('Personal Data Table');
+		}
+		{
+			const response = await authMemberAgent.get('/data-tables-global').expect(200);
+			expect(response.body.data.count).toBe(0);
+			expect(response.body.data.data).toHaveLength(0);
+		}
 	});
 
 	test('should list data tables from team projects where user has project:viewer role', async () => {
