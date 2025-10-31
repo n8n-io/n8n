@@ -1,6 +1,6 @@
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import { initializeAuthenticatedFeatures, initializeCore, state } from '@/init';
+import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/init';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';

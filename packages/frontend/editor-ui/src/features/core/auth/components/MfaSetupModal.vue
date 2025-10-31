@@ -15,10 +15,11 @@ import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import router from '@/router';
+import { useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+
 // ---------------------------------------------------------------------------
 // #region Reactive properties
 // ---------------------------------------------------------------------------
@@ -47,6 +48,7 @@ const userStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const toast = useToast();
+const router = useRouter();
 
 // #endregion
 

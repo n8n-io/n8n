@@ -338,7 +338,7 @@ const openCommunityRegisterModal = () => {
 </template>
 
 <style lang="scss" module>
-@use '@/app/styles/variables' as *;
+@use '@/app/css/variables' as *;
 
 .center > div {
 	justify-content: center;

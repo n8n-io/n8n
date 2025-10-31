@@ -15,7 +15,7 @@ import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/co
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
-import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
+import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';

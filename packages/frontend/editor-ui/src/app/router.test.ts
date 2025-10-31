@@ -1,13 +1,13 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import router from '@/router';
+import router from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
-import * as init from '@/init';
+import * as init from '@/app/init';
 
 const App = {
 	template: '<div />',
