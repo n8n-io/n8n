@@ -4,7 +4,7 @@ import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@
 import { type ComponentProps } from 'vue-component-type-helpers';
 import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
-	chatHubProviderSchema,
+	chatHubLLMProviderSchema,
 	emptyChatModelsResponse,
 } from '@n8n/api-types';
 import type {
@@ -67,78 +67,71 @@ const credentialsName = computed(() =>
 );
 
 const menu = computed(() => {
-	const customAgents = agents.value['custom-agent'].models;
-	const customAgentOptions = customAgents.map<
-		ComponentProps<typeof N8nNavigationDropdown>['menu'][number]
-	>((agent) => ({
-		id: stringifyModel(agent.model),
-		title: agent.name,
-		disabled: false,
-	}));
+	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
 
-	const customAgentMenu: ComponentProps<typeof N8nNavigationDropdown>['menu'][number] = {
-		id: 'custom-agents',
-		title: i18n.baseText('chatHub.agent.customAgents'),
-		icon: 'robot',
-		iconSize: 'large',
-		iconMargin: false,
-		submenu: [
-			...customAgentOptions,
-			...(customAgentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
+	if (includeCustomAgents) {
+		const customAgents = [
+			...agents.value['custom-agent'].models,
+			...agents.value['n8n'].models,
+		].map((agent) => ({
+			id: stringifyModel(agent.model),
+			title: agent.name,
+			disabled: false,
+		}));
+
+		menuItems.push({
+			id: 'custom-agents',
+			title: i18n.baseText('chatHub.agent.customAgents'),
+			icon: 'robot',
+			iconSize: 'large',
+			iconMargin: false,
+			submenu: [
+				...customAgents,
+				...(customAgents.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
+				{
+					id: NEW_AGENT_MENU_ID,
+					icon: 'plus',
+					title: i18n.baseText('chatHub.agent.newAgent'),
+					disabled: false,
+				},
+			],
+		});
+	}
+
+	for (const provider of chatHubLLMProviderSchema.options) {
+		const theAgents = agents.value[provider].models;
+		const error = agents.value[provider].error;
+		const agentOptions =
+			theAgents.length > 0
+				? theAgents
+						.filter((agent) => agent.model.provider !== 'custom-agent')
+						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
+							id: stringifyModel(agent.model),
+							title: agent.name,
+							disabled: false,
+						}))
+				: error
+					? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
+					: [];
+
+		const submenu = agentOptions.concat([
+			...(agentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
 			{
-				id: NEW_AGENT_MENU_ID,
-				icon: 'plus',
-				title: i18n.baseText('chatHub.agent.newAgent'),
+				id: `${provider}::configure`,
+				icon: 'settings',
+				title: 'Configure credentials...',
 				disabled: false,
 			},
-		],
-	};
+		]);
 
-	const providerMenus = chatHubProviderSchema.options
-		.filter(
-			(provider) =>
-				provider !== 'custom-agent' && (!includeCustomAgents ? provider !== 'n8n' : true),
-		) // hide n8n agent for now
-		.map((provider) => {
-			const theAgents = agents.value[provider].models;
-			const error = agents.value[provider].error;
-
-			const agentOptions =
-				theAgents.length > 0
-					? theAgents
-							.filter((agent) => agent.model.provider !== 'custom-agent')
-							.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
-								id: stringifyModel(agent.model),
-								title: agent.name,
-								disabled: false,
-							}))
-					: error
-						? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
-						: [];
-
-			const submenu = agentOptions.concat([
-				...(provider !== 'n8n' && agentOptions.length > 0
-					? [{ isDivider: true as const, id: 'divider' }]
-					: []),
-			]);
-
-			if (provider !== 'n8n') {
-				submenu.push({
-					id: `${provider}::configure`,
-					icon: 'settings',
-					title: 'Configure credentials...',
-					disabled: false,
-				});
-			}
-
-			return {
-				id: provider,
-				title: providerDisplayNames[provider],
-				submenu,
-			};
+		menuItems.push({
+			id: provider,
+			title: providerDisplayNames[provider],
+			submenu,
 		});
+	}
 
-	return includeCustomAgents ? [customAgentMenu, ...providerMenus] : providerMenus;
+	return menuItems;
 });
 
 const selectedLabel = computed(() => selectedAgent?.name ?? 'Select model');
@@ -224,7 +217,7 @@ defineExpose({
 				:class="$style.menuIcon"
 			/>
 			<N8nAvatar
-				v-else-if="item.id.startsWith('custom-agent::')"
+				v-else-if="item.id.startsWith('n8n::') || item.id.startsWith('custom-agent::')"
 				:class="$style.avatarIcon"
 				:first-name="item.title"
 				size="xsmall"
