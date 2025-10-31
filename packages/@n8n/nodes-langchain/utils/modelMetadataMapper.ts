@@ -343,6 +343,25 @@ export function createGenericMetadata(
 }
 
 /**
+ * Maps a Google Gemini API model to IModelMetadata
+ */
+export function mapGoogleGeminiModel(modelName: string): IModelMetadata {
+	// Development warning for fallback usage
+	if (process.env.NODE_ENV === 'development') {
+		console.warn(
+			`[DEV] Using fallback metadata for Google model: ${modelName}\n` +
+				`Consider adding metadata file: model-metadata/google/${modelName}.json`,
+		);
+	}
+
+	// Extract model ID from full path (e.g., "models/gemini-1.5-pro" → "gemini-1.5-pro")
+	const modelId = modelName.replace(/^models\//, '');
+
+	// Create generic metadata with basic defaults
+	return createGenericMetadata(modelId, 'Google');
+}
+
+/**
  * Generic mapper that tries to detect the API type and map accordingly
  */
 export function mapToModelMetadata(

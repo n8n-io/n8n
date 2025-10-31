@@ -1,6 +1,7 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
+import { mapGoogleGeminiModel } from '@utils/modelMetadataMapper';
 
 async function baseModelSearch(
 	this: ILoadOptionsFunctions,
@@ -21,7 +22,16 @@ async function baseModelSearch(
 	}
 
 	return {
-		results: models.map((model) => ({ name: model.name, value: model.name })),
+		results: models.map((model) => {
+			// Extract model ID from "models/gemini-1.5-pro" format
+			const modelId = model.name.replace(/^models\//, '');
+			return {
+				name: model.name,
+				value: model.name,
+				metadata: mapGoogleGeminiModel(modelId),
+				_metadataProvider: 'google',
+			};
+		}),
 	};
 }
 
