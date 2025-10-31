@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IResourceLocatorResultExpanded } from '@/Interface';
-import { N8nIcon, N8nInput, N8nLoading, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { N8nIcon, N8nInput, N8nLoading, N8nText, N8nTooltip, N8nPopover } from '@n8n/design-system';
+import { computed, ref, watch, useCssModule } from 'vue';
 import ModelCard from './ModelCard.vue';
 import { useModelMetadataStore } from '@/stores/modelMetadata.store';
 
@@ -12,11 +12,13 @@ type Props = {
 	hasMore: boolean;
 	selectedValue?: string | number;
 	width?: number;
+	show?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	selectedValue: undefined,
 	width: 600,
+	show: false,
 });
 
 const emit = defineEmits<{
@@ -27,6 +29,7 @@ const emit = defineEmits<{
 
 const gridRef = ref<HTMLDivElement>();
 const searchInputRef = ref<InstanceType<typeof N8nInput>>();
+const $style = useCssModule();
 
 const modelMetadataStore = useModelMetadataStore();
 const enrichedModels = ref<IResourceLocatorResultExpanded[]>([]);
@@ -158,22 +161,34 @@ const onScroll = () => {
 	}
 };
 
-// Focus search input when component mounts
+// Focus search input when dropdown shows
 watch(
-	() => props.models,
-	() => {
-		if (searchInputRef.value) {
+	() => props.show,
+	(value) => {
+		if (value && searchInputRef.value) {
 			setTimeout(() => {
 				(searchInputRef.value as any)?.focus?.();
 			}, 0);
 		}
 	},
-	{ immediate: true },
 );
+
+function isWithinDropdown(element: HTMLElement) {
+	return Boolean(element.closest('.' + $style.popover));
+}
+
+defineExpose({ isWithinDropdown });
 </script>
 
 <template>
-	<div :class="$style.modelBrowser" :style="{ width: `${width}px` }" data-test-id="model-browser">
+	<N8nPopover
+		placement="bottom"
+		:width="props.width"
+		:popper-class="$style.popover"
+		:visible="props.show"
+		:teleported="false"
+		data-test-id="model-browser"
+	>
 		<!-- Search Bar -->
 		<div :class="$style.searchBar">
 			<N8nInput
@@ -245,18 +260,35 @@ watch(
 				<span v-if="hasMore">• Scroll for more</span>
 			</N8nText>
 		</div>
-	</div>
+
+		<!-- Reference slot for the input trigger -->
+		<template #reference>
+			<slot />
+		</template>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>
-.modelBrowser {
-	display: flex;
-	flex-direction: column;
-	background: var(--color--background);
+:root .popover {
+	padding: 0 !important;
 	border: var(--border);
-	border-radius: var(--radius--lg);
-	overflow: hidden;
+	display: flex;
 	max-height: 600px;
+	flex-direction: column;
+
+	& ::-webkit-scrollbar {
+		width: 12px;
+	}
+
+	& ::-webkit-scrollbar-thumb {
+		border-radius: 12px;
+		background: var(--color--foreground--shade-1);
+		border: 3px solid var(--color--background);
+	}
+
+	& ::-webkit-scrollbar-thumb:hover {
+		background: var(--color--foreground--shade-2);
+	}
 }
 
 .searchBar {
@@ -309,38 +341,13 @@ watch(
 }
 
 .modelGrid {
+	position: relative;
+	overflow-y: auto;
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 	gap: var(--spacing--sm);
 	padding: var(--spacing--sm);
-	overflow-y: auto;
-	flex: 1;
-	min-height: 300px;
-	max-height: 500px;
-
-	// Custom scrollbar styling
-	&::-webkit-scrollbar {
-		width: 12px;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		border-radius: 12px;
-		background: var(--color--foreground--shade-1);
-		border: 3px solid var(--color--background);
-	}
-
-	&::-webkit-scrollbar-thumb:hover {
-		background: var(--color--foreground--shade-2);
-	}
-
-	// For larger screens, show 2-3 columns
-	@media (min-width: 768px) {
-		grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-	}
-
-	@media (min-width: 1024px) {
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-	}
+	max-height: 450px;
 }
 
 .loadingCards {

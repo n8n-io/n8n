@@ -640,7 +640,7 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 }
 
 function onInputMouseDown(event: MouseEvent): void {
-	if (isListMode.value) {
+	if (isListMode.value || isBrowseMode.value) {
 		event.preventDefault();
 	}
 }
@@ -853,7 +853,7 @@ function removeDuplicateTextFromErrorMessage(message: string): string {
 }
 
 function onInputFocus(): void {
-	if (!isListMode.value || resourceDropdownVisible.value) {
+	if ((!isListMode.value && !isBrowseMode.value) || resourceDropdownVisible.value) {
 		return;
 	}
 
@@ -956,50 +956,111 @@ function removeOverride() {
 		class="resource-locator"
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
-		<!-- Mode Selector for Browse Mode (full width above) -->
-		<div
-			v-if="isBrowseMode && hasMultipleModes && !isValueExpression"
-			:class="$style.modeSelectorWrapper"
-		>
-			<N8nSelect
-				:model-value="selectedMode"
-				:size="inputSize"
-				:disabled="isReadOnly"
-				:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
-				data-test-id="rlc-mode-selector"
-				@update:model-value="onModeSelected"
-			>
-				<N8nOption
-					v-for="mode in parameter.modes"
-					:key="mode.name"
-					:data-test-id="`mode-${mode.name}`"
-					:value="mode.name"
-					:label="getModeLabel(mode)"
-					:disabled="isValueExpression && mode.name === 'list'"
-					:title="
-						isValueExpression && mode.name === 'list'
-							? i18n.baseText('resourceLocator.mode.list.disabled.title')
-							: ''
-					"
-				>
-					{{ getModeLabel(mode) }}
-				</N8nOption>
-			</N8nSelect>
-		</div>
-
-		<!-- Browse Mode -->
+		<!-- Browse Mode Dropdown -->
 		<ModelBrowser
 			v-if="isBrowseMode"
+			ref="dropdownRef"
 			:models="currentQueryResults"
 			:loading="currentQueryLoading"
 			:filter="searchFilter"
 			:has-more="currentQueryHasMore"
 			:selected-value="modelValue?.value"
 			:width="width"
+			:show="resourceDropdownVisible"
 			@select="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
-		/>
+		>
+			<div
+				:class="{
+					[$style.resourceLocator]: true,
+					[$style.multipleModes]: hasMultipleModes,
+					[$style.inputContainerInputCorners]:
+						hasMultipleModes && canBeContentOverride && !isContentOverride,
+				}"
+			>
+				<div
+					:class="[
+						$style.background,
+						{
+							[$style.backgroundOverride]: showOverrideButton,
+						},
+					]"
+				></div>
+				<!-- Inline Mode Selector for Browse mode -->
+				<div v-if="hasMultipleModes" :class="$style.modeSelector">
+					<N8nSelect
+						:model-value="selectedMode"
+						:size="inputSize"
+						:disabled="isReadOnly"
+						:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
+						data-test-id="rlc-mode-selector"
+						@update:model-value="onModeSelected"
+					>
+						<N8nOption
+							v-for="mode in parameter.modes"
+							:key="mode.name"
+							:data-test-id="`mode-${mode.name}`"
+							:value="mode.name"
+							:label="getModeLabel(mode)"
+							:disabled="isValueExpression && mode.name === 'list'"
+							:title="
+								isValueExpression && mode.name === 'list'
+									? i18n.baseText('resourceLocator.mode.list.disabled.title')
+									: ''
+							"
+						>
+							{{ getModeLabel(mode) }}
+						</N8nOption>
+					</N8nSelect>
+				</div>
+
+				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
+					<N8nInput
+						ref="inputRef"
+						:class="[
+							$style.inputField,
+							{
+								[$style.selectInput]: true,
+								[$style.rightNoCorner]: canBeContentOverride && !isContentOverride,
+							},
+						]"
+						:size="inputSize"
+						:model-value="valueToDisplay"
+						:disabled="isReadOnly"
+						:readonly="true"
+						:title="displayTitle"
+						:placeholder="inputPlaceholder"
+						type="text"
+						data-test-id="rlc-input"
+						@focus="onInputFocus"
+						@blur="onInputBlur"
+						@mousedown="onInputMouseDown"
+					>
+						<template #suffix>
+							<i
+								:class="{
+									['el-input__icon']: true,
+									['el-icon-arrow-down']: true,
+									[$style.selectIcon]: true,
+									[$style.isReverse]: resourceDropdownVisible,
+								}"
+							/>
+						</template>
+					</N8nInput>
+					<ParameterIssues
+						v-if="parameterIssues && parameterIssues.length"
+						:issues="parameterIssues"
+						:class="$style['parameter-issues']"
+					/>
+					<div v-else-if="urlValue" :class="$style.openResourceLink">
+						<N8nLink theme="text" @click.stop="openResource(urlValue)">
+							<N8nIcon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
+						</N8nLink>
+					</div>
+				</div>
+			</div>
+		</ModelBrowser>
 
 		<!-- Standard List/ID/URL Modes -->
 		<ResourceLocatorDropdown
