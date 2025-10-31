@@ -230,15 +230,6 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 		});
 	});
 
-	describe('googleApiRequestAllItems', () => {
-		// Tests for googleApiRequestAllItems are skipped as they require complex internal mocking
-		// The function logic is simple pagination handling that wraps googleApiRequest
-		// These tests would be better suited as integration tests rather than unit tests
-		it('should be tested with integration tests', () => {
-			expect(true).toBe(true); // Placeholder to avoid empty describe block
-		});
-	});
-
 	describe('jsonToDocument', () => {
 		it('should convert boolean values', () => {
 			expect(jsonToDocument(true as any)).toEqual({ booleanValue: true });

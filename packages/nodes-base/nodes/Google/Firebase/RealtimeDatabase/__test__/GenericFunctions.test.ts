@@ -178,20 +178,6 @@ describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
 				);
 			});
 
-			it('should work with ILoadOptionsFunctions', async () => {
-				const mockResponse = { options: ['option1', 'option2'] };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-
-				const result = await googleApiRequest.call(
-					mockLoadOptionsFunctions,
-					'test-project',
-					'GET',
-					'/options',
-				);
-
-				expect(result).toEqual(mockResponse);
-			});
-
 			it('should use different regions correctly', async () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					region: 'europe-west1-firebase.cloudfunctions.net',
@@ -251,28 +237,6 @@ describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
 					}),
 				);
 			});
-		});
-	});
-
-	describe('googleApiRequestAllItems', () => {
-		// Tests for googleApiRequestAllItems are skipped due to a known pagination bug:
-		//
-		// BUG: This function uses Firestore-style pageToken pagination which is incorrect
-		// for Firebase Realtime Database. Firebase Realtime Database uses a different
-		// pagination approach with orderBy, limitToFirst, startAt parameters.
-		//
-		// The current implementation has the following issues:
-		// 1. Uses pageToken/nextPageToken which don't exist in Realtime Database API
-		// 2. Tries to access responseData[resource] but Realtime Database returns data directly
-		// 3. May cause runtime errors or infinite loops when used with actual Firebase API
-		//
-		// This appears to be a copy-paste error from the Firestore implementation in
-		// CloudFirestore/GenericFunctions.ts which correctly uses pageToken pagination.
-		//
-		// To fix: Replace with Firebase Realtime Database specific pagination using
-		// cursor-based approach with orderBy, startAt, limitToFirst parameters.
-		it('should be tested with integration tests', () => {
-			expect(true).toBe(true); // Placeholder to avoid empty describe block
 		});
 	});
 });

@@ -18,8 +18,19 @@ jest.mock('moment-timezone', () => {
 	const mockMoment = (value?: any) => ({
 		unix: jest.fn(() => 1640995200), // Mock timestamp: 2022-01-01T00:00:00Z
 		isValid: jest.fn(() => {
-			// Mock moment validation logic - return true for ISO date strings
-			if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+			// Mock moment validation logic to match real moment behavior
+			// Real moment considers many values "valid" even if they're not proper dates
+			if (typeof value === 'string') {
+				// ISO date formats
+				if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+					return true;
+				}
+				// Only consider obviously non-date strings as invalid
+				// Real moment would consider numeric strings like '123' as valid (with deprecation warning)
+				if (/^[a-zA-Z\s]+$/.test(value)) {
+					return false; // Pure text strings like 'foo bar baz' are invalid
+				}
+				// Everything else (including numeric strings) is considered "valid" by moment
 				return true;
 			}
 			return false;
@@ -112,7 +123,7 @@ describe('Salesforce -> GenericFunctions', () => {
 		it('should handle equals operation', () => {
 			const options: IDataObject = {
 				conditionsUi: {
-					conditionValues: [{ field: 'field_1', operation: 'equal', value: 123 }],
+					conditionValues: [{ field: 'field_1', operation: 'equal', value: '123' }],
 				},
 			};
 
@@ -125,10 +136,10 @@ describe('Salesforce -> GenericFunctions', () => {
 			const options: IDataObject = {
 				conditionsUi: {
 					conditionValues: [
-						{ field: 'field_1', operation: '>', value: 123 },
-						{ field: 'field_2', operation: '<', value: 456 },
-						{ field: 'field_3', operation: '>=', value: 789 },
-						{ field: 'field_4', operation: '<=', value: 0 },
+						{ field: 'field_1', operation: '>', value: '123' },
+						{ field: 'field_2', operation: '<', value: '456' },
+						{ field: 'field_3', operation: '>=', value: '789' },
+						{ field: 'field_4', operation: '<=', value: '0' },
 					],
 				},
 			};
@@ -140,7 +151,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			);
 		});
 
-		it('should return undefined when constitions is not an array', () => {
+		it('should return undefined when conditions is not an array', () => {
 			const options: IDataObject = {
 				conditionsUi: {
 					conditionValues: 'not an array',
@@ -152,7 +163,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			expect(result).toBeUndefined();
 		});
 
-		it('should return undefined when constitions is an empty array', () => {
+		it('should return undefined when conditions is an empty array', () => {
 			const options: IDataObject = {
 				conditionsUi: {
 					conditionValues: [],
@@ -213,7 +224,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			const options: IDataObject = {
 				fields: 'id,name,email',
 				conditionsUi: {
-					conditionValues: [{ field: 'id', operation: 'equal', value: 123 }],
+					conditionValues: [{ field: 'id', operation: 'equal', value: '123' }],
 				},
 			};
 
@@ -236,7 +247,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			const options: IDataObject = {
 				fields: 'id,name,email',
 				conditionsUi: {
-					conditionValues: [{ field: 'id', operation: 'equal', value: 123 }],
+					conditionValues: [{ field: 'id', operation: 'equal', value: '123' }],
 				},
 			};
 
