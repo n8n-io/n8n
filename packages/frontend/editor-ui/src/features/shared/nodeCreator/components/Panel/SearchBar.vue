@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import { N8nIcon } from '@n8n/design-system';
 export interface Props {
@@ -80,7 +80,7 @@ defineExpose({
 	height: 40px;
 	padding: 0 var(--spacing--xs);
 	align-items: center;
-	margin: var(--search-margin, var(--spacing--sm));
+	margin: var(--search--margin, var(--spacing--sm));
 	filter: drop-shadow(0 2px 5px rgba(46, 46, 50, 0.04));
 
 	border: 1px solid $node-creator-border-color;

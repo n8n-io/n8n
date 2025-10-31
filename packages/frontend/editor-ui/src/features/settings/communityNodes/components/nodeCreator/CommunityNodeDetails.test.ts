@@ -53,7 +53,7 @@ vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 	})),
 }));
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getCommunityNodeAttributes,
 		getNodeTypes,
@@ -71,7 +71,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(() => usersStore),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showMessage: vi.fn(),
 		showError,

@@ -1,11 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useRolesStore } from '@/stores/roles.store';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRolesView from './ProjectRolesView.vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 // Mock vue-router
 const mockPush = vi.fn();
@@ -24,14 +24,14 @@ const mockShowMessage = vi.fn();
 const mockShowError = vi.fn();
 const mockConfirm = vi.fn();
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
 		showError: mockShowError,
 	}),
 }));
 
-vi.mock('@/composables/useMessage', () => ({
+vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({
 		confirm: mockConfirm,
 	}),

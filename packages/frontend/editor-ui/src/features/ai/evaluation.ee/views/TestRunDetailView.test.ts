@@ -8,7 +8,7 @@ import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
 import type { IWorkflowDb } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 	}),

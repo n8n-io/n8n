@@ -5,18 +5,18 @@ import {
 } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import VirtualSchema from './VirtualSchema.vue';
-import * as nodeHelpers from '@/composables/useNodeHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
+import * as nodeHelpers from '@/app/composables/useNodeHelpers';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	IF_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
@@ -30,9 +30,9 @@ import {
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { defaultSettings } from '@/__tests__/defaults';
-import { usePostHog } from '@/stores/posthog.store';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',

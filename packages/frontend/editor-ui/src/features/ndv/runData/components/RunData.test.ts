@@ -8,17 +8,17 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
-import { SET_NODE_TYPE } from '@/constants';
+import { SET_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
@@ -50,12 +50,12 @@ vi.mock('@/features/execution/executions/composables/useExecutionHelpers', () =>
 	}),
 }));
 
-vi.mock('@/composables/useWorkflowHelpers', async (importOriginal) => {
+vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
 	const actual: object = await importOriginal();
 	return { ...actual, resolveParameter: vi.fn(() => 123) };
 });
 
-vi.mock('@/composables/useRunWorkflow', () => ({
+vi.mock('@/app/composables/useRunWorkflow', () => ({
 	useRunWorkflow: () => ({
 		runWorkflow,
 	}),
@@ -1003,6 +1003,104 @@ describe('RunData', () => {
 
 			const runSelectorOptionsCount = await findAllByTestId('run-selection-option');
 			expect(runSelectorOptionsCount.length).toBe(2);
+		});
+	});
+
+	describe('schema view with mixed execution states', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should show schema view when some upstream nodes are executed', async () => {
+			// Setup: Create a scenario where one upstream node has executed, another hasn't
+			const lastSuccessfulExecution = {
+				id: '456',
+				finished: true,
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				data: {
+					resultData: {
+						runData: {
+							'Executed Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: {
+										main: [[{ json: { test: 'executed data' } }]],
+									},
+									source: [null],
+									executionStatus: 'success' as const,
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				runs: [], // Current node hasn't run
+				lastSuccessfulExecution,
+				paneType: 'input',
+			});
+
+			await waitFor(() => {
+				const schemaComponent = getByTestId('run-data-schema-node');
+				expect(schemaComponent).toBeInTheDocument();
+			});
+		});
+
+		it('should show empty state when all upstream nodes are unexecuted', async () => {
+			const { container } = render({
+				displayMode: 'schema',
+				runs: [],
+				paneType: 'input',
+			});
+
+			expect(
+				container.querySelector('[data-test-id="run-data-schema-node"]'),
+			).not.toBeInTheDocument();
+		});
+
+		it('should show schema view with lastSuccessfulExecution when current node not executed but upstream has data', async () => {
+			const lastSuccessfulExecution = {
+				id: '123',
+				finished: true,
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				data: {
+					resultData: {
+						runData: {
+							'Upstream Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: {
+										main: [[{ json: { value: 'from previous run' } }]],
+									},
+									source: [null],
+									executionStatus: 'success' as const,
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				runs: [],
+				lastSuccessfulExecution,
+				paneType: 'input',
+			});
+
+			await waitFor(() => {
+				const schemaComponent = getByTestId('run-data-schema-node');
+				expect(schemaComponent).toBeInTheDocument();
+				expect(schemaComponent.getAttribute('preview-execution')).toBeTruthy();
+			});
 		});
 	});
 

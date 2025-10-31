@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useToast } from '@/app/composables/useToast';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '../components/ExternalSecretsProviderCard.ee.vue';
 import type { ExternalSecretsProvider } from '../externalSecrets.types';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
 import { N8nActionBox, N8nCallout, N8nHeading } from '@n8n/design-system';

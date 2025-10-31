@@ -1,4 +1,4 @@
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,7 +8,7 @@ import { renderComponent, type RenderOptions } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';

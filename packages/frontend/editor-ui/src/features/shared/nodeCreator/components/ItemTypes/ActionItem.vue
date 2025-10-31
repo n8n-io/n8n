@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { reactive, computed, toRefs } from 'vue';
 import type { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
-import { WEBHOOK_NODE_TYPE, DRAG_EVENT_DATA_KEY } from '@/constants';
+import { WEBHOOK_NODE_TYPE, DRAG_EVENT_DATA_KEY } from '@/app/constants';
 
-import { DEFAULT_NODE_SIZE, getNewNodePosition } from '@/utils/nodeViewUtils';
-import NodeIcon from '@/components/NodeIcon.vue';
+import { DEFAULT_NODE_SIZE, getNewNodePosition } from '@/app/utils/nodeViewUtils';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useActions } from '../../composables/useActions';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { N8nNodeCreatorNode } from '@n8n/design-system';
 export interface Props {
@@ -123,9 +123,9 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 <style lang="scss" module>
 .action {
 	--node-creator--name--font-size: var(--font-size--2xs);
-	--node-creator--name--font-weight: var(--font-weight-normal);
-	--trigger-icon-background-color: #{$trigger-icon-background-color};
-	--trigger-icon-border-color: #{$trigger-icon-border-color};
+	--node-creator--name--font-weight: var(--font-weight--regular);
+	--trigger-icon--color--background: #{$trigger-icon-background-color};
+	--trigger-icon--border-color: #{$trigger-icon-border-color};
 	--node--icon--size: 20px;
 	--node--icon--margin-right: var(--spacing--xs);
 

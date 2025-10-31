@@ -20,8 +20,8 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../canvas.type
 import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from './CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '../handles/CanvasHandleRenderer.vue';
-import { useNodeConnections } from '@/composables/useNodeConnections';
-import { CanvasNodeKey } from '@/constants';
+import { useNodeConnections } from '@/app/composables/useNodeConnections';
+import { CanvasNodeKey } from '@/app/constants';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
@@ -34,7 +34,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import isEqual from 'lodash/isEqual';
 import CanvasNodeTrigger from './render-types/parts/CanvasNodeTrigger.vue';
-import { CONFIGURATION_NODE_RADIUS, GRID_SIZE } from '@/utils/nodeViewUtils';
+import { CONFIGURATION_NODE_RADIUS, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;

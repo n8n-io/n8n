@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useBannersStore } from '@/stores/banners.store';
+import { useBannersStore } from '@/app/stores/banners.store';
 import { computed, useSlots } from 'vue';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -75,7 +75,7 @@ async function onCloseClick() {
 
 <style lang="scss" module>
 .callout {
-	height: var(--banner-height);
+	height: var(--banner--height);
 }
 
 .mainContent {

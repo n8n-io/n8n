@@ -12,6 +12,7 @@ import {
 	FREE_AI_CREDITS_ERROR_TYPE,
 	FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE,
 	FROM_AI_AUTO_GENERATED_MARKER,
+	GUARDRAILS_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
@@ -443,6 +444,10 @@ export function generateNodesGraph(
 						: language === 'pythonNative'
 							? 'pythonNative'
 							: 'unknown';
+		} else if (node.type === GUARDRAILS_NODE_TYPE) {
+			nodeItem.operation = node.parameters.operation as string;
+			const usedGuardrails = Object.keys(node.parameters?.guardrails ?? {});
+			nodeItem.used_guardrails = usedGuardrails;
 		} else if (node.type === OPENAI_CHAT_LANGCHAIN_NODE_TYPE) {
 			const enabledDefault = node.typeVersion >= 1.3 ? true : false;
 			// For 1.3+ node version by default it is true and isn't stored in parameters

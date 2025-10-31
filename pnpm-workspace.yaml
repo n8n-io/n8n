@@ -61,6 +61,7 @@ catalog:
   eslint: 9.29.0
   mysql2: 3.15.0
   run-script-os: 1.1.6
+  nodemailer: 7.0.10
 
 catalogs:
   frontend:

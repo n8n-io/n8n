@@ -4,15 +4,15 @@ import { useRouter } from 'vue-router';
 
 import { useI18n } from '@n8n/i18n';
 import { useOrchestrationStore } from '../orchestration.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { usePushConnection } from '@/composables/usePushConnection';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePushConnection } from '@/app/composables/usePushConnection';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import WorkerCard from './WorkerCard.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
-import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
+import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
 withDefaults(
 	defineProps<{
 		autoRefreshEnabled?: boolean;
