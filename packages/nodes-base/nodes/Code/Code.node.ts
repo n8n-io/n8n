@@ -35,11 +35,23 @@ class PythonDisabledError extends UserError {
 	}
 }
 
+function iconForLanguage(lang: CodeNodeLanguageOption): string {
+	switch (lang) {
+		case 'python':
+		case 'pythonNative':
+			return 'file:python.svg';
+		case 'javaScript':
+			return 'file:js.svg';
+		default:
+			return 'file:code.svg';
+	}
+}
+
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code',
 		name: 'code',
-		icon: 'file:code.svg',
+		icon: `={{(${iconForLanguage})($parameter.language)}}`,
 		group: ['transform'],
 		version: [1, 2],
 		defaultVersion: 2,
