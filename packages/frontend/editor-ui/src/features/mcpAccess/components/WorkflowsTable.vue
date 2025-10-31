@@ -6,12 +6,14 @@ import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import {
 	N8nActionBox,
 	N8nActionToggle,
+	N8nButton,
 	N8nDataTableServer,
 	N8nHeading,
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
 import { VIEWS } from '@/constants';
@@ -27,6 +29,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	removeMcpAccess: [workflow: WorkflowListItem];
+	refresh: [];
 }>();
 
 const i18n = useI18n();
@@ -121,6 +124,16 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 						props.workflows.length
 					}})
 				</N8nHeading>
+				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
+					<N8nButton
+						data-test-id="mcp-oauth-clients-refresh-button"
+						size="small"
+						type="tertiary"
+						icon="refresh"
+						:square="true"
+						@click="$emit('refresh')"
+					/>
+				</N8nTooltip>
 			</div>
 			<N8nActionBox
 				v-if="props.workflows.length === 0"

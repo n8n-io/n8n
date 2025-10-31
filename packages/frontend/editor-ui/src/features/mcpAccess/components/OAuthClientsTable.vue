@@ -4,10 +4,12 @@ import type { OAuthClientResponseDto } from '@n8n/api-types';
 import type { UserAction } from '@/Interface';
 import {
 	N8nActionToggle,
+	N8nButton,
 	N8nDataTableServer,
 	N8nHeading,
 	N8nLoading,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { ref } from 'vue';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
@@ -24,6 +26,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	revokeClient: [client: OAuthClientResponseDto];
+	refresh: [];
 }>();
 
 const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
@@ -81,7 +84,7 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 </script>
 
 <template>
-	<div :class="$style['oauth-clients-table-container']">
+	<div data-test-id="oauth-clients-table">
 		<div v-if="props.loading">
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
@@ -91,6 +94,16 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 				<N8nHeading size="medium" :bold="true">
 					{{ i18n.baseText('settings.mcp.oAuthClients.heading') }} ({{ props.clients.length }})
 				</N8nHeading>
+				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
+					<N8nButton
+						data-test-id="mcp-oauth-clients-refresh-button"
+						size="small"
+						type="tertiary"
+						icon="refresh"
+						:square="true"
+						@click="$emit('refresh')"
+					/>
+				</N8nTooltip>
 			</div>
 			<N8nDataTableServer
 				:class="$style['client-table']"
@@ -123,11 +136,9 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 </template>
 
 <style lang="scss" module>
-.oauth-clients-table-container {
-	.header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 </style>

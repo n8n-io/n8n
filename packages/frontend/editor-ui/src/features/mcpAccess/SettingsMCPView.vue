@@ -16,6 +16,7 @@ import McpAccessToggle from './components/McpAccessToggle.vue';
 import { N8nHeading } from '@n8n/design-system';
 import { useMcp } from './composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
+import { fetchOAuthClients } from './mcp.api';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -78,7 +79,9 @@ const fetchAvailableWorkflows = async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 	} finally {
-		workflowsLoading.value = false;
+		setTimeout(() => {
+			workflowsLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
 	}
 };
 
@@ -138,6 +141,14 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 	}
 };
 
+const onRefreshOAuthClients = async () => {
+	await fetchoAuthCLients();
+};
+
+const onRefreshWorkflows = async () => {
+	await fetchAvailableWorkflows();
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
 	if (!mcpStore.mcpAccessEnabled) {
@@ -176,12 +187,14 @@ onMounted(async () => {
 				:clients="connectedOAuthClients"
 				:loading="oAuthClientsLoading"
 				@revoke-client="revokeClientAccess"
+				@refresh="onRefreshOAuthClients"
 			/>
 			<WorkflowsTable
 				:data-test-id="'mcp-workflow-table'"
 				:workflows="availableWorkflows"
 				:loading="workflowsLoading"
 				@remove-mcp-access="onRemoveMCPAccess"
+				@refresh="onRefreshWorkflows"
 			/>
 		</div>
 	</div>

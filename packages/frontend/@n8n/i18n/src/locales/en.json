@@ -2080,6 +2080,7 @@
 	"settings.mcp.oAuthClients.revoke.success.title": "Access revoked",
 	"settings.mcp.oAuthClients.revoke.success.message": "Client {name} access has been revoked",
 	"settings.mcp.oAuthClients.revoke.error": "Error revoking client access",
+	"settings.mcp.refresh.tooltip": "Refresh list",
 	"settings.goBack": "Go back",
 	"settings.personal": "Personal",
 	"settings.personal.basicInformation": "Basic Information",
