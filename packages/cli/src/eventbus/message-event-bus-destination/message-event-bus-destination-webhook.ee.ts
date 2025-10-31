@@ -2,8 +2,9 @@
 
 import { Container } from '@n8n/di';
 import axios from 'axios';
-import type { AxiosRequestConfig, Method } from 'axios';
-import { Agent as HTTPSAgent } from 'https';
+import type { AxiosInstance, AxiosRequestConfig, CreateAxiosDefaults, Method } from 'axios';
+import { Agent as HTTPAgent, type AgentOptions as HTTPAgentOptions } from 'http';
+import { Agent as HTTPSAgent, type AgentOptions as HTTPSAgentOptions } from 'https';
 import { ExternalSecretsProxy } from 'n8n-core';
 import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
@@ -19,6 +20,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
+import { Time } from '@n8n/constants';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -68,7 +70,9 @@ export class MessageEventBusDestinationWebhook
 
 	credentialsHelper?: CredentialsHelper;
 
-	axiosRequestOptions: AxiosRequestConfig;
+	axiosRequestOptions?: AxiosRequestConfig;
+
+	axiosInstance: AxiosInstance;
 
 	constructor(
 		eventBusInstance: MessageEventBus,
@@ -95,7 +99,54 @@ export class MessageEventBusDestinationWebhook
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
 
+		const axiosSetting = this.buildAxiosSetting(options);
+
+		this.axiosInstance = axios.create(axiosSetting);
+
 		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
+	}
+
+	private buildAxiosSetting(
+		options: MessageEventBusDestinationWebhookOptions,
+	): CreateAxiosDefaults {
+		const axiosSetting: CreateAxiosDefaults = {
+			headers: {},
+			method: options.method as Method,
+			url: options.url,
+			maxRedirects: 0,
+		} as AxiosRequestConfig;
+
+		if (options.options?.redirect?.followRedirects) {
+			axiosSetting.maxRedirects = this.options.redirect?.maxRedirects;
+		}
+
+		axiosSetting.proxy = options.options?.proxy;
+
+		axiosSetting.timeout = options.options?.timeout ?? 10 * Time.seconds.toMilliseconds;
+
+		// TODO: make this configurable
+		const agentOptions: HTTPAgentOptions = {
+			// keepAlive to keep TCP connections alive for reuse
+			keepAlive: options.options?.socket?.keepAlive ?? true,
+			maxSockets: options.options?.socket?.maxSockets ?? 100,
+			maxFreeSockets: options.options?.socket?.maxFreeSockets ?? 100,
+			maxTotalSockets: options.options?.socket?.maxTotalSockets ?? 100,
+			// Socket timeout in milliseconds defaults to 10 seconds
+			timeout: options.options?.socket?.timeout ?? 10 * Time.seconds.toMilliseconds,
+		};
+
+		const httpsAgentOptions: HTTPSAgentOptions = {
+			...agentOptions,
+		};
+
+		if (this.options.allowUnauthorizedCerts) {
+			httpsAgentOptions.rejectUnauthorized = false;
+		}
+
+		axiosSetting.httpsAgent = new HTTPSAgent(httpsAgentOptions);
+		axiosSetting.httpAgent = new HTTPAgent(agentOptions);
+
+		return axiosSetting;
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
@@ -117,43 +168,18 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	async generateAxiosOptions() {
-		if (this.axiosRequestOptions?.url) {
+		if (this.axiosRequestOptions) {
 			return;
 		}
 
-		this.axiosRequestOptions = {
-			headers: {},
-			method: this.method as Method,
-			url: this.url,
-			maxRedirects: 0,
-		} as AxiosRequestConfig;
+		this.axiosRequestOptions = {};
 
-		if (this.credentialsHelper === undefined) {
-			this.credentialsHelper = Container.get(CredentialsHelper);
-		}
+		this.credentialsHelper ??= Container.get(CredentialsHelper);
 
 		const sendQuery = this.sendQuery;
 		const specifyQuery = this.specifyQuery;
 		const sendHeaders = this.sendHeaders;
 		const specifyHeaders = this.specifyHeaders;
-
-		if (this.options.allowUnauthorizedCerts) {
-			this.axiosRequestOptions.httpsAgent = new HTTPSAgent({ rejectUnauthorized: false });
-		}
-
-		if (this.options.redirect?.followRedirects) {
-			this.axiosRequestOptions.maxRedirects = this.options.redirect?.maxRedirects;
-		}
-
-		if (this.options.proxy) {
-			this.axiosRequestOptions.proxy = this.options.proxy;
-		}
-
-		if (this.options.timeout) {
-			this.axiosRequestOptions.timeout = this.options.timeout;
-		} else {
-			this.axiosRequestOptions.timeout = 10000;
-		}
 
 		if (this.sendQuery && this.options.queryParameterArrays) {
 			Object.assign(this.axiosRequestOptions, {
@@ -263,18 +289,25 @@ export class MessageEventBusDestinationWebhook
 		// at first run, build this.requestOptions with the destination settings
 		await this.generateAxiosOptions();
 
+		// we need to make a copy of the request here, because to access the credentials
+		// later on we are awaiting and therefore yielding to the event loop
+		// therefore a race condition can occur for multiple events being processed simultaneously
+		const request = {
+			...(this.axiosRequestOptions ?? {}),
+		};
+
 		const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 
 		if (['PATCH', 'POST', 'PUT', 'GET'].includes(this.method.toUpperCase())) {
 			if (this.sendPayload) {
-				this.axiosRequestOptions.data = {
+				request.data = {
 					...msg,
 					__type: undefined,
 					payload,
 					ts: msg.ts.toISO(),
 				};
 			} else {
-				this.axiosRequestOptions.data = {
+				request.data = {
 					...msg,
 					__type: undefined,
 					payload: undefined,
@@ -311,29 +344,29 @@ export class MessageEventBusDestinationWebhook
 
 		if (httpBasicAuth) {
 			// Add credentials if any are set
-			this.axiosRequestOptions.auth = {
+			request.auth = {
 				username: httpBasicAuth.user as string,
 				password: httpBasicAuth.password as string,
 			};
 		} else if (httpHeaderAuth) {
-			this.axiosRequestOptions.headers = {
-				...this.axiosRequestOptions.headers,
+			request.headers = {
+				...request.headers,
 				[httpHeaderAuth.name as string]: httpHeaderAuth.value as string,
 			};
 		} else if (httpQueryAuth) {
-			this.axiosRequestOptions.params = {
-				...this.axiosRequestOptions.params,
+			request.params = {
+				...request.params,
 				[httpQueryAuth.name as string]: httpQueryAuth.value as string,
 			};
 		} else if (httpDigestAuth) {
-			this.axiosRequestOptions.auth = {
+			request.auth = {
 				username: httpDigestAuth.user as string,
 				password: httpDigestAuth.password as string,
 			};
 		}
 
 		try {
-			const requestResponse = await axios.request(this.axiosRequestOptions);
+			const requestResponse = await this.axiosInstance.request(request);
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
 					if (requestResponse.status === this.expectedStatusCode) {

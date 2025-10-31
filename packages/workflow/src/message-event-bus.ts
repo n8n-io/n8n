@@ -97,6 +97,13 @@ export interface MessageEventBusDestinationWebhookParameterOptions {
 		port: number;
 	};
 	timeout?: number;
+	socket?: {
+		keepAlive?: boolean;
+		timeout?: number;
+		maxSockets?: number;
+		maxTotalSockets?: number;
+		maxFreeSockets?: number;
+	};
 }
 
 export interface MessageEventBusDestinationWebhookOptions
