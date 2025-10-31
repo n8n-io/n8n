@@ -58,7 +58,7 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
