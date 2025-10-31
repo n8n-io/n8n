@@ -91,7 +91,7 @@ function resetForm() {
 
 // Watch for modal opening
 watch(
-	() => uiStore.modalsById.agentEditor.open,
+	() => uiStore.modalsById.agentEditor?.open,
 	(isOpen) => {
 		if (isOpen) {
 			if (props.agentId) {
