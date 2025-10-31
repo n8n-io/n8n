@@ -61,13 +61,23 @@ function prepareRequestedNodesForExecution(
 		const parentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
 		const parentRunIndex = parentSourceData?.previousNodeRun ?? 0;
 		const parentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
+
+		// Get the item index from action metadata to access the correct agent input data
+		const itemIndex = (action.metadata as { itemIndex?: number })?.itemIndex ?? 0;
+		const agentInputData = executionData.data.main?.[runIndex]?.[itemIndex];
+
+		// Merge agent's input data with action.input so tools have access to workflow data
+		// action.input takes precedence to allow tool-specific parameters to override
+		const mergedJson = {
+			...(agentInputData?.json ?? {}),
+			...action.input,
+			toolCallId: action.id,
+		};
+
 		const parentOutputData: INodeExecutionData[][] = [
 			[
 				{
-					json: {
-						...action.input,
-						toolCallId: action.id,
-					},
+					json: mergedJson,
 					pairedItem: {
 						item: parentRunIndex,
 						input: parentOutputIndex,
