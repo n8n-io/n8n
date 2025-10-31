@@ -158,15 +158,6 @@ export class LmChatAnthropic implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'Browse Models',
-						name: 'browse',
-						type: 'browse',
-						typeOptions: {
-							searchListMethod: 'searchModels',
-							searchable: true,
-						},
-					},
-					{
 						displayName: 'From List',
 						name: 'list',
 						type: 'list',
@@ -184,7 +175,7 @@ export class LmChatAnthropic implements INodeType {
 					},
 				],
 				description:
-					'The model. Browse with metadata, choose from list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
+					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.3 } }],

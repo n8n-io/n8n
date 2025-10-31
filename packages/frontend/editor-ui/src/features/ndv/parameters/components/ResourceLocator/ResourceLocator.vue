@@ -14,6 +14,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useModelMetadataStore } from '@/stores/modelMetadata.store';
 import {
 	getAppNameFromNodeName,
 	getMainAuthField,
@@ -44,7 +45,6 @@ import {
 	watch,
 } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import ModelBrowser from './ModelBrowser.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import {
@@ -158,6 +158,9 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const modelMetadataStore = useModelMetadataStore();
+
+const enrichedResults = ref<IResourceLocatorResultExpanded[]>([]);
 
 const appName = computed(() => {
 	if (!props.node) {
@@ -182,8 +185,6 @@ const selectedMode = computed(() => {
 });
 
 const isListMode = computed(() => selectedMode.value === 'list');
-
-const isBrowseMode = computed(() => currentMode.value.type === 'browse');
 
 /**
  * Check if the current response contains an error that indicates a credential issue.
@@ -474,18 +475,13 @@ watch(
 	},
 );
 
-watch(currentMode, (mode, oldMode) => {
+watch(currentMode, (mode) => {
 	if (
 		mode.extractValue?.regex &&
 		isResourceLocatorValue(props.modelValue) &&
 		props.modelValue.__regex !== mode.extractValue.regex
 	) {
 		emit('update:modelValue', { ...props.modelValue, __regex: mode.extractValue.regex as string });
-	}
-
-	// Load resources when switching to browse mode
-	if (mode.type === 'browse' && oldMode?.type !== 'browse') {
-		void loadInitialResources();
 	}
 });
 
@@ -508,6 +504,16 @@ watch(
 			});
 		}
 	},
+);
+
+watch(
+	() => [currentQueryResults.value, isListMode.value],
+	() => {
+		if (isListMode.value && currentQueryResults.value.length > 0) {
+			void enrichResultsWithMetadata();
+		}
+	},
+	{ immediate: true },
 );
 
 onMounted(() => {
@@ -640,7 +646,7 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 }
 
 function onInputMouseDown(event: MouseEvent): void {
-	if (isListMode.value || isBrowseMode.value) {
+	if (isListMode.value) {
 		event.preventDefault();
 	}
 }
@@ -827,6 +833,41 @@ async function loadResources() {
 	}
 }
 
+async function enrichResultsWithMetadata() {
+	if (!currentQueryResults.value.length || !isListMode.value) {
+		enrichedResults.value = [];
+		return;
+	}
+
+	const enriched = await Promise.all(
+		currentQueryResults.value.map(async (result) => {
+			// Skip if no metadata provider hint or no metadata
+			if (!(result as any)._metadataProvider || !result.metadata) {
+				return result;
+			}
+
+			try {
+				// Try to fetch file-based metadata
+				const fileMetadata = await modelMetadataStore.getModelMetadata({
+					provider: (result as any)._metadataProvider,
+					modelId: result.value.toString(),
+				});
+
+				// Prefer file metadata over hardcoded fallback
+				return {
+					...result,
+					metadata: fileMetadata || result.metadata,
+				};
+			} catch (error) {
+				// On error, keep original metadata
+				return result;
+			}
+		}),
+	);
+
+	enrichedResults.value = enriched;
+}
+
 /**
  * Removes duplicate credential-related sentences from error messages.
  * We are already showing a link to create/check the credentials, so we don't need to repeat the same message.
@@ -853,7 +894,7 @@ function removeDuplicateTextFromErrorMessage(message: string): string {
 }
 
 function onInputFocus(): void {
-	if ((!isListMode.value && !isBrowseMode.value) || resourceDropdownVisible.value) {
+	if (!isListMode.value || resourceDropdownVisible.value) {
 		return;
 	}
 
@@ -956,121 +997,13 @@ function removeOverride() {
 		class="resource-locator"
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
-		<!-- Browse Mode Dropdown -->
-		<ModelBrowser
-			v-if="isBrowseMode"
-			ref="dropdownRef"
-			:models="currentQueryResults"
-			:loading="currentQueryLoading"
-			:filter="searchFilter"
-			:has-more="currentQueryHasMore"
-			:selected-value="modelValue?.value"
-			:width="width"
-			:show="resourceDropdownVisible"
-			@select="onListItemSelected"
-			@filter="onSearchFilter"
-			@load-more="loadResourcesDebounced"
-		>
-			<div
-				:class="{
-					[$style.resourceLocator]: true,
-					[$style.multipleModes]: hasMultipleModes,
-					[$style.inputContainerInputCorners]:
-						hasMultipleModes && canBeContentOverride && !isContentOverride,
-				}"
-			>
-				<div
-					:class="[
-						$style.background,
-						{
-							[$style.backgroundOverride]: showOverrideButton,
-						},
-					]"
-				></div>
-				<!-- Inline Mode Selector for Browse mode -->
-				<div v-if="hasMultipleModes" :class="$style.modeSelector">
-					<N8nSelect
-						:model-value="selectedMode"
-						:size="inputSize"
-						:disabled="isReadOnly"
-						:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
-						data-test-id="rlc-mode-selector"
-						@update:model-value="onModeSelected"
-					>
-						<N8nOption
-							v-for="mode in parameter.modes"
-							:key="mode.name"
-							:data-test-id="`mode-${mode.name}`"
-							:value="mode.name"
-							:label="getModeLabel(mode)"
-							:disabled="isValueExpression && mode.name === 'list'"
-							:title="
-								isValueExpression && mode.name === 'list'
-									? i18n.baseText('resourceLocator.mode.list.disabled.title')
-									: ''
-							"
-						>
-							{{ getModeLabel(mode) }}
-						</N8nOption>
-					</N8nSelect>
-				</div>
-
-				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
-					<N8nInput
-						ref="inputRef"
-						:class="[
-							$style.inputField,
-							{
-								[$style.selectInput]: true,
-								[$style.rightNoCorner]: canBeContentOverride && !isContentOverride,
-							},
-						]"
-						:size="inputSize"
-						:model-value="valueToDisplay"
-						:disabled="isReadOnly"
-						:readonly="true"
-						:title="displayTitle"
-						:placeholder="inputPlaceholder"
-						type="text"
-						data-test-id="rlc-input"
-						@focus="onInputFocus"
-						@blur="onInputBlur"
-						@mousedown="onInputMouseDown"
-					>
-						<template #suffix>
-							<i
-								:class="{
-									['el-input__icon']: true,
-									['el-icon-arrow-down']: true,
-									[$style.selectIcon]: true,
-									[$style.isReverse]: resourceDropdownVisible,
-								}"
-							/>
-						</template>
-					</N8nInput>
-					<ParameterIssues
-						v-if="parameterIssues && parameterIssues.length"
-						:issues="parameterIssues"
-						:class="$style['parameter-issues']"
-					/>
-					<div v-else-if="urlValue" :class="$style.openResourceLink">
-						<N8nLink theme="text" @click.stop="openResource(urlValue)">
-							<N8nIcon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
-						</N8nLink>
-					</div>
-				</div>
-			</div>
-		</ModelBrowser>
-
-		<!-- Standard List/ID/URL Modes -->
 		<ResourceLocatorDropdown
-			v-else
 			ref="dropdownRef"
 			:model-value="modelValue"
 			:show="resourceDropdownVisible"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
-			:resources="currentQueryResults"
+			:resources="enrichedResults.length > 0 ? enrichedResults : currentQueryResults"
 			:loading="currentQueryLoading"
 			:filter="searchFilter"
 			:has-more="currentQueryHasMore"

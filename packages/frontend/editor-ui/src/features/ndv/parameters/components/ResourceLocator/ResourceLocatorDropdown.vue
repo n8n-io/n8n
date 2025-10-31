@@ -7,6 +7,7 @@ import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
 import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover } from '@n8n/design-system';
+import ModelMetadataRow from './ModelMetadataRow.vue';
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
@@ -96,6 +97,10 @@ const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 	}
 
 	return result.notSelected;
+});
+
+const hasMetadata = computed(() => {
+	return props.resources.some((r) => r.metadata?.intelligenceLevel);
 });
 
 watch(
@@ -302,6 +307,7 @@ defineExpose({ isWithinDropdown });
 				ref="itemsRef"
 				:class="{
 					[$style.resourceItem]: true,
+					[$style.modelItem]: result.metadata?.intelligenceLevel,
 					[$style.selected]: result.value === props.modelValue?.value,
 					[$style.hovering]: hoverIndex === i + 1,
 				}"
@@ -310,7 +316,15 @@ defineExpose({ isWithinDropdown });
 				@mouseenter="() => onItemHover(i + 1)"
 				@mouseleave="() => onItemHoverLeave()"
 			>
-				<div :class="$style.resourceNameContainer">
+				<!-- Enhanced rendering with metadata -->
+				<ModelMetadataRow
+					v-if="result.metadata?.intelligenceLevel"
+					:metadata="result.metadata"
+					:name="result.name"
+				/>
+
+				<!-- Simple rendering (fallback) -->
+				<div v-else :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
 					<span v-if="result.isArchived">
 						<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
@@ -318,6 +332,7 @@ defineExpose({ isWithinDropdown });
 						</N8nBadge>
 					</span>
 				</div>
+
 				<div :class="$style.urlLink">
 					<N8nIcon
 						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
@@ -396,6 +411,15 @@ defineExpose({ isWithinDropdown });
 
 	&:hover {
 		background-color: var(--color--background);
+	}
+
+	&.modelItem {
+		height: auto;
+		min-height: 48px;
+		padding: var(--spacing--xs);
+		white-space: normal;
+		align-items: flex-start;
+		flex-direction: column;
 	}
 }
 

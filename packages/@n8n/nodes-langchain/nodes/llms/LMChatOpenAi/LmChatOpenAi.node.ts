@@ -199,15 +199,6 @@ export class LmChatOpenAi implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'Browse Models',
-						name: 'browse',
-						type: 'browse',
-						typeOptions: {
-							searchListMethod: 'searchModels',
-							searchable: true,
-						},
-					},
-					{
 						displayName: 'From List',
 						name: 'list',
 						type: 'list',
@@ -224,7 +215,7 @@ export class LmChatOpenAi implements INodeType {
 						placeholder: 'gpt-4.1-mini',
 					},
 				],
-				description: 'The model. Browse with metadata, choose from list, or specify an ID.',
+				description: 'The model. Choose from the list, or specify an ID.',
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.1 } }],
