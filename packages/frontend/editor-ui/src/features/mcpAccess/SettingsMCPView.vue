@@ -191,6 +191,14 @@ const rotateKey = async () => {
 	}
 };
 
+const fetchoAuthCLients = async () => {
+	try {
+		await mcpStore.getAllOAuthClients();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
+	}
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
 	if (!mcpStore.mcpAccessEnabled) {
@@ -198,6 +206,7 @@ onMounted(async () => {
 	}
 	await fetchAvailableWorkflows();
 	await fetchApiKey();
+	await fetchoAuthCLients();
 });
 </script>
 <template>

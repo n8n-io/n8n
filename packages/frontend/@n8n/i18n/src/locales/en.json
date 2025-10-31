@@ -2071,6 +2071,7 @@
 	"settings.mcp.newKey.notice": "Make sure to copy your access token now. You won’t be able to see or copy it again!",
 	"settings.mcp.error.fetching.apiKey": "Error fetching access token",
 	"settings.mcp.error.rotating.apiKey": "Error generating new access token",
+	"settings.mcp.error.fetching.oAuthClients": "Error fetching list of OAuth clients",
 	"settings.goBack": "Go back",
 	"settings.personal": "Personal",
 	"settings.personal.basicInformation": "Basic Information",
