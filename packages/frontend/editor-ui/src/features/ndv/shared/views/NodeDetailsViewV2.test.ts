@@ -4,10 +4,10 @@ import { waitFor, fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import NodeDetailsViewV2 from '@/features/ndv/shared/views/NodeDetailsViewV2.vue';
-import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE, VIEWS } from '@/constants';
+import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import {

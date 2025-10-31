@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { useMessage } from '@/composables/useMessage';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useRolesStore } from '@/stores/roles.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useMessage } from '@/app/composables/useMessage';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	N8nActionBox,
 	N8nActionToggle,

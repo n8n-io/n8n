@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ProjectMoveSuccessToastMessage from './ProjectMoveSuccessToastMessage.vue';
 import { ResourceType } from '../projects.utils';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { ProjectTypes, type ProjectListItem } from '../projects.types';
 import type { ComponentProps } from 'vue-component-type-helpers';
 

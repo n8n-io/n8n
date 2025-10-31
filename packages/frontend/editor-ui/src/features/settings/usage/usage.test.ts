@@ -5,8 +5,8 @@ import * as usageApi from '@n8n/rest-api-client/api/usage';
 vi.mock('@n8n/rest-api-client/api/usage');
 
 // Mock settings store getSettings and getModuleSettings
-vi.mock('@/stores/settings.store', async () => {
-	const actual = await vi.importActual('@/stores/settings.store');
+vi.mock('@/app/stores/settings.store', async () => {
+	const actual = await vi.importActual('@/app/stores/settings.store');
 	return {
 		...actual,
 		useSettingsStore: () => ({

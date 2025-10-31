@@ -8,7 +8,7 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
 
 const props = defineProps<{

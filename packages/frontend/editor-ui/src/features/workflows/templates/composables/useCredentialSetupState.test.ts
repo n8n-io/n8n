@@ -7,7 +7,7 @@ import {
 	getAppCredentials,
 	groupNodeCredentialsByKey,
 } from '../composables/useCredentialSetupState';
-import { nodeTypeTelegram, nodeTypeTwitter } from '@/utils/testData/nodeTypeTestData';
+import { nodeTypeTelegram, nodeTypeTwitter } from '@/app/utils/testData/nodeTypeTestData';
 
 const objToMap = <TKey extends string, T>(obj: Record<TKey, T>) => {
 	return new Map(Object.entries(obj)) as Map<TKey, T>;

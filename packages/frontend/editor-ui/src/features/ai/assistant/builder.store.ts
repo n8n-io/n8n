@@ -1,5 +1,5 @@
-import type { VIEWS } from '@/constants';
-import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import type { VIEWS } from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -7,24 +7,29 @@ import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/type
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions, getBuilderCredits, getSessionsMetadata } from '@/api/ai';
+import {
+	chatWithBuilder,
+	getAiSessions,
+	getBuilderCredits,
+	getSessionsMetadata,
+} from '@/features/ai/assistant/assistant.api';
 import { generateMessageId, createBuilderPayload } from './builder.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
-import { useToast } from '@/composables/useToast';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useToast } from '@/app/composables/useToast';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
-import { stringSizeInBytes } from '@/utils/typesUtils';
+import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
+import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const INFINITE_CREDITS = -1;

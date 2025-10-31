@@ -8,9 +8,10 @@ import { N8nButton, N8nIconButton } from '@n8n/design-system';
 import { useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
-const { selectedModel, credentials } = defineProps<{
+const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
 	selectedModel: ChatModelDto | null;
 	credentials: CredentialsMap | null;
+	readyToShowModelSelector: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 	editCustomAgent: [agentId: string];
 	createCustomAgent: [];
 	selectCredential: [provider: ChatHubProvider, credentialId: string];
+	openWorkflow: [workflowId: string];
 }>();
 
 const sidebar = useChatHubSidebarState();
@@ -62,6 +64,7 @@ defineExpose({
 				@click="onNewChat"
 			/>
 			<ModelSelector
+				v-if="readyToShowModelSelector"
 				ref="modelSelectorRef"
 				:selectedAgent="selectedModel"
 				:credentials="credentials"
@@ -77,9 +80,18 @@ defineExpose({
 			:class="$style.editAgent"
 			type="secondary"
 			size="small"
-			icon="cog"
+			icon="settings"
 			label="Edit Agent"
 			@click="emit('editCustomAgent', selectedModel.model.agentId)"
+		/>
+		<N8nButton
+			v-if="selectedModel?.model.provider === 'n8n'"
+			:class="$style.editAgent"
+			type="secondary"
+			size="small"
+			icon="settings"
+			label="Open Workflow"
+			@click="emit('openWorkflow', selectedModel.model.workflowId)"
 		/>
 	</div>
 </template>

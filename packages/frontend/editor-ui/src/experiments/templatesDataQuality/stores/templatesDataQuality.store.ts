@@ -1,11 +1,11 @@
-import { useTelemetry } from '@/composables/useTelemetry';
-import { TEMPLATES_DATA_QUALITY_EXPERIMENT, VIEWS } from '@/constants';
-import { usePostHog } from '@/stores/posthog.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { TEMPLATES_DATA_QUALITY_EXPERIMENT, VIEWS } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { defineStore } from 'pinia';
 import batch1TemplateIds from '../data/batch1TemplateIds.json';
 import batch2TemplateIds from '../data/batch2TemplateIds.json';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const NUMBER_OF_TEMPLATES = 6;
 

@@ -1,20 +1,20 @@
 <script lang="ts" setup>
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { useMessage } from '@/composables/useMessage';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import type { BaseFilters, Resource, VariableResource, DatatableColumn } from '@/Interface';
 
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
@@ -42,7 +42,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
-import { isVariableResource } from '@/utils/typeGuards';
+import { isVariableResource } from '@/app/utils/typeGuards';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const settingsStore = useSettingsStore();

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import dateformat from 'dateformat';
-import { MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
-import { useMessage } from '@/composables/useMessage';
+import { useMessage } from '@/app/composables/useMessage';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '../credentials.store';
-import TimeAgo from '@/components/TimeAgo.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';

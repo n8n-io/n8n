@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
+import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
 	N8nButton,
 	N8nIcon,
@@ -13,17 +13,18 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import type { ChatHubConversationModel } from '@n8n/api-types';
+import { type ChatHubConversationModel } from '@n8n/api-types';
 import { filterAndSortAgents, stringifyModel } from '@/features/ai/chatHub/chat.utils';
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { useMediaQuery } from '@vueuse/core';
 import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
+import { useRouter } from 'vue-router';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
@@ -31,6 +32,7 @@ const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
 const sidebar = useChatHubSidebarState();
+const router = useRouter();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 
 const editingAgentId = ref<string | undefined>(undefined);
@@ -68,16 +70,26 @@ function handleCreateAgent() {
 }
 
 async function handleEditAgent(model: ChatHubConversationModel) {
-	if (model.provider !== 'custom-agent') {
+	if (model.provider === 'n8n') {
+		const routeData = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: {
+				name: model.workflowId,
+			},
+		});
+
+		window.open(routeData.href, '_blank');
 		return;
 	}
 
-	try {
-		await chatStore.fetchCustomAgent(model.agentId);
-		editingAgentId.value = model.agentId;
-		uiStore.openModal('agentEditor');
-	} catch (error) {
-		toast.showError(error, 'Failed to load agent');
+	if (model.provider === 'custom-agent') {
+		try {
+			await chatStore.fetchCustomAgent(model.agentId);
+			editingAgentId.value = model.agentId;
+			uiStore.openModal('agentEditor');
+		} catch (error) {
+			toast.showError(error, 'Failed to load agent');
+		}
 	}
 }
 

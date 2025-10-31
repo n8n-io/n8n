@@ -4,7 +4,7 @@ import { renderComponent } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { describe, it, beforeEach, vi, expect } from 'vitest';
 import { useCommandBar } from './useCommandBar';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -23,11 +23,11 @@ vi.mock('vue-router', () => ({
 }));
 
 // Stores
-vi.mock('@/stores/posthog.store', () => ({
+vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({ isVariantEnabled: vi.fn().mockReturnValue(true) }),
 }));
 const loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({ loadNodeTypesIfNotLoaded }),
 }));
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -37,7 +37,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 		currentProjectId: 'p1',
 	}),
 }));
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({ workflow: { name: 'WF' } }),
 }));
 

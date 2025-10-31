@@ -14,26 +14,26 @@ import {
 import { BUILDER_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
-import { usePostHog } from '@/stores/posthog.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
-import { DEFAULT_POSTHOG_SETTINGS } from '@/stores/posthog.store.test';
-import { DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
+import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import { reactive } from 'vue';
-import * as chatAPI from '@/api/ai';
-import * as telemetryModule from '@/composables/useTelemetry';
+import * as chatAPI from '@/features/ai/assistant/assistant.api';
+import * as telemetryModule from '@/app/composables/useTelemetry';
 import {
 	injectWorkflowState,
 	useWorkflowState,
 	type WorkflowState,
-} from '@/composables/useWorkflowState';
-import type { Telemetry } from '@/plugins/telemetry';
+} from '@/app/composables/useWorkflowState';
+import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 // Mock useI18n to return the keys instead of translations
@@ -47,15 +47,15 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 // Mock useToast
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 	}),
 }));
 
 // Mock to inject workflowState
-vi.mock('@/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowState');
+vi.mock('@/app/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/app/composables/useWorkflowState');
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(),

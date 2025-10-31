@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { CodeDiff } from 'v-code-diff';
 
 const uiStore = useUIStore();

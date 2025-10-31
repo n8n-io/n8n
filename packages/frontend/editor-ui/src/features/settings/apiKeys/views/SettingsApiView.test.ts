@@ -1,10 +1,10 @@
 import { fireEvent, screen } from '@testing-library/vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SettingsApiView from './SettingsApiView.vue';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '../apiKeys.store';
