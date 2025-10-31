@@ -46,7 +46,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 const resolveExpressionMock = vi.fn();
 
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
 		workflowObject: {
 			expression: {
