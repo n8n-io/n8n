@@ -5,8 +5,10 @@ import type { ChatMessageId } from '@n8n/api-types';
 import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 const i18n = useI18n();
+const router = useRouter();
 
 const { justCopied, message, alternatives, isSpeaking, isSpeechSynthesisAvailable } = defineProps<{
 	justCopied: boolean;
@@ -30,6 +32,16 @@ const copyTooltip = computed(() => {
 
 const currentAlternativeIndex = computed(() => {
 	return alternatives.findIndex((id) => id === message.id);
+});
+
+const executionUrl = computed(() => {
+	if (message.type === 'ai' && message.provider === 'n8n' && message.executionId) {
+		return router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: { name: message.workflowId, executionId: message.executionId },
+		}).href;
+	}
+	return undefined;
 });
 
 function handleCopy() {
@@ -89,20 +101,11 @@ function handleReadAloud() {
 			/>
 			<template #content>Regenerate</template>
 		</N8nTooltip>
-		<N8nTooltip
-			v-if="message.type === 'ai' && message.provider === 'n8n'"
-			placement="bottom"
-			:show-after="300"
-		>
+		<N8nTooltip v-if="executionUrl && message.executionId" placement="bottom" :show-after="300">
 			<N8nIconButton icon="info" type="tertiary" size="medium" text />
 			<template #content>
 				Execution ID:
-				<N8nLink
-					:to="{
-						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: message.workflowId, executionId: message.executionId },
-					}"
-				>
+				<N8nLink :to="executionUrl" :new-window="true">
 					{{ message.executionId }}
 				</N8nLink>
 			</template>

@@ -71,12 +71,15 @@ function handleCreateAgent() {
 
 async function handleEditAgent(model: ChatHubConversationModel) {
 	if (model.provider === 'n8n') {
-		void router.push({
+		const routeData = router.resolve({
 			name: VIEWS.WORKFLOW,
 			params: {
 				name: model.workflowId,
 			},
 		});
+
+		window.open(routeData.href, '_blank');
+		return;
 	}
 
 	if (model.provider === 'custom-agent') {
@@ -87,7 +90,6 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 		} catch (error) {
 			toast.showError(error, 'Failed to load agent');
 		}
-		return;
 	}
 }
 

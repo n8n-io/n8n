@@ -382,7 +382,9 @@ function closeAgentEditor() {
 }
 
 function handleOpenWorkflow(workflowId: string) {
-	void router.push({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+	const routeData = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+
+	window.open(routeData.href, '_blank');
 }
 </script>
 
