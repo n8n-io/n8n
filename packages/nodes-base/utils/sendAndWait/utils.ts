@@ -11,6 +11,7 @@ import type {
 	IWebhookFunctions,
 	IDataObject,
 	FormFieldsParameter,
+	IDisplayOptions,
 } from 'n8n-workflow';
 
 import { limitWaitTimeProperties } from './descriptions';
@@ -64,15 +65,6 @@ const limitWaitTimeOption: INodeProperties = {
 	],
 };
 
-const appendAttributionOption: INodeProperties = {
-	displayName: 'Append n8n Attribution',
-	name: 'appendAttribution',
-	type: 'boolean',
-	default: true,
-	description:
-		'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
-};
-
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
@@ -80,10 +72,20 @@ export function getSendAndWaitProperties(
 	additionalProperties: INodeProperties[] = [],
 	options?: {
 		noButtonStyle?: boolean;
+		noUiOptions?: boolean;
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
+		displayOptions?: IDisplayOptions;
 	},
 ) {
+	const appendAttributionOption: INodeProperties = {
+		displayName: 'Append n8n Attribution',
+		name: 'appendAttribution',
+		type: options?.noUiOptions ? 'hidden' : 'boolean',
+		default: true,
+		description:
+			'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
+	};
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
 		name: 'buttonStyle',
@@ -118,17 +120,21 @@ export function getSendAndWaitProperties(
 				},
 			],
 		},
-		{
-			displayName: 'Approve Button Label',
-			name: 'approveLabel',
-			type: 'string',
-			default: options?.defaultApproveLabel || 'Approve',
-			displayOptions: {
-				show: {
-					approvalType: ['single', 'double'],
-				},
-			},
-		},
+		...[
+			options?.noUiOptions
+				? ({} as INodeProperties)
+				: {
+						displayName: 'Approve Button Label',
+						name: 'approveLabel',
+						type: 'string',
+						default: options?.defaultApproveLabel || 'Approve',
+						displayOptions: {
+							show: {
+								approvalType: ['single', 'double'],
+							},
+						},
+					},
+		],
 		...[
 			options?.noButtonStyle
 				? ({} as INodeProperties)
@@ -143,17 +149,21 @@ export function getSendAndWaitProperties(
 						},
 					},
 		],
-		{
-			displayName: 'Disapprove Button Label',
-			name: 'disapproveLabel',
-			type: 'string',
-			default: options?.defaultDisapproveLabel || 'Decline',
-			displayOptions: {
-				show: {
-					approvalType: ['double'],
-				},
-			},
-		},
+		...[
+			options?.noUiOptions
+				? ({} as INodeProperties)
+				: {
+						displayName: 'Disapprove Button Label',
+						name: 'disapproveLabel',
+						type: 'string',
+						default: options?.defaultDisapproveLabel || 'Decline',
+						displayOptions: {
+							show: {
+								approvalType: ['double'],
+							},
+						},
+					},
+		],
 		...[
 			options?.noButtonStyle
 				? ({} as INodeProperties)
@@ -265,7 +275,7 @@ export function getSendAndWaitProperties(
 				{
 					displayName: 'Message Button Label',
 					name: 'messageButtonLabel',
-					type: 'string',
+					type: options?.noUiOptions ? 'hidden' : 'string',
 					default: 'Respond',
 				},
 				{
@@ -312,7 +322,7 @@ export function getSendAndWaitProperties(
 	];
 
 	return updateDisplayOptions(
-		{
+		options?.displayOptions ?? {
 			show: {
 				resource: [resource],
 				operation: [SEND_AND_WAIT_OPERATION],

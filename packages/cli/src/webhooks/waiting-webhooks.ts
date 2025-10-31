@@ -12,6 +12,7 @@ import {
 } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
+	INode,
 	type INodes,
 	type IWorkflowBase,
 	SEND_AND_WAIT_OPERATION,
@@ -60,12 +61,25 @@ export class WaitingWebhooks implements IWebhookManager {
 		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 	}
 
+	private isSendAndWaitNode(node: INode | undefined) {
+		if (!node) return false;
+
+		if (node.parameters.operation === SEND_AND_WAIT_OPERATION) {
+			return true;
+		}
+
+		if (node.parameters.sendAndWaitMode) {
+			return true;
+		}
+
+		return false;
+	}
+
 	private isSendAndWaitRequest(nodes: INodes, suffix: string | undefined) {
 		return (
 			suffix &&
 			Object.keys(nodes).some(
-				(node) =>
-					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
+				(node) => nodes[node].id === suffix && this.isSendAndWaitNode(nodes[node]),
 			)
 		);
 	}
@@ -133,7 +147,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		if (execution?.data.validateSignature) {
 			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 			const lastNode = execution.workflowData.nodes.find((node) => node.name === lastNodeExecuted);
-			const shouldValidate = lastNode?.parameters.operation === SEND_AND_WAIT_OPERATION;
+			const shouldValidate = this.isSendAndWaitNode(lastNode);
 
 			if (shouldValidate && !this.validateSignatureInRequest(req)) {
 				res.status(401).json({ error: 'Invalid token' });

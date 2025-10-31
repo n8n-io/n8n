@@ -491,6 +491,11 @@ export function useCanvasMapping({
 						return acc;
 					}
 
+					if (node?.parameters.sendAndWaitMode) {
+						acc[node.id] = i18n.baseText('node.theNodeIsWaitingUserInput');
+						return acc;
+					}
+
 					if (node?.type === FORM_NODE_TYPE) {
 						acc[node.id] = i18n.baseText('node.theNodeIsWaitingFormCall');
 						return acc;
