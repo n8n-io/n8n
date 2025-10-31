@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { CONFIRM_PASSWORD_MODAL_KEY } from '@/constants';
-import Modal from '@/components/Modal.vue';
+import { CONFIRM_PASSWORD_MODAL_KEY } from '@/app/constants';
+import Modal from '@/app/components/Modal.vue';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { IFormInputs, IFormInput, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';

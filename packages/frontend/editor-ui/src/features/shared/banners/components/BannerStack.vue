@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { BannerName } from '@n8n/api-types';
-import { useBannersStore } from '@/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import NonProductionLicenseBanner from './banners/NonProductionLicenseBanner.vue';
 import TrialOverBanner from './banners/TrialOverBanner.vue';
 import TrialBanner from './banners/TrialBanner.vue';
@@ -34,7 +34,7 @@ export const N8N_BANNERS: N8nBanners = {
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { getBannerRowHeight } from '@/utils/htmlUtils';
+import { getBannerRowHeight } from '@/app/utils/htmlUtils';
 
 const bannersStore = useBannersStore();
 

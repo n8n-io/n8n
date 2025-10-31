@@ -25,7 +25,7 @@ import {
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	PRE_BUILT_AGENTS_COLLECTION,
-} from '@/constants';
+} from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
 import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
@@ -35,10 +35,10 @@ import { i18n } from '@n8n/i18n';
 import sortBy from 'lodash/sortBy';
 import * as changeCase from 'change-case';
 
-import { useSettingsStore } from '@/stores/settings.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
-import type { NodeIconSource } from '@/utils/nodeIcon';
+import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 import {
 	PrebuiltAgentTemplates,

@@ -20,16 +20,16 @@ import {
 	deepCopy,
 } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
-import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
+import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/app/constants';
 import isEqual from 'lodash/isEqual';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
 import { captureException } from '@sentry/vue';
-import { isPresent } from '@/utils/typesUtils';
+import { isPresent } from '@/app/utils/typesUtils';
 import type { Ref } from 'vue';
-import { omitKey } from '@/utils/objectUtils';
+import { omitKey } from '@/app/utils/objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 
 export function getNodeSettingsInitialValues(): INodeParameters {

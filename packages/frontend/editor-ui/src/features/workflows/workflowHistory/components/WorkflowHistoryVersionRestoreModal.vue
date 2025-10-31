@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import Modal from '@/components/Modal.vue';
-import { useUIStore } from '@/stores/ui.store';
+import Modal from '@/app/components/Modal.vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 

@@ -937,6 +937,7 @@ export const eventFields: INodeProperties[] = [
 		default: 'instance',
 		displayOptions: {
 			show: {
+				'@tool': [false],
 				'@version': [{ _cnd: { gte: 1.3 } }],
 				resource: ['event'],
 				operation: ['update'],

@@ -42,6 +42,7 @@
       "dist/credentials/AutomizyApi.credentials.js",
       "dist/credentials/AutopilotApi.credentials.js",
       "dist/credentials/Aws.credentials.js",
+      "dist/credentials/AwsAssumeRole.credentials.js",
       "dist/credentials/AzureStorageOAuth2Api.credentials.js",
       "dist/credentials/AzureStorageSharedKeyApi.credentials.js",
       "dist/credentials/BambooHrApi.credentials.js",

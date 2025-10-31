@@ -1,4 +1,4 @@
-import { escapeMappingString } from '@/utils/mappingUtils';
+import { escapeMappingString } from '@/app/utils/mappingUtils';
 import {
 	type CompletionContext,
 	insertCompletionText,

@@ -8,17 +8,17 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
-import { SET_NODE_TYPE } from '@/constants';
+import { SET_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
@@ -50,12 +50,12 @@ vi.mock('@/features/execution/executions/composables/useExecutionHelpers', () =>
 	}),
 }));
 
-vi.mock('@/composables/useWorkflowHelpers', async (importOriginal) => {
+vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
 	const actual: object = await importOriginal();
 	return { ...actual, resolveParameter: vi.fn(() => 123) };
 });
 
-vi.mock('@/composables/useRunWorkflow', () => ({
+vi.mock('@/app/composables/useRunWorkflow', () => ({
 	useRunWorkflow: () => ({
 		runWorkflow,
 	}),

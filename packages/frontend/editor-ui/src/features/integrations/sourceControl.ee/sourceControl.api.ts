@@ -12,7 +12,7 @@ import type {
 import type { IWorkflowDb } from '@/Interface';
 
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import type { TupleToUnion } from '@/utils/typeHelpers';
+import type { TupleToUnion } from '@/app/utils/typeHelpers';
 
 const sourceControlApiRoot = '/source-control';
 

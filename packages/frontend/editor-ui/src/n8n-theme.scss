@@ -1,6 +1,6 @@
 @use '@n8n/design-system/css/mixins' as ds-mixins;
 @use '@n8n/chat/css';
-@use 'styles';
+@use '@/app/styles';
 
 :root {
 	// Using native css variable enables us to use this value in JS

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRow.vue';
 import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';

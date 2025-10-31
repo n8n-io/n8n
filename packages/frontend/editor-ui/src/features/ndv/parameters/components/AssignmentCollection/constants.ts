@@ -1,4 +1,4 @@
-import { DATA_TYPE_ICON_MAP } from '@/constants';
+import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 export const ASSIGNMENT_TYPES: Array<{ type: string; icon: IconName }> = [

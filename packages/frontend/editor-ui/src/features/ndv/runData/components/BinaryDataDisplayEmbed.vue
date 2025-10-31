@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse, base64DecodeUTF8 } from 'n8n-workflow';
 import VueJsonPretty from 'vue-json-pretty';

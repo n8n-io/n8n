@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useMessage } from '@/composables/useMessage';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useRolesStore } from '@/stores/roles.store';
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useRolesStore } from '@/app/stores/roles.store';
 import {
 	N8nButton,
 	N8nFormInput,

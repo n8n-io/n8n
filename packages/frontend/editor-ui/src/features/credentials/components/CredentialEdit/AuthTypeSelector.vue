@@ -3,13 +3,13 @@ import ParameterInputFull from '@/features/ndv/parameters/components/ParameterIn
 import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	getAuthTypeForNodeCredential,
 	getNodeAuthFields,
 	getNodeAuthOptions,
 	isAuthRelatedParameter,
-} from '@/utils/nodeTypesUtils';
+} from '@/app/utils/nodeTypesUtils';
 import type {
 	ICredentialType,
 	INodeProperties,
