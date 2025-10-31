@@ -188,7 +188,7 @@ describe('useActions', () => {
 				nodes: [
 					{ isAutoAdd: true, type: MANUAL_TRIGGER_NODE_TYPE },
 					{ openDetail: true, type: SPLIT_IN_BATCHES_NODE_TYPE },
-					{ isAutoAdd: true, name: 'Replace Me', type: NO_OP_NODE_TYPE },
+					{ isAutoAdd: true, name: 'Replace Me', type: NO_OP_NODE_TYPE, positionOffset: [0, 208] },
 				],
 			});
 		});
