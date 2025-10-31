@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
-import { MAX_TAG_NAME_LENGTH } from '@/constants';
+import { MAX_TAG_NAME_LENGTH } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';

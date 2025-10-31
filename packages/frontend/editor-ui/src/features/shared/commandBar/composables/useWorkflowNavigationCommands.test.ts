@@ -7,7 +7,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTagsStore } from '@/stores/tags.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { createTestingPinia } from '@pinia/testing';

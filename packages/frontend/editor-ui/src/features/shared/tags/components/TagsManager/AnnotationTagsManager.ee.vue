@@ -2,14 +2,14 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { useTagsStore } from '@/stores/tags.store';
+import { useAnnotationTagsStore } from '../../tags.store';
 import TagsManager from './TagsManager.vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
-import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
+import { ANNOTATION_TAGS_MANAGER_MODAL_KEY } from '../../tags.constants';
 
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
-const tagsStore = useTagsStore();
+const tagsStore = useAnnotationTagsStore();
 
 const tags = computed(() => tagsStore.allTags);
 const isLoading = computed(() => tagsStore.isLoading);
@@ -91,7 +91,12 @@ async function deleteTag(id: string): Promise<boolean> {
 
 <template>
 	<TagsManager
-		:modal-key="TAGS_MANAGER_MODAL_KEY"
+		title-locale-key="annotationTagsManager.manageTags"
+		usage-locale-key="annotationTagsView.inUse"
+		usage-column-title-locale-key="annotationTagsView.usage"
+		no-tags-title-locale-key="noAnnotationTagsView.title"
+		no-tags-description-locale-key="noAnnotationTagsView.description"
+		:modal-key="ANNOTATION_TAGS_MANAGER_MODAL_KEY"
 		:tags="tags"
 		:is-loading="isLoading"
 		:on-fetch-tags="fetchTags"

@@ -12,7 +12,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CommandGroup, CommandBarItem } from '../types';
-import { useTagsStore } from '@/stores/tags.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';

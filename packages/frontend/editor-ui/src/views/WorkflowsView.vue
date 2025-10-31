@@ -7,7 +7,7 @@ import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/core/folders/folders.consta
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -54,7 +54,7 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useTagsStore } from '@/stores/tags.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
 	ABOUT_MODAL_KEY,
-	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
@@ -16,7 +15,6 @@ import {
 	NPS_SURVEY_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
 	PRE_BUILT_AGENTS_MODAL_KEY,
@@ -32,6 +30,10 @@ import {
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 } from '@/constants';
+import {
+	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
+	TAGS_MANAGER_MODAL_KEY,
+} from '@/features/shared/tags/tags.constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import {
@@ -91,8 +93,8 @@ import EventDestinationSettingsModal from '@/features/integrations/logStreaming.
 import SetupWorkflowCredentialsModal from '@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
 import SourceControlPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue';
-import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
-import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
+import AnnotationTagsManager from '@/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue';
+import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import WhatsNewModal from '@/components/WhatsNewModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
