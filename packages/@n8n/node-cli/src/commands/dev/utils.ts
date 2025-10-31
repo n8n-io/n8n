@@ -366,7 +366,7 @@ async function killProcess(proc: ChildProcess, graceful: boolean): Promise<void>
 
 		try {
 			if (process.platform === 'win32') {
-				return execSync(`taskkill /PID ${pid} /T /F`);
+				execSync(`taskkill /PID ${pid} /T /F`, { timeout: CONFIG.KILL_TIMEOUT_MS });
 			} else {
 				process.kill(-pid, graceful ? 'SIGTERM' : 'SIGKILL');
 			}
