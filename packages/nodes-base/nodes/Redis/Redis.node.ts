@@ -292,6 +292,19 @@ export class Redis implements INodeType {
 				default: true,
 				description: 'Whether to get the value of matching keys',
 			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['llen'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the list in Redis',
+			},
 			// ----------------------------------
 			//         llen
 			// ----------------------------------
