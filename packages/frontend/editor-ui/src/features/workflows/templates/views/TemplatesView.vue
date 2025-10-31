@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import GoBackButton from '@/components/GoBackButton.vue';
+import GoBackButton from '@/app/components/GoBackButton.vue';
 
 interface Props {
 	goBackEnabled?: boolean;

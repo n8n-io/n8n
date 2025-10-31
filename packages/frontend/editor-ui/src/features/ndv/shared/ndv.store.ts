@@ -7,7 +7,7 @@ import type {
 	MainPanelDimensions,
 	MainPanelType,
 } from './ndv.types';
-import { useStorage } from '@/composables/useStorage';
+import { useStorage } from '@/app/composables/useStorage';
 import {
 	LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED,
 	LOCAL_STORAGE_MAPPING_IS_ONBOARDED,
@@ -20,10 +20,10 @@ import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed, ref } from 'vue';
-import type { TelemetryNdvSource } from '@/types/telemetry';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import type { TelemetryNdvSource } from '@/app/types/telemetry';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,

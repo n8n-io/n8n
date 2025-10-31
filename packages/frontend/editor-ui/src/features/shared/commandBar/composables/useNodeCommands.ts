@@ -1,17 +1,17 @@
 import { type Component, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import type { CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {

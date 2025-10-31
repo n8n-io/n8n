@@ -1,8 +1,8 @@
-import { TEMPLATES_URLS } from '@/constants';
+import { TEMPLATES_URLS } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { getTemplatePathByRole } from '@/experiments/utils';
-import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
+import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
 import type {
 	ITemplatesCategory,
 	ITemplatesCollection,
@@ -17,9 +17,9 @@ import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 export interface ITemplateState {
 	categories: ITemplatesCategory[];

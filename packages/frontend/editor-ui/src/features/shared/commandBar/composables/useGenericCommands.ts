@@ -2,10 +2,10 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
-import { useUIStore } from '@/stores/ui.store';
-import { WHATS_NEW_MODAL_KEY, VIEWS, ABOUT_MODAL_KEY } from '@/constants';
-import { EXTERNAL_LINKS } from '@/constants/externalLinks';
-import { useBugReporting } from '@/composables/useBugReporting';
+import { useUIStore } from '@/app/stores/ui.store';
+import { WHATS_NEW_MODAL_KEY, VIEWS, ABOUT_MODAL_KEY } from '@/app/constants';
+import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
+import { useBugReporting } from '@/app/composables/useBugReporting';
 import type { CommandGroup, CommandBarItem } from '../types';
 
 const ITEM_ID = {

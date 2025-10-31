@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useStyles } from '@/composables/useStyles';
+import { useStyles } from '@/app/composables/useStyles';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useBuilderStore } from '../../builder.store';
 import { useChatPanelStore } from '../../chatPanel.store';

@@ -4,7 +4,7 @@ import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const apiMapping = {
 	[STORES.TAGS]: createTagsApi('/tags'),

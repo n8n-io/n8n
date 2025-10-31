@@ -25,9 +25,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 import type { ViewStack } from './composables/useViewStacks';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
-import { DISCORD_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE } from '@/constants';
+import { DISCORD_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE } from '@/app/constants';
 
-vi.mock('@/stores/settings.store', () => ({
+vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
 }));
 

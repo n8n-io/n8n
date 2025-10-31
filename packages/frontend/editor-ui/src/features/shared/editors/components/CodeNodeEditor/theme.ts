@@ -1,4 +1,4 @@
-import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/constants';
+import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { EditorView, tooltips } from '@codemirror/view';
 import { tags } from '@lezer/highlight';

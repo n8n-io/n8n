@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/constants';
+import { useToast } from '@/app/composables/useToast';
+import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL } from '@/app/constants';
 import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -29,8 +29,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useUIStore } from '@/stores/ui.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 
 const router = useRouter();

@@ -2,13 +2,13 @@
 import type { AllRolesMap, PermissionsRecord } from '@n8n/permissions';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { EnterpriseEditionFeature } from '@/constants';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRolesStore } from '@/stores/roles.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type {
 	ProjectListItem,

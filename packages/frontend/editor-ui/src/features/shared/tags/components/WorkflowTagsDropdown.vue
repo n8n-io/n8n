@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import TagsDropdown from './TagsDropdown.vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useTagsStore } from '../tags.store';
 import { TAGS_MANAGER_MODAL_KEY } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';

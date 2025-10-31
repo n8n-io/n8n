@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 import { computed, provide, ref } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useI18n } from '@n8n/i18n';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeSubTitleText } from '@/features/workflows/canvas/experimental/experimentalNdv.utils';
 import ExperimentalEmbeddedNdvActions from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
 import { useCanvas } from '@/features/workflows/canvas/composables/useCanvas';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
-import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 
 import { N8nText } from '@n8n/design-system';
 const { nodeId, isReadOnly } = defineProps<{

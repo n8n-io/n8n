@@ -19,7 +19,7 @@ import {
 	WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
 	EXECUTE_WORKFLOW_NODE_TYPE_TEST,
 } from './ResourceMapper.test.constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;

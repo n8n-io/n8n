@@ -2,24 +2,24 @@ import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.ut
 import type { IWorkflowDb } from '@/Interface';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import type { INode } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useInstallNode } from './useInstallNode';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn().mockReturnValue({
 		initializeUnknownNodes: vi.fn(),
 	}),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showError: vi.fn(),
 		showMessage: vi.fn(),

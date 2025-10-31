@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import type { IconColor } from '@n8n/design-system';
 import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';

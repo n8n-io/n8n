@@ -4,14 +4,14 @@ import InputTriple from '../InputTriple/InputTriple.vue';
 import ParameterInputFull from '../ParameterInputFull.vue';
 import ParameterInputHint from '../ParameterInputHint.vue';
 import ParameterIssues from '../ParameterIssues.vue';
-import { useResolvedExpression } from '@/composables/useResolvedExpression';
+import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
 import { useI18n } from '@n8n/i18n';
-import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/app/constants';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {

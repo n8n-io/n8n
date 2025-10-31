@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useTelemetry } from '@/composables/useTelemetry';
-import { VIEWS } from '@/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { VIEWS } from '@/app/constants';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,

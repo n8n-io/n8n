@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import TidyUpIcon from '@/components/TidyUpIcon.vue';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import TidyUpIcon from '@/app/components/TidyUpIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
