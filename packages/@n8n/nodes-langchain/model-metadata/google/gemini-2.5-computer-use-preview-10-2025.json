@@ -1,0 +1,28 @@
+{
+	"id": "gemini-2.5-computer-use-preview-10-2025",
+	"name": "Gemini 2.5 Computer Use Preview (Oct 2025)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 1.25,
+		"completionPerMilTokenUsd": 10.0
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false,
+		"computerUse": true,
+		"uiControl": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["browser-automation", "ui-testing", "workflow-automation", "agentic"],
+	"description": "Specialized model for building browser control agents. Built on Gemini 2.5 Pro's vision and reasoning, it can interact with UIs through screenshots, generating mouse clicks, keyboard inputs, and navigation actions.",
+	"trainingCutoff": "2025-01",
+	"notes": "PREVIEW - Optimized for web browsers, capable of mobile UI control. Leading quality for browser control at lowest latency. Built-in safety training for misuse prevention. Pricing increases to $2.50/$15.00 per 1M tokens for prompts >200k. No free tier available."
+}

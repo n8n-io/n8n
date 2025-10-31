@@ -6,6 +6,17 @@
 	"gemini-1.5-pro-latest": "gemini-1.5-pro",
 	"gemini-1.5-flash-latest": "gemini-1.5-flash",
 	"gemini-2.0-flash-latest": "gemini-2.0-flash",
+	"gemini-2.0-flash-lite-latest": "gemini-2.0-flash-lite",
 	"gemini-2.5-pro-latest": "gemini-2.5-pro",
-	"gemini-2.5-flash-latest": "gemini-2.5-flash"
+	"gemini-2.5-flash-latest": "gemini-2.5-flash",
+	"gemini-2.5-pro-exp-03-25": "gemini-2.5-pro-preview-05-06",
+	"gemini-2.5-flash-preview-latest": "gemini-2.5-flash-preview-09-2025",
+	"gemini-2.5-flash-lite-preview-latest": "gemini-2.5-flash-lite-preview-09-2025",
+	"gemini-2.5-flash-lite-latest": "gemini-2.5-flash-lite",
+	"gemini-computer-use-latest": "gemini-2.5-computer-use-preview-10-2025",
+	"gemini-robotics-latest": "gemini-robotics-er-1.5-preview",
+	"gemini-live-latest": "gemini-2.5-flash-live-preview",
+	"gemini-2.0-pro-experimental": "gemini-2.0-pro-exp",
+	"gemini-2.0-flash-thinking-experimental": "gemini-2.0-flash-thinking-exp",
+	"learnlm-2.0-flash-exp": "learnlm-2.0-flash-experimental"
 }

@@ -1,0 +1,26 @@
+{
+	"id": "gemini-2.0-flash-thinking-exp-1219",
+	"name": "Gemini 2.0 Flash Thinking Experimental (12-19)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.0,
+		"completionPerMilTokenUsd": 0.0
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "testing", "problem-solving", "research", "mathematics"],
+	"description": "Initial experimental 2.0 Flash variant (December 19, 2024) with extended thinking capabilities. Shows step-by-step reasoning process for stronger reasoning on complex problems.",
+	"trainingCutoff": "2024-11",
+	"notes": "EXPERIMENTAL - Free via Google AI Studio and Vertex AI. Initial release December 19, 2024. Limited 32k context window (expanded to 1M in 01-21 update). Generates explicit thinking process before responding. Superseded by 01-21 version with enhanced capabilities. May have inconsistent performance."
+}

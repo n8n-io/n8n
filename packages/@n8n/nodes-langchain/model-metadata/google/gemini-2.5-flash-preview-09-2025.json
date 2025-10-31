@@ -1,0 +1,34 @@
+{
+	"id": "gemini-2.5-flash-preview-09-2025",
+	"name": "Gemini 2.5 Flash Preview (September 2025)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.3,
+		"completionPerMilTokenUsd": 2.5
+	},
+	"contextLength": 2000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image", "audio", "video", "pdf"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": [
+		"general-purpose",
+		"coding",
+		"analysis",
+		"multimodal",
+		"cost-effective",
+		"agentic",
+		"tool-use"
+	],
+	"description": "September 2025 checkpoint of Gemini 2.5 Flash with enhanced agentic capabilities and efficiency. Features 2M token context window, improved tool use, and significant gains on agentic benchmarks like SWE-Bench Verified (54% from 48.9%).",
+	"trainingCutoff": "2025-01",
+	"notes": "Preview released September 2025. Major improvements: 5% gain on SWE-Bench Verified (48.9% → 54%), 24% fewer output tokens vs predecessor, expanded 2M context window, added PDF input support. Better agentic tool use for complex multi-step applications. Pricing: $0.30/1M input, $2.50/1M output (non-thinking), $3.50/1M thinking output. Audio: $1.00/1M tokens."
+}

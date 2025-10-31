@@ -1,0 +1,26 @@
+{
+	"id": "gemini-2.0-flash-lite-001",
+	"name": "Gemini 2.0 Flash-Lite-001",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.075,
+		"completionPerMilTokenUsd": 0.3
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["high-volume", "cost-effective", "general-purpose", "batch-processing"],
+	"description": "Stable numbered version of Gemini 2.0 Flash-Lite. Google's fastest and most cost-efficient 2.0 model, optimized for low-latency, high-volume applications.",
+	"trainingCutoff": "2024-11",
+	"notes": "Numbered stable release (001). Generally available. Priced at half the cost of GPT-4o mini. Better quality than 1.5 Flash at same speed and cost. Ideal for cost-sensitive applications requiring good performance at scale."
+}

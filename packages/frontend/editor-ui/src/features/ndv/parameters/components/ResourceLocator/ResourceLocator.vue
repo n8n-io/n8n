@@ -847,10 +847,16 @@ async function enrichResultsWithMetadata() {
 			}
 
 			try {
+				// Extract clean model ID (trim "models/" prefix from Google)
+				let modelId = result.value.toString();
+				if ((result as any)._metadataProvider === 'google') {
+					modelId = modelId.replace(/^models\//, '');
+				}
+
 				// Try to fetch file-based metadata
 				const fileMetadata = await modelMetadataStore.getModelMetadata({
 					provider: (result as any)._metadataProvider,
-					modelId: result.value.toString(),
+					modelId,
 				});
 
 				// Prefer file metadata over hardcoded fallback

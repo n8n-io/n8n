@@ -1,0 +1,26 @@
+{
+	"id": "gemini-2.5-pro-preview-03-25",
+	"name": "Gemini 2.5 Pro Preview (March 25)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 1.25,
+		"completionPerMilTokenUsd": 10.0
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "long-context"],
+	"description": "March 2025 experimental preview of Gemini 2.5 Pro with always-on thinking mode. This was the first Gemini 2.5 Pro preview release, featuring enhanced reasoning capabilities.",
+	"trainingCutoff": "2025-01",
+	"notes": "Preview model released March 2025. Experimental version with thinking mode always enabled. Now redirects to 05-06 version automatically. Pricing: ≤200K input: $1.25/1M prompt, $10/1M completion; >200K input: $2.50/1M prompt, $15/1M completion. Deprecated in favor of later preview versions."
+}

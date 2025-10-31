@@ -1,0 +1,32 @@
+{
+	"id": "gemini-2.0-flash-lite-preview-02-05",
+	"name": "Gemini 2.0 Flash-Lite Preview (02-05)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.075,
+		"completionPerMilTokenUsd": 0.3
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": [
+		"high-volume",
+		"cost-effective",
+		"general-purpose",
+		"batch-processing",
+		"testing"
+	],
+	"description": "Preview snapshot (February 5, 2025) of Gemini 2.0 Flash-Lite. Most cost-efficient 2.0 model optimized for speed and scale with multimodal capabilities.",
+	"trainingCutoff": "2024-11",
+	"notes": "Preview model released February 5, 2025. Available in Google AI Studio and Vertex AI. Outperforms 1.5 Flash on majority of benchmarks. Half the price of GPT-4o mini. Ideal for generating captions at scale or other high-volume tasks."
+}

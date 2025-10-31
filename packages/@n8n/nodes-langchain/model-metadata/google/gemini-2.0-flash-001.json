@@ -1,0 +1,26 @@
+{
+	"id": "gemini-2.0-flash-001",
+	"name": "Gemini 2.0 Flash-001",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.4
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": true,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text", "image", "audio"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["general-purpose", "multimodal", "coding", "agentic", "real-time"],
+	"description": "Stable numbered version of Gemini 2.0 Flash. Features native tool use, multimodal generation including image and audio output, and superior speed.",
+	"trainingCutoff": "2024-11",
+	"notes": "Numbered stable release (001). Generally available with higher rate limits. Single price for all input types ($0.10/1M input, $0.40/1M output). Native image generation and text-to-speech. Supports Multimodal Live API for real-time audio/video streaming."
+}

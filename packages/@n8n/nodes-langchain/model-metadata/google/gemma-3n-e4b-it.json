@@ -1,0 +1,26 @@
+{
+	"id": "gemma-3n-e4b-it",
+	"name": "Gemma 3n E4B (Instruct)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.02,
+		"completionPerMilTokenUsd": 0.04
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["edge-deployment", "mobile", "balanced-performance", "multimodal"],
+	"description": "Powerful edge-optimized Gemma nano model with multimodal support. First sub-10B model to reach 1300+ LMArena score. Runs with 3GB memory.",
+	"trainingCutoff": "2025-03",
+	"notes": "Open-source model with strong performance. 'Effective 4B' parameters (8B total). Runs in 3GB memory. Contains E2B model within MatFormer architecture. Supports 140 languages (text), 35 languages (multimodal). Uses MobileNet-V5 vision encoder. LMArena 1300+. Available via Google AI Studio or self-hosted. Optimized for on-device inference with superior accuracy."
+}

@@ -1,0 +1,33 @@
+{
+	"id": "gemini-2.5-flash-preview-05-20",
+	"name": "Gemini 2.5 Flash Preview (May 20)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.3,
+		"completionPerMilTokenUsd": 2.5
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": true
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": [
+		"general-purpose",
+		"coding",
+		"analysis",
+		"multimodal",
+		"cost-effective",
+		"reasoning"
+	],
+	"description": "May 2025 preview of Gemini 2.5 Flash - the first Flash model with hybrid reasoning capabilities. Allows developers to control thinking on/off and set thinking budgets for optimal balance of quality, cost, and latency.",
+	"trainingCutoff": "2025-01",
+	"notes": "Preview model released May 20, 2025 at Google I/O. First Flash model with thinking capabilities. Improved across reasoning, multimodality, code, and long context while using 20-30% fewer tokens. Pricing: $0.30/1M input, $2.50/1M output (non-thinking), $3.50/1M thinking output. Audio input: $1.00/1M tokens. This preview became the stable gemini-2.5-flash release with no changes."
+}

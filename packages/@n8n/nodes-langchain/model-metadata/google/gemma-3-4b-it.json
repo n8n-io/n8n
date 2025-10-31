@@ -1,0 +1,26 @@
+{
+	"id": "gemma-3-4b-it",
+	"name": "Gemma 3 4B (Instruct)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.02,
+		"completionPerMilTokenUsd": 0.04
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["cost-effective", "multimodal", "balanced-performance", "edge-deployment"],
+	"description": "Balanced open-source Gemma model with multimodal support. Strong performance rivaling much larger models. 128K context with vision capabilities.",
+	"trainingCutoff": "2025-03",
+	"notes": "Open-source model with competitive performance vs Gemma 2-27B. Benchmarks: MMLU 58.1, HumanEval 71.3, GSM8K 89.2. Trained on 4T tokens. Uses SigLIP vision encoder. Available via Google AI Studio or self-hosted. 140+ language support. Requires ~3.4GB memory (4-bit)."
+}

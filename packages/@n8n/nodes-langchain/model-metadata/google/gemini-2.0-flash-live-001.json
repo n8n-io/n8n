@@ -1,0 +1,28 @@
+{
+	"id": "gemini-2.0-flash-live-001",
+	"name": "Gemini 2.0 Flash Live (001)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.5,
+		"completionPerMilTokenUsd": 2.0
+	},
+	"contextLength": 1048576,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": true,
+		"audio": true,
+		"extendedThinking": false,
+		"streaming": true,
+		"realTimeAudio": true
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text", "audio"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["real-time", "conversational", "multimodal", "live-streaming"],
+	"description": "Real-time streaming model with 1M token context for low-latency voice and video interactions via Live API. Supports continuous audio/video streams with immediate responses. DEPRECATED December 9, 2025.",
+	"trainingCutoff": "2024-11",
+	"notes": "DEPRECATED - Will be removed December 9, 2025. Use gemini-2.5-flash-native-audio-preview instead. Live API with 25 tokens/sec audio, 258 tokens/sec video. Audio input $3.00/1M, audio output $12.00/1M tokens. Supports native image generation and multimodal Live API."
+}

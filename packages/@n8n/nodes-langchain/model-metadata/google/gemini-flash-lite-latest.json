@@ -1,0 +1,26 @@
+{
+	"id": "gemini-flash-lite-latest",
+	"name": "Gemini Flash-Lite (Latest)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.4
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["high-volume", "cost-effective", "general-purpose", "batch-processing"],
+	"description": "Dynamic pointer to the latest Flash-Lite model. Currently points to Gemini 2.5 Flash-Lite. Most cost-efficient option with automatic updates to newest version.",
+	"trainingCutoff": "2025-01",
+	"notes": "POINTER - Automatically updates to latest Flash-Lite version. Google provides 2 weeks notice before switching. For stable SLAs, use versioned model strings. Currently points to gemini-2.5-flash-lite. Pricing may change with updates."
+}

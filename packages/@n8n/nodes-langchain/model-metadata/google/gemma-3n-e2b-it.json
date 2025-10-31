@@ -1,0 +1,26 @@
+{
+	"id": "gemma-3n-e2b-it",
+	"name": "Gemma 3n E2B (Instruct)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.0,
+		"completionPerMilTokenUsd": 0.0
+	},
+	"contextLength": 32000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "low",
+	"recommendedFor": ["edge-deployment", "mobile", "cost-effective", "multimodal"],
+	"description": "Ultra-efficient edge-optimized Gemma nano model with multimodal support. Runs on phones/laptops with only 2GB memory. Uses MatFormer architecture.",
+	"trainingCutoff": "2025-03",
+	"notes": "Open-source model (free to use). 'Effective 2B' parameters (~1.91B active, 5B total). Runs in 2GB memory. Supports 140 languages (text), 35 languages (multimodal). Uses MobileNet-V5 vision encoder and Per-Layer Embeddings (PLE) for efficiency. Available via Google AI Studio or self-hosted. Optimized for on-device inference."
+}

@@ -1,0 +1,26 @@
+{
+	"id": "learnlm-2.0-flash-experimental",
+	"name": "LearnLM 2.0 Flash Experimental",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.0,
+		"completionPerMilTokenUsd": 0.0
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["education", "tutoring", "teaching", "learning", "training"],
+	"description": "Experimental education-focused model based on Gemini 2.0 Flash, trained to align with learning science principles. Optimized for teaching and learning use cases.",
+	"trainingCutoff": "2024-11",
+	"notes": "EXPERIMENTAL - Free via Google AI Studio. Based on Gemini 2.0 Flash with education-specific tuning. Follows five learning science principles: active learning, cognitive load management, learner adaptation, curiosity stimulation, and metacognition. Preferred by expert pedagogical raters over GPT-4o (31%), Claude 3.5 Sonnet (11%), and base Gemini 1.5 Pro (13%). Ideal for educational content, tutoring, and personalized learning experiences."
+}

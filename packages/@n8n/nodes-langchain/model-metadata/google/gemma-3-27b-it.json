@@ -1,0 +1,26 @@
+{
+	"id": "gemma-3-27b-it",
+	"name": "Gemma 3 27B (Instruct)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.09,
+		"completionPerMilTokenUsd": 0.16
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "high",
+	"recommendedFor": ["complex-reasoning", "coding", "multimodal", "analysis", "advanced-tasks"],
+	"description": "Flagship open-source Gemma model with exceptional performance across coding, math, and reasoning tasks. Outperforms many larger proprietary models.",
+	"trainingCutoff": "2025-03",
+	"notes": "Top-tier open-source model with Elo 1338 on LMSys Arena (Top 10). Benchmarks: MMLU 76.9, HumanEval 87.8, GSM8K 95.9, MATH 89.0. Trained on 14T tokens. Beats Gemini 1.5 Pro on multiple benchmarks. Uses SigLIP vision encoder. Available via Google AI Studio or self-hosted. 140+ language support. Requires ~21GB memory (4-bit)."
+}

@@ -1,0 +1,32 @@
+{
+	"id": "gemini-2.5-flash-lite-preview-09-2025",
+	"name": "Gemini 2.5 Flash-Lite Preview (September 2025)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.1,
+		"completionPerMilTokenUsd": 0.4
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": [
+		"high-volume",
+		"cost-effective",
+		"general-purpose",
+		"low-latency",
+		"batch-processing"
+	],
+	"description": "September 2025 checkpoint of Gemini 2.5 Flash-Lite with major efficiency improvements. 50% reduction in output tokens (and costs) and 40% faster than July 2025 release while maintaining quality.",
+	"trainingCutoff": "2025-01",
+	"notes": "Preview released September 2025. Significant improvements: 50% fewer output tokens (reduced costs), 40% faster than July release. Optimized for cost and speed with thinking off by default. Supports optional thinking at different budgets, tool connections, multimodal input, and 1M token context. Pricing: $0.10/1M input, $0.40/1M output. Best choice for high-volume, cost-sensitive applications."
+}

@@ -1,0 +1,34 @@
+{
+	"id": "gemini-2.5-flash-live-preview",
+	"name": "Gemini 2.5 Flash Live Preview",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.5,
+		"completionPerMilTokenUsd": 2.0
+	},
+	"contextLength": 1000000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": true,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": true,
+		"extendedThinking": false,
+		"streaming": true,
+		"realTimeAudio": true
+	},
+	"inputModalities": ["text", "image", "audio", "video"],
+	"outputModalities": ["text", "audio"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": [
+		"real-time",
+		"conversational",
+		"multimodal",
+		"voice-interaction",
+		"live-streaming"
+	],
+	"description": "Latest real-time streaming model with 1M token context for low-latency multimodal interactions via Live API. Enhanced audio quality with 30 HD voices in 24 languages. Supports proactive audio and affective dialog.",
+	"trainingCutoff": "2025-01",
+	"notes": "PREVIEW - Latest Live API model with native audio. Enhanced conversational capabilities with emotional understanding. Voice Activity Detection, multilingual support, tool use. Audio input $3.00/1M, audio output $12.00/1M tokens. 25 tokens/sec audio, 258 tokens/sec video."
+}

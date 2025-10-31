@@ -1,0 +1,26 @@
+{
+	"id": "gemma-3-12b-it",
+	"name": "Gemma 3 12B (Instruct)",
+	"provider": "Google",
+	"pricing": {
+		"promptPerMilTokenUsd": 0.05,
+		"completionPerMilTokenUsd": 0.1
+	},
+	"contextLength": 128000,
+	"maxOutputTokens": 8192,
+	"capabilities": {
+		"functionCalling": true,
+		"structuredOutput": false,
+		"vision": true,
+		"imageGeneration": false,
+		"audio": false,
+		"extendedThinking": false
+	},
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
+	"intelligenceLevel": "medium",
+	"recommendedFor": ["complex-reasoning", "multimodal", "coding", "analysis"],
+	"description": "High-performance open-source Gemma model with excellent coding and reasoning capabilities. Multimodal with 128K context window.",
+	"trainingCutoff": "2025-03",
+	"notes": "Open-source model with strong performance. Benchmarks: MMLU 71.9, HumanEval 85.4, GSM8K 94.4, MATH 83.8. Trained on 12T tokens. Uses SigLIP vision encoder. Available via Google AI Studio or self-hosted. 140+ language support. Requires ~8.7GB memory (4-bit)."
+}
