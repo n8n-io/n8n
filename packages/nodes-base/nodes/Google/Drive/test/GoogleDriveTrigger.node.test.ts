@@ -284,6 +284,13 @@ describe('GoogleDriveTrigger', () => {
 		});
 
 		it('should use createdTime for Created events and modifiedTime for Updated events', async () => {
+			const now = moment().utc();
+			const webhookData: IDataObject = {
+				lastTimeChecked: now.clone().subtract(1, 'hour').format(),
+			};
+			mockPollFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
+
+			// Test fileCreated event uses createdTime
 			mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, unknown> = {
 					triggerOn: 'specificFolder',
@@ -293,12 +300,6 @@ describe('GoogleDriveTrigger', () => {
 				};
 				return params[paramName] ?? '';
 			});
-
-			const now = moment().utc();
-			const webhookData: IDataObject = {
-				lastTimeChecked: now.clone().subtract(1, 'hour').format(),
-			};
-			mockPollFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
 
 			googleApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -311,6 +312,32 @@ describe('GoogleDriveTrigger', () => {
 				{},
 				expect.objectContaining({
 					q: expect.stringContaining('createdTime >'),
+				}),
+			);
+
+			// Reset mock
+			googleApiRequestAllItemsSpy.mockClear();
+
+			// Test fileUpdated event uses modifiedTime
+			mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, unknown> = {
+					triggerOn: 'specificFolder',
+					event: 'fileUpdated',
+					folderToWatch: 'test-folder-id',
+					options: {},
+				};
+				return params[paramName] ?? '';
+			});
+
+			await trigger.poll.call(mockPollFunctions);
+
+			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
+				'files',
+				'GET',
+				'/drive/v3/files',
+				{},
+				expect.objectContaining({
+					q: expect.stringContaining('modifiedTime >'),
 				}),
 			);
 		});
