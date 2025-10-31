@@ -140,7 +140,7 @@ describe('ParameterInputExpanded.vue', () => {
 			const nodeValues = {
 				headers: { values: [{ name: '', value: '' }] },
 			};
-			const { getByTestId, queryAllByTestId, emitted } = renderComponent({
+			const { getByTestId, queryAllByTestId } = renderComponent({
 				props: {
 					parameter: fixedCollectionParameter,
 					value: nodeValues.headers,
