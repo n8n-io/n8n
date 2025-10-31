@@ -780,7 +780,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		});
 		expect(dataTableColumnInDb).toBeNull();
 
-		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {})).rejects.toThrow(
+		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {}, [])).rejects.toThrow(
 			QueryFailedError,
 		);
 	});
@@ -2026,7 +2026,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2067,7 +2071,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2105,7 +2113,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2162,7 +2174,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2197,7 +2213,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(0);
 	});
 
@@ -2593,7 +2613,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(403);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 	});
 
@@ -2629,7 +2653,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(403);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 	});
 
@@ -2677,7 +2705,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
 			first: 'test value 2',
@@ -2722,7 +2754,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
 			first: 'test value 1',
@@ -2766,7 +2802,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data.map((r) => r.first)).toEqual(['test value 1']);
 	});
@@ -2809,7 +2849,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
 	});
@@ -2969,7 +3013,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3001,7 +3049,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3030,7 +3082,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3060,7 +3116,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(0);
 	});
 
