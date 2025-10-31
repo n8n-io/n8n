@@ -725,7 +725,6 @@ export function useCanvasOperations() {
 					: rawPosition;
 
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
-			console.warn('position', position);
 			try {
 				const newNode = addNode(
 					{
