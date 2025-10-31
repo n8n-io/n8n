@@ -14,6 +14,7 @@ export class McpModule implements ModuleInterface {
 		await import('./mcp.settings.controller');
 		await import('./mcp.oauth.controller');
 		await import('./mcp.auth.consent.controller');
+		await import('./mcp.oauth-clients.controller');
 
 		// Initialize event relay to handle workflow deactivation
 		const { McpEventRelay } = await import('./mcp.event-relay');

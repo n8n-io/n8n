@@ -10,10 +10,10 @@ import {
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, OAuthClient } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Response } from 'express';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 // eslint-disable-next-line import-x/extensions
 import { AuthService } from '@/auth/auth.service';
@@ -595,6 +595,53 @@ export class McpOAuthService implements OAuthServerProvider {
 		// If token not found, silently succeed per OAuth 2.0 spec
 		this.logger.debug('Token revocation requested for unknown token', {
 			clientId: client.client_id,
+		});
+	}
+
+	/**
+	 * Get all OAuth clients (excluding sensitive data)
+	 */
+	async getAllClients(): Promise<
+		Array<Omit<OAuthClient, 'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'>>
+	> {
+		const clients = await this.oauthClientRepository.find({
+			order: {
+				createdAt: 'DESC',
+			},
+		});
+
+		// Remove sensitive data before returning
+		return clients.map((client) => {
+			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = client;
+			return sanitizedClient;
+		});
+	}
+
+	/**
+	 * Delete an OAuth client and all related data
+	 */
+	async deleteClient(clientId: string): Promise<void> {
+		// First check if the client exists
+		const client = await this.oauthClientRepository.findOne({
+			where: { id: clientId },
+		});
+
+		if (!client) {
+			throw new Error(`OAuth client with ID ${clientId} not found`);
+		}
+
+		this.logger.info('Deleting OAuth client and related data', { clientId });
+
+		// Cascade delete related entities
+		await this.accessTokenRepository.delete({ clientId });
+		await this.refreshTokenRepository.delete({ clientId });
+		await this.authorizationCodeRepository.delete({ clientId });
+		await this.userConsentRepository.delete({ clientId });
+		await this.oauthClientRepository.delete({ id: clientId });
+
+		this.logger.info('OAuth client deleted successfully', {
+			clientId,
+			clientName: client.name,
 		});
 	}
 }
