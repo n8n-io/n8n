@@ -32,7 +32,6 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useUIStore } from '@/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import type { ChatMessage as ChatMessageType } from '@/features/ai/chatHub/chat.types';
 
 const router = useRouter();
 const route = useRoute();
@@ -246,6 +245,17 @@ watch(
 	{ immediate: true },
 );
 
+// Reload models when credentials are updated
+watch(
+	credentialsByProvider,
+	(credentials) => {
+		if (credentials) {
+			void chatStore.fetchAgents(credentials);
+		}
+	},
+	{ immediate: true },
+);
+
 function onSubmit(message: string, attachments?: File[]) {
 	if (
 		!message.trim() ||
@@ -373,20 +383,9 @@ function closeAgentEditor() {
 }
 
 function handleOpenWorkflow(workflowId: string) {
-	void router.push({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
-}
+	const routeData = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
 
-function handleOpenExecution(message: ChatMessageType) {
-	const model = unflattenModel(message);
-
-	if (model?.provider !== 'n8n') {
-		return;
-	}
-
-	void router.push({
-		name: VIEWS.EXECUTION_PREVIEW,
-		params: { name: model.workflowId, executionId: message.executionId },
-	});
+	window.open(routeData.href, '_blank');
 }
 </script>
 
@@ -404,6 +403,7 @@ function handleOpenExecution(message: ChatMessageType) {
 			ref="headerRef"
 			:selected-model="selectedModel ?? null"
 			:credentials="credentialsByProvider"
+			:ready-to-show-model-selector="chatStore.agentsReady"
 			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
@@ -455,7 +455,6 @@ function handleOpenExecution(message: ChatMessageType) {
 						@regenerate="handleRegenerateMessage"
 						@update="handleEditMessage"
 						@switch-alternative="handleSwitchAlternative"
-						@open-execution="handleOpenExecution"
 					/>
 				</div>
 

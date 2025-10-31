@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import type { ITagRow } from '@/Interface';
+import { MAX_TAG_NAME_LENGTH } from '../../../tags.constants';
+import type { ITagRow } from '../../../tags.types';
 import { onMounted, ref, watch } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';

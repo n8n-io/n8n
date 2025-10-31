@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
+import AnnotationTagsDropdown from '@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useExecutionsStore } from '../../executions.store';

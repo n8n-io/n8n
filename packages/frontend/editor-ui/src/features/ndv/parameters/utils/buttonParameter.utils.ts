@@ -4,7 +4,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { generateCodeForPrompt } from '@/api/ai';
+import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type AskAiRequest } from '@/features/ai/assistant/assistant.types';
 import { useSettingsStore } from '@/stores/settings.store';

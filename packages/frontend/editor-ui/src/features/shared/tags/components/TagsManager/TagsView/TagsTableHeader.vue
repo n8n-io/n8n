@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { MAX_TAG_NAME_LENGTH } from '@/constants';
+import { MAX_TAG_NAME_LENGTH } from '../../../tags.constants';
 import { useI18n } from '@n8n/i18n';
 
 import { ElCol, ElRow } from 'element-plus';

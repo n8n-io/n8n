@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
-import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
-import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
+import TagsView from './TagsView/TagsView.vue';
+import NoTagsView from './NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';

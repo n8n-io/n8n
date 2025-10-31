@@ -1,4 +1,4 @@
-import * as schemaPreviewApi from '@/api/schemaPreview';
+import * as schemaPreviewApi from './schemaPreview.api';
 import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { reactive } from 'vue';

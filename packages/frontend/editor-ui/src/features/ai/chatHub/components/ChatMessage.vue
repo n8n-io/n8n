@@ -34,7 +34,6 @@ const emit = defineEmits<{
 	update: [message: ChatMessage];
 	regenerate: [message: ChatMessage];
 	switchAlternative: [messageId: ChatMessageId];
-	openExecution: [messageId: ChatMessage];
 }>();
 
 const clipboard = useClipboard();
@@ -95,10 +94,6 @@ function handleReadAloud() {
 
 function handleSwitchAlternative(messageId: ChatMessageId) {
 	emit('switchAlternative', messageId);
-}
-
-function handleOpenExecution() {
-	emit('openExecution', message);
 }
 
 const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
@@ -205,7 +200,6 @@ onBeforeMount(() => {
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"
 					@switchAlternative="handleSwitchAlternative"
-					@open-execution="handleOpenExecution"
 				/>
 			</template>
 		</div>

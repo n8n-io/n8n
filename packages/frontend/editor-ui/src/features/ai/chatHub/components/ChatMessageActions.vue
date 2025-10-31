@@ -1,17 +1,14 @@
 <script setup lang="ts">
+import { VIEWS } from '@/constants';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import type { ChatMessageId } from '@n8n/api-types';
-import {
-	type ActionDropdownItem,
-	N8nActionDropdown,
-	N8nIconButton,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
-type MenuAction = 'open-execution';
+const i18n = useI18n();
+const router = useRouter();
 
 const { justCopied, message, alternatives, isSpeaking, isSpeechSynthesisAvailable } = defineProps<{
 	justCopied: boolean;
@@ -30,8 +27,6 @@ const emit = defineEmits<{
 	openExecution: [];
 }>();
 
-const i18n = useI18n();
-
 const copyTooltip = computed(() => {
 	return justCopied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy');
 });
@@ -40,9 +35,15 @@ const currentAlternativeIndex = computed(() => {
 	return alternatives.findIndex((id) => id === message.id);
 });
 
-const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() =>
-	message.executionId ? [{ id: 'open-execution', label: 'Open execution' }] : [],
-);
+const executionUrl = computed(() => {
+	if (message.type === 'ai' && message.provider === 'n8n' && message.executionId) {
+		return router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: { name: message.workflowId, executionId: message.executionId },
+		}).href;
+	}
+	return undefined;
+});
 
 function handleCopy() {
 	emit('copy');
@@ -58,13 +59,6 @@ function handleRegenerate() {
 
 function handleReadAloud() {
 	emit('readAloud');
-}
-
-function handleSelectMenu(action: MenuAction) {
-	switch (action) {
-		case 'open-execution':
-			emit('openExecution');
-	}
 }
 </script>
 
@@ -108,6 +102,15 @@ function handleSelectMenu(action: MenuAction) {
 			/>
 			<template #content>Regenerate</template>
 		</N8nTooltip>
+		<N8nTooltip v-if="executionUrl && message.executionId" placement="bottom" :show-after="300">
+			<N8nIconButton icon="info" type="tertiary" size="medium" text />
+			<template #content>
+				Execution ID:
+				<N8nLink :to="executionUrl" :new-window="true">
+					{{ message.executionId }}
+				</N8nLink>
+			</template>
+		</N8nTooltip>
 		<template v-if="alternatives.length > 1">
 			<N8nIconButton
 				icon="chevron-left"
@@ -129,17 +132,6 @@ function handleSelectMenu(action: MenuAction) {
 				@click="$emit('switchAlternative', alternatives[currentAlternativeIndex + 1])"
 			/>
 		</template>
-		<N8nActionDropdown
-			v-if="menuItems.length > 0"
-			:items="menuItems"
-			placement="bottom-start"
-			@select="handleSelectMenu"
-			@click.stop
-		>
-			<template #activator>
-				<N8nIconButton icon="ellipsis-vertical" type="tertiary" text />
-			</template>
-		</N8nActionDropdown>
 	</div>
 </template>
 
