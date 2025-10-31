@@ -178,6 +178,17 @@ defineExpose({
 			/>
 
 			<div :class="$style.inputWrapper" @click="handleClickInputWrapper">
+				<div v-if="attachments.length > 0" :class="$style.attachments">
+					<ChatFile
+						v-for="(file, index) in attachments"
+						:key="index"
+						:file="file"
+						:is-previewable="true"
+						:is-removable="true"
+						@remove="removeAttachment"
+					/>
+				</div>
+
 				<N8nInput
 					ref="inputRef"
 					v-model="message"
@@ -191,17 +202,6 @@ defineExpose({
 				/>
 
 				<div :class="$style.footer">
-					<div :class="$style.attachments">
-						<ChatFile
-							v-for="(file, index) in attachments"
-							:key="index"
-							:file="file"
-							:is-previewable="true"
-							:is-removable="true"
-							@remove="removeAttachment"
-						/>
-					</div>
-
 					<div :class="$style.actions">
 						<N8nIconButton
 							v-if="selectedModel?.allowFileUploads"
@@ -314,6 +314,7 @@ defineExpose({
 .footer {
 	display: flex;
 	align-items: flex-end;
+	justify-content: flex-end;
 	gap: var(--spacing--sm);
 }
 
@@ -328,8 +329,6 @@ defineExpose({
 }
 
 .attachments {
-	flex-grow: 1;
-	flex-shrink: 1;
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
