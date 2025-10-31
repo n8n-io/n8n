@@ -2,8 +2,8 @@
 import { computed } from 'vue';
 import BaseBanner from './BaseBanner.vue';
 import { i18n as locale } from '@n8n/i18n';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useBannersStore } from '@/app/stores/banners.store';
 
 const bannersStore = useBannersStore();
 
