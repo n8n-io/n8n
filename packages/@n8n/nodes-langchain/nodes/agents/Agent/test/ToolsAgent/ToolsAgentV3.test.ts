@@ -552,7 +552,95 @@ describe('toolsAgentExecute V3', () => {
 		expect(invokeCall.steps).toBeDefined();
 		expect(invokeCall.steps).toHaveLength(1);
 		expect(invokeCall.steps[0].action.tool).toBe('TestTool');
-		expect(invokeCall.steps[0].observation).toBe('{"result":"tool result"}');
+		expect(invokeCall.steps[0].observation).toBe('[{"result":"tool result"}]');
+	});
+
+	it('should handle tool responses with multiple items', async () => {
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		const mockAgent = mock<any>();
+		const mockRunnableSequence = mock<any>();
+		mockRunnableSequence.singleAction = true;
+		mockRunnableSequence.streamRunnable = false;
+		mockRunnableSequence.invoke = jest
+			.fn()
+			.mockResolvedValue({ returnValues: { output: 'success with multiple items' } });
+
+		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+
+		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mock<Tool>()]);
+		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mock<ChatPromptTemplate>());
+		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'needsFallback') return false;
+			if (param === 'options.enableStreaming') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		// Mock a response with tool call that returns multiple items
+		const response: EngineResponse<RequestResponseMetadata> = {
+			actionResponses: [
+				{
+					action: {
+						id: 'call_456',
+						nodeName: 'GetUsers',
+						input: { input: 'all', id: 'call_456' },
+						metadata: { itemIndex: 0, previousRequests: [] },
+						actionType: 'ExecutionNodeAction',
+						type: 'ai_tool',
+					},
+					data: {
+						data: {
+							ai_tool: [
+								[
+									{ json: { uid: '1', email: 'user1@example.com', name: 'User One' } },
+									{ json: { uid: '2', email: 'user2@example.com', name: 'User Two' } },
+									{ json: { uid: '3', email: 'user3@example.com', name: 'User Three' } },
+								],
+							],
+						},
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 0,
+						source: [],
+					},
+				},
+			],
+			metadata: { itemIndex: 999, previousRequests: [] },
+		};
+
+		const result = await toolsAgentExecute.call(mockContext, response);
+
+		expect(mockRunnableSequence.invoke).toHaveBeenCalledTimes(1);
+		expect((result as INodeExecutionData[][])[0]).toHaveLength(1);
+
+		// Verify that all 3 items are included in the observation, not just the first one
+		const invokeCall = mockRunnableSequence.invoke.mock.calls[0][0];
+		expect(invokeCall.steps).toBeDefined();
+		expect(invokeCall.steps).toHaveLength(1);
+
+		const observation = JSON.parse(invokeCall.steps[0].observation);
+		expect(Array.isArray(observation)).toBe(true);
+		expect(observation).toHaveLength(3);
+		expect(observation[0]).toEqual({ uid: '1', email: 'user1@example.com', name: 'User One' });
+		expect(observation[1]).toEqual({ uid: '2', email: 'user2@example.com', name: 'User Two' });
+		expect(observation[2]).toEqual({ uid: '3', email: 'user3@example.com', name: 'User Three' });
 	});
 
 	it('should handle memory save with tool call context', async () => {
@@ -632,7 +720,7 @@ describe('toolsAgentExecute V3', () => {
 			{ input: 'test input' },
 			{
 				output:
-					'[Used tools: Tool: TestTool, Input: "test data", Result: {"result":"tool result"}] success',
+					'[Used tools: Tool: TestTool, Input: "test data", Result: [{"result":"tool result"}]] success',
 			},
 		);
 	});
