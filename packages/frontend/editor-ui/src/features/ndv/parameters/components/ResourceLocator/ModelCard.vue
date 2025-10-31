@@ -69,6 +69,22 @@ const hasValidMetadata = computed(() => {
 		(metadata.value.contextLength > 0 || metadata.value.pricing.promptPerMilTokenUsd > 0)
 	);
 });
+
+const getIntelligenceIcon = (level: string): string => {
+	const icons = {
+		low: 'chart-simple',
+		medium: 'chart-line',
+		high: 'brain',
+	};
+	return icons[level as keyof typeof icons] || 'chart-line';
+};
+
+const formatUseCase = (useCase: string): string => {
+	return useCase
+		.split('-')
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(' ');
+};
 </script>
 
 <template>
@@ -84,8 +100,16 @@ const hasValidMetadata = computed(() => {
 		<div :class="$style.modelName">
 			<N8nText :class="$style.nameText" bold>{{ model.name }}</N8nText>
 		</div>
-		<div v-if="metadata?.provider" :class="$style.modelProvider">
-			<N8nText size="xsmall" color="text-light">{{ metadata.provider }}</N8nText>
+		<div :class="$style.providerRow">
+			<N8nText v-if="metadata?.provider" size="xsmall" color="text-light">{{
+				metadata.provider
+			}}</N8nText>
+			<div v-if="metadata?.intelligenceLevel" :class="$style.intelligenceLevel">
+				<N8nIcon :icon="getIntelligenceIcon(metadata.intelligenceLevel)" size="xsmall" />
+				<N8nText size="xsmall" :class="$style.intelligenceLevelText" color="text-light">
+					{{ metadata.intelligenceLevel }}
+				</N8nText>
+			</div>
 		</div>
 
 		<!-- Badges (Context and Price) -->
@@ -196,6 +220,25 @@ const hasValidMetadata = computed(() => {
 				</div>
 			</div>
 
+			<!-- Recommended For Section -->
+			<div
+				v-if="metadata?.recommendedFor && metadata.recommendedFor.length > 0"
+				:class="$style.detailSection"
+			>
+				<N8nText :class="$style.sectionTitle" size="xsmall" bold color="text-dark"
+					>Best For</N8nText
+				>
+				<div :class="$style.recommendedTags">
+					<span
+						v-for="useCase in metadata.recommendedFor"
+						:key="useCase"
+						:class="$style.recommendedTag"
+					>
+						{{ formatUseCase(useCase) }}
+					</span>
+				</div>
+			</div>
+
 			<!-- Description Section -->
 			<div v-if="metadata?.description" :class="$style.description">
 				<N8nText size="xsmall" color="text-light">{{ metadata.description }}</N8nText>
@@ -240,6 +283,28 @@ const hasValidMetadata = computed(() => {
 
 .modelProvider {
 	margin-bottom: var(--spacing--3xs);
+}
+
+.providerRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing--3xs);
+	gap: var(--spacing--xs);
+}
+
+.intelligenceLevel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	background: var(--color--background--light-2);
+	border-radius: var(--radius--sm);
+}
+
+.intelligenceLevelText {
+	text-transform: capitalize;
+	font-weight: var(--font-weight--bold);
 }
 
 .badges {
@@ -327,5 +392,21 @@ const hasValidMetadata = computed(() => {
 	padding-top: var(--spacing--xs);
 	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
 	line-height: var(--line-height--xl);
+}
+
+.recommendedTags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+}
+
+.recommendedTag {
+	font-size: var(--font-size--3xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	background: var(--color--primary--tint-3);
+	border-radius: var(--radius--sm);
+	color: var(--color--primary);
+	font-weight: var(--font-weight--regular);
+	white-space: nowrap;
 }
 </style>

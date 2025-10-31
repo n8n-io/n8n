@@ -956,6 +956,37 @@ function removeOverride() {
 		class="resource-locator"
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
+		<!-- Mode Selector for Browse Mode (full width above) -->
+		<div
+			v-if="isBrowseMode && hasMultipleModes && !isValueExpression"
+			:class="$style.modeSelectorWrapper"
+		>
+			<N8nSelect
+				:model-value="selectedMode"
+				:size="inputSize"
+				:disabled="isReadOnly"
+				:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
+				data-test-id="rlc-mode-selector"
+				@update:model-value="onModeSelected"
+			>
+				<N8nOption
+					v-for="mode in parameter.modes"
+					:key="mode.name"
+					:data-test-id="`mode-${mode.name}`"
+					:value="mode.name"
+					:label="getModeLabel(mode)"
+					:disabled="isValueExpression && mode.name === 'list'"
+					:title="
+						isValueExpression && mode.name === 'list'
+							? i18n.baseText('resourceLocator.mode.list.disabled.title')
+							: ''
+					"
+				>
+					{{ getModeLabel(mode) }}
+				</N8nOption>
+			</N8nSelect>
+		</div>
+
 		<!-- Browse Mode -->
 		<ModelBrowser
 			v-if="isBrowseMode"

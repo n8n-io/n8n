@@ -1,5 +1,10 @@
 $--mode-selector-width: 92px;
 
+.modeSelectorWrapper {
+	margin-bottom: var(--spacing--2xs);
+	width: 100%;
+}
+
 .modeSelector {
 	--input--color--background: initial;
 	--input--color--text: initial;

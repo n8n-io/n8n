@@ -3,6 +3,7 @@ import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nIcon, N8nInput, N8nLoading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import ModelCard from './ModelCard.vue';
+import { useModelMetadataStore } from '@/stores/modelMetadata.store';
 
 type Props = {
 	models: IResourceLocatorResultExpanded[];
@@ -26,6 +27,10 @@ const emit = defineEmits<{
 
 const gridRef = ref<HTMLDivElement>();
 const searchInputRef = ref<InstanceType<typeof N8nInput>>();
+
+const modelMetadataStore = useModelMetadataStore();
+const enrichedModels = ref<IResourceLocatorResultExpanded[]>([]);
+const isEnriching = ref(false);
 
 type CapabilityFilter =
 	| 'functionCalling'
@@ -62,9 +67,52 @@ const toggleCapabilityFilter = (capability: CapabilityFilter) => {
 	activeCapabilityFilters.value = newFilters;
 };
 
+// Enrich models with file-based metadata
+const enrichModelsWithMetadata = async () => {
+	if (!props.models.length) {
+		enrichedModels.value = [];
+		return;
+	}
+
+	isEnriching.value = true;
+
+	const enriched = await Promise.all(
+		props.models.map(async (model) => {
+			// Skip if no metadata provider hint or no metadata at all
+			if (!(model as any)._metadataProvider || !model.metadata) {
+				return model;
+			}
+
+			try {
+				// Try to fetch file-based metadata
+				const fileMetadata = await modelMetadataStore.getModelMetadata({
+					provider: (model as any)._metadataProvider,
+					modelId: model.value.toString(),
+				});
+
+				// Prefer file metadata over hardcoded fallback
+				return {
+					...model,
+					metadata: fileMetadata || model.metadata,
+					_hasFileMetadata: !!fileMetadata,
+				};
+			} catch (error) {
+				// On error, keep original metadata
+				return model;
+			}
+		}),
+	);
+
+	enrichedModels.value = enriched;
+	isEnriching.value = false;
+};
+
+// Watch for model changes and enrich
+watch(() => props.models, enrichModelsWithMetadata, { immediate: true });
+
 // Filter models by text search and capabilities
 const filteredModels = computed(() => {
-	let filtered = props.models;
+	let filtered = enrichedModels.value;
 
 	// Text search filter
 	if (props.filter) {
