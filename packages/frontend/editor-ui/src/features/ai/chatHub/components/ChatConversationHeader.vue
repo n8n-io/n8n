@@ -1,33 +1,33 @@
 <script setup lang="ts">
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
-import type { ChatHubConversationModel, ChatHubProvider, ChatSessionId } from '@n8n/api-types';
+import type { ChatHubProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
 import { N8nButton, N8nIconButton } from '@n8n/design-system';
 import { useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
-const { selectedModel, credentials } = defineProps<{
-	selectedModel: ChatHubConversationModel | null;
-	credentials: CredentialsMap;
+const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
+	selectedModel: ChatModelDto | null;
+	credentials: CredentialsMap | null;
+	readyToShowModelSelector: boolean;
 }>();
 
 const emit = defineEmits<{
-	selectModel: [ChatHubConversationModel];
+	selectModel: [ChatModelDto];
 	renameConversation: [id: ChatSessionId, title: string];
-	editAgent: [agentId: string];
-	createAgent: [];
+	editCustomAgent: [agentId: string];
+	createCustomAgent: [];
 	selectCredential: [provider: ChatHubProvider, credentialId: string];
+	openWorkflow: [workflowId: string];
 }>();
 
 const sidebar = useChatHubSidebarState();
-const chatStore = useChatStore();
 const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
 
-function onModelChange(selection: ChatHubConversationModel) {
+function onModelChange(selection: ChatModelDto) {
 	emit('selectModel', selection);
 }
 
@@ -64,25 +64,34 @@ defineExpose({
 				@click="onNewChat"
 			/>
 			<ModelSelector
+				v-if="readyToShowModelSelector"
 				ref="modelSelectorRef"
-				:models="chatStore.models ?? null"
-				:selected-model="selectedModel"
+				:selectedAgent="selectedModel"
 				:credentials="credentials"
 				@change="onModelChange"
-				@create-agent="emit('createAgent')"
+				@create-custom-agent="emit('createCustomAgent')"
 				@select-credential="
 					(provider, credentialId) => emit('selectCredential', provider, credentialId)
 				"
 			/>
 		</div>
 		<N8nButton
-			v-if="selectedModel?.provider === 'custom-agent'"
+			v-if="selectedModel?.model.provider === 'custom-agent'"
 			:class="$style.editAgent"
 			type="secondary"
 			size="small"
-			icon="cog"
+			icon="settings"
 			label="Edit Agent"
-			@click="emit('editAgent', selectedModel.agentId)"
+			@click="emit('editCustomAgent', selectedModel.model.agentId)"
+		/>
+		<N8nButton
+			v-if="selectedModel?.model.provider === 'n8n'"
+			:class="$style.editAgent"
+			type="secondary"
+			size="small"
+			icon="settings"
+			label="Open Workflow"
+			@click="emit('openWorkflow', selectedModel.model.workflowId)"
 		/>
 	</div>
 </template>
@@ -105,6 +114,9 @@ defineExpose({
 
 .grow {
 	flex-grow: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .title {

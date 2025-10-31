@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
-import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { storeToRefs } from 'pinia';

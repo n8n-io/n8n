@@ -15,9 +15,9 @@ import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import ParameterInputList from './ParameterInputList.vue';
 import Draggable from 'vuedraggable';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { telemetry } from '@/plugins/telemetry';
+import { telemetry } from '@/app/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 
 import {
@@ -386,7 +386,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 
 	.controls {
 		:deep(.button) {
-			font-weight: var(--font-weight-normal);
+			font-weight: var(--font-weight--regular);
 			--button--color--text: var(--color--text--shade-1);
 			--button--border-color: var(--color--foreground);
 			--button--color--background: var(--color--background);

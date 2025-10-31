@@ -9,7 +9,7 @@ import CanvasHandleMainInput from './render-types/CanvasHandleMainInput.vue';
 import CanvasHandleMainOutput from './render-types/CanvasHandleMainOutput.vue';
 import CanvasHandleNonMainInput from './render-types/CanvasHandleNonMainInput.vue';
 import CanvasHandleNonMainOutput from './render-types/CanvasHandleNonMainOutput.vue';
-import { CanvasNodeHandleKey } from '@/constants';
+import { CanvasNodeHandleKey } from '@/app/constants';
 import { useCanvasNode } from '../../../composables/useCanvasNode';
 
 const props = defineProps<
@@ -166,7 +166,9 @@ provide(CanvasNodeHandleKey, {
 
 <style lang="scss" module>
 .handle {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--handle--indicator--width: calc(16px * var(--canvas-zoom-compensation-factor, 1));
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--handle--indicator--height: calc(16px * var(--canvas-zoom-compensation-factor, 1));
 
 	width: var(--handle--indicator--width);
@@ -181,6 +183,7 @@ provide(CanvasNodeHandleKey, {
 
 	&.inputs {
 		&.main {
+			/* stylelint-disable-next-line @n8n/css-var-naming */
 			--handle--indicator--width: calc(8px * var(--canvas-zoom-compensation-factor, 1));
 		}
 	}

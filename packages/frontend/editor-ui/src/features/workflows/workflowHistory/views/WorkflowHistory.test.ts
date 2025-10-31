@@ -10,13 +10,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from './WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { STORES } from '@n8n/stores';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tests__/utils';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
-import { telemetry } from '@/plugins/telemetry';
+import { telemetry } from '@/app/plugins/telemetry';
 
 vi.mock('vue-router', () => {
 	const params = {};

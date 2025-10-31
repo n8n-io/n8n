@@ -2588,6 +2588,8 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	versionCounter?: number;
+	meta?: WorkflowFEMeta;
 }
 
 export interface IWorkflowCredentials {
@@ -2727,7 +2729,8 @@ export type WorkflowExecuteMode =
 	| 'retry'
 	| 'trigger'
 	| 'webhook'
-	| 'evaluation';
+	| 'evaluation'
+	| 'chat';
 
 export type WorkflowActivateMode =
 	| 'init'
@@ -2759,6 +2762,9 @@ export interface IWorkflowSettings {
 
 export interface WorkflowFEMeta {
 	onboardingId?: string;
+	templateId?: string;
+	instanceId?: string;
+	templateCredsSetupCompleted?: boolean;
 }
 
 export interface WorkflowTestData {
@@ -2910,6 +2916,7 @@ export interface INodeGraphItem {
 	metric_names?: string[];
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 	package_version?: string; // only for community nodes
+	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 }
 
 export interface INodeNameIndex {

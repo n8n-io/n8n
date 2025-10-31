@@ -4,9 +4,9 @@ import { EditorView } from '@codemirror/view';
 
 import { useI18n } from '@n8n/i18n';
 import { highlighter } from '../../plugins/codemirror/resolvableHighlighter';
-import type { Plaintext, Resolved, Segment } from '@/types/expressions';
+import type { Plaintext, Resolved, Segment } from '@/app/types/expressions';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { forceParse } from '@/utils/forceParse';
+import { forceParse } from '@/app/utils/forceParse';
 
 interface ExpressionOutputProps {
 	segments: Segment[];

@@ -6,7 +6,7 @@ import SettingsSso from './SettingsSso.vue';
 import userEvent from '@testing-library/user-event';
 import { useSSOStore, SupportedProtocols } from '../sso.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
 
 const renderView = createComponentRenderer(SettingsSso);
@@ -24,27 +24,27 @@ const oidcConfig = {
 } as OidcConfigDto;
 
 const telemetryTrack = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: telemetryTrack,
 	}),
 }));
 
 const showError = vi.fn();
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError,
 	}),
 }));
 
 const confirmMessage = vi.fn();
-vi.mock('@/composables/useMessage', () => ({
+vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({
 		confirm: confirmMessage,
 	}),
 }));
 
-vi.mock('@/composables/usePageRedirectionHelper', () => {
+vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	const goToUpgrade = vi.fn();
 	return {
 		usePageRedirectionHelper: () => ({

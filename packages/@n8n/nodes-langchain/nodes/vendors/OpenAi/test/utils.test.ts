@@ -60,11 +60,11 @@ describe('OpenAI message history', () => {
 });
 
 describe('OpenAI formatting functions', () => {
-	const createMockTool = (name: string, description: string, schema: z.ZodSchema): Tool =>
+	const createMockTool = (name: string, description: string): Tool =>
 		({
 			name,
 			description,
-			schema,
+			schema: z.object({}),
 			func: jest.fn(),
 			call: jest.fn(),
 			returnDirect: false,
@@ -82,7 +82,7 @@ describe('OpenAI formatting functions', () => {
 			const mockSchema = { type: 'object', properties: { name: { type: 'string' } } };
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool('test-tool', 'A test tool', z.object({ name: z.string() }));
+			const tool = createMockTool('test-tool', 'A test tool');
 
 			const result = formatToOpenAIFunction(tool);
 
@@ -98,7 +98,7 @@ describe('OpenAI formatting functions', () => {
 			const mockSchema = { type: 'object' };
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool('test-tool', '', z.object({}));
+			const tool = createMockTool('test-tool', '');
 
 			const result = formatToOpenAIFunction(tool);
 
@@ -115,11 +115,7 @@ describe('OpenAI formatting functions', () => {
 			const mockSchema = { type: 'object', properties: { value: { type: 'number' } } };
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool(
-				'calculator',
-				'A calculator tool',
-				z.object({ value: z.number() }),
-			);
+			const tool = createMockTool('calculator', 'A calculator tool');
 
 			const result = formatToOpenAITool(tool);
 
@@ -146,15 +142,7 @@ describe('OpenAI formatting functions', () => {
 			};
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool(
-				'search-tool',
-				'Search functionality',
-				z.object({
-					query: z.string(),
-					limit: z.number().optional(),
-					options: z.object({}).optional(),
-				}),
-			);
+			const tool = createMockTool('search-tool', 'Search functionality');
 
 			const result = formatToOpenAITool(tool);
 
@@ -174,11 +162,7 @@ describe('OpenAI formatting functions', () => {
 			const mockSchema = { type: 'object', properties: { message: { type: 'string' } } };
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool(
-				'message-tool',
-				'Send a message',
-				z.object({ message: z.string() }),
-			);
+			const tool = createMockTool('message-tool', 'Send a message');
 
 			const result = formatToOpenAIAssistantTool(tool);
 
@@ -197,7 +181,7 @@ describe('OpenAI formatting functions', () => {
 			const mockSchema = { type: 'object', properties: {} };
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool('simple-tool', 'A simple tool', z.object({}));
+			const tool = createMockTool('simple-tool', 'A simple tool');
 
 			const result = formatToOpenAIAssistantTool(tool);
 
@@ -221,7 +205,7 @@ describe('OpenAI formatting functions', () => {
 			};
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool('input-tool', 'Process input', z.object({ input: z.string() }));
+			const tool = createMockTool('input-tool', 'Process input');
 
 			const result = formatToOpenAIResponsesTool(tool);
 
@@ -246,14 +230,7 @@ describe('OpenAI formatting functions', () => {
 			};
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool(
-				'mixed-tool',
-				'Tool with required and optional fields',
-				z.object({
-					required: z.string(),
-					optional: z.string().optional(),
-				}),
-			);
+			const tool = createMockTool('mixed-tool', 'Tool with required and optional fields');
 
 			const result = formatToOpenAIResponsesTool(tool);
 
@@ -269,15 +246,15 @@ describe('OpenAI formatting functions', () => {
 		it('should handle schema without required field', () => {
 			const mockSchema = {
 				type: 'object',
-				properties: { field: { type: 'string' } },
+				properties: {
+					required: { type: 'string' },
+					optional: { type: 'string' },
+				},
+				required: ['required'],
 			};
 			mockZodToJsonSchema.mockReturnValue(mockSchema);
 
-			const tool = createMockTool(
-				'no-required-tool',
-				'Tool with no required fields',
-				z.object({ field: z.string().optional() }),
-			);
+			const tool = createMockTool('no-required-tool', 'Tool with no required fields');
 
 			const result = formatToOpenAIResponsesTool(tool);
 
@@ -287,6 +264,140 @@ describe('OpenAI formatting functions', () => {
 				parameters: mockSchema,
 				strict: false,
 				description: 'Tool with no required fields',
+			});
+		});
+
+		it('should keep additionalProperties:false when strict is true', () => {
+			const mockSchema = {
+				type: 'object',
+				properties: {
+					required: { type: 'string' },
+				},
+				required: ['required'],
+				additionalProperties: false,
+			};
+			mockZodToJsonSchema.mockReturnValue(mockSchema);
+
+			const tool = createMockTool(
+				'empty-additional-properties-tool',
+				'Tool with empty additional properties',
+			);
+
+			const result = formatToOpenAIResponsesTool(tool);
+
+			expect(result).toEqual({
+				type: 'function',
+				name: 'empty-additional-properties-tool',
+				parameters: { ...mockSchema, additionalProperties: false },
+				strict: true,
+				description: 'Tool with empty additional properties',
+			});
+		});
+
+		it('should keep additionalProperties:true when strict is true', () => {
+			const mockSchema = {
+				type: 'object',
+				properties: {
+					required: { type: 'string' },
+				},
+				required: ['required'],
+				additionalProperties: true,
+			};
+			mockZodToJsonSchema.mockReturnValue(mockSchema);
+
+			const tool = createMockTool(
+				'additional-properties-true-tool',
+				'Tool with additional properties true',
+			);
+
+			const result = formatToOpenAIResponsesTool(tool);
+
+			expect(result).toEqual({
+				type: 'function',
+				name: 'additional-properties-true-tool',
+				parameters: { ...mockSchema, additionalProperties: true },
+				strict: true,
+				description: 'Tool with additional properties true',
+			});
+		});
+
+		it('should keep not empty additionalProperties when strict is true', () => {
+			const mockSchema = {
+				type: 'object',
+				properties: {
+					required: { type: 'string' },
+				},
+				required: ['required'],
+				additionalProperties: { type: 'string' },
+			};
+			mockZodToJsonSchema.mockReturnValue(mockSchema);
+
+			const tool = createMockTool(
+				'not-empty-additional-properties-tool',
+				'Tool with not empty additional properties',
+			);
+
+			const result = formatToOpenAIResponsesTool(tool);
+
+			expect(result).toEqual({
+				type: 'function',
+				name: 'not-empty-additional-properties-tool',
+				parameters: { ...mockSchema, additionalProperties: { type: 'string' } },
+				strict: true,
+				description: 'Tool with not empty additional properties',
+			});
+		});
+
+		it('should change empty additionalProperties to false when strict is true', () => {
+			const mockSchema = {
+				type: 'object',
+				properties: {
+					required: { type: 'string' },
+				},
+				required: ['required'],
+				additionalProperties: {},
+			};
+			mockZodToJsonSchema.mockReturnValue(mockSchema);
+
+			const tool = createMockTool(
+				'empty-additional-properties-tool',
+				'Tool with empty additional properties',
+			);
+
+			const result = formatToOpenAIResponsesTool(tool);
+
+			expect(result).toEqual({
+				type: 'function',
+				name: 'empty-additional-properties-tool',
+				parameters: { ...mockSchema, additionalProperties: false },
+				strict: true,
+				description: 'Tool with empty additional properties',
+			});
+		});
+
+		it('should keep empty additionalProperties when strict is false', () => {
+			const mockSchema = {
+				type: 'object',
+				properties: {
+					optional: { type: 'string' },
+				},
+				additionalProperties: {},
+			};
+			mockZodToJsonSchema.mockReturnValue(mockSchema);
+
+			const tool = createMockTool(
+				'empty-additional-properties-tool',
+				'Tool with empty additional properties',
+			);
+
+			const result = formatToOpenAIResponsesTool(tool);
+
+			expect(result).toEqual({
+				type: 'function',
+				name: 'empty-additional-properties-tool',
+				parameters: { ...mockSchema, additionalProperties: {} },
+				strict: false,
+				description: 'Tool with empty additional properties',
 			});
 		});
 	});

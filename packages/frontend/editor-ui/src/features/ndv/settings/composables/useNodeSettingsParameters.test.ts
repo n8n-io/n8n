@@ -1,13 +1,13 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useNodeSettingsParameters } from './useNodeSettingsParameters';
-import * as nodeHelpers from '@/composables/useNodeHelpers';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import * as nodeHelpers from '@/app/composables/useNodeHelpers';
+import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import * as nodeSettingsUtils from '@/features/ndv/shared/ndv.utils';
-import * as nodeTypesUtils from '@/utils/nodeTypesUtils';
+import * as nodeTypesUtils from '@/app/utils/nodeTypesUtils';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
