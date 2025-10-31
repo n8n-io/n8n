@@ -8,6 +8,8 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:unit": "jest --config=jest.config.unit.js",
+    "test:integration": "jest --config=jest.config.integration.js",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint . --quiet",

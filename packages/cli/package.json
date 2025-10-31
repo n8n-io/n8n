@@ -21,6 +21,8 @@
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
     "test": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
+    "test:unit": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --config=jest.config.unit.js",
+    "test:integration": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --config=jest.config.integration.js",
     "test:dev": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --watch",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --config=jest.config.integration.js --no-coverage",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --config=jest.config.integration.js --no-coverage",
