@@ -3,13 +3,13 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
-import type { IUser } from 'n8n-workflow';
+import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import type { License } from '@/license';
-import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { UrlService } from '@/services/url.service';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 jest.mock('@n8n/ai-workflow-builder');
 jest.mock('@n8n_io/ai-assistant-sdk');
@@ -21,7 +21,8 @@ const MockedAiAssistantClient = AiAssistantClient as jest.MockedClass<typeof AiA
 
 describe('WorkflowBuilderService', () => {
 	let service: WorkflowBuilderService;
-	let mockNodeTypes: NodeTypes;
+	let mockLoadNodesAndCredentials: LoadNodesAndCredentials;
+	let mockNodeTypeDescriptions: INodeTypeDescription[];
 	let mockLicense: License;
 	let mockConfig: GlobalConfig;
 	let mockLogger: Logger;
@@ -32,7 +33,27 @@ describe('WorkflowBuilderService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		mockNodeTypes = mock<NodeTypes>();
+		mockNodeTypeDescriptions = [
+			{
+				name: 'TestNode',
+				displayName: 'Test Node',
+				description: 'A test node',
+				version: 1,
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				properties: [],
+				group: ['transform'],
+			} as INodeTypeDescription,
+		];
+
+		mockLoadNodesAndCredentials = {
+			types: {
+				nodes: mockNodeTypeDescriptions,
+				credentials: [],
+			},
+		} as unknown as LoadNodesAndCredentials;
+
 		mockLicense = mock<License>();
 		mockConfig = mock<GlobalConfig>();
 		mockLogger = mock<Logger>();
@@ -52,7 +73,7 @@ describe('WorkflowBuilderService', () => {
 		MockedAiAssistantClient.mockClear();
 
 		service = new WorkflowBuilderService(
-			mockNodeTypes,
+			mockLoadNodesAndCredentials,
 			mockLicense,
 			mockConfig,
 			mockLogger,
@@ -86,7 +107,7 @@ describe('WorkflowBuilderService', () => {
 			const result = await generator.next();
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
-				mockNodeTypes,
+				mockNodeTypeDescriptions,
 				undefined, // No client when baseUrl is not set
 				mockLogger,
 				'https://instance.test.com',
@@ -123,7 +144,7 @@ describe('WorkflowBuilderService', () => {
 			});
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
-				mockNodeTypes,
+				mockNodeTypeDescriptions,
 				expect.any(AiAssistantClient),
 				mockLogger,
 				'https://instance.test.com',
@@ -244,7 +265,7 @@ describe('WorkflowBuilderService', () => {
 				| undefined;
 
 			MockedAiWorkflowBuilderService.mockImplementation(
-				(_nodeTypes, _client, _logger, _instanceUrl, callback) => {
+				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback) => {
 					capturedCallback = callback;
 					return mockAiService;
 				},
@@ -291,7 +312,7 @@ describe('WorkflowBuilderService', () => {
 				| undefined;
 
 			MockedAiWorkflowBuilderService.mockImplementation(
-				(_nodeTypes, _client, _logger, _instanceUrl, callback) => {
+				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback) => {
 					capturedCallback = callback;
 					return mockAiService;
 				},

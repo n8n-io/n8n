@@ -24,6 +24,7 @@ import { createUser } from '@test-integration/db/users';
 import { UserError } from 'n8n-workflow';
 import { JwtService } from '@/services/jwt.service';
 import { GlobalConfig } from '@n8n/config';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -334,8 +335,12 @@ describe('OIDC service', () => {
 		};
 
 		it('should not include the provisioning scope if no provisioning is enabled', async () => {
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionProjectRoles = false;
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionInstanceRole = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
 			const authUrl = await oidcService.generateLoginUrl();
 
 			validateUrl(authUrl);
@@ -343,9 +348,12 @@ describe('OIDC service', () => {
 		});
 
 		it('should include the provisioning scope if project provisioning is enabled', async () => {
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionProjectRoles = true;
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionInstanceRole = false;
-			Container.get(GlobalConfig).sso.provisioning.scopesName = 'n8n_test_scope';
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
 			const authUrl = await oidcService.generateLoginUrl();
 
 			validateUrl(authUrl);
@@ -353,9 +361,12 @@ describe('OIDC service', () => {
 		});
 
 		it('should include the provisioning scope if instance provisioning is enabled', async () => {
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionProjectRoles = false;
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionInstanceRole = true;
-			Container.get(GlobalConfig).sso.provisioning.scopesName = 'n8n_test_scope';
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
 			const authUrl = await oidcService.generateLoginUrl();
 
 			validateUrl(authUrl);
@@ -363,9 +374,12 @@ describe('OIDC service', () => {
 		});
 
 		it('should include the provisioning scope if project and instance provisioning is enabled', async () => {
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionProjectRoles = true;
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionInstanceRole = true;
-			Container.get(GlobalConfig).sso.provisioning.scopesName = 'n8n_test_scope';
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
 			const authUrl = await oidcService.generateLoginUrl();
 
 			validateUrl(authUrl);
