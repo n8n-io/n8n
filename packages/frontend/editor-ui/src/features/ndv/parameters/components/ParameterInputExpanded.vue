@@ -216,7 +216,11 @@ function onDocumentationUrlClick(): void {
 				</N8nText>
 			</div>
 		</N8nInputLabel>
-		<div v-if="isFixedCollectionType" class="fixed-collection-wrapper">
+		<div
+			v-if="isFixedCollectionType"
+			class="fixed-collection-wrapper"
+			data-test-id="fixed-collection-wrapper"
+		>
 			<LazyFixedCollectionParameter
 				:parameter="parameter"
 				:values="fixedCollectionValues"
