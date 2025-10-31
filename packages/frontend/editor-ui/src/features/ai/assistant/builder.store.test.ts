@@ -21,7 +21,7 @@ import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/stores/posthog.store.test';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { reactive } from 'vue';
-import * as chatAPI from '@/api/ai';
+import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/composables/useTelemetry';
 import {
 	injectWorkflowState,

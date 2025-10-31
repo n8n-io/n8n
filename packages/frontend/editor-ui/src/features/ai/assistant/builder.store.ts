@@ -13,7 +13,12 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions, getBuilderCredits, getSessionsMetadata } from '@/api/ai';
+import {
+	chatWithBuilder,
+	getAiSessions,
+	getBuilderCredits,
+	getSessionsMetadata,
+} from '@/features/ai/assistant/assistant.api';
 import { generateMessageId, createBuilderPayload } from './builder.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
