@@ -1,8 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowDependencies, WorkflowDependencyRepository } from '@n8n/db';
+import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
+
+// A safety limit to prevent infinite loops in indexing.
+const LOOP_LIMIT = 1_000_000_000;
 
 /**
  * Service for managing the workflow dependency index. The index tracks dependencies such as node types,
@@ -16,9 +19,48 @@ import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 export class WorkflowIndexService {
 	constructor(
 		private readonly dependencyRepository: WorkflowDependencyRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
+		private readonly batchSize = 100,
 	) {}
+
+	async buildIndex() {
+		const batchSize = this.batchSize;
+		let processedCount = 0;
+
+		while (processedCount < LOOP_LIMIT) {
+			// Get only workflows that need indexing (unindexed or outdated).
+			const workflows = await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize);
+
+			if (workflows.length === 0) {
+				break;
+			}
+
+			// Build the index for each workflow in the batch.
+			for (const workflow of workflows) {
+				await this.updateIndexFor(workflow);
+			}
+
+			processedCount += workflows.length;
+			this.logger.debug(`Indexed ${processedCount} workflows so far`);
+
+			// If we got fewer workflows than the batch size, we're done.
+			if (workflows.length < batchSize) {
+				break;
+			}
+		}
+
+		if (processedCount >= LOOP_LIMIT) {
+			const message = `Stopping workflow indexing because we hit the limit of ${LOOP_LIMIT} workflows. There's probably a bug causing an infinite loop.`;
+			this.logger.warn(message);
+			this.errorReporter.warn(new Error(message));
+		}
+
+		this.logger.info(
+			`Finished building workflow dependency index. Processed ${processedCount} workflows.`,
+		);
+	}
 
 	/**
 	 * Update the dependency index for a given workflow.
