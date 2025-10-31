@@ -22,8 +22,8 @@
     "deps:all": "pnpm run deps:graph && pnpm run deps:graph:service && pnpm run deps:graph:tools && pnpm run deps:circular && pnpm run deps:report",
     "eval": "tsx evaluations",
     "eval:csv": "tsx evaluations --prompts-csv",
-    "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
-    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
+    "eval:langsmith": "tsx evaluations --use-langsmith",
+    "eval:generate": "tsx evaluations --generate-test-cases",
     "eval:categorize": "tsx scripts/categorize-prompts.ts"
   },
   "main": "dist/index.js",

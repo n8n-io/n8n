@@ -1,9 +1,11 @@
 #!/usr/bin/env tsx
 
+import { CliParser } from '@n8n/backend-common';
 import { writeFileSync } from 'fs';
 import pLimit from 'p-limit';
 import { join } from 'path';
 import pc from 'picocolors';
+import { z } from 'zod';
 
 import { promptCategorizationChain } from '../src/chains/prompt-categorization';
 import { setupIntegrationLLM } from '../src/chains/test/integration/test-helpers';
@@ -25,12 +27,27 @@ interface CategorizationResult {
 	executionTime: number;
 }
 
+// Define CLI flags schema
+const flagsSchema = z.object({
+	concurrency: z.coerce.number().int().positive().default(10),
+});
+
 async function categorizeAllPrompts() {
-	// Get concurrency from environment or default to 10
-	const DEFAULT_CONCURRENCY = 10;
-	const parsedConcurrency = parseInt(process.env.CONCURRENCY ?? '', 10);
+	// Simple logger for CLI parser (only used for debug output)
+	const logger = { debug: () => {} };
+	const cliParser = new CliParser(logger as never);
+
+	const { flags } = cliParser.parse({
+		argv: process.argv,
+		flagsSchema,
+	});
+
+	// Support legacy environment variable as fallback
+	const parsedEnvConcurrency = parseInt(process.env.CONCURRENCY ?? '', 10);
 	const concurrency =
-		!isNaN(parsedConcurrency) && parsedConcurrency >= 1 ? parsedConcurrency : DEFAULT_CONCURRENCY;
+		!isNaN(parsedEnvConcurrency) && parsedEnvConcurrency >= 1
+			? parsedEnvConcurrency
+			: flags.concurrency;
 
 	console.log(pc.blue(`\n🚀 Starting categorization of ${userPrompts.length} prompts...`));
 	console.log(pc.dim(`   Processing with concurrency=${concurrency}\n`));
