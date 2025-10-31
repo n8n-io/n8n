@@ -1,5 +1,6 @@
 // Different LLMConfig type for this file - specific to LLM providers
 import { MAX_OUTPUT_TOKENS } from '@/constants';
+import { getProxyAgent } from '@/utils/httpProxyAgent';
 
 interface LLMProviderConfig {
 	apiKey: string;
@@ -15,6 +16,9 @@ export const o4mini = async (config: LLMProviderConfig) => {
 		configuration: {
 			baseURL: config.baseUrl,
 			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl ?? 'https://api.openai.com/v1'),
+			},
 		},
 	});
 };
@@ -29,6 +33,9 @@ export const gpt41mini = async (config: LLMProviderConfig) => {
 		configuration: {
 			baseURL: config.baseUrl,
 			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl ?? 'https://api.openai.com/v1'),
+			},
 		},
 	});
 };
@@ -43,6 +50,9 @@ export const gpt41 = async (config: LLMProviderConfig) => {
 		configuration: {
 			baseURL: config.baseUrl,
 			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl ?? 'https://api.openai.com/v1'),
+			},
 		},
 	});
 };
@@ -57,6 +67,9 @@ export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 		anthropicApiUrl: config.baseUrl,
 		clientOptions: {
 			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl),
+			},
 		},
 	});
 

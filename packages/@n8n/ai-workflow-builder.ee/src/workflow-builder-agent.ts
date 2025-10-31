@@ -434,7 +434,9 @@ export class WorkflowBuilderAgent {
 		const streamConfig = {
 			...threadConfig,
 			streamMode: ['updates', 'custom'],
-			recursionLimit: 50,
+			recursionLimit: process.env.N8N_AI_WORKFLOW_BUILDER_RECURSION_LIMIT
+				? parseInt(process.env.N8N_AI_WORKFLOW_BUILDER_RECURSION_LIMIT, 10)
+				: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
 		};
