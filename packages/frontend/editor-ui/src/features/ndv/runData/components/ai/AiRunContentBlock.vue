@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, NodeError } from 'n8n-workflow';
 import RunDataAi from '../RunDataParsedAiContent.vue';
-import { parseAiContent } from '@/utils/aiUtils';
+import { parseAiContent } from '@/app/utils/aiUtils';
 import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
 import NodeErrorView from '../error/NodeErrorView.vue';
 const props = defineProps<{

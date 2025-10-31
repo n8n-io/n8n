@@ -226,7 +226,7 @@ export class ChatHubController {
 		@Body payload: ChatHubUpdateConversationRequest,
 	): Promise<ChatHubConversationResponse> {
 		if (Object.keys(payload).length > 0) {
-			await this.chatService.updateSession(req.user.id, sessionId, payload);
+			await this.chatService.updateSession(req.user, sessionId, payload);
 		}
 
 		return await this.chatService.getConversation(req.user.id, sessionId);

@@ -318,7 +318,31 @@ export function useBuilderMessages() {
 		};
 	}
 
-	function createAssistantMessage(content: string, id: string): ChatUI.AssistantMessage {
+	function createAssistantMessage(
+		content: string,
+		id: string,
+		options: { aborted: true },
+	): ChatUI.TaskAbortedMessage;
+	function createAssistantMessage(
+		content: string,
+		id: string,
+		options?: { aborted?: false },
+	): ChatUI.TextMessage;
+	function createAssistantMessage(
+		content: string,
+		id: string,
+		options?: { aborted?: boolean },
+	): ChatUI.AssistantMessage {
+		if (options?.aborted) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'text',
+				content,
+				read: true,
+				aborted: true,
+			};
+		}
 		return {
 			id,
 			role: 'assistant',

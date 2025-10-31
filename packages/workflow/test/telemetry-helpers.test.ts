@@ -1716,6 +1716,115 @@ describe('generateNodesGraph', () => {
 			},
 		});
 	});
+
+	test.each(['classify', 'sanitize'])(
+		'should handle Guardrails node with valid guardrails assignments for operation %s',
+		(operation) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							operation,
+							guardrails: {
+								promptInjection: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								nsfw: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								pii: {
+									type: 'all',
+									entities: ['email', 'phone'],
+									customRegex: {
+										regex: ['/1234567890/'],
+									},
+								},
+								urls: {
+									allowedUrls: 'https://example.com',
+									allowedSchemes: ['https'],
+									blockUserinfo: true,
+									allowSubdomains: true,
+								},
+							},
+						},
+						id: 'guardrails-node-id',
+						name: 'Guardrails Node',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'guardrails-node-id',
+							type: '@n8n/n8n-nodes-langchain.guardrails',
+							version: 1,
+							position: [100, 100],
+							operation,
+							used_guardrails: ['promptInjection', 'nsfw', 'pii', 'urls'],
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'Guardrails Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
+	test('should handle Guardrails node without guardrails assignments', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'classify',
+						guardrails: {},
+					},
+					id: 'guardrails-node-id',
+					name: 'Guardrails Node',
+					type: '@n8n/n8n-nodes-langchain.guardrails',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'guardrails-node-id',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						version: 1,
+						position: [100, 100],
+						operation: 'classify',
+						used_guardrails: [],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Guardrails Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
 });
 
 describe('extractLastExecutedNodeCredentialData', () => {

@@ -75,7 +75,7 @@ async function onCloseClick() {
 
 <style lang="scss" module>
 .callout {
-	height: var(--banner-height);
+	height: var(--banner--height);
 }
 
 .mainContent {

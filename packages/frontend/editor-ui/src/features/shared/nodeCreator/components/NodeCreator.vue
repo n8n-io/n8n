@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
+import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useActionsGenerator } from '../composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
-import { DRAG_EVENT_DATA_KEY } from '@/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
@@ -207,14 +207,14 @@ onClickOutside(
 	font-weight: var(--font-weight--bold);
 }
 .nodeCreator {
-	--node-creator-width: #{$node-creator-width};
+	--node-creator--width: #{$node-creator-width};
 	--node--icon--color: var(--color--text);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
 	right: 0;
-	z-index: var(--z-index-node-creator);
-	width: var(--node-creator-width);
+	z-index: var(--node-creator--z);
+	width: var(--node-creator--width);
 	color: $node-creator-text-color;
 }
 
@@ -237,7 +237,7 @@ onClickOutside(
 
 .close {
 	position: absolute;
-	z-index: calc(var(--z-index-node-creator) + 1);
+	z-index: calc(var(--node-creator--z) + 1);
 	top: var(--spacing--xs);
 	right: var(--spacing--xs);
 	background: transparent;
@@ -247,7 +247,7 @@ onClickOutside(
 
 @media screen and (max-width: #{$node-creator-width + $sidebar-width}) {
 	.nodeCreator {
-		--node-creator-width: calc(100vw - #{$sidebar-width});
+		--node-creator--width: calc(100vw - #{$sidebar-width});
 	}
 
 	.close {

@@ -2,9 +2,9 @@ import { renderComponent } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import TriggerPanel from './TriggerPanel.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { setActivePinia } from 'pinia';
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;

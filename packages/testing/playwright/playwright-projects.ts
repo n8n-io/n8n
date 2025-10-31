@@ -10,6 +10,7 @@ const CONTAINER_ONLY_TAGS = [
 	'multi-main',
 	'task-runner',
 	'source-control',
+	'email',
 ];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 

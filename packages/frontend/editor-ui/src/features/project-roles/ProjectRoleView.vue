@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useMessage } from '@/composables/useMessage';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useRolesStore } from '@/stores/roles.store';
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useRolesStore } from '@/app/stores/roles.store';
 import {
 	N8nButton,
 	N8nFormInput,
@@ -432,7 +432,7 @@ const displayNameValidationRules = [
 .cardContainer {
 	padding: 8px 16px;
 	border-radius: 4px;
-	border: var(--border-base);
+	border: var(--border);
 	background-color: var(--color--background--light-3);
 	:global(.el-skeleton__p) {
 		margin-bottom: 8px;
@@ -445,7 +445,7 @@ const displayNameValidationRules = [
 }
 
 .card:not(:last-child) {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 .cardTitle {

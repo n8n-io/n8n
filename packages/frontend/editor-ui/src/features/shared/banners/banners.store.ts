@@ -2,7 +2,7 @@ import type { Component } from 'vue';
 import { computed, markRaw, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { DynamicBanner } from '@n8n/rest-api-client/api/dynamic-banners';
 import { getDynamicBanners } from '@n8n/rest-api-client/api/dynamic-banners';
 import type { BannerName } from '@n8n/api-types';

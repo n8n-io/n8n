@@ -4,7 +4,7 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	getParentNodes,
@@ -13,10 +13,10 @@ import {
 	getUpdatedTextareaValue,
 	getTextareaCursorPosition,
 } from '../../utils/buttonParameter.utils';
-import { useTelemetry } from '@/composables/useTelemetry';
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
-import { propertyNameFromExpression } from '@/utils/mappingUtils';
+import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
 const emit = defineEmits<{

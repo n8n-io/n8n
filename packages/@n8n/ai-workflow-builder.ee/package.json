@@ -23,7 +23,8 @@
     "eval": "tsx evaluations",
     "eval:csv": "tsx evaluations --prompts-csv",
     "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
-    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations"
+    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
+    "eval:categorize": "tsx scripts/categorize-prompts.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

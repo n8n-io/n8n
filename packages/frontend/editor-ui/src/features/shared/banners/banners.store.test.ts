@@ -1,6 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
+<<<<<<<< HEAD:packages/frontend/editor-ui/src/features/shared/banners/banners.store.test.ts
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useSettingsStore } from '@/stores/settings.store';
+========
+import { useBannersStore } from '@/app/stores/banners.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+>>>>>>>> origin/master:packages/frontend/editor-ui/src/app/stores/banners.store.test.ts
 import * as dynamicBannersApi from '@n8n/rest-api-client/api/dynamic-banners';
 
 let bannersStore: ReturnType<typeof useBannersStore>;

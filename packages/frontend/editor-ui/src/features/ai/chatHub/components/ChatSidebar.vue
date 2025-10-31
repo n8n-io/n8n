@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import ModalDrawer from '@/components/ModalDrawer.vue';
-import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY } from '@/constants';
+import ModalDrawer from '@/app/components/ModalDrawer.vue';
+import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY } from '@/app/constants';
 import ChatSidebarContent from '@/features/ai/chatHub/components/ChatSidebarContent.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useMediaQuery } from '@vueuse/core';
 import { onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
