@@ -89,14 +89,16 @@ function resetForm() {
 	agentSelectedCredentials.value = {};
 }
 
-// Watch for agent ID to change
+// Watch for modal opening
 watch(
-	() => props.agentId,
-	(agentId) => {
-		if (agentId) {
-			loadAgent();
-		} else {
-			resetForm();
+	() => uiStore.modalsById.agentEditor.open,
+	(isOpen) => {
+		if (isOpen) {
+			if (props.agentId) {
+				loadAgent();
+			} else {
+				resetForm();
+			}
 		}
 	},
 );
