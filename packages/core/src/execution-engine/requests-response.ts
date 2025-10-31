@@ -64,7 +64,8 @@ function prepareRequestedNodesForExecution(
 
 		// Get the item index from action metadata to access the correct agent input data
 		const itemIndex = (action.metadata as { itemIndex?: number })?.itemIndex ?? 0;
-		const agentInputData = executionData.data.main?.[runIndex]?.[itemIndex];
+		// Use index 0 for main input as agents have only one main input connection
+		const agentInputData = executionData.data.main?.[0]?.[itemIndex];
 
 		// Merge agent's input data with action.input so tools have access to workflow data
 		// action.input takes precedence to allow tool-specific parameters to override
@@ -106,7 +107,7 @@ function prepareRequestedNodesForExecution(
 
 		nodesToBeExecuted.push({
 			inputConnectionData,
-			parentOutputIndex,
+			parentOutputIndex: 0, // Tools connect to agent's output 0 (agents have only one main output)
 			parentNode,
 			parentOutputData,
 			runIndex,
