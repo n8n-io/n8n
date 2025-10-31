@@ -76,7 +76,7 @@ describe('CredentialsService', () => {
 			});
 		});
 
-		it('should redact sensitive values in a fixed collection', () => {
+		it('should redact sensitive values in a fixed collection with multiple values', () => {
 			const fixedCollectionCredType = {
 				properties: [
 					{
@@ -114,6 +114,10 @@ describe('CredentialsService', () => {
 							name: 'Authorization',
 							value: 'Bearer sensitiveSecret',
 						},
+						{
+							name: 'Test',
+							value: '123',
+						},
 					],
 				},
 			};
@@ -125,7 +129,62 @@ describe('CredentialsService', () => {
 
 			expect(redactedData).toEqual({
 				headers: {
-					values: [{ name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE }],
+					values: [
+						{ name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
+						{ name: 'Test', value: CREDENTIAL_BLANKING_VALUE },
+					],
+				},
+			});
+		});
+
+		it('should redact sensitive values in a fixed collection with single value', () => {
+			const fixedCollectionCredType = {
+				properties: [
+					{
+						name: 'headers',
+						type: 'fixedCollection',
+						typeOptions: { multipleValues: false },
+						options: [
+							{
+								name: 'values',
+								values: [
+									{
+										name: 'name',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										type: 'string',
+										typeOptions: { password: true },
+									},
+								],
+							},
+						],
+					},
+				],
+			} as unknown as ICredentialType;
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+			const decryptedData = {
+				headers: {
+					values: {
+						name: 'Authorization',
+						value: 'Bearer sensitiveSecret',
+					},
+				},
+			};
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(fixedCollectionCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				headers: {
+					values: { name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
 				},
 			});
 		});
