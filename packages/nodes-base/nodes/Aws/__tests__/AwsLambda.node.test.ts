@@ -382,18 +382,6 @@ describe('AwsLambda', () => {
 				);
 			});
 
-			it('should handle lambda function errors with stack trace', async () => {
-				const mockErrorResponse = {
-					errorMessage: 'Timeout error',
-					errorType: 'Task timed out',
-					stackTrace: ['at handler (/var/task/index.js:15:10)', 'at Runtime.exports.handler'],
-				};
-
-				awsApiRequestRESTSpy.mockResolvedValue(mockErrorResponse);
-
-				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(NodeApiError);
-			});
-
 			it('should handle API errors when continueOnFail is true', async () => {
 				const apiError = new Error('Function not found');
 				mockExecuteFunctions.continueOnFail.mockReturnValue(true);

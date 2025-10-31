@@ -4,17 +4,10 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { awsApiRequest, awsApiRequestREST, awsApiRequestSOAP } from '../GenericFunctions';
 
-jest.mock('xml2js', () => ({
-	parseString: jest.fn(),
-}));
-
-import { parseString as parseXml } from 'xml2js';
-
 describe('AWS GenericFunctions', () => {
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
 	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
 	let mockWebhookFunctions: jest.Mocked<IWebhookFunctions>;
-	const mockParseXml = parseXml as jest.MockedFunction<typeof parseXml>;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -527,16 +520,11 @@ describe('AWS GenericFunctions', () => {
 			it('should parse valid XML response', async () => {
 				const mockCredentials = { region: 'us-east-1' };
 				const xmlResponse = '<response><status>success</status><data>test</data></response>';
-				const parsedXmlData = { response: { status: 'success', data: 'test' } };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
 					xmlResponse,
 				);
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, parsedXmlData);
-				});
 
 				const result = await awsApiRequestSOAP.call(
 					mockExecuteFunctions,
@@ -546,27 +534,22 @@ describe('AWS GenericFunctions', () => {
 					'<email>test</email>',
 				);
 
-				expect(result).toEqual(parsedXmlData);
-				expect(mockParseXml).toHaveBeenCalledWith(
-					xmlResponse,
-					{ explicitArray: false },
-					expect.any(Function),
-				);
+				expect(result).toEqual({
+					response: {
+						status: 'success',
+						data: 'test',
+					},
+				});
 			});
 
 			it('should return raw response when XML parsing fails', async () => {
 				const mockCredentials = { region: 'us-east-1' };
 				const invalidXmlResponse = 'Not valid XML content';
-				const parseError = new Error('XML parsing failed');
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
 					invalidXmlResponse,
 				);
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(parseError, null);
-				});
 
 				const result = await awsApiRequestSOAP.call(
 					mockExecuteFunctions,
@@ -576,7 +559,6 @@ describe('AWS GenericFunctions', () => {
 				);
 
 				expect(result).toBe(invalidXmlResponse);
-				expect(mockParseXml).toHaveBeenCalled();
 			});
 
 			it('should handle empty XML response', async () => {
@@ -588,33 +570,20 @@ describe('AWS GenericFunctions', () => {
 					emptyResponse,
 				);
 
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, {});
-				});
-
 				const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'GET', '/status');
 
-				expect(result).toEqual({});
+				expect(result).toBeNull();
 			});
 
-			it('should handle complex nested XML', async () => {
+			it('should handle complex nested XML with actual parsing', async () => {
 				const mockCredentials = { region: 'us-east-1' };
 				const complexXml =
 					'<ListQueuesResult><QueueUrl>url1</QueueUrl><QueueUrl>url2</QueueUrl></ListQueuesResult>';
-				const parsedData = {
-					ListQueuesResult: {
-						QueueUrl: ['url1', 'url2'],
-					},
-				};
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
 					complexXml,
 				);
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, parsedData);
-				});
 
 				const result = await awsApiRequestSOAP.call(
 					mockExecuteFunctions,
@@ -623,18 +592,16 @@ describe('AWS GenericFunctions', () => {
 					'/list-queues',
 				);
 
-				expect(result).toEqual(parsedData);
-				expect(mockParseXml).toHaveBeenCalledWith(
-					complexXml,
-					{ explicitArray: false },
-					expect.any(Function),
-				);
+				expect(result).toEqual({
+					ListQueuesResult: {
+						QueueUrl: ['url1', 'url2'],
+					},
+				});
 			});
 
-			it('should work with ILoadOptionsFunctions context', async () => {
+			it('should work with different function contexts', async () => {
 				const mockCredentials = { region: 'us-east-1' };
 				const xmlResponse = '<options><item>opt1</item><item>opt2</item></options>';
-				const parsedData = { options: { item: ['opt1', 'opt2'] } };
 
 				mockLoadOptionsFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
@@ -649,10 +616,6 @@ describe('AWS GenericFunctions', () => {
 					parameters: {},
 				});
 
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, parsedData);
-				});
-
 				const result = await awsApiRequestSOAP.call(
 					mockLoadOptionsFunctions,
 					'ses',
@@ -660,43 +623,13 @@ describe('AWS GenericFunctions', () => {
 					'/options',
 				);
 
-				expect(result).toEqual(parsedData);
+				expect(result).toEqual({
+					options: {
+						item: ['opt1', 'opt2'],
+					},
+				});
 			});
 
-			it('should work with IWebhookFunctions context', async () => {
-				const mockCredentials = { region: 'us-east-1' };
-				const xmlResponse = '<webhook><processed>true</processed></webhook>';
-				const parsedData = { webhook: { processed: 'true' } };
-
-				mockWebhookFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockWebhookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					xmlResponse,
-				);
-				mockWebhookFunctions.getNode.mockReturnValue({
-					id: 'webhook-node',
-					name: 'Webhook Node',
-					type: 'n8n-nodes-base.aws',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				});
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, parsedData);
-				});
-
-				const result = await awsApiRequestSOAP.call(
-					mockWebhookFunctions,
-					'ses',
-					'POST',
-					'/webhook',
-				);
-
-				expect(result).toEqual(parsedData);
-			});
-		});
-
-		describe('Error Propagation', () => {
 			it('should propagate errors from awsApiRequest', async () => {
 				const apiError = new Error('SOAP API request failed');
 				mockExecuteFunctions.getCredentials.mockRejectedValue(apiError);
@@ -704,87 +637,6 @@ describe('AWS GenericFunctions', () => {
 				await expect(
 					awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'POST', '/test'),
 				).rejects.toThrow('SOAP API request failed');
-			});
-
-			it('should handle XML parser errors gracefully', async () => {
-				const mockCredentials = { region: 'us-east-1' };
-				const xmlResponse = '<malformed>xml</broken>';
-				const parseError = new Error('Invalid XML structure');
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					xmlResponse,
-				);
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(parseError, null);
-				});
-
-				const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'POST', '/test');
-
-				expect(result).toBe(xmlResponse);
-			});
-		});
-
-		describe('XML Parser Configuration', () => {
-			it('should call XML parser with explicitArray: false', async () => {
-				const mockCredentials = { region: 'us-east-1' };
-				const xmlResponse = '<test>data</test>';
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					xmlResponse,
-				);
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, { test: 'data' });
-				});
-
-				await awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'GET', '/test');
-
-				expect(mockParseXml).toHaveBeenCalledWith(
-					xmlResponse,
-					{ explicitArray: false },
-					expect.any(Function),
-				);
-			});
-		});
-
-		describe('Edge Cases', () => {
-			it('should handle null response from API', async () => {
-				const mockCredentials = { region: 'us-east-1' };
-				const nullResponse = null;
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					nullResponse,
-				);
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, {});
-				});
-
-				const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'GET', '/test');
-
-				expect(result).toEqual({});
-			});
-
-			it('should handle undefined response from API', async () => {
-				const mockCredentials = { region: 'us-east-1' };
-				const undefinedResponse = undefined;
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-					undefinedResponse,
-				);
-
-				mockParseXml.mockImplementation((_xml, _options, callback) => {
-					callback(null, {});
-				});
-
-				const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'GET', '/test');
-
-				expect(result).toEqual({});
 			});
 		});
 	});

@@ -1,5 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	awsApiRequest,
@@ -8,11 +9,6 @@ import {
 	awsApiRequestSOAPAllItems,
 } from '../GenericFunctions';
 
-import {
-	createAwsApiRequestTests,
-	createAwsApiRequestRESTTests,
-} from '../../test/shared-test-utils';
-
 jest.mock('xml2js', () => ({
 	parseString: jest.fn(),
 }));
@@ -20,11 +16,102 @@ jest.mock('xml2js', () => ({
 import { parseString as parseXml } from 'xml2js';
 
 describe('ELB GenericFunctions', () => {
-	describe('awsApiRequest', createAwsApiRequestTests(awsApiRequest, 'elasticloadbalancing'));
-	describe(
-		'awsApiRequestREST',
-		createAwsApiRequestRESTTests(awsApiRequestREST, 'elasticloadbalancing'),
-	);
+	describe('awsApiRequest', () => {
+		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			jest.clearAllMocks();
+
+			mockExecuteFunctions.getNode.mockReturnValue({
+				id: 'test-node',
+				name: 'Test ELB Node',
+				type: 'n8n-nodes-base.awsElb',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+		});
+
+		it('should make successful API request with basic parameters', async () => {
+			const mockResponse = { success: true };
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(mockResponse);
+
+			const result = await awsApiRequest.call(
+				mockExecuteFunctions,
+				'elasticloadbalancing',
+				'GET',
+				'/test-path',
+			);
+
+			expect(result).toEqual(mockResponse);
+			expect(mockRequestWithAuth).toHaveBeenCalledWith(
+				'aws',
+				expect.objectContaining({
+					qs: expect.objectContaining({
+						service: 'elasticloadbalancing',
+						path: '/test-path',
+					}),
+					method: 'GET',
+				}),
+			);
+		});
+
+		it('should handle API errors', async () => {
+			const apiError = new Error('API Error');
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockRejectedValue(apiError);
+
+			await expect(
+				awsApiRequest.call(mockExecuteFunctions, 'elasticloadbalancing', 'GET', '/test-path'),
+			).rejects.toThrow(NodeApiError);
+		});
+	});
+
+	describe('awsApiRequestREST', () => {
+		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			jest.clearAllMocks();
+		});
+
+		it('should parse valid JSON response', async () => {
+			const jsonResponse = '{"result": "success", "data": [1,2,3]}';
+			const expectedResult = { result: 'success', data: [1, 2, 3] };
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(jsonResponse);
+
+			const result = await awsApiRequestREST.call(
+				mockExecuteFunctions,
+				'elasticloadbalancing',
+				'GET',
+				'/test-path',
+			);
+
+			expect(result).toEqual(expectedResult);
+		});
+
+		it('should return raw response when JSON parsing fails', async () => {
+			const rawResponse = 'not json data';
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue(rawResponse);
+
+			const result = await awsApiRequestREST.call(
+				mockExecuteFunctions,
+				'elasticloadbalancing',
+				'GET',
+				'/test-path',
+			);
+
+			expect(result).toBe(rawResponse);
+		});
+	});
 
 	describe('awsApiRequestSOAP', () => {
 		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
