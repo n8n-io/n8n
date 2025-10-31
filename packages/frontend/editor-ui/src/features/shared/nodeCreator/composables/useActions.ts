@@ -46,7 +46,7 @@ import { sortNodeCreateElements, transformNodeType } from '../nodeCreator.utils'
 import { useI18n } from '@n8n/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
-import { DEFAULT_NODE_SIZE, PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
+import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 
 export const useActions = () => {
 	const workflowState = injectWorkflowState();
