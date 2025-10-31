@@ -659,7 +659,7 @@ export class DataTableRowsRepository {
 				? escapeLikeSpecials(searchTerm)
 				: searchTerm;
 
-		const allColumnNames: string[] = [...DATA_TABLE_SYSTEM_COLUMNS, ...columns.map((c) => c.name)];
+		const allColumnNames: string[] = columns.map((c) => c.name);
 		if (allColumnNames.length === 0) return;
 
 		const tableRefQuoted = quoteIdentifier(tableReference, dbType);
