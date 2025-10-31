@@ -911,7 +911,7 @@ VALUES (
 			expect(normalizeParams(expectedArgs[0].values)).toEqual(normalizeParams(expectedVal));
 		});
 
-		it('should call runQueries with out binds using bindInfo and multiple items', async () => {
+		it('should call runQueries with out binds in plsql using bindInfo and multiple items', async () => {
 			const expectedQuery = `
 			BEGIN
 				:out_value1 := :in_value * 2;
@@ -980,6 +980,93 @@ VALUES (
 				expect(arg.query).toBe(expectedQuery);
 				expect(arg.values).toEqual(expectedValues);
 			});
+		});
+
+		it('should call runQueries with binds passed in sql using bindInfo and single item', async () => {
+			const expectedQuery = `INSERT INTO ${deptTable} (DEPTNO, EMPNAME) VALUES(:DNO, :ENAME) RETURNING EMPNAME INTO :OUTENAME`;
+			const items = [
+				{
+					json: {
+						DEPTNO: 100,
+						EMPNAME: 'ALICE',
+					},
+					pairedItem: {
+						item: 0,
+						input: undefined,
+					},
+				},
+			];
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: expectedQuery,
+				isBindInfo: true,
+				resource: 'database',
+				options: {
+					params: {
+						values: [
+							{
+								name: 'DNO',
+								valueNumber: 100,
+								datatype: 'number',
+								parseInStatement: false,
+							},
+							{
+								name: 'ENAME',
+								valueString: 'ALICE',
+								datatype: 'string',
+								parseInStatement: false,
+							},
+							{
+								name: 'OUTENAME',
+								datatype: 'string',
+								bindDirection: 'out',
+								parseInStatement: false,
+							},
+						],
+					},
+				},
+			};
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const runQueries = getRunQueriesFn(mockThis, pool);
+
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+			if (integratedTests) {
+				for (const r of result) {
+					expect(r.json).toMatchObject({
+						DNO: 100,
+						ENAME: 'ALICE',
+						OUTENAME: 'ALICE',
+					});
+				}
+			}
+
+			// Assert that runQueries was called with expected query and bind values
+			expect(runQueries).toHaveBeenCalledTimes(1);
+			const callArgs = runQueries.mock.calls[0] as [QueryWithValues[], unknown, unknown];
+			const [expectedArgs] = callArgs;
+			const val = {
+				DNO: {
+					type: oracleDBTypes.NUMBER,
+					val: 100,
+					dir: 3002,
+				},
+				ENAME: {
+					type: oracleDBTypes.DB_TYPE_VARCHAR,
+					val: 'ALICE',
+					dir: 3002,
+				},
+				OUTENAME: {
+					type: oracleDBTypes.STRING,
+					dir: 3003,
+					val: undefined,
+				},
+			};
+
+			expect(expectedArgs).toHaveLength(1);
+			expect(expectedArgs[0].query).toBe(expectedQuery);
+			expect(expectedArgs[0].values).toEqual(val);
 		});
 	});
 

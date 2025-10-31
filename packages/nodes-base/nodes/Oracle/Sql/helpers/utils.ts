@@ -369,11 +369,19 @@ function normalizeOutBinds(
 	stmtBatching: string,
 	outputColumns: string[],
 ): Array<Record<string, any>> {
-	// For execute operation mode, we get outBinds as object and
-	// array for other insert, update, upsert operations.
-	if (!Array.isArray(outBinds)) return [outBinds as Record<string, any>];
-
 	const rows: Array<Record<string, any>> = [];
+
+	if (!Array.isArray(outBinds)) {
+		// For execute operation mode, we get outBinds as object and
+		// array for other insert, update, upsert operations.
+		const row: Record<string, any> = {};
+		for (const [key, val] of Object.entries(outBinds as Record<string, unknown>)) {
+			// If val is expected to be an array, safely extract the first element
+			row[key] = Array.isArray(val) ? val[0] : val;
+		}
+		rows.push(row);
+		return rows;
+	}
 
 	// executeMany case outBinds-> [ [[col1Row1Val], [col2Row1Val]], [[col1Row2Val], [col2Row2Val]], ...]
 	if (stmtBatching === 'single') {
