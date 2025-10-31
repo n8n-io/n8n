@@ -53,8 +53,7 @@ const form = reactive({
 	scopesName: '',
 	scopesInstanceRoleClaimName: '',
 	scopesProjectsRolesClaimName: '',
-	scopesProvisionInstanceRole: false,
-	scopesProvisionProjectRoles: false,
+	provisioningEnabled: false,
 	scopesProvisioningFrequency: 'never',
 });
 
@@ -66,17 +65,21 @@ const frequencyOptions = [
 ];
 
 const isFormDirty = computed(() => {
-	const cfg = provisioningStore.provisioningConfig;
-	if (!cfg) return false;
-	const keys: Array<keyof ProvisioningConfig> = [
+	const config = provisioningStore.provisioningConfig;
+	if (!config) return false;
+	const formKeysThatMatchWithConfig: Array<keyof ProvisioningConfig> = [
 		'scopesName',
 		'scopesInstanceRoleClaimName',
 		'scopesProjectsRolesClaimName',
-		'scopesProvisionInstanceRole',
-		'scopesProvisionProjectRoles',
 		'scopesProvisioningFrequency',
 	];
-	return keys.some((key) => form[key] !== cfg[key]);
+	const configChanged = formKeysThatMatchWithConfig.some(
+		(key) => (form as any)[key] !== (config as any)[key],
+	);
+	const provisioningEnabledChanged =
+		form.provisioningEnabled !==
+		(config.scopesProvisionInstanceRole && config.scopesProvisionProjectRoles);
+	return configChanged || provisioningEnabledChanged;
 });
 
 const loadFormData = () => {
@@ -86,16 +89,20 @@ const loadFormData = () => {
 		scopesName: cfg.scopesName || '',
 		scopesInstanceRoleClaimName: cfg.scopesInstanceRoleClaimName || '',
 		scopesProjectsRolesClaimName: cfg.scopesProjectsRolesClaimName || '',
-		scopesProvisionInstanceRole: cfg.scopesProvisionInstanceRole ?? false,
-		scopesProvisionProjectRoles: cfg.scopesProvisionProjectRoles ?? false,
 		scopesProvisioningFrequency: cfg.scopesProvisioningFrequency || 'never',
 	});
+	form.provisioningEnabled = cfg.scopesProvisionInstanceRole;
 };
 
 const onSave = async () => {
 	saving.value = true;
 	try {
-		await provisioningStore.saveProvisioningConfig({ ...form });
+		const { provisioningEnabled, ...dataToSave } = form;
+		await provisioningStore.saveProvisioningConfig({
+			...dataToSave,
+			scopesProvisionInstanceRole: provisioningEnabled,
+			scopesProvisionProjectRoles: provisioningEnabled,
+		});
 		await provisioningStore.getProvisioningConfig();
 		loadFormData();
 
@@ -115,7 +122,7 @@ const onSave = async () => {
 </script>
 
 <template>
-	<div class="pb-2xl">
+	<div :class="$style.container">
 		<div :class="$style.heading">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.provisioning.title') }}</N8nHeading>
 		</div>
@@ -130,50 +137,22 @@ const onSave = async () => {
 
 		<div v-else>
 			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.provisioning.scopesProvisionInstanceRole') }}</label>
-				<div :class="$style.switchContainer">
-					<label :class="$style.switchLabel">
-						<input
-							v-model="form.scopesProvisionInstanceRole"
-							type="checkbox"
-							:class="$style.checkbox"
-						/>
-						<span :class="$style.switchText">
-							{{
-								form.scopesProvisionInstanceRole
-									? i18n.baseText('generic.yes')
-									: i18n.baseText('generic.no')
-							}}
-						</span>
-					</label>
-				</div>
-				<small>{{ i18n.baseText('settings.provisioning.scopesProvisionInstanceRole.help') }}</small>
-			</div>
-
-			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.provisioning.scopesProvisionProjectRoles') }}</label>
-				<div :class="$style.switchContainer">
-					<label :class="$style.switchLabel">
-						<input
-							v-model="form.scopesProvisionProjectRoles"
-							type="checkbox"
-							:class="$style.checkbox"
-						/>
-						<span :class="$style.switchText">
-							{{
-								form.scopesProvisionProjectRoles
-									? i18n.baseText('generic.yes')
-									: i18n.baseText('generic.no')
-							}}
-						</span>
-					</label>
-				</div>
-				<small>{{ i18n.baseText('settings.provisioning.scopesProvisionProjectRoles.help') }}</small>
+				<label for="provisioning-enabled">{{
+					i18n.baseText('settings.provisioning.toggle')
+				}}</label>
+				<small>{{ i18n.baseText('settings.provisioning.toggle.help') }}</small>
+				<input
+					id="provisioning-enabled"
+					v-model="form.provisioningEnabled"
+					type="checkbox"
+					:class="$style.checkbox"
+				/>
 			</div>
 
 			<div :class="$style.group">
 				<label>{{ i18n.baseText('settings.provisioning.scopesProvisioningFrequency') }}</label>
 				<N8nSelect
+					:class="$style.frequencySelect"
 					v-model="form.scopesProvisioningFrequency"
 					size="large"
 					:placeholder="
@@ -244,6 +223,11 @@ const onSave = async () => {
 </template>
 
 <style lang="scss" module>
+.container {
+	padding-bottom: var(--spacing--2xl);
+	max-width: 600px;
+}
+
 .heading {
 	margin-bottom: var(--spacing--sm);
 }
@@ -277,30 +261,19 @@ const onSave = async () => {
 
 	small {
 		display: block;
-		padding: var(--spacing--2xs) 0 0;
+		padding: var(--spacing--2xs) 0;
 		font-size: var(--font-size--2xs);
 		color: var(--color--text);
 	}
 }
 
-.switchContainer {
-	margin: var(--spacing--xs) 0;
-}
-
-.switchLabel {
-	display: flex;
-	align-items: center;
-	cursor: pointer;
+.frequencySelect {
+	display: block;
+	width: 240px;
 }
 
 .checkbox {
 	margin-right: var(--spacing--xs);
 	transform: scale(1.2);
-}
-
-.switchText {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	color: var(--color--text);
 }
 </style>
