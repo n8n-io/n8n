@@ -23,6 +23,9 @@ export async function msGraphSecurityApiRequest(
 		};
 	}>('microsoftGraphSecurityOAuth2Api');
 
+	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
+	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+
 	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${access_token}`,
@@ -30,7 +33,7 @@ export async function msGraphSecurityApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://graph.microsoft.com/v1.0/security${endpoint}`,
+		uri: `${baseUrl}/v1.0/security${endpoint}`,
 		json: true,
 	};
 
