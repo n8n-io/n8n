@@ -304,7 +304,7 @@ describe('ResourceLocatorDropdown', () => {
 				vi.useRealTimers();
 			});
 
-			it('should not emit loadMore when list is scrollable but hasMore is true', async () => {
+			it('should not emit loadMore when list is scrollable even if hasMore is true', async () => {
 				vi.useFakeTimers();
 
 				const fewResources: IResourceLocatorResultExpanded[] = [
@@ -439,55 +439,6 @@ describe('ResourceLocatorDropdown', () => {
 
 				Object.defineProperty(resultsContainer, 'scrollHeight', {
 					value: 100,
-					writable: true,
-				});
-				Object.defineProperty(resultsContainer, 'clientHeight', {
-					value: 100,
-					writable: true,
-				});
-
-				await wrapper.rerender({ ...props, hasMore: true });
-
-				await vi.advanceTimersByTimeAsync(500);
-				expect(wrapper.emitted().loadMore).toBeUndefined();
-
-				vi.useRealTimers();
-			});
-
-			it('should not emit loadMore when list is scrollable even if hasMore is true', async () => {
-				vi.useFakeTimers();
-
-				const fewResources: IResourceLocatorResultExpanded[] = [
-					{
-						name: 'Workflow 1',
-						value: 'workflow-1',
-						url: '/workflow/workflow-1',
-					},
-					{
-						name: 'Workflow 2',
-						value: 'workflow-2',
-						url: '/workflow/workflow-2',
-					},
-				];
-
-				const props = {
-					show: true,
-					resources: fewResources,
-					hasMore: false,
-					loading: false,
-				};
-
-				const wrapper = renderComponent({ props });
-
-				const resultsContainer = await waitFor(
-					() =>
-						wrapper.container
-							.querySelector('[data-test-id="resource-locator-dropdown"]')
-							?.querySelector('[class*="container"]') as HTMLDivElement,
-				);
-
-				Object.defineProperty(resultsContainer, 'scrollHeight', {
-					value: 150,
 					writable: true,
 				});
 				Object.defineProperty(resultsContainer, 'clientHeight', {
