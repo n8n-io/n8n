@@ -75,6 +75,60 @@ describe('CredentialsService', () => {
 				csrfSecret: CREDENTIAL_BLANKING_VALUE,
 			});
 		});
+
+		it('should redact sensitive values in a fixed collection', () => {
+			const fixedCollectionCredType = {
+				properties: [
+					{
+						name: 'headers',
+						type: 'fixedCollection',
+						typeOptions: { multipleValues: true },
+						options: [
+							{
+								name: 'values',
+								values: [
+									{
+										name: 'name',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										type: 'string',
+										typeOptions: { password: true },
+									},
+								],
+							},
+						],
+					},
+				],
+			} as unknown as ICredentialType;
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+			const decryptedData = {
+				headers: {
+					values: [
+						{
+							name: 'Authorization',
+							value: 'Bearer sensitiveSecret',
+						},
+					],
+				},
+			};
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(fixedCollectionCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				headers: {
+					values: [{ name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE }],
+				},
+			});
+		});
 	});
 
 	describe('decrypt', () => {
