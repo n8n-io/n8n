@@ -8,6 +8,7 @@ import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { VIEWS } from '@/app/constants';
+import router from '@/app/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -28,14 +29,10 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useMcp } from './composables/useMcp';
-import { useRouter } from 'vue-router';
-
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
-
-const router = useRouter();
 
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
