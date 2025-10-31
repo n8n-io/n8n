@@ -294,6 +294,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		addMessage(streaming.value.sessionId, message);
 
+		if (sessions.value?.some((session) => session.id === streaming.value?.sessionId)) {
+			return;
+		}
+
 		sessions.value = [
 			...(sessions.value ?? []),
 			{
