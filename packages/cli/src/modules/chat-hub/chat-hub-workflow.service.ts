@@ -50,7 +50,8 @@ export class ChatHubWorkflowService {
 		humanMessage: string,
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
-		systemMessage?: string,
+		systemMessage: string | undefined,
+		tools: INode[],
 		trx?: EntityManager,
 	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
@@ -66,6 +67,7 @@ export class ChatHubWorkflowService {
 				credentials,
 				model,
 				systemMessage,
+				tools,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -146,6 +148,7 @@ export class ChatHubWorkflowService {
 		credentials,
 		model,
 		systemMessage,
+		tools,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -154,6 +157,7 @@ export class ChatHubWorkflowService {
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
 		systemMessage?: string;
+		tools: INode[];
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -169,25 +173,27 @@ export class ChatHubWorkflowService {
 			memoryNode,
 			restoreMemoryNode,
 			clearMemoryNode,
+			...tools,
 		];
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [
+				[NodeConnectionTypes.Main]: [
 					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
 				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
-				main: [[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [
+				[NodeConnectionTypes.AiLanguageModel]: [
 					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
 				],
 			},
 			[NODE_NAMES.MEMORY]: {
-				ai_memory: [
+				[NodeConnectionTypes.AiMemory]: [
 					[
 						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
 						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
@@ -196,7 +202,7 @@ export class ChatHubWorkflowService {
 				],
 			},
 			[NODE_NAMES.REPLY_AGENT]: {
-				main: [
+				[NodeConnectionTypes.Main]: [
 					[
 						{
 							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
@@ -206,6 +212,21 @@ export class ChatHubWorkflowService {
 					],
 				],
 			},
+			...tools.reduce<IConnections>((acc, toolNode) => {
+				acc[toolNode.name] = {
+					[NodeConnectionTypes.AiTool]: [
+						[
+							{
+								node: NODE_NAMES.REPLY_AGENT,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
+							},
+						],
+					],
+				};
+
+				return acc;
+			}, {}),
 		};
 
 		const nodeExecutionStack: IExecuteData[] = [
@@ -263,13 +284,12 @@ export class ChatHubWorkflowService {
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [
+				[NodeConnectionTypes.Main]: [
 					[{ node: NODE_NAMES.TITLE_GENERATOR_AGENT, type: NodeConnectionTypes.Main, index: 0 }],
 				],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [
+				[NodeConnectionTypes.AiLanguageModel]: [
 					[
 						{
 							node: NODE_NAMES.TITLE_GENERATOR_AGENT,
@@ -285,7 +305,7 @@ export class ChatHubWorkflowService {
 			{
 				node: chatTriggerNode,
 				data: {
-					main: [
+					[NodeConnectionTypes.Main]: [
 						[
 							{
 								json: {
