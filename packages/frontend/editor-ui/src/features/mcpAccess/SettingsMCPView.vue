@@ -11,10 +11,12 @@ import { useUsersStore } from '@/features/users/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/mcpAccess/mcp.constants';
 import WorkflowsTable from '@/features/mcpAccess/components/WorkflowsTable.vue';
+import OAuthClientsTable from '@/features/mcpAccess/components/OAuthClientsTable.vue';
 import McpAccessToggle from './components/McpAccessToggle.vue';
-
 import { N8nHeading } from '@n8n/design-system';
 import { useMcp } from './composables/useMcp';
+import type { OAuthClientResponseDto } from '@n8n/api-types';
+
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
@@ -25,29 +27,19 @@ const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
 const rootStore = useRootStore();
 
-const workflowsLoading = ref(false);
 const mcpStatusLoading = ref(false);
+const workflowsLoading = ref(false);
 const mcpKeyLoading = ref(false);
+const oAuthClientsLoading = ref(false);
 
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 const apiKey = computed(() => mcpStore.currentUserMCPKey);
+const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
 const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
-
-const fetchAvailableWorkflows = async () => {
-	workflowsLoading.value = true;
-	try {
-		const workflows = await mcpStore.fetchWorkflowsAvailableForMCP(1, 200);
-		availableWorkflows.value = workflows;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
-	} finally {
-		workflowsLoading.value = false;
-	}
-};
 
 const onToggleMCPAccess = async (enabled: boolean) => {
 	try {
@@ -75,6 +67,18 @@ const onRemoveMCPAccess = async (workflow: WorkflowListItem) => {
 		availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflow.id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
+	}
+};
+
+const fetchAvailableWorkflows = async () => {
+	workflowsLoading.value = true;
+	try {
+		const workflows = await mcpStore.fetchWorkflowsAvailableForMCP(1, 200);
+		availableWorkflows.value = workflows;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
+	} finally {
+		workflowsLoading.value = false;
 	}
 };
 
@@ -106,9 +110,31 @@ const rotateKey = async () => {
 
 const fetchoAuthCLients = async () => {
 	try {
-		await mcpStore.getAllOAuthClients();
+		oAuthClientsLoading.value = true;
+		const clients = await mcpStore.getAllOAuthClients();
+		connectedOAuthClients.value = clients;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
+	} finally {
+		setTimeout(() => {
+			oAuthClientsLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
+};
+
+const revokeClientAccess = async (client: OAuthClientResponseDto) => {
+	try {
+		await mcpStore.removeOAuthClient(client.id);
+		connectedOAuthClients.value = connectedOAuthClients.value.filter((c) => c.id !== client.id);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.mcp.oAuthClients.revoke.success.title'),
+			message: i18n.baseText('settings.mcp.oAuthClients.revoke.success.message', {
+				interpolate: { name: client.name },
+			}),
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
 	}
 };
 
@@ -143,6 +169,13 @@ onMounted(async () => {
 				:base-url="rootStore.urlBaseEditor"
 				:api-key="apiKey"
 				@rotate-key="rotateKey"
+			/>
+			<OAuthClientsTable
+				v-if="oAuthClientsLoading || connectedOAuthClients.length > 0"
+				:data-test-id="'mcp-oauth-clients-table'"
+				:clients="connectedOAuthClients"
+				:loading="oAuthClientsLoading"
+				@revoke-client="revokeClientAccess"
 			/>
 			<WorkflowsTable
 				:data-test-id="'mcp-workflow-table'"

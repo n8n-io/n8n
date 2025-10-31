@@ -117,7 +117,9 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 		<div v-else class="mt-s mb-xl">
 			<div :class="[$style.header, 'mb-s']">
 				<N8nHeading size="medium" :bold="true">
-					{{ i18n.baseText('settings.mcp.available.workflows.heading') }}
+					{{ i18n.baseText('settings.mcp.available.workflows.heading') }} ({{
+						props.workflows.length
+					}})
 				</N8nHeading>
 			</div>
 			<N8nActionBox
