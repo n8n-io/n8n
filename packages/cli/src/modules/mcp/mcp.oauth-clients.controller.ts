@@ -1,3 +1,8 @@
+import {
+	DeleteOAuthClientResponseDto,
+	ListOAuthClientsResponseDto,
+	OAuthClientResponseDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Param, RestController } from '@n8n/decorators';
@@ -5,7 +10,6 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { ListOAuthClientsResponseDto, OAuthClientResponseDto } from './dto/oauth-client.dto';
 import { McpOAuthService } from './mcp-oauth-service';
 
 @RestController('/mcp/oauth-clients')
@@ -37,8 +41,8 @@ export class McpOAuthClientsController {
 			grantTypes: client.grantTypes,
 			tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
 			scopes: client.scopes,
-			createdAt: client.createdAt,
-			updatedAt: client.updatedAt,
+			createdAt: client.createdAt.toISOString(),
+			updatedAt: client.updatedAt.toISOString(),
 		}));
 
 		return {
@@ -57,7 +61,7 @@ export class McpOAuthClientsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('clientId') clientId: string,
-	): Promise<{ success: boolean; message: string }> {
+	): Promise<DeleteOAuthClientResponseDto> {
 		this.logger.info('Deleting OAuth client', {
 			clientId,
 			userId: req.user.id,
