@@ -8,9 +8,10 @@ import { N8nButton, N8nIconButton } from '@n8n/design-system';
 import { useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
-const { selectedModel, credentials } = defineProps<{
+const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
 	selectedModel: ChatModelDto | null;
 	credentials: CredentialsMap | null;
+	readyToShowModelSelector: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -63,6 +64,7 @@ defineExpose({
 				@click="onNewChat"
 			/>
 			<ModelSelector
+				v-if="readyToShowModelSelector"
 				ref="modelSelectorRef"
 				:selectedAgent="selectedModel"
 				:credentials="credentials"

@@ -22,7 +22,6 @@ import type { CredentialsMap } from '../chat.types';
 import CredentialSelectorModal from './CredentialSelectorModal.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import {
 	fromStringToModel,
@@ -55,7 +54,6 @@ function handleSelectCredentials(provider: ChatHubProvider, id: string) {
 }
 
 const i18n = useI18n();
-const chatStore = useChatStore();
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const dropdownRef = useTemplateRef('dropdownRef');
 const credentialSelectorProvider = ref<ChatHubLLMProvider | null>(null);
@@ -217,12 +215,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nNavigationDropdown
-		v-if="chatStore.agentsReady"
-		ref="dropdownRef"
-		:menu="menu"
-		@select="onSelect"
-	>
+	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" @select="onSelect">
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"

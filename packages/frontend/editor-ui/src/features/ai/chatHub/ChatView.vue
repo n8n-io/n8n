@@ -400,6 +400,7 @@ function handleOpenWorkflow(workflowId: string) {
 			ref="headerRef"
 			:selected-model="selectedModel ?? null"
 			:credentials="credentialsByProvider"
+			:ready-to-show-model-selector="chatStore.agentsReady"
 			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
