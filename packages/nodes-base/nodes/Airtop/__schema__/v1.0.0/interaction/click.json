@@ -34,9 +34,20 @@
         "sessionId": {
             "type": "string"
         },
+        "warnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "windowId": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
