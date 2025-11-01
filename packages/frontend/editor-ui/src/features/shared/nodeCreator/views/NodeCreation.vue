@@ -1,24 +1,24 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
 import { defineAsyncComponent, nextTick } from 'vue';
-import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
+import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
-} from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { useFocusPanelStore } from '@/stores/focusPanel.store';
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type {
 	AddedNodesAndConnections,
 	NodeTypeSelectedPayload,
 	ToggleNodeCreatorOptions,
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';

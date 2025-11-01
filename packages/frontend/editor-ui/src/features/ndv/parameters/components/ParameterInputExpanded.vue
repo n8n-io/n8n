@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isValueExpression as isValueExpressionUtil } from '@/utils/nodeTypesUtils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { isValueExpression as isValueExpressionUtil } from '@/app/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
 	INodeParameterResourceLocator,
@@ -14,7 +14,7 @@ import type {
 import { computed, ref } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
 import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';

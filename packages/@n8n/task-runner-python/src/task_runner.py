@@ -301,7 +301,7 @@ class TaskRunner:
 
             self.analyzer.validate(task_settings.code)
 
-            process, queue = self.executor.create_process(
+            process, read_conn, write_conn = self.executor.create_process(
                 code=task_settings.code,
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
@@ -313,8 +313,10 @@ class TaskRunner:
             result, print_args, result_size_bytes = await asyncio.to_thread(
                 self.executor.execute_process,
                 process=process,
-                queue=queue,
+                read_conn=read_conn,
+                write_conn=write_conn,
                 task_timeout=self.config.task_timeout,
+                pipe_reader_timeout=self.config.pipe_reader_timeout,
                 continue_on_fail=task_settings.continue_on_fail,
             )
 

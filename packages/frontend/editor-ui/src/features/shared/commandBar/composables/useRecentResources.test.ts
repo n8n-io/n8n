@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { useRecentResources } from './useRecentResources';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/constants';
+import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/app/constants';
 
 const recentWorkflowsRef = ref<Array<{ id: string; openedAt: number }>>([]);
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
@@ -28,7 +28,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 const mockSetNodeActive = vi.fn();
 
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		setNodeActive: mockSetNodeActive,
 	}),

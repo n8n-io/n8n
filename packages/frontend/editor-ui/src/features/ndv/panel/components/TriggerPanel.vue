@@ -6,23 +6,23 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	FORM_TRIGGER_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
-import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
-import CopyInput from '@/components/CopyInput.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
+import CopyInput from '@/app/components/CopyInput.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { isTriggerPanelObject } from '@/utils/typeGuards';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import {
 	N8nButton,

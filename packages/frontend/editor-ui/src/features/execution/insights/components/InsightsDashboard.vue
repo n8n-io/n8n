@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
@@ -292,7 +292,7 @@ const projects = computed(() =>
 
 .insightsContainer {
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 	padding: var(--spacing--lg) var(--spacing--2xl);
 	margin: 0 auto;
 }
@@ -404,10 +404,10 @@ const projects = computed(() =>
 	text-align: left;
 	font-size: 13px;
 	cursor: pointer;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	font-weight: 400;
 	&:hover {
-		background-color: var(--color-foreground-light);
+		background-color: var(--color--foreground--tint-1);
 	}
 }
 </style>

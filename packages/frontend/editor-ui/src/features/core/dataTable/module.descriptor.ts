@@ -1,5 +1,5 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import {
 	ADD_DATA_TABLE_MODAL_KEY,
 	DATA_TABLE_DETAILS,
@@ -9,7 +9,7 @@ import {
 
 const i18n = useI18n();
 
-const MainSidebar = async () => await import('@/components/MainSidebar.vue');
+const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const DataTableView = async () => await import('@/features/core/dataTable/DataTableView.vue');
 const DataTableDetailsView = async () =>
 	await import('@/features/core/dataTable/DataTableDetailsView.vue');

@@ -3,13 +3,13 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import type { Segment } from '@/types/expressions';
+import type { Segment } from '@/app/types/expressions';
 import { onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
-import { useStyles } from '@/composables/useStyles';
+import { useStyles } from '@/app/composables/useStyles';
 
 import { N8nPopoverReka, N8nText } from '@n8n/design-system';
 interface InlineExpressionEditorOutputProps {
