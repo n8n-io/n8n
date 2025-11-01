@@ -90,9 +90,6 @@
                 },
                 "Modified": {
                     "type": "string"
-                },
-                "Title": {
-                    "type": "string"
                 }
             }
         },
@@ -105,17 +102,6 @@
         "lastModifiedBy": {
             "type": "object",
             "properties": {
-                "application": {
-                    "type": "object",
-                    "properties": {
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        }
-                    }
-                },
                 "user": {
                     "type": "object",
                     "properties": {
@@ -153,5 +139,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
