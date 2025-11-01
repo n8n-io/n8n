@@ -48,18 +48,22 @@ fs.readdirSync('.').forEach((cur) => {
 	if (isBiomeTarget(cur)) biomeTargets.push(cur);
 });
 
-execSync(
-	[
-		prettier,
-		'--config',
-		prettierConfig,
-		'--ignore-path',
-		ignore,
-		'--write',
-		prettierTargets.join(' '),
-	].join(' '),
-);
+if (prettierTargets.length > 0) {
+	execSync(
+		[
+			prettier,
+			'--config',
+			prettierConfig,
+			'--ignore-path',
+			ignore,
+			'--write',
+			prettierTargets.join(' '),
+		].join(' '),
+	);
+}
 
-execSync(
-	[biome, 'format', '--write', `--config-path=${biomeConfig}`, biomeTargets.join(' ')].join(' '),
-);
+if (biomeTargets.length > 0) {
+	execSync(
+		[biome, 'format', '--write', `--config-path=${biomeConfig}`, biomeTargets.join(' ')].join(' '),
+	);
+}
