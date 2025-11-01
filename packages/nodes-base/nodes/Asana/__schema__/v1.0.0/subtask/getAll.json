@@ -7,12 +7,9 @@
         "name": {
             "type": "string"
         },
-        "resource_subtype": {
-            "type": "string"
-        },
         "resource_type": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }
