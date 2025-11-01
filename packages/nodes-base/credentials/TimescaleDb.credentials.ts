@@ -5,7 +5,7 @@ export class TimescaleDb implements ICredentialType {
 
 	displayName = 'TimescaleDB';
 
-	documentationUrl = 'timescaleDb';
+	documentationUrl = 'timescaledb';
 
 	properties: INodeProperties[] = [
 		{
@@ -36,7 +36,7 @@ export class TimescaleDb implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,

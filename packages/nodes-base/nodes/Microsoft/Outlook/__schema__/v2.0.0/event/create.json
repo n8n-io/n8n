@@ -1,0 +1,202 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@odata.etag": {
+            "type": "string"
+        },
+        "allowNewTimeProposals": {
+            "type": "boolean"
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            }
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "changeKey": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "end": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "hideAttendees": {
+            "type": "boolean"
+        },
+        "iCalUId": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "isAllDay": {
+            "type": "boolean"
+        },
+        "isCancelled": {
+            "type": "boolean"
+        },
+        "isDraft": {
+            "type": "boolean"
+        },
+        "isOnlineMeeting": {
+            "type": "boolean"
+        },
+        "isOrganizer": {
+            "type": "boolean"
+        },
+        "isReminderOn": {
+            "type": "boolean"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "location": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "locationType": {
+                    "type": "string"
+                },
+                "uniqueIdType": {
+                    "type": "string"
+                }
+            }
+        },
+        "locations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "locationType": {
+                        "type": "string"
+                    },
+                    "uniqueId": {
+                        "type": "string"
+                    },
+                    "uniqueIdType": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "occurrenceId": {
+            "type": "null"
+        },
+        "onlineMeetingProvider": {
+            "type": "string"
+        },
+        "organizer": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "originalEndTimeZone": {
+            "type": "string"
+        },
+        "originalStartTimeZone": {
+            "type": "string"
+        },
+        "recurrence": {
+            "type": "null"
+        },
+        "reminderMinutesBeforeStart": {
+            "type": "integer"
+        },
+        "responseRequested": {
+            "type": "boolean"
+        },
+        "responseStatus": {
+            "type": "object",
+            "properties": {
+                "response": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "string"
+                }
+            }
+        },
+        "sensitivity": {
+            "type": "string"
+        },
+        "seriesMasterId": {
+            "type": "null"
+        },
+        "showAs": {
+            "type": "string"
+        },
+        "start": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
+        "transactionId": {
+            "type": "null"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uid": {
+            "type": "string"
+        },
+        "webLink": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

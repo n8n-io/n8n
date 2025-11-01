@@ -1,13 +1,13 @@
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import set from 'lodash/set';
-
+import type { RedisCredential } from './types';
 import {
 	setupRedisClient,
 	redisConnectionTest,
@@ -27,8 +27,8 @@ export class Redis implements INodeType {
 		defaults: {
 			name: 'Redis',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -512,19 +512,32 @@ export class Redis implements INodeType {
 		//       have a parameter field for a path. Because it is not possible to set
 		//       array, object via parameter directly (should maybe be possible?!?!)
 		//       Should maybe have a parameter which is JSON.
-		const credentials = await this.getCredentials('redis');
+		const credentials = await this.getCredentials<RedisCredential>('redis');
 
 		const client = setupRedisClient(credentials);
-		await client.connect();
-		await client.ping();
-
-		const operation = this.getNodeParameter('operation', 0);
-		const returnItems: INodeExecutionData[] = [];
 
 		try {
+			await client.connect();
+			await client.ping();
+
+			const operation = this.getNodeParameter('operation', 0);
+			const returnItems: INodeExecutionData[] = [];
+
 			if (operation === 'info') {
-				const result = await client.info();
-				returnItems.push({ json: convertInfoToObject(result) });
+				try {
+					const result = await client.info();
+					returnItems.push({ json: convertInfoToObject(result) });
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnItems.push({
+							json: {
+								error: error.message,
+							},
+						});
+					} else {
+						throw new NodeOperationError(this.getNode(), error);
+					}
+				}
 			} else if (
 				['delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop'].includes(operation)
 			) {
@@ -532,107 +545,129 @@ export class Redis implements INodeType {
 
 				let item: INodeExecutionData;
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					item = { json: {}, pairedItem: { item: itemIndex } };
+					try {
+						item = { json: {}, pairedItem: { item: itemIndex } };
 
-					if (operation === 'delete') {
-						const keyDelete = this.getNodeParameter('key', itemIndex) as string;
+						if (operation === 'delete') {
+							const keyDelete = this.getNodeParameter('key', itemIndex) as string;
 
-						await client.del(keyDelete);
-						returnItems.push(items[itemIndex]);
-					} else if (operation === 'get') {
-						const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
-						const keyGet = this.getNodeParameter('key', itemIndex) as string;
-						const keyType = this.getNodeParameter('keyType', itemIndex) as string;
+							await client.del(keyDelete);
+							returnItems.push(items[itemIndex]);
+						} else if (operation === 'get') {
+							const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
+							const keyGet = this.getNodeParameter('key', itemIndex) as string;
+							const keyType = this.getNodeParameter('keyType', itemIndex) as string;
 
-						const value = (await getValue(client, keyGet, keyType)) ?? null;
+							const value = (await getValue(client, keyGet, keyType)) ?? null;
 
-						const options = this.getNodeParameter('options', itemIndex, {});
+							const options = this.getNodeParameter('options', itemIndex, {});
 
-						if (options.dotNotation === false) {
-							item.json[propertyName] = value;
-						} else {
-							set(item.json, propertyName, value);
+							if (options.dotNotation === false) {
+								item.json[propertyName] = value;
+							} else {
+								set(item.json, propertyName, value);
+							}
+
+							returnItems.push(item);
+						} else if (operation === 'keys') {
+							const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
+							const getValues = this.getNodeParameter('getValues', itemIndex, true) as boolean;
+
+							const keys = await client.keys(keyPattern);
+
+							if (!getValues) {
+								returnItems.push({ json: { keys } });
+								continue;
+							}
+
+							for (const keyName of keys) {
+								item.json[keyName] = await getValue(client, keyName);
+							}
+							returnItems.push(item);
+						} else if (operation === 'set') {
+							const keySet = this.getNodeParameter('key', itemIndex) as string;
+							const value = this.getNodeParameter('value', itemIndex) as string;
+							const keyType = this.getNodeParameter('keyType', itemIndex) as string;
+							const valueIsJSON = this.getNodeParameter('valueIsJSON', itemIndex, true) as boolean;
+							const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
+							const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
+
+							await setValue.call(this, client, keySet, value, expire, ttl, keyType, valueIsJSON);
+							returnItems.push(items[itemIndex]);
+						} else if (operation === 'incr') {
+							const keyIncr = this.getNodeParameter('key', itemIndex) as string;
+							const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
+							const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
+							const incrementVal = await client.incr(keyIncr);
+							if (expire && ttl > 0) {
+								await client.expire(keyIncr, ttl);
+							}
+							returnItems.push({ json: { [keyIncr]: incrementVal } });
+						} else if (operation === 'publish') {
+							const channel = this.getNodeParameter('channel', itemIndex) as string;
+							const messageData = this.getNodeParameter('messageData', itemIndex) as string;
+							await client.publish(channel, messageData);
+							returnItems.push(items[itemIndex]);
+						} else if (operation === 'push') {
+							const redisList = this.getNodeParameter('list', itemIndex) as string;
+							const messageData = this.getNodeParameter('messageData', itemIndex) as string;
+							const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
+							await client[tail ? 'rPush' : 'lPush'](redisList, messageData);
+							returnItems.push(items[itemIndex]);
+						} else if (operation === 'pop') {
+							const redisList = this.getNodeParameter('list', itemIndex) as string;
+							const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
+							const propertyName = this.getNodeParameter(
+								'propertyName',
+								itemIndex,
+								'propertyName',
+							) as string;
+
+							const value = await client[tail ? 'rPop' : 'lPop'](redisList);
+
+							let outputValue;
+							try {
+								outputValue = value && JSON.parse(value);
+							} catch {
+								outputValue = value;
+							}
+							const options = this.getNodeParameter('options', itemIndex, {});
+							if (options.dotNotation === false) {
+								item.json[propertyName] = outputValue;
+							} else {
+								set(item.json, propertyName, outputValue);
+							}
+							returnItems.push(item);
 						}
-
-						returnItems.push(item);
-					} else if (operation === 'keys') {
-						const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
-						const getValues = this.getNodeParameter('getValues', itemIndex, true) as boolean;
-
-						const keys = await client.keys(keyPattern);
-
-						if (!getValues) {
-							returnItems.push({ json: { keys } });
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnItems.push({
+								json: {
+									error: error.message,
+								},
+								pairedItem: {
+									item: itemIndex,
+								},
+							});
 							continue;
 						}
-
-						for (const keyName of keys) {
-							item.json[keyName] = await getValue(client, keyName);
-						}
-						returnItems.push(item);
-					} else if (operation === 'set') {
-						const keySet = this.getNodeParameter('key', itemIndex) as string;
-						const value = this.getNodeParameter('value', itemIndex) as string;
-						const keyType = this.getNodeParameter('keyType', itemIndex) as string;
-						const valueIsJSON = this.getNodeParameter('valueIsJSON', itemIndex, true) as boolean;
-						const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
-						const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
-
-						await setValue.call(this, client, keySet, value, expire, ttl, keyType, valueIsJSON);
-						returnItems.push(items[itemIndex]);
-					} else if (operation === 'incr') {
-						const keyIncr = this.getNodeParameter('key', itemIndex) as string;
-						const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
-						const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
-						const incrementVal = await client.incr(keyIncr);
-						if (expire && ttl > 0) {
-							await client.expire(keyIncr, ttl);
-						}
-						returnItems.push({ json: { [keyIncr]: incrementVal } });
-					} else if (operation === 'publish') {
-						const channel = this.getNodeParameter('channel', itemIndex) as string;
-						const messageData = this.getNodeParameter('messageData', itemIndex) as string;
-						await client.publish(channel, messageData);
-						returnItems.push(items[itemIndex]);
-					} else if (operation === 'push') {
-						const redisList = this.getNodeParameter('list', itemIndex) as string;
-						const messageData = this.getNodeParameter('messageData', itemIndex) as string;
-						const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-						await client[tail ? 'rPush' : 'lPush'](redisList, messageData);
-						returnItems.push(items[itemIndex]);
-					} else if (operation === 'pop') {
-						const redisList = this.getNodeParameter('list', itemIndex) as string;
-						const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-						const propertyName = this.getNodeParameter(
-							'propertyName',
-							itemIndex,
-							'propertyName',
-						) as string;
-
-						const value = await client[tail ? 'rPop' : 'lPop'](redisList);
-
-						let outputValue;
-						try {
-							outputValue = value && JSON.parse(value);
-						} catch {
-							outputValue = value;
-						}
-						const options = this.getNodeParameter('options', itemIndex, {});
-						if (options.dotNotation === false) {
-							item.json[propertyName] = outputValue;
-						} else {
-							set(item.json, propertyName, outputValue);
-						}
-						returnItems.push(item);
+						throw new NodeOperationError(this.getNode(), error, { itemIndex });
 					}
 				}
 			}
-		} catch (error) {
-			throw error;
+			return [returnItems];
 		} finally {
-			await client.quit();
+			// Ensure the Redis client is always closed to prevent leaked connections
+			try {
+				await client.quit();
+			} catch {
+				// If quit fails, forcefully disconnect
+				try {
+					await client.disconnect();
+				} catch {
+					// Ignore disconnect errors in cleanup
+				}
+			}
 		}
-
-		return [returnItems];
 	}
 }

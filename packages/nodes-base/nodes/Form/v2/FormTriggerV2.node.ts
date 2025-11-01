@@ -1,7 +1,7 @@
 import {
 	ADD_FORM_NOTICE,
 	type INodePropertyOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeProperties,
 	type INodeType,
 	type INodeTypeBaseDescription,
@@ -9,7 +9,6 @@ import {
 	type IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { formWebhook } from '../utils';
 import {
 	appendAttributionToForm,
 	formDescription,
@@ -20,7 +19,9 @@ import {
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
+import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
 	displayName: 'Use Workflow Timezone',
@@ -35,14 +36,16 @@ const descriptionV2: INodeTypeDescription = {
 	name: 'formTrigger',
 	icon: 'file:form.svg',
 	group: ['trigger'],
-	version: [2, 2.1, 2.2],
+	// since trigger and node are sharing descriptions and logic we need to sync the versions
+	// and keep them aligned in both nodes
+	version: [2, 2.1, 2.2, 2.3],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
 	},
 
 	inputs: [],
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
 		{
 			name: 'setup',
@@ -51,7 +54,7 @@ const descriptionV2: INodeTypeDescription = {
 			isFullPath: true,
 			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideUrl: true,
-			isForm: true,
+			nodeType: 'form',
 		},
 		{
 			name: 'default',
@@ -61,7 +64,7 @@ const descriptionV2: INodeTypeDescription = {
 			isFullPath: true,
 			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideMethod: true,
-			isForm: true,
+			nodeType: 'form',
 		},
 	],
 	eventTriggerDescription: 'Waiting for you to submit the form',
@@ -179,6 +182,22 @@ const descriptionV2: INodeTypeDescription = {
 							'@version': [{ _cnd: { gt: 2 } }],
 						},
 					},
+				},
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gt: 2 } }],
+						},
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
 				},
 			],
 		},

@@ -1,8 +1,8 @@
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { JwtService } from '@/services/jwt.service';
 
 describe('JwtService', () => {
@@ -13,21 +13,29 @@ describe('JwtService', () => {
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImlhdCI6MTY5OTk4NDMxM30.xNZOAmcidW5ovEF_mwIOzCWkJ70FEO6MFNLK2QRDOeQ';
 
 	const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
+	let globalConfig: GlobalConfig;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		globalConfig = mock<GlobalConfig>({
+			userManagement: {
+				jwtSecret: '',
+				jwtSessionDurationHours: 168,
+				jwtRefreshTimeoutHours: 0,
+			},
+		});
 	});
 
 	describe('secret initialization', () => {
 		it('should read the secret from config, when set', () => {
-			config.set('userManagement.jwtSecret', jwtSecret);
-			const jwtService = new JwtService(instanceSettings);
+			globalConfig.userManagement.jwtSecret = jwtSecret;
+			const jwtService = new JwtService(instanceSettings, globalConfig);
 			expect(jwtService.jwtSecret).toEqual(jwtSecret);
 		});
 
 		it('should derive the secret from encryption key when not set in config', () => {
-			config.set('userManagement.jwtSecret', '');
-			const jwtService = new JwtService(instanceSettings);
+			globalConfig.userManagement.jwtSecret = '';
+			const jwtService = new JwtService(instanceSettings, globalConfig);
 			expect(jwtService.jwtSecret).toEqual(
 				'e9e2975005eddefbd31b2c04a0b0f2d9c37d9d718cf3676cddf76d65dec555cb',
 			);
@@ -35,14 +43,18 @@ describe('JwtService', () => {
 	});
 
 	describe('with a secret set', () => {
-		config.set('userManagement.jwtSecret', jwtSecret);
-		const jwtService = new JwtService(instanceSettings);
+		let jwtService: JwtService;
 
 		beforeAll(() => {
 			jest.useFakeTimers().setSystemTime(new Date(iat * 1000));
 		});
 
 		afterAll(() => jest.useRealTimers());
+
+		beforeEach(() => {
+			globalConfig.userManagement.jwtSecret = jwtSecret;
+			jwtService = new JwtService(instanceSettings, globalConfig);
+		});
 
 		it('should sign', () => {
 			const token = jwtService.sign(payload);

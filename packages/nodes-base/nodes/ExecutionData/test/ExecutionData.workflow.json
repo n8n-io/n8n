@@ -1,0 +1,112 @@
+{
+	"name": "[TEST] Execution Data",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [60, -240],
+			"id": "03be3862-c311-48d8-8898-2ffac5fe65b7",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"dataToSave": {
+					"values": [
+						{
+							"key": "id",
+							"value": "={{ $json.id }}"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.executionData",
+			"typeVersion": 1,
+			"position": [480, -240],
+			"id": "60d009ae-0101-48bd-a0b5-f8d548b22b5d",
+			"name": "Execution Data"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ab35ef53-bffd-43d9-99eb-289f3722999d",
+							"name": "id",
+							"value": "123456",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [280, -240],
+			"id": "32447090-1a29-45ab-b967-a80b7222bce4",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [720, -240],
+			"id": "59e3fc3b-de67-4b2e-9489-a0918c45fc5c",
+			"name": "No Operation, do nothing"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "123456"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Execution Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Execution Data": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2721b08b-dd2e-4b68-8df7-6c7fedd31e5d",
+	"meta": {
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+	},
+	"id": "h6wEFzHoR7UTz8JJ",
+	"tags": []
+}

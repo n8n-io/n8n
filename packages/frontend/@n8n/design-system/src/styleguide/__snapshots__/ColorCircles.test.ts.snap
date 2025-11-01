@@ -1,0 +1,14 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ColorCircles > should render a section with two colors 1`] = `
+"<div class="section">
+  <div class="container">
+    <div class="circle"></div><span>--color--primary--shade-1</span><span class="hsl">#663399</span><span class="color">#NaNNaNNaN</span>
+  </div>
+  <div class="container">
+    <div class="circle"></div><span>--color--primary</span><span class="hsl">#663399</span><span class="color">#NaNNaNNaN</span>
+  </div>
+</div>"
+`;
+
+exports[`ColorCircles > should render an empty section with empty colors 1`] = `"<div class="section"></div>"`;

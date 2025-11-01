@@ -1,6 +1,3 @@
-import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
-import { create_container } from 'rhea';
-
 import type {
 	ITriggerFunctions,
 	IDataObject,
@@ -10,7 +7,11 @@ import type {
 	IDeferredPromise,
 	IRun,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { ConnectionOptions, EventContext, Message, ReceiverOptions } from 'rhea';
+import { create_container } from 'rhea';
+
+import type { AmqpCredential } from './types';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +25,7 @@ export class AmqpTrigger implements INodeType {
 			name: 'AMQP Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'amqp',
@@ -137,7 +138,7 @@ export class AmqpTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const credentials = await this.getCredentials('amqp');
+		const credentials = await this.getCredentials<AmqpCredential>('amqp');
 
 		const sink = this.getNodeParameter('sink', '') as string;
 		const clientname = this.getNodeParameter('clientname', '') as string;
@@ -147,7 +148,8 @@ export class AmqpTrigger implements INodeType {
 		const pullMessagesNumber = (options.pullMessagesNumber as number) || 100;
 		const containerId = options.containerId as string;
 		const containerReconnect = (options.reconnect as boolean) || true;
-		const containerReconnectLimit = (options.reconnectLimit as number) || 50;
+		// Keep reconnecting (exponential backoff) forever unless user sets a limit
+		const containerReconnectLimit = (options.reconnectLimit as number) ?? undefined;
 
 		if (sink === '') {
 			throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
@@ -228,20 +230,22 @@ export class AmqpTrigger implements INodeType {
 		});
 
 		/*
-			Values are documentet here: https://github.com/amqp/rhea#container
+			Values are documented here: https://github.com/amqp/rhea#container
 		 */
-		const connectOptions: ContainerOptions = {
+		const connectOptions: ConnectionOptions = {
 			host: credentials.hostname,
 			hostname: credentials.hostname,
 			port: credentials.port,
 			reconnect: containerReconnect,
 			reconnect_limit: containerReconnectLimit,
+			// Try reconnection even if caused by a fatal error
+			all_errors_non_fatal: true,
 			username: credentials.username ? credentials.username : undefined,
 			password: credentials.password ? credentials.password : undefined,
 			transport: credentials.transportType ? credentials.transportType : undefined,
 			container_id: containerId ? containerId : undefined,
 			id: containerId ? containerId : undefined,
-		};
+		} as unknown as ConnectionOptions;
 		const connection = container.connect(connectOptions);
 
 		const clientOptions: ReceiverOptions = {

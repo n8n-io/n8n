@@ -1,21 +1,22 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { ChatGroq } from '@langchain/groq';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatGroq } from '@langchain/groq';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getProxyAgent } from '@utils/httpProxyAgent';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatGroq implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Groq Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatGroq',
 		icon: 'file:groq.svg',
 		group: ['transform'],
@@ -38,10 +39,10 @@ export class LmChatGroq implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -53,7 +54,7 @@ export class LmChatGroq implements INodeType {
 			baseURL: 'https://api.groq.com/openai/v1',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiChain]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -141,10 +142,11 @@ export class LmChatGroq implements INodeType {
 
 		const model = new ChatGroq({
 			apiKey: credentials.apiKey as string,
-			modelName,
+			model: modelName,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			callbacks: [new N8nLlmTracing(this)],
+			httpAgent: getProxyAgent('https://api.groq.com/openai/v1'),
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

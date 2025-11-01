@@ -1,26 +1,24 @@
 import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import type { DataRequestResponse } from '@/runner-types';
-import type { Task } from '@/task-runner';
+import type { TaskParams } from '@/task-runner';
+import { TaskState } from '@/task-state';
 
 /**
  * Creates a new task with the given settings
  */
-export const newTaskWithSettings = (
+export const newTaskParamsWithSettings = (
 	settings: Partial<JSExecSettings> & Pick<JSExecSettings, 'code' | 'nodeMode'>,
-): Task<JSExecSettings> => ({
+): TaskParams<JSExecSettings> => ({
 	taskId: '1',
 	settings: {
 		workflowMode: 'manual',
 		continueOnFail: false,
-		mode: 'manual',
 		...settings,
 	},
-	active: true,
-	cancelled: false,
 });
 
 /**
@@ -42,6 +40,7 @@ export const newNode = (opts: Partial<INode> = {}): INode => ({
 export const newTaskData = (opts: Partial<ITaskData> & Pick<ITaskData, 'source'>): ITaskData => ({
 	startTime: Date.now(),
 	executionTime: 0,
+	executionIndex: 0,
 	executionStatus: 'success',
 	...opts,
 });
@@ -51,7 +50,9 @@ export const newTaskData = (opts: Partial<ITaskData> & Pick<ITaskData, 'source'>
  */
 export const newDataRequestResponse = (
 	inputData: INodeExecutionData[],
-	opts: Partial<DataRequestResponse> = {},
+	opts: Partial<DataRequestResponse> & {
+		staticData?: IDataObject;
+	} = {},
 ): DataRequestResponse => {
 	const codeNode = newNode({
 		name: 'JsCode',
@@ -78,10 +79,11 @@ export const newDataRequestResponse = (
 			active: true,
 			connections: {
 				[manualTriggerNode.name]: {
-					main: [[{ node: codeNode.name, type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: codeNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			nodes: [manualTriggerNode, codeNode],
+			staticData: opts.staticData,
 		},
 		inputData: {
 			main: [inputData],
@@ -165,3 +167,13 @@ export const withPairedItem = (index: number, data: INodeExecutionData): INodeEx
 		item: index,
 	},
 });
+
+/**
+ * Creates a new task state with the given taskId
+ */
+export const newTaskState = (taskId: string) =>
+	new TaskState({
+		taskId,
+		timeoutInS: 60,
+		onTimeout: () => {},
+	});

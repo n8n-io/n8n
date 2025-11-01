@@ -1,6 +1,6 @@
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
@@ -15,7 +15,7 @@ import {
 	formTriggerPanel,
 	webhookPath,
 } from '../common.descriptions';
-import { formWebhook } from '../utils';
+import { formWebhook } from '../utils/utils';
 
 const descriptionV1: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
@@ -29,7 +29,7 @@ const descriptionV1: INodeTypeDescription = {
 	},
 
 	inputs: [],
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
 		{
 			name: 'setup',

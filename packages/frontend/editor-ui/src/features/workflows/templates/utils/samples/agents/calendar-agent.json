@@ -1,0 +1,170 @@
+{
+	"name": "Calendar agent",
+	"meta": {
+		"templateCredsSetupCompleted": false,
+		"templateId": "calendar_agent_with_gcal"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "calendar",
+				"calendar": {},
+				"timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start_Time', `Start date for availability check`, 'string') }}",
+				"timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Time', `End date for availability check`, 'string') }}",
+				"options": {}
+			},
+			"id": "e3eb2815-735f-4efd-a844-da9d53e45aae",
+			"name": "Get availability",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"typeVersion": 1.3,
+			"position": [-32, 224],
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"calendar": {},
+				"returnAll": true,
+				"timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', `Start date for events search`, 'string') }}",
+				"timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', `End date for events search`, 'string') }}",
+				"options": {}
+			},
+			"id": "d6c00690-8d0c-4942-aa17-077e61c909d1",
+			"name": "Get events",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"typeVersion": 1.3,
+			"position": [112, 224],
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "719aaeb8-e985-4235-bcff-c2bfbc6a8e5c",
+			"name": "Chat message",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.3,
+			"position": [-400, -32],
+			"webhookId": "d0b3a15a-8d1c-437c-8523-00e108af14a4"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"options": {
+					"temperature": 0
+				}
+			},
+			"id": "d23e09d0-ff7c-4f1b-8e67-6864801dbc44",
+			"name": "Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [-304, 224],
+			"credentials": {}
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [-176, 224],
+			"id": "56bd33c7-bb31-4957-9f12-fdcc2351880d",
+			"name": "Simple Memory"
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are a helpful calendar assistant. You can check availability and retrieve events from Google Calendar. When users ask about dates, use the calendar tools to get the information. Always specify date ranges clearly when using the tools.\n\nTodays date is: {{ $now }}",
+					"maxIterations": 10,
+					"returnIntermediateSteps": false,
+					"passthroughBinaryImages": true,
+					"batching": {},
+					"enableStreaming": true
+				}
+			},
+			"id": "1e8be9e3-24a4-415b-9424-6f9010c5f333",
+			"name": "Calendar agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [-160, -32]
+		},
+		{
+			"parameters": {
+				"content": "## Start here!\n@[youtube](-S5k4sXrPws)",
+				"height": 320,
+				"width": 464,
+				"color": 5
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-928, -32],
+			"typeVersion": 1,
+			"id": "d3552acd-20f1-40e0-af3c-e2aabdbf3f27",
+			"name": "Sticky Note"
+		}
+	],
+	"connections": {
+		"Get availability": {
+			"ai_tool": [
+				[
+					{
+						"node": "Calendar agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get events": {
+			"ai_tool": [
+				[
+					{
+						"node": "Calendar agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat message": {
+			"main": [
+				[
+					{
+						"node": "Calendar agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Calendar agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Calendar agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"tags": []
+}

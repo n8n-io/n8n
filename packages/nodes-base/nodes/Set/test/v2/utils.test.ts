@@ -1,8 +1,14 @@
-import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
-import { constructExecutionMetaData } from 'n8n-core';
 import get from 'lodash/get';
-import { composeReturnItem, parseJsonParameter, validateEntry } from '../../v2/helpers/utils';
+import { constructExecutionMetaData } from 'n8n-core';
+import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
+
 import type { SetNodeOptions } from '../../v2/helpers/interfaces';
+import {
+	composeReturnItem,
+	parseJsonParameter,
+	validateEntry,
+	resolveRawData,
+} from '../../v2/helpers/utils';
 
 export const node: INode = {
 	id: '11',
@@ -25,8 +31,8 @@ export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters, parameter, fallbackValue);
@@ -339,5 +345,91 @@ describe('test Set2, validateEntry', () => {
 			name: 'foo',
 			value: 'undefined',
 		});
+	});
+});
+
+describe('test Set2, resolveRawData', () => {
+	const createMockExecuteFunctionForResolve = (returnValue: any) => {
+		return {
+			evaluateExpression: jest.fn().mockReturnValue(returnValue),
+		} as unknown as IExecuteFunctions;
+	};
+
+	it('should handle strings with special replacement patterns like $&', () => {
+		const mockFunction = createMockExecuteFunctionForResolve('hello world $&');
+		const input = '{{ "hello world $&" }}';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		// The result should contain the literal $& and not have it replaced
+		expect(result).toBe('hello world $&');
+		expect(mockFunction.evaluateExpression).toHaveBeenCalledWith('{{ "hello world $&" }}', 0);
+	});
+
+	it('should handle strings with $` pattern', () => {
+		const mockFunction = createMockExecuteFunctionForResolve('hello world $`');
+		const input = '{{ "hello world $`" }}';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		expect(result).toBe('hello world $`');
+	});
+
+	it("should handle strings with $' pattern", () => {
+		const mockFunction = createMockExecuteFunctionForResolve("hello world $'");
+		const input = '{{ "hello world $\'" }}';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		expect(result).toBe("hello world $'");
+	});
+
+	it('should handle strings with $n pattern', () => {
+		const mockFunction = createMockExecuteFunctionForResolve('hello world $1 $2');
+		const input = '{{ "hello world $1 $2" }}';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		expect(result).toBe('hello world $1 $2');
+	});
+
+	it('should handle JSON objects with special patterns', () => {
+		const mockFunction = createMockExecuteFunctionForResolve({ message: 'hello world $&' });
+		const input = '{{ {"message": "hello world $&"} }}';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		expect(result).toBe('{"message":"hello world $&"}');
+	});
+
+	it('should handle multiple expressions with special patterns', () => {
+		const mockFunction = {
+			evaluateExpression: jest.fn().mockReturnValueOnce('hello $&').mockReturnValueOnce('world $`'),
+		} as unknown as IExecuteFunctions;
+
+		const input = 'start {{ expr1 }} middle {{ expr2 }} end';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		expect(result).toBe('start hello $& middle world $` end');
+	});
+
+	it('should handle regular strings without special patterns', () => {
+		const mockFunction = createMockExecuteFunctionForResolve('hello world');
+		const input = '{{ "hello world" }}';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		expect(result).toBe('hello world');
+	});
+
+	it('should handle objects and stringify them', () => {
+		const mockFunction = createMockExecuteFunctionForResolve({ message: 'hello world', count: 42 });
+		const input = '{{ someExpression }}';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		expect(result).toBe('{"message":"hello world","count":42}');
+	});
+
+	it('should return raw data when no resolvables are found', () => {
+		const mockFunction = createMockExecuteFunctionForResolve('unused');
+		const input = 'hello world without expressions';
+		const result = resolveRawData.call(mockFunction, input, 0);
+
+		expect(result).toBe('hello world without expressions');
+		expect(mockFunction.evaluateExpression).not.toHaveBeenCalled();
 	});
 });

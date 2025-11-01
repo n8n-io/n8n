@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "properties": {
+        "bucket": {
+            "type": "string"
+        },
+        "contentType": {
+            "type": "string"
+        },
+        "crc32c": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "generation": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "md5Hash": {
+            "type": "string"
+        },
+        "mediaLink": {
+            "type": "string"
+        },
+        "metageneration": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "size": {
+            "type": "string"
+        },
+        "storageClass": {
+            "type": "string"
+        },
+        "timeCreated": {
+            "type": "string"
+        },
+        "timeFinalized": {
+            "type": "string"
+        },
+        "timeStorageClassUpdated": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

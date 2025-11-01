@@ -1,13 +1,13 @@
+import { watch } from 'chokidar';
+import type { EventName } from 'chokidar/handler';
 import {
 	type ITriggerFunctions,
 	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
 	type ITriggerResponse,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-
-import { watch } from 'chokidar';
 
 export class LocalFileTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,15 +28,15 @@ export class LocalFileTrigger implements INodeType {
 			header: '',
 			executionsHelp: {
 				inactive:
-					"<b>While building your workflow</b>, click the 'listen' button, then make a change to your watched file or folder. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+					"<b>While building your workflow</b>, click the 'execute step' button, then make a change to your watched file or folder. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 				active:
-					"<b>While building your workflow</b>, click the 'listen' button, then make a change to your watched file or folder. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+					"<b>While building your workflow</b>, click the 'execute step' button, then make a change to your watched file or folder. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 			},
 			activationHint:
 				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Trigger On',
@@ -147,9 +147,9 @@ export class LocalFileTrigger implements INodeType {
 						name: 'ignored',
 						type: 'string',
 						default: '',
-						placeholder: '**/*.txt',
+						placeholder: '**/*.txt or ignore-me/subfolder',
 						description:
-							'Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href="https://github.com/micromatch/anymatch">Anymatch</a>- syntax.',
+							"Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href=\"https://github.com/micromatch/anymatch\">Anymatch</a>- syntax. Regex patterns may not work on macOS. To ignore files based on substring matching, use the 'Ignore Mode' option with 'Contain'.",
 					},
 					{
 						displayName: 'Ignore Existing Files/Folders',
@@ -203,6 +203,27 @@ export class LocalFileTrigger implements INodeType {
 						description:
 							'Whether to use polling for watching. Typically necessary to successfully watch files over a network.',
 					},
+					{
+						displayName: 'Ignore Mode',
+						name: 'ignoreMode',
+						type: 'options',
+						options: [
+							{
+								name: 'Match',
+								value: 'match',
+								description:
+									'Ignore files using regex patterns (e.g., **/*.txt), Not supported on macOS',
+							},
+							{
+								name: 'Contain',
+								value: 'contain',
+								description: 'Ignore files if their path contains the specified value',
+							},
+						],
+						default: 'match',
+						description:
+							'Whether to ignore files using regex matching (Anymatch patterns) or by checking if the path contains a specified value',
+					},
 				],
 			},
 		],
@@ -213,15 +234,15 @@ export class LocalFileTrigger implements INodeType {
 		const path = this.getNodeParameter('path') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		let events: string[];
+		let events: EventName[];
 		if (triggerOn === 'file') {
 			events = ['change'];
 		} else {
-			events = this.getNodeParameter('events', []) as string[];
+			events = this.getNodeParameter('events', []) as EventName[];
 		}
-
+		const ignored = options.ignored === '' ? undefined : (options.ignored as string);
 		const watcher = watch(path, {
-			ignored: options.ignored === '' ? undefined : (options.ignored as string),
+			ignored: options.ignoreMode === 'match' ? ignored : (x) => x.includes(ignored as string),
 			persistent: true,
 			ignoreInitial:
 				options.ignoreInitial === undefined ? true : (options.ignoreInitial as boolean),
@@ -239,7 +260,7 @@ export class LocalFileTrigger implements INodeType {
 		};
 
 		for (const eventName of events) {
-			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString as string));
+			watcher.on(eventName, (pathString: string) => executeTrigger(eventName, pathString));
 		}
 
 		async function closeFunction() {

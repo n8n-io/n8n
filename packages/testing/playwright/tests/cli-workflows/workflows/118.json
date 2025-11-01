@@ -1,0 +1,216 @@
+{
+	"createdAt": "2021-03-10T13:48:09.104Z",
+	"updatedAt": "2021-06-02T10:31:06.860Z",
+	"id": "118",
+	"name": "Redis:info set keys get delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "bfe11af4-fb50-452c-b976-4d03d10829d2"
+		},
+		{
+			"parameters": {},
+			"name": "Redis",
+			"type": "n8n-nodes-base.redis",
+			"typeVersion": 1,
+			"position": [600, 300],
+			"credentials": {
+				"redis": {
+					"id": "85",
+					"name": "Redis creds"
+				}
+			},
+			"id": "d63e6bed-6d35-4f90-8a9f-11869262fd3c"
+		},
+		{
+			"parameters": {
+				"operation": "set",
+				"key": "={{$node[\"Set\"].json[\"key\"]}}",
+				"value": "={{$node[\"Set\"].json[\"value\"]}}"
+			},
+			"name": "Redis1",
+			"type": "n8n-nodes-base.redis",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"redis": {
+					"id": "85",
+					"name": "Redis creds"
+				}
+			},
+			"id": "de5c3f28-1d4e-4c43-92c1-d9987e472c69"
+		},
+		{
+			"parameters": {
+				"operation": "keys",
+				"keyPattern": "={{$node[\"Set\"].json[\"key\"]}}"
+			},
+			"name": "Redis2",
+			"type": "n8n-nodes-base.redis",
+			"typeVersion": 1,
+			"position": [900, 300],
+			"credentials": {
+				"redis": {
+					"id": "85",
+					"name": "Redis creds"
+				}
+			},
+			"id": "00d6c08e-263e-43db-a93f-a0bf28d0d0bd"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"propertyName": "value",
+				"key": "={{$node[\"Set\"].json[\"key\"]}}",
+				"options": {}
+			},
+			"name": "Redis3",
+			"type": "n8n-nodes-base.redis",
+			"typeVersion": 1,
+			"position": [1050, 300],
+			"credentials": {
+				"redis": {
+					"id": "85",
+					"name": "Redis creds"
+				}
+			},
+			"id": "1ee59e47-956c-4c04-b460-0409d488ae1f"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"key": "={{$node[\"Set\"].json[\"key\"]}}"
+			},
+			"name": "Redis4",
+			"type": "n8n-nodes-base.redis",
+			"typeVersion": 1,
+			"position": [1300, 300],
+			"credentials": {
+				"redis": {
+					"id": "85",
+					"name": "Redis creds"
+				}
+			},
+			"id": "08580c27-446e-4b5c-a8a2-956208327019"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "key",
+							"value": "TestKey"
+						},
+						{
+							"name": "value",
+							"value": "=Value{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"id": "779cc18d-7a1a-454d-b70a-b54ae590c896"
+		},
+		{
+			"parameters": {
+				"functionCode": "if($node['Set'].json['value'] !== $node['Redis3'].json['value'] ){\n  throw new Error('Error in redis node');\n}\nreturn items;"
+			},
+			"name": "Function",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [1300, 450],
+			"notesInFlow": true,
+			"notes": "validate the saved value",
+			"id": "72efc2c0-6bb3-4560-b935-9231558081a8"
+		}
+	],
+	"connections": {
+		"Redis": {
+			"main": [
+				[
+					{
+						"node": "Redis1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Redis1": {
+			"main": [
+				[
+					{
+						"node": "Redis2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Redis2": {
+			"main": [
+				[
+					{
+						"node": "Redis3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Redis3": {
+			"main": [
+				[
+					{
+						"node": "Redis4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Function",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Redis",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

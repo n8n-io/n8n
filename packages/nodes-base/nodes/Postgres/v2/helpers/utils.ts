@@ -4,10 +4,10 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodePropertyOptions,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	ColumnInfo,
 	EnumInfo,
@@ -19,6 +19,34 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+import { generatePairedItemData } from '../../../../utils/utilities';
+
+export function isJSON(str: string) {
+	try {
+		JSON.parse(str.trim());
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export function evaluateExpression(expression: NodeParameterValueType) {
+	if (expression === undefined) {
+		return '';
+	} else if (expression === null) {
+		return 'null';
+	} else {
+		return typeof expression === 'object' ? JSON.stringify(expression) : expression.toString();
+	}
+}
+
+export function stringToArray(str: NodeParameterValueType | undefined) {
+	if (str === undefined) return [];
+	return String(str)
+		.split(',')
+		.filter((entry) => entry)
+		.map((entry) => entry.trim());
+}
 
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
@@ -376,6 +404,27 @@ export function prepareItem(values: IDataObject[]) {
 	return item;
 }
 
+export function hasJsonDataTypeInSchema(schema: ColumnInfo[]) {
+	return schema.some(({ data_type }) => data_type === 'json');
+}
+
+export function convertValuesToJsonWithPgp(
+	pgp: PgpClient,
+	schema: ColumnInfo[],
+	values: IDataObject,
+) {
+	schema
+		.filter(
+			({ data_type, column_name }) =>
+				data_type === 'json' && values[column_name] !== null && values[column_name] !== undefined,
+		)
+		.forEach(({ column_name }) => {
+			values[column_name] = pgp.as.json(values[column_name], true);
+		});
+
+	return values;
+}
+
 export async function columnFeatureSupport(
 	db: PgpDatabase,
 ): Promise<{ identity_generation: boolean; is_generated: boolean }> {
@@ -437,20 +486,24 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 	return unique as IDataObject[];
 }
 
-export async function getEnums(db: PgpDatabase): Promise<EnumInfo[]> {
-	const enumsData = await db.any(
+export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {
+	const enums = await db.any<EnumInfo>(
 		'SELECT pg_type.typname, pg_enum.enumlabel FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid;',
 	);
-	return enumsData as EnumInfo[];
+
+	return enums.reduce((map, { typname, enumlabel }) => {
+		const existingValues = map.get(typname) ?? [];
+		map.set(typname, [...existingValues, enumlabel]);
+		return map;
+	}, new Map<string, string[]>());
 }
 
-export function getEnumValues(enumInfo: EnumInfo[], enumName: string): INodePropertyOptions[] {
-	return enumInfo.reduce((acc, current) => {
-		if (current.typname === enumName) {
-			acc.push({ name: current.enumlabel, value: current.enumlabel });
-		}
-		return acc;
-	}, [] as INodePropertyOptions[]);
+export function getEnumValues(
+	enumInfo: Map<string, string[]>,
+	enumName: string,
+): INodePropertyOptions[] {
+	const values = enumInfo.get(enumName) ?? [];
+	return values.map((value) => ({ name: value, value }));
 }
 
 export async function doesRowExist(

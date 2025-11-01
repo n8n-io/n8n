@@ -1,0 +1,83 @@
+{
+	"name": "My workflow 8",
+	"nodes": [
+		{
+			"parameters": {
+				"operation": "getAllPeople",
+				"limit": 10
+			},
+			"id": "39cd80ce-5a8f-4339-b3d5-c4af969dd330",
+			"name": "Customer Datastore (n8n training)",
+			"type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+			"typeVersion": 1,
+			"position": [940, 680]
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "objectValue.prop1",
+							"value": 123
+						}
+					],
+					"string": [
+						{
+							"name": "objectValue.prop2",
+							"value": "someText"
+						}
+					]
+				},
+				"options": {
+					"dotNotation": true
+				}
+			},
+			"id": "6e4490f6-ba95-4400-beec-2caefdd4895a",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1300, 680]
+		},
+		{
+			"parameters": {},
+			"id": "58512a93-dabf-4584-817f-27c608c1bdd5",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [720, 680]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Customer Datastore (n8n training)": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Customer Datastore (n8n training)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "4a4f292a-92be-427c-848a-9582527f5ed3",
+	"id": "8",
+	"meta": {
+		"instanceId": "032eceae7493054b723340499be69ecbf4cbe28a7ec6df676b759000750b968d"
+	},
+	"tags": []
+}

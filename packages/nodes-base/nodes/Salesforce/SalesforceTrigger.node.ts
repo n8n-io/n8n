@@ -1,5 +1,5 @@
-import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
-
+import { DateTime } from 'luxon';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IPollFunctions,
@@ -11,12 +11,13 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { DateTime } from 'luxon';
 import {
 	getQuery,
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 	sortOptions,
+	getPollStartDate,
+	filterAndManageProcessedItems,
 } from './GenericFunctions';
 
 export class SalesforceTrigger implements INodeType {
@@ -40,7 +41,7 @@ export class SalesforceTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Trigger On',
@@ -186,7 +187,8 @@ export class SalesforceTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const workflowData = this.getWorkflowStaticData('node');
+		const workflowData: { processedIds?: string[]; lastTimeChecked?: string } =
+			this.getWorkflowStaticData('node');
 		let responseData;
 		const qs: IDataObject = {};
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
@@ -197,11 +199,15 @@ export class SalesforceTrigger implements INodeType {
 			triggerResource = this.getNodeParameter('customObject') as string;
 		}
 
-		const now = DateTime.now().toISO();
-		const startDate = (workflowData.lastTimeChecked as string) || now;
-		const endDate = now;
+		const endDate = DateTime.now().toISO();
+
+		if (!workflowData.processedIds) {
+			workflowData.processedIds = [];
+		}
+		const processedIds = workflowData.processedIds;
+
 		try {
-			const pollStartDate = startDate;
+			const pollStartDate = getPollStartDate(workflowData.lastTimeChecked);
 			const pollEndDate = endDate;
 
 			const options = {
@@ -263,6 +269,20 @@ export class SalesforceTrigger implements INodeType {
 				workflowData.lastTimeChecked = endDate;
 				return null;
 			}
+
+			const { newItems, updatedProcessedIds } = filterAndManageProcessedItems(
+				responseData,
+				processedIds,
+			);
+
+			workflowData.processedIds = updatedProcessedIds;
+			workflowData.lastTimeChecked = endDate;
+
+			if (newItems.length > 0) {
+				return [this.helpers.returnJsonArray(newItems as IDataObject[])];
+			}
+
+			return null;
 		} catch (error) {
 			if (this.getMode() === 'manual' || !workflowData.lastTimeChecked) {
 				throw error;
@@ -279,12 +299,5 @@ export class SalesforceTrigger implements INodeType {
 			);
 			throw error;
 		}
-		workflowData.lastTimeChecked = endDate;
-
-		if (Array.isArray(responseData) && responseData.length) {
-			return [this.helpers.returnJsonArray(responseData as IDataObject[])];
-		}
-
-		return null;
 	}
 }

@@ -1,5 +1,8 @@
 import type { IDataObject, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import pgPromise from 'pg-promise';
+
+import type { ColumnInfo } from '../../v2/helpers/interfaces';
 import {
 	addSortRules,
 	addReturning,
@@ -11,8 +14,11 @@ import {
 	replaceEmptyStringsByNulls,
 	wrapData,
 	convertArraysToPostgresFormat,
+	isJSON,
+	convertValuesToJsonWithPgp,
+	hasJsonDataTypeInSchema,
+	evaluateExpression,
 } from '../../v2/helpers/utils';
-import type { ColumnInfo } from '../../v2/helpers/interfaces';
 
 const node: INode = {
 	id: '1',
@@ -24,6 +30,34 @@ const node: INode = {
 		operation: 'executeQuery',
 	},
 };
+
+describe('Test PostgresV2, isJSON', () => {
+	it('should return true for valid JSON', () => {
+		expect(isJSON('{"key": "value"}')).toEqual(true);
+	});
+	it('should return false for invalid JSON', () => {
+		expect(isJSON('{"key": "value"')).toEqual(false);
+	});
+});
+
+describe('Test PostgresV2, evaluateExpression', () => {
+	it('should evaluate undefined to an empty string', () => {
+		expect(evaluateExpression(undefined)).toEqual('');
+	});
+	it('should evaluate null to a string with value null', () => {
+		expect(evaluateExpression(null)).toEqual('null');
+	});
+	it('should evaluate object to a string', () => {
+		expect(evaluateExpression({ key: '' })).toEqual('{"key":""}');
+		expect(evaluateExpression([])).toEqual('[]');
+		expect(evaluateExpression([1, 2, 4])).toEqual('[1,2,4]');
+	});
+	it('should evaluate everything else to a string', () => {
+		expect(evaluateExpression(1)).toEqual('1');
+		expect(evaluateExpression('string')).toEqual('string');
+		expect(evaluateExpression(true)).toEqual('true');
+	});
+});
 
 describe('Test PostgresV2, wrapData', () => {
 	it('should wrap object in json', () => {
@@ -112,15 +146,15 @@ describe('Test PostgresV2, parsePostgresError', () => {
 
 	it('should update message with syntax error', () => {
 		// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
-		const errorMessage = String.raw`syntax error at or near "seelect"`;
+		const errorMessage = String.raw`syntax error at or near "select"`;
 		const error = new Error();
 		error.message = errorMessage;
 
 		const parsedError = parsePostgresError(node, error, [
-			{ query: 'seelect * from my_table', values: [] },
+			{ query: 'select * from my_table', values: [] },
 		]);
 		expect(parsedError).toBeDefined();
-		expect(parsedError.message).toEqual('Syntax error at line 1 near "seelect"');
+		expect(parsedError.message).toEqual('Syntax error at line 1 near "select"');
 		expect(parsedError instanceof NodeOperationError).toEqual(true);
 	});
 });
@@ -167,7 +201,7 @@ describe('Test PostgresV2, addWhereClauses', () => {
 		expect(updatedValues).toEqual(['public', 'my_table', 'id', '1', 'foo', 'select 2']);
 	});
 
-	it('should ignore incorect combine conition ad use AND', () => {
+	it('should ignore incorrect combine condition ad use AND', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const whereClauses = [
@@ -212,7 +246,7 @@ describe('Test PostgresV2, addSortRules', () => {
 		expect(updatedQuery).toEqual('SELECT * FROM $1:name.$2:name ORDER BY $3:name DESC');
 		expect(updatedValues).toEqual(['public', 'my_table', 'id']);
 	});
-	it('should ignore incorect direction', () => {
+	it('should ignore incorrect direction', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const sortRules = [{ column: 'id', direction: 'SELECT * FROM my_table' }];
@@ -306,7 +340,7 @@ describe('Test PostgresV2, replaceEmptyStringsByNulls', () => {
 });
 
 describe('Test PostgresV2, prepareItem', () => {
-	it('should convert fixedColections values to object', () => {
+	it('should convert fixedCollection values to object', () => {
 		const values = [
 			{
 				column: 'id',
@@ -372,6 +406,68 @@ describe('Test PostgresV2, checkItemAgainstSchema', () => {
 			checkItemAgainstSchema(node, item, columnsInfo, 0);
 		} catch (error) {
 			expect(error.message).toEqual("Column 'foo' is not nullable");
+		}
+	});
+});
+
+describe('Test PostgresV2, hasJsonDataType', () => {
+	it('returns true if there are columns which are of type json', () => {
+		const schema: ColumnInfo[] = [
+			{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+		];
+
+		expect(hasJsonDataTypeInSchema(schema)).toEqual(true);
+	});
+
+	it('returns false if there are columns which are of type json', () => {
+		const schema: ColumnInfo[] = [{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' }];
+
+		expect(hasJsonDataTypeInSchema(schema)).toEqual(false);
+	});
+});
+
+describe('Test PostgresV2, convertValuesToJsonWithPgp', () => {
+	const pgp = pgPromise();
+	const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+	const schema: ColumnInfo[] = [
+		{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+	];
+
+	beforeEach(() => {
+		pgpJsonSpy.mockClear();
+	});
+
+	it.each([
+		{
+			value: { data: [], id: 1 },
+			expected: { data: '[]', id: 1 },
+		},
+		{
+			value: { data: [0], id: 1 },
+			expected: { data: '[0]', id: 1 },
+		},
+		{
+			value: { data: { key: 2 }, id: 1 },
+			expected: { data: '{"key":2}', id: 1 },
+		},
+		{
+			value: { data: null, id: 1 },
+			expected: { data: null, id: 1 },
+			shouldSkipPgp: true,
+		},
+		{
+			value: { data: undefined, id: 1 },
+			expected: { data: undefined, id: 1 },
+			shouldSkipPgp: true,
+		},
+	])('should convert $value.data to json correctly', ({ value, expected, shouldSkipPgp }) => {
+		const data = value.data;
+		expect(convertValuesToJsonWithPgp(pgp, schema, value)).toEqual(expected);
+		expect(value).toEqual(expected);
+		if (!shouldSkipPgp) {
+			expect(pgpJsonSpy).toHaveBeenCalledWith(data, true);
 		}
 	});
 });

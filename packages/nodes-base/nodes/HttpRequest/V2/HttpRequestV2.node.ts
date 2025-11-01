@@ -1,6 +1,5 @@
-import type { Readable } from 'stream';
-
 import type {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
@@ -16,8 +15,10 @@ import {
 	NodeOperationError,
 	sleep,
 	removeCircularRefs,
-	NodeConnectionType,
+	NodeConnectionTypes,
+	isDomainAllowed,
 } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
@@ -47,8 +48,8 @@ export class HttpRequestV2 implements INodeType {
 				color: '#2200DD',
 			},
 			version: 2,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'httpBasicAuth',
@@ -211,7 +212,7 @@ export class HttpRequestV2 implements INodeType {
 					required: true,
 				},
 				{
-					displayName: 'Ignore SSL Issues',
+					displayName: 'Ignore SSL Issues (Insecure)',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
@@ -641,6 +642,7 @@ export class HttpRequestV2 implements INodeType {
 		} catch {}
 
 		let httpBasicAuth;
+		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
@@ -654,6 +656,10 @@ export class HttpRequestV2 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpBearerAuth') {
+				try {
+					httpBearerAuth = await this.getCredentials('httpBearerAuth');
 				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
@@ -717,6 +723,67 @@ export class HttpRequestV2 implements INodeType {
 			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
+			if (!url.startsWith('http://') && !url.startsWith('https://')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Invalid URL: ${url}. URL must start with "http" or "https".`,
+				);
+			}
+
+			const checkDomainRestrictions = async (
+				credentialData: ICredentialDataDecryptedObject,
+				url: string,
+				credentialType?: string,
+			) => {
+				if (credentialData.allowedHttpRequestDomains === 'domains') {
+					const allowedDomains = credentialData.allowedDomains as string;
+
+					if (!allowedDomains || allowedDomains.trim() === '') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'No allowed domains specified. Configure allowed domains or change restriction setting.',
+						);
+					}
+
+					if (!isDomainAllowed(url, { allowedDomains })) {
+						const credentialInfo = credentialType ? ` (${credentialType})` : '';
+						throw new NodeOperationError(
+							this.getNode(),
+							`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
+								`Only the following domains are allowed: ${allowedDomains}`,
+						);
+					}
+				} else if (credentialData.allowedHttpRequestDomains === 'none') {
+					throw new NodeOperationError(
+						this.getNode(),
+						'This credential is configured to prevent use within an HTTP Request node',
+					);
+				}
+			};
+
+			if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
+			if (httpBearerAuth) await checkDomainRestrictions(httpBearerAuth, url);
+			if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
+			if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
+			if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
+			if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
+			if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
+
+			if (nodeCredentialType) {
+				try {
+					const credentialData = await this.getCredentials(nodeCredentialType, itemIndex);
+					await checkDomainRestrictions(credentialData, url, nodeCredentialType);
+				} catch (error) {
+					if (
+						error.message?.includes('Domain not allowed') ||
+						error.message?.includes('configured to prevent') ||
+						error.message?.includes('No allowed domains specified')
+					) {
+						throw error;
+					}
+				}
+			}
+
 			if (
 				itemIndex > 0 &&
 				(options.batchSize as number) >= 0 &&
@@ -741,7 +808,6 @@ export class HttpRequestV2 implements INodeType {
 			};
 
 			if (fullResponse) {
-				// @ts-ignore
 				requestOptions.resolveWithFullResponse = true;
 			}
 
@@ -754,7 +820,6 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			if (options.ignoreResponseCode === true) {
-				// @ts-ignore
 				requestOptions.simple = false;
 			}
 			if (options.proxy !== undefined) {
@@ -962,6 +1027,11 @@ export class HttpRequestV2 implements INodeType {
 				};
 				authDataKeys.auth = ['pass'];
 			}
+			if (httpBearerAuth !== undefined) {
+				requestOptions.headers = requestOptions.headers ?? {};
+				requestOptions.headers.Authorization = `Bearer ${String(httpBearerAuth.token)}`;
+				authDataKeys.headers = ['Authorization'];
+			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
@@ -1030,12 +1100,10 @@ export class HttpRequestV2 implements INodeType {
 			}
 		}
 
-		// @ts-ignore
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			// @ts-ignore
 			response = promisesResponses.shift();
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
@@ -1170,7 +1238,6 @@ export class HttpRequestV2 implements INodeType {
 					}
 
 					if (options.splitIntoItems === true && Array.isArray(response)) {
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,

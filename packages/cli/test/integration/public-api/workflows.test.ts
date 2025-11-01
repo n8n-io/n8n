@@ -1,25 +1,25 @@
+import {
+	createTeamProject,
+	createWorkflow,
+	createWorkflowWithTrigger,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import type { Project, TagEntity, User } from '@n8n/db';
+import { ProjectRepository, WorkflowHistoryRepository, SharedWorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
 import { STARTING_NODES } from '@/constants';
-import type { Project } from '@/databases/entities/project';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
-import { createTeamProject } from '@test-integration/db/projects';
 
-import { mockInstance } from '../../shared/mocking';
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -36,10 +36,13 @@ let activeWorkflowManager: ActiveWorkflowManager;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
 
+const globalConfig = Container.get(GlobalConfig);
+
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
+	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
@@ -61,14 +64,16 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'SharedCredentials',
 		'SharedWorkflow',
-		'Tag',
-		'Workflow',
-		'Credentials',
+		'TagEntity',
+		'WorkflowEntity',
+		'CredentialsEntity',
 		'WorkflowHistory',
 	]);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
+
+	globalConfig.tags.disabled = false;
 });
 
 afterEach(async () => {
@@ -263,8 +268,12 @@ describe('GET /workflows', () => {
 
 	test('for owner, should return all workflows filtered by `projectId`', async () => {
 		license.setQuota('quota:maxTeamProjects', -1);
-		const firstProject = await Container.get(ProjectService).createTeamProject('First', owner);
-		const secondProject = await Container.get(ProjectService).createTeamProject('Second', member);
+		const firstProject = await Container.get(ProjectService).createTeamProject(owner, {
+			name: 'First',
+		});
+		const secondProject = await Container.get(ProjectService).createTeamProject(member, {
+			name: 'Second',
+		});
 
 		await Promise.all([
 			createWorkflow({ name: 'First workflow' }, firstProject),
@@ -285,10 +294,9 @@ describe('GET /workflows', () => {
 
 	test('for member, should return all member-accessible workflows filtered by `projectId`', async () => {
 		license.setQuota('quota:maxTeamProjects', -1);
-		const otherProject = await Container.get(ProjectService).createTeamProject(
-			'Other project',
-			member,
-		);
+		const otherProject = await Container.get(ProjectService).createTeamProject(member, {
+			name: 'Other project',
+		});
 
 		await Promise.all([
 			createWorkflow({}, member),
@@ -378,6 +386,47 @@ describe('GET /workflows', () => {
 			expect(updatedAt).toBeDefined();
 		}
 	});
+
+	test('should return all owned workflows without pinned data', async () => {
+		await Promise.all([
+			createWorkflow(
+				{
+					pinData: {
+						Webhook1: [{ json: { first: 'first' } }],
+					},
+				},
+				member,
+			),
+			createWorkflow(
+				{
+					pinData: {
+						Webhook2: [{ json: { second: 'second' } }],
+					},
+				},
+				member,
+			),
+			createWorkflow(
+				{
+					pinData: {
+						Webhook3: [{ json: { third: 'third' } }],
+					},
+				},
+				member,
+			),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?excludePinnedData=true');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(3);
+		expect(response.body.nextCursor).toBeNull();
+
+		for (const workflow of response.body.data) {
+			const { pinData } = workflow;
+
+			expect(pinData).not.toBeDefined();
+		}
+	});
 });
 
 describe('GET /workflows/:id', () => {
@@ -443,6 +492,26 @@ describe('GET /workflows/:id', () => {
 		expect(settings).toEqual(workflow.settings);
 		expect(createdAt).toEqual(workflow.createdAt.toISOString());
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	});
+
+	test('should retrieve workflow without pinned data', async () => {
+		// create and assign workflow to owner
+		const workflow = await createWorkflow(
+			{
+				pinData: {
+					Webhook1: [{ json: { first: 'first' } }],
+				},
+			},
+			member,
+		);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}?excludePinnedData=true`);
+
+		expect(response.statusCode).toBe(200);
+
+		const { pinData } = response.body;
+
+		expect(pinData).not.toBeDefined();
 	});
 });
 
@@ -528,8 +597,28 @@ describe('POST /workflows/:id/activate', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should fail due to trying to activate a workflow without any nodes', async () => {
+		const workflow = await createWorkflow({ nodes: [] }, owner);
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should fail due to trying to activate a workflow without a trigger', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+					},
+				],
+			},
+			owner,
+		);
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
 		expect(response.statusCode).toBe(400);
 	});
@@ -744,6 +833,8 @@ describe('POST /workflows', () => {
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
 				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 
@@ -983,6 +1074,8 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 
@@ -1152,6 +1245,8 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
 			},
 		};
 
@@ -1203,8 +1298,8 @@ describe('GET /workflows/:id/tags', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2/tags', 'abcXYZ'));
 
-	test('should fail if workflowTagsDisabled', async () => {
-		config.set('workflowTagsDisabled', true);
+	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
+		globalConfig.tags.disabled = true;
 
 		const response = await authOwnerAgent.get('/workflows/2/tags');
 
@@ -1213,16 +1308,12 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should fail due to non-existing workflow', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const response = await authOwnerAgent.get('/workflows/2/tags');
 
 		expect(response.statusCode).toBe(404);
 	});
 
 	test('should return all tags of owned workflow', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 
 		const workflow = await createWorkflow({ tags }, member);
@@ -1247,8 +1338,6 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should return empty array if workflow does not have tags', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const workflow = await createWorkflow({}, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
@@ -1263,8 +1352,8 @@ describe('PUT /workflows/:id/tags', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/2/tags', 'abcXYZ'));
 
-	test('should fail if workflowTagsDisabled', async () => {
-		config.set('workflowTagsDisabled', true);
+	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
+		globalConfig.tags.disabled = true;
 
 		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
 
@@ -1273,16 +1362,12 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail due to non-existing workflow', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
 
 		expect(response.statusCode).toBe(404);
 	});
 
 	test('should add the tags, workflow have not got tags previously', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const workflow = await createWorkflow({}, member);
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 
@@ -1341,8 +1426,6 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should add the tags, workflow have some tags previously', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const tags = await Promise.all([await createTag({}), await createTag({}), await createTag({})]);
 		const oldTags = [tags[0], tags[1]];
 		const newTags = [tags[0], tags[2]];
@@ -1429,8 +1512,6 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail to add the tags as one does not exist, workflow should maintain previous tags', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 		const oldTags = [tags[0], tags[1]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
@@ -1552,5 +1633,224 @@ describe('PUT /workflows/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(400);
+	});
+});
+
+describe('PAY-3418: Node parameter persistence via Public API', () => {
+	test('should create workflow with Code node with jsCode parameter and persist it', async () => {
+		/**
+		 * Test for PAY-3418: Verify that node parameters like jsCode are not stripped
+		 * when submitted via the Public API. The fix adds additionalProperties: true to node.yml schema.
+		 *
+		 * Arrange: Create a workflow with a Code node containing jsCode parameter
+		 */
+		const jsCodeValue = `
+return [
+  {
+    json: {
+      message: 'Hello from Code node',
+      timestamp: new Date().toISOString()
+    }
+  }
+];
+`;
+
+		const payload = {
+			name: 'Test Code Node Parameters',
+			nodes: [
+				{
+					id: 'code-node-1',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [250, 300],
+					parameters: {
+						mode: 'runOnceForAllItems',
+						language: 'javaScript',
+						jsCode: jsCodeValue,
+					},
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
+			},
+		};
+
+		/**
+		 * Act: Create the workflow via POST /workflows
+		 */
+		const createResponse = await authMemberAgent.post('/workflows').send(payload);
+
+		/**
+		 * Assert: Verify creation was successful and parameters are present
+		 */
+		expect(createResponse.statusCode).toBe(200);
+		expect(createResponse.body.id).toBeDefined();
+
+		const createdWorkflowId = createResponse.body.id;
+		const codeNode = createResponse.body.nodes.find(
+			(node: INode) => node.type === 'n8n-nodes-base.code',
+		);
+
+		expect(codeNode).toBeDefined();
+		expect(codeNode.parameters).toBeDefined();
+		expect(codeNode.parameters.jsCode).toBe(jsCodeValue);
+		expect(codeNode.parameters.mode).toBe('runOnceForAllItems');
+		expect(codeNode.parameters.language).toBe('javaScript');
+
+		/**
+		 * Act: Retrieve the workflow via GET /workflows/:id
+		 */
+		const getResponse = await authMemberAgent.get(`/workflows/${createdWorkflowId}`);
+
+		/**
+		 * Assert: Verify the jsCode parameter is persisted and returned
+		 */
+		expect(getResponse.statusCode).toBe(200);
+
+		const retrievedCodeNode = getResponse.body.nodes.find(
+			(node: INode) => node.type === 'n8n-nodes-base.code',
+		);
+
+		expect(retrievedCodeNode).toBeDefined();
+		expect(retrievedCodeNode.parameters).toBeDefined();
+		expect(retrievedCodeNode.parameters.jsCode).toBe(jsCodeValue);
+		expect(retrievedCodeNode.parameters.mode).toBe('runOnceForAllItems');
+		expect(retrievedCodeNode.parameters.language).toBe('javaScript');
+	});
+
+	test('should update workflow with Code node parameters and preserve them', async () => {
+		/**
+		 * Test for PAY-3418: Verify that node parameters are preserved on workflow updates.
+		 *
+		 * Arrange: Create a workflow with initial Code node
+		 */
+		const initialCode = 'return [{ json: { initial: true } }];';
+
+		const initialPayload = {
+			name: 'Initial Code Node Workflow',
+			nodes: [
+				{
+					id: 'code-node-1',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [250, 300],
+					parameters: {
+						mode: 'runOnceForAllItems',
+						language: 'javaScript',
+						jsCode: initialCode,
+					},
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
+			},
+		};
+
+		const createResponse = await authMemberAgent.post('/workflows').send(initialPayload);
+		expect(createResponse.statusCode).toBe(200);
+
+		const workflowId = createResponse.body.id;
+
+		/**
+		 * Act: Update the workflow with modified Code node parameter
+		 */
+		const updatedCode = `
+const result = {
+  data: 'Updated workflow data',
+  count: 42
+};
+return [{ json: result }];
+`;
+
+		const updatePayload = {
+			name: 'Updated Code Node Workflow',
+			nodes: [
+				{
+					id: 'code-node-1',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [250, 300],
+					parameters: {
+						mode: 'runOnceForEachItem',
+						language: 'javaScript',
+						jsCode: updatedCode,
+					},
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: false,
+				saveManualExecutions: false,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+				executionOrder: 'v1',
+				callerPolicy: 'workflowsFromSameOwner',
+				availableInMCP: false,
+			},
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflowId}`)
+			.send(updatePayload);
+
+		/**
+		 * Assert: Verify update was successful and parameters are preserved
+		 */
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.name).toBe('Updated Code Node Workflow');
+
+		const updatedCodeNode = updateResponse.body.nodes.find(
+			(node: INode) => node.type === 'n8n-nodes-base.code',
+		);
+
+		expect(updatedCodeNode).toBeDefined();
+		expect(updatedCodeNode.parameters.jsCode).toBe(updatedCode);
+		expect(updatedCodeNode.parameters.mode).toBe('runOnceForEachItem');
+		expect(updatedCodeNode.parameters.language).toBe('javaScript');
+
+		/**
+		 * Act: Retrieve the updated workflow
+		 */
+		const getResponse = await authMemberAgent.get(`/workflows/${workflowId}`);
+
+		/**
+		 * Assert: Verify all parameters are still present after retrieval
+		 */
+		expect(getResponse.statusCode).toBe(200);
+
+		const retrievedUpdatedNode = getResponse.body.nodes.find(
+			(node: INode) => node.type === 'n8n-nodes-base.code',
+		);
+
+		expect(retrievedUpdatedNode).toBeDefined();
+		expect(retrievedUpdatedNode.parameters.jsCode).toBe(updatedCode);
+		expect(retrievedUpdatedNode.parameters.mode).toBe('runOnceForEachItem');
+		expect(retrievedUpdatedNode.parameters.language).toBe('javaScript');
 	});
 });

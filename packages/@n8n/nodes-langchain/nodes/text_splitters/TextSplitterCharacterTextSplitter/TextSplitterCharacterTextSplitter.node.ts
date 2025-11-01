@@ -1,21 +1,22 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
+import { CharacterTextSplitter } from '@langchain/textsplitters';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
-import { CharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class TextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Character Text Splitter',
 		name: 'textSplitterCharacterTextSplitter',
 		icon: 'fa:grip-lines-vertical',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by characters',
@@ -35,13 +36,13 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTextSplitter],
+
+		outputs: [NodeConnectionTypes.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiDocument]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiDocument]),
 			{
 				displayName: 'Separator',
 				name: 'separator',
@@ -53,12 +54,14 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 				name: 'chunkSize',
 				type: 'number',
 				default: 1000,
+				description: 'Maximum number of characters per chunk',
 			},
 			{
 				displayName: 'Chunk Overlap',
 				name: 'chunkOverlap',
 				type: 'number',
 				default: 0,
+				description: 'Number of characters shared between consecutive chunks to preserve context',
 			},
 		],
 	};

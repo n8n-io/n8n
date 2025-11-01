@@ -27,7 +27,7 @@ docker run ghcr.io/n8n-io/n8n-benchmark:latest run \
 	--n8nUserPassword=InstanceOwnerPassword \
 	--vus=5 \
 	--duration=1m \
-	--scenarioFilter SingleWebhook
+	--scenarioFilter=single-webhook
 ```
 
 ### Using custom scenarios with the Docker image
@@ -53,6 +53,13 @@ The benchmark suite consists of [benchmark scenarios](#benchmark-scenarios) and 
 
 ```sh
 pnpm benchmark-locally
+```
+
+You can filter to a specific scenario and setup:
+
+```sh
+# Run only the http-node scenario with the sqlite setup
+pnpm benchmark-locally --runDir /tmp/n8n-data --scenarioFilter http-node sqlite
 ```
 
 ### In the cloud

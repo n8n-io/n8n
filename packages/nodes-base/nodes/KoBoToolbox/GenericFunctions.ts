@@ -1,3 +1,18 @@
+import clone from 'lodash/clone';
+import compact from 'lodash/compact';
+import concat from 'lodash/concat';
+import escapeRegExp from 'lodash/escapeRegExp';
+import every from 'lodash/every';
+import first from 'lodash/first';
+import isArray from 'lodash/isArray';
+import isString from 'lodash/isString';
+import last from 'lodash/last';
+import set from 'lodash/set';
+import some from 'lodash/some';
+import split from 'lodash/split';
+import toNumber from 'lodash/toNumber';
+import toString from 'lodash/toString';
+import trim from 'lodash/trim';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,22 +23,6 @@ import type {
 	INodePropertyOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-
-import set from 'lodash/set';
-import concat from 'lodash/concat';
-import split from 'lodash/split';
-import every from 'lodash/every';
-import toString from 'lodash/toString';
-import toNumber from 'lodash/toNumber';
-import isString from 'lodash/isString';
-import compact from 'lodash/compact';
-import first from 'lodash/first';
-import last from 'lodash/last';
-import clone from 'lodash/clone';
-import some from 'lodash/some';
-import isArray from 'lodash/isArray';
-import trim from 'lodash/trim';
-import escapeRegExp from 'lodash/escapeRegExp';
 
 export async function koBoToolboxApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,

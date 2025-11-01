@@ -1,10 +1,10 @@
 {
-	"extends": "../../../tsconfig.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
 		"rootDir": ".",
-		"types": ["node", "jest"],
+		"types": ["node", "vite/client", "vitest/globals"],
 		"baseUrl": "src",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	"include": ["src/**/*.ts"]
 }

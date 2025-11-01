@@ -21,7 +21,7 @@ export async function brandfetchApiRequest(
 ): Promise<any> {
 	try {
 		let options: IRequestOptions = {
-			method: method as IHttpRequestMethods,
+			method,
 			qs,
 			body,
 			url: uri || `https://api.brandfetch.io/v2${resource}`,

@@ -11,6 +11,12 @@ export class SalesforceOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'pkce',
+		},
+		{
 			displayName: 'Environment Type',
 			name: 'environment',
 			type: 'options',
@@ -27,18 +33,12 @@ export class SalesforceOAuth2Api implements ICredentialType {
 			default: 'production',
 		},
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
 			required: true,
 			default:
-				'={{ $self["environment"] === "sandbox" ? "https://test.salesforce.com/services/oauth2/authorize" : "https://login.salesforce.com/services/oauth2/authorize" }}',
+				'={{ $self["environment"] === "sandbox" ? "https://test.salesforce.com/services/oauth2/authorize?prompt=login" : "https://login.salesforce.com/services/oauth2/authorize?prompt=login" }}',
 		},
 		{
 			displayName: 'Access Token URL',

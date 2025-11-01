@@ -1,0 +1,101 @@
+{
+    "type": "object",
+    "properties": {
+        "expand": {
+            "type": "string"
+        },
+        "fields": {
+            "type": "object",
+            "properties": {
+                "attachment": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "author": {
+                                "type": "object",
+                                "properties": {
+                                    "accountId": {
+                                        "type": "string"
+                                    },
+                                    "accountType": {
+                                        "type": "string"
+                                    },
+                                    "active": {
+                                        "type": "boolean"
+                                    },
+                                    "avatarUrls": {
+                                        "type": "object",
+                                        "properties": {
+                                            "16x16": {
+                                                "type": "string"
+                                            },
+                                            "24x24": {
+                                                "type": "string"
+                                            },
+                                            "32x32": {
+                                                "type": "string"
+                                            },
+                                            "48x48": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "displayName": {
+                                        "type": "string"
+                                    },
+                                    "emailAddress": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    },
+                                    "timeZone": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "content": {
+                                "type": "string"
+                            },
+                            "created": {
+                                "type": "string"
+                            },
+                            "filename": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "mimeType": {
+                                "type": "string"
+                            },
+                            "self": {
+                                "type": "string"
+                            },
+                            "size": {
+                                "type": "integer"
+                            },
+                            "thumbnail": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "summary": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "key": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
+        }
+    },
+    "version": 8
+}

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { RedisChatMessageHistoryInput } from '@langchain/redis';
 import { RedisChatMessageHistory } from '@langchain/redis';
 import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
@@ -8,14 +7,15 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
-import { getSessionId } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import {
 	sessionIdOption,
 	sessionKeyProperty,
@@ -29,7 +29,7 @@ export class MemoryRedisChat implements INodeType {
 		name: 'memoryRedisChat',
 		icon: 'file:redis.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
@@ -44,6 +44,7 @@ export class MemoryRedisChat implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
+				Memory: ['Other memories'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -53,13 +54,13 @@ export class MemoryRedisChat implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+
+		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',
@@ -132,6 +133,9 @@ export class MemoryRedisChat implements INodeType {
 			database: credentials.database as number,
 		};
 
+		if (credentials.user && nodeVersion >= 1.5) {
+			redisOptions.username = credentials.user as string;
+		}
 		if (credentials.password) {
 			redisOptions.password = credentials.password as string;
 		}

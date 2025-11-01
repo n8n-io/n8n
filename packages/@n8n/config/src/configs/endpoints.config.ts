@@ -57,6 +57,14 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update queue metrics. */
 	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
 	queueMetricsInterval: number = 20;
+
+	/** How often (in seconds) to update active workflow metric */
+	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
+	activeWorkflowCountInterval: number = 60;
+
+	/** Whether to include a label for workflow name on workflow metrics. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
+	includeWorkflowNameLabel: boolean = false;
 }
 
 @Config
@@ -99,6 +107,14 @@ export class EndpointsConfig {
 	/** Path segment for waiting webhook endpoints. */
 	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
 	webhookWaiting: string = 'webhook-waiting';
+
+	/** Path segment for MCP endpoints. */
+	@Env('N8N_ENDPOINT_MCP')
+	mcp: string = 'mcp';
+
+	/** Path segment for test MCP endpoints. */
+	@Env('N8N_ENDPOINT_MCP_TEST')
+	mcpTest: string = 'mcp-test';
 
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')

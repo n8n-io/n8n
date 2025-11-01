@@ -1,4 +1,13 @@
-import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
-const workflows = getWorkflowFilenames(__dirname);
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 
-describe('Test Jwt Node', () => testWorkflows(workflows));
+const credentials = {
+	jwtAuth: {
+		keyType: 'passphrase',
+		secret: 'baz',
+		algorithm: 'HS256',
+	},
+};
+
+describe('Test Jwt Node', () => {
+	new NodeTestHarness().setupTests({ credentials });
+});

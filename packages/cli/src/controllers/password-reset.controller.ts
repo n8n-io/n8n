@@ -1,10 +1,16 @@
+import {
+	ChangePasswordRequestDto,
+	ForgotPasswordRequestDto,
+	ResolvePasswordTokenQueryDto,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
-import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { Get, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -13,12 +19,14 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
-import { PasswordResetRequest } from '@/requests';
+import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import {
+	isOidcCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 @RestController()
@@ -40,7 +48,11 @@ export class PasswordResetController {
 	 * Send a password reset email.
 	 */
 	@Post('/forgot-password', { skipAuth: true, rateLimit: { limit: 3 } })
-	async forgotPassword(req: PasswordResetRequest.Email) {
+	async forgotPassword(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Body payload: ForgotPasswordRequestDto,
+	) {
 		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
 				'Request to send password reset email failed because emailing was not set up',
@@ -50,49 +62,37 @@ export class PasswordResetController {
 			);
 		}
 
-		const { email } = req.body;
-		if (!email) {
-			this.logger.debug(
-				'Request to send password reset email failed because of missing email in payload',
-				{ payload: req.body },
-			);
-			throw new BadRequestError('Email is mandatory');
-		}
-
-		if (!validator.isEmail(email)) {
-			this.logger.debug(
-				'Request to send password reset email failed because of invalid email in payload',
-				{ invalidEmail: email },
-			);
-			throw new BadRequestError('Invalid email address');
-		}
+		const { email } = payload;
 
 		// User should just be able to reset password if one is already present
 		const user = await this.userRepository.findNonShellUser(email);
+		if (!user) {
+			this.logger.debug('No user found in the system');
+			return;
+		}
 
-		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
+		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
+
 		if (
-			isSamlCurrentAuthenticationMethod() &&
-			!(
-				user?.hasGlobalScope('user:resetPassword') === true ||
-				user?.settings?.allowSSOManualLogin === true
-			)
+			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
+			!(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
 		) {
+			const currentAuthenticationMethod = isSamlCurrentAuthenticationMethod() ? 'SAML' : 'OIDC';
 			this.logger.debug(
-				'Request to send password reset email failed because login is handled by SAML',
+				`Request to send password reset email failed because login is handled by ${currentAuthenticationMethod}`,
 			);
 			throw new ForbiddenError(
-				'Login is handled by SAML. Please contact your Identity Provider to reset your password.',
+				`Login is handled by ${currentAuthenticationMethod}. Please contact your Identity Provider to reset your password.`,
 			);
 		}
 
-		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
-		if (!user?.password || (ldapIdentity && user.disabled)) {
+		const ldapIdentity = user.authIdentities?.find((i) => i.providerType === 'ldap');
+		if (!user.password || (ldapIdentity && user.disabled)) {
 			this.logger.debug(
 				'Request to send password reset email failed because no user was found for the provided email',
 				{ invalidEmail: email },
@@ -120,7 +120,7 @@ export class PasswordResetController {
 				publicApi: false,
 			});
 			if (error instanceof Error) {
-				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+				throw new InternalServerError(`Please contact your administrator: ${error.message}`, error);
 			}
 		}
 
@@ -138,23 +138,16 @@ export class PasswordResetController {
 	 * Verify password reset token and user ID.
 	 */
 	@Get('/resolve-password-token', { skipAuth: true })
-	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
-		const { token } = req.query;
-
-		if (!token) {
-			this.logger.debug(
-				'Request to resolve password token failed because of missing password reset token',
-				{
-					queryString: req.query,
-				},
-			);
-			throw new BadRequestError('');
-		}
-
+	async resolvePasswordToken(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Query payload: ResolvePasswordTokenQueryDto,
+	) {
+		const { token } = payload;
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
-		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
+		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
 				{ userId: user.id },
@@ -170,41 +163,33 @@ export class PasswordResetController {
 	 * Verify password reset token and update password.
 	 */
 	@Post('/change-password', { skipAuth: true })
-	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token, password, mfaToken } = req.body;
-
-		if (!token || !password) {
-			this.logger.debug(
-				'Request to change password failed because of missing user ID or password or reset password token in payload',
-				{
-					payload: req.body,
-				},
-			);
-			throw new BadRequestError('Missing user ID or password or reset password token');
-		}
-
-		const validPassword = this.passwordUtility.validate(password);
+	async changePassword(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: ChangePasswordRequestDto,
+	) {
+		const { token, password, mfaCode } = payload;
 
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
 		if (user.mfaEnabled) {
-			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
+			if (!mfaCode) throw new BadRequestError('If MFA enabled, mfaCode is required.');
 
 			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
 
-			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
+			const validToken = this.mfaService.totp.verifySecret({ secret, mfaCode });
 
 			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
 
-		const passwordHash = await this.passwordUtility.hash(validPassword);
+		const passwordHash = await this.passwordUtility.hash(password);
 
 		await this.userService.update(user.id, { password: passwordHash });
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, user, req.browserId);
+		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 

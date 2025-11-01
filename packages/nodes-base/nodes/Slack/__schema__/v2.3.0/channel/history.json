@@ -1,0 +1,77 @@
+{
+    "type": "object",
+    "properties": {
+        "blocks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "block_id": {
+                        "type": "string"
+                    },
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "elements": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "style": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "bold": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "italic": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "bot_id": {
+            "type": "string"
+        },
+        "client_msg_id": {
+            "type": "string"
+        },
+        "team": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
+        }
+    },
+    "version": 8
+}

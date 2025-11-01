@@ -96,3 +96,151 @@ describe('Google Sheet - Append or Update', () => {
 		});
 	});
 });
+
+describe('Google Sheet - Append or Update v4.6 vs v4.7 Behavior', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+	let mockGoogleSheet: MockProxy<GoogleSheet>;
+
+	afterEach(() => {
+		jest.resetAllMocks();
+	});
+
+	it('v4.6: empty string in UI gets filtered out, field not sent to backend', async () => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockGoogleSheet = mock<GoogleSheet>();
+
+		mockExecuteFunctions.getNode
+			.mockReturnValueOnce(mock<INode>({ typeVersion: 4.6 }))
+			.mockReturnValueOnce(mock<INode>({ typeVersion: 4.6 }));
+
+		mockExecuteFunctions.getInputData.mockReturnValueOnce([
+			{
+				json: {},
+				pairedItem: { item: 0, input: undefined },
+			},
+		]);
+
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+			const params: { [key: string]: any } = {
+				'options.cellFormat': 'USER_ENTERED',
+				options: {},
+				'columns.mappingMode': 'defineBelow',
+				'columns.schema': [],
+				'columns.matchingColumns': ['id'],
+				'columns.value': {
+					id: 1,
+					name: 'John',
+					// email field is NOT present here because user typed '' in UI
+					// and v4.6 frontend filtered it out (allowEmptyValues: false)
+				},
+			};
+			return params[parameterName];
+		});
+
+		mockGoogleSheet.getData.mockResolvedValueOnce([
+			['id', 'name', 'email'],
+			['1', 'Old Name', 'old@email.com'],
+		]);
+
+		mockGoogleSheet.getColumnValues.mockResolvedValueOnce(['1']);
+		mockGoogleSheet.updateRows.mockResolvedValueOnce([]);
+
+		mockGoogleSheet.prepareDataForUpdateOrUpsert.mockResolvedValueOnce({
+			updateData: [],
+			appendData: [
+				{
+					id: 1,
+					name: 'John',
+					// email is not included, so it keeps old value
+				},
+			],
+		});
+
+		mockGoogleSheet.appendEmptyRowsOrColumns.mockResolvedValueOnce([]);
+		mockGoogleSheet.appendSheetData.mockResolvedValueOnce([]);
+
+		await execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1', '1234');
+
+		// v4.6: Only fields with non-empty values are sent to prepareDataForUpdateOrUpsert
+		expect(mockGoogleSheet.prepareDataForUpdateOrUpsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [
+					{
+						id: 1,
+						name: 'John',
+						// email is NOT in the inputData, so cell keeps old value
+					},
+				],
+			}),
+		);
+	});
+
+	it('v4.7: empty string in UI is preserved and sent to backend to clear cell', async () => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockGoogleSheet = mock<GoogleSheet>();
+
+		mockExecuteFunctions.getNode
+			.mockReturnValueOnce(mock<INode>({ typeVersion: 4.7 }))
+			.mockReturnValueOnce(mock<INode>({ typeVersion: 4.7 }));
+
+		mockExecuteFunctions.getInputData.mockReturnValueOnce([
+			{
+				json: {},
+				pairedItem: { item: 0, input: undefined },
+			},
+		]);
+
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+			const params: { [key: string]: any } = {
+				'options.cellFormat': 'USER_ENTERED',
+				options: {},
+				'columns.mappingMode': 'defineBelow',
+				'columns.schema': [],
+				'columns.matchingColumns': ['id'],
+				'columns.value': {
+					id: 1,
+					name: 'John',
+					email: '', // Empty string is preserved in v4.7 (allowEmptyValues: true)
+				},
+			};
+			return params[parameterName];
+		});
+
+		mockGoogleSheet.getData.mockResolvedValueOnce([
+			['id', 'name', 'email'],
+			['1', 'Old Name', 'old@email.com'],
+		]);
+
+		mockGoogleSheet.getColumnValues.mockResolvedValueOnce(['1']);
+		mockGoogleSheet.updateRows.mockResolvedValueOnce([]);
+
+		mockGoogleSheet.prepareDataForUpdateOrUpsert.mockResolvedValueOnce({
+			updateData: [],
+			appendData: [
+				{
+					id: 1,
+					name: 'John',
+					email: '', // Empty string will clear the cell
+				},
+			],
+		});
+
+		mockGoogleSheet.appendEmptyRowsOrColumns.mockResolvedValueOnce([]);
+		mockGoogleSheet.appendSheetData.mockResolvedValueOnce([]);
+
+		await execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1', '1234');
+
+		// v4.7: Empty strings are preserved and sent to prepareDataForUpdateOrUpsert
+		expect(mockGoogleSheet.prepareDataForUpdateOrUpsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [
+					{
+						id: 1,
+						name: 'John',
+						email: '', // Empty string is preserved and will clear the cell
+					},
+				],
+			}),
+		);
+	});
+});

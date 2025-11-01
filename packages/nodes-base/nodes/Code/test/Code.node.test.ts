@@ -1,20 +1,15 @@
-import { anyNumber, mock } from 'jest-mock-extended';
 import { NodeVM } from '@n8n/vm2';
-import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { anyNumber, mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
+import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
+
 import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
-import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
 
 describe('Test Code Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests();
 });
 
 describe('Code Node unit test', () => {
@@ -38,6 +33,13 @@ describe('Code Node unit test', () => {
 					[{ json: { count: 42 } }],
 					[{ json: { count: 42 } }],
 				],
+
+				// temporarily allowed until refactored out
+				'should handle an index key': [
+					[{ json: { count: 42 }, index: 0 }],
+					[{ json: { count: 42 }, index: 0 }],
+				],
+
 				'should handle when returned data is not an array': [
 					{ json: { count: 42 } },
 					[{ json: { count: 42 } }],
@@ -57,7 +59,8 @@ describe('Code Node unit test', () => {
 					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce(input);
 
 					const output = await node.execute.call(thisArg);
-					expect(output).toEqual([expected]);
+
+					expect([...output]).toEqual([expected]);
 				}),
 			);
 		});
@@ -109,7 +112,7 @@ describe('Code Node unit test', () => {
 					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce(input);
 
 					const output = await node.execute.call(thisArg);
-					expect(output).toEqual([[{ json: expected?.json, pairedItem: { item: 0 } }]]);
+					expect([...output]).toEqual([[{ json: expected?.json, pairedItem: { item: 0 } }]]);
 				}),
 			);
 		});

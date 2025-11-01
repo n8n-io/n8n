@@ -1,9 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { getConditions, getSearchFilters } from '../GenericFunctions';
-
 import { blocks, text } from './Blocks';
-
 import { filters } from './Filters';
 import {
 	databaseUrlExtractionRegexp,
@@ -13,6 +10,7 @@ import {
 	idExtractionRegexp,
 	idValidationRegexp,
 } from '../constants';
+import { getConditions, getSearchFilters } from '../GenericFunctions';
 
 export const databasePageOperations: INodeProperties[] = [
 	{
@@ -32,7 +30,7 @@ export const databasePageOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a pages in a database',
+				description: 'Create a page in a database',
 				action: 'Create a database page',
 			},
 			{

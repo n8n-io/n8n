@@ -1,5 +1,5 @@
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 
@@ -39,28 +39,11 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
-export const separate = <T>(array: T[], test: (element: T) => boolean) => {
-	const pass: T[] = [];
-	const fail: T[] = [];
-
-	array.forEach((i) => (test(i) ? pass : fail).push(i));
-
-	return [pass, fail];
-};
-
 export const toError = (maybeError: unknown) =>
 	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);
 
-export function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
-
 export const isIntegerString = (value: string) => /^\d+$/.test(value);
-
-export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
-	return typeof item === 'object' && item !== null && !Array.isArray(item);
-}
 
 export function removeTrailingSlash(path: string) {
 	return path.endsWith('/') ? path.slice(0, -1) : path;
@@ -94,3 +77,48 @@ export function rightDiff<T1, T2>(
 export const assertNever = (_value: never) => {};
 
 export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);
+
+/**
+ * Check if a execute method should be assigned to the node
+ */
+export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
+	const isDeclarativeNode = nodeType?.description?.requestDefaults !== undefined;
+
+	return (
+		!nodeType.execute &&
+		!nodeType.poll &&
+		!nodeType.trigger &&
+		(!nodeType.webhook || isDeclarativeNode) &&
+		(!nodeType.methods || isDeclarativeNode)
+	);
+};
+
+/**
+ * Recursively gets all key paths of an object or array, filtered by the provided value filter.
+ * @param obj - The object or array to search.
+ * @param keys - The array to store matching keys.
+ * @param valueFilter - A function to filter values.
+ * @returns The array of matching key paths.
+ */
+export const getAllKeyPaths = (
+	obj: unknown,
+	currentPath = '',
+	paths: string[] = [],
+	valueFilter: (value: string) => boolean,
+): string[] => {
+	if (Array.isArray(obj)) {
+		obj.forEach((item, index) =>
+			getAllKeyPaths(item, `${currentPath}[${index}]`, paths, valueFilter),
+		);
+	} else if (obj && typeof obj === 'object') {
+		for (const [key, value] of Object.entries(obj)) {
+			const newPath = currentPath ? `${currentPath}.${key}` : key;
+			if (typeof value === 'string' && valueFilter(value)) {
+				paths.push(newPath);
+			} else {
+				getAllKeyPaths(value, newPath, paths, valueFilter);
+			}
+		}
+	}
+	return paths;
+};

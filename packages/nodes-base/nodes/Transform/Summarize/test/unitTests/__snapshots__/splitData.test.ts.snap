@@ -1,0 +1,524 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Test Summarize Node, aggregateAndSplitData should handle multiple split field values containing null when convertKeysToString is false: split-field-with-spaces-array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+    ],
+    "returnData": {
+      "Product": "Widget A",
+      "Warehouse": "WH1",
+      "appended_Warehouse": [
+        "WH1",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      2,
+    ],
+    "returnData": {
+      "Product": "Widget A",
+      "Warehouse": null,
+      "appended_Warehouse": [
+        null,
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      1,
+    ],
+    "returnData": {
+      "Product": null,
+      "Warehouse": "WH2",
+      "appended_Warehouse": [
+        "WH2",
+      ],
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should handle multiple split field values containing null when convertKeysToString is false: split-field-with-spaces-result 1`] = `
+{
+  "fieldName": "Product",
+  "splits": Map {
+    "Widget A" => {
+      "fieldName": "Warehouse",
+      "splits": Map {
+        "WH1" => {
+          "pairedItems": [
+            0,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "WH1",
+            ],
+          },
+        },
+        null => {
+          "pairedItems": [
+            2,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              null,
+            ],
+          },
+        },
+      },
+    },
+    null => {
+      "fieldName": "Warehouse",
+      "splits": Map {
+        "WH2" => {
+          "pairedItems": [
+            1,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "WH2",
+            ],
+          },
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should handle multiple split field values containing null when convertKeysToString is true: split-field-with-spaces-array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+    ],
+    "returnData": {
+      "Product": "Widget A",
+      "Warehouse": "WH1",
+      "appended_Warehouse": [
+        "WH1",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      2,
+    ],
+    "returnData": {
+      "Product": "Widget A",
+      "Warehouse": "null",
+      "appended_Warehouse": [
+        null,
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      1,
+    ],
+    "returnData": {
+      "Product": "null",
+      "Warehouse": "WH2",
+      "appended_Warehouse": [
+        "WH2",
+      ],
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should handle multiple split field values containing null when convertKeysToString is true: split-field-with-spaces-result 1`] = `
+{
+  "fieldName": "Product",
+  "splits": Map {
+    "Widget A" => {
+      "fieldName": "Warehouse",
+      "splits": Map {
+        "WH1" => {
+          "pairedItems": [
+            0,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "WH1",
+            ],
+          },
+        },
+        "null" => {
+          "pairedItems": [
+            2,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              null,
+            ],
+          },
+        },
+      },
+    },
+    "null" => {
+      "fieldName": "Warehouse",
+      "splits": Map {
+        "WH2" => {
+          "pairedItems": [
+            1,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "WH2",
+            ],
+          },
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should handle split field values containing spaces when convertKeysToString is not set: split-field-with-spaces-array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+      2,
+    ],
+    "returnData": {
+      "Product": "Widget A",
+      "appended_Warehouse": [
+        "WH1",
+        "WH3",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      1,
+    ],
+    "returnData": {
+      "Product": "Widget B",
+      "appended_Warehouse": [
+        "WH2",
+      ],
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should handle split field values containing spaces when convertKeysToString is not set: split-field-with-spaces-result 1`] = `
+{
+  "fieldName": "Product",
+  "splits": Map {
+    "Widget A" => {
+      "pairedItems": [
+        0,
+        2,
+      ],
+      "returnData": {
+        "appended_Warehouse": [
+          "WH1",
+          "WH3",
+        ],
+      },
+    },
+    "Widget B" => {
+      "pairedItems": [
+        1,
+      ],
+      "returnData": {
+        "appended_Warehouse": [
+          "WH2",
+        ],
+      },
+    },
+  },
+}
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should handle split field values containing spaces when convertKeysToString is true: split-field-with-spaces-array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+      2,
+    ],
+    "returnData": {
+      "Product": "Widget A",
+      "appended_Warehouse": [
+        "WH1",
+        "WH3",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      1,
+    ],
+    "returnData": {
+      "Product": "Widget B",
+      "appended_Warehouse": [
+        "WH2",
+      ],
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should handle split field values containing spaces when convertKeysToString is true: split-field-with-spaces-result 1`] = `
+{
+  "fieldName": "Product",
+  "splits": Map {
+    "Widget A" => {
+      "pairedItems": [
+        0,
+        2,
+      ],
+      "returnData": {
+        "appended_Warehouse": [
+          "WH1",
+          "WH3",
+        ],
+      },
+    },
+    "Widget B" => {
+      "pairedItems": [
+        1,
+      ],
+      "returnData": {
+        "appended_Warehouse": [
+          "WH2",
+        ],
+      },
+    },
+  },
+}
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should not convert numbers to strings: array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+    ],
+    "returnData": {
+      "Qty": 1,
+      "Sku": 12345,
+      "appended_Warehouse": [
+        "BER_0G",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      1,
+    ],
+    "returnData": {
+      "Qty": 2,
+      "Sku": 12345,
+      "appended_Warehouse": [
+        "BER_0L",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      2,
+    ],
+    "returnData": {
+      "Qty": 1,
+      "Sku": 6534563534,
+      "appended_Warehouse": [
+        "BER_0L",
+      ],
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should not convert numbers to strings: result 1`] = `
+{
+  "fieldName": "Sku",
+  "splits": Map {
+    12345 => {
+      "fieldName": "Qty",
+      "splits": Map {
+        1 => {
+          "pairedItems": [
+            0,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0G",
+            ],
+          },
+        },
+        2 => {
+          "pairedItems": [
+            1,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0L",
+            ],
+          },
+        },
+      },
+    },
+    6534563534 => {
+      "fieldName": "Qty",
+      "splits": Map {
+        1 => {
+          "pairedItems": [
+            2,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0L",
+            ],
+          },
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should not convert strings to numbers: array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+    ],
+    "returnData": {
+      "Qty": "1",
+      "Sku": "012345",
+      "appended_Warehouse": [
+        "BER_0G",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      1,
+    ],
+    "returnData": {
+      "Qty": "2",
+      "Sku": "012345",
+      "appended_Warehouse": [
+        "BER_0L",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      2,
+    ],
+    "returnData": {
+      "Qty": "1",
+      "Sku": "06534563534",
+      "appended_Warehouse": [
+        "BER_0L",
+      ],
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should not convert strings to numbers: result 1`] = `
+{
+  "fieldName": "Sku",
+  "splits": Map {
+    "012345" => {
+      "fieldName": "Qty",
+      "splits": Map {
+        "1" => {
+          "pairedItems": [
+            0,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0G",
+            ],
+          },
+        },
+        "2" => {
+          "pairedItems": [
+            1,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0L",
+            ],
+          },
+        },
+      },
+    },
+    "06534563534" => {
+      "fieldName": "Qty",
+      "splits": Map {
+        "1" => {
+          "pairedItems": [
+            2,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0L",
+            ],
+          },
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData with skipEmptySplitFields=true should skip empty split fields: array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+      3,
+    ],
+    "returnData": {
+      "Sku": 12345,
+      "concatenated_Warehouse": "BER_0G//{"name":"BER_0G3"}",
+    },
+  },
+  {
+    "pairedItems": [
+      2,
+    ],
+    "returnData": {
+      "Sku": "{}",
+      "concatenated_Warehouse": "BER_0L",
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData with skipEmptySplitFields=true should skip empty split fields: result 1`] = `
+{
+  "fieldName": "Sku",
+  "splits": Map {
+    12345 => {
+      "pairedItems": [
+        0,
+        3,
+      ],
+      "returnData": {
+        "concatenated_Warehouse": "BER_0G//{"name":"BER_0G3"}",
+      },
+    },
+    "{}" => {
+      "pairedItems": [
+        2,
+      ],
+      "returnData": {
+        "concatenated_Warehouse": "BER_0L",
+      },
+    },
+  },
+}
+`;

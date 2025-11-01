@@ -1,0 +1,76 @@
+{
+	"name": "Multiple Triggers Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-20, -120],
+			"id": "19562c2d-d2c8-45c8-ae0a-1b1effe29817",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.1,
+			"position": [-20, 120],
+			"id": "9b4b833b-56f6-4099-9b7d-5e94b75a735c",
+			"name": "When chat message received",
+			"webhookId": "8aeccd03-d45f-48d2-a2c7-1fb8c53d2ad7"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [260, -20],
+			"id": "d3ab7426-11e7-4f42-9a57-11b8de019783",
+			"name": "NoOp"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, -20],
+			"id": "fb73bed6-ec2a-4283-b564-c96730b94889",
+			"name": "NoOp2"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "NoOp",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "NoOp",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"NoOp": {
+			"main": [
+				[
+					{
+						"node": "NoOp2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

@@ -7,7 +7,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 
 	displayName = 'HighLevel OAuth2 API';
 
-	documentationUrl = 'highLevel';
+	documentationUrl = 'highlevel';
 
 	icon: Icon = 'file:icons/highLevel.svg';
 
@@ -60,6 +60,16 @@ export class HighLevelOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
+		},
+		{
+			displayName:
+				'Make sure your credentials include the required OAuth scopes for all actions this node performs.',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				hideOnCloud: true,
+			},
 		},
 	];
 }

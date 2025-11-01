@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "finish_reason": {
+            "type": "string"
+        },
+        "index": {
+            "type": "integer"
+        },
+        "logprobs": {
+            "type": "null"
+        },
+        "message": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "refusal": {
+                    "type": "null"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 4
+}

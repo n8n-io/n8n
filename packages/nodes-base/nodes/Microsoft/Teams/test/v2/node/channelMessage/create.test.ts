@@ -1,15 +1,14 @@
-import type { INodeTypes } from 'n8n-workflow';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-import * as transport from '../../../../v2/transport';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
-const microsoftApiRequestSpy = jest.spyOn(transport, 'microsoftApiRequest');
+import { credentials } from '../../../credentials';
 
-microsoftApiRequestSpy.mockImplementation(async (method: string) => {
-	if (method === 'POST') {
-		return {
+describe('Test MicrosoftTeamsV2, channelMessage => create', () => {
+	nock('https://graph.microsoft.com')
+		.post('/beta/teams/1111-2222-3333/channels/42:aaabbbccc.tacv2/messages', {
+			body: { content: 'new sale', contentType: 'html' },
+		})
+		.reply(200, {
 			'@odata.context':
 				"https://graph.microsoft.com/beta/$metadata#teams('1111-2222-3333')/channels('threadId')/messages/$entity",
 			id: '1698324478896',
@@ -51,45 +50,10 @@ microsoftApiRequestSpy.mockImplementation(async (method: string) => {
 			attachments: [],
 			mentions: [],
 			reactions: [],
-		};
-	}
-});
-
-describe('Test MicrosoftTeamsV2, channelMessage => create', () => {
-	const workflows = ['nodes/Microsoft/Teams/test/v2/node/channelMessage/create.workflow.json'];
-	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.resetAllMocks();
-	});
-
-	const nodeTypes = setup(tests);
-
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-
-		const resultNodeData = getResultNodeData(result, testData);
-
-		resultNodeData.forEach(({ nodeName, resultData }) => {
-			return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 		});
 
-		expect(microsoftApiRequestSpy).toHaveBeenCalledTimes(1);
-		expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
-			'POST',
-			'/beta/teams/1111-2222-3333/channels/42:aaabbbccc.tacv2/messages',
-			{ body: { content: 'new sale', contentType: 'html' } },
-		);
-
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['create.workflow.json'],
+	});
 });

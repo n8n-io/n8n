@@ -1,24 +1,25 @@
+import { testDb, mockInstance } from '@n8n/backend-test-utils';
+import { WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { NodeTypes } from '@/node-types';
 import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants';
+import { PackagesRepository } from '@/security-audit/security-audit.repository';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { toReportTitle } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/services/community-packages.service';
 
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
-import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/test-db';
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
 mockInstance(NodeTypes);
 const communityPackagesService = mockInstance(CommunityPackagesService);
 Container.set(CommunityPackagesService, communityPackagesService);
+const packagesRepository = mockInstance(PackagesRepository);
 
 let securityAuditService: SecurityAuditService;
 
@@ -29,7 +30,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow']);
+	await testDb.truncate(['WorkflowEntity']);
 });
 
 afterAll(async () => {
@@ -38,7 +39,7 @@ afterAll(async () => {
 });
 
 test('should report risky official nodes', async () => {
-	communityPackagesService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
+	packagesRepository.find.mockResolvedValue(MOCK_PACKAGE);
 	const map = [...OFFICIAL_RISKY_NODE_TYPES].reduce<{ [nodeType: string]: string }>((acc, cur) => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
@@ -83,7 +84,7 @@ test('should report risky official nodes', async () => {
 });
 
 test('should not report non-risky official nodes', async () => {
-	communityPackagesService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
+	packagesRepository.find.mockResolvedValue(MOCK_PACKAGE);
 	await saveManualTriggerWorkflow();
 
 	const testAudit = await securityAuditService.run(['nodes']);
@@ -100,7 +101,7 @@ test('should not report non-risky official nodes', async () => {
 });
 
 test('should report community nodes', async () => {
-	communityPackagesService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
+	packagesRepository.find.mockResolvedValue(MOCK_PACKAGE);
 
 	const testAudit = await securityAuditService.run(['nodes']);
 

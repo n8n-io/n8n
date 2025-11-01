@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,33 +10,34 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import set from 'lodash/set';
+import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import { capitalize } from '@utils/utilities';
+
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
 import { looseTypeValidationProperty } from '../../../utils/descriptions';
 import { getTypeValidationParameter, getTypeValidationStrictness } from '../../If/V2/utils';
-import { capitalize } from '@utils/utilities';
 
 const configuredOutputs = (parameters: INodeParameters) => {
 	const mode = parameters.mode as string;
 
 	if (mode === 'expression') {
 		return Array.from({ length: parameters.numberOutputs as number }, (_, i) => ({
-			type: `${NodeConnectionType.Main}`,
+			type: 'main',
 			displayName: i.toString(),
 		}));
 	} else {
 		const rules = ((parameters.rules as IDataObject)?.values as IDataObject[]) ?? [];
 		const ruleOutputs = rules.map((rule, index) => {
 			return {
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: rule.outputKey || index.toString(),
 			};
 		});
 		if ((parameters.options as IDataObject)?.fallbackOutput === 'extra') {
 			const renameFallbackOutput = (parameters.options as IDataObject)?.renameFallbackOutput;
 			ruleOutputs.push({
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: renameFallbackOutput || 'Fallback',
 			});
 		}
@@ -50,12 +52,12 @@ export class SwitchV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
-			version: [3, 3.1, 3.2],
+			version: [3, 3.1, 3.2, 3.3],
 			defaults: {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
 			outputs: `={{(${configuredOutputs})($parameter)}}`,
 			properties: [
 				{
@@ -82,9 +84,24 @@ export class SwitchV3 implements INodeType {
 					displayName: 'Number of Outputs',
 					name: 'numberOutputs',
 					type: 'number',
+					noDataExpression: true,
 					displayOptions: {
 						show: {
 							mode: ['expression'],
+							'@version': [{ _cnd: { gte: 3.3 } }],
+						},
+					},
+					default: 4,
+					description: 'How many outputs to create',
+				},
+				{
+					displayName: 'Number of Outputs',
+					name: 'numberOutputs',
+					type: 'number',
+					displayOptions: {
+						show: {
+							mode: ['expression'],
+							'@version': [{ _cnd: { lt: 3.3 } }],
 						},
 					},
 					default: 4,

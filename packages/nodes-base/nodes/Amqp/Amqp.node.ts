@@ -1,6 +1,3 @@
-import type { Connection, ContainerOptions, Dictionary, EventContext, Sender } from 'rhea';
-import { create_container } from 'rhea';
-
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -12,20 +9,24 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { Connection, ConnectionOptions, Dictionary, EventContext, Sender } from 'rhea';
+import { create_container } from 'rhea';
+
+import type { AmqpCredential } from './types';
 
 async function checkIfCredentialsValid(
 	credentials: IDataObject,
 ): Promise<INodeCredentialTestResult> {
-	const connectOptions: ContainerOptions = {
+	const connectOptions: ConnectionOptions = {
 		reconnect: false,
 		host: credentials.hostname as string,
 		hostname: credentials.hostname as string,
 		port: credentials.port as number,
 		username: credentials.username ? (credentials.username as string) : undefined,
 		password: credentials.password ? (credentials.password as string) : undefined,
-		transport: credentials.transportType ? (credentials.transportType as string) : undefined,
-	};
+		transport: credentials.transportType ? (credentials.transportType as 'tcp' | 'tls') : undefined,
+	} as unknown as ConnectionOptions;
 
 	let conn: Connection | undefined = undefined;
 	try {
@@ -65,8 +66,9 @@ export class Amqp implements INodeType {
 		defaults: {
 			name: 'AMQP Sender',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'amqp',
@@ -157,7 +159,7 @@ export class Amqp implements INodeType {
 		let sender: Sender | undefined = undefined;
 
 		try {
-			const credentials = await this.getCredentials('amqp');
+			const credentials = await this.getCredentials<AmqpCredential>('amqp');
 
 			// check if credentials are valid to avoid unnecessary reconnects
 			const credentialsTestResult = await checkIfCredentialsValid(credentials);
@@ -190,7 +192,8 @@ export class Amqp implements INodeType {
 			/*
 				Values are documented here: https://github.com/amqp/rhea#container
 			*/
-			const connectOptions: ContainerOptions = {
+
+			const connectOptions: ConnectionOptions = {
 				host: credentials.hostname,
 				hostname: credentials.hostname,
 				port: credentials.port,
@@ -201,7 +204,7 @@ export class Amqp implements INodeType {
 				id: containerId ? containerId : undefined,
 				reconnect: containerReconnect,
 				reconnect_limit: containerReconnectLimit,
-			};
+			} as unknown as ConnectionOptions;
 
 			const node = this.getNode();
 

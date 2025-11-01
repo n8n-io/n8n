@@ -1,6 +1,7 @@
+import set from 'lodash/set';
 import {
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -8,8 +9,6 @@ import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
 	AI_TRANSFORM_JS_CODE,
 } from 'n8n-workflow';
-
-import set from 'lodash/set';
 
 import { JavaScriptSandbox } from '../Code/JavaScriptSandbox';
 import { getSandboxContext } from '../Code/Sandbox';
@@ -28,8 +27,8 @@ export class AiTransform implements INodeType {
 		defaults: {
 			name: 'AI Transform',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		parameterPane: 'wide',
 		hints: [
 			{
@@ -121,7 +120,7 @@ export class AiTransform implements INodeType {
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'
-					? this.sendMessageToUI
+					? this.sendMessageToUI.bind(this)
 					: CODE_ENABLE_STDOUT === 'true'
 						? (...args) =>
 								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)

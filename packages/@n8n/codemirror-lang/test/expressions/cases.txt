@@ -277,3 +277,35 @@ Program(Resolvable)
 ==>
 
 Program(Resolvable)
+
+# Resolvable with new emoji range
+
+{{ '🟢' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with new emoji range end of range
+
+{{ '🫸' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with start of Dingbat range - U+2700
+
+{{ '✀' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with end of Dingbat range - U+27BF
+
+{{ '➿' }}
+
+==>
+
+Program(Resolvable)

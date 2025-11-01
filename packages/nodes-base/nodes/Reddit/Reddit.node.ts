@@ -6,18 +6,13 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { handleListing, redditApiRequest } from './GenericFunctions';
-
 import { postCommentFields, postCommentOperations } from './PostCommentDescription';
-
 import { postFields, postOperations } from './PostDescription';
-
 import { profileFields, profileOperations } from './ProfileDescription';
-
 import { subredditFields, subredditOperations } from './SubredditDescription';
-
 import { userFields, userOperations } from './UserDescription';
 
 export class Reddit implements INodeType {
@@ -32,8 +27,9 @@ export class Reddit implements INodeType {
 		defaults: {
 			name: 'Reddit',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'redditOAuth2Api',

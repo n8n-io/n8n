@@ -1,0 +1,70 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4570d7a2-f10a-495d-8a0e-8520b638649e",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-780, 380]
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"userPool": {
+					"__rl": true,
+					"value": "eu-central-1_EUZ4iEF1T",
+					"mode": "list",
+					"cachedResultName": "UserPoolTwo"
+				},
+				"user": {
+					"__rl": true,
+					"value": "b30498c2-d0f1-70a8-4b0c-3da25a3b998f",
+					"mode": "list",
+					"cachedResultName": "userName10"
+				},
+				"requestOptions": {}
+			},
+			"id": "2105b4ec-0db4-40f5-9d38-78c0fe20708f",
+			"name": "getUser",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [-620, 500],
+			"alwaysOutputData": true,
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "getUser",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"getUser": [
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1744206331.569,
+					"UserLastModifiedDate": 1744206366.034,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "userName10",
+					"family_name": "New FamilyName 2",
+					"sub": "b30498c2-d0f1-70a8-4b0c-3da25a3b998f"
+				}
+			}
+		]
+	}
+}

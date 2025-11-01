@@ -1,0 +1,1495 @@
+{
+	"collection": {
+		"id": 1,
+		"name": "eCommerce Starter Pack",
+		"description": "eCommerce operations are complex — but there are many things that you can automate to make your life easier. This collection provides a few ideas to get started.\n\nReduce manual work and the risk of human error by automating processes such as social media promotion of products, updating customer databases, and get notifications for important events.",
+		"totalViews": 0,
+		"createdAt": "2022-02-17T12:40:50.498Z",
+		"nodes": [
+			{
+				"id": 20,
+				"name": "n8n-nodes-base.if",
+				"defaults": {
+					"name": "IF",
+					"color": "#408000"
+				},
+				"displayName": "IF",
+				"icon": "fa:map-signs",
+				"iconData": {
+					"icon": "map-signs",
+					"type": "icon"
+				},
+				"typeVersion": 1,
+				"categories": [
+					{
+						"id": 9,
+						"name": "Core Nodes"
+					}
+				]
+			},
+			{
+				"id": 49,
+				"name": "n8n-nodes-base.telegram",
+				"defaults": {
+					"name": "Telegram"
+				},
+				"displayName": "Telegram",
+				"icon": "file:telegram.svg",
+				"iconData": {
+					"type": "file",
+					"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNjYgNjYiIGZpbGw9IiNmZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBzdHJva2U9Im5vbmUiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZD0iTTAgMzJjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMyczMyLTE0LjMyNyAzMi0zMlM0OS42NzMgMCAzMiAwIDAgMTQuMzI3IDAgMzIiIGZpbGw9IiMzN2FlZTIiLz48cGF0aCBkPSJNMjEuNjYxIDM0LjMzOGwzLjc5NyAxMC41MDhzLjQ3NS45ODMuOTgzLjk4MyA4LjA2OC03Ljg2NCA4LjA2OC03Ljg2NGw4LjQwNy0xNi4yMzctMjEuMTE5IDkuODk4eiIgZmlsbD0iI2M4ZGFlYSIvPjxwYXRoIGQ9Ik0yNi42OTUgMzcuMDM0bC0uNzI5IDcuNzQ2cy0uMzA1IDIuMzczIDIuMDY4IDBsNC42NDQtNC4yMDMiIGZpbGw9IiNhOWM2ZDgiLz48cGF0aCBkPSJNMjEuNzMgMzQuNzEybC03LjgwOS0yLjU0NXMtLjkzMi0uMzc4LS42MzMtMS4yMzdjLjA2Mi0uMTc3LjE4Ni0uMzI4LjU1OS0uNTg4IDEuNzMxLTEuMjA2IDMyLjAyOC0xMi4wOTYgMzIuMDI4LTEyLjA5NnMuODU2LS4yODggMS4zNjEtLjA5N2MuMjMxLjA4OC4zNzguMTg3LjUwMy41NDguMDQ1LjEzMi4wNzEuNDExLjA2OC42ODktLjAwMy4yMDEtLjAyNy4zODYtLjA0NS42NzgtLjE4NCAyLjk3OC01LjcwNiAyNS4xOTgtNS43MDYgMjUuMTk4cy0uMzMgMS4zLTEuNTE0IDEuMzQ1Yy0uNDMyLjAxNi0uOTU2LS4wNzEtMS41ODItLjYxLTIuMzIzLTEuOTk4LTEwLjM1Mi03LjM5NC0xMi4xMjYtOC41OGEuMzQuMzQgMCAwMS0uMTQ2LS4yMzljLS4wMjUtLjEyNS4xMDgtLjI4LjEwOC0uMjhzMTMuOTgtMTIuNDI3IDE0LjM1Mi0xMy43MzFjLjAyOS0uMTAxLS4wNzktLjE1MS0uMjI2LS4xMDctLjkyOS4zNDItMTcuMDI1IDEwLjUwNi0xOC44MDEgMTEuNjI5LS4xMDQuMDY2LS4zOTUuMDIzLS4zOTUuMDIzIi8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+				},
+				"typeVersion": 1,
+				"categories": [
+					{
+						"id": 6,
+						"name": "Communication"
+					}
+				]
+			},
+			{
+				"id": 107,
+				"name": "n8n-nodes-base.shopifyTrigger",
+				"defaults": {
+					"name": "Shopify Trigger"
+				},
+				"displayName": "Shopify Trigger",
+				"icon": "file:shopify.svg",
+				"iconData": {
+					"type": "file",
+					"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNTggNjYiIGZpbGw9IiNmZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBzdHJva2U9Im5vbmUiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZD0iTTQ5LjI1NSAxMi40ODRhLjYzMy42MzMgMCAwMC0uNTY0LS41MjdjLS4yMjUtLjAzNy01LjE3LS4zNzYtNS4xNy0uMzc2bC0zLjc3LTMuNzdjLS4zNC0uMzc2LTEuMDkyLS4yNjYtMS4zNzYtLjE4OC0uMDM3IDAtLjc1Mi4yMjUtMS45MjIuNjA1LTEuMTM3LTMuMy0zLjE1LTYuMzA2LTYuNjk2LTYuMzA2aC0uMzAzQzI4LjQzOC42MDUgMjcuMTk0IDAgMjYuMTQ0IDBjLTguMjU2LjAzNy0xMi4yIDEwLjMzMy0xMy40MzQgMTUuNTk0bC01Ljc3IDEuNzdjLTEuNzcuNTY0LTEuODM1LjYwNS0yLjA3MyAyLjI5M0wwIDU3LjE3NSAzNi40NjggNjRsMTkuNzYzLTQuMjZjMC0uMDM3LTYuOTQtNDYuODk3LTYuOTc2LTQ3LjI1NXpNMzQuNDMxIDguODZjLS45MTcuMzAzLTEuOTYzLjYwNS0zLjEuOTQ1di0uNjhhMTUuMDMgMTUuMDMgMCAwMC0uNzUyLTQuOTk5YzEuODQ4LjI4NCAzLjEgMi4zNTcgMy44NDMgNC43MzN6bS02LjA2OC00LjI5OGMuNjAzIDEuNzc4Ljg4MyAzLjY1LjgyNiA1LjUyN3YuMzRsLTYuMzc1IDEuOTYzYzEuMjQ4LTQuNjYgMy41NS02Ljk2MiA1LjU1LTcuODN6bS0yLjQ1LTIuMjkzYTEuOTQgMS45NCAwIDAxMS4wNTUuMzM5Yy0yLjY2IDEuMjM4LTUuNDcyIDQuMzY2LTYuNjc4IDEwLjYyN2wtNS4wNDUgMS41NDZDMTYuNjY4IDEwLjAzIDE5Ljk4OCAyLjI2IDI1LjkxIDIuMjZ6IiBmaWxsPSIjOTViZjQ3Ii8+PHBhdGggZD0iTTQ4LjY5MSAxMS45NTdjLS4yMjUtLjAzNy01LjE3LS4zNzYtNS4xNy0uMzc2bC0zLjc3LTMuNzdhLjc1My43NTMgMCAwMC0uNTI3LS4yMjVMMzYuNDcyIDY0bDE5Ljc2My00LjI2LTYuOTgtNDcuMjE4YS42OC42OCAwIDAwLS41NjQtLjU2NHoiIGZpbGw9IiM1ZThlM2UiLz48cGF0aCBkPSJNMjkuNzU4IDIyLjlsLTIuNDU0IDcuMjQyYTExLjM2IDExLjM2IDAgMDAtNC43NTItMS4xMzNjLTMuODQ4IDAtNC4wMzYgMi40MTItNC4wMzYgMy4wMTggMCAzLjI5OCA4LjYzNiA0LjU2NCA4LjYzNiAxMi4zMzMgMCA2LjEtMy44ODUgMTAuMDMtOS4xIDEwLjAzLTYuMjYgMC05LjQ2Ny0zLjg4NS05LjQ2Ny0zLjg4NWwxLjY2NS01LjU1czMuMjggMi44MyA2LjA3MyAyLjgzYTIuNDcgMi40NyAwIDAwMi41NjQtMi40OWMwLTQuMzQtNy4xLTQuNTI3LTcuMS0xMS42MTggMC01Ljk2MiA0LjI5OC0xMS43NyAxMi45MzQtMTEuNzcgMy4zOTQuMDUgNS4wMTggMSA1LjAxOCAxeiIvPjwvZz48L3N5bWJvbD48L3N2Zz4="
+				},
+				"typeVersion": 1,
+				"categories": [
+					{
+						"id": 2,
+						"name": "Sales"
+					}
+				]
+			},
+			{
+				"id": 126,
+				"name": "n8n-nodes-base.mautic",
+				"defaults": {
+					"name": "Mautic"
+				},
+				"displayName": "Mautic",
+				"icon": "file:mautic.svg",
+				"iconData": {
+					"type": "file",
+					"fileBuffer": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAxNi4wLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAuIFNWRyBWZXJzaW9uOiA2LjAwIEJ1aWxkIDApICAtLT4NCjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+DQo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4Ig0KCSB3aWR0aD0iMzQ5Ljc3OXB4IiBoZWlnaHQ9IjM0OS43NzlweCIgdmlld0JveD0iMCAwIDM0OS43NzkgMzQ5Ljc3OSIgZW5hYmxlLWJhY2tncm91bmQ9Im5ldyAwIDAgMzQ5Ljc3OSAzNDkuNzc5Ig0KCSB4bWw6c3BhY2U9InByZXNlcnZlIj4NCjxwYXRoIGZpbGw9IiNGRkZGRkYiIGQ9Ik0xNzQuODksMzQ5Ljc3OUM3OC42MTIsMzQ5Ljc3OSwwLDI3MS40NjIsMCwxNzQuODlTNzguNjEyLDAsMTc0Ljg5LDBjMjMuMjYsMCw0NS45MzEsNC40MTcsNjcuMTI5LDEzLjU0Mw0KCWM1Ljg4OSwyLjY1LDguODMzLDkuNDIyLDYuNDc4LDE1LjYwNWMtMi42NDksNS44ODgtOS40MjEsOC44MzMtMTUuNjA0LDYuNDc3Yy0xOC41NDktNy42NTUtMzcuOTgtMTEuNDgyLTU4LjAwMi0xMS40ODINCgljLTgzLjMyMywwLTE1MS4wNDEsNjcuNzE4LTE1MS4wNDEsMTUxLjA0MVM5MS41NjcsMzI2LjIyNSwxNzQuODksMzI2LjIyNWM4My4zMjMsMCwxNTEuMDQxLTY3LjcxOCwxNTEuMDQxLTE1MS4wNDENCgljMC0xNy45Ni0yLjk0NC0zNS4zMzItOS4xMjctNTEuODE5Yy0yLjM1NS02LjE4MywwLjg4My0xMi45NTUsNy4wNjYtMTUuMzFjNi4xODMtMi4zNTUsMTIuOTU0LDAuODgzLDE1LjMxLDcuMDY2DQoJYzcuMDY2LDE5LjEzOCwxMC42LDM5LjQ1MywxMC42LDYwLjA2M0MzNDkuNzc5LDI3MS4xNjcsMjcxLjQ2MiwzNDkuNzc5LDE3NC44OSwzNDkuNzc5Ii8+DQo8Zz4NCgk8cG9seWdvbiBmaWxsPSIjRkRCOTMzIiBwb2ludHM9IjI1MS40NCwxNTYuOTMgMjI0LjM1NCwxODUuMTk0IDIzOS4zNjksMjQ4LjQ5NiAyNzMuNTIyLDI0OC40OTYgCSIvPg0KPC9nPg0KPHBvbHlnb24gZmlsbD0iI0ZEQjkzMyIgcG9pbnRzPSIyNDAuMjUzLDczLjMxMiAyNDkuNjc0LDgyLjczNCAxNzQuODksMTYxLjkzNSAxMTAuOTk5LDk2LjI3NyA3NC4xOTYsMjQ4LjQ5NiAxMDguMzUsMjQ4LjQ5NiANCgkxMjguNjY1LDE2My45OTYgMTc0Ljg5LDIxNC4zNDMgMjczLjgxNywxMDYuNTgzIDI4My4yMzksMTE2LjI5OSAyOTIuNjYsNjMuMDA3ICIvPg0KPC9zdmc+DQo="
+				},
+				"typeVersion": 1,
+				"categories": [
+					{
+						"id": 1,
+						"name": "Marketing & Content"
+					},
+					{
+						"id": 6,
+						"name": "Communication"
+					}
+				]
+			},
+			{
+				"id": 235,
+				"name": "n8n-nodes-base.wooCommerceTrigger",
+				"defaults": {
+					"name": "WooCommerce Trigger"
+				},
+				"displayName": "WooCommerce Trigger",
+				"icon": "file:wooCommerce.svg",
+				"iconData": {
+					"type": "file",
+					"fileBuffer": "data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCIgdmVyc2lvbj0iMS4xIiB2aWV3Qm94PSIwIC01MCAyNTYgMjUzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KPHRpdGxlPldvb0NvbW1lcmNlIExvZ288L3RpdGxlPgo8bWV0YWRhdGE+CjxyZGY6UkRGPgo8Y2M6V29yayByZGY6YWJvdXQ9IiI+CjxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0Pgo8ZGM6dHlwZSByZGY6cmVzb3VyY2U9Imh0dHA6Ly9wdXJsLm9yZy9kYy9kY21pdHlwZS9TdGlsbEltYWdlIi8+CjxkYzp0aXRsZS8+CjwvY2M6V29yaz4KPC9yZGY6UkRGPgo8L21ldGFkYXRhPgo8cGF0aCBkPSJtMjMuNzU5IDBoMjA4LjM4YzEzLjE4NyAwIDIzLjg2MyAxMC42NzUgMjMuODYzIDIzLjg2M3Y3OS41NDJjMCAxMy4xODctMTAuNjc1IDIzLjg2My0yMy44NjMgMjMuODYzaC03NC43MjdsMTAuMjU3IDI1LjExOC00NS4xMDktMjUuMTE4aC05OC42OTVjLTEzLjE4NyAwLTIzLjg2My0xMC42NzUtMjMuODYzLTIzLjg2M3YtNzkuNTQyYy0wLjEwNDY2LTEzLjA4MyAxMC41NzEtMjMuODYzIDIzLjc1OC0yMy44NjN6IiBmaWxsPSIjN2Y1NGIzIi8+CjxwYXRoIGQ9Im0xNC41NzggMjEuNzVjMS40NTY5LTEuOTc3MiAzLjY0MjMtMy4wMTc5IDYuNTU2MS0zLjIyNiA1LjMwNzMtMC40MTYyNiA4LjMyNTIgMi4wODEzIDkuMDUzNyA3LjQ5MjcgMy4yMjYgMjEuNzUgNi43NjQyIDQwLjE2OSAxMC41MTEgNTUuMjU5bDIyLjc5LTQzLjM5NWMyLjA4MTMtMy45NTQ1IDQuNjgyOS02LjAzNTggNy44MDQ5LTYuMjQzOSA0LjU3ODktMC4zMTIyIDcuMzg4NiAyLjYwMTYgOC41MzMzIDguNzQxNSAyLjYwMTYgMTMuODQxIDUuOTMxNyAyNS42IDkuODg2MiAzNS41OSAyLjcwNTctMjYuNDMzIDcuMjg0Ni00NS40NzYgMTMuNzM3LTU3LjIzNiAxLjU2MS0yLjkxMzggMy44NTA0LTQuMzcwNyA2Ljg2ODMtNC41Nzg5IDIuMzkzNS0wLjIwODEzIDQuNTc4OSAwLjUyMDMzIDYuNTU2MSAyLjA4MTMgMS45NzcyIDEuNTYxIDMuMDE3OSAzLjUzODIgMy4yMjYgNS45MzE3IDAuMTA0MDYgMS44NzMyLTAuMjA4MTMgMy40MzQxLTEuMDQwNyA0Ljk5NTEtNC4wNTg1IDcuNDkyNy03LjM4ODYgMjAuMDg1LTEwLjA5NCAzNy41NjctMi42MDE2IDE2Ljk2My0zLjUzODIgMzAuMTc5LTIuOTEzOCAzOS42NDkgMC4yMDgxMyAyLjYwMTYtMC4yMDgxMyA0Ljg5MTEtMS4yNDg4IDYuODY4My0xLjI0ODggMi4yODk0LTMuMTIyIDMuNTM4Mi01LjUxNTQgMy43NDYzLTIuNzA1NyAwLjIwODEzLTUuNTE1NC0xLjA0MDYtOC4yMjExLTMuODUwNC05LjY3OC05Ljg4NjItMTcuMzc5LTI0LjY2My0yMi45OTgtNDQuMzMyLTYuNzY0MiAxMy4zMi0xMS43NTkgMjMuMzExLTE0Ljk4NSAyOS45NzEtNi4xMzk4IDExLjc1OS0xMS4zNDMgMTcuNzk1LTE1LjcxNCAxOC4xMDctMi44MDk4IDAuMjA4MTMtNS4yMDMzLTIuMTg1NC03LjI4NDYtNy4xODA1LTUuMzA3My0xMy42MzMtMTEuMDMxLTM5Ljk2MS0xNy4xNzEtNzguOTg1LTAuNDE2MjYtMi43MDU3IDAuMjA4MTMtNS4wOTkyIDEuNjY1LTYuOTcyNHptMjIzLjY0IDE2LjMzOGMtMy43NDYzLTYuNTU2MS05LjI2MTgtMTAuNTExLTE2LjY1LTEyLjA3Mi0xLjk3NzItMC40MTYyNi0zLjg1MDQtMC42MjQzOS01LjYxOTUtMC42MjQzOS05Ljk5MDIgMC0xOC4xMDcgNS4yMDMzLTI0LjQ1NSAxNS42MS01LjQxMTQgOC44NDU1LTguMTE3MSAxOC42MjgtOC4xMTcxIDI5LjM0NiAwIDguMDEzIDEuNjY1IDE0Ljg4MSA0Ljk5NTEgMjAuNjA1IDMuNzQ2MyA2LjU1NjEgOS4yNjE4IDEwLjUxMSAxNi42NSAxMi4wNzIgMS45NzcyIDAuNDE2MjYgMy44NTA0IDAuNjI0MzkgNS42MTk1IDAuNjI0MzkgMTAuMDk0IDAgMTguMjExLTUuMjAzMyAyNC40NTUtMTUuNjEgNS40MTE0LTguOTQ5NiA4LjExNzEtMTguNzMyIDguMTE3MS0yOS40NSAwLjEwNDA2LTguMTE3MS0xLjY2NS0xNC44ODEtNC45OTUxLTIwLjUwMXptLTEzLjExMiAyOC44MjZjLTEuNDU2OSA2Ljg2ODMtNC4wNTg1IDExLjk2Ny03LjkwODkgMTUuNDAyLTMuMDE3OSAyLjcwNTctNS44Mjc2IDMuODUwNC04LjQyOTMgMy4zMzAxLTIuNDk3Ni0wLjUyMDMzLTQuNTc4OS0yLjcwNTctNi4xMzk4LTYuNzY0Mi0xLjI0ODgtMy4yMjYtMS44NzMyLTYuNDUyLTEuODczMi05LjQ2OTkgMC0yLjYwMTYgMC4yMDgxMy01LjIwMzMgMC43Mjg0Ni03LjU5NjcgMC45MzY1OS00LjI2NjcgMi43MDU3LTguNDI5MyA1LjUxNTQtMTIuMzg0IDMuNDM0MS01LjA5OTIgNy4wNzY0LTcuMTgwNSAxMC44MjMtNi40NTIgMi40OTc2IDAuNTIwMzMgNC41Nzg5IDIuNzA1NyA2LjEzOTggNi43NjQyIDEuMjQ4OCAzLjIyNiAxLjg3MzIgNi40NTIgMS44NzMyIDkuNDY5OSAwIDIuNzA1Ny0wLjIwODEzIDUuMzA3My0wLjcyODQ2IDcuNzAwOHptLTUyLjAzMy0yOC44MjZjLTMuNzQ2My02LjU1NjEtOS4zNjU5LTEwLjUxMS0xNi42NS0xMi4wNzItMS45NzcyLTAuNDE2MjYtMy44NTA0LTAuNjI0MzktNS42MTk1LTAuNjI0MzktOS45OTAyIDAtMTguMTA3IDUuMjAzMy0yNC40NTUgMTUuNjEtNS40MTE0IDguODQ1NS04LjExNzEgMTguNjI4LTguMTE3MSAyOS4zNDYgMCA4LjAxMyAxLjY2NSAxNC44ODEgNC45OTUxIDIwLjYwNSAzLjc0NjMgNi41NTYxIDkuMjYxOCAxMC41MTEgMTYuNjUgMTIuMDcyIDEuOTc3MiAwLjQxNjI2IDMuODUwNCAwLjYyNDM5IDUuNjE5NSAwLjYyNDM5IDEwLjA5NCAwIDE4LjIxMS01LjIwMzMgMjQuNDU1LTE1LjYxIDUuNDExNC04Ljk0OTYgOC4xMTcxLTE4LjczMiA4LjExNzEtMjkuNDUgMC04LjExNzEtMS42NjUtMTQuODgxLTQuOTk1MS0yMC41MDF6bS0xMy4yMTYgMjguODI2Yy0xLjQ1NjkgNi44NjgzLTQuMDU4NSAxMS45NjctNy45MDg5IDE1LjQwMi0zLjAxNzkgMi43MDU3LTUuODI3NiAzLjg1MDQtOC40MjkzIDMuMzMwMS0yLjQ5NzYtMC41MjAzMy00LjU3ODktMi43MDU3LTYuMTM5OC02Ljc2NDItMS4yNDg4LTMuMjI2LTEuODczMi02LjQ1Mi0xLjg3MzItOS40Njk5IDAtMi42MDE2IDAuMjA4MTMtNS4yMDMzIDAuNzI4NDYtNy41OTY3IDAuOTM2NTgtNC4yNjY3IDIuNzA1Ny04LjQyOTMgNS41MTU0LTEyLjM4NCAzLjQzNDEtNS4wOTkyIDcuMDc2NC03LjE4MDUgMTAuODIzLTYuNDUyIDIuNDk3NiAwLjUyMDMzIDQuNTc4OSAyLjcwNTcgNi4xMzk4IDYuNzY0MiAxLjI0ODggMy4yMjYgMS44NzMyIDYuNDUyIDEuODczMiA5LjQ2OTkgMC4xMDQwNiAyLjcwNTctMC4yMDgxMyA1LjMwNzMtMC43Mjg0NiA3LjcwMDh6IiBmaWxsPSIjZmZmIi8+Cjwvc3ZnPgo="
+				},
+				"typeVersion": 1,
+				"categories": [
+					{
+						"id": 2,
+						"name": "Sales"
+					}
+				]
+			},
+			{
+				"id": 325,
+				"name": "n8n-nodes-base.twitter",
+				"defaults": {
+					"name": "X"
+				},
+				"displayName": "X (Formerly Twitter)",
+				"icon": "file:x.svg",
+				"iconData": {
+					"type": "file",
+					"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTE4LjI0NCAyLjI1aDMuMzA4bC03LjIyNyA4LjI2IDguNTAyIDExLjI0SDE2LjE3bC01LjIxNC02LjgxN0w0Ljk5IDIxLjc1SDEuNjhsNy43My04LjgzNUwxLjI1NCAyLjI1SDguMDhsNC43MTMgNi4yMzF6bS0xLjE2MSAxNy41MmgxLjgzM0w3LjA4NCA0LjEyNkg1LjExN3oiPjwvcGF0aD48L3N2Zz4K"
+				},
+				"typeVersion": 2,
+				"categories": [
+					{
+						"id": 1,
+						"name": "Marketing & Content"
+					}
+				]
+			}
+		],
+		"categories": [
+			{
+				"id": 2,
+				"name": "Sales"
+			}
+		],
+		"workflows": [
+			{
+				"id": 1205,
+				"name": "Promote new Shopify products",
+				"views": 485,
+				"recentViews": 9850,
+				"totalViews": 485,
+				"createdAt": "2021-08-24T10:40:50.007Z",
+				"description": "This workflow automatically promotes your new Shopify products on Twitter and Telegram. This workflow is also featured in the blog post [*6 e-commerce workflows to power up your Shopify store*](https://n8n.io/blog/no-code-ecommerce-workflow-automations/#promote-your-new-products-on-social-media).\n\n## Prerequisites\n\n- A Shopify account and [credentials](https://docs.n8n.io/integrations/credentials/shopify/)\n- A Twitter account and [credentials](https://docs.n8n.io/integrations/credentials/twitter/)\n- A Telegram account and [credentials](https://docs.n8n.io/integrations/credentials/telegram/) for the channel you want to send messages to.\n\n## Nodes\n\n- [Shopify Trigger node](https://docs.n8n.io/integrations/trigger-nodes/n8n-nodes-base.shopifytrigger/) triggers the workflow when you create a new product in Shopify.\n- [Twitter node](https://docs.n8n.io/integrations/nodes/n8n-nodes-base.twitter/) posts a tweet with the text \"Hey there, my design is now on a new product! Visit my {shop name} to get this cool {product title} (and check out more {product type})\".\n- [Telegram node](https://docs.n8n.io/integrations/nodes/n8n-nodes-base.telegram/) posts a message with the same text as above in a Telegram channel.",
+				"workflow": {
+					"nodes": [
+						{
+							"name": "Twitter",
+							"type": "n8n-nodes-base.twitter",
+							"position": [720, -220],
+							"parameters": {
+								"text": "=Hey there, my design is now on a new product ✨\nVisit my {{$json[\"vendor\"]}} shop to get this cool{{$json[\"title\"]}} (and check out more {{$json[\"product_type\"]}}) 🛍️",
+								"additionalFields": {}
+							},
+							"credentials": {
+								"twitterOAuth1Api": "twitter"
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Telegram",
+							"type": "n8n-nodes-base.telegram",
+							"position": [720, -20],
+							"parameters": {
+								"text": "=Hey there, my design is now on a new product!\nVisit my {{$json[\"vendor\"]}} shop to get this cool{{$json[\"title\"]}} (and check out more {{$json[\"product_type\"]}})",
+								"chatId": "123456",
+								"additionalFields": {}
+							},
+							"credentials": {
+								"telegramApi": "telegram_habot"
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "product created",
+							"type": "n8n-nodes-base.shopifyTrigger",
+							"position": [540, -110],
+							"webhookId": "2a7e0e50-8f09-4a2b-bf54-a849a6ac4fe0",
+							"parameters": {
+								"topic": "products/create"
+							},
+							"credentials": {
+								"shopifyApi": "shopify_nodeqa"
+							},
+							"typeVersion": 1
+						}
+					],
+					"connections": {
+						"product created": {
+							"main": [
+								[
+									{
+										"node": "Twitter",
+										"type": "main",
+										"index": 0
+									},
+									{
+										"node": "Telegram",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						}
+					}
+				},
+				"workflowInfo": {
+					"nodeCount": 3,
+					"nodeTypes": {
+						"n8n-nodes-base.twitter": {
+							"count": 1
+						},
+						"n8n-nodes-base.telegram": {
+							"count": 1
+						},
+						"n8n-nodes-base.shopifyTrigger": {
+							"count": 1
+						}
+					}
+				},
+				"user": {
+					"username": "lorenanda"
+				},
+				"nodes": [
+					{
+						"id": 49,
+						"icon": "file:telegram.svg",
+						"name": "n8n-nodes-base.telegram",
+						"defaults": {
+							"name": "Telegram"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNjYgNjYiIGZpbGw9IiNmZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBzdHJva2U9Im5vbmUiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZD0iTTAgMzJjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMyczMyLTE0LjMyNyAzMi0zMlM0OS42NzMgMCAzMiAwIDAgMTQuMzI3IDAgMzIiIGZpbGw9IiMzN2FlZTIiLz48cGF0aCBkPSJNMjEuNjYxIDM0LjMzOGwzLjc5NyAxMC41MDhzLjQ3NS45ODMuOTgzLjk4MyA4LjA2OC03Ljg2NCA4LjA2OC03Ljg2NGw4LjQwNy0xNi4yMzctMjEuMTE5IDkuODk4eiIgZmlsbD0iI2M4ZGFlYSIvPjxwYXRoIGQ9Ik0yNi42OTUgMzcuMDM0bC0uNzI5IDcuNzQ2cy0uMzA1IDIuMzczIDIuMDY4IDBsNC42NDQtNC4yMDMiIGZpbGw9IiNhOWM2ZDgiLz48cGF0aCBkPSJNMjEuNzMgMzQuNzEybC03LjgwOS0yLjU0NXMtLjkzMi0uMzc4LS42MzMtMS4yMzdjLjA2Mi0uMTc3LjE4Ni0uMzI4LjU1OS0uNTg4IDEuNzMxLTEuMjA2IDMyLjAyOC0xMi4wOTYgMzIuMDI4LTEyLjA5NnMuODU2LS4yODggMS4zNjEtLjA5N2MuMjMxLjA4OC4zNzguMTg3LjUwMy41NDguMDQ1LjEzMi4wNzEuNDExLjA2OC42ODktLjAwMy4yMDEtLjAyNy4zODYtLjA0NS42NzgtLjE4NCAyLjk3OC01LjcwNiAyNS4xOTgtNS43MDYgMjUuMTk4cy0uMzMgMS4zLTEuNTE0IDEuMzQ1Yy0uNDMyLjAxNi0uOTU2LS4wNzEtMS41ODItLjYxLTIuMzIzLTEuOTk4LTEwLjM1Mi03LjM5NC0xMi4xMjYtOC41OGEuMzQuMzQgMCAwMS0uMTQ2LS4yMzljLS4wMjUtLjEyNS4xMDgtLjI4LjEwOC0uMjhzMTMuOTgtMTIuNDI3IDE0LjM1Mi0xMy43MzFjLjAyOS0uMTAxLS4wNzktLjE1MS0uMjI2LS4xMDctLjkyOS4zNDItMTcuMDI1IDEwLjUwNi0xOC44MDEgMTEuNjI5LS4xMDQuMDY2LS4zOTUuMDIzLS4zOTUuMDIzIi8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+						},
+						"categories": [
+							{
+								"id": 6,
+								"name": "Communication"
+							}
+						],
+						"displayName": "Telegram",
+						"typeVersion": 1
+					},
+					{
+						"id": 107,
+						"icon": "file:shopify.svg",
+						"name": "n8n-nodes-base.shopifyTrigger",
+						"defaults": {
+							"name": "Shopify Trigger"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNTggNjYiIGZpbGw9IiNmZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBzdHJva2U9Im5vbmUiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZD0iTTQ5LjI1NSAxMi40ODRhLjYzMy42MzMgMCAwMC0uNTY0LS41MjdjLS4yMjUtLjAzNy01LjE3LS4zNzYtNS4xNy0uMzc2bC0zLjc3LTMuNzdjLS4zNC0uMzc2LTEuMDkyLS4yNjYtMS4zNzYtLjE4OC0uMDM3IDAtLjc1Mi4yMjUtMS45MjIuNjA1LTEuMTM3LTMuMy0zLjE1LTYuMzA2LTYuNjk2LTYuMzA2aC0uMzAzQzI4LjQzOC42MDUgMjcuMTk0IDAgMjYuMTQ0IDBjLTguMjU2LjAzNy0xMi4yIDEwLjMzMy0xMy40MzQgMTUuNTk0bC01Ljc3IDEuNzdjLTEuNzcuNTY0LTEuODM1LjYwNS0yLjA3MyAyLjI5M0wwIDU3LjE3NSAzNi40NjggNjRsMTkuNzYzLTQuMjZjMC0uMDM3LTYuOTQtNDYuODk3LTYuOTc2LTQ3LjI1NXpNMzQuNDMxIDguODZjLS45MTcuMzAzLTEuOTYzLjYwNS0zLjEuOTQ1di0uNjhhMTUuMDMgMTUuMDMgMCAwMC0uNzUyLTQuOTk5YzEuODQ4LjI4NCAzLjEgMi4zNTcgMy44NDMgNC43MzN6bS02LjA2OC00LjI5OGMuNjAzIDEuNzc4Ljg4MyAzLjY1LjgyNiA1LjUyN3YuMzRsLTYuMzc1IDEuOTYzYzEuMjQ4LTQuNjYgMy41NS02Ljk2MiA1LjU1LTcuODN6bS0yLjQ1LTIuMjkzYTEuOTQgMS45NCAwIDAxMS4wNTUuMzM5Yy0yLjY2IDEuMjM4LTUuNDcyIDQuMzY2LTYuNjc4IDEwLjYyN2wtNS4wNDUgMS41NDZDMTYuNjY4IDEwLjAzIDE5Ljk4OCAyLjI2IDI1LjkxIDIuMjZ6IiBmaWxsPSIjOTViZjQ3Ii8+PHBhdGggZD0iTTQ4LjY5MSAxMS45NTdjLS4yMjUtLjAzNy01LjE3LS4zNzYtNS4xNy0uMzc2bC0zLjc3LTMuNzdhLjc1My43NTMgMCAwMC0uNTI3LS4yMjVMMzYuNDcyIDY0bDE5Ljc2My00LjI2LTYuOTgtNDcuMjE4YS42OC42OCAwIDAwLS41NjQtLjU2NHoiIGZpbGw9IiM1ZThlM2UiLz48cGF0aCBkPSJNMjkuNzU4IDIyLjlsLTIuNDU0IDcuMjQyYTExLjM2IDExLjM2IDAgMDAtNC43NTItMS4xMzNjLTMuODQ4IDAtNC4wMzYgMi40MTItNC4wMzYgMy4wMTggMCAzLjI5OCA4LjYzNiA0LjU2NCA4LjYzNiAxMi4zMzMgMCA2LjEtMy44ODUgMTAuMDMtOS4xIDEwLjAzLTYuMjYgMC05LjQ2Ny0zLjg4NS05LjQ2Ny0zLjg4NWwxLjY2NS01LjU1czMuMjggMi44MyA2LjA3MyAyLjgzYTIuNDcgMi40NyAwIDAwMi41NjQtMi40OWMwLTQuMzQtNy4xLTQuNTI3LTcuMS0xMS42MTggMC01Ljk2MiA0LjI5OC0xMS43NyAxMi45MzQtMTEuNzcgMy4zOTQuMDUgNS4wMTggMSA1LjAxOCAxeiIvPjwvZz48L3N5bWJvbD48L3N2Zz4="
+						},
+						"categories": [
+							{
+								"id": 2,
+								"name": "Sales"
+							}
+						],
+						"displayName": "Shopify Trigger",
+						"typeVersion": 1
+					},
+					{
+						"id": 325,
+						"icon": "file:x.svg",
+						"name": "n8n-nodes-base.twitter",
+						"defaults": {
+							"name": "X"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTE4LjI0NCAyLjI1aDMuMzA4bC03LjIyNyA4LjI2IDguNTAyIDExLjI0SDE2LjE3bC01LjIxNC02LjgxN0w0Ljk5IDIxLjc1SDEuNjhsNy43My04LjgzNUwxLjI1NCAyLjI1SDguMDhsNC43MTMgNi4yMzF6bS0xLjE2MSAxNy41MmgxLjgzM0w3LjA4NCA0LjEyNkg1LjExN3oiPjwvcGF0aD48L3N2Zz4K"
+						},
+						"categories": [
+							{
+								"id": 1,
+								"name": "Marketing & Content"
+							}
+						],
+						"displayName": "X (Formerly Twitter)",
+						"typeVersion": 2
+					}
+				],
+				"categories": [
+					{
+						"id": 2,
+						"name": "Sales"
+					},
+					{
+						"id": 19,
+						"name": "Marketing & Growth"
+					}
+				],
+				"image": [
+					{
+						"id": 527,
+						"url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/89a078b208fe4c6181902608b1cd1332.png"
+					}
+				]
+			},
+			{
+				"id": 1456,
+				"name": "Add new customers from WooCommerce to Mautic",
+				"views": 333,
+				"recentViews": 9833,
+				"totalViews": 333,
+				"createdAt": "2022-02-17T15:00:40.748Z",
+				"description": "This workflow uses a WooCommerce trigger that will run when a new customer has been added, It will then add the customer to Mautic.\n\nTo use this workflow you will need to set the credentials to use for the WooCommerce and Mautic nodes.",
+				"workflow": {
+					"id": 83,
+					"name": "New WooCommerce Customer to Mautic",
+					"nodes": [
+						{
+							"name": "Check for Existing",
+							"type": "n8n-nodes-base.mautic",
+							"position": [280, 480],
+							"parameters": {
+								"options": {
+									"search": "={{$json[\"email\"]}}"
+								},
+								"operation": "getAll",
+								"authentication": "oAuth2"
+							},
+							"credentials": {
+								"mauticOAuth2Api": {
+									"id": "54",
+									"name": "Mautic account"
+								}
+							},
+							"typeVersion": 1,
+							"alwaysOutputData": true
+						},
+						{
+							"name": "If New",
+							"type": "n8n-nodes-base.if",
+							"position": [460, 480],
+							"parameters": {
+								"conditions": {
+									"string": [
+										{
+											"value1": "={{$json[\"id\"]}}",
+											"operation": "isEmpty"
+										}
+									]
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Create Contact",
+							"type": "n8n-nodes-base.mautic",
+							"position": [680, 320],
+							"parameters": {
+								"email": "={{$node[\"Customer Created\"].json[\"email\"]}}",
+								"company": "={{$node[\"Customer Created\"].json[\"billing\"][\"company\"]}}",
+								"options": {},
+								"lastName": "={{$node[\"Customer Created\"].json[\"last_name\"]}}",
+								"firstName": "={{$node[\"Customer Created\"].json[\"first_name\"]}}",
+								"authentication": "oAuth2",
+								"additionalFields": {}
+							},
+							"credentials": {
+								"mauticOAuth2Api": {
+									"id": "54",
+									"name": "Mautic account"
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Update Contact",
+							"type": "n8n-nodes-base.mautic",
+							"position": [680, 580],
+							"parameters": {
+								"options": {},
+								"contactId": "={{$json[\"id\"]}}",
+								"operation": "update",
+								"updateFields": {
+									"lastName": "={{$node[\"Customer Created or Updated\"].json[\"last_name\"]}}",
+									"firstName": "={{$node[\"Customer Created or Updated\"].json[\"first_name\"]}}"
+								},
+								"authentication": "oAuth2"
+							},
+							"credentials": {
+								"mauticOAuth2Api": {
+									"id": "54",
+									"name": "Mautic account"
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Customer Created or Updated",
+							"type": "n8n-nodes-base.wooCommerceTrigger",
+							"position": [100, 480],
+							"webhookId": "5d89e322-a5e0-4cce-9eab-185e8375175b",
+							"parameters": {
+								"event": "customer.updated"
+							},
+							"credentials": {
+								"wooCommerceApi": {
+									"id": "48",
+									"name": "WooCommerce account"
+								}
+							},
+							"typeVersion": 1
+						}
+					],
+					"active": false,
+					"settings": {
+						"saveManualExecutions": true,
+						"saveExecutionProgress": true,
+						"saveDataSuccessExecution": "all"
+					},
+					"connections": {
+						"If New": {
+							"main": [
+								[
+									{
+										"node": "Create Contact",
+										"type": "main",
+										"index": 0
+									}
+								],
+								[
+									{
+										"node": "Update Contact",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						},
+						"Check for Existing": {
+							"main": [
+								[
+									{
+										"node": "If New",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						},
+						"Customer Created or Updated": {
+							"main": [
+								[
+									{
+										"node": "Check for Existing",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						}
+					}
+				},
+				"workflowInfo": {
+					"nodeCount": 6,
+					"nodeTypes": {
+						"n8n-nodes-base.if": {
+							"count": 1
+						},
+						"n8n-nodes-base.mautic": {
+							"count": 3
+						},
+						"n8n-nodes-base.wooCommerceTrigger": {
+							"count": 1
+						}
+					}
+				},
+				"user": {
+					"username": "jon-n8n"
+				},
+				"nodes": [
+					{
+						"id": 20,
+						"icon": "fa:map-signs",
+						"name": "n8n-nodes-base.if",
+						"defaults": {
+							"name": "IF",
+							"color": "#408000"
+						},
+						"iconData": {
+							"icon": "map-signs",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "IF",
+						"typeVersion": 1
+					},
+					{
+						"id": 42,
+						"icon": "fa:play",
+						"name": "n8n-nodes-base.start",
+						"defaults": {
+							"name": "Start",
+							"color": "#00e000"
+						},
+						"iconData": {
+							"icon": "play",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "Start",
+						"typeVersion": 1
+					},
+					{
+						"id": 126,
+						"icon": "file:mautic.svg",
+						"name": "n8n-nodes-base.mautic",
+						"defaults": {
+							"name": "Mautic"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAxNi4wLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAuIFNWRyBWZXJzaW9uOiA2LjAwIEJ1aWxkIDApICAtLT4NCjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+DQo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4Ig0KCSB3aWR0aD0iMzQ5Ljc3OXB4IiBoZWlnaHQ9IjM0OS43NzlweCIgdmlld0JveD0iMCAwIDM0OS43NzkgMzQ5Ljc3OSIgZW5hYmxlLWJhY2tncm91bmQ9Im5ldyAwIDAgMzQ5Ljc3OSAzNDkuNzc5Ig0KCSB4bWw6c3BhY2U9InByZXNlcnZlIj4NCjxwYXRoIGZpbGw9IiNGRkZGRkYiIGQ9Ik0xNzQuODksMzQ5Ljc3OUM3OC42MTIsMzQ5Ljc3OSwwLDI3MS40NjIsMCwxNzQuODlTNzguNjEyLDAsMTc0Ljg5LDBjMjMuMjYsMCw0NS45MzEsNC40MTcsNjcuMTI5LDEzLjU0Mw0KCWM1Ljg4OSwyLjY1LDguODMzLDkuNDIyLDYuNDc4LDE1LjYwNWMtMi42NDksNS44ODgtOS40MjEsOC44MzMtMTUuNjA0LDYuNDc3Yy0xOC41NDktNy42NTUtMzcuOTgtMTEuNDgyLTU4LjAwMi0xMS40ODINCgljLTgzLjMyMywwLTE1MS4wNDEsNjcuNzE4LTE1MS4wNDEsMTUxLjA0MVM5MS41NjcsMzI2LjIyNSwxNzQuODksMzI2LjIyNWM4My4zMjMsMCwxNTEuMDQxLTY3LjcxOCwxNTEuMDQxLTE1MS4wNDENCgljMC0xNy45Ni0yLjk0NC0zNS4zMzItOS4xMjctNTEuODE5Yy0yLjM1NS02LjE4MywwLjg4My0xMi45NTUsNy4wNjYtMTUuMzFjNi4xODMtMi4zNTUsMTIuOTU0LDAuODgzLDE1LjMxLDcuMDY2DQoJYzcuMDY2LDE5LjEzOCwxMC42LDM5LjQ1MywxMC42LDYwLjA2M0MzNDkuNzc5LDI3MS4xNjcsMjcxLjQ2MiwzNDkuNzc5LDE3NC44OSwzNDkuNzc5Ii8+DQo8Zz4NCgk8cG9seWdvbiBmaWxsPSIjRkRCOTMzIiBwb2ludHM9IjI1MS40NCwxNTYuOTMgMjI0LjM1NCwxODUuMTk0IDIzOS4zNjksMjQ4LjQ5NiAyNzMuNTIyLDI0OC40OTYgCSIvPg0KPC9nPg0KPHBvbHlnb24gZmlsbD0iI0ZEQjkzMyIgcG9pbnRzPSIyNDAuMjUzLDczLjMxMiAyNDkuNjc0LDgyLjczNCAxNzQuODksMTYxLjkzNSAxMTAuOTk5LDk2LjI3NyA3NC4xOTYsMjQ4LjQ5NiAxMDguMzUsMjQ4LjQ5NiANCgkxMjguNjY1LDE2My45OTYgMTc0Ljg5LDIxNC4zNDMgMjczLjgxNywxMDYuNTgzIDI4My4yMzksMTE2LjI5OSAyOTIuNjYsNjMuMDA3ICIvPg0KPC9zdmc+DQo="
+						},
+						"categories": [
+							{
+								"id": 1,
+								"name": "Marketing & Content"
+							},
+							{
+								"id": 6,
+								"name": "Communication"
+							}
+						],
+						"displayName": "Mautic",
+						"typeVersion": 1
+					},
+					{
+						"id": 235,
+						"icon": "file:wooCommerce.svg",
+						"name": "n8n-nodes-base.wooCommerceTrigger",
+						"defaults": {
+							"name": "WooCommerce Trigger"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCIgdmVyc2lvbj0iMS4xIiB2aWV3Qm94PSIwIC01MCAyNTYgMjUzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KPHRpdGxlPldvb0NvbW1lcmNlIExvZ288L3RpdGxlPgo8bWV0YWRhdGE+CjxyZGY6UkRGPgo8Y2M6V29yayByZGY6YWJvdXQ9IiI+CjxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0Pgo8ZGM6dHlwZSByZGY6cmVzb3VyY2U9Imh0dHA6Ly9wdXJsLm9yZy9kYy9kY21pdHlwZS9TdGlsbEltYWdlIi8+CjxkYzp0aXRsZS8+CjwvY2M6V29yaz4KPC9yZGY6UkRGPgo8L21ldGFkYXRhPgo8cGF0aCBkPSJtMjMuNzU5IDBoMjA4LjM4YzEzLjE4NyAwIDIzLjg2MyAxMC42NzUgMjMuODYzIDIzLjg2M3Y3OS41NDJjMCAxMy4xODctMTAuNjc1IDIzLjg2My0yMy44NjMgMjMuODYzaC03NC43MjdsMTAuMjU3IDI1LjExOC00NS4xMDktMjUuMTE4aC05OC42OTVjLTEzLjE4NyAwLTIzLjg2My0xMC42NzUtMjMuODYzLTIzLjg2M3YtNzkuNTQyYy0wLjEwNDY2LTEzLjA4MyAxMC41NzEtMjMuODYzIDIzLjc1OC0yMy44NjN6IiBmaWxsPSIjN2Y1NGIzIi8+CjxwYXRoIGQ9Im0xNC41NzggMjEuNzVjMS40NTY5LTEuOTc3MiAzLjY0MjMtMy4wMTc5IDYuNTU2MS0zLjIyNiA1LjMwNzMtMC40MTYyNiA4LjMyNTIgMi4wODEzIDkuMDUzNyA3LjQ5MjcgMy4yMjYgMjEuNzUgNi43NjQyIDQwLjE2OSAxMC41MTEgNTUuMjU5bDIyLjc5LTQzLjM5NWMyLjA4MTMtMy45NTQ1IDQuNjgyOS02LjAzNTggNy44MDQ5LTYuMjQzOSA0LjU3ODktMC4zMTIyIDcuMzg4NiAyLjYwMTYgOC41MzMzIDguNzQxNSAyLjYwMTYgMTMuODQxIDUuOTMxNyAyNS42IDkuODg2MiAzNS41OSAyLjcwNTctMjYuNDMzIDcuMjg0Ni00NS40NzYgMTMuNzM3LTU3LjIzNiAxLjU2MS0yLjkxMzggMy44NTA0LTQuMzcwNyA2Ljg2ODMtNC41Nzg5IDIuMzkzNS0wLjIwODEzIDQuNTc4OSAwLjUyMDMzIDYuNTU2MSAyLjA4MTMgMS45NzcyIDEuNTYxIDMuMDE3OSAzLjUzODIgMy4yMjYgNS45MzE3IDAuMTA0MDYgMS44NzMyLTAuMjA4MTMgMy40MzQxLTEuMDQwNyA0Ljk5NTEtNC4wNTg1IDcuNDkyNy03LjM4ODYgMjAuMDg1LTEwLjA5NCAzNy41NjctMi42MDE2IDE2Ljk2My0zLjUzODIgMzAuMTc5LTIuOTEzOCAzOS42NDkgMC4yMDgxMyAyLjYwMTYtMC4yMDgxMyA0Ljg5MTEtMS4yNDg4IDYuODY4My0xLjI0ODggMi4yODk0LTMuMTIyIDMuNTM4Mi01LjUxNTQgMy43NDYzLTIuNzA1NyAwLjIwODEzLTUuNTE1NC0xLjA0MDYtOC4yMjExLTMuODUwNC05LjY3OC05Ljg4NjItMTcuMzc5LTI0LjY2My0yMi45OTgtNDQuMzMyLTYuNzY0MiAxMy4zMi0xMS43NTkgMjMuMzExLTE0Ljk4NSAyOS45NzEtNi4xMzk4IDExLjc1OS0xMS4zNDMgMTcuNzk1LTE1LjcxNCAxOC4xMDctMi44MDk4IDAuMjA4MTMtNS4yMDMzLTIuMTg1NC03LjI4NDYtNy4xODA1LTUuMzA3My0xMy42MzMtMTEuMDMxLTM5Ljk2MS0xNy4xNzEtNzguOTg1LTAuNDE2MjYtMi43MDU3IDAuMjA4MTMtNS4wOTkyIDEuNjY1LTYuOTcyNHptMjIzLjY0IDE2LjMzOGMtMy43NDYzLTYuNTU2MS05LjI2MTgtMTAuNTExLTE2LjY1LTEyLjA3Mi0xLjk3NzItMC40MTYyNi0zLjg1MDQtMC42MjQzOS01LjYxOTUtMC42MjQzOS05Ljk5MDIgMC0xOC4xMDcgNS4yMDMzLTI0LjQ1NSAxNS42MS01LjQxMTQgOC44NDU1LTguMTE3MSAxOC42MjgtOC4xMTcxIDI5LjM0NiAwIDguMDEzIDEuNjY1IDE0Ljg4MSA0Ljk5NTEgMjAuNjA1IDMuNzQ2MyA2LjU1NjEgOS4yNjE4IDEwLjUxMSAxNi42NSAxMi4wNzIgMS45NzcyIDAuNDE2MjYgMy44NTA0IDAuNjI0MzkgNS42MTk1IDAuNjI0MzkgMTAuMDk0IDAgMTguMjExLTUuMjAzMyAyNC40NTUtMTUuNjEgNS40MTE0LTguOTQ5NiA4LjExNzEtMTguNzMyIDguMTE3MS0yOS40NSAwLjEwNDA2LTguMTE3MS0xLjY2NS0xNC44ODEtNC45OTUxLTIwLjUwMXptLTEzLjExMiAyOC44MjZjLTEuNDU2OSA2Ljg2ODMtNC4wNTg1IDExLjk2Ny03LjkwODkgMTUuNDAyLTMuMDE3OSAyLjcwNTctNS44Mjc2IDMuODUwNC04LjQyOTMgMy4zMzAxLTIuNDk3Ni0wLjUyMDMzLTQuNTc4OS0yLjcwNTctNi4xMzk4LTYuNzY0Mi0xLjI0ODgtMy4yMjYtMS44NzMyLTYuNDUyLTEuODczMi05LjQ2OTkgMC0yLjYwMTYgMC4yMDgxMy01LjIwMzMgMC43Mjg0Ni03LjU5NjcgMC45MzY1OS00LjI2NjcgMi43MDU3LTguNDI5MyA1LjUxNTQtMTIuMzg0IDMuNDM0MS01LjA5OTIgNy4wNzY0LTcuMTgwNSAxMC44MjMtNi40NTIgMi40OTc2IDAuNTIwMzMgNC41Nzg5IDIuNzA1NyA2LjEzOTggNi43NjQyIDEuMjQ4OCAzLjIyNiAxLjg3MzIgNi40NTIgMS44NzMyIDkuNDY5OSAwIDIuNzA1Ny0wLjIwODEzIDUuMzA3My0wLjcyODQ2IDcuNzAwOHptLTUyLjAzMy0yOC44MjZjLTMuNzQ2My02LjU1NjEtOS4zNjU5LTEwLjUxMS0xNi42NS0xMi4wNzItMS45NzcyLTAuNDE2MjYtMy44NTA0LTAuNjI0MzktNS42MTk1LTAuNjI0MzktOS45OTAyIDAtMTguMTA3IDUuMjAzMy0yNC40NTUgMTUuNjEtNS40MTE0IDguODQ1NS04LjExNzEgMTguNjI4LTguMTE3MSAyOS4zNDYgMCA4LjAxMyAxLjY2NSAxNC44ODEgNC45OTUxIDIwLjYwNSAzLjc0NjMgNi41NTYxIDkuMjYxOCAxMC41MTEgMTYuNjUgMTIuMDcyIDEuOTc3MiAwLjQxNjI2IDMuODUwNCAwLjYyNDM5IDUuNjE5NSAwLjYyNDM5IDEwLjA5NCAwIDE4LjIxMS01LjIwMzMgMjQuNDU1LTE1LjYxIDUuNDExNC04Ljk0OTYgOC4xMTcxLTE4LjczMiA4LjExNzEtMjkuNDUgMC04LjExNzEtMS42NjUtMTQuODgxLTQuOTk1MS0yMC41MDF6bS0xMy4yMTYgMjguODI2Yy0xLjQ1NjkgNi44NjgzLTQuMDU4NSAxMS45NjctNy45MDg5IDE1LjQwMi0zLjAxNzkgMi43MDU3LTUuODI3NiAzLjg1MDQtOC40MjkzIDMuMzMwMS0yLjQ5NzYtMC41MjAzMy00LjU3ODktMi43MDU3LTYuMTM5OC02Ljc2NDItMS4yNDg4LTMuMjI2LTEuODczMi02LjQ1Mi0xLjg3MzItOS40Njk5IDAtMi42MDE2IDAuMjA4MTMtNS4yMDMzIDAuNzI4NDYtNy41OTY3IDAuOTM2NTgtNC4yNjY3IDIuNzA1Ny04LjQyOTMgNS41MTU0LTEyLjM4NCAzLjQzNDEtNS4wOTkyIDcuMDc2NC03LjE4MDUgMTAuODIzLTYuNDUyIDIuNDk3NiAwLjUyMDMzIDQuNTc4OSAyLjcwNTcgNi4xMzk4IDYuNzY0MiAxLjI0ODggMy4yMjYgMS44NzMyIDYuNDUyIDEuODczMiA5LjQ2OTkgMC4xMDQwNiAyLjcwNTctMC4yMDgxMyA1LjMwNzMtMC43Mjg0NiA3LjcwMDh6IiBmaWxsPSIjZmZmIi8+Cjwvc3ZnPgo="
+						},
+						"categories": [
+							{
+								"id": 2,
+								"name": "Sales"
+							}
+						],
+						"displayName": "WooCommerce Trigger",
+						"typeVersion": 1
+					}
+				],
+				"categories": [
+					{
+						"id": 2,
+						"name": "Sales"
+					}
+				],
+				"image": []
+			},
+			{
+				"id": 1459,
+				"name": "Notify on Telegram and Twitter when new order is added in WooCommerce",
+				"views": 620,
+				"recentViews": 9823,
+				"totalViews": 620,
+				"createdAt": "2022-02-17T15:02:14.961Z",
+				"description": "This workflow uses a WooCommerce trigger that will run a new product has been added, It will then post the product to Telegram and Twitter.\n\nTo use this workflow you will need to set the credentials to use for the WooCommerce, Twitter and Telegram nodes.",
+				"workflow": {
+					"id": 85,
+					"name": "New WooCommerce Product to Twitter and Telegram",
+					"nodes": [
+						{
+							"name": "Twitter",
+							"type": "n8n-nodes-base.twitter",
+							"position": [720, 300],
+							"parameters": {
+								"text": "=✨ New Product Announcement ✨\nWe have just added {{$json[\"name\"]}}, Head to {{$json[\"permalink\"]}} to find out more.",
+								"additionalFields": {}
+							},
+							"credentials": {
+								"twitterOAuth1Api": {
+									"id": "37",
+									"name": "joffcom"
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Telegram",
+							"type": "n8n-nodes-base.telegram",
+							"position": [720, 500],
+							"parameters": {
+								"text": "=✨ New Product Announcement ✨\nWe have just added {{$json[\"name\"]}}, Head to {{$json[\"permalink\"]}} to find out more.",
+								"chatId": "123456",
+								"additionalFields": {}
+							},
+							"credentials": {
+								"telegramApi": {
+									"id": "56",
+									"name": "Telegram account"
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "WooCommerce Trigger",
+							"type": "n8n-nodes-base.wooCommerceTrigger",
+							"position": [540, 400],
+							"webhookId": "ab7b134b-9b2d-4e0d-b496-1aee30db0808",
+							"parameters": {
+								"event": "product.created"
+							},
+							"credentials": {
+								"wooCommerceApi": {
+									"id": "48",
+									"name": "WooCommerce account"
+								}
+							},
+							"typeVersion": 1
+						}
+					],
+					"active": false,
+					"settings": {},
+					"connections": {
+						"WooCommerce Trigger": {
+							"main": [
+								[
+									{
+										"node": "Twitter",
+										"type": "main",
+										"index": 0
+									},
+									{
+										"node": "Telegram",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						}
+					}
+				},
+				"workflowInfo": {
+					"nodeCount": 4,
+					"nodeTypes": {
+						"n8n-nodes-base.twitter": {
+							"count": 1
+						},
+						"n8n-nodes-base.telegram": {
+							"count": 1
+						},
+						"n8n-nodes-base.wooCommerceTrigger": {
+							"count": 1
+						}
+					}
+				},
+				"user": {
+					"username": "jon-n8n"
+				},
+				"nodes": [
+					{
+						"id": 42,
+						"icon": "fa:play",
+						"name": "n8n-nodes-base.start",
+						"defaults": {
+							"name": "Start",
+							"color": "#00e000"
+						},
+						"iconData": {
+							"icon": "play",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "Start",
+						"typeVersion": 1
+					},
+					{
+						"id": 49,
+						"icon": "file:telegram.svg",
+						"name": "n8n-nodes-base.telegram",
+						"defaults": {
+							"name": "Telegram"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNjYgNjYiIGZpbGw9IiNmZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBzdHJva2U9Im5vbmUiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZD0iTTAgMzJjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMyczMyLTE0LjMyNyAzMi0zMlM0OS42NzMgMCAzMiAwIDAgMTQuMzI3IDAgMzIiIGZpbGw9IiMzN2FlZTIiLz48cGF0aCBkPSJNMjEuNjYxIDM0LjMzOGwzLjc5NyAxMC41MDhzLjQ3NS45ODMuOTgzLjk4MyA4LjA2OC03Ljg2NCA4LjA2OC03Ljg2NGw4LjQwNy0xNi4yMzctMjEuMTE5IDkuODk4eiIgZmlsbD0iI2M4ZGFlYSIvPjxwYXRoIGQ9Ik0yNi42OTUgMzcuMDM0bC0uNzI5IDcuNzQ2cy0uMzA1IDIuMzczIDIuMDY4IDBsNC42NDQtNC4yMDMiIGZpbGw9IiNhOWM2ZDgiLz48cGF0aCBkPSJNMjEuNzMgMzQuNzEybC03LjgwOS0yLjU0NXMtLjkzMi0uMzc4LS42MzMtMS4yMzdjLjA2Mi0uMTc3LjE4Ni0uMzI4LjU1OS0uNTg4IDEuNzMxLTEuMjA2IDMyLjAyOC0xMi4wOTYgMzIuMDI4LTEyLjA5NnMuODU2LS4yODggMS4zNjEtLjA5N2MuMjMxLjA4OC4zNzguMTg3LjUwMy41NDguMDQ1LjEzMi4wNzEuNDExLjA2OC42ODktLjAwMy4yMDEtLjAyNy4zODYtLjA0NS42NzgtLjE4NCAyLjk3OC01LjcwNiAyNS4xOTgtNS43MDYgMjUuMTk4cy0uMzMgMS4zLTEuNTE0IDEuMzQ1Yy0uNDMyLjAxNi0uOTU2LS4wNzEtMS41ODItLjYxLTIuMzIzLTEuOTk4LTEwLjM1Mi03LjM5NC0xMi4xMjYtOC41OGEuMzQuMzQgMCAwMS0uMTQ2LS4yMzljLS4wMjUtLjEyNS4xMDgtLjI4LjEwOC0uMjhzMTMuOTgtMTIuNDI3IDE0LjM1Mi0xMy43MzFjLjAyOS0uMTAxLS4wNzktLjE1MS0uMjI2LS4xMDctLjkyOS4zNDItMTcuMDI1IDEwLjUwNi0xOC44MDEgMTEuNjI5LS4xMDQuMDY2LS4zOTUuMDIzLS4zOTUuMDIzIi8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+						},
+						"categories": [
+							{
+								"id": 6,
+								"name": "Communication"
+							}
+						],
+						"displayName": "Telegram",
+						"typeVersion": 1
+					},
+					{
+						"id": 235,
+						"icon": "file:wooCommerce.svg",
+						"name": "n8n-nodes-base.wooCommerceTrigger",
+						"defaults": {
+							"name": "WooCommerce Trigger"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCIgdmVyc2lvbj0iMS4xIiB2aWV3Qm94PSIwIC01MCAyNTYgMjUzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KPHRpdGxlPldvb0NvbW1lcmNlIExvZ288L3RpdGxlPgo8bWV0YWRhdGE+CjxyZGY6UkRGPgo8Y2M6V29yayByZGY6YWJvdXQ9IiI+CjxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0Pgo8ZGM6dHlwZSByZGY6cmVzb3VyY2U9Imh0dHA6Ly9wdXJsLm9yZy9kYy9kY21pdHlwZS9TdGlsbEltYWdlIi8+CjxkYzp0aXRsZS8+CjwvY2M6V29yaz4KPC9yZGY6UkRGPgo8L21ldGFkYXRhPgo8cGF0aCBkPSJtMjMuNzU5IDBoMjA4LjM4YzEzLjE4NyAwIDIzLjg2MyAxMC42NzUgMjMuODYzIDIzLjg2M3Y3OS41NDJjMCAxMy4xODctMTAuNjc1IDIzLjg2My0yMy44NjMgMjMuODYzaC03NC43MjdsMTAuMjU3IDI1LjExOC00NS4xMDktMjUuMTE4aC05OC42OTVjLTEzLjE4NyAwLTIzLjg2My0xMC42NzUtMjMuODYzLTIzLjg2M3YtNzkuNTQyYy0wLjEwNDY2LTEzLjA4MyAxMC41NzEtMjMuODYzIDIzLjc1OC0yMy44NjN6IiBmaWxsPSIjN2Y1NGIzIi8+CjxwYXRoIGQ9Im0xNC41NzggMjEuNzVjMS40NTY5LTEuOTc3MiAzLjY0MjMtMy4wMTc5IDYuNTU2MS0zLjIyNiA1LjMwNzMtMC40MTYyNiA4LjMyNTIgMi4wODEzIDkuMDUzNyA3LjQ5MjcgMy4yMjYgMjEuNzUgNi43NjQyIDQwLjE2OSAxMC41MTEgNTUuMjU5bDIyLjc5LTQzLjM5NWMyLjA4MTMtMy45NTQ1IDQuNjgyOS02LjAzNTggNy44MDQ5LTYuMjQzOSA0LjU3ODktMC4zMTIyIDcuMzg4NiAyLjYwMTYgOC41MzMzIDguNzQxNSAyLjYwMTYgMTMuODQxIDUuOTMxNyAyNS42IDkuODg2MiAzNS41OSAyLjcwNTctMjYuNDMzIDcuMjg0Ni00NS40NzYgMTMuNzM3LTU3LjIzNiAxLjU2MS0yLjkxMzggMy44NTA0LTQuMzcwNyA2Ljg2ODMtNC41Nzg5IDIuMzkzNS0wLjIwODEzIDQuNTc4OSAwLjUyMDMzIDYuNTU2MSAyLjA4MTMgMS45NzcyIDEuNTYxIDMuMDE3OSAzLjUzODIgMy4yMjYgNS45MzE3IDAuMTA0MDYgMS44NzMyLTAuMjA4MTMgMy40MzQxLTEuMDQwNyA0Ljk5NTEtNC4wNTg1IDcuNDkyNy03LjM4ODYgMjAuMDg1LTEwLjA5NCAzNy41NjctMi42MDE2IDE2Ljk2My0zLjUzODIgMzAuMTc5LTIuOTEzOCAzOS42NDkgMC4yMDgxMyAyLjYwMTYtMC4yMDgxMyA0Ljg5MTEtMS4yNDg4IDYuODY4My0xLjI0ODggMi4yODk0LTMuMTIyIDMuNTM4Mi01LjUxNTQgMy43NDYzLTIuNzA1NyAwLjIwODEzLTUuNTE1NC0xLjA0MDYtOC4yMjExLTMuODUwNC05LjY3OC05Ljg4NjItMTcuMzc5LTI0LjY2My0yMi45OTgtNDQuMzMyLTYuNzY0MiAxMy4zMi0xMS43NTkgMjMuMzExLTE0Ljk4NSAyOS45NzEtNi4xMzk4IDExLjc1OS0xMS4zNDMgMTcuNzk1LTE1LjcxNCAxOC4xMDctMi44MDk4IDAuMjA4MTMtNS4yMDMzLTIuMTg1NC03LjI4NDYtNy4xODA1LTUuMzA3My0xMy42MzMtMTEuMDMxLTM5Ljk2MS0xNy4xNzEtNzguOTg1LTAuNDE2MjYtMi43MDU3IDAuMjA4MTMtNS4wOTkyIDEuNjY1LTYuOTcyNHptMjIzLjY0IDE2LjMzOGMtMy43NDYzLTYuNTU2MS05LjI2MTgtMTAuNTExLTE2LjY1LTEyLjA3Mi0xLjk3NzItMC40MTYyNi0zLjg1MDQtMC42MjQzOS01LjYxOTUtMC42MjQzOS05Ljk5MDIgMC0xOC4xMDcgNS4yMDMzLTI0LjQ1NSAxNS42MS01LjQxMTQgOC44NDU1LTguMTE3MSAxOC42MjgtOC4xMTcxIDI5LjM0NiAwIDguMDEzIDEuNjY1IDE0Ljg4MSA0Ljk5NTEgMjAuNjA1IDMuNzQ2MyA2LjU1NjEgOS4yNjE4IDEwLjUxMSAxNi42NSAxMi4wNzIgMS45NzcyIDAuNDE2MjYgMy44NTA0IDAuNjI0MzkgNS42MTk1IDAuNjI0MzkgMTAuMDk0IDAgMTguMjExLTUuMjAzMyAyNC40NTUtMTUuNjEgNS40MTE0LTguOTQ5NiA4LjExNzEtMTguNzMyIDguMTE3MS0yOS40NSAwLjEwNDA2LTguMTE3MS0xLjY2NS0xNC44ODEtNC45OTUxLTIwLjUwMXptLTEzLjExMiAyOC44MjZjLTEuNDU2OSA2Ljg2ODMtNC4wNTg1IDExLjk2Ny03LjkwODkgMTUuNDAyLTMuMDE3OSAyLjcwNTctNS44Mjc2IDMuODUwNC04LjQyOTMgMy4zMzAxLTIuNDk3Ni0wLjUyMDMzLTQuNTc4OS0yLjcwNTctNi4xMzk4LTYuNzY0Mi0xLjI0ODgtMy4yMjYtMS44NzMyLTYuNDUyLTEuODczMi05LjQ2OTkgMC0yLjYwMTYgMC4yMDgxMy01LjIwMzMgMC43Mjg0Ni03LjU5NjcgMC45MzY1OS00LjI2NjcgMi43MDU3LTguNDI5MyA1LjUxNTQtMTIuMzg0IDMuNDM0MS01LjA5OTIgNy4wNzY0LTcuMTgwNSAxMC44MjMtNi40NTIgMi40OTc2IDAuNTIwMzMgNC41Nzg5IDIuNzA1NyA2LjEzOTggNi43NjQyIDEuMjQ4OCAzLjIyNiAxLjg3MzIgNi40NTIgMS44NzMyIDkuNDY5OSAwIDIuNzA1Ny0wLjIwODEzIDUuMzA3My0wLjcyODQ2IDcuNzAwOHptLTUyLjAzMy0yOC44MjZjLTMuNzQ2My02LjU1NjEtOS4zNjU5LTEwLjUxMS0xNi42NS0xMi4wNzItMS45NzcyLTAuNDE2MjYtMy44NTA0LTAuNjI0MzktNS42MTk1LTAuNjI0MzktOS45OTAyIDAtMTguMTA3IDUuMjAzMy0yNC40NTUgMTUuNjEtNS40MTE0IDguODQ1NS04LjExNzEgMTguNjI4LTguMTE3MSAyOS4zNDYgMCA4LjAxMyAxLjY2NSAxNC44ODEgNC45OTUxIDIwLjYwNSAzLjc0NjMgNi41NTYxIDkuMjYxOCAxMC41MTEgMTYuNjUgMTIuMDcyIDEuOTc3MiAwLjQxNjI2IDMuODUwNCAwLjYyNDM5IDUuNjE5NSAwLjYyNDM5IDEwLjA5NCAwIDE4LjIxMS01LjIwMzMgMjQuNDU1LTE1LjYxIDUuNDExNC04Ljk0OTYgOC4xMTcxLTE4LjczMiA4LjExNzEtMjkuNDUgMC04LjExNzEtMS42NjUtMTQuODgxLTQuOTk1MS0yMC41MDF6bS0xMy4yMTYgMjguODI2Yy0xLjQ1NjkgNi44NjgzLTQuMDU4NSAxMS45NjctNy45MDg5IDE1LjQwMi0zLjAxNzkgMi43MDU3LTUuODI3NiAzLjg1MDQtOC40MjkzIDMuMzMwMS0yLjQ5NzYtMC41MjAzMy00LjU3ODktMi43MDU3LTYuMTM5OC02Ljc2NDItMS4yNDg4LTMuMjI2LTEuODczMi02LjQ1Mi0xLjg3MzItOS40Njk5IDAtMi42MDE2IDAuMjA4MTMtNS4yMDMzIDAuNzI4NDYtNy41OTY3IDAuOTM2NTgtNC4yNjY3IDIuNzA1Ny04LjQyOTMgNS41MTU0LTEyLjM4NCAzLjQzNDEtNS4wOTkyIDcuMDc2NC03LjE4MDUgMTAuODIzLTYuNDUyIDIuNDk3NiAwLjUyMDMzIDQuNTc4OSAyLjcwNTcgNi4xMzk4IDYuNzY0MiAxLjI0ODggMy4yMjYgMS44NzMyIDYuNDUyIDEuODczMiA5LjQ2OTkgMC4xMDQwNiAyLjcwNTctMC4yMDgxMyA1LjMwNzMtMC43Mjg0NiA3LjcwMDh6IiBmaWxsPSIjZmZmIi8+Cjwvc3ZnPgo="
+						},
+						"categories": [
+							{
+								"id": 2,
+								"name": "Sales"
+							}
+						],
+						"displayName": "WooCommerce Trigger",
+						"typeVersion": 1
+					},
+					{
+						"id": 325,
+						"icon": "file:x.svg",
+						"name": "n8n-nodes-base.twitter",
+						"defaults": {
+							"name": "X"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTE4LjI0NCAyLjI1aDMuMzA4bC03LjIyNyA4LjI2IDguNTAyIDExLjI0SDE2LjE3bC01LjIxNC02LjgxN0w0Ljk5IDIxLjc1SDEuNjhsNy43My04LjgzNUwxLjI1NCAyLjI1SDguMDhsNC43MTMgNi4yMzF6bS0xLjE2MSAxNy41MmgxLjgzM0w3LjA4NCA0LjEyNkg1LjExN3oiPjwvcGF0aD48L3N2Zz4K"
+						},
+						"categories": [
+							{
+								"id": 1,
+								"name": "Marketing & Content"
+							}
+						],
+						"displayName": "X (Formerly Twitter)",
+						"typeVersion": 2
+					}
+				],
+				"categories": [
+					{
+						"id": 2,
+						"name": "Sales"
+					},
+					{
+						"id": 19,
+						"name": "Marketing & Growth"
+					}
+				],
+				"image": []
+			},
+			{
+				"id": 1457,
+				"name": "Notify on Slack when new order is registered in WooCommerce",
+				"views": 178,
+				"recentViews": 9787,
+				"totalViews": 178,
+				"createdAt": "2022-02-17T15:01:13.489Z",
+				"description": "This workflow uses a WooCommerce trigger that will run when an order has been placed.\n\nIf the value of this is over 100 it will post it to a Slack channel.\n\nTo use this workflow you will need to set the credentials to use for the WooCommerce and Slack nodes, You will also need to pick a channel to post the message to.",
+				"workflow": {
+					"id": 81,
+					"name": "New WooCommerce order to Slack",
+					"nodes": [
+						{
+							"name": "Order Created",
+							"type": "n8n-nodes-base.wooCommerceTrigger",
+							"position": [340, 500],
+							"webhookId": "287b4bf4-67ec-4c97-85d9-c0d3e6f59e6b",
+							"parameters": {
+								"event": "order.created"
+							},
+							"credentials": {
+								"wooCommerceApi": {
+									"id": "48",
+									"name": "WooCommerce account"
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Send to Slack",
+							"type": "n8n-nodes-base.slack",
+							"position": [780, 480],
+							"parameters": {
+								"text": ":sparkles: There is a new order :sparkles:",
+								"channel": "woo-commerce",
+								"blocksUi": {
+									"blocksValues": []
+								},
+								"attachments": [
+									{
+										"color": "#66FF00",
+										"fields": {
+											"item": [
+												{
+													"short": true,
+													"title": "Order ID",
+													"value": "={{$json[\"id\"]}}"
+												},
+												{
+													"short": true,
+													"title": "Status",
+													"value": "={{$json[\"status\"]}}"
+												},
+												{
+													"short": true,
+													"title": "Total",
+													"value": "={{$json[\"currency_symbol\"]}}{{$json[\"total\"]}}"
+												},
+												{
+													"short": false,
+													"title": "Link",
+													"value": "={{$node[\"Order Created\"].json[\"_links\"][\"self\"][0][\"href\"]}}"
+												}
+											]
+										},
+										"footer": "=*Ordered:* {{$json[\"date_created\"]}} | *Transaction ID:* {{$json[\"transaction_id\"]}}"
+									}
+								],
+								"otherOptions": {}
+							},
+							"credentials": {
+								"slackApi": {
+									"id": "53",
+									"name": "Slack Access Token"
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Price over 100",
+							"type": "n8n-nodes-base.if",
+							"position": [540, 500],
+							"parameters": {
+								"conditions": {
+									"number": [
+										{
+											"value1": "={{$json[\"total\"]}}",
+											"value2": 100,
+											"operation": "largerEqual"
+										}
+									]
+								}
+							},
+							"typeVersion": 1
+						}
+					],
+					"active": false,
+					"settings": {
+						"saveManualExecutions": true,
+						"saveExecutionProgress": true,
+						"saveDataSuccessExecution": "all"
+					},
+					"connections": {
+						"Order Created": {
+							"main": [
+								[
+									{
+										"node": "Price over 100",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						},
+						"Price over 100": {
+							"main": [
+								[
+									{
+										"node": "Send to Slack",
+										"type": "main",
+										"index": 0
+									}
+								],
+								[]
+							]
+						}
+					}
+				},
+				"workflowInfo": {
+					"nodeCount": 4,
+					"nodeTypes": {
+						"n8n-nodes-base.if": {
+							"count": 1
+						},
+						"n8n-nodes-base.slack": {
+							"count": 1
+						},
+						"n8n-nodes-base.wooCommerceTrigger": {
+							"count": 1
+						}
+					}
+				},
+				"user": {
+					"username": "jon-n8n"
+				},
+				"nodes": [
+					{
+						"id": 20,
+						"icon": "fa:map-signs",
+						"name": "n8n-nodes-base.if",
+						"defaults": {
+							"name": "IF",
+							"color": "#408000"
+						},
+						"iconData": {
+							"icon": "map-signs",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "IF",
+						"typeVersion": 1
+					},
+					{
+						"id": 40,
+						"icon": "file:slack.svg",
+						"name": "n8n-nodes-base.slack",
+						"defaults": {
+							"name": "Slack"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGQ9Ik00MC43NDEgOTMuNTVjMC04LjczNSA2LjYwNy0xNS43NzIgMTQuODE1LTE1Ljc3MnMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjRjMCA4LjczNy02LjYwNyAxNS43NzQtMTQuODE1IDE1Ljc3NHMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6IiBmaWxsPSIjZTAxZTVhIiBzdHJva2U9IiNlMDFlNWEiLz48cGF0aCBkPSJNOTMuNTUgMTA3LjQwOGMtOC43MzUgMC0xNS43NzItNi42MDctMTUuNzcyLTE0LjgxNXM3LjAzNy0xNC44MTUgMTUuNzcyLTE0LjgxNWgzOC44MjZjOC43MzUgMCAxNS43NzIgNi42MDcgMTUuNzcyIDE0LjgxNXMtNy4wMzcgMTQuODE1LTE1Ljc3MiAxNC44MTV6IiBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiLz48cGF0aCBkPSJNNzcuNzc4IDE1Ljc3MkM3Ny43NzggNy4wMzcgODQuMzg1IDAgOTIuNTkzIDBzMTQuODE1IDcuMDM3IDE0LjgxNSAxNS43NzJ2MzguODI2YzAgOC43MzUtNi42MDcgMTUuNzcyLTE0LjgxNSAxNS43NzJzLTE0LjgxNS03LjAzNy0xNC44MTUtMTUuNzcyeiIgZmlsbD0iIzJmYjY3YyIgc3Ryb2tlPSIjMmZiNjdjIi8+PHBhdGggZD0iTTE1Ljc3MiA3MC4zNzFDNy4wMzcgNzAuMzcxIDAgNjMuNzYzIDAgNTUuNTU2czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGQ9Ik03Ny43NzggMTMzLjMzM2MwIDguMjA4IDYuNjA3IDE0LjgxNSAxNC44MTUgMTQuODE1czE0LjgxNS02LjYwNyAxNC44MTUtMTQuODE1LTYuNjA3LTE0LjgxNS0xNC44MTUtMTQuODE1SDc3Ljc3OHoiIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIvPjxwYXRoIGQ9Ik0xMzMuMzM0IDcwLjM3MWgtMTQuODE1VjU1LjU1NmMwLTguMjA3IDYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1czE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUgMTQuODE1eiIgZmlsbD0iIzJmYjY3YyIgc3Ryb2tlPSIjMmZiNjdjIi8+PHBhdGggZD0iTTE0LjgxNSA3Ny43NzhIMjkuNjN2MTQuODE1YzAgOC4yMDctNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTVTMCAxMDAuOCAwIDkyLjU5M3M2LjYwNy0xNC44MTUgMTQuODE1LTE0LjgxNXoiIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIvPjxwYXRoIGQ9Ik03MC4zNzEgMTQuODE1VjI5LjYzSDU1LjU1NmMtOC4yMDcgMC0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNVM0Ny4zNDggMCA1NS41NTYgMHMxNC44MTUgNi42MDcgMTQuODE1IDE0LjgxNXoiIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+						},
+						"categories": [
+							{
+								"id": 6,
+								"name": "Communication"
+							}
+						],
+						"displayName": "Slack",
+						"typeVersion": 2
+					},
+					{
+						"id": 42,
+						"icon": "fa:play",
+						"name": "n8n-nodes-base.start",
+						"defaults": {
+							"name": "Start",
+							"color": "#00e000"
+						},
+						"iconData": {
+							"icon": "play",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "Start",
+						"typeVersion": 1
+					},
+					{
+						"id": 235,
+						"icon": "file:wooCommerce.svg",
+						"name": "n8n-nodes-base.wooCommerceTrigger",
+						"defaults": {
+							"name": "WooCommerce Trigger"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCIgdmVyc2lvbj0iMS4xIiB2aWV3Qm94PSIwIC01MCAyNTYgMjUzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KPHRpdGxlPldvb0NvbW1lcmNlIExvZ288L3RpdGxlPgo8bWV0YWRhdGE+CjxyZGY6UkRGPgo8Y2M6V29yayByZGY6YWJvdXQ9IiI+CjxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0Pgo8ZGM6dHlwZSByZGY6cmVzb3VyY2U9Imh0dHA6Ly9wdXJsLm9yZy9kYy9kY21pdHlwZS9TdGlsbEltYWdlIi8+CjxkYzp0aXRsZS8+CjwvY2M6V29yaz4KPC9yZGY6UkRGPgo8L21ldGFkYXRhPgo8cGF0aCBkPSJtMjMuNzU5IDBoMjA4LjM4YzEzLjE4NyAwIDIzLjg2MyAxMC42NzUgMjMuODYzIDIzLjg2M3Y3OS41NDJjMCAxMy4xODctMTAuNjc1IDIzLjg2My0yMy44NjMgMjMuODYzaC03NC43MjdsMTAuMjU3IDI1LjExOC00NS4xMDktMjUuMTE4aC05OC42OTVjLTEzLjE4NyAwLTIzLjg2My0xMC42NzUtMjMuODYzLTIzLjg2M3YtNzkuNTQyYy0wLjEwNDY2LTEzLjA4MyAxMC41NzEtMjMuODYzIDIzLjc1OC0yMy44NjN6IiBmaWxsPSIjN2Y1NGIzIi8+CjxwYXRoIGQ9Im0xNC41NzggMjEuNzVjMS40NTY5LTEuOTc3MiAzLjY0MjMtMy4wMTc5IDYuNTU2MS0zLjIyNiA1LjMwNzMtMC40MTYyNiA4LjMyNTIgMi4wODEzIDkuMDUzNyA3LjQ5MjcgMy4yMjYgMjEuNzUgNi43NjQyIDQwLjE2OSAxMC41MTEgNTUuMjU5bDIyLjc5LTQzLjM5NWMyLjA4MTMtMy45NTQ1IDQuNjgyOS02LjAzNTggNy44MDQ5LTYuMjQzOSA0LjU3ODktMC4zMTIyIDcuMzg4NiAyLjYwMTYgOC41MzMzIDguNzQxNSAyLjYwMTYgMTMuODQxIDUuOTMxNyAyNS42IDkuODg2MiAzNS41OSAyLjcwNTctMjYuNDMzIDcuMjg0Ni00NS40NzYgMTMuNzM3LTU3LjIzNiAxLjU2MS0yLjkxMzggMy44NTA0LTQuMzcwNyA2Ljg2ODMtNC41Nzg5IDIuMzkzNS0wLjIwODEzIDQuNTc4OSAwLjUyMDMzIDYuNTU2MSAyLjA4MTMgMS45NzcyIDEuNTYxIDMuMDE3OSAzLjUzODIgMy4yMjYgNS45MzE3IDAuMTA0MDYgMS44NzMyLTAuMjA4MTMgMy40MzQxLTEuMDQwNyA0Ljk5NTEtNC4wNTg1IDcuNDkyNy03LjM4ODYgMjAuMDg1LTEwLjA5NCAzNy41NjctMi42MDE2IDE2Ljk2My0zLjUzODIgMzAuMTc5LTIuOTEzOCAzOS42NDkgMC4yMDgxMyAyLjYwMTYtMC4yMDgxMyA0Ljg5MTEtMS4yNDg4IDYuODY4My0xLjI0ODggMi4yODk0LTMuMTIyIDMuNTM4Mi01LjUxNTQgMy43NDYzLTIuNzA1NyAwLjIwODEzLTUuNTE1NC0xLjA0MDYtOC4yMjExLTMuODUwNC05LjY3OC05Ljg4NjItMTcuMzc5LTI0LjY2My0yMi45OTgtNDQuMzMyLTYuNzY0MiAxMy4zMi0xMS43NTkgMjMuMzExLTE0Ljk4NSAyOS45NzEtNi4xMzk4IDExLjc1OS0xMS4zNDMgMTcuNzk1LTE1LjcxNCAxOC4xMDctMi44MDk4IDAuMjA4MTMtNS4yMDMzLTIuMTg1NC03LjI4NDYtNy4xODA1LTUuMzA3My0xMy42MzMtMTEuMDMxLTM5Ljk2MS0xNy4xNzEtNzguOTg1LTAuNDE2MjYtMi43MDU3IDAuMjA4MTMtNS4wOTkyIDEuNjY1LTYuOTcyNHptMjIzLjY0IDE2LjMzOGMtMy43NDYzLTYuNTU2MS05LjI2MTgtMTAuNTExLTE2LjY1LTEyLjA3Mi0xLjk3NzItMC40MTYyNi0zLjg1MDQtMC42MjQzOS01LjYxOTUtMC42MjQzOS05Ljk5MDIgMC0xOC4xMDcgNS4yMDMzLTI0LjQ1NSAxNS42MS01LjQxMTQgOC44NDU1LTguMTE3MSAxOC42MjgtOC4xMTcxIDI5LjM0NiAwIDguMDEzIDEuNjY1IDE0Ljg4MSA0Ljk5NTEgMjAuNjA1IDMuNzQ2MyA2LjU1NjEgOS4yNjE4IDEwLjUxMSAxNi42NSAxMi4wNzIgMS45NzcyIDAuNDE2MjYgMy44NTA0IDAuNjI0MzkgNS42MTk1IDAuNjI0MzkgMTAuMDk0IDAgMTguMjExLTUuMjAzMyAyNC40NTUtMTUuNjEgNS40MTE0LTguOTQ5NiA4LjExNzEtMTguNzMyIDguMTE3MS0yOS40NSAwLjEwNDA2LTguMTE3MS0xLjY2NS0xNC44ODEtNC45OTUxLTIwLjUwMXptLTEzLjExMiAyOC44MjZjLTEuNDU2OSA2Ljg2ODMtNC4wNTg1IDExLjk2Ny03LjkwODkgMTUuNDAyLTMuMDE3OSAyLjcwNTctNS44Mjc2IDMuODUwNC04LjQyOTMgMy4zMzAxLTIuNDk3Ni0wLjUyMDMzLTQuNTc4OS0yLjcwNTctNi4xMzk4LTYuNzY0Mi0xLjI0ODgtMy4yMjYtMS44NzMyLTYuNDUyLTEuODczMi05LjQ2OTkgMC0yLjYwMTYgMC4yMDgxMy01LjIwMzMgMC43Mjg0Ni03LjU5NjcgMC45MzY1OS00LjI2NjcgMi43MDU3LTguNDI5MyA1LjUxNTQtMTIuMzg0IDMuNDM0MS01LjA5OTIgNy4wNzY0LTcuMTgwNSAxMC44MjMtNi40NTIgMi40OTc2IDAuNTIwMzMgNC41Nzg5IDIuNzA1NyA2LjEzOTggNi43NjQyIDEuMjQ4OCAzLjIyNiAxLjg3MzIgNi40NTIgMS44NzMyIDkuNDY5OSAwIDIuNzA1Ny0wLjIwODEzIDUuMzA3My0wLjcyODQ2IDcuNzAwOHptLTUyLjAzMy0yOC44MjZjLTMuNzQ2My02LjU1NjEtOS4zNjU5LTEwLjUxMS0xNi42NS0xMi4wNzItMS45NzcyLTAuNDE2MjYtMy44NTA0LTAuNjI0MzktNS42MTk1LTAuNjI0MzktOS45OTAyIDAtMTguMTA3IDUuMjAzMy0yNC40NTUgMTUuNjEtNS40MTE0IDguODQ1NS04LjExNzEgMTguNjI4LTguMTE3MSAyOS4zNDYgMCA4LjAxMyAxLjY2NSAxNC44ODEgNC45OTUxIDIwLjYwNSAzLjc0NjMgNi41NTYxIDkuMjYxOCAxMC41MTEgMTYuNjUgMTIuMDcyIDEuOTc3MiAwLjQxNjI2IDMuODUwNCAwLjYyNDM5IDUuNjE5NSAwLjYyNDM5IDEwLjA5NCAwIDE4LjIxMS01LjIwMzMgMjQuNDU1LTE1LjYxIDUuNDExNC04Ljk0OTYgOC4xMTcxLTE4LjczMiA4LjExNzEtMjkuNDUgMC04LjExNzEtMS42NjUtMTQuODgxLTQuOTk1MS0yMC41MDF6bS0xMy4yMTYgMjguODI2Yy0xLjQ1NjkgNi44NjgzLTQuMDU4NSAxMS45NjctNy45MDg5IDE1LjQwMi0zLjAxNzkgMi43MDU3LTUuODI3NiAzLjg1MDQtOC40MjkzIDMuMzMwMS0yLjQ5NzYtMC41MjAzMy00LjU3ODktMi43MDU3LTYuMTM5OC02Ljc2NDItMS4yNDg4LTMuMjI2LTEuODczMi02LjQ1Mi0xLjg3MzItOS40Njk5IDAtMi42MDE2IDAuMjA4MTMtNS4yMDMzIDAuNzI4NDYtNy41OTY3IDAuOTM2NTgtNC4yNjY3IDIuNzA1Ny04LjQyOTMgNS41MTU0LTEyLjM4NCAzLjQzNDEtNS4wOTkyIDcuMDc2NC03LjE4MDUgMTAuODIzLTYuNDUyIDIuNDk3NiAwLjUyMDMzIDQuNTc4OSAyLjcwNTcgNi4xMzk4IDYuNzY0MiAxLjI0ODggMy4yMjYgMS44NzMyIDYuNDUyIDEuODczMiA5LjQ2OTkgMC4xMDQwNiAyLjcwNTctMC4yMDgxMyA1LjMwNzMtMC43Mjg0NiA3LjcwMDh6IiBmaWxsPSIjZmZmIi8+Cjwvc3ZnPgo="
+						},
+						"categories": [
+							{
+								"id": 2,
+								"name": "Sales"
+							}
+						],
+						"displayName": "WooCommerce Trigger",
+						"typeVersion": 1
+					}
+				],
+				"categories": [
+					{
+						"id": 2,
+						"name": "Sales"
+					}
+				],
+				"image": []
+			},
+			{
+				"id": 1765,
+				"name": "Get Slack notifications when new product published on WooCommerce",
+				"views": 79,
+				"recentViews": 9577,
+				"totalViews": 79,
+				"createdAt": "2022-08-12T12:36:53.409Z",
+				"description": "This workflow let's a bot in Slack notify a specific channel when a new product in WooCommerce is published and live on the site. \n\n## Prerequisites\n\n[WooCommerce](https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.woocommercetrigger/) account\n[Slack](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/) and a [Slack bot](https://slack.com/help/articles/115005265703-Create-a-bot-for-your-workspace)\n\n## How it works\n\n1. Listen for WooCommerce product creation\n2. If permalink starts with https://[your-url-here].com/product/\n3. Slack bot notifies channel that a new product has been added. \n\nPlease note, you must update the URL in the IF node to match your url. If your WooCommerce doesn't use the slug /product/, that will need to be updated too. \n",
+				"workflow": {
+					"id": 1016,
+					"name": "Woocommerce to slack: notify new product created",
+					"tags": [
+						{
+							"id": "5",
+							"name": "FVF",
+							"createdAt": "2022-07-30T07:43:44.795Z",
+							"updatedAt": "2022-07-30T07:43:44.795Z"
+						}
+					],
+					"nodes": [
+						{
+							"name": "If URL has /product/",
+							"type": "n8n-nodes-base.if",
+							"position": [640, 300],
+							"parameters": {
+								"conditions": {
+									"string": [
+										{
+											"value1": "={{$json[\"permalink\"]}}",
+											"value2": "https://[add-your-url-here]/product/",
+											"operation": "startsWith"
+										}
+									]
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Send message to slack",
+							"type": "n8n-nodes-base.slack",
+							"position": [920, 260],
+							"parameters": {
+								"text": ":new: A new product has been added! :new:",
+								"channel": "newproducts",
+								"blocksUi": {
+									"blocksValues": []
+								},
+								"attachments": [
+									{
+										"color": "#66FF00",
+										"fields": {
+											"item": [
+												{
+													"short": false,
+													"title": "Name",
+													"value": "={{$json[\"name\"]}}"
+												},
+												{
+													"short": true,
+													"title": "Price",
+													"value": "={{$json[\"regular_price\"]}}"
+												},
+												{
+													"short": true,
+													"title": "Sale Price",
+													"value": "={{$json[\"sale_price\"]}}"
+												},
+												{
+													"short": false,
+													"title": "Link",
+													"value": "={{$json[\"permalink\"]}}"
+												}
+											]
+										},
+										"footer": "=Added: {{$json[\"date_created\"]}}"
+									}
+								],
+								"otherOptions": {}
+							},
+							"credentials": {
+								"slackApi": {
+									"id": "21",
+									"name": "FVF bot"
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "On product creation",
+							"type": "n8n-nodes-base.wooCommerceTrigger",
+							"position": [460, 300],
+							"webhookId": "267c4855-6227-4d33-867e-74600097473e",
+							"parameters": {
+								"event": "product.created"
+							},
+							"credentials": {
+								"wooCommerceApi": {
+									"id": "20",
+									"name": "WooCommerce account FVF"
+								}
+							},
+							"typeVersion": 1
+						}
+					],
+					"active": true,
+					"settings": {},
+					"connections": {
+						"On product creation": {
+							"main": [
+								[
+									{
+										"node": "If URL has /product/",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						},
+						"If URL has /product/": {
+							"main": [
+								[
+									{
+										"node": "Send message to slack",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						}
+					}
+				},
+				"workflowInfo": {
+					"nodeCount": 4,
+					"nodeTypes": {
+						"n8n-nodes-base.if": {
+							"count": 1
+						},
+						"n8n-nodes-base.slack": {
+							"count": 1
+						},
+						"n8n-nodes-base.wooCommerceTrigger": {
+							"count": 1
+						}
+					}
+				},
+				"user": {
+					"username": "n8n-team"
+				},
+				"nodes": [
+					{
+						"id": 20,
+						"icon": "fa:map-signs",
+						"name": "n8n-nodes-base.if",
+						"defaults": {
+							"name": "IF",
+							"color": "#408000"
+						},
+						"iconData": {
+							"icon": "map-signs",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "IF",
+						"typeVersion": 1
+					},
+					{
+						"id": 40,
+						"icon": "file:slack.svg",
+						"name": "n8n-nodes-base.slack",
+						"defaults": {
+							"name": "Slack"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGQ9Ik00MC43NDEgOTMuNTVjMC04LjczNSA2LjYwNy0xNS43NzIgMTQuODE1LTE1Ljc3MnMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjRjMCA4LjczNy02LjYwNyAxNS43NzQtMTQuODE1IDE1Ljc3NHMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6IiBmaWxsPSIjZTAxZTVhIiBzdHJva2U9IiNlMDFlNWEiLz48cGF0aCBkPSJNOTMuNTUgMTA3LjQwOGMtOC43MzUgMC0xNS43NzItNi42MDctMTUuNzcyLTE0LjgxNXM3LjAzNy0xNC44MTUgMTUuNzcyLTE0LjgxNWgzOC44MjZjOC43MzUgMCAxNS43NzIgNi42MDcgMTUuNzcyIDE0LjgxNXMtNy4wMzcgMTQuODE1LTE1Ljc3MiAxNC44MTV6IiBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiLz48cGF0aCBkPSJNNzcuNzc4IDE1Ljc3MkM3Ny43NzggNy4wMzcgODQuMzg1IDAgOTIuNTkzIDBzMTQuODE1IDcuMDM3IDE0LjgxNSAxNS43NzJ2MzguODI2YzAgOC43MzUtNi42MDcgMTUuNzcyLTE0LjgxNSAxNS43NzJzLTE0LjgxNS03LjAzNy0xNC44MTUtMTUuNzcyeiIgZmlsbD0iIzJmYjY3YyIgc3Ryb2tlPSIjMmZiNjdjIi8+PHBhdGggZD0iTTE1Ljc3MiA3MC4zNzFDNy4wMzcgNzAuMzcxIDAgNjMuNzYzIDAgNTUuNTU2czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGQ9Ik03Ny43NzggMTMzLjMzM2MwIDguMjA4IDYuNjA3IDE0LjgxNSAxNC44MTUgMTQuODE1czE0LjgxNS02LjYwNyAxNC44MTUtMTQuODE1LTYuNjA3LTE0LjgxNS0xNC44MTUtMTQuODE1SDc3Ljc3OHoiIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIvPjxwYXRoIGQ9Ik0xMzMuMzM0IDcwLjM3MWgtMTQuODE1VjU1LjU1NmMwLTguMjA3IDYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1czE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUgMTQuODE1eiIgZmlsbD0iIzJmYjY3YyIgc3Ryb2tlPSIjMmZiNjdjIi8+PHBhdGggZD0iTTE0LjgxNSA3Ny43NzhIMjkuNjN2MTQuODE1YzAgOC4yMDctNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTVTMCAxMDAuOCAwIDkyLjU5M3M2LjYwNy0xNC44MTUgMTQuODE1LTE0LjgxNXoiIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIvPjxwYXRoIGQ9Ik03MC4zNzEgMTQuODE1VjI5LjYzSDU1LjU1NmMtOC4yMDcgMC0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNVM0Ny4zNDggMCA1NS41NTYgMHMxNC44MTUgNi42MDcgMTQuODE1IDE0LjgxNXoiIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+						},
+						"categories": [
+							{
+								"id": 6,
+								"name": "Communication"
+							}
+						],
+						"displayName": "Slack",
+						"typeVersion": 2
+					},
+					{
+						"id": 42,
+						"icon": "fa:play",
+						"name": "n8n-nodes-base.start",
+						"defaults": {
+							"name": "Start",
+							"color": "#00e000"
+						},
+						"iconData": {
+							"icon": "play",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "Start",
+						"typeVersion": 1
+					},
+					{
+						"id": 235,
+						"icon": "file:wooCommerce.svg",
+						"name": "n8n-nodes-base.wooCommerceTrigger",
+						"defaults": {
+							"name": "WooCommerce Trigger"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCIgdmVyc2lvbj0iMS4xIiB2aWV3Qm94PSIwIC01MCAyNTYgMjUzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KPHRpdGxlPldvb0NvbW1lcmNlIExvZ288L3RpdGxlPgo8bWV0YWRhdGE+CjxyZGY6UkRGPgo8Y2M6V29yayByZGY6YWJvdXQ9IiI+CjxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0Pgo8ZGM6dHlwZSByZGY6cmVzb3VyY2U9Imh0dHA6Ly9wdXJsLm9yZy9kYy9kY21pdHlwZS9TdGlsbEltYWdlIi8+CjxkYzp0aXRsZS8+CjwvY2M6V29yaz4KPC9yZGY6UkRGPgo8L21ldGFkYXRhPgo8cGF0aCBkPSJtMjMuNzU5IDBoMjA4LjM4YzEzLjE4NyAwIDIzLjg2MyAxMC42NzUgMjMuODYzIDIzLjg2M3Y3OS41NDJjMCAxMy4xODctMTAuNjc1IDIzLjg2My0yMy44NjMgMjMuODYzaC03NC43MjdsMTAuMjU3IDI1LjExOC00NS4xMDktMjUuMTE4aC05OC42OTVjLTEzLjE4NyAwLTIzLjg2My0xMC42NzUtMjMuODYzLTIzLjg2M3YtNzkuNTQyYy0wLjEwNDY2LTEzLjA4MyAxMC41NzEtMjMuODYzIDIzLjc1OC0yMy44NjN6IiBmaWxsPSIjN2Y1NGIzIi8+CjxwYXRoIGQ9Im0xNC41NzggMjEuNzVjMS40NTY5LTEuOTc3MiAzLjY0MjMtMy4wMTc5IDYuNTU2MS0zLjIyNiA1LjMwNzMtMC40MTYyNiA4LjMyNTIgMi4wODEzIDkuMDUzNyA3LjQ5MjcgMy4yMjYgMjEuNzUgNi43NjQyIDQwLjE2OSAxMC41MTEgNTUuMjU5bDIyLjc5LTQzLjM5NWMyLjA4MTMtMy45NTQ1IDQuNjgyOS02LjAzNTggNy44MDQ5LTYuMjQzOSA0LjU3ODktMC4zMTIyIDcuMzg4NiAyLjYwMTYgOC41MzMzIDguNzQxNSAyLjYwMTYgMTMuODQxIDUuOTMxNyAyNS42IDkuODg2MiAzNS41OSAyLjcwNTctMjYuNDMzIDcuMjg0Ni00NS40NzYgMTMuNzM3LTU3LjIzNiAxLjU2MS0yLjkxMzggMy44NTA0LTQuMzcwNyA2Ljg2ODMtNC41Nzg5IDIuMzkzNS0wLjIwODEzIDQuNTc4OSAwLjUyMDMzIDYuNTU2MSAyLjA4MTMgMS45NzcyIDEuNTYxIDMuMDE3OSAzLjUzODIgMy4yMjYgNS45MzE3IDAuMTA0MDYgMS44NzMyLTAuMjA4MTMgMy40MzQxLTEuMDQwNyA0Ljk5NTEtNC4wNTg1IDcuNDkyNy03LjM4ODYgMjAuMDg1LTEwLjA5NCAzNy41NjctMi42MDE2IDE2Ljk2My0zLjUzODIgMzAuMTc5LTIuOTEzOCAzOS42NDkgMC4yMDgxMyAyLjYwMTYtMC4yMDgxMyA0Ljg5MTEtMS4yNDg4IDYuODY4My0xLjI0ODggMi4yODk0LTMuMTIyIDMuNTM4Mi01LjUxNTQgMy43NDYzLTIuNzA1NyAwLjIwODEzLTUuNTE1NC0xLjA0MDYtOC4yMjExLTMuODUwNC05LjY3OC05Ljg4NjItMTcuMzc5LTI0LjY2My0yMi45OTgtNDQuMzMyLTYuNzY0MiAxMy4zMi0xMS43NTkgMjMuMzExLTE0Ljk4NSAyOS45NzEtNi4xMzk4IDExLjc1OS0xMS4zNDMgMTcuNzk1LTE1LjcxNCAxOC4xMDctMi44MDk4IDAuMjA4MTMtNS4yMDMzLTIuMTg1NC03LjI4NDYtNy4xODA1LTUuMzA3My0xMy42MzMtMTEuMDMxLTM5Ljk2MS0xNy4xNzEtNzguOTg1LTAuNDE2MjYtMi43MDU3IDAuMjA4MTMtNS4wOTkyIDEuNjY1LTYuOTcyNHptMjIzLjY0IDE2LjMzOGMtMy43NDYzLTYuNTU2MS05LjI2MTgtMTAuNTExLTE2LjY1LTEyLjA3Mi0xLjk3NzItMC40MTYyNi0zLjg1MDQtMC42MjQzOS01LjYxOTUtMC42MjQzOS05Ljk5MDIgMC0xOC4xMDcgNS4yMDMzLTI0LjQ1NSAxNS42MS01LjQxMTQgOC44NDU1LTguMTE3MSAxOC42MjgtOC4xMTcxIDI5LjM0NiAwIDguMDEzIDEuNjY1IDE0Ljg4MSA0Ljk5NTEgMjAuNjA1IDMuNzQ2MyA2LjU1NjEgOS4yNjE4IDEwLjUxMSAxNi42NSAxMi4wNzIgMS45NzcyIDAuNDE2MjYgMy44NTA0IDAuNjI0MzkgNS42MTk1IDAuNjI0MzkgMTAuMDk0IDAgMTguMjExLTUuMjAzMyAyNC40NTUtMTUuNjEgNS40MTE0LTguOTQ5NiA4LjExNzEtMTguNzMyIDguMTE3MS0yOS40NSAwLjEwNDA2LTguMTE3MS0xLjY2NS0xNC44ODEtNC45OTUxLTIwLjUwMXptLTEzLjExMiAyOC44MjZjLTEuNDU2OSA2Ljg2ODMtNC4wNTg1IDExLjk2Ny03LjkwODkgMTUuNDAyLTMuMDE3OSAyLjcwNTctNS44Mjc2IDMuODUwNC04LjQyOTMgMy4zMzAxLTIuNDk3Ni0wLjUyMDMzLTQuNTc4OS0yLjcwNTctNi4xMzk4LTYuNzY0Mi0xLjI0ODgtMy4yMjYtMS44NzMyLTYuNDUyLTEuODczMi05LjQ2OTkgMC0yLjYwMTYgMC4yMDgxMy01LjIwMzMgMC43Mjg0Ni03LjU5NjcgMC45MzY1OS00LjI2NjcgMi43MDU3LTguNDI5MyA1LjUxNTQtMTIuMzg0IDMuNDM0MS01LjA5OTIgNy4wNzY0LTcuMTgwNSAxMC44MjMtNi40NTIgMi40OTc2IDAuNTIwMzMgNC41Nzg5IDIuNzA1NyA2LjEzOTggNi43NjQyIDEuMjQ4OCAzLjIyNiAxLjg3MzIgNi40NTIgMS44NzMyIDkuNDY5OSAwIDIuNzA1Ny0wLjIwODEzIDUuMzA3My0wLjcyODQ2IDcuNzAwOHptLTUyLjAzMy0yOC44MjZjLTMuNzQ2My02LjU1NjEtOS4zNjU5LTEwLjUxMS0xNi42NS0xMi4wNzItMS45NzcyLTAuNDE2MjYtMy44NTA0LTAuNjI0MzktNS42MTk1LTAuNjI0MzktOS45OTAyIDAtMTguMTA3IDUuMjAzMy0yNC40NTUgMTUuNjEtNS40MTE0IDguODQ1NS04LjExNzEgMTguNjI4LTguMTE3MSAyOS4zNDYgMCA4LjAxMyAxLjY2NSAxNC44ODEgNC45OTUxIDIwLjYwNSAzLjc0NjMgNi41NTYxIDkuMjYxOCAxMC41MTEgMTYuNjUgMTIuMDcyIDEuOTc3MiAwLjQxNjI2IDMuODUwNCAwLjYyNDM5IDUuNjE5NSAwLjYyNDM5IDEwLjA5NCAwIDE4LjIxMS01LjIwMzMgMjQuNDU1LTE1LjYxIDUuNDExNC04Ljk0OTYgOC4xMTcxLTE4LjczMiA4LjExNzEtMjkuNDUgMC04LjExNzEtMS42NjUtMTQuODgxLTQuOTk1MS0yMC41MDF6bS0xMy4yMTYgMjguODI2Yy0xLjQ1NjkgNi44NjgzLTQuMDU4NSAxMS45NjctNy45MDg5IDE1LjQwMi0zLjAxNzkgMi43MDU3LTUuODI3NiAzLjg1MDQtOC40MjkzIDMuMzMwMS0yLjQ5NzYtMC41MjAzMy00LjU3ODktMi43MDU3LTYuMTM5OC02Ljc2NDItMS4yNDg4LTMuMjI2LTEuODczMi02LjQ1Mi0xLjg3MzItOS40Njk5IDAtMi42MDE2IDAuMjA4MTMtNS4yMDMzIDAuNzI4NDYtNy41OTY3IDAuOTM2NTgtNC4yNjY3IDIuNzA1Ny04LjQyOTMgNS41MTU0LTEyLjM4NCAzLjQzNDEtNS4wOTkyIDcuMDc2NC03LjE4MDUgMTAuODIzLTYuNDUyIDIuNDk3NiAwLjUyMDMzIDQuNTc4OSAyLjcwNTcgNi4xMzk4IDYuNzY0MiAxLjI0ODggMy4yMjYgMS44NzMyIDYuNDUyIDEuODczMiA5LjQ2OTkgMC4xMDQwNiAyLjcwNTctMC4yMDgxMyA1LjMwNzMtMC43Mjg0NiA3LjcwMDh6IiBmaWxsPSIjZmZmIi8+Cjwvc3ZnPgo="
+						},
+						"categories": [
+							{
+								"id": 2,
+								"name": "Sales"
+							}
+						],
+						"displayName": "WooCommerce Trigger",
+						"typeVersion": 1
+					}
+				],
+				"categories": [
+					{
+						"id": 2,
+						"name": "Sales"
+					}
+				],
+				"image": []
+			},
+			{
+				"id": 1460,
+				"name": "Notify on Slack when refund is registered in WooCommerce",
+				"views": 85,
+				"recentViews": 9541,
+				"totalViews": 85,
+				"createdAt": "2022-02-17T15:02:58.662Z",
+				"description": "This workflow uses a WooCommerce trigger that will run when an order has been updated and the status is refunded.\n\nIf the value of this is over 100 it will post it to a Slack channel.\n\nTo use this workflow you will need to set the credentials to use for the WooCommerce and Slack nodes, You will also need to pick a channel to post the message to.",
+				"workflow": {
+					"id": 82,
+					"name": "New WooCommerce refund to Slack",
+					"nodes": [
+						{
+							"name": "Order Updated",
+							"type": "n8n-nodes-base.wooCommerceTrigger",
+							"position": [320, 500],
+							"webhookId": "f7736be3-e978-4a17-b936-7ce9f8ccdb72",
+							"parameters": {
+								"event": "order.updated"
+							},
+							"credentials": {
+								"wooCommerceApi": {
+									"id": "48",
+									"name": "WooCommerce account"
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "If Refund and Over 100",
+							"type": "n8n-nodes-base.if",
+							"position": [540, 500],
+							"parameters": {
+								"conditions": {
+									"number": [
+										{
+											"value1": "={{$json[\"total\"]}}",
+											"value2": 100,
+											"operation": "largerEqual"
+										}
+									],
+									"string": [
+										{
+											"value1": "={{$json[\"status\"]}}",
+											"value2": "refunded"
+										}
+									]
+								}
+							},
+							"typeVersion": 1
+						},
+						{
+							"name": "Send to Slack",
+							"type": "n8n-nodes-base.slack",
+							"position": [780, 480],
+							"parameters": {
+								"text": ":x: A refund has been issued :x:",
+								"channel": "woo-commerce",
+								"blocksUi": {
+									"blocksValues": []
+								},
+								"attachments": [
+									{
+										"color": "#FF0000",
+										"fields": {
+											"item": [
+												{
+													"short": true,
+													"title": "Order ID",
+													"value": "={{$json[\"id\"]}}"
+												},
+												{
+													"short": true,
+													"title": "Status",
+													"value": "={{$json[\"status\"]}}"
+												},
+												{
+													"short": true,
+													"title": "Total",
+													"value": "={{$json[\"currency_symbol\"]}}{{$json[\"total\"]}}"
+												}
+											]
+										},
+										"footer": "=*Order updated:* {{$json[\"date_modified\"]}}"
+									}
+								],
+								"otherOptions": {}
+							},
+							"credentials": {
+								"slackApi": {
+									"id": "53",
+									"name": "Slack Access Token"
+								}
+							},
+							"typeVersion": 1
+						}
+					],
+					"active": false,
+					"settings": {
+						"saveManualExecutions": true,
+						"saveExecutionProgress": true,
+						"saveDataSuccessExecution": "all"
+					},
+					"connections": {
+						"Order Updated": {
+							"main": [
+								[
+									{
+										"node": "If Refund and Over 100",
+										"type": "main",
+										"index": 0
+									}
+								]
+							]
+						},
+						"If Refund and Over 100": {
+							"main": [
+								[
+									{
+										"node": "Send to Slack",
+										"type": "main",
+										"index": 0
+									}
+								],
+								[]
+							]
+						}
+					}
+				},
+				"workflowInfo": {
+					"nodeCount": 4,
+					"nodeTypes": {
+						"n8n-nodes-base.if": {
+							"count": 1
+						},
+						"n8n-nodes-base.slack": {
+							"count": 1
+						},
+						"n8n-nodes-base.wooCommerceTrigger": {
+							"count": 1
+						}
+					}
+				},
+				"user": {
+					"username": "jon-n8n"
+				},
+				"nodes": [
+					{
+						"id": 20,
+						"icon": "fa:map-signs",
+						"name": "n8n-nodes-base.if",
+						"defaults": {
+							"name": "IF",
+							"color": "#408000"
+						},
+						"iconData": {
+							"icon": "map-signs",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "IF",
+						"typeVersion": 1
+					},
+					{
+						"id": 40,
+						"icon": "file:slack.svg",
+						"name": "n8n-nodes-base.slack",
+						"defaults": {
+							"name": "Slack"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGQ9Ik00MC43NDEgOTMuNTVjMC04LjczNSA2LjYwNy0xNS43NzIgMTQuODE1LTE1Ljc3MnMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjRjMCA4LjczNy02LjYwNyAxNS43NzQtMTQuODE1IDE1Ljc3NHMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6IiBmaWxsPSIjZTAxZTVhIiBzdHJva2U9IiNlMDFlNWEiLz48cGF0aCBkPSJNOTMuNTUgMTA3LjQwOGMtOC43MzUgMC0xNS43NzItNi42MDctMTUuNzcyLTE0LjgxNXM3LjAzNy0xNC44MTUgMTUuNzcyLTE0LjgxNWgzOC44MjZjOC43MzUgMCAxNS43NzIgNi42MDcgMTUuNzcyIDE0LjgxNXMtNy4wMzcgMTQuODE1LTE1Ljc3MiAxNC44MTV6IiBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiLz48cGF0aCBkPSJNNzcuNzc4IDE1Ljc3MkM3Ny43NzggNy4wMzcgODQuMzg1IDAgOTIuNTkzIDBzMTQuODE1IDcuMDM3IDE0LjgxNSAxNS43NzJ2MzguODI2YzAgOC43MzUtNi42MDcgMTUuNzcyLTE0LjgxNSAxNS43NzJzLTE0LjgxNS03LjAzNy0xNC44MTUtMTUuNzcyeiIgZmlsbD0iIzJmYjY3YyIgc3Ryb2tlPSIjMmZiNjdjIi8+PHBhdGggZD0iTTE1Ljc3MiA3MC4zNzFDNy4wMzcgNzAuMzcxIDAgNjMuNzYzIDAgNTUuNTU2czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGQ9Ik03Ny43NzggMTMzLjMzM2MwIDguMjA4IDYuNjA3IDE0LjgxNSAxNC44MTUgMTQuODE1czE0LjgxNS02LjYwNyAxNC44MTUtMTQuODE1LTYuNjA3LTE0LjgxNS0xNC44MTUtMTQuODE1SDc3Ljc3OHoiIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIvPjxwYXRoIGQ9Ik0xMzMuMzM0IDcwLjM3MWgtMTQuODE1VjU1LjU1NmMwLTguMjA3IDYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1czE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUgMTQuODE1eiIgZmlsbD0iIzJmYjY3YyIgc3Ryb2tlPSIjMmZiNjdjIi8+PHBhdGggZD0iTTE0LjgxNSA3Ny43NzhIMjkuNjN2MTQuODE1YzAgOC4yMDctNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTVTMCAxMDAuOCAwIDkyLjU5M3M2LjYwNy0xNC44MTUgMTQuODE1LTE0LjgxNXoiIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIvPjxwYXRoIGQ9Ik03MC4zNzEgMTQuODE1VjI5LjYzSDU1LjU1NmMtOC4yMDcgMC0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNVM0Ny4zNDggMCA1NS41NTYgMHMxNC44MTUgNi42MDcgMTQuODE1IDE0LjgxNXoiIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+						},
+						"categories": [
+							{
+								"id": 6,
+								"name": "Communication"
+							}
+						],
+						"displayName": "Slack",
+						"typeVersion": 2
+					},
+					{
+						"id": 42,
+						"icon": "fa:play",
+						"name": "n8n-nodes-base.start",
+						"defaults": {
+							"name": "Start",
+							"color": "#00e000"
+						},
+						"iconData": {
+							"icon": "play",
+							"type": "icon"
+						},
+						"categories": [
+							{
+								"id": 9,
+								"name": "Core Nodes"
+							}
+						],
+						"displayName": "Start",
+						"typeVersion": 1
+					},
+					{
+						"id": 235,
+						"icon": "file:wooCommerce.svg",
+						"name": "n8n-nodes-base.wooCommerceTrigger",
+						"defaults": {
+							"name": "WooCommerce Trigger"
+						},
+						"iconData": {
+							"type": "file",
+							"fileBuffer": "data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCIgdmVyc2lvbj0iMS4xIiB2aWV3Qm94PSIwIC01MCAyNTYgMjUzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KPHRpdGxlPldvb0NvbW1lcmNlIExvZ288L3RpdGxlPgo8bWV0YWRhdGE+CjxyZGY6UkRGPgo8Y2M6V29yayByZGY6YWJvdXQ9IiI+CjxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0Pgo8ZGM6dHlwZSByZGY6cmVzb3VyY2U9Imh0dHA6Ly9wdXJsLm9yZy9kYy9kY21pdHlwZS9TdGlsbEltYWdlIi8+CjxkYzp0aXRsZS8+CjwvY2M6V29yaz4KPC9yZGY6UkRGPgo8L21ldGFkYXRhPgo8cGF0aCBkPSJtMjMuNzU5IDBoMjA4LjM4YzEzLjE4NyAwIDIzLjg2MyAxMC42NzUgMjMuODYzIDIzLjg2M3Y3OS41NDJjMCAxMy4xODctMTAuNjc1IDIzLjg2My0yMy44NjMgMjMuODYzaC03NC43MjdsMTAuMjU3IDI1LjExOC00NS4xMDktMjUuMTE4aC05OC42OTVjLTEzLjE4NyAwLTIzLjg2My0xMC42NzUtMjMuODYzLTIzLjg2M3YtNzkuNTQyYy0wLjEwNDY2LTEzLjA4MyAxMC41NzEtMjMuODYzIDIzLjc1OC0yMy44NjN6IiBmaWxsPSIjN2Y1NGIzIi8+CjxwYXRoIGQ9Im0xNC41NzggMjEuNzVjMS40NTY5LTEuOTc3MiAzLjY0MjMtMy4wMTc5IDYuNTU2MS0zLjIyNiA1LjMwNzMtMC40MTYyNiA4LjMyNTIgMi4wODEzIDkuMDUzNyA3LjQ5MjcgMy4yMjYgMjEuNzUgNi43NjQyIDQwLjE2OSAxMC41MTEgNTUuMjU5bDIyLjc5LTQzLjM5NWMyLjA4MTMtMy45NTQ1IDQuNjgyOS02LjAzNTggNy44MDQ5LTYuMjQzOSA0LjU3ODktMC4zMTIyIDcuMzg4NiAyLjYwMTYgOC41MzMzIDguNzQxNSAyLjYwMTYgMTMuODQxIDUuOTMxNyAyNS42IDkuODg2MiAzNS41OSAyLjcwNTctMjYuNDMzIDcuMjg0Ni00NS40NzYgMTMuNzM3LTU3LjIzNiAxLjU2MS0yLjkxMzggMy44NTA0LTQuMzcwNyA2Ljg2ODMtNC41Nzg5IDIuMzkzNS0wLjIwODEzIDQuNTc4OSAwLjUyMDMzIDYuNTU2MSAyLjA4MTMgMS45NzcyIDEuNTYxIDMuMDE3OSAzLjUzODIgMy4yMjYgNS45MzE3IDAuMTA0MDYgMS44NzMyLTAuMjA4MTMgMy40MzQxLTEuMDQwNyA0Ljk5NTEtNC4wNTg1IDcuNDkyNy03LjM4ODYgMjAuMDg1LTEwLjA5NCAzNy41NjctMi42MDE2IDE2Ljk2My0zLjUzODIgMzAuMTc5LTIuOTEzOCAzOS42NDkgMC4yMDgxMyAyLjYwMTYtMC4yMDgxMyA0Ljg5MTEtMS4yNDg4IDYuODY4My0xLjI0ODggMi4yODk0LTMuMTIyIDMuNTM4Mi01LjUxNTQgMy43NDYzLTIuNzA1NyAwLjIwODEzLTUuNTE1NC0xLjA0MDYtOC4yMjExLTMuODUwNC05LjY3OC05Ljg4NjItMTcuMzc5LTI0LjY2My0yMi45OTgtNDQuMzMyLTYuNzY0MiAxMy4zMi0xMS43NTkgMjMuMzExLTE0Ljk4NSAyOS45NzEtNi4xMzk4IDExLjc1OS0xMS4zNDMgMTcuNzk1LTE1LjcxNCAxOC4xMDctMi44MDk4IDAuMjA4MTMtNS4yMDMzLTIuMTg1NC03LjI4NDYtNy4xODA1LTUuMzA3My0xMy42MzMtMTEuMDMxLTM5Ljk2MS0xNy4xNzEtNzguOTg1LTAuNDE2MjYtMi43MDU3IDAuMjA4MTMtNS4wOTkyIDEuNjY1LTYuOTcyNHptMjIzLjY0IDE2LjMzOGMtMy43NDYzLTYuNTU2MS05LjI2MTgtMTAuNTExLTE2LjY1LTEyLjA3Mi0xLjk3NzItMC40MTYyNi0zLjg1MDQtMC42MjQzOS01LjYxOTUtMC42MjQzOS05Ljk5MDIgMC0xOC4xMDcgNS4yMDMzLTI0LjQ1NSAxNS42MS01LjQxMTQgOC44NDU1LTguMTE3MSAxOC42MjgtOC4xMTcxIDI5LjM0NiAwIDguMDEzIDEuNjY1IDE0Ljg4MSA0Ljk5NTEgMjAuNjA1IDMuNzQ2MyA2LjU1NjEgOS4yNjE4IDEwLjUxMSAxNi42NSAxMi4wNzIgMS45NzcyIDAuNDE2MjYgMy44NTA0IDAuNjI0MzkgNS42MTk1IDAuNjI0MzkgMTAuMDk0IDAgMTguMjExLTUuMjAzMyAyNC40NTUtMTUuNjEgNS40MTE0LTguOTQ5NiA4LjExNzEtMTguNzMyIDguMTE3MS0yOS40NSAwLjEwNDA2LTguMTE3MS0xLjY2NS0xNC44ODEtNC45OTUxLTIwLjUwMXptLTEzLjExMiAyOC44MjZjLTEuNDU2OSA2Ljg2ODMtNC4wNTg1IDExLjk2Ny03LjkwODkgMTUuNDAyLTMuMDE3OSAyLjcwNTctNS44Mjc2IDMuODUwNC04LjQyOTMgMy4zMzAxLTIuNDk3Ni0wLjUyMDMzLTQuNTc4OS0yLjcwNTctNi4xMzk4LTYuNzY0Mi0xLjI0ODgtMy4yMjYtMS44NzMyLTYuNDUyLTEuODczMi05LjQ2OTkgMC0yLjYwMTYgMC4yMDgxMy01LjIwMzMgMC43Mjg0Ni03LjU5NjcgMC45MzY1OS00LjI2NjcgMi43MDU3LTguNDI5MyA1LjUxNTQtMTIuMzg0IDMuNDM0MS01LjA5OTIgNy4wNzY0LTcuMTgwNSAxMC44MjMtNi40NTIgMi40OTc2IDAuNTIwMzMgNC41Nzg5IDIuNzA1NyA2LjEzOTggNi43NjQyIDEuMjQ4OCAzLjIyNiAxLjg3MzIgNi40NTIgMS44NzMyIDkuNDY5OSAwIDIuNzA1Ny0wLjIwODEzIDUuMzA3My0wLjcyODQ2IDcuNzAwOHptLTUyLjAzMy0yOC44MjZjLTMuNzQ2My02LjU1NjEtOS4zNjU5LTEwLjUxMS0xNi42NS0xMi4wNzItMS45NzcyLTAuNDE2MjYtMy44NTA0LTAuNjI0MzktNS42MTk1LTAuNjI0MzktOS45OTAyIDAtMTguMTA3IDUuMjAzMy0yNC40NTUgMTUuNjEtNS40MTE0IDguODQ1NS04LjExNzEgMTguNjI4LTguMTE3MSAyOS4zNDYgMCA4LjAxMyAxLjY2NSAxNC44ODEgNC45OTUxIDIwLjYwNSAzLjc0NjMgNi41NTYxIDkuMjYxOCAxMC41MTEgMTYuNjUgMTIuMDcyIDEuOTc3MiAwLjQxNjI2IDMuODUwNCAwLjYyNDM5IDUuNjE5NSAwLjYyNDM5IDEwLjA5NCAwIDE4LjIxMS01LjIwMzMgMjQuNDU1LTE1LjYxIDUuNDExNC04Ljk0OTYgOC4xMTcxLTE4LjczMiA4LjExNzEtMjkuNDUgMC04LjExNzEtMS42NjUtMTQuODgxLTQuOTk1MS0yMC41MDF6bS0xMy4yMTYgMjguODI2Yy0xLjQ1NjkgNi44NjgzLTQuMDU4NSAxMS45NjctNy45MDg5IDE1LjQwMi0zLjAxNzkgMi43MDU3LTUuODI3NiAzLjg1MDQtOC40MjkzIDMuMzMwMS0yLjQ5NzYtMC41MjAzMy00LjU3ODktMi43MDU3LTYuMTM5OC02Ljc2NDItMS4yNDg4LTMuMjI2LTEuODczMi02LjQ1Mi0xLjg3MzItOS40Njk5IDAtMi42MDE2IDAuMjA4MTMtNS4yMDMzIDAuNzI4NDYtNy41OTY3IDAuOTM2NTgtNC4yNjY3IDIuNzA1Ny04LjQyOTMgNS41MTU0LTEyLjM4NCAzLjQzNDEtNS4wOTkyIDcuMDc2NC03LjE4MDUgMTAuODIzLTYuNDUyIDIuNDk3NiAwLjUyMDMzIDQuNTc4OSAyLjcwNTcgNi4xMzk4IDYuNzY0MiAxLjI0ODggMy4yMjYgMS44NzMyIDYuNDUyIDEuODczMiA5LjQ2OTkgMC4xMDQwNiAyLjcwNTctMC4yMDgxMyA1LjMwNzMtMC43Mjg0NiA3LjcwMDh6IiBmaWxsPSIjZmZmIi8+Cjwvc3ZnPgo="
+						},
+						"categories": [
+							{
+								"id": 2,
+								"name": "Sales"
+							}
+						],
+						"displayName": "WooCommerce Trigger",
+						"typeVersion": 1
+					}
+				],
+				"categories": [
+					{
+						"id": 2,
+						"name": "Sales"
+					},
+					{
+						"id": 8,
+						"name": "Finance & Accounting"
+					}
+				],
+				"image": []
+			}
+		],
+		"image": []
+	}
+}

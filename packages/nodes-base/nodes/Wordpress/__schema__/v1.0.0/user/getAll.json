@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "avatar_urls": {
+            "type": "object",
+            "properties": {
+                "24": {
+                    "type": "string"
+                },
+                "48": {
+                    "type": "string"
+                },
+                "96": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "24",
+                "48",
+                "96"
+            ]
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "self",
+                "collection"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "url",
+        "description",
+        "link",
+        "slug",
+        "meta",
+        "_links"
+    ],
+    "version": 1
+}

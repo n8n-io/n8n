@@ -1,26 +1,80 @@
-import type { Readable } from 'stream';
+import jwt from 'jsonwebtoken';
+import set from 'lodash/set';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	jsonParse,
-	BINARY_ENCODING,
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	WAIT_NODE_TYPE,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
-import set from 'lodash/set';
-import jwt from 'jsonwebtoken';
+import type { Readable } from 'stream';
+
+import { getBinaryResponse } from './utils/binary';
+import { configuredOutputs } from './utils/outputs';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
+
+const respondWithProperty: INodeProperties = {
+	displayName: 'Respond With',
+	name: 'respondWith',
+	type: 'options',
+	options: [
+		{
+			name: 'All Incoming Items',
+			value: 'allIncomingItems',
+			description: 'Respond with all input JSON items',
+		},
+		{
+			name: 'Binary File',
+			value: 'binary',
+			description: 'Respond with incoming file binary data',
+		},
+		{
+			name: 'First Incoming Item',
+			value: 'firstIncomingItem',
+			description: 'Respond with the first input JSON item',
+		},
+		{
+			name: 'JSON',
+			value: 'json',
+			description: 'Respond with a custom JSON body',
+		},
+		{
+			name: 'JWT Token',
+			value: 'jwt',
+			description: 'Respond with a JWT token',
+		},
+		{
+			name: 'No Data',
+			value: 'noData',
+			description: 'Respond with an empty body',
+		},
+		{
+			name: 'Redirect',
+			value: 'redirect',
+			description: 'Respond with a redirect to a given URL',
+		},
+		{
+			name: 'Text',
+			value: 'text',
+			description: 'Respond with a simple text message body',
+		},
+	],
+	default: 'firstIncomingItem',
+	description: 'The data that should be returned',
+};
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,13 +82,15 @@ export class RespondToWebhook implements INodeType {
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		// Keep the default version at 1.4 until streaming is fully supported
+		defaultVersion: 1.4,
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: `={{(${configuredOutputs})($nodeVersion, $parameter)}}`,
 		credentials: [
 			{
 				name: 'jwtAuth',
@@ -48,6 +104,16 @@ export class RespondToWebhook implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Enable Response Output Branch',
+				name: 'enableResponseOutput',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to provide an additional output branch with the response sent to the webhook',
+				isNodeSetting: true,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.4 } }] } },
+			},
+			{
 				displayName:
 					'Verify that the "Webhook" node\'s "Respond" parameter is set to "Using Respond to Webhook Node". <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details',
 				name: 'generalNotice',
@@ -55,53 +121,13 @@ export class RespondToWebhook implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Respond With',
-				name: 'respondWith',
-				type: 'options',
-				options: [
-					{
-						name: 'All Incoming Items',
-						value: 'allIncomingItems',
-						description: 'Respond with all input JSON items',
-					},
-					{
-						name: 'Binary File',
-						value: 'binary',
-						description: 'Respond with incoming file binary data',
-					},
-					{
-						name: 'First Incoming Item',
-						value: 'firstIncomingItem',
-						description: 'Respond with the first input JSON item',
-					},
-					{
-						name: 'JSON',
-						value: 'json',
-						description: 'Respond with a custom JSON body',
-					},
-					{
-						name: 'JWT Token',
-						value: 'jwt',
-						description: 'Respond with a JWT token',
-					},
-					{
-						name: 'No Data',
-						value: 'noData',
-						description: 'Respond with an empty body',
-					},
-					{
-						name: 'Redirect',
-						value: 'redirect',
-						description: 'Respond with a redirect to a given URL',
-					},
-					{
-						name: 'Text',
-						value: 'text',
-						description: 'Respond with a simple text message body',
-					},
-				],
-				default: 'firstIncomingItem',
-				description: 'The data that should be returned',
+				...respondWithProperty,
+				displayOptions: { show: { '@version': [1, 1.1] } },
+			},
+			{
+				...respondWithProperty,
+				noDataExpression: true,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
 			},
 			{
 				displayName: 'Credentials',
@@ -225,7 +251,18 @@ export class RespondToWebhook implements INodeType {
 				},
 				description: 'The name of the node input field with the binary data',
 			},
-
+			{
+				displayName:
+					'To avoid unexpected behavior, add a "Content-Type" response header with the appropriate value',
+				name: 'contentTypeNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						respondWith: ['text'],
+					},
+				},
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -290,10 +327,31 @@ export class RespondToWebhook implements INodeType {
 						description: 'The name of the response field to put all items in',
 						placeholder: 'e.g. data',
 					},
+					{
+						displayName: 'Enable Streaming',
+						name: 'enableStreaming',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to enable streaming to the response',
+						displayOptions: {
+							show: {
+								['/respondWith']: ['allIncomingItems', 'firstIncomingItem', 'text', 'json', 'jwt'],
+								'@version': [{ _cnd: { gte: 1.5 } }],
+							},
+						},
+					},
 				],
 			},
 		],
 	};
+
+	async onMessage(
+		context: IExecuteFunctions,
+		_data: INodeExecutionData,
+	): Promise<INodeExecutionData[][]> {
+		const inputData = context.getInputData();
+		return [inputData];
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -306,9 +364,19 @@ export class RespondToWebhook implements INodeType {
 			WAIT_NODE_TYPE,
 		];
 
+		let response: IN8nHttpFullResponse;
+
+		const connectedNodes = this.getParentNodes(this.getNode().name, {
+			includeNodeParameters: true,
+		});
+
+		const options = this.getNodeParameter('options', 0, {});
+
+		const shouldStream =
+			nodeVersion >= 1.5 && this.isStreaming() && options.enableStreaming !== false;
+
 		try {
 			if (nodeVersion >= 1.1) {
-				const connectedNodes = this.getParentNodes(this.getNode().name);
 				if (!connectedNodes.some(({ type }) => WEBHOOK_NODE_TYPES.includes(type))) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -322,7 +390,6 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			const respondWith = this.getNodeParameter('respondWith', 0) as string;
-			const options = this.getNodeParameter('options', 0, {});
 
 			const headers = {} as IDataObject;
 			if (options.responseHeaders) {
@@ -353,16 +420,20 @@ export class RespondToWebhook implements INodeType {
 						}
 					}
 				}
+
+				if (shouldStream) {
+					this.sendChunk('begin', 0);
+					this.sendChunk('item', 0, responseBody as IDataObject);
+					this.sendChunk('end', 0);
+				}
 			} else if (respondWith === 'jwt') {
 				try {
-					const { keyType, secret, algorithm, privateKey } = (await this.getCredentials(
-						'jwtAuth',
-					)) as {
+					const { keyType, secret, algorithm, privateKey } = await this.getCredentials<{
 						keyType: 'passphrase' | 'pemKey';
 						privateKey: string;
 						secret: string;
 						algorithm: jwt.Algorithm;
-					};
+					}>('jwtAuth');
 
 					let secretOrPrivateKey;
 
@@ -374,13 +445,24 @@ export class RespondToWebhook implements INodeType {
 					const payload = this.getNodeParameter('payload', 0, {}) as IDataObject;
 					const token = jwt.sign(payload, secretOrPrivateKey, { algorithm });
 					responseBody = { token };
+
+					if (shouldStream) {
+						this.sendChunk('begin', 0);
+						this.sendChunk('item', 0, responseBody as IDataObject);
+						this.sendChunk('end', 0);
+					}
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), error as Error, {
 						message: 'Error signing JWT token',
 					});
 				}
 			} else if (respondWith === 'allIncomingItems') {
-				const respondItems = items.map((item) => item.json);
+				const respondItems = items.map((item, index) => {
+					this.sendChunk('begin', index);
+					this.sendChunk('item', index, item.json);
+					this.sendChunk('end', index);
+					return item.json;
+				});
 				responseBody = options.responseKey
 					? set({}, options.responseKey as string, respondItems)
 					: respondItems;
@@ -388,8 +470,21 @@ export class RespondToWebhook implements INodeType {
 				responseBody = options.responseKey
 					? set({}, options.responseKey as string, items[0].json)
 					: items[0].json;
+				if (shouldStream) {
+					this.sendChunk('begin', 0);
+					this.sendChunk('item', 0, items[0].json);
+					this.sendChunk('end', 0);
+				}
 			} else if (respondWith === 'text') {
-				responseBody = this.getNodeParameter('responseBody', 0) as string;
+				const rawBody = this.getNodeParameter('responseBody', 0) as string;
+				responseBody = rawBody;
+
+				// Send the raw body to the stream
+				if (shouldStream) {
+					this.sendChunk('begin', 0);
+					this.sendChunk('item', 0, rawBody);
+					this.sendChunk('end', 0);
+				}
 			} else if (respondWith === 'binary') {
 				const item = items[0];
 
@@ -415,16 +510,8 @@ export class RespondToWebhook implements INodeType {
 				}
 
 				const binaryData = this.helpers.assertBinaryData(0, responseBinaryPropertyName);
-				if (binaryData.id) {
-					responseBody = { binaryData };
-				} else {
-					responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
-					headers['content-length'] = (responseBody as Buffer).length;
-				}
 
-				if (!headers['content-type']) {
-					headers['content-type'] = binaryData.mimeType;
-				}
+				responseBody = getBinaryResponse(binaryData, headers);
 			} else if (respondWith === 'redirect') {
 				headers.location = this.getNodeParameter('redirectURL', 0) as string;
 				statusCode = (options.responseCode as number) ?? 307;
@@ -435,13 +522,49 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
-			const response: IN8nHttpFullResponse = {
+			const chatTrigger = connectedNodes.find(
+				(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
+			);
+
+			const parameters = chatTrigger?.parameters as {
+				options: { responseMode: string };
+			};
+
+			// if workflow is started from chat trigger and responseMode is set to "responseNodes"
+			// response to chat will be send by ChatService
+			if (
+				chatTrigger &&
+				!chatTrigger.disabled &&
+				parameters.options.responseMode === 'responseNodes'
+			) {
+				let message = '';
+
+				if (responseBody && typeof responseBody === 'object' && !Array.isArray(responseBody)) {
+					message =
+						(((responseBody as IDataObject).output ??
+							(responseBody as IDataObject).text ??
+							(responseBody as IDataObject).message) as string) ?? '';
+
+					if (message === '' && Object.keys(responseBody).length > 0) {
+						try {
+							message = JSON.stringify(responseBody, null, 2);
+						} catch (e) {}
+					}
+				}
+
+				await this.putExecutionToWait(WAIT_INDEFINITELY);
+				return [[{ json: {}, sendMessage: message }]];
+			}
+
+			response = {
 				body: responseBody,
 				headers,
 				statusCode,
 			};
 
-			this.sendResponse(response);
+			if (!shouldStream || respondWith === 'binary') {
+				this.sendResponse(response);
+			}
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const itemData = generatePairedItemData(items.length);
@@ -453,6 +576,12 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			throw error;
+		}
+
+		if (nodeVersion === 1.3) {
+			return [items, [{ json: { response } }]];
+		} else if (nodeVersion >= 1.4 && this.getNodeParameter('enableResponseOutput', 0, false)) {
+			return [items, [{ json: { response } }]];
 		}
 
 		return [items];

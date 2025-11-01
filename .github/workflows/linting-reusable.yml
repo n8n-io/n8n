@@ -8,49 +8,26 @@ on:
         required: false
         type: string
         default: master
-      cacheKey:
-        description: Cache key for modules and build artifacts.
+      nodeVersion:
+        description: Version of node to use.
         required: false
-        default: ''
         type: string
+        default: 22.x
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
 
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           ref: ${{ inputs.ref }}
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+      - name: Build and Test
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
-          node-version: 20.x
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
-
-      - name: Build
-        if: ${{ inputs.cacheKey == '' }}
-        run: pnpm build
-
-      - name: Restore cached build artifacts
-        if: ${{ inputs.cacheKey != '' }}
-        uses: actions/cache/restore@v4.0.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ inputs.cacheKey }}
-
-      - name: Lint Backend
-        run: pnpm lint:backend
-
-      - name: Lint Nodes
-        run: pnpm lint:nodes
-
-      - name: Lint Frontend
-        run: pnpm lint:frontend
+          build-command: pnpm lint
+          node-version: ${{ inputs.nodeVersion }}

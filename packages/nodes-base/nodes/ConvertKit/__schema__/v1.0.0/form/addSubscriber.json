@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "referrer": {
+            "type": "null"
+        },
+        "state": {
+            "type": "string"
+        },
+        "subscribable_id": {
+            "type": "integer"
+        },
+        "subscribable_type": {
+            "type": "string"
+        },
+        "subscriber": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email_address": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

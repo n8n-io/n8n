@@ -1,25 +1,32 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	WorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
+import { OnShutdown } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import axios from 'axios';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
 
-import config from '@/config';
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { PostHogClient } from '@/posthog';
 
-import { SourceControlPreferencesService } from '../environments/source-control/source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
 
-type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
+type ExecutionTrackDataKey =
+	| 'manual_error'
+	| 'manual_success'
+	| 'prod_error'
+	| 'prod_success'
+	| 'manual_crashed'
+	| 'prod_crashed';
 
 interface IExecutionTrackData {
 	count: number;
@@ -32,6 +39,8 @@ interface IExecutionsBuffer {
 		manual_success?: IExecutionTrackData;
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
+		manual_crashed?: IExecutionTrackData;
+		prod_crashed?: IExecutionTrackData;
 		user_id: string | undefined;
 	};
 }
@@ -51,13 +60,13 @@ export class Telemetry {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	async init() {
-		const enabled = config.getEnv('diagnostics.enabled');
+		const { enabled, backendConfig } = this.globalConfig.diagnostics;
 		if (enabled) {
-			const conf = config.getEnv('diagnostics.config.backend');
-			const [key, dataPlaneUrl] = conf.split(';');
+			const [key, dataPlaneUrl] = backendConfig.split(';');
 
 			if (!key || !dataPlaneUrl) {
 				this.logger.warn('Diagnostics backend config is invalid');
@@ -77,6 +86,9 @@ export class Telemetry {
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,
+				errorHandler: (error) => {
+					this.errorReporter.error(error);
+				},
 			});
 
 			this.startPulse();
@@ -103,7 +115,10 @@ export class Telemetry {
 				(data.manual_error?.count ?? 0) +
 				(data.manual_success?.count ?? 0) +
 				(data.prod_error?.count ?? 0) +
-				(data.prod_success?.count ?? 0);
+				(data.prod_success?.count ?? 0) +
+				(data.manual_crashed?.count ?? 0) +
+				(data.prod_crashed?.count ?? 0);
+
 			return sum > 0;
 		});
 
@@ -146,9 +161,14 @@ export class Telemetry {
 				user_id: properties.user_id,
 			};
 
-			const key: ExecutionTrackDataKey = `${properties.is_manual ? 'manual' : 'prod'}_${
-				properties.success ? 'success' : 'error'
-			}`;
+			let key: ExecutionTrackDataKey;
+			if (properties.crashed) {
+				key = `${properties.is_manual ? 'manual' : 'prod'}_crashed`;
+			} else {
+				key = `${properties.is_manual ? 'manual' : 'prod'}_${
+					properties.success ? 'success' : 'error'
+				}`;
+			}
 
 			const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
 
@@ -195,11 +215,7 @@ export class Telemetry {
 		});
 	}
 
-	track(
-		eventName: string,
-		properties: ITelemetryTrackProperties = {},
-		{ withPostHog } = { withPostHog: false }, // whether to additionally track with PostHog
-	) {
+	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
 		if (!this.rudderStack) {
 			return;
 		}
@@ -219,9 +235,7 @@ export class Telemetry {
 			context: {},
 		};
 
-		if (withPostHog) {
-			this.postHog?.track(payload);
-		}
+		this.postHog?.track(payload);
 
 		return this.rudderStack.track({
 			...payload,

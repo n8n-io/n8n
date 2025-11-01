@@ -1,4 +1,4 @@
-import { WorkflowActivationError } from '@/errors';
+import { WorkflowActivationError } from '../../src/errors';
 
 describe('WorkflowActivationError', () => {
 	it('should default to `error` level', () => {

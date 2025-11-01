@@ -5,13 +5,15 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { clashHandlingProperties, fuzzyCompareProperty } from '../../helpers/descriptions';
 import type {
 	ClashResolveOptions,
 	MatchFieldsJoinMode,
 	MatchFieldsOptions,
 	MatchFieldsOutput,
 } from '../../helpers/interfaces';
-import { clashHandlingProperties, fuzzyCompareProperty } from '../../helpers/descriptions';
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
@@ -20,7 +22,6 @@ import {
 	findMatches,
 	mergeMatched,
 } from '../../helpers/utils';
-import { updateDisplayOptions } from '@utils/utilities';
 
 const multipleMatchesProperty: INodeProperties = {
 	displayName: 'Multiple Matches',
@@ -260,8 +261,8 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+): Promise<INodeExecutionData[][]> {
+	let returnData: INodeExecutionData[] = [];
 	const advanced = this.getNodeParameter('advanced', 0) as boolean;
 	let matchFields;
 
@@ -297,7 +298,7 @@ export async function execute(
 			options.disableDotNotation || false,
 			'Input 1',
 		);
-		if (!input1) return returnData;
+		if (!input1) return [returnData];
 
 		input2 = checkInput(
 			this.getInputData(1),
@@ -306,14 +307,14 @@ export async function execute(
 			'Input 2',
 		);
 	} else {
-		if (!input1) return returnData;
+		if (!input1) return [returnData];
 	}
 
 	if (input1.length === 0 || input2.length === 0) {
 		if (!input1.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input1')
-			return returnData;
+			return [returnData];
 		if (!input2.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input2')
-			return returnData;
+			return [returnData];
 
 		if (joinMode === 'keepMatches') {
 			// Stop the execution
@@ -326,11 +327,11 @@ export async function execute(
 			return [];
 		} else {
 			// Return the data of any of the inputs that contains data
-			return [...input1, ...input2];
+			return [[...input1, ...input2]];
 		}
 	}
 
-	if (!input1) return returnData;
+	if (!input1) return [returnData];
 
 	if (!input2 || !matchFields.length) {
 		if (
@@ -338,9 +339,9 @@ export async function execute(
 			joinMode === 'keepEverything' ||
 			joinMode === 'enrichInput2'
 		) {
-			return returnData;
+			return [returnData];
 		}
-		return input1;
+		return [input1];
 	}
 
 	const matches = findMatches(input1, input2, matchFields, options);
@@ -373,21 +374,21 @@ export async function execute(
 			output = [...output, ...unmatched1, ...unmatched2];
 		}
 
-		returnData.push(...output);
+		returnData = returnData.concat(output);
 	}
 
 	if (joinMode === 'keepNonMatches') {
 		if (outputDataFrom === 'input1') {
-			return matches.unmatched1;
+			return [matches.unmatched1];
 		}
 		if (outputDataFrom === 'input2') {
-			return matches.unmatched2;
+			return [matches.unmatched2];
 		}
 		if (outputDataFrom === 'both') {
 			let output: INodeExecutionData[] = [];
 			output = output.concat(addSourceField(matches.unmatched1, 'input1'));
 			output = output.concat(addSourceField(matches.unmatched2, 'input2'));
-			return output;
+			return [output];
 		}
 	}
 
@@ -402,18 +403,24 @@ export async function execute(
 
 		if (joinMode === 'enrichInput1') {
 			if (clashResolveOptions.resolveClash === 'addSuffix') {
-				returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, '1'));
+				returnData = returnData.concat(
+					mergedEntries,
+					addSuffixToEntriesKeys(matches.unmatched1, '1'),
+				);
 			} else {
-				returnData.push(...mergedEntries, ...matches.unmatched1);
+				returnData = returnData.concat(mergedEntries, matches.unmatched1);
 			}
 		} else {
 			if (clashResolveOptions.resolveClash === 'addSuffix') {
-				returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched2, '2'));
+				returnData = returnData.concat(
+					mergedEntries,
+					addSuffixToEntriesKeys(matches.unmatched2, '2'),
+				);
 			} else {
-				returnData.push(...mergedEntries, ...matches.unmatched2);
+				returnData = returnData.concat(mergedEntries, matches.unmatched2);
 			}
 		}
 	}
 
-	return returnData;
+	return [returnData];
 }

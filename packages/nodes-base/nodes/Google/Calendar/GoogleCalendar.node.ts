@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,26 +8,45 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	NodeExecutionHint,
+	INodeProperties,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import { calendarFields, calendarOperations } from './CalendarDescription';
+import { eventFields, eventOperations } from './EventDescription';
+import type { IEvent, RecurringEventInstance } from './EventInterface';
 import {
 	addNextOccurrence,
 	addTimezoneToDate,
+	dateObjectToISO,
 	encodeURIComponentOnce,
+	eventExtendYearIntoFuture,
 	getCalendars,
 	getTimezones,
 	googleApiRequest,
 	googleApiRequestAllItems,
+	googleApiRequestWithRetries,
+	type RecurrentEvent,
 } from './GenericFunctions';
+import { sortItemKeysByPriorityList } from '../../../utils/utilities';
 
-import { eventFields, eventOperations } from './EventDescription';
-
-import { calendarFields, calendarOperations } from './CalendarDescription';
-
-import type { IEvent } from './EventInterface';
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Interact with your Google Calendar using our pre-built',
+	name: 'preBuiltAgentsCalloutGoogleCalendar',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Calendar agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'calendar_agent_with_gcal',
+		},
+	},
+	default: '',
+};
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,14 +54,14 @@ export class GoogleCalendar implements INodeType {
 		name: 'googleCalendar',
 		icon: 'file:googleCalendar.svg',
 		group: ['input'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
 		defaults: {
 			name: 'Google Calendar',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -50,6 +70,7 @@ export class GoogleCalendar implements INodeType {
 			},
 		],
 		properties: [
+			preBuiltAgentsCallout,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -135,6 +156,7 @@ export class GoogleCalendar implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
+		const hints: NodeExecutionHint[] = [];
 		let responseData;
 
 		const resource = this.getNodeParameter('resource', 0);
@@ -151,8 +173,8 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = decodeURIComponent(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						const timeMin = this.getNodeParameter('timeMin', i) as string;
-						const timeMax = this.getNodeParameter('timeMax', i) as string;
+						const timeMin = dateObjectToISO(this.getNodeParameter('timeMin', i));
+						const timeMax = dateObjectToISO(this.getNodeParameter('timeMax', i));
 						const options = this.getNodeParameter('options', i);
 						const outputFormat = options.outputFormat || 'availability';
 						const tz = this.getNodeParameter('options.timezone', i, '', {
@@ -203,8 +225,8 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = encodeURIComponentOnce(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						const start = this.getNodeParameter('start', i) as string;
-						const end = this.getNodeParameter('end', i) as string;
+						const start = dateObjectToISO(this.getNodeParameter('start', i));
+						const end = dateObjectToISO(this.getNodeParameter('end', i));
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -382,16 +404,33 @@ export class GoogleCalendar implements INodeType {
 						if (tz) {
 							qs.timeZone = tz;
 						}
-						responseData = await googleApiRequest.call(
+						responseData = (await googleApiRequest.call(
 							this,
 							'GET',
 							`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
 							{},
 							qs,
-						);
+						)) as IDataObject;
 
 						if (responseData) {
-							responseData = addNextOccurrence([responseData]);
+							if (nodeVersion >= 1.3 && options.returnNextInstance && responseData.recurrence) {
+								const eventInstances =
+									((
+										(await googleApiRequest.call(
+											this,
+											'GET',
+											`/calendar/v3/calendars/${calendarId}/events/${responseData.id}/instances`,
+											{},
+											{
+												timeMin: new Date().toISOString(),
+												maxResults: 1,
+											},
+										)) as IDataObject
+									).items as IDataObject[]) || [];
+								responseData = eventInstances[0] ? [eventInstances[0]] : [responseData];
+							} else {
+								responseData = addNextOccurrence([responseData as RecurrentEvent]);
+							}
 						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/list
@@ -404,6 +443,22 @@ export class GoogleCalendar implements INodeType {
 						const tz = this.getNodeParameter('options.timeZone', i, '', {
 							extractValue: true,
 						}) as string;
+
+						if (nodeVersion >= 1.3) {
+							const timeMin = dateObjectToISO(this.getNodeParameter('timeMin', i));
+							const timeMax = dateObjectToISO(this.getNodeParameter('timeMax', i));
+							if (timeMin) {
+								qs.timeMin = addTimezoneToDate(timeMin, tz || timezone);
+							}
+							if (timeMax) {
+								qs.timeMax = addTimezoneToDate(timeMax, tz || timezone);
+							}
+
+							if (!options.recurringEventHandling || options.recurringEventHandling === 'expand') {
+								qs.singleEvents = true;
+							}
+						}
+
 						if (options.iCalUID) {
 							qs.iCalUID = options.iCalUID as string;
 						}
@@ -426,16 +481,19 @@ export class GoogleCalendar implements INodeType {
 							qs.singleEvents = options.singleEvents as boolean;
 						}
 						if (options.timeMax) {
-							qs.timeMax = addTimezoneToDate(options.timeMax as string, tz || timezone);
+							qs.timeMax = addTimezoneToDate(dateObjectToISO(options.timeMax), tz || timezone);
 						}
 						if (options.timeMin) {
-							qs.timeMin = addTimezoneToDate(options.timeMin as string, tz || timezone);
+							qs.timeMin = addTimezoneToDate(dateObjectToISO(options.timeMin), tz || timezone);
 						}
 						if (tz) {
 							qs.timeZone = tz;
 						}
 						if (options.updatedMin) {
-							qs.updatedMin = addTimezoneToDate(options.updatedMin as string, tz || timezone);
+							qs.updatedMin = addTimezoneToDate(
+								dateObjectToISO(options.updatedMin),
+								tz || timezone,
+							);
 						}
 						if (options.fields) {
 							qs.fields = options.fields as string;
@@ -463,7 +521,76 @@ export class GoogleCalendar implements INodeType {
 						}
 
 						if (responseData) {
-							responseData = addNextOccurrence(responseData);
+							if (nodeVersion >= 1.3 && options.recurringEventHandling === 'next') {
+								const updatedEvents: IDataObject[] = [];
+
+								for (const event of responseData) {
+									if (event.recurrence) {
+										const eventInstances =
+											((
+												(await googleApiRequestWithRetries({
+													context: this,
+													method: 'GET',
+													resource: `/calendar/v3/calendars/${calendarId}/events/${event.id}/instances`,
+													qs: {
+														timeMin: new Date().toISOString(),
+														maxResults: 1,
+													},
+													itemIndex: i,
+												})) as IDataObject
+											).items as IDataObject[]) || [];
+										updatedEvents.push(eventInstances[0] || event);
+										continue;
+									}
+
+									updatedEvents.push(event);
+								}
+								responseData = updatedEvents;
+							} else if (nodeVersion >= 1.3 && options.recurringEventHandling === 'first') {
+								responseData = responseData.filter((event: IDataObject) => {
+									if (
+										qs.timeMin &&
+										event.recurrence &&
+										event.created &&
+										event.created < qs.timeMin
+									) {
+										return false;
+									}
+
+									if (
+										qs.timeMax &&
+										event.recurrence &&
+										event.created &&
+										event.created > qs.timeMax
+									) {
+										return false;
+									}
+
+									return true;
+								});
+							} else if (nodeVersion < 1.3) {
+								// in node version above or equal to 1.3, this would correspond to the 'expand' option,
+								// so no need to add the next occurrence as event instances returned by the API
+								responseData = addNextOccurrence(responseData);
+							}
+
+							if (
+								!qs.timeMax &&
+								(!options.recurringEventHandling || options.recurringEventHandling === 'expand')
+							) {
+								const suggestTrim = eventExtendYearIntoFuture(
+									responseData as RecurringEventInstance[],
+									timezone,
+								);
+
+								if (suggestTrim) {
+									hints.push({
+										message:
+											"Some events repeat far into the future. To return less of them, add a 'Before' date or change the 'Recurring Event Handling' option.",
+										location: 'outputPane',
+									});
+								}
+							}
 						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/patch
@@ -471,7 +598,22 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = encodeURIComponentOnce(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						const eventId = this.getNodeParameter('eventId', i) as string;
+						let eventId = this.getNodeParameter('eventId', i) as string;
+
+						if (nodeVersion >= 1.3) {
+							const modifyTarget = this.getNodeParameter('modifyTarget', i, 'instance') as string;
+							if (modifyTarget === 'event') {
+								const instance = (await googleApiRequest.call(
+									this,
+									'GET',
+									`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+									{},
+									qs,
+								)) as IDataObject;
+								eventId = instance.recurringEventId as string;
+							}
+						}
+
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						let updateTimezone = updateFields.timezone as string;
@@ -536,7 +678,7 @@ export class GoogleCalendar implements INodeType {
 									body.attendees?.push(attendee);
 								});
 							}
-							(attendees as string[]).forEach((attendee) => {
+							attendees.forEach((attendee) => {
 								body.attendees!.push.apply(
 									body.attendees,
 									attendee
@@ -661,6 +803,30 @@ export class GoogleCalendar implements INodeType {
 				}
 			}
 		}
-		return [returnData];
+
+		const keysPriorityList = [
+			'id',
+			'summary',
+			'start',
+			'end',
+			'attendees',
+			'creator',
+			'organizer',
+			'description',
+			'location',
+			'created',
+			'updated',
+		];
+
+		let nodeExecutionData = returnData;
+		if (nodeVersion >= 1.3) {
+			nodeExecutionData = sortItemKeysByPriorityList(returnData, keysPriorityList);
+		}
+
+		if (hints.length) {
+			this.addExecutionHints(...hints);
+		}
+
+		return [nodeExecutionData];
 	}
 }

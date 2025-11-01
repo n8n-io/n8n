@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "checkItems": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "idChecklist": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "idCard": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "pos": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

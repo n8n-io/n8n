@@ -1,0 +1,114 @@
+{
+	"id": "8d7lUG8IdEyvIUim",
+	"name": "Multiple items tool",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "return [\n  { \"full_name\": \"Mr. Input 1\", \"email\": \"input1@n8n.io\" }, \n  { \"full_name\": \"Mr. Input 2\", \"email\": \"input2@n8n.io\" }\n]",
+				"notice": ""
+			},
+			"id": "cb19a188-12ae-4d46-86df-4a2044ec3346",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-160, 480]
+		},
+		{
+			"parameters": { "notice": "", "model": "gpt-4o-mini", "options": {} },
+			"id": "c448b6b4-9e11-4044-96e5-f4138534ae52",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [40, 700]
+		},
+		{
+			"parameters": {
+				"descriptionType": "manual",
+				"toolDescription": "Add row to Users sheet",
+				"authentication": "oAuth2",
+				"resource": "sheet",
+				"operation": "append",
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"full name": "={{ $fromAI('full_name') }}",
+						"email": "={{ $fromAI('email') }}"
+					},
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "full name",
+							"displayName": "full name",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "email",
+							"displayName": "email",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						}
+					]
+				},
+				"options": { "useAppend": true }
+			},
+			"id": "d8b40267-9397-45b6-8a64-ee7e8f9eb8a8",
+			"name": "Google Sheets1",
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"typeVersion": 4.5,
+			"position": [240, 700]
+		},
+		{
+			"parameters": {
+				"aiAgentStarterCallout": "",
+				"agent": "toolsAgent",
+				"promptType": "define",
+				"text": "=Add this user to my Users sheet:\n{{ $json.toJsonString() }}",
+				"hasOutputParser": false,
+				"options": {},
+				"credentials": ""
+			},
+			"id": "0d6c1bd7-cc91-4571-8fdb-c875a1af44c7",
+			"name": "Agent single list with multiple tool calls",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.7,
+			"position": [40, 480]
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Code", "type": "main", "index": 0 }]]
+		},
+		"Code": {
+			"main": [
+				[{ "node": "Agent single list with multiple tool calls", "type": "main", "index": 0 }]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Agent single list with multiple tool calls",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets1": {
+			"ai_tool": [
+				[{ "node": "Agent single list with multiple tool calls", "type": "ai_tool", "index": 0 }]
+			]
+		}
+	},
+	"pinData": {}
+}

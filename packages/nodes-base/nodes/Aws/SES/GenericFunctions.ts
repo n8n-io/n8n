@@ -1,5 +1,4 @@
-import { parseString } from 'xml2js';
-
+import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,8 +10,8 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import get from 'lodash/get';
+import { parseString } from 'xml2js';
+import { getAwsCredentials } from '../GenericFunctions';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -22,7 +21,7 @@ export async function awsApiRequest(
 	body?: string,
 	headers?: object,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const { credentials, credentialsType } = await getAwsCredentials(this);
 
 	const requestOptions = {
 		qs: {
@@ -37,7 +36,7 @@ export async function awsApiRequest(
 	} as IHttpRequestOptions;
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+		return await this.helpers.requestWithAuthentication.call(this, credentialsType, requestOptions);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject, { parseXml: true });
 	}

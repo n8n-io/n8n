@@ -1,125 +1,113 @@
 {
-  "name": "node-aws-comprehend",
-		"nodes": [
-			{
-				"parameters": {},
-				"id": "53b6020d-5aa2-435f-9ee1-407111c0e3ee",
-				"name": "When clicking ‘Test workflow’",
-				"type": "n8n-nodes-base.manualTrigger",
-				"position": [
-					680,
-					380
-				],
-				"typeVersion": 1
-			},
-			{
-				"parameters": {
-					"assignments": {
-						"assignments": [
-							{
-								"id": "51b7eee5-8cc9-4e09-a2f4-65ffb3cc17f6",
-								"name": "text",
-								"value": "This is a test.",
-								"type": "string"
-							}
-						]
-					},
-					"options": {}
+	"name": "node-aws-comprehend",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "53b6020d-5aa2-435f-9ee1-407111c0e3ee",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [680, 380],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "51b7eee5-8cc9-4e09-a2f4-65ffb3cc17f6",
+							"name": "text",
+							"value": "This is a test.",
+							"type": "string"
+						}
+					]
 				},
-				"id": "b3beaf43-fe4c-43e1-a8cb-5a0740050611",
-				"name": "Edit Fields",
-				"type": "n8n-nodes-base.set",
-				"typeVersion": 3.4,
-				"position": [
-					900,
-					380
-				]
+				"options": {}
 			},
-			{
-				"parameters": {
-					"text": "={{ $json.text }}"
-				},
-				"id": "a6a8a24c-0e58-40e7-8bf4-13a56edc6264",
-				"name": "AWS Comprehend",
-				"type": "n8n-nodes-base.awsComprehend",
-				"typeVersion": 1,
-				"position": [
-					1100,
-					380
-				],
-				"credentials": {
-					"aws": {
-						"id": "TyNATsPCTvPF0tvG",
-						"name": "AWS account"
-					}
+			"id": "b3beaf43-fe4c-43e1-a8cb-5a0740050611",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [900, 380]
+		},
+		{
+			"parameters": {
+				"text": "={{ $json.text }}"
+			},
+			"id": "a6a8a24c-0e58-40e7-8bf4-13a56edc6264",
+			"name": "AWS Comprehend",
+			"type": "n8n-nodes-base.awsComprehend",
+			"typeVersion": 1,
+			"position": [1100, 380],
+			"credentials": {
+				"aws": {
+					"id": "TyNATsPCTvPF0tvG",
+					"name": "AWS account"
 				}
-			},
-			{
-				"parameters": {},
-				"id": "bfc4b84d-8cf1-4650-bf3c-2b1cdc677afc",
-				"name": "No Operation, do nothing",
-				"type": "n8n-nodes-base.noOp",
-				"typeVersion": 1,
-				"position": [
-					1320,
-					380
-				]
 			}
-		],
-		"pinData": {
-			"No Operation, do nothing": [
-				{
-					"json": {
-						"de": 0.010717987082898617,
-						"en": 0.9774383902549744
-					}
+		},
+		{
+			"parameters": {},
+			"id": "bfc4b84d-8cf1-4650-bf3c-2b1cdc677afc",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1320, 380]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"de": 0.010717987082898617,
+					"en": 0.9774383902549744
 				}
+			}
+		]
+	},
+	"connections": {
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "AWS Comprehend",
+						"type": "main",
+						"index": 0
+					}
+				]
 			]
 		},
-		"connections": {
-			"Edit Fields": {
-				"main": [
-					[
-						{
-							"node": "AWS Comprehend",
-							"type": "main",
-							"index": 0
-						}
-					]
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
 				]
-			},
-			"When clicking ‘Test workflow’": {
-				"main": [
-					[
-						{
-							"node": "Edit Fields",
-							"type": "main",
-							"index": 0
-						}
-					]
+			]
+		},
+		"AWS Comprehend": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
 				]
-			},
-			"AWS Comprehend": {
-				"main": [
-					[
-						{
-							"node": "No Operation, do nothing",
-							"type": "main",
-							"index": 0
-						}
-					]
-				]
-			}
-		},
-		"active": false,
-		"settings": {
-			"executionOrder": "v1"
-		},
-		"versionId": "eae3c601-56b8-42ec-a0b7-14df8d697043",
-		"meta": {
-			"templateCredsSetupCompleted": true,
-			"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
-		},
-		"id": "fuOmKcLPWAxKi0bn",
-		"tags": []
-	}
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "eae3c601-56b8-42ec-a0b7-14df8d697043",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "fuOmKcLPWAxKi0bn",
+	"tags": []
+}

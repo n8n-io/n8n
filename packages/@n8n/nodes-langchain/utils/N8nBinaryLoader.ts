@@ -1,5 +1,12 @@
-import { pipeline } from 'stream/promises';
+import { CSVLoader } from '@langchain/community/document_loaders/fs/csv';
+import { DocxLoader } from '@langchain/community/document_loaders/fs/docx';
+import { EPubLoader } from '@langchain/community/document_loaders/fs/epub';
+import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
+import type { Document } from '@langchain/core/documents';
+import type { TextSplitter } from '@langchain/textsplitters';
 import { createWriteStream } from 'fs';
+import { JSONLoader } from 'langchain/document_loaders/fs/json';
+import { TextLoader } from 'langchain/document_loaders/fs/text';
 import type {
 	IBinaryData,
 	IExecuteFunctions,
@@ -7,15 +14,7 @@ import type {
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
-
-import type { TextSplitter } from '@langchain/textsplitters';
-import type { Document } from '@langchain/core/documents';
-import { CSVLoader } from '@langchain/community/document_loaders/fs/csv';
-import { DocxLoader } from '@langchain/community/document_loaders/fs/docx';
-import { JSONLoader } from 'langchain/document_loaders/fs/json';
-import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
-import { TextLoader } from 'langchain/document_loaders/fs/text';
-import { EPubLoader } from '@langchain/community/document_loaders/fs/epub';
+import { pipeline } from 'stream/promises';
 import { file as tmpFile, type DirectoryResult } from 'tmp-promise';
 
 import { getMetadataFiltersValues } from './helpers';
@@ -26,7 +25,7 @@ const SUPPORTED_MIME_TYPES = {
 	csvLoader: ['text/csv'],
 	epubLoader: ['application/epub+zip'],
 	docxLoader: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-	textLoader: ['text/plain', 'text/mdx', 'text/md'],
+	textLoader: ['text/plain', 'text/mdx', 'text/md', 'text/markdown'],
 	jsonLoader: ['application/json'],
 };
 
@@ -92,7 +91,7 @@ export class N8nBinaryLoader {
 			const binaryBuffer = await this.context.helpers.binaryToBuffer(
 				await this.context.helpers.getBinaryStream(binaryData.id),
 			);
-			return new Blob([binaryBuffer], {
+			return new Blob([binaryBuffer as BlobPart], {
 				type: mimeType,
 			});
 		} else {

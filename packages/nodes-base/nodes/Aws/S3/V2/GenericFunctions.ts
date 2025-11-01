@@ -1,7 +1,4 @@
 import get from 'lodash/get';
-
-import { parseString } from 'xml2js';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,6 +8,8 @@ import type {
 	IHttpRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { parseString } from 'xml2js';
+import { getAwsCredentials } from '../../GenericFunctions';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -40,7 +39,9 @@ export async function awsApiRequest(
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
-	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	const { credentialsType } = await getAwsCredentials(this);
+
+	return await this.helpers.requestWithAuthentication.call(this, credentialsType, requestOptions);
 }
 
 export async function awsApiRequestREST(

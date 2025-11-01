@@ -1,4 +1,9 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
+
+const cacheBackendSchema = z.enum(['memory', 'redis', 'auto']);
+type CacheBackend = z.infer<typeof cacheBackendSchema>;
 
 @Config
 class MemoryConfig {
@@ -25,8 +30,8 @@ class RedisConfig {
 @Config
 export class CacheConfig {
 	/** Backend to use for caching. */
-	@Env('N8N_CACHE_BACKEND')
-	backend: 'memory' | 'redis' | 'auto' = 'auto';
+	@Env('N8N_CACHE_BACKEND', cacheBackendSchema)
+	backend: CacheBackend = 'auto';
 
 	@Nested
 	memory: MemoryConfig;

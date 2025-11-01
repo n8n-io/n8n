@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "creationTime": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isAdmin": {
+            "type": "boolean"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "lastLoginTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "object",
+            "properties": {
+                "familyName": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "givenName": {
+                    "type": "string"
+                }
+            }
+        },
+        "primaryEmail": {
+            "type": "string"
+        },
+        "suspended": {
+            "type": "boolean"
+        }
+    },
+    "version": 4
+}

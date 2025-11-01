@@ -1,22 +1,33 @@
+import {
+	randomEmail,
+	randomName,
+	uniqueId,
+	getPersonalProject,
+	testDb,
+} from '@n8n/backend-test-utils';
+import { LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import {
+	AuthProviderSyncHistoryRepository,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	UserRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
-import { Container } from 'typedi';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap/constants';
-import { saveLdapSynchronization } from '@/ldap/helpers.ee';
-import { LdapService } from '@/ldap/ldap.service.ee';
-import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
+import { LdapService } from '@/ldap.ee/ldap.service.ee';
+import {
+	getCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
-import { randomEmail, randomName, uniqueId } from './../shared/random';
-import { getPersonalProject } from '../shared/db/projects';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -31,7 +42,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
@@ -44,9 +55,9 @@ beforeEach(async () => {
 		'AuthIdentity',
 		'AuthProviderSyncHistory',
 		'SharedCredentials',
-		'Credentials',
+		'CredentialsEntity',
 		'SharedWorkflow',
-		'Workflow',
+		'WorkflowEntity',
 	]);
 
 	await Container.get(UserRepository).delete({ id: Not(owner.id) });
@@ -59,7 +70,7 @@ beforeEach(async () => {
 });
 
 test('Member role should not be able to access ldap routes', async () => {
-	const member = await createUser({ role: 'global:member' });
+	const member = await createUser({ role: { slug: 'global:member' } });
 	const authAgent = testServer.authAgentFor(member);
 	await authAgent.get('/ldap/config').expect(403);
 	await authAgent.put('/ldap/config').expect(403);
@@ -131,7 +142,7 @@ describe('PUT /ldap/config', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uniqueId());
 
 		const configuration = ldapConfig;
 
@@ -244,7 +255,7 @@ describe('POST /ldap/sync', () => {
 			const ldapUserId = uniqueId();
 
 			const member = await createLdapUser(
-				{ role: 'global:member', email: ldapUserEmail },
+				{ role: { slug: 'global:member' }, email: ldapUserEmail },
 				ldapUserId,
 			);
 
@@ -273,7 +284,7 @@ describe('POST /ldap/sync', () => {
 			const ldapUserId = uniqueId();
 
 			const member = await createLdapUser(
-				{ role: 'global:member', email: ldapUserEmail },
+				{ role: { slug: 'global:member' }, email: ldapUserEmail },
 				ldapUserId,
 			);
 
@@ -358,7 +369,7 @@ describe('POST /ldap/sync', () => {
 
 			await createLdapUser(
 				{
-					role: 'global:member',
+					role: { slug: 'global:member' },
 					email: ldapUser.mail,
 					firstName: ldapUser.givenName,
 					lastName: randomName(),
@@ -391,7 +402,7 @@ describe('POST /ldap/sync', () => {
 
 			await createLdapUser(
 				{
-					role: 'global:member',
+					role: { slug: 'global:member' },
 					email: ldapUser.mail,
 					firstName: ldapUser.givenName,
 					lastName: ldapUser.sn,
@@ -420,7 +431,7 @@ describe('POST /ldap/sync', () => {
 		});
 
 		test('should remove user instance access once the user is disabled during synchronization', async () => {
-			const member = await createLdapUser({ role: 'global:member' }, uniqueId());
+			const member = await createLdapUser({ role: { slug: 'global:member' } }, uniqueId());
 
 			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([]);
 
@@ -428,6 +439,94 @@ describe('POST /ldap/sync', () => {
 
 			const response = await testServer.authAgentFor(member).get('/login');
 			expect(response.status).toBe(401);
+		});
+
+		test('should filter out users with invalid email addresses during sync', async () => {
+			const validLdapUser = {
+				mail: randomEmail(),
+				dn: '',
+				sn: randomName(),
+				givenName: randomName(),
+				uid: uniqueId(),
+			};
+
+			const invalidLdapUser = {
+				mail: 'invalid-email',
+				dn: '',
+				sn: randomName(),
+				givenName: randomName(),
+				uid: uniqueId(),
+			};
+
+			const ldapUsers = [validLdapUser, invalidLdapUser];
+
+			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
+
+			const synchronization = await runTest(ldapUsers);
+
+			// Should only create 1 user (the valid one)
+			expect(synchronization.created).toBe(1);
+
+			// Should log error for invalid email
+			expect(loggerSpy).toHaveBeenCalledWith(
+				expect.stringContaining(`LDAP - Invalid email format for user ${invalidLdapUser.uid}`),
+			);
+
+			loggerSpy.mockReset();
+			loggerSpy.mockRestore();
+
+			// Verify only valid user was created
+			const allUsers = await getAllUsers();
+			expect(allUsers.length).toBe(2); // owner + valid user
+
+			const memberUser = allUsers.find((u) => u.email !== owner.email)!;
+			expect(memberUser.email).toBe(validLdapUser.mail);
+		});
+
+		test('should filter out users with invalid email addresses during update', async () => {
+			const originalEmail = randomEmail();
+			const originalUserId = uniqueId();
+
+			// Create user with valid email first
+			await createLdapUser(
+				{
+					role: GLOBAL_MEMBER_ROLE,
+					email: originalEmail,
+					firstName: randomName(),
+					lastName: randomName(),
+				},
+				originalUserId,
+			);
+
+			// Now try to update with invalid email
+			const invalidLdapUser = {
+				mail: 'not-an-email',
+				dn: '',
+				sn: randomName(),
+				givenName: randomName(),
+				uid: originalUserId,
+			};
+
+			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
+
+			const synchronization = await runTest([invalidLdapUser]);
+
+			// Should not update any users
+			expect(synchronization.updated).toBe(0);
+
+			// Should log error for invalid email
+			expect(loggerSpy).toHaveBeenCalledWith(
+				expect.stringContaining(`LDAP - Invalid email format for user ${originalUserId}`),
+			);
+
+			loggerSpy.mockReset();
+			loggerSpy.mockRestore();
+
+			// Verify user still has original email
+			const localLdapIdentities = await getLdapIdentities();
+			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
+			expect(localLdapUsers.length).toBe(1);
+			expect(localLdapUsers[0].email).toBe(originalEmail);
 		});
 	});
 });
@@ -467,7 +566,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: ldapUser.mail, password: 'password' });
+			.send({ emailOrLdapLoginId: ldapUser.mail, password: 'password' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['set-cookie']).toBeDefined();
@@ -509,7 +608,7 @@ describe('POST /login', () => {
 
 		await createLdapUser(
 			{
-				role: 'global:member',
+				role: { slug: 'global:member' },
 				email: ldapUser.mail,
 				firstName: 'firstname',
 				lastName: 'lastname',
@@ -526,7 +625,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: owner.email, password: 'password' });
+			.send({ emailOrLdapLoginId: owner.email, password: 'password' });
 
 		expect(response.status).toBe(200);
 		expect(response.body.data?.signInType).toBeDefined();
@@ -543,7 +642,7 @@ describe('POST /login', () => {
 		};
 
 		await createUser({
-			role: 'global:member',
+			role: GLOBAL_MEMBER_ROLE,
 			email: ldapUser.mail,
 			firstName: ldapUser.givenName,
 			lastName: 'lastname',
@@ -558,7 +657,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uniqueId());
 
 		await authOwnerAgent.post(`/users/${member.id}`);
 	});
@@ -567,7 +666,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
+		const member = await createLdapUser({ role: { slug: 'global:member' } }, uniqueId());
 
 		// delete the LDAP member and transfer its workflows/credentials to instance owner
 		await authOwnerAgent.post(`/users/${member.id}?transferId=${owner.id}`);

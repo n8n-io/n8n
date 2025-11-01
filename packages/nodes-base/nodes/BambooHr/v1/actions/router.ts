@@ -1,10 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import * as companyReport from './companyReport';
 import * as employee from './employee';
 import * as employeeDocument from './employeeDocument';
 import * as file from './file';
-import * as companyReport from './companyReport';
-
 import type { BambooHr } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {

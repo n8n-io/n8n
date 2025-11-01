@@ -1,15 +1,34 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
+import type { TextSplitter } from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type IDataObject,
+	type INodeInputConfiguration,
 } from 'n8n-workflow';
-import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
-import type { CharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+function getInputs(parameters: IDataObject) {
+	const inputs: INodeInputConfiguration[] = [];
+
+	const textSplittingMode = parameters?.textSplittingMode;
+	// If text splitting mode is 'custom' or does not exist (v1), we need to add an input for the text splitter
+	if (!textSplittingMode || textSplittingMode === 'custom') {
+		inputs.push({
+			displayName: 'Text Splitter',
+			maxConnections: 1,
+			type: 'ai_textSplitter',
+			required: true,
+		});
+	}
+
+	return inputs;
+}
 
 export class DocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,7 +36,8 @@ export class DocumentGithubLoader implements INodeType {
 		name: 'documentGithubLoader',
 		icon: 'file:github.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Use GitHub data as input to this chain',
 		defaults: {
 			name: 'GitHub Document Loader',
@@ -41,20 +61,14 @@ export class DocumentGithubLoader implements INodeType {
 				required: true,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [
-			{
-				displayName: 'Text Splitter',
-				maxConnections: 1,
-				type: NodeConnectionType.AiTextSplitter,
-			},
-		],
+
+		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 		inputNames: ['Text Splitter'],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiDocument],
+
+		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName: 'Repository Link',
 				name: 'repository',
@@ -66,6 +80,31 @@ export class DocumentGithubLoader implements INodeType {
 				name: 'branch',
 				type: 'string',
 				default: 'main',
+			},
+			{
+				displayName: 'Text Splitting',
+				name: 'textSplittingMode',
+				type: 'options',
+				default: 'simple',
+				required: true,
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+						description: 'Splits every 1000 characters with a 200 character overlap',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+						description: 'Connect a custom text-splitting sub-node',
+					},
+				],
 			},
 			{
 				displayName: 'Options',
@@ -94,7 +133,8 @@ export class DocumentGithubLoader implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		console.log('Supplying data for Github Document Loader');
+		this.logger.debug('Supplying data for Github Document Loader');
+		const node = this.getNode();
 
 		const repository = this.getNodeParameter('repository', itemIndex) as string;
 		const branch = this.getNodeParameter('branch', itemIndex) as string;
@@ -103,13 +143,27 @@ export class DocumentGithubLoader implements INodeType {
 			recursive: boolean;
 			ignorePaths: string;
 		};
+		let textSplitter: TextSplitter | undefined;
 
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as CharacterTextSplitter | undefined;
+		if (node.typeVersion === 1.1) {
+			const textSplittingMode = this.getNodeParameter('textSplittingMode', itemIndex, 'simple') as
+				| 'simple'
+				| 'custom';
 
-		const { index } = this.addInputData(NodeConnectionType.AiDocument, [
+			if (textSplittingMode === 'simple') {
+				textSplitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 });
+			} else if (textSplittingMode === 'custom') {
+				textSplitter = (await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+					| TextSplitter
+					| undefined;
+			}
+		} else {
+			textSplitter = (await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+				| TextSplitter
+				| undefined;
+		}
+
+		const { index } = this.addInputData(NodeConnectionTypes.AiDocument, [
 			[{ json: { repository, branch, ignorePaths, recursive } }],
 		]);
 		const docs = new GithubRepoLoader(repository, {
@@ -124,7 +178,7 @@ export class DocumentGithubLoader implements INodeType {
 			? await textSplitter.splitDocuments(await docs.load())
 			: await docs.load();
 
-		this.addOutputData(NodeConnectionType.AiDocument, index, [[{ json: { loadedDocs } }]]);
+		this.addOutputData(NodeConnectionTypes.AiDocument, index, [[{ json: { loadedDocs } }]]);
 		return {
 			response: logWrapper(loadedDocs, this),
 		};

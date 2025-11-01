@@ -21,7 +21,7 @@ export class BuiltInsParser {
 	/**
 	 * Parses which built-in variables are accessed in the given code
 	 */
-	public parseUsedBuiltIns(code: string): Result<BuiltInsParserState, Error> {
+	parseUsedBuiltIns(code: string): Result<BuiltInsParserState, Error> {
 		return toResult(() => {
 			const wrappedCode = `async function VmCodeWrapper() { ${code} }`;
 			const ast = parse(wrappedCode, { ecmaVersion: 2025, sourceType: 'module' });
@@ -54,8 +54,22 @@ export class BuiltInsParser {
 	) => {
 		// $(...)
 		const isDollar = node.callee.type === 'Identifier' && node.callee.name === '$';
-		if (!isDollar) return;
+		const isItems = node.callee.type === 'Identifier' && node.callee.name === '$items';
+		if (isDollar) {
+			this.visitDollarCallExpression(node, state, ancestors);
+		} else if (isItems) {
+			// $items(...) is a legacy syntax that is not documented but we still
+			// need to support it for backwards compatibility
+			this.visitDollarItemsCallExpression(node, state);
+		}
+	};
 
+	/** $(...) */
+	private visitDollarCallExpression(
+		node: CallExpression,
+		state: BuiltInsParserState,
+		ancestors: Node[],
+	) {
 		// $(): This is not valid, ignore
 		if (node.arguments.length === 0) {
 			return;
@@ -78,7 +92,31 @@ export class BuiltInsParser {
 
 		// Determine how $("node") is used
 		this.handlePrevNodeCall(node, state, ancestors);
-	};
+	}
+
+	/** $items(...) */
+	private visitDollarItemsCallExpression(node: CallExpression, state: BuiltInsParserState) {
+		// $items(): This gets items from the previous node
+		if (node.arguments.length === 0) {
+			state.markInputAsNeeded();
+			return;
+		}
+
+		const firstArg = node.arguments[0];
+		if (!isLiteral(firstArg)) {
+			// $items(variable): Can't easily determine statically, mark all nodes as needed
+			state.markNeedsAllNodes();
+			return;
+		}
+
+		if (typeof firstArg.value !== 'string') {
+			// $items(123): Static value, but not a string --> unsupported code --> ignore
+			return;
+		}
+
+		// $items(nodeName): Static value, mark 'nodeName' as needed
+		state.markNodeAsNeeded(firstArg.value);
+	}
 
 	private handlePrevNodeCall(_node: CallExpression, state: BuiltInsParserState, ancestors: Node[]) {
 		// $("node").item, .pairedItem or .itemMatching: In a case like this, the execution
@@ -125,6 +163,11 @@ export class BuiltInsParser {
 	private visitIdentifier = (node: Identifier, state: BuiltInsParserState) => {
 		if (node.name === '$env') {
 			state.markEnvAsNeeded();
+		} else if (node.name === '$item') {
+			// $item is legacy syntax that is basically an alias for WorkflowDataProxy
+			// and allows accessing any data. We need to support it for backwards
+			// compatibility, but we're not gonna implement any optimizations
+			state.markNeedsAllNodes();
 		} else if (
 			node.name === '$input' ||
 			node.name === '$json' ||
