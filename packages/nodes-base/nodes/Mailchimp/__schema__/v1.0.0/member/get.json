@@ -86,9 +86,6 @@
         "merge_fields": {
             "type": "object",
             "properties": {
-                "BIRTHDAY": {
-                    "type": "string"
-                },
                 "COMPANY": {
                     "type": "string"
                 },
@@ -151,5 +148,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }
