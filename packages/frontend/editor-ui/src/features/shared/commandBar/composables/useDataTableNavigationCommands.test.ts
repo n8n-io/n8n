@@ -8,7 +8,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 
 const routerPushMock = vi.fn();

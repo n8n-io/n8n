@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -10,8 +10,8 @@ import {
 	rotateApiKey,
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/stores/settings.store';
-import { isWorkflowListItem } from '@/utils/typeGuards';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type { ApiKey } from '@n8n/api-types';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {

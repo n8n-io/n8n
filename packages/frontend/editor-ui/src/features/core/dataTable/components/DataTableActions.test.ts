@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { DATA_TABLE_CARD_ACTIONS } from '@/features/core/dataTable/constants';
-import { MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 
 const mockMessage = {
@@ -17,11 +17,11 @@ const mockToast = {
 
 const mockDeleteDataTable = vi.fn();
 
-vi.mock('@/composables/useMessage', () => ({
+vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => mockMessage,
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 

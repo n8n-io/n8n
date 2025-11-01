@@ -1,0 +1,189 @@
+# ==============================================================================
+# DISTROLESS RUNNERS IMAGE
+# ==============================================================================
+# This is a distroless variant of docker/images/runners/Dockerfile, intended
+# for cloud deployments. It removes all shell, package managers, and system
+# utilities for security hardening.
+#
+# Key differences:
+# - Uses Debian-based builders (glibc instead of musl)
+# - Final image is Google's distroless/cc-debian12
+# - Extra runtime-prep stage to organize filesystem
+# - Uses distroless nonroot user (UID 65532)
+# ==============================================================================
+
+ARG NODE_VERSION=22.21.0
+ARG PYTHON_VERSION=3.13
+
+
+# ==============================================================================
+# STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
+# ==============================================================================
+FROM node:${NODE_VERSION}-bookworm-slim AS javascript-runner-builder
+COPY ./dist/task-runner-javascript /app/task-runner-javascript
+
+WORKDIR /app/task-runner-javascript
+
+RUN corepack enable pnpm
+
+# Install extra runtime-only npm packages. Allow usage in the Code node via
+# 'NODE_FUNCTION_ALLOW_EXTERNAL' env variable on n8n-task-runners.json.
+RUN rm -f node_modules/.modules.yaml
+RUN mv package.json package.json.bak
+COPY docker/images/runners/package.json /app/task-runner-javascript/package.json
+RUN pnpm install --prod --no-lockfile --silent
+RUN mv package.json extras.json
+RUN mv package.json.bak package.json
+
+# ==============================================================================
+# STAGE 2: Python runner build (@n8n/task-runner-python) with uv
+# Produces a relocatable venv tied to the python version used
+# ==============================================================================
+FROM python:${PYTHON_VERSION}-slim-bookworm AS python-runner-builder
+ARG TARGETPLATFORM
+ARG UV_VERSION=0.8.14
+
+RUN set -e; \
+  apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \
+  case "$TARGETPLATFORM" in \
+    "linux/amd64") UV_ARCH="x86_64-unknown-linux-gnu" ;; \
+    "linux/arm64") UV_ARCH="aarch64-unknown-linux-gnu" ;; \
+    *) echo "Unsupported platform: $TARGETPLATFORM" >&2; exit 1 ;; \
+  esac; \
+  mkdir -p /tmp/uv && cd /tmp/uv; \
+  wget -q "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz"; \
+  wget -q "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz.sha256"; \
+  sha256sum -c "uv-${UV_ARCH}.tar.gz.sha256"; \
+  tar -xzf "uv-${UV_ARCH}.tar.gz"; \
+  install -m 0755 "uv-${UV_ARCH}/uv" /usr/local/bin/uv; \
+  cd / && rm -rf /tmp/uv && \
+  apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/task-runner-python
+
+COPY packages/@n8n/task-runner-python/pyproject.toml \
+     packages/@n8n/task-runner-python/uv.lock** \
+     packages/@n8n/task-runner-python/.python-version** \
+     ./
+
+RUN uv venv
+RUN uv sync \
+			--frozen \
+			--no-editable \
+			--no-install-project \
+			--no-dev \
+			--all-extras
+
+COPY packages/@n8n/task-runner-python/ ./
+RUN uv sync \
+      --frozen \
+			--no-dev \
+			--all-extras \
+      --no-editable
+
+# Install extra runtime-only Python packages. Allow usage in the Code node via
+# 'N8N_RUNNERS_EXTERNAL_ALLOW' env variable on n8n-task-runners.json.
+COPY docker/images/runners/extras.txt /app/task-runner-python/extras.txt
+RUN uv pip install -r /app/task-runner-python/extras.txt
+
+# ==============================================================================
+# STAGE 3: Task Runner Launcher download
+# ==============================================================================
+FROM debian:bookworm-slim AS launcher-downloader
+ARG TARGETPLATFORM
+ARG LAUNCHER_VERSION=1.4.0
+
+RUN set -e; \
+    apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \
+    case "$TARGETPLATFORM" in \
+        "linux/amd64") ARCH_NAME="amd64" ;; \
+        "linux/arm64") ARCH_NAME="arm64" ;; \
+        *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
+    esac; \
+    mkdir /launcher-temp && cd /launcher-temp; \
+    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz"; \
+    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256"; \
+    echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256; \
+    sha256sum -c checksum.sha256; \
+    mkdir -p /launcher-bin; \
+    tar xzf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz -C /launcher-bin; \
+    cd / && rm -rf /launcher-temp && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ==============================================================================
+# STAGE 4: Node Debian base for JS task runner
+# ==============================================================================
+FROM node:${NODE_VERSION}-bookworm-slim AS node-debian
+
+# ==============================================================================
+# STAGE 5: Runtime preparation
+# ==============================================================================
+# Prepare a clean filesystem structure with all necessary files before
+# copying to the distroless base. This stage runs with a shell so we can
+# create symlinks and organize files properly.
+# ==============================================================================
+FROM debian:bookworm-slim AS runtime-prep
+
+# Copy Python runtime
+COPY --from=python-runner-builder /usr/local/bin/python3.13 /runtime/usr/local/bin/python3.13
+COPY --from=python-runner-builder /usr/local/lib/python3.13 /runtime/usr/local/lib/python3.13
+COPY --from=python-runner-builder /usr/local/lib/libpython3.13.so* /runtime/usr/local/lib/
+
+# Copy Python dependencies (architecture-specific directories)
+# The /* glob will match x86_64-linux-gnu or aarch64-linux-gnu
+COPY --from=python-runner-builder /lib/*-linux-gnu* /runtime/lib/
+COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
+
+# Copy Node.js runtime
+COPY --from=node-debian /usr/local/bin/node /runtime/usr/local/bin/node
+
+# Copy task runners
+COPY --from=javascript-runner-builder /app/task-runner-javascript /runtime/opt/runners/task-runner-javascript
+COPY --from=python-runner-builder /app/task-runner-python /runtime/opt/runners/task-runner-python
+
+# Copy launcher
+COPY --from=launcher-downloader /launcher-bin/* /runtime/usr/local/bin/
+
+# Copy configuration
+COPY docker/images/runners/n8n-task-runners.json /runtime/etc/n8n-task-runners.json
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /runtime/home/runner && \
+    chmod 755 /runtime/home/runner && \
+    chmod +x /runtime/usr/local/bin/*
+
+# ==============================================================================
+# STAGE 6: Distroless Runtime
+# ==============================================================================
+# Uses Google's distroless/cc-debian12 which provides:
+# - glibc, libgcc, libstdc++
+# - CA certificates
+# - Timezone data
+# - nonroot user (UID 65532)
+# - NO shell, NO package manager, NO system utilities
+# ==============================================================================
+FROM gcr.io/distroless/cc-debian12:latest AS runtime
+ARG N8N_VERSION=snapshot
+ARG N8N_RELEASE_TYPE=dev
+
+ENV NODE_ENV=production \
+    N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
+
+# Copy everything from the prepared runtime filesystem
+COPY --from=runtime-prep --chown=root:root /runtime/ /
+
+WORKDIR /home/runner
+
+# Switch to nonroot user (UID 65532)
+USER 65532:65532
+
+EXPOSE 5680/tcp
+
+ENTRYPOINT ["/usr/local/bin/task-runner-launcher"]
+CMD ["javascript", "python"]
+
+LABEL org.opencontainers.image.title="n8n task runners (distroless)" \
+      org.opencontainers.image.description="Distroless sidecar image providing n8n task runners for JavaScript and Python code execution" \
+      org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
+      org.opencontainers.image.url="https://n8n.io" \
+      org.opencontainers.image.version="${N8N_VERSION}"

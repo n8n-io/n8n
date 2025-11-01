@@ -71,7 +71,7 @@ const mockTelemetry = {
 	track: vi.fn(),
 };
 
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
 }));
 

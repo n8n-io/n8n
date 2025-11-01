@@ -4,24 +4,24 @@ import '@/polyfills';
 import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/features/shared/banners/components/BannerStack.vue';
-import Modals from '@/components/Modals.vue';
-import Telemetry from '@/components/Telemetry.vue';
-import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { useTelemetryContext } from '@/composables/useTelemetryContext';
-import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
+import Modals from '@/app/components/Modals.vue';
+import Telemetry from '@/app/components/Telemetry.vue';
+import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
+import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import {
 	APP_MODALS_ELEMENT_ID,
 	CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID,
 	HIRING_BANNER,
 	VIEWS,
-} from '@/constants';
+} from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import LoadingView from '@/views/LoadingView.vue';
+import LoadingView from '@/app/views/LoadingView.vue';
 import { locale, N8nCommandBar } from '@n8n/design-system';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
@@ -29,11 +29,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useStyles } from './composables/useStyles';
-import { useExposeCssVar } from '@/composables/useExposeCssVar';
-import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
+import { useStyles } from '@/app/composables/useStyles';
+import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
+import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
-import { hasPermission } from './utils/rbac/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const route = useRoute();
 const rootStore = useRootStore();
