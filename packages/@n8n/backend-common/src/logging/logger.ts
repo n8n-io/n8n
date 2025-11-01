@@ -181,7 +181,6 @@ export class Logger implements LoggerType {
 
 	private color(defaultToTrue: boolean = false) {
 		if (defaultToTrue) {
-			// For production: default to no color unless FORCE_COLOR is set
 			return this.noColorDefaultTrue
 				? winston.format.uncolorize()
 				: winston.format.colorize({ all: true });
