@@ -269,6 +269,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "allowFileDiscovery": {
+                        "type": "boolean"
+                    },
                     "deleted": {
                         "type": "boolean"
                     },
@@ -320,6 +323,9 @@
         "starred": {
             "type": "boolean"
         },
+        "thumbnailLink": {
+            "type": "string"
+        },
         "thumbnailVersion": {
             "type": "string"
         },
@@ -345,5 +351,5 @@
             "type": "boolean"
         }
     },
-    "version": 5
+    "version": 6
 }
