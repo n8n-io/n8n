@@ -7,20 +7,8 @@
         "contentSize": {
             "type": "integer"
         },
-        "id": {
-            "type": "string"
-        },
         "isDownloadable": {
             "type": "boolean"
-        },
-        "lastModifiedClient": {
-            "type": "string"
-        },
-        "lastModifiedServer": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
         },
         "pathDisplay": {
             "type": "string"
@@ -35,5 +23,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }
