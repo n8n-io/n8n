@@ -21,8 +21,10 @@ export async function microsoftApiRequest(
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ): Promise<any> {
-	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
-	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+	const baseUrl = (
+		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -147,8 +149,10 @@ export async function getPath(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	itemId: string,
 ): Promise<string> {
-	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
-	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+	const baseUrl = (
+		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const responseData = (await microsoftApiRequest.call(
 		this,
 		'GET',

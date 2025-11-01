@@ -17,8 +17,10 @@ export async function microsoftApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
-	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	const credentials = await this.getCredentials('microsoftExcelOAuth2Api');
+	const baseUrl = (
+		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',

@@ -25,8 +25,10 @@ export async function microsoftApiRequest(
 	headers?: IDataObject,
 	url?: string,
 ): Promise<any> {
-	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
-	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
+	const baseUrl = (
+		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const options: IHttpRequestOptions = {
 		method,
 		url: url ?? `${baseUrl}/v1.0${endpoint}`,
@@ -53,8 +55,10 @@ export async function microsoftApiPaginateRequest(
 	url?: string,
 	itemIndex: number = 0,
 ): Promise<IDataObject[]> {
-	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
-	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
+	const baseUrl = (
+		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	// Todo: IHttpRequestOptions doesn't have uri property which is required for requestWithAuthenticationPaginated
 	const options: IRequestOptions = {
 		method,

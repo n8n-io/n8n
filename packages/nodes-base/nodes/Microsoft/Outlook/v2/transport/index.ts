@@ -23,8 +23,9 @@ export async function microsoftApiRequest(
 ) {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
-	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
-	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	const baseUrl = (
+		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 
 	let apiUrl = `${baseUrl}/v1.0/me${resource}`;
 	// If accessing shared mailbox

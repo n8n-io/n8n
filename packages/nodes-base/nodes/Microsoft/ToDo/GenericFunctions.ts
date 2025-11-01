@@ -18,8 +18,10 @@ export async function microsoftApiRequest(
 	_headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ) {
-	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
-	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	const credentials = await this.getCredentials('microsoftToDoOAuth2Api');
+	const baseUrl = (
+		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',

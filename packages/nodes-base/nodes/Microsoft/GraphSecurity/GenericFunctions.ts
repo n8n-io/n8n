@@ -15,16 +15,20 @@ export async function msGraphSecurityApiRequest(
 	qs: IDataObject = {},
 	headers: IDataObject = {},
 ) {
-	const {
-		oauthTokenData: { access_token },
-	} = await this.getCredentials<{
+	const credentials = await this.getCredentials<{
 		oauthTokenData: {
 			access_token: string;
 		};
+		graphApiBaseUrl?: string;
 	}>('microsoftGraphSecurityOAuth2Api');
 
-	const nodeBaseParam = (this.getNodeParameter('graphApiBaseUrl', 0, '') as string) || '';
-	const baseUrl = (nodeBaseParam || 'https://graph.microsoft.com').replace(/\/+$/, '');
+	const {
+		oauthTokenData: { access_token },
+	} = credentials;
+
+	const baseUrl = (
+		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 
 	const options: IRequestOptions = {
 		headers: {
