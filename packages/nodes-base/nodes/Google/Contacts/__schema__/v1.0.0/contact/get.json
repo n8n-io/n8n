@@ -7,23 +7,14 @@
         "etag": {
             "type": "string"
         },
-        "names": {
+        "phoneNumbers": {
             "type": "object",
             "properties": {
-                "displayName": {
-                    "type": "string"
-                },
-                "displayNameLastFirst": {
-                    "type": "string"
-                },
-                "familyName": {
-                    "type": "string"
-                },
-                "givenName": {
-                    "type": "string"
-                },
-                "unstructuredName": {
-                    "type": "string"
+                "mobile": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -31,5 +22,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
