@@ -1,9 +1,9 @@
 {
     "type": "object",
     "properties": {
-        "NSN": {
-            "type": "string"
+        "Record ID#": {
+            "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
