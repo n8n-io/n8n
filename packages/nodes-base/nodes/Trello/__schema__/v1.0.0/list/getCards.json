@@ -41,6 +41,9 @@
                 "dueComplete": {
                     "type": "boolean"
                 },
+                "externalSource": {
+                    "type": "null"
+                },
                 "fogbugz": {
                     "type": "string"
                 },
@@ -63,9 +66,6 @@
                     "type": "integer"
                 }
             }
-        },
-        "cardRole": {
-            "type": "null"
         },
         "checkItemStates": {
             "type": "array",
@@ -95,6 +95,9 @@
                 },
                 "size": {
                     "type": "string"
+                },
+                "yPosition": {
+                    "type": "number"
                 }
             }
         },
@@ -137,12 +140,6 @@
                 "type": "string"
             }
         },
-        "idMembersVoted": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "idShort": {
             "type": "integer"
         },
@@ -154,6 +151,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -178,9 +178,6 @@
         "manualCoverAttachment": {
             "type": "boolean"
         },
-        "mirrorSourceId": {
-            "type": "null"
-        },
         "name": {
             "type": "string"
         },
@@ -203,5 +200,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }
