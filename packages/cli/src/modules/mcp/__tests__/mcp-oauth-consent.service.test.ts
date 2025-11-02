@@ -64,7 +64,6 @@ describe('McpOAuthConsentService', () => {
 			expect(result).toEqual({
 				clientName: 'Test Client',
 				clientId: 'client-123',
-				scopes: ['read', 'write'],
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
@@ -104,7 +103,7 @@ describe('McpOAuthConsentService', () => {
 			});
 		});
 
-		it('should handle empty scopes', async () => {
+		it('should return client details even with empty scopes', async () => {
 			const sessionToken = 'valid-session-token';
 			const sessionPayload = {
 				clientId: 'client-123',
@@ -123,7 +122,10 @@ describe('McpOAuthConsentService', () => {
 
 			const result = await service.getConsentDetails(sessionToken);
 
-			expect(result?.scopes).toEqual(['']);
+			expect(result).toEqual({
+				clientName: 'Test Client',
+				clientId: 'client-123',
+			});
 		});
 	});
 
