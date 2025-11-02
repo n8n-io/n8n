@@ -67,12 +67,6 @@ import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 
-import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
-// import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
-
-import { McpOAuthService } from './modules/mcp/mcp-oauth-service';
-import { UrlService } from './services/url.service';
-
 @Service()
 export class Server extends AbstractServer {
 	private endpointPresetCredentials: string;
@@ -225,25 +219,6 @@ export class Server extends AbstractServer {
 			}
 		}
 
-		// this.app.use(
-		// 	mcpAuthRouter({
-		// 		provider: Container.get(McpOAuthService),
-		// 		issuerUrl: new URL(`${Container.get(UrlService).getInstanceBaseUrl()}/mcp-oauth`),
-		// 		tokenOptions: {
-		// 			rateLimit: {
-		// 				windowMs: 5 * 1000,
-		// 				limit: 100,
-		// 			},
-		// 		},
-		// 		clientRegistrationOptions: {
-		// 			rateLimit: {
-		// 				windowMs: 60 * 1000, // 1 minute
-		// 				limit: 10, // Limit to 10 registrations per minute
-		// 			},
-		// 		},
-		// 	}),
-		// );
-
 		// Extract BrowserId from headers
 		this.app.use((req: APIRequest, _, next) => {
 			req.browserId = req.headers['browser-id'] as string;
@@ -252,84 +227,6 @@ export class Server extends AbstractServer {
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
-
-		// OAuth consent endpoints (must be after cookieParser)
-		// this.app.get(
-		// 	'/mcp/oauth/consent/details',
-		// 	async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		// 		try {
-		// 			const sessionId = req.cookies['n8n-oauth-session'] as string | undefined;
-
-		// 			if (!sessionId) {
-		// 				res.status(400).json({ error: 'No session found' });
-		// 				return;
-		// 			}
-
-		// 			// Authenticate the user
-		// 			const authService = Container.get(AuthService);
-		// 			const [user] = await authService.resolveJwt(req, res);
-
-		// 			if (!user) {
-		// 				res.status(401).json({ error: 'Unauthorized' });
-		// 				return;
-		// 			}
-
-		// 			const mcpOAuthService = Container.get(McpOAuthService);
-		// 			const details = await mcpOAuthService.getConsentDetails(sessionId, user.id);
-
-		// 			if (!details) {
-		// 				// Clear invalid session cookie
-		// 				res.clearCookie('n8n-oauth-session');
-		// 				res.status(400).json({ error: 'Invalid or expired session' });
-		// 				return;
-		// 			}
-
-		// 			res.json(details);
-		// 		} catch (error) {
-		// 			next(error);
-		// 		}
-		// 	},
-		// );
-
-		// this.app.post(
-		// 	'/mcp/oauth/consent/approve',
-		// 	async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		// 		try {
-		// 			const sessionId = req.cookies['n8n-oauth-session'] as string | undefined;
-
-		// 			if (!sessionId) {
-		// 				res.status(400).json({ error: 'No session found' });
-		// 				return;
-		// 			}
-
-		// 			// Authenticate the user
-		// 			const authService = Container.get(AuthService);
-		// 			const [user] = await authService.resolveJwt(req, res);
-
-		// 			if (!user) {
-		// 				res.status(401).json({ error: 'Unauthorized' });
-		// 				return;
-		// 			}
-
-		// 			const { approved } = req.body as { approved?: unknown };
-
-		// 			if (typeof approved !== 'boolean') {
-		// 				res.status(400).json({ error: 'Missing or invalid "approved" field' });
-		// 				return;
-		// 			}
-
-		// 			const mcpOAuthService = Container.get(McpOAuthService);
-		// 			const result = await mcpOAuthService.handleConsentDecision(sessionId, user.id, approved);
-
-		// 			// Clear the session cookie
-		// 			res.clearCookie('n8n-oauth-session');
-
-		// 			res.json(result);
-		// 		} catch (error) {
-		// 			next(error);
-		// 		}
-		// 	},
-		// );
 
 		const { restEndpoint, app } = this;
 

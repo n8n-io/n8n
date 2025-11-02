@@ -87,8 +87,6 @@ export class AuthService {
 			'/types/nodes.json',
 			'/types/credentials.json',
 			'/mcp-oauth/authorize/',
-			// remove this when the FE is updated to send browserId
-			`/${restEndpoint}/consent/details`, // Add this
 		];
 	}
 
@@ -201,14 +199,10 @@ export class AuthService {
 	}
 
 	async resolveJwt(
+		token: string,
 		req: AuthenticatedRequest,
 		res: Response,
-		token?: string,
 	): Promise<[User, { usedMfa: boolean }]> {
-		token = token ?? req.cookies[AUTH_COOKIE_NAME];
-
-		if (!token) throw new AuthError('Unauthorized');
-
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
