@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import time
-from typing import Dict, Optional, Any, Callable, Awaitable
+from typing import Any, Callable, Awaitable
+from dataclasses import dataclass
 from urllib.parse import urlparse
 import websockets
 import random
@@ -57,10 +58,10 @@ from src.task_analyzer import TaskAnalyzer
 from src.config.security_config import SecurityConfig
 
 
+@dataclass
 class TaskOffer:
-    def __init__(self, offer_id: str, valid_until: float):
-        self.offer_id = offer_id
-        self.valid_until = valid_until
+    offer_id: str
+    valid_until: float
 
     @property
     def has_expired(self) -> bool:
@@ -76,25 +77,26 @@ class TaskRunner:
         self.name = RUNNER_NAME
         self.config = config
 
-        self.websocket_connection: Optional[Any] = None
+        self.websocket_connection: Any | None = None
         self.can_send_offers = False
 
-        self.open_offers: Dict[str, TaskOffer] = {}
-        self.running_tasks: Dict[str, TaskState] = {}
+        self.open_offers: dict[str, TaskOffer] = {}
+        self.running_tasks: dict[str, TaskState] = {}
 
-        self.offers_coroutine: Optional[asyncio.Task] = None
+        self.offers_coroutine: asyncio.Task | None = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
         self.security_config = SecurityConfig(
             stdlib_allow=config.stdlib_allow,
             external_allow=config.external_allow,
             builtins_deny=config.builtins_deny,
+            runner_env_deny=config.env_deny,
         )
         self.analyzer = TaskAnalyzer(self.security_config)
         self.logger = logging.getLogger(__name__)
 
-        self.idle_coroutine: Optional[asyncio.Task] = None
-        self.on_idle_timeout: Optional[Callable[[], Awaitable[None]]] = None
+        self.idle_coroutine: asyncio.Task | None = None
+        self.on_idle_timeout: Callable[[], Awaitable[None]] | None = None
         self.last_activity_time = time.time()
         self.is_shutting_down = False
 
@@ -134,7 +136,7 @@ class TaskRunner:
                 await self._cancel_coroutine(self.idle_coroutine)
                 await asyncio.sleep(5)
 
-    async def _cancel_coroutine(self, coroutine: Optional[asyncio.Task]) -> None:
+    async def _cancel_coroutine(self, coroutine: asyncio.Task | None) -> None:
         if coroutine and not coroutine.done():
             coroutine.cancel()
             try:
@@ -299,7 +301,7 @@ class TaskRunner:
 
             self.analyzer.validate(task_settings.code)
 
-            process, queue = self.executor.create_process(
+            process, read_conn, write_conn = self.executor.create_process(
                 code=task_settings.code,
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
@@ -311,8 +313,10 @@ class TaskRunner:
             result, print_args, result_size_bytes = await asyncio.to_thread(
                 self.executor.execute_process,
                 process=process,
-                queue=queue,
+                read_conn=read_conn,
+                write_conn=write_conn,
                 task_timeout=self.config.task_timeout,
+                pipe_reader_timeout=self.config.pipe_reader_timeout,
                 continue_on_fail=task_settings.continue_on_fail,
             )
 
@@ -372,8 +376,7 @@ class TaskRunner:
 
         if task_state.status == TaskStatus.RUNNING:
             task_state.status = TaskStatus.ABORTING
-            self.executor.stop_process(task_state.process)
-
+            await asyncio.to_thread(self.executor.stop_process, task_state.process)
             self.logger.info(
                 LOG_TASK_CANCEL.format(task_id=task_id, **task_state.context())
             )

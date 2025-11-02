@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
@@ -21,7 +22,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import config from '@/config';
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
@@ -36,6 +36,10 @@ const executionRepository = mock<ExecutionRepository>();
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
 	isEnabled: false,
+});
+
+const executionsConfig = mockInstance(ExecutionsConfig, {
+	mode: 'regular',
 });
 
 describe('ActiveExecutions', () => {
@@ -76,6 +80,7 @@ describe('ActiveExecutions', () => {
 			executionRepository,
 			concurrencyControl,
 			mock(),
+			executionsConfig,
 		);
 
 		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
@@ -207,6 +212,7 @@ describe('ActiveExecutions', () => {
 				executionRepository,
 				concurrencyControl,
 				mock(),
+				executionsConfig,
 			);
 
 			executionData.httpResponse = mock<Response>();
@@ -305,8 +311,6 @@ describe('ActiveExecutions', () => {
 		let waitingExecutionId1: string, waitingExecutionId2: string;
 
 		beforeEach(async () => {
-			config.set('executions.mode', 'regular');
-
 			executionRepository.createNewExecution.mockImplementation(async () =>
 				randomInt(1000, 2000).toString(),
 			);

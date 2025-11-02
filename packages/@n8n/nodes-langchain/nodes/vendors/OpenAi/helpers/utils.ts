@@ -2,6 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
 import type { OpenAIClient } from '@langchain/openai';
 import type { BufferWindowMemory } from 'langchain/memory';
+import { isObjectEmpty } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 // Copied from langchain(`langchain/src/tools/convert_to_openai.ts`)
@@ -43,6 +44,44 @@ export function formatToOpenAIAssistantTool(tool: Tool): OpenAIClient.Beta.Assis
 			description: tool.description,
 			parameters: zodToJsonSchema(tool.schema),
 		},
+	};
+}
+
+const requireStrict = (schema: any) => {
+	if (!schema.required) {
+		return false;
+	}
+	// when strict:true, Responses API requires `required` to be present and all properties to be included
+	if (schema.properties) {
+		const propertyNames = Object.keys(schema.properties);
+		const somePropertyMissingFromRequired = propertyNames.some(
+			(propertyName) => !schema.required.includes(propertyName),
+		);
+		const requireStrict = !somePropertyMissingFromRequired;
+		return requireStrict;
+	}
+	return false;
+};
+
+export function formatToOpenAIResponsesTool(tool: Tool): OpenAIClient.Responses.FunctionTool {
+	const schema = zodToJsonSchema(tool.schema) as any;
+	const strict = requireStrict(schema);
+
+	// when strict:true, Responses API requires `additionalProperties` either to be true/false or an object with properties
+	const isAdditionalPropertiesEmpty =
+		schema.additionalProperties &&
+		typeof schema.additionalProperties === 'object' &&
+		isObjectEmpty(schema.additionalProperties);
+	if (isAdditionalPropertiesEmpty && strict) {
+		schema.additionalProperties = false;
+	}
+
+	return {
+		type: 'function',
+		name: tool.name,
+		parameters: schema,
+		strict,
+		description: tool.description,
 	};
 }
 

@@ -69,6 +69,7 @@ interface ErrorResponse {
 	message: string;
 	hint?: string;
 	stacktrace?: string;
+	meta?: Record<string, unknown>;
 }
 
 export function sendErrorResponse(res: Response, error: Error) {
@@ -113,6 +114,9 @@ export function sendErrorResponse(res: Response, error: Error) {
 		}
 		if (error.hint) {
 			response.hint = error.hint;
+		}
+		if (error.meta) {
+			response.meta = error.meta;
 		}
 	}
 

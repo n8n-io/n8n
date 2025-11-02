@@ -61,11 +61,9 @@ describe('evaluateTrigger', () => {
 
 			const result = evaluateTrigger(workflow, mockNodeTypes);
 
-			expect(result.hasTrigger).toBe(false);
 			expect(result.violations).toContainEqual(
 				expect.objectContaining({ description: 'Workflow has no nodes' }),
 			);
-			expect(result.triggerNodes).toEqual([]);
 		});
 
 		it('should detect workflow with no trigger nodes', () => {
@@ -94,13 +92,11 @@ describe('evaluateTrigger', () => {
 
 			const result = evaluateTrigger(workflow, mockNodeTypes);
 
-			expect(result.hasTrigger).toBe(false);
 			expect(result.violations).toContainEqual(
 				expect.objectContaining({
 					description: 'Workflow must have at least one trigger node to start execution',
 				}),
 			);
-			expect(result.triggerNodes).toEqual([]);
 		});
 
 		it('should accept workflow with one trigger node', () => {
@@ -129,9 +125,7 @@ describe('evaluateTrigger', () => {
 
 			const result = evaluateTrigger(workflow, mockNodeTypes);
 
-			expect(result.hasTrigger).toBe(true);
 			expect(result.violations).toEqual([]);
-			expect(result.triggerNodes).toEqual(['Manual Trigger']);
 		});
 	});
 
@@ -161,11 +155,7 @@ describe('evaluateTrigger', () => {
 			});
 
 			const result = evaluateTrigger(workflow, mockNodeTypes);
-
-			// Should still find the valid trigger
-			expect(result.hasTrigger).toBe(true);
 			expect(result.violations).toEqual([]);
-			expect(result.triggerNodes).toEqual(['Manual Trigger']);
 		});
 
 		it('should handle mixed trigger and non-trigger nodes', () => {
@@ -217,9 +207,7 @@ describe('evaluateTrigger', () => {
 			});
 
 			const result = evaluateTrigger(workflow, mockNodeTypes);
-
-			expect(result.hasTrigger).toBe(true);
-			expect(result.triggerNodes).toEqual(['Webhook', 'Manual']);
+			expect(result.violations).toEqual([]);
 		});
 	});
 });

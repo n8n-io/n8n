@@ -1,6 +1,6 @@
 import type { RouteLocationNormalized } from 'vue-router';
-import { useFoldersStore } from '@/features/folders/folders.store';
-import { useProjectPages } from '@/features/projects/composables/useProjectPages';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useRoute } from 'vue-router';
 
 /**

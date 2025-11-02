@@ -1,4 +1,4 @@
-import type { ProgrammaticEvaluationResult, SingleEvaluatorResult } from '../types/test-result';
+import type { ProgrammaticEvaluationResult, SingleEvaluatorResult } from '@/validation/types';
 
 export function calculateOverallScore(
 	evaluatorResults: Omit<ProgrammaticEvaluationResult, 'overallScore'>,

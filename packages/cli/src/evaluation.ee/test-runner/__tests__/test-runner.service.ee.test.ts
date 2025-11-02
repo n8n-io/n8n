@@ -1,4 +1,5 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import type {
 	TestRun,
 	TestCaseExecutionRepository,
@@ -6,7 +7,6 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { readFileSync } from 'fs';
-import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import {
@@ -18,7 +18,6 @@ import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
@@ -41,6 +40,7 @@ describe('TestRunnerService', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
 	const testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
+	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -57,6 +57,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testCaseExecutionRepository,
 			errorReporter,
+			executionsConfig,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -481,7 +482,18 @@ describe('TestRunnerService', () => {
 		});
 
 		test('should call workflowRunner.run with correct data in queue execution mode and manual offload', async () => {
-			config.set('executions.mode', 'queue');
+			const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
+			const testRunnerService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				queueModeConfig,
+			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
 			// Create workflow with a trigger node
@@ -534,7 +546,6 @@ describe('TestRunnerService', () => {
 			});
 
 			// after reset
-			config.set('executions.mode', 'regular');
 			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		});
 
@@ -760,18 +771,21 @@ describe('TestRunnerService', () => {
 		});
 
 		describe('runTestCase - Queue Mode', () => {
-			beforeEach(() => {
-				// Mock config to return 'queue' mode
-				jest.spyOn(config, 'getEnv').mockImplementation((key) => {
-					if (key === 'executions.mode') {
-						return 'queue';
-					}
-					return undefined;
-				});
-			});
+			let testRunnerService: TestRunnerService;
 
-			afterEach(() => {
-				(config.getEnv as unknown as Mock).mockRestore();
+			beforeEach(() => {
+				const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
+				testRunnerService = new TestRunnerService(
+					logger,
+					telemetry,
+					workflowRepository,
+					workflowRunner,
+					activeExecutions,
+					testRunRepository,
+					testCaseExecutionRepository,
+					errorReporter,
+					queueModeConfig,
+				);
 			});
 
 			test('should call workflowRunner.run with correct data in queue mode', async () => {

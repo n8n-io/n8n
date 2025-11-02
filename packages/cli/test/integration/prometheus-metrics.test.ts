@@ -6,7 +6,6 @@ import { DateTime } from 'luxon';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
@@ -297,7 +296,7 @@ describe('PrometheusMetricsService', () => {
 		 * Arrange
 		 */
 		prometheusService.enableMetric('queue');
-		config.set('executions.mode', 'queue');
+		globalConfig.executions.mode = 'queue';
 		await prometheusService.init(server.app);
 
 		/**
@@ -324,7 +323,7 @@ describe('PrometheusMetricsService', () => {
 		 * Arrange
 		 */
 		prometheusService.enableMetric('queue');
-		config.set('executions.mode', 'queue');
+		globalConfig.executions.mode = 'queue';
 		await prometheusService.init(server.app);
 
 		/**

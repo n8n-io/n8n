@@ -2,16 +2,15 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
-import { DeprecationService } from '@/deprecation/deprecation.service';
 
 import { BaseCommand } from './base-command';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 
 @Command({
 	name: 'webhook',
@@ -42,7 +41,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async init() {
-		if (config.getEnv('executions.mode') !== 'queue') {
+		if (this.globalConfig.executions.mode !== 'queue') {
 			/**
 			 * It is technically possible to run without queues but
 			 * there are 2 known bugs when running in this mode:
