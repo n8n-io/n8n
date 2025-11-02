@@ -1,423 +1,412 @@
-# Contributing to n8n
+# 为 n8n 做贡献
 
-Great that you are here and you want to contribute to n8n
+很高兴您想为 n8n 做贡献
 
-## Contents
+## 目录
 
-- [Contributing to n8n](#contributing-to-n8n)
-	- [Contents](#contents)
-	- [Code of conduct](#code-of-conduct)
-	- [Directory structure](#directory-structure)
-	- [Development setup](#development-setup)
-		- [Dev Container](#dev-container)
-		- [Requirements](#requirements)
-			- [Node.js](#nodejs)
-			- [pnpm](#pnpm)
-				- [pnpm workspaces](#pnpm-workspaces)
-			- [corepack](#corepack)
-			- [Build tools](#build-tools)
-		- [Actual n8n setup](#actual-n8n-setup)
-		- [Start](#start)
-	- [Development cycle](#development-cycle)
-		- [Community PR Guidelines](#community-pr-guidelines)
-			- [**1. Change Request/Comment**](#1-change-requestcomment)
-			- [**2. General Requirements**](#2-general-requirements)
-			- [**3. PR Specific Requirements**](#3-pr-specific-requirements)
-			- [**4. Workflow Summary for Non-Compliant PRs**](#4-workflow-summary-for-non-compliant-prs)
-		- [Test suite](#test-suite)
-			- [Unit tests](#unit-tests)
-			- [Code Coverage](#code-coverage)
-			- [E2E tests](#e2e-tests)
-	- [Releasing](#releasing)
-	- [Create custom nodes](#create-custom-nodes)
-	- [Extend documentation](#extend-documentation)
-	- [Contribute workflow templates](#contribute-workflow-templates)
-	- [Contributor License Agreement](#contributor-license-agreement)
+- [为 n8n 做贡献](#为-n8n-做贡献)
+  - [目录](#目录)
+  - [行为准则](#行为准则)
+  - [目录结构](#目录结构)
+  - [开发环境设置](#开发环境设置)
+    - [开发容器](#开发容器)
+    - [环境要求](#环境要求)
+      - [Node.js](#nodejs)
+      - [pnpm](#pnpm)
+        - [pnpm 工作空间](#pnpm-工作空间)
+      - [corepack](#corepack)
+      - [构建工具](#构建工具)
+    - [实际 n8n 设置](#实际-n8n-设置)
+    - [启动](#启动)
+  - [开发周期](#开发周期)
+    - [社区 PR 指南](#社区-pr-指南)
+      - [**1. 变更请求/评论**](#1-变更请求评论)
+      - [**2. 一般要求**](#2-一般要求)
+      - [**3. PR 特定要求**](#3-pr-特定要求)
+      - [**4. 不合规 PR 的工作流程摘要**](#4-不合规-pr-的工作流程摘要)
+    - [测试套件](#测试套件)
+      - [单元测试](#单元测试)
+      - [代码覆盖率](#代码覆盖率)
+      - [E2E 测试](#e2e-测试)
+  - [发布](#发布)
+  - [创建自定义节点](#创建自定义节点)
+  - [扩展文档](#扩展文档)
+  - [贡献工作流模板](#贡献工作流模板)
+  - [贡献者许可协议](#贡献者许可协议)
 
-## Code of conduct
+## 行为准则
 
-This project and everyone participating in it are governed by the Code of
-Conduct which can be found in the file [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-By participating, you are expected to uphold this code. Please report
-unacceptable behavior to jan@n8n.io.
+本项目和参与其中的每个人均受 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) 文件中行为准则的约束。
+参与其中，您需要遵守此准则。请将不当行为报告给 jan@n8n.io。
 
-## Directory structure
+## 目录结构
 
-n8n is split up in different modules which are all in a single mono repository.
+n8n 分为不同的模块，全部位于一个单一代码库中。
 
-The most important directories:
+最重要的目录：
 
-- [/docker/images](/docker/images) - Dockerfiles to create n8n containers
-- [/packages](/packages) - The different n8n modules
-- [/packages/cli](/packages/cli) - CLI code to run front- & backend
-- [/packages/core](/packages/core) - Core code which handles workflow
-  execution, active webhooks and
-  workflows. **Contact n8n before
-  starting on any changes here**
-- [/packages/frontend/@n8n/design-system](/packages/design-system) - Vue frontend components
-- [/packages/frontend/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
-- [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
-- [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
-- [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
-  get used by front- & backend
+- [/docker/images](/docker/images) - 创建 n8n 容器的 Dockerfile
+- [/packages](/packages) - 不同的 n8n 模块
+- [/packages/cli](/packages/cli) - 运行前端和后端的 CLI 代码
+- [/packages/core](/packages/core) - 处理工作流执行、活动 webhook 和工作流的核心代码
+  **在开始任何更改前请联系 n8n**
+- [/packages/frontend/@n8n/design-system](/packages/design-system) - Vue 前端组件
+- [/packages/frontend/editor-ui](/packages/editor-ui) - Vue 前端工作流编辑器
+- [/packages/node-dev](/packages/node-dev) - 创建新 n8n 节点的 CLI
+- [/packages/nodes-base](/packages/nodes-base) - 基础 n8n 节点
+- [/packages/workflow](/packages/workflow) - 工作流代码及前后端使用的接口
 
-## Development setup
+## 开发环境设置
 
-If you want to change or extend n8n you have to make sure that all the needed
-dependencies are installed and the packages get linked correctly. Here's a short guide on how that can be done:
+如果您想更改或扩展 n8n，您必须确保安装了所有必需的依赖并且包正确链接。以下是一个简短指南，说明如何完成此操作：
 
-### Dev Container
+### 开发容器
 
-If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
+如果您已经安装了 VS Code 和 Docker，可以点击[此处](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n)开始。点击这些链接将使 VS Code 自动安装 Dev Containers 扩展（如果需要），将源代码克隆到容器卷中，并启动开发容器供使用。
 
-### Requirements
+### 环境要求
 
 #### Node.js
 
-[Node.js](https://nodejs.org/en/) version 22.16 or newer is required for development purposes.
+开发需要 [Node.js](https://nodejs.org/en/) 版本 22.16 或更高。
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 10.2 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+开发需要 [pnpm](https://pnpm.io/) 版本 10.2 或更高版本。我们建议使用 [corepack](#corepack) 安装。
 
-##### pnpm workspaces
+##### pnpm 工作空间
 
-n8n is split up into different modules which are all in a single mono repository.
-To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
-This automatically sets up file-links between modules which depend on each other.
+n8n 分为不同的模块，全部位于一个单一代码库中。
+为了方便模块管理，使用了 [pnpm 工作空间](https://pnpm.io/workspaces)。
+这会自动设置相互依赖的模块之间的文件链接。
 
 #### corepack
 
-We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`.
+我们建议使用 `corepack enable` 启用 [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html)。
 
-You can install the correct version of pnpm using `corepack prepare --activate`.
+您可以使用 `corepack prepare --activate` 安装正确版本的 pnpm。
 
-**IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
+**重要**：如果您通过 homebrew 安装了 Node.js，您需要运行 `brew install corepack`，因为 homebrew 明确从 [`node` 公式](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66) 中移除了 `npm` 和 `corepack`。
 
-**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare --activate` in a terminal as an administrator.
+**重要**：如果您在 Windows 上，您需要以管理员身份在终端中运行 `corepack enable` 和 `corepack prepare --activate`。
 
-#### Build tools
+#### 构建工具
 
-The packages which n8n uses depend on a few build tools:
+n8n 使用的包依赖于几个构建工具：
 
-Debian/Ubuntu:
+Debian/Ubuntu：
 
 ```
 apt-get install -y build-essential python
 ```
 
-CentOS:
+CentOS：
 
 ```
 yum install gcc gcc-c++ make
 ```
 
-Windows:
+Windows：
 
 ```
 npm add -g windows-build-tools
 ```
 
-MacOS:
+MacOS：
 
-No additional packages required.
+无需额外包。
 
-#### actionlint (for GitHub Actions workflow development)
+#### actionlint（用于 GitHub Actions 工作流开发）
 
-If you plan to modify GitHub Actions workflow files (`.github/workflows/*.yml`), you'll need [actionlint](https://github.com/rhysd/actionlint) for workflow validation:
+如果您计划修改 GitHub Actions 工作流文件（`.github/workflows/*.yml`），您需要 [actionlint](https://github.com/rhysd/actionlint) 进行工作流验证：
 
 **macOS (Homebrew):**
 ```
 brew install actionlint
 ```
-> **Note:** actionlint is only required if you're modifying workflow files. It runs automatically via git hooks when workflow files are changed.
+> **注意**：actionlint 仅在修改工作流文件时需要。当工作流文件更改时，它通过 git hooks 自动运行。
 
-### Actual n8n setup
+### 实际 n8n 设置
 
-> **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!
+> **重要**：以下所有步骤至少需要执行一次才能建立和运行开发环境！
 
-Now that everything n8n requires to run is installed, the actual n8n code can be
-checked out and set up:
+现在已安装 n8n 运行所需的所有内容，可以签出和设置实际的 n8n 代码：
 
-1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository.
+1. [Fork](https://guides.github.com/activities/forking/#fork) n8n 仓库。
 
-2. Clone your forked repository:
+2. 克隆您 fork 的仓库：
 
    ```
    git clone https://github.com/<your_github_username>/n8n.git
    ```
 
-3. Go into repository folder:
+3. 进入仓库文件夹：
 
    ```
    cd n8n
    ```
 
-4. Add the original n8n repository as `upstream` to your forked repository:
+4. 将原始 n8n 仓库添加为您 fork 仓库的 `upstream`：
 
    ```
    git remote add upstream https://github.com/n8n-io/n8n.git
    ```
 
-5. Install all dependencies of all modules and link them together:
+5. 安装所有模块的依赖并将它们链接在一起：
 
    ```
    pnpm install
    ```
 
-6. Build all the code:
+6. 构建所有代码：
    ```
    pnpm build
    ```
 
-### Start
+### 启动
 
-To start n8n execute:
+要启动 n8n，执行：
 
 ```
 pnpm start
 ```
 
-To start n8n with tunnel:
+使用隧道启动 n8n：
 
 ```
 ./packages/cli/bin/n8n start --tunnel
 ```
 
-## Development cycle
+## 开发周期
 
-While iterating on n8n modules code, you can run `pnpm dev`. It will then
-automatically build your code, restart the backend and refresh the frontend
-(editor-ui) on every change you make.
+在迭代 n8n 模块代码时，您可以运行 `pnpm dev`。它将自动构建您的代码，在您每次进行更改时重启后端并刷新前端（editor-ui）。
 
-### Basic Development Workflow
+### 基本开发工作流程
 
-1. Start n8n in development mode:
+1. 在开发模式下启动 n8n：
    ```
    pnpm dev
    ```
-2. Hack, hack, hack
-3. Check if everything still runs in production mode:
+2. 编码，编码，编码
+3. 检查一切是否仍在生产模式下运行：
    ```
    pnpm build
    pnpm start
    ```
-4. Create tests
-5. Run all [tests](#test-suite):
+4. 创建测试
+5. 运行所有[测试](#test-suite)：
    ```
    pnpm test
    ```
-6. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+6. 提交代码并[创建拉取请求](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
-### Hot Reload for Nodes (N8N_DEV_RELOAD)
+### 节点热重载 (N8N_DEV_RELOAD)
 
-When developing custom nodes or credentials, you can enable hot reload to automatically detect changes without restarting the server:
+开发自定义节点或凭证时，您可以启用热重载来自动检测更改而无需重启服务器：
 
 ```bash
 N8N_DEV_RELOAD=true pnpm dev
 ```
 
-**Performance considerations:**
-- File watching adds overhead to your system, especially on slower machines
-- The watcher monitors potentially thousands of files, which can impact CPU and memory usage
-- On resource-constrained systems, consider developing without hot reload and manually restarting when needed
+**性能考虑：**
+- 文件监视会给系统带来开销，特别是在较慢的机器上
+- 监视器监视潜在数千个文件，这可能影响 CPU 和内存使用
+- 在资源受限的系统上，考虑不使用热重载进行开发，并在需要时手动重启
 
-### Selective Package Development
+### 选择性包开发
 
-Running all packages in development mode can be resource-intensive. For better performance, run only the packages relevant to your work:
+在开发模式下运行所有包可能是资源密集型的。为了更好的性能，只运行与您工作相关的包：
 
-#### Available Filtered Commands
+#### 可用的过滤命令
 
-- **Backend-only development:**
+- **仅后端开发：**
   ```bash
   pnpm dev:be
   ```
-  Excludes frontend packages like editor-ui and design-system
+  排除像 editor-ui 和 design-system 这样的前端包
 
-- **Frontend-only development:**
+- **仅前端开发：**
   ```bash
   pnpm dev:fe
   ```
-  Runs the backend server and editor-ui development server
+  运行后端服务器和 editor-ui 开发服务器
 
-- **AI/LangChain nodes development:**
+- **AI/LangChain 节点开发：**
   ```bash
   pnpm dev:ai
   ```
-  Runs only essential packages for AI node development
+  仅运行 AI 节点开发的基本包
 
-#### Custom Selective Development
+#### 自定义选择性开发
 
-For even more focused development, you can run packages individually:
+为了更有针对性的开发，您可以单独运行包：
 
-**Example 1: Working on custom nodes**
+**示例 1：处理自定义节点**
 ```bash
-# Terminal 1: Build and watch nodes package
+# 终端 1：构建和监视节点包
 cd packages/nodes-base
 pnpm dev
 
-# Terminal 2: Run the CLI with hot reload
+# 终端 2：运行带有热重载的 CLI
 cd packages/cli
 N8N_DEV_RELOAD=true pnpm dev
 ```
 
-**Example 2: Pure frontend development**
+**示例 2：纯前端开发**
 ```bash
-# Terminal 1: Start the backend server (no watching)
+# 终端 1：启动后端服务器（不监视）
 pnpm start
 
-# Terminal 2: Run frontend dev server
+# 终端 2：运行前端开发服务器
 cd packages/editor-ui
 pnpm dev
 ```
 
-**Example 3: Working on a specific node package**
+**示例 3：处理特定节点包**
 ```bash
-# Terminal 1: Watch your node package
-cd packages/nodes-base  # or your custom node package
+# 终端 1：监视您的节点包
+cd packages/nodes-base  # 或您的自定义节点包
 pnpm watch
 
-# Terminal 2: Run CLI with hot reload
+# 终端 2：运行带有热重载的 CLI
 cd packages/cli
 N8N_DEV_RELOAD=true pnpm dev
 ```
 
-### Performance Considerations
+### 性能考虑
 
-The full development mode (`pnpm dev`) runs multiple processes in parallel:
+完整开发模式（`pnpm dev`）并行运行多个进程：
 
-1. **TypeScript compilation** for each package
-2. **File watchers** monitoring source files
-3. **Nodemon** restarting the backend on changes
-4. **Vite dev server** for the frontend with HMR
-5. **Multiple build processes** for various packages
+1. 每个包的 **TypeScript 编译**
+2. 监视源文件的 **文件监视器**
+3. 在更改时重启后端的 **Nodemon**
+4. 带有 HMR 的前端 **Vite 开发服务器**
+5. 各种包的 **多个构建进程**
 
-**Performance impact:**
-- Can consume significant CPU and memory resources
-- File system watching creates overhead, especially on:
-  - Networked file systems
-  - Virtual machines with shared folders
-  - Systems with slower I/O performance
-- The more packages you run in dev mode, the more system resources are consumed
+**性能影响：**
+- 可能消耗大量 CPU 和内存资源
+- 文件系统监视会产生开销，特别是在：
+  - 网络文件系统
+  - 带有共享文件夹的虚拟机
+  - I/O 性能较慢的系统
+- 在开发模式下运行的包越多，消耗的系统资源就越多
 
-**Recommendations for resource-constrained environments:**
-1. Use selective development commands based on your task
-2. Close unnecessary applications to free up resources
-3. Monitor system performance and adjust your development approach accordingly
-
----
-
-### Community PR Guidelines
-
-#### **1. Change Request/Comment**
-
-Please address the requested changes or provide feedback within 14 days. If there is no response or updates to the pull request during this time, it will be automatically closed. The PR can be reopened once the requested changes are applied.
-
-#### **2. General Requirements**
-
-- **Follow the Style Guide:**
-  - Ensure your code adheres to n8n's coding standards and conventions (e.g., formatting, naming, indentation). Use linting tools where applicable.
-- **TypeScript Compliance:**
-  - Do not use `ts-ignore` .
-  - Ensure code adheres to TypeScript rules.
-- **Avoid Repetitive Code:**
-  - Reuse existing components, parameters, and logic wherever possible instead of redefining or duplicating them.
-  - For nodes: Use the same parameter across multiple operations rather than defining a new parameter for each operation (if applicable).
-- **Testing Requirements:**
-  - PRs **must include tests**:
-    - Unit tests
-    - Workflow tests for nodes (example [here](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes/Switch/V3/test))
-    - UI tests (if applicable)
-- **Typos:**
-  - Use a spell-checking tool, such as [**Code Spell Checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), to avoid typos.
-
-#### **3. PR Specific Requirements**
-
-- **Small PRs Only:**
-  - Focus on a single feature or fix per PR.
-- **Naming Convention:**
-  - Follow [n8n's PR Title Conventions](https://github.com/n8n-io/n8n/blob/master/.github/pull_request_title_conventions.md#L36).
-- **New Nodes:**
-  - PRs that introduce new nodes will be **auto-closed** unless they are explicitly requested by the n8n team and aligned with an agreed project scope. However, you can still explore [building your own nodes](https://docs.n8n.io/integrations/creating-nodes/overview/), as n8n offers the flexibility to create your own custom nodes.
-- **Typo-Only PRs:**
-  - Typos are not sufficient justification for a PR and will be rejected.
-
-#### **4. Workflow Summary for Non-Compliant PRs**
-
-- **No Tests:** If tests are not provided, the PR will be auto-closed after **14 days**.
-- **Non-Small PRs:** Large or multifaceted PRs will be returned for segmentation.
-- **New Nodes/Typo PRs:** Automatically rejected if not aligned with project scope or guidelines.
+**资源受限环境的建议：**
+1. 根据任务使用选择性开发命令
+2. 关闭不必要的应用程序以释放资源
+3. 监控系统性能并相应调整开发方法
 
 ---
 
-### Test suite
+### 社区 PR 指南
 
-#### Unit tests
+#### **1. 变更请求/评论**
 
-Unit tests can be started via:
+请在 14 天内解决请求的更改或提供反馈。如果在此期间没有响应或更新拉取请求，它将自动关闭。一旦应用了请求的更改，可以重新打开 PR。
+
+#### **2. 一般要求**
+
+- **遵循样式指南：**
+  - 确保您的代码遵守 n8n 的编码标准和约定（例如，格式、命名、缩进）。在适用时使用 lint 工具。
+- **TypeScript 合规性：**
+  - 不要使用 `ts-ignore`。
+  - 确保代码遵守 TypeScript 规则。
+- **避免重复代码：**
+  - 尽可能重用现有组件、参数和逻辑，而不是重新定义或复制它们。
+  - 对于节点：在多个操作中使用相同参数，而不是为每个操作定义新参数（如果适用）。
+- **测试要求：**
+  - PR **必须包含测试**：
+    - 单元测试
+    - 节点的工作流测试（示例[此处](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes/Switch/V3/test)）
+    - UI 测试（如果适用）
+- **拼写错误：**
+  - 使用拼写检查工具，例如[**代码拼写检查器**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)，以避免拼写错误。
+
+#### **3. PR 特定要求**
+
+- **仅小 PR：**
+  - 每个 PR 专注于单一功能或修复。
+- **命名约定：**
+  - 遵循 [n8n 的 PR 标题约定](https://github.com/n8n-io/n8n/blob/master/.github/pull_request_title_conventions.md#L36)。
+- **新节点：**
+  - 除非由 n8n 团队明确要求并与约定项目范围对齐，否则引入新节点的 PR 将**自动关闭**。但是，您仍然可以探索[构建自己的节点](https://docs.n8n.io/integrations/creating-nodes/overview/)，因为 n8n 提供了创建自己的自定义节点的灵活性。
+- **仅拼写错误 PR：**
+  - 拼写错误不足以作为 PR 的理由，将被拒绝。
+
+#### **4. 不合规 PR 的工作流程摘要**
+
+- **无测试：**如果未提供测试，PR 将在 **14 天**后自动关闭。
+- **非小 PR：**大型或多方面 PR 将被返回进行分段。
+- **新节点/拼写错误 PR：**如果不符合项目范围或指导原则，将自动拒绝。
+
+---
+
+### 测试套件
+
+#### 单元测试
+
+单元测试可以通过以下方式启动：
 
 ```
 pnpm test
 ```
 
-If that gets executed in one of the package folders it will only run the tests
-of this package. If it gets executed in the n8n-root folder it will run all
-tests of all packages.
+如果在某个包文件夹中执行，它将仅运行该包的测试。如果在 n8n 根文件夹中执行，它将运行所有包的测试。
 
-If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
+如果您进行了需要更新 `.test.ts.snap` 文件的更改，请将 `-u` 传递给测试命令或在监视模式下按 `u`。
 
-#### Code Coverage
-We track coverage for all our code on [Codecov](https://app.codecov.io/gh/n8n-io/n8n).
-But when you are working on tests locally, we recommend running your tests with env variable `COVERAGE_ENABLED` set to `true`. You can then view the code coverage in the `coverage` folder, or you can use [this VSCode extension](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) to visualize the coverage directly in VSCode.
+#### 代码覆盖率
+我们在 [Codecov](https://app.codecov.io/gh/n8n-io/n8n) 上跟踪所有代码的覆盖率。
+但当您在本地处理测试时，我们建议使用环境变量 `COVERAGE_ENABLED` 设置为 `true` 来运行测试。然后您可以在 `coverage` 文件夹中查看代码覆盖率，或者使用[此 VSCode 扩展](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters)在 VSCode 中直接可视化覆盖率。
 
-#### E2E tests
+#### E2E 测试
 
-n8n uses [Playwright](https://playwright.dev) for E2E testing.
+n8n 使用 [Playwright](https://playwright.dev) 进行 E2E 测试。
 
-E2E tests can be started via one of the following commands:
+E2E 测试可以通过以下命令之一启动：
 
-- `pnpm --filter=n8n-playwright test:local` - Run tests locally (starts local server on port 5680 and runs UI tests)
-- `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
-- `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
+- `pnpm --filter=n8n-playwright test:local` - 本地运行测试（启动端口 5680 上的本地服务器并运行 UI 测试）
+- `pnpm --filter=n8n-playwright test:local --ui` - 以交互式 UI 模式运行测试（用于调试）
+- `pnpm --filter=n8n-playwright test:local --grep="test-name"` - 运行匹配模式的特定测试
 
-See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
+更多测试命令请参见 `packages/testing/playwright/README.md`，编写指南请参见 `packages/testing/playwright/CONTRIBUTING.md`。
 
-## Releasing
+## 发布
 
-To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml) with the SemVer release type, and select a branch to cut this release from. This workflow will then:
+要开始发布，使用 SemVer 发布类型触发[此工作流](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml)，并选择要从中创建发布的分支。此工作流将：
 
-1. Bump versions of packages that have changed or have dependencies that have changed
-2. Update the Changelog
-3. Create a new branch called `release/${VERSION}`, and
-4. Create a new pull-request to track any further changes that need to be included in this release
+1. 递增已更改或依赖项已更改的包的版本
+2. 更新 Changelog
+3. 创建名为 `release/${VERSION}` 的新分支，以及
+4. 创建新的拉取请求以跟踪需要包含在此发布中的任何进一步更改
 
-Once ready to release, simply merge the pull-request.
-This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will:
+准备发布时，只需合并拉取请求。
+这将触发[另一个工作流](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml)，它将：
 
-1. Build and publish the packages that have a new version in this release
-2. Create a new tag, and GitHub release from squashed release commit
-3. Merge the squashed release commit back into `master`
+1. 构建和发布此发布中有新版本的包
+2. 从压缩的发布提交创建新标签和 GitHub 发布
+3. 将压缩的发布提交合并回 `master`
 
-## Create custom nodes
+## 创建自定义节点
 
-Learn about [building nodes](https://docs.n8n.io/integrations/creating-nodes/overview/) to create custom nodes for n8n. You can create community nodes and make them available using [npm](https://www.npmjs.com/).
+了解[构建节点](https://docs.n8n.io/integrations/creating-nodes/overview/)为 n8n 创建自定义节点。您可以创建社区节点并使用 [npm](https://www.npmjs.com/) 使它们可用。
 
-## Extend documentation
+## 扩展文档
 
-The repository for the n8n documentation on [docs.n8n.io](https://docs.n8n.io) can be found [here](https://github.com/n8n-io/n8n-docs).
+[docs.n8n.io](https://docs.n8n.io) 上的 n8n 文档仓库可以在[此处](https://github.com/n8n-io/n8n-docs)找到。
 
-## Contribute workflow templates
+## 贡献工作流模板
 
-You can submit your workflows to n8n's template library.
+您可以将您的工作流提交到 n8n 的模板库。
 
-n8n is working on a creator program, and developing a marketplace of templates. This is an ongoing project, and details are likely to change.
+n8n 正在开发一个创作者计划，并开发模板市场。这是一个正在进行的项目，详细信息可能会发生变化。
 
-Refer to [n8n Creator hub](https://www.notion.so/n8n/n8n-Creator-hub-7bd2cbe0fce0449198ecb23ff4a2f76f) for information on how to submit templates and become a creator.
+有关如何提交模板并成为创作者的信息，请参考 [n8n 创作者中心](https://www.notion.so/n8n/n8n-Creator-hub-7bd2cbe0fce0449198ecb23ff4a2f76f)。
 
-## Contributor License Agreement
+## 贡献者许可协议
 
-That we do not have any potential problems later it is sadly necessary to sign a [Contributor License Agreement](CONTRIBUTOR_LICENSE_AGREEMENT.md). That can be done literally with the push of a button.
+为了我们以后不会有任何潜在问题，很遗憾有必要签署[贡献者许可协议](CONTRIBUTOR_LICENSE_AGREEMENT.md)。这可以通过按下按钮来完成。
 
-We used the most simple one that exists. It is from [Indie Open Source](https://indieopensource.com/forms/cla) which uses plain English and is literally only a few lines long.
+我们使用了最简单的。它来自 [Indie Open Source](https://indieopensource.com/forms/cla)，使用简单英语，实际上只有几行。
 
-Once a pull request is opened, an automated bot will promptly leave a comment requesting the agreement to be signed. The pull request can only be merged once the signature is obtained.
+一旦拉取请求打开，自动化机器人将立即留下评论请求签署协议。只有获得签名后才能合并拉取请求。

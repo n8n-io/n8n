@@ -2,12 +2,12 @@
 
 # n8n-workflow
 
-Workflow base code for n8n
+n8n 工作流基础代码
 
 ```
 npm install n8n-workflow
 ```
 
-## License
+## 许可证
 
-You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)
+您可以在[此处](https://github.com/n8n-io/n8n/blob/master/README.md#license)找到许可证信息

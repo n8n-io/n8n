@@ -2,12 +2,12 @@
 
 # n8n-nodes-base
 
-The nodes which are included by default in n8n
+n8n 默认包含的节点
 
 ```
 npm install n8n-nodes-base -g
 ```
 
-## License
+## 许可证
 
-You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)
+您可以在[此处](https://github.com/n8n-io/n8n/blob/master/README.md#license)找到许可证信息

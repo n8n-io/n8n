@@ -1,158 +1,142 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with
-code in the n8n repository.
+此文件为 Claude Code (claude.ai/code) 在处理 n8n 代码仓库中的代码时提供指导。
 
-## Project Overview
+## 项目概述
 
-n8n is a workflow automation platform written in TypeScript, using a monorepo
-structure managed by pnpm workspaces. It consists of a Node.js backend, Vue.js
-frontend, and extensible node-based workflow engine.
+n8n 是一个用 TypeScript 编写的 工作流自动化平台，使用由 pnpm 工作空间管理的单仓库结构。它由 Node.js 后端、Vue.js 前端和可扩展的基于节点的工作流引擎组成。
 
-## General Guidelines
+## 一般准则
 
-- Always use pnpm
-- We use Linear as a ticket tracking system
-- We use Posthog for feature flags
-- When starting to work on a new ticket – create a new branch from fresh
-  master with the name specified in Linear ticket
-- When creating a new branch for a ticket in Linear - use the branch name
-  suggested by linear
-- Use mermaid diagrams in MD files when you need to visualise something
+- 始终使用 pnpm
+- 我们使用 Linear 作为工单跟踪系统
+- 我们使用 Posthog 进行功能标志
+- 开始处理新工单时 - 从最新的 master 创建新分支，使用 Linear 工单中指定的名称
+- 为 Linear 中的工单创建新分支时 - 使用 linear 建议的分支名称
+- 当需要可视化某些内容时，在 MD 文件中使用 mermaid 图表
 
-## Essential Commands
+## 必要命令
 
-### Building
-Use `pnpm build` to build all packages. ALWAYS redirect the output of the
-build command to a file:
+### 构建
+使用 `pnpm build` 构建所有包。始终将构建命令的输出重定向到文件：
 
 ```bash
 pnpm build > build.log 2>&1
 ```
 
-You can inspect the last few lines of the build log file to check for errors:
+您可以检查构建日志文件的最后几行以查看错误：
 ```bash
 tail -n 20 build.log
 ```
 
-### Testing
-- `pnpm test` - Run all tests
-- `pnpm test:affected` - Runs tests based on what has changed since the last
-  commit
+### 测试
+- `pnpm test` - 运行所有测试
+- `pnpm test:affected` - 基于上次提交以来的更改运行测试
 
-Running a particular test file requires going to the directory of that test
-and running: `pnpm test <test-file>`.
+运行特定测试文件需要进入该测试的目录并运行：`pnpm test <test-file>`。
 
-When changing directories, use `pushd` to navigate into the directory and
-`popd` to return to the previous directory. When in doubt, use `pwd` to check
-your current directory.
+在切换目录时，使用 `pushd` 导航到目录，`popd` 返回上一个目录。如果有疑问，使用 `pwd` 检查当前目录。
 
-### Code Quality
-- `pnpm lint` - Lint code
-- `pnpm typecheck` - Run type checks
+### 代码质量
+- `pnpm lint` - 代码检查
+- `pnpm typecheck` - 运行类型检查
 
-Always run lint and typecheck before committing code to ensure quality.
-Execute these commands from within the specific package directory you're
-working on (e.g., `cd packages/cli && pnpm lint`). Run the full repository
-check only when preparing the final PR. When your changes affect type
-definitions, interfaces in `@n8n/api-types`, or cross-package dependencies,
-build the system before running lint and typecheck.
+在提交代码之前始终运行 lint 和 typecheck 以确保质量。从您正在处理的特定包目录内执行这些命令（例如，`cd packages/cli && pnpm lint`）。仅在准备最终 PR 时运行完整仓库检查。当您的更改影响类型定义、`@n8n/api-types` 中的接口或跨包依赖时，在运行 lint 和 typecheck 之前构建系统。
 
-## Architecture Overview
+## 架构概述
 
-**Monorepo Structure:** pnpm workspaces with Turbo build orchestration
+**单仓库结构：** pnpm 工作空间和 Turbo 构建编排
 
-### Package Structure
+### 包结构
 
-The monorepo is organized into these key packages:
+单仓库组织为这些关键包：
 
-- **`packages/@n8n/api-types`**: Shared TypeScript interfaces between frontend and backend
-- **`packages/workflow`**: Core workflow interfaces and types
-- **`packages/core`**: Workflow execution engine
-- **`packages/cli`**: Express server, REST API, and CLI commands
-- **`packages/editor-ui`**: Vue 3 frontend application
-- **`packages/@n8n/i18n`**: Internationalization for UI text
-- **`packages/nodes-base`**: Built-in nodes for integrations
-- **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
-- **`@n8n/design-system`**: Vue component library for UI consistency
-- **`@n8n/config`**: Centralized configuration management
+- **`packages/@n8n/api-types`**：前端和后端之间共享的 TypeScript 接口
+- **`packages/workflow`**：核心工作流接口和类型
+- **`packages/core`**：工作流执行引擎
+- **`packages/cli`**：Express 服务器、REST API 和 CLI 命令
+- **`packages/editor-ui`**：Vue 3 前端应用程序
+- **`packages/@n8n/i18n`**：UI 文本的国际化
+- **`packages/nodes-base`**：集成的内置节点
+- **`packages/@n8n/nodes-langchain`**：AI/LangChain 节点
+- **`@n8n/design-system`**：用于 UI 一致性的 Vue 组件库
+- **`@n8n/config`**：集中式配置管理
 
-## Technology Stack
+## 技术栈
 
-- **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
-- **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Jest (unit) + Playwright (E2E)
-- **Database:** TypeORM with SQLite/PostgreSQL/MySQL support
-- **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
+- **前端：** Vue 3 + TypeScript + Vite + Pinia + Storybook UI 库
+- **后端：** Node.js + TypeScript + Express + TypeORM
+- **测试：** Jest（单元）+ Playwright（E2E）
+- **数据库：** TypeORM 支持 SQLite/PostgreSQL/MySQL
+- **代码质量：** Biome（用于格式化）+ ESLint + lefthook git hooks
 
-### Key Architectural Patterns
+### 关键架构模式
 
-1. **Dependency Injection**: Uses `@n8n/di` for IoC container
-2. **Controller-Service-Repository**: Backend follows MVC-like pattern
-3. **Event-Driven**: Internal event bus for decoupled communication
-4. **Context-Based Execution**: Different contexts for different node types
-5. **State Management**: Frontend uses Pinia stores
-6. **Design System**: Reusable components and design tokens are centralized in
-   `@n8n/design-system`, where all pure Vue components should be placed to
-   ensure consistency and reusability
+1. **依赖注入**：使用 `@n8n/di` 作为 IoC 容器
+2. **控制器-服务-仓库**：后端遵循类似 MVC 的模式
+3. **事件驱动**：内部事件总线用于解耦通信
+4. **基于上下文的执行**：不同节点类型使用不同上下文
+5. **状态管理**：前端使用 Pinia stores
+6. **设计系统**：可重用组件和设计令牌集中在
+   `@n8n/design-system` 中，所有纯 Vue 组件都应放置在这里
+   确保一致性和可重用性
 
-## Key Development Patterns
+## 关键开发模式
 
-- Each package has isolated build configuration and can be developed independently
-- Hot reload works across the full stack during development
-- Node development uses dedicated `node-dev` CLI tool
-- Workflow tests are JSON-based for integration testing
-- AI features have dedicated development workflow (`pnpm dev:ai`)
+- 每个包都有独立的构建配置，可以独立开发
+- 开发期间热重载在整个堆栈中工作
+- 节点开发使用专用的 `node-dev` CLI 工具
+- 工作流测试基于 JSON 用于集成测试
+- AI 功能有专用的开发工作流（`pnpm dev:ai`）
 
-### TypeScript Best Practices
-- **NEVER use `any` type** - use proper types or `unknown`
-- **Avoid type casting with `as`** - use type guards or type predicates instead
-- **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
+### TypeScript 最佳实践
+- **切勿使用 `any` 类型** - 使用适当的类型或 `unknown`
+- **避免使用 `as` 进行类型转换** - 使用类型守卫或类型谓词代替
+- **在 `@n8n/api-types` 包中定义共享接口** 用于 FE/BE 通信
 
-### Error Handling
-- Don't use `ApplicationError` class in CLI and nodes for throwing errors,
-  because it's deprecated. Use `UnexpectedError`, `OperationalError` or
-  `UserError` instead.
-- Import from appropriate error classes in each package
+### 错误处理
+- 不要在 CLI 和节点中使用 `ApplicationError` 类抛出错误，
+  因为它已被弃用。相反使用 `UnexpectedError`、`OperationalError` 或
+  `UserError`。
+- 从每个包中的适当错误类导入
 
-### Frontend Development
-- **All UI text must use i18n** - add translations to `@n8n/i18n` package
-- **Use CSS variables directly** - never hardcode spacing as px values
-- **data-test-id must be a single value** (no spaces or multiple values)
+### 前端开发
+- **所有 UI 文本必须使用 i18n** - 将翻译添加到 `@n8n/i18n` 包
+- **直接使用 CSS 变量** - 永远不要硬编码为 px 值的间距
+- **data-test-id 必须是单个值**（无空格或多个值）
 
-When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
-CSS variables and styling conventions.
+在实现 CSS 时，参考 @packages/frontend/CLAUDE.md 获取 CSS 变量和样式约定指南。
 
-### Testing Guidelines
-- **Always work from within the package directory** when running tests
-- **Mock all external dependencies** in unit tests
-- **Confirm test cases with user** before writing unit tests
-- **Typecheck is critical before committing** - always run `pnpm typecheck`
-- **When modifying pinia stores**, check for unused computed properties
+### 测试指南
+- **运行测试时始终从包目录内工作**
+- **在单元测试中模拟所有外部依赖**
+- **编写单元测试前与用户确认测试用例**
+- **提交前类型检查至关重要** - 始终运行 `pnpm typecheck`
+- **修改 pinia stores 时**，检查未使用的计算属性
 
-What we use for testing and writing tests:
-- For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
-- We use `nock` for server mocking
-- For frontend we use `vitest`
-- For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
-  See `packages/testing/playwright/README.md` for details.
+我们用于测试和编写测试的内容：
+- 对于测试节点和其他后端组件，我们使用 Jest 进行单元测试。示例可以在 `packages/nodes-base/nodes/**/*test*` 中找到。
+- 我们使用 `nock` 进行服务器模拟
+- 前端我们使用 `vitest`
+- 对于 E2E 测试，我们使用 Playwright。使用 `pnpm --filter=n8n-playwright test:local` 运行。
+  详细信息请参见 `packages/testing/playwright/README.md`。
 
-### Common Development Tasks
+### 常见开发任务
 
-When implementing features:
-1. Define API types in `packages/@n8n/api-types`
-2. Implement backend logic in `packages/cli` module, follow
+实现功能时：
+1. 在 `packages/@n8n/api-types` 中定义 API 类型
+2. 在 `packages/cli` 模块中实现后端逻辑，遵循
    `@packages/cli/scripts/backend-module/backend-module.guide.md`
-3. Add API endpoints via controllers
-4. Update frontend in `packages/editor-ui` with i18n support
-5. Write tests with proper mocks
-6. Run `pnpm typecheck` to verify types
+3. 通过控制器添加 API 端点
+4. 在 `packages/editor-ui` 中更新前端，添加 i18n 支持
+5. 编写带有适当模拟的测试
+6. 运行 `pnpm typecheck` 验证类型
 
-## Github Guidelines
-- When creating a PR, use the conventions in
-  `.github/pull_request_template.md` and
-  `.github/pull_request_title_conventions.md`.
-- Use `gh pr create --draft` to create draft PRs.
-- Always reference the Linear ticket in the PR description,
-  use `https://linear.app/n8n/issue/[TICKET-ID]`
-- always link to the github issue if mentioned in the linear ticket.
+## Github 指南
+- 创建 PR 时，使用
+  `.github/pull_request_template.md` 和
+  `.github/pull_request_title_conventions.md` 中的约定。
+- 使用 `gh pr create --draft` 创建草稿 PR。
+- 在 PR 描述中始终引用 Linear 工单，
+  使用 `https://linear.app/n8n/issue/[TICKET-ID]`
+- 如果在线性工单中提到，始终链接到 github 问题。
