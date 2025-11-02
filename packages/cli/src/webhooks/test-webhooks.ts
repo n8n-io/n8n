@@ -171,8 +171,6 @@ export class TestWebhooks implements IWebhookManager {
 
 			this.clearTimeout(key);
 
-			// Check if this is a ChatTrigger webhook - if so, don't deactivate immediately
-			// ChatTrigger needs persistent webhooks for the chat session
 			const isChatTrigger = Object.values(workflow.nodes).some(
 				(node: any) =>
 					node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
@@ -185,16 +183,7 @@ export class TestWebhooks implements IWebhookManager {
 				const chatWebhookKey = `${workflowEntity.id}:chat-session`;
 				this.clearTimeout(chatWebhookKey); // Clear any existing timeout
 
-				// Set a longer timeout for ChatTrigger webhooks (10 minutes)
-				const timeout = setTimeout(
-					async () => {
-						await this.deactivateWebhooks(workflow);
-						delete this.timeouts[chatWebhookKey];
-					},
-					10 * 60 * 1000,
-				); // 10 minutes
-
-				this.timeouts[chatWebhookKey] = timeout;
+				await this.deactivateWebhooks(workflow);
 			}
 		});
 	}
@@ -295,7 +284,7 @@ export class TestWebhooks implements IWebhookManager {
 		pushRef?: string;
 		destinationNode?: string;
 		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
-		sessionId?: string;
+		chatSessionId?: string;
 	}) {
 		const {
 			userId,
@@ -305,7 +294,7 @@ export class TestWebhooks implements IWebhookManager {
 			pushRef,
 			destinationNode,
 			triggerToStartFrom,
-			sessionId,
+			chatSessionId,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -345,12 +334,12 @@ export class TestWebhooks implements IWebhookManager {
 			// Use sessionId-based path for ChatTrigger nodes when sessionId is provided
 			// IMPORTANT: This must happen BEFORE key generation
 			if (
-				sessionId &&
+				chatSessionId &&
 				webhook.node &&
 				workflow.nodes[webhook.node]?.type === '@n8n/n8n-nodes-langchain.chatTrigger'
 			) {
 				// Generate predictable path using workflowId and sessionId (without leading slash to match lookup format)
-				webhook.path = `${workflow.id}/${sessionId}`;
+				webhook.path = `${workflow.id}/${chatSessionId}`;
 			}
 
 			const key = this.registrations.toKey(webhook);

@@ -1,6 +1,7 @@
 import type { Component, Ref } from 'vue';
 
 import type { SendMessageResponse } from './webhook';
+import { ChatMessage } from './messages';
 
 export interface ChatOptions {
 	webhookUrl: string;

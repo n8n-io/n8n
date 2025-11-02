@@ -40,6 +40,53 @@ import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
+/**
+ * Determines which node to execute next based on the current state.
+ * This function decides if the workflow should:
+ * - Compact messages (manual or auto)
+ * - Delete messages
+ * - Create a workflow name
+ * - Continue to agent
+ */
+export function shouldModifyState(
+	state: typeof WorkflowState.State,
+	autoCompactThresholdTokens: number,
+):
+	| 'compact_messages'
+	| 'delete_messages'
+	| 'create_workflow_name'
+	| 'auto_compact_messages'
+	| 'agent' {
+	const { messages, workflowContext } = state;
+	const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
+
+	if (lastHumanMessage.content === '/compact') {
+		return 'compact_messages';
+	}
+
+	if (lastHumanMessage.content === '/clear') {
+		return 'delete_messages';
+	}
+
+	// If the workflow is empty (no nodes) and the name is using the default pattern
+	// (e.g., "My workflow" or "My workflow 1"), we consider it initial generation request
+	// and auto-generate a name for the workflow.
+	const workflowName = workflowContext?.currentWorkflow?.name;
+	const nodesLength = workflowContext?.currentWorkflow?.nodes?.length ?? 0;
+	const isDefaultName = !workflowName || /^My workflow( \d+)?$/.test(workflowName);
+	if (isDefaultName && nodesLength === 0 && messages.length === 1) {
+		return 'create_workflow_name';
+	}
+
+	// Check if we should auto-compact based on token count
+	const estimatedTokens = estimateTokenCountFromMessages(messages);
+	if (estimatedTokens > autoCompactThresholdTokens) {
+		return 'auto_compact_messages';
+	}
+
+	return 'agent';
+}
+
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llmSimpleTask: BaseChatModel;
@@ -175,40 +222,8 @@ export class WorkflowBuilderAgent {
 			return { messages: [response] };
 		};
 
-		const shouldAutoCompact = ({ messages }: typeof WorkflowState.State) => {
-			// Estimate the current conversation size by counting tokens in all messages
-			// This is more accurate than using the last API call's token usage,
-			// because the conversation may have grown since the last call
-			const estimatedTokens = estimateTokenCountFromMessages(messages);
-
-			const shouldCompact = estimatedTokens > this.autoCompactThresholdTokens;
-
-			return shouldCompact;
-		};
-
-		const shouldModifyState = (state: typeof WorkflowState.State) => {
-			const { messages, workflowContext } = state;
-			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
-
-			if (lastHumanMessage.content === '/compact') {
-				return 'compact_messages';
-			}
-
-			if (lastHumanMessage.content === '/clear') {
-				return 'delete_messages';
-			}
-
-			// If the workflow is empty (no nodes),
-			// we consider it initial generation request and auto-generate a name for the workflow.
-			if (workflowContext?.currentWorkflow?.nodes?.length === 0 && messages.length === 1) {
-				return 'create_workflow_name';
-			}
-
-			if (shouldAutoCompact(state)) {
-				return 'auto_compact_messages';
-			}
-
-			return 'agent';
+		const shouldModifyStateInternal = (state: typeof WorkflowState.State) => {
+			return shouldModifyState(state, this.autoCompactThresholdTokens);
 		};
 
 		const shouldContinue = ({ messages }: typeof WorkflowState.State) => {
@@ -346,7 +361,7 @@ export class WorkflowBuilderAgent {
 			.addNode('create_workflow_name', createWorkflowName)
 			.addNode('cleanup_dangling_tool_calls', cleanupDanglingToolCalls)
 			.addEdge('__start__', 'cleanup_dangling_tool_calls')
-			.addConditionalEdges('cleanup_dangling_tool_calls', shouldModifyState)
+			.addConditionalEdges('cleanup_dangling_tool_calls', shouldModifyStateInternal)
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')

@@ -1,8 +1,8 @@
 import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { COMMAND_BAR_EXPERIMENT, VIEWS } from '@/constants';
+import { COMMAND_BAR_EXPERIMENT, VIEWS } from '@/app/constants';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
@@ -15,11 +15,11 @@ import { useExecutionCommands } from './useExecutionCommands';
 import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
 import type { CommandGroup } from '../types';
-import { usePostHog } from '@/stores/posthog.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();

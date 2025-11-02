@@ -5,17 +5,17 @@ import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useMCPStore } from './mcp.store';
 import { MCP_WORKFLOWS } from './SettingsMCPView.test.constants';
 
-vi.mock('@/composables/useDocumentTitle', () => ({
+vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 	}),

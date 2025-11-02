@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import Chat from '../components/Chat.vue';
+import type { ChatMessage } from '../types/messages';
 
 // Mock child components
 vi.mock('../components/GetStarted.vue', () => ({
@@ -45,8 +46,7 @@ vi.mock('virtual:icons/mdi/close', () => ({
 const mockChatStore = {
 	initialize: vi.fn().mockResolvedValue(undefined),
 	startNewSession: vi.fn(),
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	messages: [] as any[],
+	messages: [] as ChatMessage[],
 };
 
 const mockOptions = {
@@ -76,8 +76,7 @@ vi.mock('@n8n/chat/event-buses', () => ({
 }));
 
 describe('Chat', () => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let wrapper: VueWrapper<any>;
+	let wrapper: VueWrapper;
 
 	beforeEach(() => {
 		vi.clearAllMocks();

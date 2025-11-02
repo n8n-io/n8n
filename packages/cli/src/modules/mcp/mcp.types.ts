@@ -67,4 +67,9 @@ export type UserCalledMCPToolEventPayload = {
 	user_id?: string;
 	tool_name: string;
 	parameters?: Record<string, unknown>;
+	results?: {
+		success: boolean;
+		data?: unknown;
+		error?: string;
+	};
 };

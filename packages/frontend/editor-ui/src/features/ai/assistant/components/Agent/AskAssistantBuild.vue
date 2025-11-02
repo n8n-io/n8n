@@ -2,17 +2,17 @@
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, watch, ref } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
-import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
-import { nodeViewEventBus } from '@/event-bus';
+import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
@@ -61,16 +61,19 @@ const showExecuteMessage = computed(() => {
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
 
-	// Check if there's an error message after the last workflow update
-	const hasErrorAfterUpdate = builderStore.chatMessages
-		.slice(builderUpdatedWorkflowMessageIndex + 1)
-		.some((msg) => msg.type === 'error');
+	// Check if there's an error message or task aborted message after the last workflow update
+	const messagesAfterUpdate = builderStore.chatMessages.slice(
+		builderUpdatedWorkflowMessageIndex + 1,
+	);
+	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
+	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some((msg) => isTaskAbortedMessage(msg));
 
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
-		!hasErrorAfterUpdate
+		!hasErrorAfterUpdate &&
+		!hasTaskAbortedAfterUpdate
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
@@ -251,12 +254,7 @@ watch(
 			// Check if the generation completed successfully (no error or cancellation)
 			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
 			const successful =
-				lastMessage &&
-				lastMessage.type !== 'error' &&
-				!(
-					lastMessage.type === 'text' &&
-					lastMessage.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage')
-				);
+				lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
 
 			builderStore.initialGeneration = false;
 
