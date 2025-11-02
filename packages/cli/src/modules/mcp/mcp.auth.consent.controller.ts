@@ -3,14 +3,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { McpOAuthService } from './mcp-oauth-service';
+import { McpOAuthConsentService } from './mcp-oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
 
 @RestController('/consent')
 export class McpConsentController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly mcpOAuthService: McpOAuthService,
+		private readonly consentService: McpOAuthConsentService,
 		private readonly oauthSessionService: OAuthSessionService,
 	) {}
 
@@ -32,7 +32,7 @@ export class McpConsentController {
 			}
 
 			// Get consent details using the service (verifies JWT)
-			const consentDetails = await this.mcpOAuthService.getConsentDetails(sessionToken);
+			const consentDetails = await this.consentService.getConsentDetails(sessionToken);
 
 			if (!consentDetails) {
 				// JWT verification failed or client not found - clear the invalid cookie
@@ -47,7 +47,6 @@ export class McpConsentController {
 			return {
 				clientName: consentDetails.clientName,
 				clientId: consentDetails.clientId,
-				scopes: consentDetails.scopes,
 			};
 		} catch (error) {
 			this.logger.error('Failed to get consent details', { error });
@@ -87,7 +86,7 @@ export class McpConsentController {
 			}
 
 			// Process the consent decision using the service
-			const result = await this.mcpOAuthService.handleConsentDecision(
+			const result = await this.consentService.handleConsentDecision(
 				sessionToken,
 				req.user.id,
 				approved,

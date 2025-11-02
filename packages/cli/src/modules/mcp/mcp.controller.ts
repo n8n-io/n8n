@@ -7,7 +7,7 @@ import { ErrorReporter } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
 
-import { McpServerApiKeyService } from './mcp-api-key.service';
+import { McpServerMiddlewareService } from './mcp-server-middleware.service';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
 	USER_CALLED_MCP_TOOL_EVENT,
@@ -22,7 +22,7 @@ import { getClientInfo, getToolName, getToolArguments } from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
 
-const getAuthMiddleware = () => Container.get(McpServerApiKeyService).getAuthMiddleware();
+const getAuthMiddleware = () => Container.get(McpServerMiddlewareService).getAuthMiddleware();
 
 @RootLevelController('/mcp-server')
 export class McpController {

@@ -1,17 +1,12 @@
-import { ApiKey, ApiKeyRepository, AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
-import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
-import { getClientInfo } from './mcp.utils';
-import { AccessTokenRepository } from './oauth-access-token.repository';
-
-import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
-import { Telemetry } from '@/telemetry';
+
+import { AccessTokenRepository } from './oauth-access-token.repository';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -29,7 +24,6 @@ export class McpServerApiKeyService {
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
 		private readonly userRepository: UserRepository,
-		private readonly telemetry: Telemetry,
 		private readonly accessTokenRepository: AccessTokenRepository,
 	) {}
 
@@ -71,7 +65,7 @@ export class McpServerApiKeyService {
 		return apiKey;
 	}
 
-	private async getUserForApiKey(apiKey: string) {
+	async getUserForApiKey(apiKey: string) {
 		return await this.userRepository.findOne({
 			where: {
 				apiKeys: {
@@ -83,7 +77,26 @@ export class McpServerApiKeyService {
 		});
 	}
 
-	private async getUserForAccessToken(token: string) {
+	/**
+	 * Verify API key JWT and return user
+	 * Validates JWT signature, issuer, audience, and fetches user from database
+	 */
+	async verifyApiKey(apiKey: string): Promise<User | null> {
+		try {
+			// Verify JWT signature, issuer, and audience
+			this.jwtService.verify(apiKey, {
+				issuer: API_KEY_ISSUER,
+				audience: API_KEY_AUDIENCE,
+			});
+
+			// Fetch user from database
+			return await this.getUserForApiKey(apiKey);
+		} catch (error) {
+			return null;
+		}
+	}
+
+	async getUserForAccessToken(token: string) {
 		const accessToken = await this.accessTokenRepository.findOne({
 			where: {
 				token,
@@ -123,86 +136,6 @@ export class McpServerApiKeyService {
 		);
 
 		return redactedPart + visiblePart;
-	}
-
-	private extractAPIKeyFromHeader(headerValue: string) {
-		if (!headerValue.startsWith('Bearer')) {
-			throw new AuthError('Invalid authorization header format');
-		}
-		const apiKeyMatch = headerValue.match(/^Bearer\s+(.+)$/i);
-		if (apiKeyMatch) {
-			return apiKeyMatch[1];
-		}
-		throw new AuthError('Invalid authorization header format');
-	}
-
-	getAuthMiddleware() {
-		return async (req: Request, res: Response, next: NextFunction) => {
-			const authorizationHeader = req.header('authorization');
-
-			if (!authorizationHeader) {
-				this.responseWithUnauthorized(res, req);
-				return;
-			}
-
-			const token = this.extractAPIKeyFromHeader(authorizationHeader);
-
-			if (!token) {
-				this.responseWithUnauthorized(res, req);
-				return;
-			}
-
-			// Try to validate as API key first
-			let user = await this.getUserForApiKey(token);
-
-			if (user) {
-				// Validate JWT for API key
-				try {
-					this.jwtService.verify(token, {
-						issuer: API_KEY_ISSUER,
-						audience: API_KEY_AUDIENCE,
-					});
-					(req as AuthenticatedRequest).user = user;
-					next();
-					return;
-				} catch (e) {
-					// JWT verification failed, continue to try OAuth token
-				}
-			}
-
-			console.log('MCP API Key not valid, trying as OAuth access token');
-
-			// Try to validate as OAuth access token
-			user = await this.getUserForAccessToken(token);
-
-			console.log('User fetched for OAuth access token', JSON.stringify(user, undefined, 2));
-
-			console.log(!user);
-
-			if (!user) {
-				this.responseWithUnauthorized(res, req);
-				return;
-			}
-
-			(req as AuthenticatedRequest).user = user;
-
-			next();
-		};
-	}
-
-	private responseWithUnauthorized(res: Response, req: Request) {
-		this.trackUnauthorizedEvent(req);
-		res.status(401).send({ message: UNAUTHORIZED_ERROR_MESSAGE });
-	}
-
-	private trackUnauthorizedEvent(req: Request) {
-		const clientInfo = getClientInfo(req);
-		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, {
-			mcp_connection_status: 'error',
-			error: UNAUTHORIZED_ERROR_MESSAGE,
-			client_name: clientInfo?.name,
-			client_version: clientInfo?.version,
-		});
 	}
 
 	async getOrCreateApiKey(user: User) {
