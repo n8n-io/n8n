@@ -333,6 +333,7 @@ onUnmounted(() => {
 
 		/* Input Container - unified rounded container */
 		--chat--input--width: 95%;
+		--chat--input--background: transparent;
 		--chat--input--container--background: var(--color--background--light-3);
 		--chat--input--container--border: 1px solid var(--color--foreground--tint-1);
 		--chat--input--container--border-radius: 24px;
@@ -403,7 +404,7 @@ onUnmounted(() => {
 			--chat--message--pre--background: var(--color--background);
 
 			/* Input Area - match the old design's input styling */
-			--chat--input--background: var(--color--background--light-2);
+			--chat--input--background: transparent;
 			--chat--input--text-color: var(--color--text);
 			--chat--input--border: 1px solid var(--color--foreground);
 			--chat--input--border-active: 1px solid var(--color--primary);

@@ -409,7 +409,7 @@ function adjustTextAreaHeight() {
 		height: var(--chat--textarea--height, 2.5rem);
 		resize: none;
 		overflow-y: auto;
-		background: transparent;
+		background: var(--chat--input--background, white);
 		color: var(--chat--input--text-color, initial);
 		outline: none;
 		line-height: var(--chat--input--line-height, 1.5);
