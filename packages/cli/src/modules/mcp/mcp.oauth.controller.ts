@@ -44,19 +44,19 @@ export class McpOAuthController {
 		},
 	];
 
-	@Options('/.well-known/oauth-authorization-server', {
-		skipAuth: true,
-		usesTemplates: true,
-	})
-	async epale(req: Request, res: Response) {
-		console.log('✅ OPTIONS handler hit for oauth-authorization-server');
+	// @Options('/.well-known/oauth-authorization-server', {
+	// 	skipAuth: true,
+	// 	usesTemplates: true,
+	// })
+	// async epale(_req: Request, res: Response) {
+	// 	console.log('✅ OPTIONS handler hit for oauth-authorization-server');
 
-		res.header('Access-Control-Allow-Origin', '*');
-		res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-		res.header('Access-Control-Allow-Headers', '*');
-		res.header('Access-Control-Max-Age', '86400'); // 24 hours
-		res.status(204).send();
-	}
+	// 	res.header('Access-Control-Allow-Origin', '*');
+	// 	res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+	// 	res.header('Access-Control-Allow-Headers', '*');
+	// 	res.header('Access-Control-Max-Age', '86400'); // 24 hours
+	// 	res.status(204).send();
+	// }
 
 	@Get('/.well-known/oauth-authorization-server', { skipAuth: true, usesTemplates: true })
 	async metadata(req: Request, res: Response) {
@@ -89,19 +89,19 @@ export class McpOAuthController {
 		res.json(epale);
 	}
 
-	@Options('/.well-known/oauth-protected-resource/mcp-server/http', {
-		skipAuth: true,
-		usesTemplates: true,
-	})
-	async protectedResourceMetadataOptions(req: Request, res: Response) {
-		console.log('✅ OPTIONS handler hit for oauth-protected-resource');
+	// @Options('/.well-known/oauth-protected-resource/mcp-server/http', {
+	// 	skipAuth: true,
+	// 	usesTemplates: true,
+	// })
+	// async protectedResourceMetadataOptions(req: Request, res: Response) {
+	// 	console.log('✅ OPTIONS handler hit for oauth-protected-resource');
 
-		res.header('Access-Control-Allow-Origin', '*');
-		res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-		res.header('Access-Control-Allow-Headers', '*');
-		res.header('Access-Control-Max-Age', '86400'); // 24 hours
-		res.status(204).send();
-	}
+	// 	res.header('Access-Control-Allow-Origin', '*');
+	// 	res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+	// 	res.header('Access-Control-Allow-Headers', '*');
+	// 	res.header('Access-Control-Max-Age', '86400'); // 24 hours
+	// 	res.status(204).send();
+	// }
 
 	@Get('/.well-known/oauth-protected-resource/mcp-server/http', {
 		skipAuth: true,

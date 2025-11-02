@@ -4,12 +4,14 @@ import { Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { McpOAuthService } from './mcp-oauth-service';
+import { OAuthSessionService } from './oauth-session.service';
 
 @RestController('/consent')
 export class McpConsentController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly mcpOAuthService: McpOAuthService,
+		private readonly oauthSessionService: OAuthSessionService,
 	) {}
 
 	/**
@@ -19,37 +21,29 @@ export class McpConsentController {
 	@Get('/details', { skipAuth: false })
 	async getConsentDetails(req: AuthenticatedRequest, res: Response) {
 		try {
-			// Get the OAuth session ID from cookie
-			const sessionId = req.cookies['n8n-oauth-session'];
+			// Get the OAuth session token from cookie
+			const sessionToken = this.oauthSessionService.getSessionToken(req.cookies);
 
-			if (!sessionId) {
+			if (!sessionToken) {
 				return res.status(400).json({
 					status: 'error',
 					message: 'Invalid or expired authorization session',
 				});
 			}
 
-			// Get consent details using the service
-			// This will verify the JWT, create an authorization record, and return details
-			const consentDetails = await this.mcpOAuthService.getConsentDetails(sessionId, req.user.id);
+			// Get consent details using the service (verifies JWT)
+			const consentDetails = await this.mcpOAuthService.getConsentDetails(sessionToken);
 
 			if (!consentDetails) {
 				// JWT verification failed or client not found - clear the invalid cookie
-				res.clearCookie('n8n-oauth-session');
+				this.oauthSessionService.clearSession(res);
 				return res.status(400).json({
 					status: 'error',
 					message: 'Invalid or expired authorization session',
 				});
 			}
 
-			// Update the cookie with the authorization code ID for use in approval
-			res.cookie('n8n-oauth-session', consentDetails.sessionId, {
-				httpOnly: true,
-				secure: process.env.NODE_ENV === 'production',
-				sameSite: 'lax',
-				maxAge: 10 * 60 * 1000, // 10 minutes
-			});
-
+			// Return client information (cookie remains unchanged)
 			return {
 				clientName: consentDetails.clientName,
 				clientId: consentDetails.clientId,
@@ -58,7 +52,7 @@ export class McpConsentController {
 		} catch (error) {
 			this.logger.error('Failed to get consent details', { error });
 			// Clear cookie on error
-			res.clearCookie('n8n-oauth-session');
+			this.oauthSessionService.clearSession(res);
 			return res.status(500).json({
 				status: 'error',
 				message: 'Failed to load authorization details',
@@ -82,10 +76,10 @@ export class McpConsentController {
 				});
 			}
 
-			// Get the OAuth session ID from cookie
-			const sessionId = req.cookies['n8n-oauth-session'];
+			// Get the OAuth session token from cookie
+			const sessionToken = this.oauthSessionService.getSessionToken(req.cookies);
 
-			if (!sessionId) {
+			if (!sessionToken) {
 				return res.status(400).json({
 					status: 'error',
 					message: 'Invalid or expired authorization session',
@@ -94,13 +88,13 @@ export class McpConsentController {
 
 			// Process the consent decision using the service
 			const result = await this.mcpOAuthService.handleConsentDecision(
-				sessionId,
+				sessionToken,
 				req.user.id,
 				approved,
 			);
 
 			// Clear the session cookie
-			res.clearCookie('n8n-oauth-session');
+			this.oauthSessionService.clearSession(res);
 
 			// Return the redirect URL (includes authorization code or error)
 			return {
@@ -111,7 +105,7 @@ export class McpConsentController {
 			this.logger.error('Failed to process consent', { error });
 
 			// Clear the session cookie even on error
-			res.clearCookie('n8n-oauth-session');
+			this.oauthSessionService.clearSession(res);
 
 			return res.status(500).json({
 				status: 'error',

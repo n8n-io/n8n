@@ -10,42 +10,195 @@ import {
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Response } from 'express';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
-// eslint-disable-next-line import-x/extensions
-import { AuthService } from '@/auth/auth.service';
 import { JwtService } from '@/services/jwt.service';
 
 import { AccessTokenRepository } from './oauth-access-token.repository';
 import { AuthorizationCodeRepository } from './oauth-authorization-code.repository';
 import { OAuthClientRepository } from './oauth-client.repository';
 import { RefreshTokenRepository } from './oauth-refresh-token.repository';
+import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { UserConsentRepository } from './oauth-user-consent.repository';
 
 type OAuthClientInformationFullWithScopes = OAuthClientInformationFull & {};
 
-interface OAuthSessionPayload {
-	clientId: string;
-	redirectUri: string;
-	codeChallenge: string;
-	state: string | null;
-}
-
 @Service()
 export class McpOAuthService implements OAuthServerProvider {
+	private readonly MCP_AUDIENCE = 'mcp-server-api';
+
 	constructor(
 		private readonly logger: Logger,
-		private readonly authService: AuthService,
 		private readonly jwtService: JwtService,
+		private readonly oauthSessionService: OAuthSessionService,
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly authorizationCodeRepository: AuthorizationCodeRepository,
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 		private readonly userConsentRepository: UserConsentRepository,
 	) {}
+
+	/**
+	 * Helper: Create and set OAuth session cookie, then redirect to consent page
+	 */
+	private redirectToConsentPage(
+		res: Response,
+		client: OAuthClientInformationFull,
+		params: AuthorizationParams,
+	): void {
+		this.oauthSessionService.createSession(res, {
+			clientId: client.client_id,
+			redirectUri: params.redirectUri,
+			codeChallenge: params.codeChallenge,
+			state: params.state ?? null,
+		});
+
+		res.redirect('/oauth/consent');
+	}
+
+	/**
+	 * Helper: Generate and save authorization code
+	 */
+	private async createAuthorizationCode(
+		clientId: string,
+		userId: string,
+		redirectUri: string,
+		codeChallenge: string,
+		state: string | null,
+	): Promise<string> {
+		const code = randomBytes(32).toString('hex');
+
+		await this.authorizationCodeRepository.save({
+			code,
+			clientId,
+			userId,
+			redirectUri,
+			codeChallenge,
+			codeChallengeMethod: 'S256',
+			state,
+			expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+			used: false,
+		});
+
+		return code;
+	}
+
+	/**
+	 * Helper: Build redirect URL with authorization code
+	 */
+	private buildSuccessRedirectUrl(redirectUri: string, code: string, state: string | null): string {
+		const targetUrl = new URL(redirectUri);
+		targetUrl.searchParams.set('code', code);
+		if (state) {
+			targetUrl.searchParams.set('state', state);
+		}
+		return targetUrl.toString();
+	}
+
+	/**
+	 * Helper: Find and validate authorization code (without consuming)
+	 * Returns the auth record if valid, throws if invalid/expired
+	 */
+	private async findAndValidateAuthorizationCode(authorizationCode: string, clientId: string) {
+		const authRecord = await this.authorizationCodeRepository.findOne({
+			where: {
+				code: authorizationCode,
+				clientId,
+			},
+		});
+
+		if (!authRecord) {
+			throw new Error('Invalid authorization code');
+		}
+
+		if (authRecord.expiresAt < Date.now()) {
+			await this.authorizationCodeRepository.remove(authRecord);
+			throw new Error('Authorization code expired');
+		}
+
+		return authRecord;
+	}
+
+	/**
+	 * Helper: Validate and consume authorization code
+	 * Returns the auth record if valid, throws if invalid/expired/used
+	 */
+	private async validateAndConsumeAuthorizationCode(
+		authorizationCode: string,
+		clientId: string,
+		redirectUri?: string,
+	) {
+		const authRecord = await this.findAndValidateAuthorizationCode(authorizationCode, clientId);
+
+		if (authRecord.used) {
+			await this.authorizationCodeRepository.remove(authRecord);
+			throw new Error('Authorization code already used');
+		}
+
+		if (redirectUri && authRecord.redirectUri !== redirectUri) {
+			throw new Error('Redirect URI mismatch');
+		}
+
+		// Mark as used
+		authRecord.used = true;
+		await this.authorizationCodeRepository.save(authRecord);
+
+		return authRecord;
+	}
+
+	/**
+	 * Helper: Generate token pair (access + refresh)
+	 * Access token: JWT with MCP audience claim
+	 * Refresh token: Opaque token
+	 */
+	private generateTokenPair(
+		userId: string,
+		clientId: string,
+	): { accessToken: string; refreshToken: string } {
+		const accessToken = this.jwtService.sign({
+			sub: userId,
+			aud: this.MCP_AUDIENCE,
+			client_id: clientId,
+			jti: randomUUID(),
+			iat: Math.floor(Date.now() / 1000),
+			exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+		});
+
+		const refreshToken = randomBytes(32).toString('hex');
+
+		return { accessToken, refreshToken };
+	}
+
+	/**
+	 * Helper: Save token pair to database
+	 */
+	private async saveTokenPair(
+		accessToken: string,
+		refreshToken: string,
+		clientId: string,
+		userId: string,
+	): Promise<void> {
+		const REFRESH_TOKEN_EXPIRY_MS = 30 * 24 * 3600 * 1000; // 30 days
+
+		// TODO: Wrap in transaction for atomicity
+		// TODO: Add expiresAt when implementing JWT tokens (ACCESS_TOKEN_EXPIRY_MS = 3600 * 1000)
+		await this.accessTokenRepository.save({
+			token: accessToken,
+			clientId,
+			userId,
+			revoked: false,
+		});
+
+		await this.refreshTokenRepository.save({
+			token: refreshToken,
+			clientId,
+			userId,
+			expiresAt: Date.now() + REFRESH_TOKEN_EXPIRY_MS,
+		});
+	}
+
 	get clientsStore(): OAuthRegisteredClientsStore {
 		return {
 			getClient: async (
@@ -55,8 +208,6 @@ export class McpOAuthService implements OAuthServerProvider {
 				if (!client) {
 					return undefined;
 				}
-
-				console.log('Found OAuth client', { clientId: client.id, name: client.name });
 
 				return {
 					client_id: client.id,
@@ -75,8 +226,6 @@ export class McpOAuthService implements OAuthServerProvider {
 			registerClient: async (
 				client: OAuthClientInformationFull,
 			): Promise<OAuthClientInformationFull> => {
-				console.log('Registering new OAuth client', JSON.stringify(client, undefined, 2));
-
 				try {
 					await this.oauthClientRepository.save({
 						id: client.client_id,
@@ -95,7 +244,6 @@ export class McpOAuthService implements OAuthServerProvider {
 					});
 				}
 
-				this.logger.info('OAuth client registered', { clientId: client.client_id });
 				return client;
 			},
 		};
@@ -106,132 +254,21 @@ export class McpOAuthService implements OAuthServerProvider {
 		params: AuthorizationParams,
 		res: Response,
 	): Promise<void> {
-		console.log('Authorizing client', JSON.stringify(client, undefined, 2));
-		console.log('params', JSON.stringify(params, undefined, 2));
+		this.logger.debug('Starting OAuth authorization', { clientId: client.client_id });
 
 		try {
-			const req = res.req as unknown as AuthenticatedRequest;
-
-			// Validate state parameter
-			if (!params.state) {
-				res
-					.status(400)
-					.json({ error: 'invalid_request', error_description: 'Missing state parameter' });
-				return;
-			}
-
-			// Validate redirect URI
-			if (!params.redirectUri || !client.redirect_uris.includes(params.redirectUri)) {
-				res
-					.status(400)
-					.json({ error: 'invalid_request', error_description: 'Invalid redirect_uri' });
-				return;
-			}
-
-			// Validate PKCE parameters
-			if (!params.codeChallenge) {
-				res
-					.status(400)
-					.json({ error: 'invalid_request', error_description: 'Missing PKCE code challenge' });
-				return;
-			}
-
-			// Try to authenticate user
-			let user;
-			try {
-				[user] = await this.authService.resolveJwt(req, res);
-			} catch (error) {
-				// User is not authenticated - save OAuth state in a signed cookie and redirect to consent page
-				// The consent page will handle redirecting to login if needed
-				const sessionPayload: OAuthSessionPayload = {
-					clientId: client.client_id,
-					redirectUri: params.redirectUri,
-					codeChallenge: params.codeChallenge,
-					state: params.state ?? null,
-				};
-
-				// Sign the OAuth session data as a JWT
-				const sessionToken = this.jwtService.sign(sessionPayload, {
-					expiresIn: '10m',
-				});
-
-				// Set session cookie with the signed JWT
-				res.cookie('n8n-oauth-session', sessionToken, {
-					httpOnly: true,
-					secure: process.env.NODE_ENV === 'production',
-					sameSite: 'lax',
-					maxAge: 10 * 60 * 1000, // 10 minutes
-				});
-
-				res.redirect('/oauth/consent');
-				return;
-			}
-
-			// User is authenticated - check if they have previously consented
-			const existingConsent = await this.userConsentRepository.findOne({
-				where: {
-					userId: user.id,
-					clientId: client.client_id,
-				},
-			});
-
-			if (existingConsent) {
-				// User has previously consented, generate authorization code
-				const code = randomBytes(32).toString('hex');
-				await this.authorizationCodeRepository.save({
-					code,
-					clientId: client.client_id,
-					userId: user.id,
-					redirectUri: params.redirectUri,
-					codeChallenge: params.codeChallenge,
-					codeChallengeMethod: 'S256',
-					state: params.state ?? null,
-					expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-					used: false,
-				});
-
-				// Clear any existing OAuth session cookie
-				res.clearCookie('n8n-oauth-session');
-
-				// Redirect back to client with authorization code
-				const targetUrl = new URL(params.redirectUri);
-				targetUrl.searchParams.set('code', code);
-				if (params.state) {
-					targetUrl.searchParams.set('state', params.state);
-				}
-				res.redirect(targetUrl.toString());
-				return;
-			}
-
-			// User needs to consent - save OAuth state in a signed cookie and redirect to consent screen
-			const sessionPayload: OAuthSessionPayload = {
-				clientId: client.client_id,
-				redirectUri: params.redirectUri,
-				codeChallenge: params.codeChallenge,
-				state: params.state ?? null,
-			};
-
-			// Sign the OAuth session data as a JWT
-			const sessionToken = this.jwtService.sign(sessionPayload, {
-				expiresIn: '10m',
-			});
-
-			// Set session cookie with the signed JWT
-			res.cookie('n8n-oauth-session', sessionToken, {
-				httpOnly: true,
-				secure: process.env.NODE_ENV === 'production',
-				sameSite: 'lax',
-				maxAge: 10 * 60 * 1000, // 10 minutes
-			});
-
-			res.redirect('/oauth/consent');
+			// Always redirect to consent screen
+			// Note: MCP SDK validates all params (client_id, redirect_uri, code_challenge, etc.)
+			// before calling this method, so we don't need to validate again.
+			// - If authenticated: Consent page shows directly
+			// - If not authenticated: Consent endpoint (skipAuth: false) redirects to login
+			// Dynamic client registration creates new client_id on each connection,
+			// so we can't rely on existing consent checks to skip the consent screen.
+			// The consent table is still maintained for authorization history and user management.
+			this.redirectToConsentPage(res, client, params);
 		} catch (error) {
-			console.log(error);
 			this.logger.error('Error in authorize method', { error, clientId: client.client_id });
-
-			// Clear any OAuth session cookie on error
-			res.clearCookie('n8n-oauth-session');
-
+			this.oauthSessionService.clearSession(res);
 			res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
 		}
 	}
@@ -240,24 +277,10 @@ export class McpOAuthService implements OAuthServerProvider {
 		client: OAuthClientInformationFull,
 		authorizationCode: string,
 	): Promise<string> {
-		console.log('Challenging for authorization code', { clientId: client.client_id });
-		// Find the authorization code record
-		const authRecord = await this.authorizationCodeRepository.findOne({
-			where: {
-				code: authorizationCode,
-				clientId: client.client_id,
-			},
-		});
-
-		if (!authRecord) {
-			throw new Error('Invalid authorization code');
-		}
-
-		// Check if expired
-		if (authRecord.expiresAt < Date.now()) {
-			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Authorization code expired');
-		}
+		const authRecord = await this.findAndValidateAuthorizationCode(
+			authorizationCode,
+			client.client_id,
+		);
 
 		// Return the code challenge for PKCE verification
 		return authRecord.codeChallenge;
@@ -265,76 +288,24 @@ export class McpOAuthService implements OAuthServerProvider {
 	async exchangeAuthorizationCode(
 		client: OAuthClientInformationFull,
 		authorizationCode: string,
-		codeVerifier?: string,
+		_codeVerifier?: string,
 		redirectUri?: string,
 	): Promise<OAuthTokens> {
-		console.log('exchangeAuthorizationCode', { clientId: client.client_id });
+		// Validate and consume the authorization code
+		const authRecord = await this.validateAndConsumeAuthorizationCode(
+			authorizationCode,
+			client.client_id,
+			redirectUri,
+		);
 
-		// Find the authorization code record
-		const authRecord = await this.authorizationCodeRepository.findOne({
-			where: {
-				code: authorizationCode,
-				clientId: client.client_id,
-			},
-		});
+		// Generate token pair with user and client info
+		const { accessToken, refreshToken } = this.generateTokenPair(
+			authRecord.userId,
+			client.client_id,
+		);
 
-		if (!authRecord) {
-			throw new Error('Invalid authorization code');
-		}
-
-		// Check if expired
-		if (authRecord.expiresAt < Date.now()) {
-			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Authorization code expired');
-		}
-
-		// Check if already used
-		if (authRecord.used) {
-			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Authorization code already used');
-		}
-
-		// Validate redirect URI
-		if (redirectUri && authRecord.redirectUri !== redirectUri) {
-			throw new Error('Redirect URI mismatch');
-		}
-
-		// Verify PKCE code verifier
-		// if (codeVerifier) {
-		// 	const hash = createHash('sha256').update(codeVerifier).digest('base64url');
-		// 	if (hash !== authRecord.codeChallenge) {
-		// 		throw new Error('Invalid code verifier');
-		// 	}
-		// }
-
-		// Mark authorization code as used
-		authRecord.used = true;
-		await this.authorizationCodeRepository.save(authRecord);
-
-		// Generate access token
-		const accessToken = randomBytes(32).toString('hex');
-		const refreshToken = randomBytes(32).toString('hex');
-
-		try {
-			await this.accessTokenRepository.save({
-				token: accessToken,
-				clientId: client.client_id,
-				userId: authRecord.userId,
-				// expiresAt: Date.now() + 3600 * 1000, // 1 hour
-				revoked: false,
-			});
-		} catch (e) {
-			console.log(e);
-		}
-		// Save access token
-
-		// Save refresh token
-		await this.refreshTokenRepository.save({
-			token: refreshToken,
-			clientId: client.client_id,
-			userId: authRecord.userId,
-			expiresAt: Date.now() + 30 * 24 * 3600 * 1000, // 30 days
-		});
+		// Persist tokens to database
+		await this.saveTokenPair(accessToken, refreshToken, client.client_id, authRecord.userId);
 
 		this.logger.info('Authorization code exchanged for tokens', {
 			clientId: client.client_id,
@@ -353,7 +324,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		refreshToken: string,
 		_scopes?: string[],
 	): Promise<OAuthTokens> {
-		// Find the refresh token record
+		// Validate refresh token
 		const refreshTokenRecord = await this.refreshTokenRepository.findOne({
 			where: {
 				token: refreshToken,
@@ -365,30 +336,29 @@ export class McpOAuthService implements OAuthServerProvider {
 			throw new Error('Invalid refresh token');
 		}
 
-		// Check if expired
 		if (refreshTokenRecord.expiresAt < Date.now()) {
 			await this.refreshTokenRepository.remove(refreshTokenRecord);
 			throw new Error('Refresh token expired');
 		}
 
-		// // Check if revoked
-		// if (refreshTokenRecord.revoked) {
-		// 	throw new Error('Refresh token has been revoked');
-		// }
+		// Generate new token pair (refresh token rotation for OAuth 2.1 security)
+		const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
+			refreshTokenRecord.userId,
+			client.client_id,
+		);
 
-		// Generate new access token
-		const accessToken = randomBytes(32).toString('hex');
+		// Invalidate old refresh token (prevents reuse)
+		await this.refreshTokenRepository.remove(refreshTokenRecord);
 
-		// Save new access token
-		await this.accessTokenRepository.save({
-			token: accessToken,
-			clientId: client.client_id,
-			userId: refreshTokenRecord.userId,
-			expiresAt: Date.now() + 3600 * 1000, // 1 hour
-			revoked: false,
-		});
+		// Save new token pair to database
+		await this.saveTokenPair(
+			accessToken,
+			newRefreshToken,
+			client.client_id,
+			refreshTokenRecord.userId,
+		);
 
-		this.logger.info('Refresh token exchanged for new access token', {
+		this.logger.info('Refresh token rotated and new access token issued', {
 			clientId: client.client_id,
 			userId: refreshTokenRecord.userId,
 		});
@@ -397,61 +367,70 @@ export class McpOAuthService implements OAuthServerProvider {
 			access_token: accessToken,
 			token_type: 'Bearer',
 			expires_in: 3600,
-			refresh_token: refreshToken, // Return same refresh token
+			refresh_token: newRefreshToken, // Return new refresh token (rotation)
 		};
 	}
 
 	async verifyAccessToken(token: string): Promise<AuthInfo> {
-		// Find the access token record
+		// Step 1: Verify JWT signature and decode claims
+		let decoded: {
+			sub: string;
+			aud: string;
+			client_id: string;
+			jti: string;
+			iat: number;
+			exp: number;
+		};
+
+		try {
+			decoded = this.jwtService.verify(token);
+		} catch (error) {
+			throw new Error('Invalid access token: JWT verification failed');
+		}
+
+		// Step 2: Validate audience (MCP spec requirement - RFC 8707)
+		if (decoded.aud !== this.MCP_AUDIENCE) {
+			throw new Error(`Invalid token audience: expected ${this.MCP_AUDIENCE}, got ${decoded.aud}`);
+		}
+
+		// Step 3: Check database for revocation (immediate revocation on user action)
 		const accessTokenRecord = await this.accessTokenRepository.findOne({
-			where: {
-				token,
-			},
+			where: { token },
 		});
 
 		if (!accessTokenRecord) {
-			throw new Error('Invalid access token');
+			throw new Error('Invalid access token: not found in database');
 		}
 
-		// Check if expired
-		// if (accessTokenRecord.expiresAt < Date.now()) {
-		// 	await this.accessTokenRepository.remove(accessTokenRecord);
-		// 	throw new Error('Access token expired');
-		// }
-
-		// Check if revoked
 		if (accessTokenRecord.revoked) {
 			throw new Error('Access token has been revoked');
 		}
 
-		// Return auth info
+		// JWT expiry is validated by jwtService.verify(), no need to check expiresAt again
+
+		// Return auth info from JWT claims
 		return {
 			token,
-			clientId: accessTokenRecord.clientId,
+			clientId: decoded.client_id,
 			scopes: [], // TODO: Implement scopes support
-			// expiresAt: accessTokenRecord.expiresAt,
 			extra: {
-				userId: accessTokenRecord.userId,
+				userId: decoded.sub,
 			},
 		};
 	}
 
 	/**
 	 * Get consent details from session cookie
-	 * Now expects sessionToken to be a JWT containing OAuth parameters
+	 * Verifies JWT session token and returns client information
 	 */
-	async getConsentDetails(
-		sessionToken: string,
-		userId: string,
-	): Promise<{
+	async getConsentDetails(sessionToken: string): Promise<{
 		clientName: string;
 		clientId: string;
 		scopes: string[];
-		sessionId: string;
 	} | null> {
 		try {
 			// Verify and decode the JWT session token
-			const sessionPayload = this.jwtService.verify<OAuthSessionPayload>(sessionToken);
+			const sessionPayload = this.oauthSessionService.verifySession(sessionToken);
 
 			// Look up the client
 			const client = await this.oauthClientRepository.findOne({
@@ -462,25 +441,10 @@ export class McpOAuthService implements OAuthServerProvider {
 				return null;
 			}
 
-			// Create a new authorization code record with the authenticated user
-			const sessionId = randomUUID();
-			await this.authorizationCodeRepository.save({
-				code: sessionId,
-				clientId: sessionPayload.clientId,
-				userId,
-				redirectUri: sessionPayload.redirectUri,
-				codeChallenge: sessionPayload.codeChallenge,
-				codeChallengeMethod: 'S256',
-				state: sessionPayload.state ?? null,
-				expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-				used: false,
-			});
-
 			return {
 				clientName: client.name,
 				clientId: client.id,
-				scopes: [], // TODO: Add scopes support
-				sessionId, // Return the new authorization code ID for use in handleConsentDecision
+				scopes: client.scopes.split(' '),
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });
@@ -490,59 +454,61 @@ export class McpOAuthService implements OAuthServerProvider {
 
 	/**
 	 * Handle consent approval/denial
+	 * Uses JWT session token instead of database lookup
 	 */
 	async handleConsentDecision(
-		sessionId: string,
+		sessionToken: string,
 		userId: string,
 		approved: boolean,
 	): Promise<{ redirectUrl: string }> {
-		const authRecord = await this.authorizationCodeRepository.findOne({
-			where: {
-				code: sessionId,
-				userId,
-			},
-		});
-
-		if (!authRecord) {
-			throw new Error('Invalid session');
+		// Verify the JWT session token
+		let sessionPayload: OAuthSessionPayload;
+		try {
+			sessionPayload = this.oauthSessionService.verifySession(sessionToken);
+		} catch (error) {
+			throw new Error('Invalid or expired session');
 		}
 
-		if (authRecord.expiresAt < Date.now()) {
-			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Session expired');
-		}
-
-		const redirectUrl = new URL(authRecord.redirectUri);
+		const redirectUrl = new URL(sessionPayload.redirectUri);
 
 		if (!approved) {
 			// User denied consent
 			redirectUrl.searchParams.set('error', 'access_denied');
 			redirectUrl.searchParams.set('error_description', 'User denied the authorization request');
 
-			// Clean up the pending authorization
-			await this.authorizationCodeRepository.remove(authRecord);
+			this.logger.info('Consent denied', {
+				clientId: sessionPayload.clientId,
+				userId,
+			});
 		} else {
 			// User approved - save consent and generate authorization code
 			await this.userConsentRepository.save({
 				userId,
-				clientId: authRecord.clientId,
+				clientId: sessionPayload.clientId,
 				grantedAt: Date.now(),
 			});
 
-			// Generate final authorization code
-			// const code = randomBytes(32).toString('hex');
-			// authRecord.code = code;
-			await this.authorizationCodeRepository.save(authRecord);
+			const code = await this.createAuthorizationCode(
+				sessionPayload.clientId,
+				userId,
+				sessionPayload.redirectUri,
+				sessionPayload.codeChallenge,
+				sessionPayload.state,
+			);
 
-			redirectUrl.searchParams.set('code', authRecord.code);
-			redirectUrl.searchParams.set('state', authRecord.state ?? '');
+			const successRedirectUrl = this.buildSuccessRedirectUrl(
+				sessionPayload.redirectUri,
+				code,
+				sessionPayload.state,
+			);
+
+			this.logger.info('Consent approved', {
+				clientId: sessionPayload.clientId,
+				userId,
+			});
+
+			return { redirectUrl: successRedirectUrl };
 		}
-
-		this.logger.info('Consent decision handled', {
-			clientId: authRecord.clientId,
-			userId,
-			approved,
-		});
 
 		return { redirectUrl: redirectUrl.toString() };
 	}

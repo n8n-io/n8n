@@ -170,8 +170,14 @@ export class McpServerApiKeyService {
 				}
 			}
 
+			console.log('MCP API Key not valid, trying as OAuth access token');
+
 			// Try to validate as OAuth access token
 			user = await this.getUserForAccessToken(token);
+
+			console.log('User fetched for OAuth access token', JSON.stringify(user, undefined, 2));
+
+			console.log(!user);
 
 			if (!user) {
 				this.responseWithUnauthorized(res, req);

@@ -5,6 +5,8 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
+import { Telemetry } from '@/telemetry';
+
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
@@ -17,8 +19,6 @@ import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload, UserCalledMCPToolEventPayload } from './mcp.types';
 import { getClientInfo, getToolName, getToolArguments } from './mcp.utils';
-
-import { Telemetry } from '@/telemetry';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -75,6 +75,7 @@ export class McpController {
 
 		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
+
 		if (!enabled) {
 			if (isInitializationRequest) {
 				this.trackMCPEvent('connected', {
