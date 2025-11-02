@@ -44,6 +44,8 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
+export { ApproveConsentRequestDto } from './mcp/approve-consent-request.dto';
+
 export { PullWorkFolderRequestDto } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 

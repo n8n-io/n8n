@@ -41,12 +41,13 @@ export class McpOAuthController {
 
 	@Get('/.well-known/oauth-authorization-server', { skipAuth: true, usesTemplates: true })
 	metadata(_req: Request, res: Response) {
+		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const metadata = {
-			issuer: this.urlService.getInstanceBaseUrl(),
-			authorization_endpoint: `${this.urlService.getInstanceBaseUrl()}/mcp-oauth/authorize`,
-			token_endpoint: `${this.urlService.getInstanceBaseUrl()}/mcp-oauth/token`,
-			registration_endpoint: `${this.urlService.getInstanceBaseUrl()}/mcp-oauth/register`,
-			revocation_endpoint: `${this.urlService.getInstanceBaseUrl()}/mcp-oauth/revoke`,
+			issuer: baseUrl,
+			authorization_endpoint: `${baseUrl}/mcp-oauth/authorize`,
+			token_endpoint: `${baseUrl}/mcp-oauth/token`,
+			registration_endpoint: `${baseUrl}/mcp-oauth/register`,
+			revocation_endpoint: `${baseUrl}/mcp-oauth/revoke`,
 			response_types_supported: ['code'],
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
@@ -62,10 +63,11 @@ export class McpOAuthController {
 		usesTemplates: true,
 	})
 	protectedResourceMetadata(_req: Request, res: Response) {
+		const baseUrl = this.urlService.getInstanceBaseUrl();
 		res.json({
-			resource: `${this.urlService.getInstanceBaseUrl()}/mcp-server/http`,
+			resource: `${baseUrl}/mcp-server/http`,
 			bearer_methods_supported: ['header'],
-			authorization_servers: [`${this.urlService.getInstanceBaseUrl()}`],
+			authorization_servers: [baseUrl],
 			scopes_supported: SUPPORTED_SCOPES,
 		});
 	}

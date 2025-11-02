@@ -1,6 +1,7 @@
+import { ApproveConsentRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { McpOAuthConsentService } from './mcp-oauth-consent.service';
@@ -14,102 +15,80 @@ export class McpConsentController {
 		private readonly oauthSessionService: OAuthSessionService,
 	) {}
 
-	/**
-	 * Get consent details for the current OAuth session
-	 * Called by the consent page to display client information
-	 */
-	@Get('/details', { skipAuth: false })
+	@Get('/details', { usesTemplates: true })
 	async getConsentDetails(req: AuthenticatedRequest, res: Response) {
 		try {
-			// Get the OAuth session token from cookie
-			const sessionToken = this.oauthSessionService.getSessionToken(req.cookies);
+			const sessionToken = this.getAndValidateSessionToken(req, res);
+			if (!sessionToken) return;
 
-			if (!sessionToken) {
-				return res.status(400).json({
-					status: 'error',
-					message: 'Invalid or expired authorization session',
-				});
-			}
-
-			// Get consent details using the service (verifies JWT)
 			const consentDetails = await this.consentService.getConsentDetails(sessionToken);
 
 			if (!consentDetails) {
-				// JWT verification failed or client not found - clear the invalid cookie
-				this.oauthSessionService.clearSession(res);
-				return res.status(400).json({
-					status: 'error',
-					message: 'Invalid or expired authorization session',
-				});
+				this.sendInvalidSessionError(res, true);
+				return;
 			}
 
-			// Return client information (cookie remains unchanged)
-			return {
+			res.json({
 				clientName: consentDetails.clientName,
 				clientId: consentDetails.clientId,
-			};
+			});
 		} catch (error) {
 			this.logger.error('Failed to get consent details', { error });
-			// Clear cookie on error
 			this.oauthSessionService.clearSession(res);
-			return res.status(500).json({
-				status: 'error',
-				message: 'Failed to load authorization details',
-			});
+			this.sendErrorResponse(res, 500, 'Failed to load authorization details');
 		}
 	}
 
-	/**
-	 * Handle consent approval or denial
-	 * Called when user clicks "Allow" or "Deny" on the consent page
-	 */
-	@Post('/approve', { skipAuth: false })
-	async approveConsent(req: AuthenticatedRequest, res: Response) {
+	@Post('/approve', { usesTemplates: true })
+	async approveConsent(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body payload: ApproveConsentRequestDto,
+	) {
 		try {
-			const { approved } = req.body as { approved: boolean };
+			const sessionToken = this.getAndValidateSessionToken(req, res);
+			if (!sessionToken) return;
 
-			if (typeof approved !== 'boolean') {
-				return res.status(400).json({
-					status: 'error',
-					message: 'Missing or invalid "approved" field',
-				});
-			}
-
-			// Get the OAuth session token from cookie
-			const sessionToken = this.oauthSessionService.getSessionToken(req.cookies);
-
-			if (!sessionToken) {
-				return res.status(400).json({
-					status: 'error',
-					message: 'Invalid or expired authorization session',
-				});
-			}
-
-			// Process the consent decision using the service
 			const result = await this.consentService.handleConsentDecision(
 				sessionToken,
 				req.user.id,
-				approved,
+				payload.approved,
 			);
 
-			// Clear the session cookie
 			this.oauthSessionService.clearSession(res);
 
-			// Return the redirect URL (includes authorization code or error)
-			return {
+			res.json({
 				status: 'success',
 				redirectUrl: result.redirectUrl,
-			};
+			});
 		} catch (error) {
 			this.logger.error('Failed to process consent', { error });
-
-			// Clear the session cookie even on error
 			this.oauthSessionService.clearSession(res);
-
-			return res.status(500).json({
-				status: 'error',
-				message: error instanceof Error ? error.message : 'Failed to process authorization',
-			});
+			const message = error instanceof Error ? error.message : 'Failed to process authorization';
+			this.sendErrorResponse(res, 500, message);
 		}
+	}
+
+	private sendErrorResponse(res: Response, statusCode: number, message: string): void {
+		res.status(statusCode).json({
+			status: 'error',
+			message,
+		});
+	}
+
+	private sendInvalidSessionError(res: Response, clearCookie = false): void {
+		if (clearCookie) {
+			this.oauthSessionService.clearSession(res);
+		}
+		this.sendErrorResponse(res, 400, 'Invalid or expired authorization session');
+	}
+
+	private getAndValidateSessionToken(req: AuthenticatedRequest, res: Response): string | null {
+		const sessionToken = this.oauthSessionService.getSessionToken(req.cookies);
+		if (!sessionToken) {
+			this.sendInvalidSessionError(res);
+			return null;
+		}
+		return sessionToken;
 	}
 }
