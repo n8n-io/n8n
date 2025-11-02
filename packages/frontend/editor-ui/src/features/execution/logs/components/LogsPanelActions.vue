@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
-import { useStyles } from '@/composables/useStyles';
+import { useStyles } from '@/app/composables/useStyles';
 import { computed } from 'vue';
 
 import { N8nActionDropdown, N8nIconButton, N8nTooltip } from '@n8n/design-system';

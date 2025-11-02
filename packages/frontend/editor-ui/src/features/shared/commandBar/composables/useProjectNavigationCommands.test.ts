@@ -4,7 +4,7 @@ import { useProjectNavigationCommands } from './useProjectNavigationCommands';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 const routerPushMock = vi.fn();
@@ -27,7 +27,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 const mockCreateProject = vi.fn();
-vi.mock('@/composables/useGlobalEntityCreation', () => ({
+vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		createProject: mockCreateProject,
 	}),

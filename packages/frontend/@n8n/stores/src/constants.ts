@@ -41,4 +41,6 @@ export const STORES = {
 	EXPERIMENT_TEMPLATE_RECO_V2: 'templateRecoV2',
 	PERSONALIZED_TEMPLATES_V3: 'personalizedTemplatesV3',
 	READY_TO_RUN: 'readyToRun',
+	TEMPLATES_DATA_QUALITY: 'templatesDataQuality',
+	BANNERS: 'banners',
 } as const;

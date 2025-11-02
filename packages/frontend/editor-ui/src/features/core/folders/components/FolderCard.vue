@@ -4,13 +4,13 @@ import { FOLDER_LIST_ITEM_ACTIONS } from '../folders.constants';
 import { ProjectTypes, type Project } from '@/features/collaboration/projects/projects.types';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { UserAction, FolderResource } from '@/Interface';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '../folders.store';
 import { type IUser } from 'n8n-workflow';
-import TimeAgo from '@/components/TimeAgo.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 
 import {

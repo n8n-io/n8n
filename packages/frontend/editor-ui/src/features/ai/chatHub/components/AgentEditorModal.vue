@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
-import Modal from '@/components/Modal.vue';
-import { createEventBus } from '@n8n/utils/event-bus';
-import type { ChatHubConversationModel, ChatHubProvider } from '@n8n/api-types';
-import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
+import Modal from '@/app/components/Modal.vue';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
+import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
 import { assert } from '@n8n/utils/assert';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { computed, ref, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 
 const props = defineProps<{
@@ -19,7 +19,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	createAgent: [agent: ChatHubConversationModel];
+	createCustomAgent: [agent: ChatModelDto];
 	close: [];
 }>();
 
@@ -33,7 +33,7 @@ const modalBus = ref(createEventBus());
 const name = ref('');
 const description = ref('');
 const systemPrompt = ref('');
-const selectedModel = ref<ChatHubConversationModel | null>(null);
+const selectedModel = ref<ChatModelDto | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
 
@@ -67,24 +67,17 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 });
 
 function loadAgent() {
-	const agent = chatStore.currentEditingAgent;
-	if (!agent) return;
+	const customAgent = chatStore.currentEditingAgent;
 
-	name.value = agent.name;
-	description.value = agent.description ?? '';
-	systemPrompt.value = agent.systemPrompt;
-	if (agent.provider && agent.model) {
-		selectedModel.value = {
-			provider: agent.provider,
-			model: agent.model,
-			name: agent.model,
-		} as ChatHubConversationModel;
+	if (!customAgent) return;
 
-		if (agent.credentialId) {
-			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
-		}
-	} else {
-		selectedModel.value = null;
+	name.value = customAgent.name;
+	description.value = customAgent.description ?? '';
+	systemPrompt.value = customAgent.systemPrompt;
+	selectedModel.value = chatStore.getAgent(customAgent) ?? null;
+
+	if (customAgent.credentialId) {
+		agentSelectedCredentials.value[customAgent.provider] = customAgent.credentialId;
 	}
 }
 
@@ -98,7 +91,7 @@ function resetForm() {
 
 // Watch for modal opening
 watch(
-	() => uiStore.isModalActiveById.agentEditor,
+	() => uiStore.modalsById.agentEditor?.open,
 	(isOpen) => {
 		if (isOpen) {
 			if (props.agentId) {
@@ -117,7 +110,7 @@ function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
 	};
 }
 
-function onModelChange(model: ChatHubConversationModel) {
+function onModelChange(model: ChatModelDto) {
 	selectedModel.value = model;
 }
 
@@ -127,33 +120,33 @@ async function onSave() {
 	isSaving.value = true;
 	try {
 		assert(selectedModel.value);
+
 		const model = 'model' in selectedModel.value ? selectedModel.value.model : undefined;
+
 		assert(model);
+		assert(model.provider !== 'n8n' && model.provider !== 'custom-agent');
 
-		const provider = selectedModel.value.provider;
-		assert(provider !== 'n8n' && provider !== 'custom-agent');
+		const credentialId = agentMergedCredentials.value[model.provider];
 
-		const credentialId = agentMergedCredentials.value[provider];
 		assert(credentialId);
 
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
-			provider,
-			model,
+			...model,
 			credentialId,
 		};
 
 		if (isEditMode.value && props.agentId) {
-			await chatStore.updateAgent(props.agentId, payload);
+			await chatStore.updateCustomAgent(props.agentId, payload, props.credentials);
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
 				type: 'success',
 			});
 		} else {
-			const agent = await chatStore.createAgent(payload);
-			emit('createAgent', agent);
+			const agent = await chatStore.createCustomAgent(payload, props.credentials);
+			emit('createCustomAgent', agent);
 
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.create'),
@@ -187,7 +180,7 @@ async function onDelete() {
 
 	isDeleting.value = true;
 	try {
-		await chatStore.deleteAgent(props.agentId);
+		await chatStore.deleteCustomAgent(props.agentId, props.credentials);
 		toast.showMessage({
 			title: i18n.baseText('chatHub.agent.editor.success.delete'),
 			type: 'success',
@@ -213,30 +206,30 @@ async function onDelete() {
 		min-height="400px"
 	>
 		<template #header>
-			<div :class="$style.header">
-				<h2 :class="$style.title">{{ title }}</h2>
-			</div>
+			<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<div :class="$style.field">
-					<N8nText tag="label" size="small" bold :class="$style.label">
-						{{ i18n.baseText('chatHub.agent.editor.name.label') }}
-						<span :class="$style.required">*</span>
-					</N8nText>
+				<N8nInputLabel
+					input-name="agent-name"
+					:label="i18n.baseText('chatHub.agent.editor.name.label')"
+					:required="true"
+				>
 					<N8nInput
+						id="agent-name"
 						v-model="name"
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
 						:maxlength="128"
 						:class="$style.input"
 					/>
-				</div>
+				</N8nInputLabel>
 
-				<div :class="$style.field">
-					<N8nText tag="label" size="small" bold :class="$style.label">{{
-						i18n.baseText('chatHub.agent.editor.description.label')
-					}}</N8nText>
+				<N8nInputLabel
+					input-name="agent-description"
+					:label="i18n.baseText('chatHub.agent.editor.description.label')"
+				>
 					<N8nInput
+						id="agent-description"
 						v-model="description"
 						type="textarea"
 						:placeholder="i18n.baseText('chatHub.agent.editor.description.placeholder')"
@@ -244,36 +237,36 @@ async function onDelete() {
 						:rows="3"
 						:class="$style.input"
 					/>
-				</div>
+				</N8nInputLabel>
 
-				<div :class="$style.field">
-					<N8nText tag="label" size="small" bold :class="$style.label">
-						{{ i18n.baseText('chatHub.agent.editor.systemPrompt.label') }}
-						<span :class="$style.required">*</span>
-					</N8nText>
+				<N8nInputLabel
+					input-name="agent-system-prompt"
+					:label="i18n.baseText('chatHub.agent.editor.systemPrompt.label')"
+					:required="true"
+				>
 					<N8nInput
+						id="agent-system-prompt"
 						v-model="systemPrompt"
 						type="textarea"
 						:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
 						:rows="6"
 						:class="$style.input"
 					/>
-				</div>
+				</N8nInputLabel>
 
-				<div :class="$style.field">
-					<N8nText tag="label" size="small" bold :class="$style.label">
-						{{ i18n.baseText('chatHub.agent.editor.model.label') }}
-						<span :class="$style.required">*</span>
-					</N8nText>
+				<N8nInputLabel
+					input-name="agent-model"
+					:label="i18n.baseText('chatHub.agent.editor.model.label')"
+					:required="true"
+				>
 					<ModelSelector
-						:models="chatStore.models ?? null"
-						:selected-model="selectedModel"
+						:selectedAgent="selectedModel"
 						:include-custom-agents="false"
 						:credentials="agentMergedCredentials"
 						@change="onModelChange"
 						@select-credential="onCredentialSelected"
 					/>
-				</div>
+				</N8nInputLabel>
 			</div>
 		</template>
 		<template #footer>
@@ -297,37 +290,11 @@ async function onDelete() {
 </template>
 
 <style lang="scss" module>
-.title {
-	font-size: var(--font-size--lg);
-	line-height: var(--line-height--md);
-	margin: 0;
-}
-
-.header {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
-}
-
-.field {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.label {
-	display: block;
-}
-
-.required {
-	color: var(--color--primary);
 }
 
 .input {

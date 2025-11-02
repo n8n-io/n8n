@@ -102,6 +102,10 @@ export interface FrontendSettings {
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
+	dynamicBanners: {
+		endpoint: string;
+		enabled: boolean;
+	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
