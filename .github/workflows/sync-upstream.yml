@@ -1,0 +1,83 @@
+name: Sync with upstream
+
+on:
+  schedule:
+    # 每天 UTC 0 点自动同步（北京时间早上8点）
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 允许手动触发
+
+permissions:
+  contents: write # 需要写入权限来推送代码
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: Add upstream remote
+        run: |
+          # 检查 upstream 是否已存在
+          if ! git remote get-url upstream &> /dev/null; then
+            git remote add upstream https://github.com/n8n-io/n8n.git
+            echo "✅ Added upstream remote"
+          else
+            echo "ℹ️  Upstream remote already exists"
+          fi
+
+      - name: Fetch upstream
+        run: |
+          git fetch upstream
+          echo "✅ Fetched upstream"
+
+      - name: Check for updates
+        id: check
+        run: |
+          # 计算本地 master 与上游 master 的差距
+          COMMITS=$(git rev-list --count HEAD..upstream/master)
+          echo "commits=$COMMITS" >> $GITHUB_OUTPUT
+
+          if [ $COMMITS -eq 0 ]; then
+            echo "✅ Already up to date with upstream"
+            echo "status=up_to_date" >> $GITHUB_OUTPUT
+          else
+            echo "📦 Found $COMMITS new commits from upstream"
+            echo "status=has_updates" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Merge upstream changes
+        if: steps.check.outputs.status == 'has_updates'
+        run: |
+          echo "🔄 Merging upstream changes..."
+          git merge upstream/master --no-edit
+          echo "✅ Merged upstream changes"
+
+      - name: Push to origin
+        if: steps.check.outputs.status == 'has_updates'
+        run: |
+          echo "🚀 Pushing to origin..."
+          git push origin master
+          echo "✅ Pushed to origin"
+
+      - name: Create summary
+        run: |
+          if [ ${{ steps.check.outputs.status }} == "up_to_date" ]; then
+            echo "## ✅ Sync Status: Up to date" >> $GITHUB_STEP_SUMMARY
+            echo "Your repository is already synchronized with upstream n8n/n8n." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ Sync Status: Synchronized" >> $GITHUB_STEP_SUMMARY
+            echo "Successfully synchronized with upstream n8n/n8n." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**New commits from upstream:**" >> $GITHUB_STEP_SUMMARY
+            git log --oneline HEAD..upstream/master --pretty="- %s (%h)" >> $GITHUB_STEP_SUMMARY
+          fi
