@@ -1,4 +1,4 @@
-name: Sync with upstream
+name: 同步上游更新到Master分支
 
 on:
   schedule:
@@ -12,6 +12,8 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # 只在 master 分支上运行
+    if: github.ref == 'refs/heads/master'
 
     steps:
       - name: Checkout repository
@@ -19,6 +21,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+          # 明确指定 master 分支
+          ref: master
 
       - name: Setup git
         run: |
@@ -62,22 +66,26 @@ jobs:
           git merge upstream/master --no-edit
           echo "✅ Merged upstream changes"
 
-      - name: Push to origin
+      - name: Push to origin master branch
         if: steps.check.outputs.status == 'has_updates'
         run: |
-          echo "🚀 Pushing to origin..."
+          echo "🚀 Pushing to origin master branch..."
           git push origin master
-          echo "✅ Pushed to origin"
+          echo "✅ Pushed to master branch"
 
       - name: Create summary
         run: |
           if [ ${{ steps.check.outputs.status }} == "up_to_date" ]; then
-            echo "## ✅ Sync Status: Up to date" >> $GITHUB_STEP_SUMMARY
-            echo "Your repository is already synchronized with upstream n8n/n8n." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## ✅ Sync Status: Synchronized" >> $GITHUB_STEP_SUMMARY
-            echo "Successfully synchronized with upstream n8n/n8n." >> $GITHUB_STEP_SUMMARY
+            echo "## ✅ Master分支同步状态：已是最新" >> $GITHUB_STEP_SUMMARY
+            echo "Master分支已与上游 n8n/n8n 保持同步。" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**New commits from upstream:**" >> $GITHUB_STEP_SUMMARY
+            echo "**注意：**此工作流仅同步master分支。其他开发分支的同步由开发者自行决定。" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ Master分支同步状态：已同步" >> $GITHUB_STEP_SUMMARY
+            echo "Master分支已成功与上游 n8n/n8n 同步。" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**上游新增提交：**" >> $GITHUB_STEP_SUMMARY
             git log --oneline HEAD..upstream/master --pretty="- %s (%h)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**注意：**此工作流仅同步master分支。其他开发分支的同步由开发者自行决定。" >> $GITHUB_STEP_SUMMARY
           fi
