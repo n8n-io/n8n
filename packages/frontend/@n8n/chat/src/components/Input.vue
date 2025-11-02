@@ -295,7 +295,6 @@ function onFileRemove(file: File) {
 
 function onKeyDown(event: KeyboardEvent) {
 	if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-		console.log('Arrow key pressed:', event.key); // Debug
 		event.preventDefault();
 
 		emit('arrowKeyDown', {
