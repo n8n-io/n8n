@@ -46,7 +46,6 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				column('token').varchar(255).primary.notNull,
 				column('clientId').varchar(255).notNull,
 				column('userId').varchar(255).notNull,
-				column('revoked').bool.notNull.default(false),
 			)
 			.withForeignKey('clientId', {
 				tableName: 'oauth_clients',
