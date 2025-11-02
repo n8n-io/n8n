@@ -1,3 +1,26 @@
+/**
+ * Modules
+ */
+
+declare module 'vue-agile';
+
+declare module 'v3-infinite-loading' {
+	import { Plugin, DefineComponent } from 'vue';
+
+	interface InfiniteLoadingProps {
+		target: string;
+	}
+
+	export interface Events {
+		infinite: (state: { loaded: () => void; complete: () => void }) => void;
+	}
+
+	const InfiniteLoading: DefineComponent<InfiniteLoadingProps, {}, {}, {}, {}, {}, {}, Events> &
+		Plugin;
+
+	export default InfiniteLoading;
+}
+
 declare module 'vue-virtual-scroller' {
 	import {
 		type ObjectEmitsOptions,
@@ -109,4 +132,18 @@ declare module 'vue-virtual-scroller' {
 	) => VNode;
 
 	export function IdState(options?: { idProp?: (value: any) => unknown }): unknown;
+}
+
+declare module 'prettier/plugins/estree' {
+	const plugin: PrettierPlugin;
+	export = plugin;
+	export default plugin;
+}
+
+declare module 'virtual:node-popularity-data' {
+	const data: Array<{
+		id: string;
+		popularity: number;
+	}>;
+	export default data;
 }
