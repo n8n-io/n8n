@@ -127,7 +127,7 @@
     "@types/jsonpath": "^0.2.0",
     "@types/lodash": "catalog:",
     "@types/uuid": "catalog:",
-    "@vitejs/plugin-legacy": "^6.0.2",
+    "@vitejs/plugin-legacy": "^7.2.1",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:",
     "browserslist-to-esbuild": "^2.1.1",
