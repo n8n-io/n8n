@@ -1061,6 +1061,9 @@ importers:
       '@azure/search-documents':
         specifier: 12.1.0
         version: 12.1.0
+      '@chroma-core/default-embed':
+        specifier: ^0.1.8
+        version: 0.1.8
       '@getzep/zep-cloud':
         specifier: 1.0.12
         version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
@@ -4525,6 +4528,14 @@ packages:
 
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
+
+  '@chroma-core/ai-embeddings-common@0.1.8':
+    resolution: {integrity: sha512-ZhP1AczVbi6FY4oeaRCGa3Hp0onWGfTnlDecAW3NHjrHbv+4J6hJa0jMJDtsImw/y9AJewKHBH2oFF3mBb7CDw==}
+    engines: {node: '>=20'}
+
+  '@chroma-core/default-embed@0.1.8':
+    resolution: {integrity: sha512-9FaSEvGhkO/JHud3SEwHn9BhqHHhcd8jBwI89hW+IBUu3peJ4O8Pq0CtQuuOulqhzhJMHP6Ya1HB4ESXwjEYdw==}
+    engines: {node: '>=20'}
 
   '@chromatic-com/storybook@3.2.5':
     resolution: {integrity: sha512-Y388ft6po5FmGKdkcqz3r2sW6aMF5DSBaatC0jvT5bI/Dh27RJw3gPTmXJcZVNjteNl6tpiP3qxZ9MswAk5luw==}
@@ -13054,6 +13065,7 @@ packages:
 
   mailsplit@5.4.0:
     resolution: {integrity: sha512-wnYxX5D5qymGIPYLwnp6h8n1+6P6vz/MJn5AzGjZ8pwICWssL+CCQjWBIToOVHASmATot4ktvlLo6CyLfOXWYA==}
+    deprecated: This package has been renamed to @zone-eu/mailsplit. Please update your dependencies.
 
   make-dir@3.1.0:
     resolution: {integrity: sha512-g3FeP20LNwhALb/6Cz6Dd4F2ngze0jz7tbzrD2wAV+o9FeNHe4rL+yK2md0J/fiSf1sa1ADhXqi5+oVwOM/eGw==}
@@ -19847,6 +19859,15 @@ snapshots:
 
   '@cfworker/json-schema@4.1.0': {}
 
+  '@chroma-core/ai-embeddings-common@0.1.8':
+    dependencies:
+      ajv: 8.17.1
+
+  '@chroma-core/default-embed@0.1.8':
+    dependencies:
+      '@chroma-core/ai-embeddings-common': 0.1.8
+      '@huggingface/transformers': 3.7.3
+
   '@chromatic-com/storybook@3.2.5(react@18.2.0)(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.14)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)))':
     dependencies:
       chromatic: 11.27.0
@@ -20382,7 +20403,6 @@ snapshots:
       onnxruntime-node: 1.21.0
       onnxruntime-web: 1.22.0-dev.20250409-89f8206ba4
       sharp: 0.34.4
-    optional: true
 
   '@humanfs/core@0.19.1': {}
 
@@ -20433,8 +20453,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@img/colour@1.0.0':
-    optional: true
+  '@img/colour@1.0.0': {}
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
@@ -20639,7 +20658,6 @@ snapshots:
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
       minipass: 7.1.2
-    optional: true
 
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:
@@ -25147,8 +25165,7 @@ snapshots:
 
   boolbase@1.0.0: {}
 
-  boolean@3.2.0:
-    optional: true
+  boolean@3.2.0: {}
 
   bowser@2.11.0: {}
 
@@ -25559,8 +25576,7 @@ snapshots:
 
   chownr@2.0.0: {}
 
-  chownr@3.0.0:
-    optional: true
+  chownr@3.0.0: {}
 
   chromadb-js-bindings-darwin-arm64@1.0.6:
     optional: true
@@ -27539,8 +27555,7 @@ snapshots:
 
   flat@5.0.2: {}
 
-  flatbuffers@25.2.10:
-    optional: true
+  flatbuffers@25.2.10: {}
 
   flatted@3.2.7: {}
 
@@ -27850,7 +27865,6 @@ snapshots:
       roarr: 2.15.4
       semver: 7.7.2
       serialize-error: 7.0.1
-    optional: true
 
   global-modules@2.0.0:
     dependencies:
@@ -27997,8 +28011,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  guid-typescript@1.0.9:
-    optional: true
+  guid-typescript@1.0.9: {}
 
   gzip-size@6.0.0:
     dependencies:
@@ -29893,7 +29906,6 @@ snapshots:
   matcher@3.0.0:
     dependencies:
       escape-string-regexp: 4.0.0
-    optional: true
 
   math-intrinsics@1.1.0: {}
 
@@ -30074,7 +30086,6 @@ snapshots:
   minizlib@3.0.2:
     dependencies:
       minipass: 7.1.2
-    optional: true
 
   miragejs@0.1.48:
     dependencies:
@@ -30392,8 +30403,7 @@ snapshots:
 
   mkdirp@2.1.3: {}
 
-  mkdirp@3.0.1:
-    optional: true
+  mkdirp@3.0.1: {}
 
   mlly@1.7.4:
     dependencies:
@@ -31005,18 +31015,15 @@ snapshots:
     dependencies:
       mimic-fn: 2.1.0
 
-  onnxruntime-common@1.21.0:
-    optional: true
+  onnxruntime-common@1.21.0: {}
 
-  onnxruntime-common@1.22.0-dev.20250409-89f8206ba4:
-    optional: true
+  onnxruntime-common@1.22.0-dev.20250409-89f8206ba4: {}
 
   onnxruntime-node@1.21.0:
     dependencies:
       global-agent: 3.0.0
       onnxruntime-common: 1.21.0
       tar: 7.4.3
-    optional: true
 
   onnxruntime-web@1.22.0-dev.20250409-89f8206ba4:
     dependencies:
@@ -31026,7 +31033,6 @@ snapshots:
       onnxruntime-common: 1.22.0-dev.20250409-89f8206ba4
       platform: 1.3.6
       protobufjs: 7.4.0
-    optional: true
 
   ono@7.1.3:
     dependencies:
@@ -31445,8 +31451,7 @@ snapshots:
       exsolve: 1.0.4
       pathe: 2.0.3
 
-  platform@1.3.6:
-    optional: true
+  platform@1.3.6: {}
 
   playwright-core@1.56.0: {}
 
@@ -32338,7 +32343,6 @@ snapshots:
       json-stringify-safe: 5.0.1
       semver-compare: 1.0.0
       sprintf-js: 1.1.3
-    optional: true
 
   rolldown-plugin-dts@0.18.0(rolldown@1.0.0-beta.51)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
     dependencies:
@@ -32569,8 +32573,7 @@ snapshots:
     dependencies:
       parseley: 0.12.1
 
-  semver-compare@1.0.0:
-    optional: true
+  semver-compare@1.0.0: {}
 
   semver@7.7.2: {}
 
@@ -32601,7 +32604,6 @@ snapshots:
   serialize-error@7.0.1:
     dependencies:
       type-fest: 0.13.1
-    optional: true
 
   serialize-javascript@6.0.2:
     dependencies:
@@ -32706,7 +32708,6 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.4
       '@img/sharp-win32-ia32': 0.34.4
       '@img/sharp-win32-x64': 0.34.4
-    optional: true
 
   shebang-command@1.2.0:
     dependencies:
@@ -33556,7 +33557,6 @@ snapshots:
       minizlib: 3.0.2
       mkdirp: 3.0.1
       yallist: 5.0.0
-    optional: true
 
   tarn@3.0.2: {}
 
@@ -34026,8 +34026,7 @@ snapshots:
 
   type-detect@4.0.8: {}
 
-  type-fest@0.13.1:
-    optional: true
+  type-fest@0.13.1: {}
 
   type-fest@0.20.2: {}
 
@@ -34982,8 +34981,7 @@ snapshots:
 
   yallist@4.0.0: {}
 
-  yallist@5.0.0:
-    optional: true
+  yallist@5.0.0: {}
 
   yaml-ast-parser@0.0.43: {}
 
