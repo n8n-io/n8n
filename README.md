@@ -2,7 +2,7 @@
 
 # n8n - 技术团队的安全工作流自动化平台
 
-n8n 是一个工作流自动化平台，为技术团队提供代码级别的灵活性，同时具备无代码的速度。通过 400+ 集成、原生 AI 能力和公平代码许可证，n8n 让您能够构建强大的自动化，同时保持对数据和部署的完全控制。
+n8n 是一个工作流自动化平台，为技术团队提供代码级别的灵活性，同时具备无代码的速度。通过 400+ 集成、原生 AI 能力和企业级功能，n8n 让您能够构建强大的自动化，同时保持对数据和部署的完全控制。
 
 ![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png)
 
@@ -10,7 +10,7 @@ n8n 是一个工作流自动化平台，为技术团队提供代码级别的灵�
 
 - **需要时编写代码**：编写 JavaScript/Python、添加 npm 包或使用可视化界面
 - **原生 AI 平台**：基于 LangChain 构建 AI 代理工作流，使用您自己的数据和模型
-- **完全控制**：使用我们的公平代码许可证进行自托管或使用我们的[云服务](https://app.n8n.cloud/login)
+- **完全控制**：企业级自托管部署，完全掌控您的数据
 - **企业就绪**：高级权限、SSO 和气隙部署
 - **活跃社区**：400+ 集成和 900+ 可直接使用的[模板](https://n8n.io/workflows)
 
@@ -42,28 +42,7 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n
 
 ## 支持
 
-需要帮助？我们的社区论坛是获取支持和与其他用户交流的地方：
-[community.n8n.io](https://community.n8n.io)
-
-## 许可证
-
-n8n 是[公平代码](https://faircode.io)，基于[可持续使用许可证](https://github.com/n8n-io/n8n/blob/master/LICENSE.md)和 [n8n 企业许可证](https://github.com/n8n-io/n8n/blob/master/LICENSE_EE.md)分发。
-
-- **源代码可用**：源代码始终可见
-- **可自托管**：可在任何地方部署
-- **可扩展**：添加您自己的节点和功能
-
-[企业许可证](mailto:license@n8n.io)提供额外功能和支持。
-
-有关许可证模式的更多信息可在[文档](https://docs.n8n.io/sustainable-use-license/)中找到。
-
-## 贡献
-
-发现了错误 🐛 或有功能想法 ✨？查看我们的[贡献指南](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md)开始吧。
-
-## 加入团队
-
-想塑造自动化的未来？查看我们的[职位发布](https://n8n.io/careers)并加入我们的团队！
+需要帮助？请查看我们的文档或联系支持团队。
 
 ## n8n 是什么意思？
 

@@ -132,11 +132,7 @@ tail -n 20 build.log
 5. 编写带有适当模拟的测试
 6. 运行 `pnpm typecheck` 验证类型
 
-## Github 指南
-- 创建 PR 时，使用
-  `.github/pull_request_template.md` 和
-  `.github/pull_request_title_conventions.md` 中的约定。
-- 使用 `gh pr create --draft` 创建草稿 PR。
-- 在 PR 描述中始终引用 Linear 工单，
-  使用 `https://linear.app/n8n/issue/[TICKET-ID]`
-- 如果在线性工单中提到，始终链接到 github 问题。
+## 内部指南
+- 遵循团队的代码审查流程
+- 与团队成员保持良好沟通
+- 定期同步代码避免冲突
