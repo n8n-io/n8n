@@ -53,7 +53,6 @@ describe('McpOAuthConsentService', () => {
 			const client = mock<OAuthClient>({
 				id: 'client-123',
 				name: 'Test Client',
-				scopes: 'read write',
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
@@ -103,7 +102,7 @@ describe('McpOAuthConsentService', () => {
 			});
 		});
 
-		it('should return client details even with empty scopes', async () => {
+		it('should return client details', async () => {
 			const sessionToken = 'valid-session-token';
 			const sessionPayload = {
 				clientId: 'client-123',
@@ -114,7 +113,6 @@ describe('McpOAuthConsentService', () => {
 			const client = mock<OAuthClient>({
 				id: 'client-123',
 				name: 'Test Client',
-				scopes: '',
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);

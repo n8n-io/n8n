@@ -3,13 +3,13 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 
+import type { OAuthClient, AuthorizationCode } from '@n8n/db';
+
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { OAuthClientRepository } from '../oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
-import type { OAuthClient } from '../oauth-client.entity';
-import type { AuthorizationCode } from '../oauth-authorization-code.entity';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
@@ -111,7 +111,7 @@ describe('McpOAuthService', () => {
 
 				oauthClientRepository.save.mockResolvedValue({} as OAuthClient);
 
-				const result = await service.clientsStore.registerClient(clientInfo);
+				const result = await service.clientsStore.registerClient!(clientInfo);
 
 				expect(oauthClientRepository.save).toHaveBeenCalledWith({
 					id: 'new-client-123',
@@ -140,7 +140,7 @@ describe('McpOAuthService', () => {
 
 				oauthClientRepository.save.mockResolvedValue({} as OAuthClient);
 
-				await service.clientsStore.registerClient(clientInfo);
+				await service.clientsStore.registerClient!(clientInfo);
 
 				expect(oauthClientRepository.save).toHaveBeenCalledWith({
 					id: 'new-client-123',
@@ -167,7 +167,7 @@ describe('McpOAuthService', () => {
 				const error = new Error('Database error');
 				oauthClientRepository.save.mockRejectedValue(error);
 
-				const result = await service.clientsStore.registerClient(clientInfo);
+				const result = await service.clientsStore.registerClient!(clientInfo);
 
 				expect(logger.error).toHaveBeenCalledWith('Error registering OAuth client', {
 					error,
@@ -418,6 +418,7 @@ describe('McpOAuthService', () => {
 	describe('verifyAccessToken', () => {
 		it('should verify access token and return auth info', async () => {
 			const authInfo = {
+				token: 'access-token-123',
 				userId: 'user-123',
 				clientId: 'client-456',
 				scopes: ['read', 'write'],
