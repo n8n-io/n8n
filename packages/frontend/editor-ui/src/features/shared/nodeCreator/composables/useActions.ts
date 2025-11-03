@@ -44,7 +44,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../nodeCreator.utils';
 import { useI18n } from '@n8n/i18n';
-import { PUSH_NODES_OFFSET } from '@app//utils/nodeViewUtils';
+import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
