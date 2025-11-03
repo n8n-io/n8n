@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from src.task_runner import TaskRunner
 from src.config.task_runner_config import TaskRunnerConfig
@@ -27,10 +27,10 @@ class TestTaskRunnerConnectionRetry:
     async def test_connection_failure_logs_warning_not_crash(self, config):
         runner = TaskRunner(config)
 
-        with patch("src.task_runner.websockets.connect") as mock_connect, patch.object(
-            runner, "logger"
-        ) as mock_logger:
-
+        with (
+            patch("src.task_runner.websockets.connect") as mock_connect,
+            patch.object(runner, "logger") as mock_logger,
+        ):
             mock_connect.side_effect = ConnectionRefusedError("Connection refused")
 
             counter = 0
