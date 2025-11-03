@@ -161,7 +161,7 @@ onMounted(async () => {
 	<div :class="$style.container">
 		<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
 		<McpAccessToggle
-			:data-test-id="'mcp-access-toggle'"
+			data-test-id="mcp-toggle-section"
 			:model-value="mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
