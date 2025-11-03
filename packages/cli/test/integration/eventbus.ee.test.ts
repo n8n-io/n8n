@@ -250,8 +250,8 @@ test('should send message to webhook ', async () => {
 
 	webhookDestination.enable();
 
-	mockedAxios.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
-	mockedAxios.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockAxiosInstance.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockAxiosInstance.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
 
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
@@ -262,7 +262,7 @@ test('should send message to webhook ', async () => {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
-					expect(mockedAxios.request).toHaveBeenCalled();
+					expect(mockAxiosInstance.request).toHaveBeenCalled();
 					webhookDestination.disable();
 					eventBus.logWriter.worker?.removeListener('message', handler003);
 					resolve(true);
