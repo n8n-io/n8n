@@ -96,7 +96,7 @@ export class ChatHubController {
 			attachmentIndex,
 		);
 
-		res.setHeader('Content-Type', attachment.mimeType);
+		res.setHeader('Content-Type', attachment.mimeType ?? 'application/octet-stream');
 		res.setHeader('Content-Length', buffer.length);
 
 		res.send(buffer);
