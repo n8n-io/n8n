@@ -5,6 +5,7 @@ from typing import Any, Callable, Awaitable
 from dataclasses import dataclass
 from urllib.parse import urlparse
 import websockets
+from websockets.exceptions import InvalidStatus
 import random
 from src.errors import TaskCancelledError
 
@@ -126,6 +127,11 @@ class TaskRunner:
                 self.logger.info("Connected to broker")
                 await self._listen_for_messages()
 
+            except InvalidStatus as e:
+                if e.response.status_code == 403:
+                    self.logger.error(f"Authentication failed with status {e.response.status_code}: {e}")
+                    raise
+                self.logger.warning(f"Failed to connect to broker: {e} - retrying...")
             except Exception as e:
                 self.logger.warning(f"Failed to connect to broker: {e} - retrying...")
 

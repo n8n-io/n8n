@@ -1,5 +1,6 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
+from websockets.exceptions import InvalidStatus
 
 from src.task_runner import TaskRunner
 from src.config.task_runner_config import TaskRunnerConfig
@@ -27,23 +28,42 @@ class TestTaskRunnerConnectionRetry:
     async def test_connection_failure_logs_warning_not_crash(self, config):
         runner = TaskRunner(config)
 
+        def connection_side_effect(*args, **kwargs):
+            if mock_connect.call_count >= 2:
+                runner.is_shutting_down = True
+            raise ConnectionRefusedError("Connection refused")
+
         with (
             patch("src.task_runner.websockets.connect") as mock_connect,
             patch.object(runner, "logger") as mock_logger,
         ):
-            mock_connect.side_effect = ConnectionRefusedError("Connection refused")
-
-            counter = 0
-
-            def mock_shutdown():
-                nonlocal counter
-                counter += 1
-                return counter > 1
-
-            type(runner).is_shutting_down = property(lambda self: mock_shutdown())
+            mock_connect.side_effect = connection_side_effect
 
             await runner.start()
 
-            mock_logger.warning.assert_called_once()
+            assert mock_connect.call_count >= 2
+            mock_logger.warning.assert_called()
             args = mock_logger.warning.call_args[0][0]
             assert "Failed to connect to broker" in args
+
+    @pytest.mark.asyncio
+    async def test_auth_failure_raises_without_retry(self, config):
+        runner = TaskRunner(config)
+
+        with (
+            patch("src.task_runner.websockets.connect") as mock_connect,
+            patch.object(runner, "logger") as mock_logger,
+        ):
+            mock_response = Mock()
+            mock_response.status_code = 403
+            auth_error = InvalidStatus(mock_response)
+            mock_connect.side_effect = auth_error
+
+            with pytest.raises(InvalidStatus):
+                await runner.start()
+
+            mock_logger.error.assert_called_once()
+            args = mock_logger.error.call_args[0][0]
+            assert "Authentication failed with status 403" in args
+
+            assert mock_connect.call_count == 1
