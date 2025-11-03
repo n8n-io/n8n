@@ -3,7 +3,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
-import { programmaticEvaluation } from '../programmatic/programmatic';
+import { programmaticEvaluation } from '../programmatic/programmatic-evaluation';
 import type { EvaluationInput, TestCase } from '../types/evaluation';
 import { isWorkflowStateValues, safeExtractUsage } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
@@ -45,6 +45,11 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 				nodeNamingQuality: 0,
 				workflowOrganization: 0,
 				modularity: 0,
+			},
+			bestPractices: {
+				score: 0,
+				violations: [],
+				techniques: [],
 			},
 			structuralSimilarity: { score: 0, violations: [], applicable: false },
 			summary: `Evaluation failed: ${errorMessage}`,
@@ -105,7 +110,7 @@ export async function runSingleTest(
 		};
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
-		const programmaticEvaluationResult = await programmaticEvaluation(evaluationInput, nodeTypes);
+		const programmaticEvaluationResult = programmaticEvaluation(evaluationInput, nodeTypes);
 
 		return {
 			testCase,

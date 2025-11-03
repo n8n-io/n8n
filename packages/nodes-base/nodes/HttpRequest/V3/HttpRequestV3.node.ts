@@ -185,7 +185,15 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 				}
 
-				const url = this.getNodeParameter('url', itemIndex) as string;
+				const url = this.getNodeParameter('url', itemIndex);
+
+				if (typeof url !== 'string') {
+					const actualType = url === null ? 'null' : typeof url;
+					throw new NodeOperationError(
+						this.getNode(),
+						`URL parameter must be a string, got ${actualType}`,
+					);
+				}
 
 				if (!url.startsWith('http://') && !url.startsWith('https://')) {
 					throw new NodeOperationError(

@@ -67,6 +67,7 @@ function onDelete() {
 	gap: var(--spacing--2xs);
 	pointer-events: all;
 	padding: var(--spacing--2xs);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: scale(var(--canvas-zoom-compensation-factor, 1));
 }
 </style>

@@ -1,7 +1,7 @@
 import { useExecutionHelpers } from '../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { i18n } from '@n8n/i18n';
-import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { mock } from 'vitest-mock-extended';
 
 const { resolve, track } = vi.hoisted(() => ({
@@ -16,7 +16,7 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 

@@ -5,7 +5,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 import { evaluateWorkflow } from '../chains/workflow-evaluator.js';
-import { programmaticEvaluation } from '../programmatic/programmatic.js';
+import { programmaticEvaluation } from '../programmatic/programmatic-evaluation';
 import type { EvaluationInput, CategoryScore } from '../types/evaluation.js';
 import {
 	isSimpleWorkflow,
@@ -122,7 +122,7 @@ export function createLangsmithEvaluator(
 			const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
 
 			// Run programmatic evaluation
-			const programmaticResult = await programmaticEvaluation(evaluationInput, parsedNodeTypes);
+			const programmaticResult = programmaticEvaluation(evaluationInput, parsedNodeTypes);
 
 			const results: LangsmithEvaluationResult[] = [];
 

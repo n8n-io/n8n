@@ -76,17 +76,12 @@ describe('NodeSearchEngine', () => {
 		it('should find nodes by exact name match', () => {
 			const results = searchEngine.searchByName('Code');
 
-			expect(results).toHaveLength(1);
+			expect(results.length).toBeGreaterThanOrEqual(1);
+			// First result should be the Code node with highest score
 			expect(results[0].name).toBe('n8n-nodes-base.code');
 			expect(results[0].displayName).toBe('Code');
-			// Should have display name exact match, display name contains, name contains (code is in the name),
-			// and description contains ("Run custom JavaScript code")
-			const expectedScore =
-				SCORE_WEIGHTS.DISPLAY_NAME_EXACT +
-				SCORE_WEIGHTS.DISPLAY_NAME_CONTAINS +
-				SCORE_WEIGHTS.NAME_CONTAINS +
-				SCORE_WEIGHTS.DESCRIPTION_CONTAINS;
-			expect(results[0].score).toBe(expectedScore);
+			// Should have a positive score from sublimeSearch fuzzy matching
+			expect(results[0].score).toBeGreaterThan(0);
 		});
 
 		it('should find nodes by partial name match', () => {
@@ -104,7 +99,7 @@ describe('NodeSearchEngine', () => {
 
 			expect(results).toHaveLength(1);
 			expect(results[0].name).toBe('n8n-nodes-base.code');
-			expect(results[0].score).toBe(SCORE_WEIGHTS.DESCRIPTION_CONTAINS);
+			expect(results[0].score).toBeGreaterThan(0);
 		});
 
 		it('should find nodes by alias match', () => {
@@ -112,7 +107,7 @@ describe('NodeSearchEngine', () => {
 
 			expect(results).toHaveLength(1);
 			expect(results[0].name).toBe('n8n-nodes-base.httpBin');
-			expect(results[0].score).toBeGreaterThanOrEqual(SCORE_WEIGHTS.ALIAS_CONTAINS);
+			expect(results[0].score).toBeGreaterThan(0);
 		});
 
 		it('should handle case-insensitive search', () => {
@@ -144,11 +139,7 @@ describe('NodeSearchEngine', () => {
 
 			// HTTP Request should have highest score (name + display name + description)
 			expect(results[0].name).toBe('n8n-nodes-base.httpRequest');
-			expect(results[0].score).toBe(
-				SCORE_WEIGHTS.NAME_CONTAINS +
-					SCORE_WEIGHTS.DISPLAY_NAME_CONTAINS +
-					SCORE_WEIGHTS.DESCRIPTION_CONTAINS,
-			);
+			expect(results[0].score).toBeGreaterThan(0);
 		});
 
 		it('should handle nodes without description', () => {

@@ -11,7 +11,6 @@ test.describe('Evaluations @capability:proxy', () => {
 		await proxyServer.clearAllExpectations();
 
 		await n8n.goHome();
-		await n8n.workflows.addResource.workflow();
 	});
 
 	test('should load evaluations workflow and execute twice', async ({ n8n, proxyServer }) => {
@@ -54,6 +53,7 @@ m82JpEptTfAxFHtd8+Sb0U2G
 			},
 		});
 
+		await n8n.workflows.addResource.workflow();
 		// Import the evaluations workflow
 		await n8n.canvas.importWorkflow('evaluations_loop.json', 'Evaluations');
 

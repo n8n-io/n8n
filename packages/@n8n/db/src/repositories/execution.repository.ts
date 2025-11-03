@@ -730,7 +730,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				where,
 				order: { id: 'DESC' },
 				take: params.limit,
-				relations: ['executionData'],
 			},
 			{
 				includeData: params.includeData,

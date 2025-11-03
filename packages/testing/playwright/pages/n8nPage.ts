@@ -6,6 +6,8 @@ import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { ProjectTabsComponent } from './components/ProjectTabsComponent';
+import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -84,6 +86,10 @@ export class n8nPage {
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
+
+	// Components
+	readonly projectTabs: ProjectTabsComponent;
+
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -92,6 +98,7 @@ export class n8nPage {
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
 	readonly modal: BaseModal;
+	readonly resourceMoveModal: ResourceMoveModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -146,12 +153,17 @@ export class n8nPage {
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
+
+		// Components
+		this.projectTabs = new ProjectTabsComponent(page);
+
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
+		this.resourceMoveModal = new ResourceMoveModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);

@@ -5,29 +5,29 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTagsStore } from '@/stores/tags.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
 	DUPLICATE_MODAL_KEY,
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '@/constants';
+} from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
-import { nodeViewEventBus } from '@/event-bus';
+import { nodeViewEventBus } from '@/app/event-bus';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {

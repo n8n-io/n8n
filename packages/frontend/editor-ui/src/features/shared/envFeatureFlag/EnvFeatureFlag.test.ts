@@ -3,7 +3,7 @@ import type { FrontendSettings, N8nEnvFeatFlags, N8nEnvFeatFlagValue } from '@n8
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import EnvFeatureFlag from './EnvFeatureFlag.vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const renderComponent = createComponentRenderer(EnvFeatureFlag);
 
