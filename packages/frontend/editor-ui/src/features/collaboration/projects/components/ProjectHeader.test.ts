@@ -8,12 +8,12 @@ import ProjectHeader from './ProjectHeader.vue';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {

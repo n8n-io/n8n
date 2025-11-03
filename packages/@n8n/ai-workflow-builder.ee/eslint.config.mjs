@@ -1,7 +1,10 @@
-import { defineConfig } from 'eslint/config';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
-export default defineConfig(nodeConfig, {
+export default defineConfig(
+	globalIgnores(['jest.config*.js']),
+	nodeConfig,
+	{
 	rules: {
 		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 		complexity: 'error',

@@ -19,14 +19,9 @@ defineProps<{
 			:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
 		/>
 		<N8nAvatar
-			v-else-if="agent.model.provider === 'custom-agent'"
+			v-else-if="agent.model.provider === 'custom-agent' || agent.model.provider === 'n8n'"
 			:first-name="agent.name"
 			:size="size === 'lg' ? 'medium' : size === 'sm' ? 'xxsmall' : 'xsmall'"
-		/>
-		<N8nIcon
-			v-else-if="agent.model.provider === 'n8n'"
-			icon="robot"
-			:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
 		/>
 		<CredentialIcon
 			v-else

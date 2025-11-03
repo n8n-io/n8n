@@ -14,7 +14,7 @@ interface VueComponentInstance {
 
 // Mock workflow saving first before any other imports
 const saveCurrentWorkflowMock = vi.hoisted(() => vi.fn());
-vi.mock('@/composables/useWorkflowSaving', () => ({
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: vi.fn().mockReturnValue({
 		saveCurrentWorkflow: saveCurrentWorkflowMock,
 		getWorkflowDataToSave: vi.fn(),
@@ -106,11 +106,11 @@ import AskAssistantBuild from './AskAssistantBuild.vue';
 import { useBuilderStore } from '../../builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
-vi.mock('@/event-bus', () => ({
+vi.mock('@/app/event-bus', () => ({
 	nodeViewEventBus: {
 		emit: vi.fn(),
 	},
@@ -118,7 +118,7 @@ vi.mock('@/event-bus', () => ({
 
 // Mock telemetry
 const trackMock = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: trackMock,
 	}),
@@ -152,7 +152,7 @@ vi.mock('vue-router', () => {
 
 // Mock usePageRedirectionHelper
 const goToUpgradeMock = vi.fn();
-vi.mock('@/composables/usePageRedirectionHelper', () => ({
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({
 		goToUpgrade: goToUpgradeMock,
 	}),

@@ -1,27 +1,27 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach, type MockInstance } from 'vitest';
 import { useWorkflowCommands } from './useWorkflowCommands';
-import * as useCanvasOperations from '@/composables/useCanvasOperations';
-import { useTagsStore } from '@/stores/tags.store';
-import { useUIStore } from '@/stores/ui.store';
+import * as useCanvasOperations from '@/app/composables/useCanvasOperations';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
-import { nodeViewEventBus } from '@/event-bus';
+import { nodeViewEventBus } from '@/app/event-bus';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 
-vi.mock('@/composables/useCanvasOperations');
-vi.mock('@/composables/useWorkflowHelpers');
-vi.mock('@/composables/useTelemetry');
-vi.mock('@/composables/useWorkflowSaving');
-vi.mock('@/composables/useWorkflowActivate');
+vi.mock('@/app/composables/useCanvasOperations');
+vi.mock('@/app/composables/useWorkflowHelpers');
+vi.mock('@/app/composables/useTelemetry');
+vi.mock('@/app/composables/useWorkflowSaving');
+vi.mock('@/app/composables/useWorkflowActivate');
 vi.mock('@/features/workflows/canvas/canvas.eventBus');
-vi.mock('@/event-bus');
+vi.mock('@/app/event-bus');
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.name}` })),
@@ -39,28 +39,28 @@ vi.mock('file-saver', () => ({
 	saveAs: vi.fn(),
 }));
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
 const getWorkflowDataToSaveMock = vi.fn();
-vi.mock('@/composables/useWorkflowHelpers', () => ({
+vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: () => ({
 		getWorkflowDataToSave: getWorkflowDataToSaveMock,
 	}),
 }));
 
 const saveCurrentWorkflowMock = vi.fn();
-vi.mock('@/composables/useWorkflowSaving', () => ({
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
 		saveCurrentWorkflow: saveCurrentWorkflowMock,
 	}),
 }));
 
 const updateWorkflowActivationMock = vi.fn();
-vi.mock('@/composables/useWorkflowActivate', () => ({
+vi.mock('@/app/composables/useWorkflowActivate', () => ({
 	useWorkflowActivate: () => ({
 		updateWorkflowActivation: updateWorkflowActivationMock,
 	}),

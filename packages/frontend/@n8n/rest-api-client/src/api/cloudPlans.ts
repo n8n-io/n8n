@@ -35,6 +35,9 @@ export declare namespace Cloud {
 		information?: {
 			[key: string]: string | string[];
 		};
+		trialBannerData?: {
+			bannerText: string;
+		};
 	};
 }
 
