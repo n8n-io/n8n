@@ -73,6 +73,7 @@ function onClickAdd() {
 	position: absolute;
 	top: 20px;
 	left: 50%;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
 	font-size: var(--font-size--2xs);
 	color: var(--node-type--supplemental--color);

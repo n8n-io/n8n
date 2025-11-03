@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';

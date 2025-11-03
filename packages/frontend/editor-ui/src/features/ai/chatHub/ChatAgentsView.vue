@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
+import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
 	N8nButton,
 	N8nIcon,
@@ -12,27 +12,27 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import { computed, onMounted, ref } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { computed, ref, watch } from 'vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { type ChatHubConversationModel } from '@n8n/api-types';
-import { filterAndSortAgents } from '@/features/ai/chatHub/chat.utils';
+import { filterAndSortAgents, stringifyModel } from '@/features/ai/chatHub/chat.utils';
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { useMediaQuery } from '@vueuse/core';
 import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
+import { useRouter } from 'vue-router';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
 const sidebar = useChatHubSidebarState();
+const router = useRouter();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 
 const editingAgentId = ref<string | undefined>(undefined);
@@ -45,28 +45,12 @@ const agentFilter = ref<ChatAgentFilter>({
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
+const readyToShowList = computed(() => chatStore.agentsReady);
 const allModels = computed(() =>
-	chatStore.agents
-		.map<ChatHubConversationModel>((agent) => ({
-			provider: 'custom-agent',
-			agentId: agent.id,
-			name: agent.name,
-		}))
-		.concat(
-			(chatStore.models?.n8n?.models ?? []).flatMap((model) =>
-				model.provider === 'n8n' ? [{ ...model, type: 'n8n-workflow' }] : [],
-			),
-		),
+	chatStore.agents.n8n.models.concat(chatStore.agents['custom-agent'].models),
 );
 
-const models = computed(() => {
-	return filterAndSortAgents(
-		allModels.value,
-		agentFilter.value,
-		chatStore.agents,
-		workflowsStore.workflowsById, // TODO: ensure workflows are fetched
-	);
-});
+const agents = computed(() => filterAndSortAgents(allModels.value, agentFilter.value));
 
 const providerOptions = [
 	{ label: 'All', value: '' },
@@ -86,16 +70,26 @@ function handleCreateAgent() {
 }
 
 async function handleEditAgent(model: ChatHubConversationModel) {
-	if (model.provider !== 'custom-agent') {
+	if (model.provider === 'n8n') {
+		const routeData = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: {
+				name: model.workflowId,
+			},
+		});
+
+		window.open(routeData.href, '_blank');
 		return;
 	}
 
-	try {
-		await chatStore.fetchAgent(model.agentId);
-		editingAgentId.value = model.agentId;
-		uiStore.openModal('agentEditor');
-	} catch (error) {
-		toast.showError(error, 'Failed to load agent');
+	if (model.provider === 'custom-agent') {
+		try {
+			await chatStore.fetchCustomAgent(model.agentId);
+			editingAgentId.value = model.agentId;
+			uiStore.openModal('agentEditor');
+		} catch (error) {
+			toast.showError(error, 'Failed to load agent');
+		}
 	}
 }
 
@@ -104,7 +98,6 @@ function handleCloseAgentEditor() {
 }
 
 async function handleAgentCreatedOrUpdated() {
-	await chatStore.fetchAgents();
 	editingAgentId.value = undefined;
 }
 
@@ -118,24 +111,27 @@ async function handleDeleteAgent(agentId: string) {
 		},
 	);
 
-	if (confirmed !== MODAL_CONFIRM) {
+	if (confirmed !== MODAL_CONFIRM || !credentialsByProvider.value) {
 		return;
 	}
 
 	try {
-		await chatStore.deleteAgent(agentId);
+		await chatStore.deleteCustomAgent(agentId, credentialsByProvider.value);
 		toast.showMessage({ type: 'success', title: 'Agent deleted successfully' });
 	} catch (error) {
 		toast.showError(error, 'Could not delete the agent');
 	}
 }
 
-onMounted(async () => {
-	await Promise.all([
-		chatStore.fetchAgents(),
-		chatStore.fetchChatModels(credentialsByProvider.value),
-	]);
-});
+watch(
+	credentialsByProvider,
+	(credentials) => {
+		if (credentials) {
+			void chatStore.fetchAgents(credentials);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -153,7 +149,7 @@ onMounted(async () => {
 			</N8nButton>
 		</div>
 
-		<div v-if="allModels.length > 0" :class="$style.controls">
+		<div v-if="readyToShowList && allModels.length > 0" :class="$style.controls">
 			<N8nInput v-model="agentFilter.search" :class="$style.search" placeholder="Search" clearable>
 				<template #prefix>
 					<N8nIcon icon="search" />
@@ -179,32 +175,37 @@ onMounted(async () => {
 			</N8nSelect>
 		</div>
 
-		<div v-if="allModels.length === 0" :class="$style.empty">
+		<template v-if="!readyToShowList" />
+
+		<div v-else-if="allModels.length === 0" :class="$style.empty">
 			<N8nText color="text-light" size="medium">
 				No agents available. Create your first custom agent to get started.
 			</N8nText>
 		</div>
 
-		<div v-else-if="models.length === 0" :class="$style.empty">
+		<div v-else-if="agents.length === 0" :class="$style.empty">
 			<N8nText color="text-light" size="medium"> No agents match your search criteria. </N8nText>
 		</div>
 
 		<div v-else :class="$style.agentsGrid">
 			<ChatAgentCard
-				v-for="model in models"
-				:key="`${model.provider}::${model.provider === 'custom-agent' ? model.agentId : model.provider === 'n8n' ? model.workflowId : model.model}`"
-				:model="model"
-				:agents="chatStore.agents"
-				:workflows-by-id="workflowsStore.workflowsById"
-				@edit="handleEditAgent(model)"
-				@delete="model.provider === 'custom-agent' ? handleDeleteAgent(model.agentId) : undefined"
+				v-for="agent in agents"
+				:key="stringifyModel(agent.model)"
+				:agent="agent"
+				@edit="handleEditAgent(agent.model)"
+				@delete="
+					agent.model.provider === 'custom-agent'
+						? handleDeleteAgent(agent.model.agentId)
+						: undefined
+				"
 			/>
 		</div>
 
 		<AgentEditorModal
+			v-if="credentialsByProvider"
 			:agent-id="editingAgentId"
 			:credentials="credentialsByProvider"
-			@create-agent="handleAgentCreatedOrUpdated"
+			@create-custom-agent="handleAgentCreatedOrUpdated"
 			@close="handleCloseAgentEditor"
 		/>
 
@@ -226,7 +227,7 @@ onMounted(async () => {
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 	padding: var(--spacing--xl);
 	gap: var(--spacing--xl);
 	overflow-y: auto;
@@ -260,7 +261,7 @@ onMounted(async () => {
 
 .controls {
 	display: flex;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 
@@ -289,6 +290,6 @@ onMounted(async () => {
 .agentsGrid {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	gap: var(--spacing--2xs);
 }
 </style>

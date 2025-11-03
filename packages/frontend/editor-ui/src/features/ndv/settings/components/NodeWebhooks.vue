@@ -1,19 +1,19 @@
 <script lang="ts" setup>
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
-} from '@/constants';
-import { useClipboard } from '@/composables/useClipboard';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+} from '@/app/constants';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
 import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
