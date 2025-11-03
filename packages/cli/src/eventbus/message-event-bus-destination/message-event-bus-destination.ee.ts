@@ -7,7 +7,7 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { License } from '@/license';
-import { CircuitBreaker, CircuitBreakerOpen } from '@/utils/circuit-breaker';
+import { CircuitBreaker } from '@/utils/circuit-breaker';
 
 import type { EventMessageTypes } from '../event-message-classes';
 import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
