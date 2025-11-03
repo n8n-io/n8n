@@ -75,7 +75,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	}),
 }));
 
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
