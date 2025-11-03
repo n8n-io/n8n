@@ -166,46 +166,32 @@ export class McpOAuthTokenService {
 	}
 
 	async revokeAccessToken(token: string, clientId: string): Promise<boolean> {
-		const accessTokenRecord = await this.accessTokenRepository.findOne({
-			where: {
-				token,
-				clientId,
-			},
+		const result = await this.accessTokenRepository.delete({
+			token,
+			clientId,
 		});
 
-		if (!accessTokenRecord) {
-			return false;
+		const revoked = (result.affected ?? 0) > 0;
+
+		if (revoked) {
+			this.logger.info('Access token revoked', { clientId });
 		}
 
-		await this.accessTokenRepository.remove(accessTokenRecord);
-
-		this.logger.info('Access token revoked', {
-			clientId,
-			userId: accessTokenRecord.userId,
-		});
-
-		return true;
+		return revoked;
 	}
 
 	async revokeRefreshToken(token: string, clientId: string): Promise<boolean> {
-		const refreshTokenRecord = await this.refreshTokenRepository.findOne({
-			where: {
-				token,
-				clientId,
-			},
+		const result = await this.refreshTokenRepository.delete({
+			token,
+			clientId,
 		});
 
-		if (!refreshTokenRecord) {
-			return false;
+		const revoked = (result.affected ?? 0) > 0;
+
+		if (revoked) {
+			this.logger.info('Refresh token revoked', { clientId });
 		}
 
-		await this.refreshTokenRepository.remove(refreshTokenRecord);
-
-		this.logger.info('Refresh token revoked', {
-			clientId,
-			userId: refreshTokenRecord.userId,
-		});
-
-		return true;
+		return revoked;
 	}
 }

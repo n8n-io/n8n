@@ -292,32 +292,22 @@ describe('McpOAuthTokenService', () => {
 		it('should delete access token', async () => {
 			const token = 'access-token-123';
 			const clientId = 'client-456';
-			const accessTokenRecord = mock<AccessToken>({
-				token,
-				clientId,
-				userId: 'user-123',
-			});
 
-			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
-			accessTokenRepository.remove.mockResolvedValue(accessTokenRecord);
+			accessTokenRepository.delete.mockResolvedValue({ affected: 1 } as any);
 
 			const result = await service.revokeAccessToken(token, clientId);
 
 			expect(result).toBe(true);
-			expect(accessTokenRepository.remove).toHaveBeenCalledWith(accessTokenRecord);
-			expect(logger.info).toHaveBeenCalledWith('Access token revoked', {
-				clientId,
-				userId: 'user-123',
-			});
+			expect(accessTokenRepository.delete).toHaveBeenCalledWith({ token, clientId });
+			expect(logger.info).toHaveBeenCalledWith('Access token revoked', { clientId });
 		});
 
 		it('should return false when token not found', async () => {
-			accessTokenRepository.findOne.mockResolvedValue(null);
+			accessTokenRepository.delete.mockResolvedValue({ affected: 0 } as any);
 
 			const result = await service.revokeAccessToken('nonexistent-token', 'client-456');
 
 			expect(result).toBe(false);
-			expect(accessTokenRepository.remove).not.toHaveBeenCalled();
 		});
 	});
 
@@ -325,32 +315,22 @@ describe('McpOAuthTokenService', () => {
 		it('should delete refresh token', async () => {
 			const token = 'refresh-token-123';
 			const clientId = 'client-456';
-			const refreshTokenRecord = mock<RefreshToken>({
-				token,
-				clientId,
-				userId: 'user-123',
-			});
 
-			refreshTokenRepository.findOne.mockResolvedValue(refreshTokenRecord);
-			refreshTokenRepository.remove.mockResolvedValue(refreshTokenRecord);
+			refreshTokenRepository.delete.mockResolvedValue({ affected: 1 } as any);
 
 			const result = await service.revokeRefreshToken(token, clientId);
 
 			expect(result).toBe(true);
-			expect(refreshTokenRepository.remove).toHaveBeenCalledWith(refreshTokenRecord);
-			expect(logger.info).toHaveBeenCalledWith('Refresh token revoked', {
-				clientId,
-				userId: 'user-123',
-			});
+			expect(refreshTokenRepository.delete).toHaveBeenCalledWith({ token, clientId });
+			expect(logger.info).toHaveBeenCalledWith('Refresh token revoked', { clientId });
 		});
 
 		it('should return false when token not found', async () => {
-			refreshTokenRepository.findOne.mockResolvedValue(null);
+			refreshTokenRepository.delete.mockResolvedValue({ affected: 0 } as any);
 
 			const result = await service.revokeRefreshToken('nonexistent-token', 'client-456');
 
 			expect(result).toBe(false);
-			expect(refreshTokenRepository.remove).not.toHaveBeenCalled();
 		});
 	});
 });
