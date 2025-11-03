@@ -423,7 +423,7 @@ function adjustTextAreaHeight() {
 }
 .chat-input-send-button,
 .chat-input-file-button {
-	height:var(--chat--textarea--height);
+	height: var(--chat--textarea--height);
 	width: var(--chat--textarea--height);
 	background: var(--chat--input--send--button--background, transparent);
 	cursor: pointer;
