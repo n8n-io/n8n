@@ -211,7 +211,7 @@ export const NodeParameterValueSchema: z.ZodType<NodeParameterValueType> = z.laz
 		z.array(INodeParameterResourceLocatorSchema),
 		z.array(ResourceMapperValueSchema),
 	]),
-) as unknown as z.ZodType<NodeParameterValueType>; // cast keeps the exact output type
+) as unknown as z.ZodType<NodeParameterValueType>;
 
 export const INodeParametersSchema: z.ZodType<INodeParameters> = z.record(
 	z.string(),
