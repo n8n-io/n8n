@@ -1,4 +1,4 @@
-import { inTest } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
@@ -6,6 +6,7 @@ import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
+import { setTimeout as setTimeoutP } from 'timers/promises';
 
 import { DbConnectionOptions } from './db-connection-options';
 import { wrapMigration } from '../migrations/migration-helpers';
@@ -31,6 +32,7 @@ export class DbConnection {
 		private readonly errorReporter: ErrorReporter,
 		private readonly connectionOptions: DbConnectionOptions,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly logger: Logger,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
@@ -94,7 +96,17 @@ export class DbConnection {
 	private async ping() {
 		if (!this.dataSource.isInitialized) return;
 		try {
-			await this.dataSource.query('SELECT 1');
+			await Promise.race([
+				this.dataSource.query('SELECT 1'),
+				setTimeoutP(5000).then(() => {
+					throw new Error('Database connection timed out');
+				}),
+			]);
+
+			if (!this.connectionState.connected) {
+				this.logger.info('Database connection recovered');
+			}
+
 			this.connectionState.connected = true;
 			return;
 		} catch (error) {
