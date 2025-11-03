@@ -36,6 +36,7 @@ class TestTaskRunnerConnectionRetry:
         with (
             patch("src.task_runner.websockets.connect") as mock_connect,
             patch.object(runner, "logger") as mock_logger,
+            patch("src.task_runner.asyncio.sleep"),
         ):
             mock_connect.side_effect = connection_side_effect
 
