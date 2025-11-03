@@ -708,9 +708,20 @@ describe('DirectoryLoader', () => {
 					sourcePath: filePath,
 				},
 			});
-
 			expect(loader.types.nodes).toEqual([mockNode1.description]);
 			expect(loader.loadedNodes).toEqual([{ name: 'node1', version: 1 }]);
+		});
+
+		it('should load node with package version if provided', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Node1/Node1.node.js';
+
+			loader.loadNodeFromFile(filePath, '1.0.0');
+
+			expect(
+				(loader.nodeTypes.node1.type.description as INodeTypeDescription)
+					.communityNodePackageVersion,
+			).toBe('1.0.0');
 		});
 
 		it('should update node icon paths', () => {
@@ -787,7 +798,7 @@ describe('DirectoryLoader', () => {
 
 			expect(loader.loadedNodes).toEqual([{ name: 'test', version: 2 }]);
 
-			const nodes = loader.types.nodes as INodeTypeDescription[];
+			const nodes = loader.types.nodes;
 			expect(nodes).toHaveLength(2);
 			expect(nodes[0]?.version).toBe(2);
 			expect(nodes[1]?.version).toBe(1);

@@ -341,7 +341,6 @@ export class EnterpriseWorkflowService {
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
 		// 9. Move workflow to the right folder if any
-		// @ts-ignore CAT-957
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
 		// 10. Update potential cached project association

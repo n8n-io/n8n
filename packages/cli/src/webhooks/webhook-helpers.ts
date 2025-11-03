@@ -396,7 +396,9 @@ export async function executeWebhook(
 	}
 
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase();
+	const additionalData = await WorkflowExecuteAdditionalData.getBase({
+		projectId: project?.id,
+	});
 
 	if (executionId) {
 		additionalData.executionId = executionId;
@@ -648,7 +650,7 @@ export async function executeWebhook(
 		const executePromise = activeExecutions.getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
-		if (parentExecution) {
+		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
 			void executePromise.then(() => {
 				const waitTracker = Container.get(WaitTracker);

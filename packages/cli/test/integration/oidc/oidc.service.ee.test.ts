@@ -23,6 +23,8 @@ import { OidcService } from '@/sso.ee/oidc/oidc.service.ee';
 import { createUser } from '@test-integration/db/users';
 import { UserError } from 'n8n-workflow';
 import { JwtService } from '@/services/jwt.service';
+import { GlobalConfig } from '@n8n/config';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -274,6 +276,115 @@ describe('OIDC service', () => {
 
 		expect(authUrl.state).toBeDefined();
 		expect(authUrl.nonce).toBeDefined();
+	});
+
+	describe('SSO provisioning', () => {
+		beforeAll(async () => {
+			const mockConfiguration = new real_odic_client.Configuration(
+				{
+					issuer: 'https://example.com/auth/realms/n8n',
+					client_id: 'test-client-id',
+					redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+					response_types: ['code'],
+					scopes: ['openid', 'profile', 'email'],
+					authorization_endpoint: 'https://example.com/auth',
+				},
+				'test-client-id',
+			);
+			discoveryMock.mockResolvedValue(mockConfiguration);
+
+			const initialConfig: OidcConfigDto = {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+				prompt: 'consent',
+			};
+
+			await oidcService.updateConfig(initialConfig);
+		});
+
+		let provisioningConfig: GlobalConfig['sso']['provisioning'];
+
+		beforeEach(() => {
+			// safe original provisioning config, by making a copy
+			provisioningConfig = {
+				...Container.get(GlobalConfig).sso.provisioning,
+			};
+		});
+
+		afterEach(() => {
+			// restore original provisioning config
+			Container.get(GlobalConfig).sso.provisioning = provisioningConfig;
+		});
+
+		const validateUrl = (authUrl: Awaited<ReturnType<OidcService['generateLoginUrl']>>) => {
+			expect(authUrl.url.pathname).toEqual('/auth');
+			expect(authUrl.url.searchParams.get('client_id')).toEqual('test-client-id');
+			expect(authUrl.url.searchParams.get('redirect_uri')).toEqual(
+				'http://localhost:5678/rest/sso/oidc/callback',
+			);
+			expect(authUrl.url.searchParams.get('response_type')).toEqual('code');
+			expect(authUrl.url.searchParams.get('prompt')).toBeDefined();
+			expect(authUrl.url.searchParams.get('prompt')).toEqual('consent');
+			expect(authUrl.url.searchParams.get('state')).toBeDefined();
+			expect(authUrl.url.searchParams.get('state')?.startsWith('n8n_state:')).toBe(true);
+
+			expect(authUrl.state).toBeDefined();
+			expect(authUrl.nonce).toBeDefined();
+		};
+
+		it('should not include the provisioning scope if no provisioning is enabled', async () => {
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
+			const authUrl = await oidcService.generateLoginUrl();
+
+			validateUrl(authUrl);
+			expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile');
+		});
+
+		it('should include the provisioning scope if project provisioning is enabled', async () => {
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
+			const authUrl = await oidcService.generateLoginUrl();
+
+			validateUrl(authUrl);
+			expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile n8n_test_scope');
+		});
+
+		it('should include the provisioning scope if instance provisioning is enabled', async () => {
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
+			const authUrl = await oidcService.generateLoginUrl();
+
+			validateUrl(authUrl);
+			expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile n8n_test_scope');
+		});
+
+		it('should include the provisioning scope if project and instance provisioning is enabled', async () => {
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
+			const authUrl = await oidcService.generateLoginUrl();
+
+			validateUrl(authUrl);
+			expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile n8n_test_scope');
+		});
 	});
 
 	describe('loginUser', () => {

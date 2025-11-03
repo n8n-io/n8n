@@ -30,6 +30,7 @@ jobs:
   chromatic:
     needs: [changeset]
     if: |
+      github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'pull_request_review' &&
@@ -54,6 +55,8 @@ jobs:
         continue-on-error: true
         with:
           workingDir: packages/frontend/@n8n/design-system
+          autoAcceptChanges: 'master'
+          skip: 'release/**'
           onlyChanged: true
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           exitZeroOnChanges: false

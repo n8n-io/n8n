@@ -25,7 +25,7 @@ $E: null;
  -------------------------- */
 @mixin scroll-bar {
 	$scrollbar-thumb-background: #b4bccc;
-	$scrollbar-track-background: var(--color-foreground-xlight);
+	$scrollbar-track-background: var(--color--foreground--tint-2);
 
 	&::-webkit-scrollbar {
 		z-index: 11;

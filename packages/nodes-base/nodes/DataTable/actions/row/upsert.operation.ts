@@ -38,7 +38,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const dataStoreProxy = await getDataTableProxyExecute(this, index);
+	const dataTableProxy = await getDataTableProxyExecute(this, index);
 	const dryRun = getDryRunParameter(this, index);
 	const row = getAddRow(this, index);
 	const filter = await getSelectFilter(this, index);
@@ -47,7 +47,7 @@ export async function execute(
 		throw new NodeOperationError(this.getNode(), 'At least one condition is required');
 	}
 
-	const result = await dataStoreProxy.upsertRow({
+	const result = await dataTableProxy.upsertRow({
 		data: row,
 		filter,
 		dryRun,

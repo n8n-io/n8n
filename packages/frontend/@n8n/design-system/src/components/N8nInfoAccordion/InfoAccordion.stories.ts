@@ -8,7 +8,7 @@ export default {
 	component: N8nInfoAccordion,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

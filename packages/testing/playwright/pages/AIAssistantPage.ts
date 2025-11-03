@@ -1,6 +1,8 @@
 import { BasePage } from './BasePage';
 
 export class AIAssistantPage extends BasePage {
+	// #region Getters
+
 	getAskAssistantFloatingButton() {
 		return this.page.getByTestId('ask-assistant-floating-button');
 	}
@@ -11,6 +13,10 @@ export class AIAssistantPage extends BasePage {
 
 	getAskAssistantChat() {
 		return this.page.getByTestId('ask-assistant-chat');
+	}
+
+	getAskAssistantSidebar() {
+		return this.page.getByTestId('ask-assistant-sidebar');
 	}
 
 	getPlaceholderMessage() {
@@ -30,10 +36,7 @@ export class AIAssistantPage extends BasePage {
 	}
 
 	getAskAssistantSidebarResizer() {
-		return this.page
-			.getByTestId('ask-assistant-sidebar')
-			.locator('[class*="_resizer"][data-dir="left"]')
-			.first();
+		return this.getAskAssistantSidebar().locator('[class*="_resizer"][data-dir="left"]').first();
 	}
 
 	getNodeErrorViewAssistantButton() {
@@ -60,7 +63,53 @@ export class AIAssistantPage extends BasePage {
 		return this.page.getByTestId('quick-replies').locator('button');
 	}
 
+	getQuickReplies() {
+		return this.page.getByTestId('quick-replies');
+	}
+
 	getNewAssistantSessionModal() {
 		return this.page.getByTestId('new-assistant-session-modal');
 	}
+
+	getCodeDiffs() {
+		return this.page.getByTestId('code-diff-suggestion');
+	}
+
+	getApplyCodeDiffButtons() {
+		return this.page.getByTestId('replace-code-button');
+	}
+
+	getUndoReplaceCodeButtons() {
+		return this.page.getByTestId('undo-replace-button');
+	}
+
+	getCodeReplacedMessage() {
+		return this.page.getByTestId('code-replaced-message');
+	}
+
+	getCredentialEditAssistantButton() {
+		return this.page.getByTestId('credential-edit-ask-assistant-button');
+	}
+
+	getCodeSnippet() {
+		return this.page.getByTestId('assistant-code-snippet-content');
+	}
+
+	// #endregion
+
+	// #region Actions
+
+	async sendMessage(
+		message: string,
+		method: 'send-message-button' | 'enter-key' = 'send-message-button',
+	) {
+		await this.getChatInput().pressSequentially(message, { delay: 20 });
+		if (method === 'enter-key') {
+			await this.getChatInput().press('Enter');
+		} else {
+			await this.getSendMessageButton().click();
+		}
+	}
+
+	// #endregion
 }

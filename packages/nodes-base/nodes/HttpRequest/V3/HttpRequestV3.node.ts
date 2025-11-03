@@ -39,6 +39,7 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 	setAgentOptions,
+	updadeQueryParameterConfig,
 } from '../GenericFunctions';
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
@@ -57,7 +58,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4, 4.1, 4.2],
+			version: [3, 4, 4.1, 4.2, 4.3],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#0004F5',
@@ -156,6 +157,8 @@ export class HttpRequestV3 implements INodeType {
 			credentialType?: string;
 		}> = [];
 
+		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				if (authentication === 'genericCredentialType') {
@@ -182,7 +185,15 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 				}
 
-				const url = this.getNodeParameter('url', itemIndex) as string;
+				const url = this.getNodeParameter('url', itemIndex);
+
+				if (typeof url !== 'string') {
+					const actualType = url === null ? 'null' : typeof url;
+					throw new NodeOperationError(
+						this.getNode(),
+						`URL parameter must be a string, got ${actualType}`,
+					);
+				}
 
 				if (!url.startsWith('http://') && !url.startsWith('https://')) {
 					throw new NodeOperationError(
@@ -408,7 +419,7 @@ export class HttpRequestV3 implements INodeType {
 						};
 						return accumulator;
 					}
-					accumulator[cur.name] = cur.value;
+					updadeQueryParameter(accumulator, cur.name, cur.value);
 					return accumulator;
 				};
 

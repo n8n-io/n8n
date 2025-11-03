@@ -33,6 +33,8 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		'provisioning',
+		'breaking-changes',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -108,7 +110,7 @@ export class ModuleRegistry {
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
 			const { licenseFlag, class: ModuleClass } = moduleEntry;
 
-			if (licenseFlag && !this.licenseState.isLicensed(licenseFlag)) {
+			if (licenseFlag !== undefined && !this.licenseState.isLicensed(licenseFlag)) {
 				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
 				continue;
 			}

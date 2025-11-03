@@ -23,7 +23,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const dataStoreProxy = await getDataTableProxyExecute(this, index);
-	const hits = await executeSelectMany(this, index, dataStoreProxy, undefined, 1);
+	const dataTableProxy = await getDataTableProxyExecute(this, index);
+	const hits = await executeSelectMany(this, index, dataTableProxy, undefined, 1);
 	return hits.length > 0 ? [this.getInputData()[index]] : [];
 }

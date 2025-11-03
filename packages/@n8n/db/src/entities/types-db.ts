@@ -12,6 +12,9 @@ import type {
 	AnnotationVote,
 	ExecutionSummary,
 	IUser,
+	IDataObject,
+	IBinaryKeyData,
+	IPairedItemData,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -385,3 +388,15 @@ export type AuthenticatedRequest<
 		'push-ref': string;
 	};
 };
+
+/**
+ * Simplified to prevent excessively deep type instantiation error from
+ * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
+ */
+export interface ISimplifiedPinData {
+	[nodeName: string]: Array<{
+		json: IDataObject;
+		binary?: IBinaryKeyData;
+		pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	}>;
+}

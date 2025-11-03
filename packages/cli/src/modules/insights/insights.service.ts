@@ -32,9 +32,6 @@ export class InsightsService {
 		return {
 			summary: this.licenseState.isInsightsSummaryLicensed(),
 			dashboard: this.licenseState.isInsightsDashboardLicensed(),
-			/**
-			 * @deprecated the frontend should not rely on this anymore since users can select custom ranges
-			 */
 			dateRanges: this.getAvailableDateRanges(),
 		};
 	}
@@ -275,7 +272,7 @@ export class InsightsService {
 		const endDateTime = DateTime.fromJSDate(endDate);
 		const differenceInDays = endDateTime.diff(startDateTime, 'days').days;
 
-		if (differenceInDays <= 1) {
+		if (differenceInDays < 1) {
 			return 'hour';
 		}
 
@@ -286,12 +283,7 @@ export class InsightsService {
 		return 'week';
 	}
 
-	/**
-	 * @deprecated Users can now select custom date ranges
-	 * Returns the available date ranges with their license authorization and time granularity
-	 * when grouped by time.
-	 */
-	getAvailableDateRanges(): DateRange[] {
+	private getAvailableDateRanges(): DateRange[] {
 		const maxHistoryInDays =
 			this.licenseState.getInsightsMaxHistory() === -1
 				? Number.MAX_SAFE_INTEGER

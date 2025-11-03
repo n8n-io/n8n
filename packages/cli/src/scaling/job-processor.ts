@@ -14,12 +14,6 @@ import type {
 import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import { EventService } from '@/events/event.service';
-import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ManualExecutionService } from '@/manual-execution.service';
-import { NodeTypes } from '@/node-types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
 import type {
 	Job,
 	JobFinishedMessage,
@@ -29,6 +23,12 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+
+import { EventService } from '@/events/event.service';
+import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ManualExecutionService } from '@/manual-execution.service';
+import { NodeTypes } from '@/node-types';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -120,11 +120,10 @@ export class JobProcessor {
 			settings: execution.workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			undefined,
-			undefined,
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId,
 			executionTimeoutTimestamp,
-		);
+		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 
 		const { pushRef } = job.data;

@@ -1,9 +1,14 @@
-import { testDb } from '@n8n/backend-test-utils';
-import type { Variables } from '@n8n/db';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import type { Project, Variables } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { CacheService } from '@/services/cache/cache.service';
-import { createVariable, getVariableById, getVariableByKey } from '@test-integration/db/variables';
+import {
+	createProjectVariable,
+	createVariable,
+	getVariableById,
+	getVariableByKey,
+} from '@test-integration/db/variables';
 
 import { createOwner, createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -11,6 +16,7 @@ import * as utils from './shared/utils/';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
+let project: Project;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['variables'] });
 const license = testServer.license;
@@ -20,6 +26,9 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
+
+	project = await createTeamProject();
+	await linkUserToProject(member, project, 'project:editor');
 
 	license.setDefaults({
 		features: ['feat:variables'],
@@ -42,6 +51,7 @@ describe('GET /variables', () => {
 			createVariable('test1', 'value1'),
 			createVariable('test2', 'value2'),
 			createVariable('empty', ''),
+			createProjectVariable('testProject1', 'projectValue1', project),
 		]);
 	});
 
@@ -57,13 +67,13 @@ describe('GET /variables', () => {
 	test('should return all variables for an owner', async () => {
 		const response = await authOwnerAgent.get('/variables');
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(3);
+		expect(response.body.data.length).toBe(4);
 	});
 
 	test('should return all variables for a member', async () => {
 		const response = await authMemberAgent.get('/variables');
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(3);
+		expect(response.body.data.length).toBe(4);
 	});
 
 	describe('state:empty', () => {

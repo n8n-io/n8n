@@ -40,7 +40,6 @@ export class SentryIo implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['oAuth2'],
-						sentryVersion: ['cloud'],
 					},
 				},
 			},
@@ -50,7 +49,6 @@ export class SentryIo implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['accessToken'],
-						sentryVersion: ['cloud'],
 					},
 				},
 			},
@@ -59,63 +57,28 @@ export class SentryIo implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['accessToken'],
-						sentryVersion: ['server'],
+						authentication: ['accessTokenServer'],
 					},
 				},
 			},
 		],
 		properties: [
 			{
-				displayName: 'Sentry Version',
-				name: 'sentryVersion',
-				type: 'options',
-				options: [
-					{
-						name: 'Cloud',
-						value: 'cloud',
-					},
-					{
-						name: 'Server (Self Hosted)',
-						value: 'server',
-					},
-				],
-				default: 'cloud',
-			},
-			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
-				displayOptions: {
-					show: {
-						sentryVersion: ['cloud'],
-					},
-				},
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access Token (Cloud)',
 						value: 'accessToken',
 					},
 					{
-						name: 'OAuth2',
+						name: 'OAuth2 (Cloud)',
 						value: 'oAuth2',
 					},
-				],
-				default: 'accessToken',
-			},
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				displayOptions: {
-					show: {
-						sentryVersion: ['server'],
-					},
-				},
-				options: [
 					{
-						name: 'Access Token',
-						value: 'accessToken',
+						name: 'Access Token (Self Hosted)',
+						value: 'accessTokenServer',
 					},
 				],
 				default: 'accessToken',

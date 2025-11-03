@@ -351,7 +351,7 @@ const checkConditions = (
  */
 export function displayParameter(
 	nodeValues: INodeParameters,
-	parameter: INodeProperties | INodeCredentialDescription,
+	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot?: INodeParameters,
@@ -417,7 +417,7 @@ export function displayParameter(
  */
 export function displayParameterPath(
 	nodeValues: INodeParameters,
-	parameter: INodeProperties | INodeCredentialDescription,
+	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,

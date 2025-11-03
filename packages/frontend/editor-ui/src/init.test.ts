@@ -1,15 +1,15 @@
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { initializeAuthenticatedFeatures, initializeCore, state } from '@/init';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useSSOStore } from '@/stores/sso.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useVersionsStore } from '@/stores/versions.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useVersionsStore } from '@/app/stores/versions.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { STORES } from '@n8n/stores';
@@ -19,16 +19,16 @@ import { AxiosError } from 'axios';
 import merge from 'lodash/merge';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
-import { telemetry } from './plugins/telemetry';
+import { telemetry } from '@/app/plugins/telemetry';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
 }));
 
-vi.mock('@/stores/users.store', () => ({
+vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
@@ -44,8 +44,8 @@ describe('Init', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let versionsStore: ReturnType<typeof mockedStore<typeof useVersionsStore>>;
 	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
-	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
+	let bannersStore: ReturnType<typeof mockedStore<typeof useBannersStore>>;
 
 	beforeEach(() => {
 		setActivePinia(
@@ -64,8 +64,8 @@ describe('Init', () => {
 		versionsStore = mockedStore(useVersionsStore);
 		versionsStore = mockedStore(useVersionsStore);
 		ssoStore = mockedStore(useSSOStore);
-		uiStore = mockedStore(useUIStore);
 		rootStore = mockedStore(useRootStore);
+		bannersStore = mockedStore(useBannersStore);
 	});
 
 	describe('initializeCore()', () => {
@@ -120,9 +120,9 @@ describe('Init', () => {
 
 		it('should correctly identify the user for telemetry', async () => {
 			const telemetryIdentifySpy = vi.spyOn(telemetry, 'identify');
-			usersStore.registerLoginHook.mockImplementation((hook) =>
-				hook(mock<CurrentUserResponse>({ id: 'userId' })),
-			);
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
 			rootStore.instanceId = 'testInstanceId';
 			rootStore.versionCli = '1.102.0';
 
@@ -153,14 +153,14 @@ describe('Init', () => {
 			});
 		});
 
-		it('should initialize uiStore with banners based on settings', async () => {
+		it('should initialize bannersStore with banners based on settings', async () => {
 			settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner = true;
 			settingsStore.settings.banners = { dismissed: [] };
 			settingsStore.settings.versionCli = '1.2.3';
 
 			await initializeCore();
 
-			expect(uiStore.initialize).toHaveBeenCalledWith({
+			expect(bannersStore.loadStaticBanners).toHaveBeenCalledWith({
 				banners: ['NON_PRODUCTION_LICENSE', 'V1'],
 			});
 		});
@@ -286,7 +286,7 @@ describe('Init', () => {
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
+				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
 			});
 
 			it('should push TRIAL banner if trial is active', async () => {
@@ -302,7 +302,7 @@ describe('Init', () => {
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
+				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
 			});
 
 			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {
@@ -318,7 +318,7 @@ describe('Init', () => {
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('EMAIL_CONFIRMATION');
+				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('EMAIL_CONFIRMATION');
 			});
 
 			it('should not push EMAIL_CONFIRMATION banner if user cloud account does not exist', async () => {
@@ -334,7 +334,7 @@ describe('Init', () => {
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(uiStore.pushBannerToStack).not.toHaveBeenCalledWith('EMAIL_CONFIRMATION');
+				expect(bannersStore.pushBannerToStack).not.toHaveBeenCalledWith('EMAIL_CONFIRMATION');
 			});
 		});
 	});

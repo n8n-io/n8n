@@ -1,5 +1,5 @@
 /* eslint-disable no-control-regex */
-import { type ChildProcess, spawn } from 'child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import type { Formatter } from 'picocolors/types';
 

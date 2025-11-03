@@ -1565,6 +1565,29 @@ export class WorkflowExecute {
 								}
 
 								return input.map((item, itemIndex) => {
+									// Preserve any existing sourceOverwrite from the pairedItem
+									// for tool executions. Tool calls don't have a main
+									// connection to the agent's input, so the data proxy needs
+									// the sourceOverwrite information to know where to look up
+									// paired items. This is necessary because the workflow data
+									// proxy works on input data which normally scrubs paired
+									// item information before executing the node.
+									const isToolExecution = !!executionData.metadata?.preserveSourceOverwrite;
+									if (
+										isToolExecution &&
+										typeof item.pairedItem === 'object' &&
+										'sourceOverwrite' in item.pairedItem
+									) {
+										return {
+											...item,
+											pairedItem: {
+												item: itemIndex,
+												input: inputIndex || undefined,
+												sourceOverwrite: item.pairedItem.sourceOverwrite,
+											},
+										};
+									}
+
 									return {
 										...item,
 										pairedItem: {
@@ -1613,7 +1636,16 @@ export class WorkflowExecute {
 						node: executionNode.name,
 						workflowId: workflow.id,
 					});
-					await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
+					// Skip nodeExecuteBefore for resumed agent nodes to prevent duplicate event emission.
+					// Context: AI agents pause execution to run tools, then resume with tool results.
+					// Without this check, the agent would emit nodeExecuteBefore twice (initial + resume)
+					// but only one nodeExecuteAfter, causing frontend spinner state to become stuck.
+					// See: AI-1414
+					// Future: May introduce dedicated nodeExecutionPaused/nodeExecutionResumed events
+					// if we need finer-grained visibility into the pause/resume cycle.
+					if (!executionData.metadata?.nodeWasResumed) {
+						await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
+					}
 					let maxTries = 1;
 					if (executionData.node.retryOnFail === true) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue

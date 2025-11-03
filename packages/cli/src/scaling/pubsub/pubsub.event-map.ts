@@ -21,6 +21,9 @@ export type PubSubCommandMap = {
 	'reload-oidc-config': never;
 	'reload-saml-config': never;
 
+	// # sso provisioning
+	'reload-sso-provisioning-configuration': never;
+
 	// #endregion
 
 	// #region Community packages

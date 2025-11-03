@@ -9,6 +9,7 @@ name: 'Docker: Build and Push'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
+  NODE_VERSION: '22.21.0'
 
 on:
   schedule:
@@ -51,6 +52,7 @@ on:
       - '.github/workflows/docker-build-push.yml'
       - 'docker/images/n8n/Dockerfile'
       - 'docker/images/runners/Dockerfile'
+      - 'docker/images/runners/Dockerfile.distroless'
 
 jobs:
   determine-build-context:
@@ -171,6 +173,7 @@ jobs:
       image_ref: ${{ steps.determine-tags.outputs.primary_ghcr_manifest_tag }}
       primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.primary_ghcr_manifest_tag }}
       runners_primary_ghcr_manifest_tag: ${{ steps.determine-runners-tags.outputs.primary_ghcr_manifest_tag }}
+      runners_distroless_primary_ghcr_manifest_tag: ${{ steps.determine-runners-tags.outputs.primary_ghcr_manifest_tag_distroless }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -263,68 +266,16 @@ jobs:
             echo "primary_ghcr_manifest_tag=${PRIMARY_GHCR_MANIFEST_TAG_VALUE}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Determine Docker tags (runners)
+      - name: Determine Docker tags (runners variants)
         id: determine-runners-tags
         run: |
-          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
-          N8N_VERSION_TAG="${{ needs.determine-build-context.outputs.n8n_version }}"
-          GHCR_BASE="ghcr.io/${{ github.repository_owner }}/runners"
-          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}/runners"
-          PLATFORM="${{ matrix.platform }}"
-
-          GHCR_TAGS_FOR_PUSH=""
-          DOCKER_TAGS_FOR_PUSH=""
-          PRIMARY_GHCR_MANIFEST_TAG_VALUE=""
-
-          case "$RELEASE_TYPE" in
-            "stable")
-              PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
-              GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
-              DOCKER_TAGS_FOR_PUSH="${DOCKER_BASE}:${N8N_VERSION_TAG}-${PLATFORM}"
-              ;;
-            "nightly")
-              PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:nightly"
-              GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
-              DOCKER_TAGS_FOR_PUSH="${DOCKER_BASE}:nightly-${PLATFORM}"
-              ;;
-            "branch")
-              PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
-              GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
-              DOCKER_TAGS_FOR_PUSH="" # mirror n8n logic: no Docker Hub for branch
-              ;;
-            "dev"|*)
-              if [[ "$N8N_VERSION_TAG" == pr-* ]]; then
-                PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
-                GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
-                DOCKER_TAGS_FOR_PUSH=""
-              else
-                PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:dev"
-                GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
-                DOCKER_TAGS_FOR_PUSH="${DOCKER_BASE}:dev-${PLATFORM}"
-              fi
-              ;;
-          esac
-
-          ALL_TAGS="${GHCR_TAGS_FOR_PUSH}"
-          if [[ -n "$DOCKER_TAGS_FOR_PUSH" ]]; then
-            ALL_TAGS="${ALL_TAGS}\n${DOCKER_TAGS_FOR_PUSH}"
-          fi
-
-          {
-            echo "tags<<EOF"
-            echo -e "$ALL_TAGS"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-          {
-            echo "ghcr_platform_tag=${GHCR_TAGS_FOR_PUSH}"
-            echo "dockerhub_platform_tag=${DOCKER_TAGS_FOR_PUSH}"
-          } >> "$GITHUB_OUTPUT"
-
-          # Only output manifest tags from the first platform to avoid duplicates
-          if [[ "$PLATFORM" == "amd64" ]]; then
-            echo "primary_ghcr_manifest_tag=${PRIMARY_GHCR_MANIFEST_TAG_VALUE}" >> "$GITHUB_OUTPUT"
-          fi
+          .github/scripts/determine-runners-tags.sh \
+            "${{ needs.determine-build-context.outputs.release_type }}" \
+            "${{ needs.determine-build-context.outputs.n8n_version }}" \
+            "ghcr.io/${{ github.repository_owner }}/runners" \
+            "${{ secrets.DOCKER_USERNAME }}/runners" \
+            "${{ matrix.platform }}" \
+            "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
@@ -340,7 +291,8 @@ jobs:
       - name: Login to Docker Hub
         if: needs.determine-build-context.outputs.push_enabled == 'true' && (
           steps.determine-tags.outputs.dockerhub_platform_tag != '' ||
-          steps.determine-runners-tags.outputs.dockerhub_platform_tag != '')
+          steps.determine-runners-tags.outputs.dockerhub_platform_tag != '' ||
+          steps.determine-runners-tags.outputs.dockerhub_platform_tag_distroless != '')
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -352,7 +304,7 @@ jobs:
           context: .
           file: ./docker/images/n8n/Dockerfile
           build-args: |
-            NODE_VERSION=22
+            NODE_VERSION=${{ env.NODE_VERSION }}
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
@@ -361,14 +313,13 @@ jobs:
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.tags }}
 
-      - name: Build and push task runners Docker image
+      - name: Build and push task runners Docker image (Alpine)
         uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
         with:
           context: .
           file: ./docker/images/runners/Dockerfile
           build-args: |
-            NODE_VERSION=22.19
-            PYTHON_VERSION=3.13
+            NODE_VERSION=${{ env.NODE_VERSION }}
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
@@ -376,6 +327,21 @@ jobs:
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-runners-tags.outputs.tags }}
+
+      - name: Build and push task runners Docker image (distroless)
+        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        with:
+          context: .
+          file: ./docker/images/runners/Dockerfile.distroless
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: true
+          sbom: true
+          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
+          tags: ${{ steps.determine-runners-tags.outputs.tags_distroless }}
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
@@ -431,45 +397,45 @@ jobs:
               ;;
           esac
 
-      - name: Determine Docker Hub manifest tag (runners)
+      - name: Determine Docker Hub manifest tags (runners variants)
         id: dockerhub_runners_check
         run: |
           RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
           N8N_VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
           DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}/runners"
 
-          # Determine if Docker Hub manifest is needed and construct the tag
-          case "$RELEASE_TYPE" in
-            "stable")
-              {
-                echo "DOCKER_MANIFEST_TAG=${DOCKER_BASE}:${N8N_VERSION}"
-                echo "CREATE_DOCKERHUB_MANIFEST=true"
-              } >> "$GITHUB_OUTPUT"
-              ;;
-            "nightly")
-              {
-                echo "DOCKER_MANIFEST_TAG=${DOCKER_BASE}:nightly"
-                echo "CREATE_DOCKERHUB_MANIFEST=true"
-              } >> "$GITHUB_OUTPUT"
-              ;;
-            "dev")
-              if [[ "$N8N_VERSION" != pr-* ]]; then
-                {
-                  echo "DOCKER_MANIFEST_TAG=${DOCKER_BASE}:dev"
-                  echo "CREATE_DOCKERHUB_MANIFEST=true"
-                } >> "$GITHUB_OUTPUT"
-              else
-                echo "CREATE_DOCKERHUB_MANIFEST=false" >> "$GITHUB_OUTPUT"
-              fi
-              ;;
-            *)
-              echo "CREATE_DOCKERHUB_MANIFEST=false" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
+          # Generate manifest tags for both Alpine and distroless variants
+          for VARIANT in "" "_distroless"; do
+            SUFFIX="${VARIANT//_/-}"  # Convert _distroless to -distroless for tag
+            OUTPUT_SUFFIX="${VARIANT}"  # Keep underscore for output var names
+
+            case "$RELEASE_TYPE" in
+              "stable")
+                echo "DOCKER_MANIFEST_TAG${OUTPUT_SUFFIX}=${DOCKER_BASE}:${N8N_VERSION}${SUFFIX}" >> "$GITHUB_OUTPUT"
+                echo "CREATE_DOCKERHUB_MANIFEST${OUTPUT_SUFFIX}=true" >> "$GITHUB_OUTPUT"
+                ;;
+              "nightly")
+                echo "DOCKER_MANIFEST_TAG${OUTPUT_SUFFIX}=${DOCKER_BASE}:nightly${SUFFIX}" >> "$GITHUB_OUTPUT"
+                echo "CREATE_DOCKERHUB_MANIFEST${OUTPUT_SUFFIX}=true" >> "$GITHUB_OUTPUT"
+                ;;
+              "dev")
+                if [[ "$N8N_VERSION" != pr-* ]]; then
+                  echo "DOCKER_MANIFEST_TAG${OUTPUT_SUFFIX}=${DOCKER_BASE}:dev${SUFFIX}" >> "$GITHUB_OUTPUT"
+                  echo "CREATE_DOCKERHUB_MANIFEST${OUTPUT_SUFFIX}=true" >> "$GITHUB_OUTPUT"
+                else
+                  echo "CREATE_DOCKERHUB_MANIFEST${OUTPUT_SUFFIX}=false" >> "$GITHUB_OUTPUT"
+                fi
+                ;;
+              *)
+                echo "CREATE_DOCKERHUB_MANIFEST${OUTPUT_SUFFIX}=false" >> "$GITHUB_OUTPUT"
+                ;;
+            esac
+          done
 
       - name: Login to Docker Hub
         if: steps.dockerhub_check.outputs.CREATE_DOCKERHUB_MANIFEST == 'true' ||
-          steps.dockerhub_runners_check.outputs.CREATE_DOCKERHUB_MANIFEST == 'true'
+          steps.dockerhub_runners_check.outputs.CREATE_DOCKERHUB_MANIFEST == 'true' ||
+          steps.dockerhub_runners_check.outputs.CREATE_DOCKERHUB_MANIFEST_distroless == 'true'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -495,13 +461,33 @@ jobs:
               ${MANIFEST_TAG}-arm64
           fi
 
-      - name: Create GHCR multi-arch manifest (runners)
+      - name: Create GHCR multi-arch manifest for runners (Alpine)
         if: needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag != ''
         run: |
           MANIFEST_TAG="${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
           RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
 
           echo "Creating GHCR runners manifest: $MANIFEST_TAG"
+
+          # For branch builds, only AMD64 is built
+          if [[ "$RELEASE_TYPE" == "branch" ]]; then
+            docker buildx imagetools create \
+              --tag $MANIFEST_TAG \
+              ${MANIFEST_TAG}-amd64
+          else
+            docker buildx imagetools create \
+              --tag $MANIFEST_TAG \
+              ${MANIFEST_TAG}-amd64 \
+              ${MANIFEST_TAG}-arm64
+          fi
+
+      - name: Create GHCR multi-arch manifest for runners (distroless)
+        if: needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag != ''
+        run: |
+          MANIFEST_TAG="${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
+          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
+
+          echo "Creating GHCR runners distroless manifest: $MANIFEST_TAG"
 
           # For branch builds, only AMD64 is built
           if [[ "$RELEASE_TYPE" == "branch" ]]; then
@@ -527,12 +513,24 @@ jobs:
             ${MANIFEST_TAG}-amd64 \
             ${MANIFEST_TAG}-arm64
 
-      - name: Create Docker Hub multi-arch manifest (runners)
+      - name: Create Docker Hub multi-arch manifest for runners (Alpine)
         if: steps.dockerhub_runners_check.outputs.CREATE_DOCKERHUB_MANIFEST == 'true'
         run: |
           MANIFEST_TAG="${{ steps.dockerhub_runners_check.outputs.DOCKER_MANIFEST_TAG }}"
 
           echo "Creating Docker Hub manifest: $MANIFEST_TAG"
+
+          docker buildx imagetools create \
+            --tag $MANIFEST_TAG \
+            ${MANIFEST_TAG}-amd64 \
+            ${MANIFEST_TAG}-arm64
+
+      - name: Create Docker Hub multi-arch manifest for runners (distroless)
+        if: steps.dockerhub_runners_check.outputs.CREATE_DOCKERHUB_MANIFEST_distroless == 'true'
+        run: |
+          MANIFEST_TAG="${{ steps.dockerhub_runners_check.outputs.DOCKER_MANIFEST_TAG_distroless }}"
+
+          echo "Creating Docker Hub distroless manifest: $MANIFEST_TAG"
 
           docker buildx imagetools create \
             --tag $MANIFEST_TAG \
@@ -577,3 +575,16 @@ jobs:
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
     secrets: inherit
+
+  notify-on-failure:
+    name: Notify Cats on nightly build failure
+    runs-on: ubuntu-latest
+    needs: [build-and-push-docker]
+    if: needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
+    steps:
+      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: ${{ needs.build-and-push-docker.result }}
+          channel: '#team-catalysts'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

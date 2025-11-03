@@ -1,7 +1,9 @@
-import { readFileSync, existsSync } from 'node:fs';
+import type { TSESTree } from '@typescript-eslint/typescript-estree';
+import { parse, simpleTraverse, AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import { dirname, parse as parsePath } from 'node:path';
-import { parse, simpleTraverse, TSESTree } from '@typescript-eslint/typescript-estree';
+
 import {
 	isCredentialTypeClass,
 	isNodeTypeClass,
@@ -9,6 +11,7 @@ import {
 	getStringLiteralValue,
 	findArrayLiteralProperty,
 	extractCredentialInfoFromArray,
+	findSimilarStrings,
 } from './ast-utils.js';
 
 /**
@@ -46,11 +49,11 @@ export function safeJoinPath(parentPath: string, ...paths: string[]): string {
 }
 
 export function findPackageJson(startPath: string): string | null {
-	let currentDir = startPath;
+	let currentDir = path.dirname(startPath);
 
 	while (parsePath(currentDir).dir !== parsePath(currentDir).root) {
 		const testPath = safeJoinPath(currentDir, 'package.json');
-		if (existsSync(testPath)) {
+		if (fileExistsWithCaseSync(testPath)) {
 			return testPath;
 		}
 
@@ -60,10 +63,24 @@ export function findPackageJson(startPath: string): string | null {
 	return null;
 }
 
-function readPackageJsonN8n(packageJsonPath: string): any {
+interface PackageJsonN8n {
+	credentials?: string[];
+	nodes?: string[];
+	[key: string]: unknown;
+}
+
+function isValidPackageJson(obj: unknown): obj is { n8n?: PackageJsonN8n } {
+	return typeof obj === 'object' && obj !== null;
+}
+
+function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
 	try {
-		const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-		return packageJson.n8n || {};
+		const content = readFileSync(packageJsonPath, 'utf8');
+		const parsed: unknown = JSON.parse(content);
+		if (isValidPackageJson(parsed)) {
+			return parsed.n8n ?? {};
+		}
+		return {};
 	} catch {
 		return {};
 	}
@@ -87,7 +104,7 @@ function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): stri
 
 export function readPackageJsonCredentials(packageJsonPath: string): Set<string> {
 	const n8nConfig = readPackageJsonN8n(packageJsonPath);
-	const credentialPaths = n8nConfig.credentials || [];
+	const credentialPaths = n8nConfig.credentials ?? [];
 	const credentialFiles = resolveN8nFilePaths(packageJsonPath, credentialPaths);
 	const credentialNames: string[] = [];
 
@@ -117,7 +134,7 @@ export function extractCredentialNameFromFile(credentialFilePath: string): strin
 
 		simpleTraverse(ast, {
 			enter(node: TSESTree.Node) {
-				if (node.type === 'ClassDeclaration' && isCredentialTypeClass(node)) {
+				if (node.type === AST_NODE_TYPES.ClassDeclaration && isCredentialTypeClass(node)) {
 					const nameProperty = findClassProperty(node, 'name');
 					if (nameProperty) {
 						const nameValue = getStringLiteralValue(nameProperty.value);
@@ -147,8 +164,9 @@ export function validateIconPath(
 	const isFile = iconPath.startsWith('file:');
 	const relativePath = iconPath.replace(/^file:/, '');
 	const isSvg = relativePath.endsWith('.svg');
-	const fullPath = safeJoinPath(baseDir, relativePath);
-	const exists = existsSync(fullPath);
+	// Should not use safeJoinPath here because iconPath can be outside of the node class folder
+	const fullPath = path.join(baseDir, relativePath);
+	const exists = fileExistsWithCaseSync(fullPath);
 
 	return {
 		isValid: isFile && isSvg && exists,
@@ -160,7 +178,7 @@ export function validateIconPath(
 
 export function readPackageJsonNodes(packageJsonPath: string): string[] {
 	const n8nConfig = readPackageJsonN8n(packageJsonPath);
-	const nodePaths = n8nConfig.nodes || [];
+	const nodePaths = n8nConfig.nodes ?? [];
 	return resolveN8nFilePaths(packageJsonPath, nodePaths);
 }
 
@@ -202,11 +220,11 @@ function checkCredentialUsageInFile(
 
 		simpleTraverse(ast, {
 			enter(node: TSESTree.Node) {
-				if (node.type === 'ClassDeclaration' && isNodeTypeClass(node)) {
+				if (node.type === AST_NODE_TYPES.ClassDeclaration && isNodeTypeClass(node)) {
 					const descriptionProperty = findClassProperty(node, 'description');
 					if (
 						!descriptionProperty?.value ||
-						descriptionProperty.value.type !== 'ObjectExpression'
+						descriptionProperty.value.type !== AST_NODE_TYPES.ObjectExpression
 					) {
 						return;
 					}
@@ -235,5 +253,42 @@ function checkCredentialUsageInFile(
 		return { hasUsage, allTestedBy };
 	} catch {
 		return { hasUsage: false, allTestedBy: true };
+	}
+}
+
+function fileExistsWithCaseSync(filePath: string): boolean {
+	try {
+		const dir = path.dirname(filePath);
+		const file = path.basename(filePath);
+		const files = new Set(readdirSync(dir));
+
+		return files.has(file);
+	} catch {
+		return false;
+	}
+}
+
+export function findSimilarSvgFiles(targetPath: string, baseDir: string): string[] {
+	try {
+		const targetFileName = path.basename(targetPath, path.extname(targetPath));
+		const targetDir = path.dirname(targetPath);
+		// Should not use safeJoinPath here because iconPath can be outside of the node class folder
+		const searchDir = path.join(baseDir, targetDir);
+
+		if (!existsSync(searchDir)) {
+			return [];
+		}
+
+		const files = readdirSync(searchDir);
+		const svgFileNames = files
+			.filter((file) => file.endsWith('.svg'))
+			.map((file) => path.basename(file, '.svg'));
+
+		const candidateNames = new Set(svgFileNames);
+		const similarNames = findSimilarStrings(targetFileName, candidateNames);
+
+		return similarNames.map((name) => path.join(targetDir, `${name}.svg`));
+	} catch {
+		return [];
 	}
 }
