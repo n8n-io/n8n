@@ -904,6 +904,14 @@ describe('POST /workflows', () => {
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
 		).toBe(1);
+		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.connections).toEqual(payload.connections);
+		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
 	test('should not add a starting node if the payload has no starting nodes', async () => {
@@ -1108,6 +1116,14 @@ describe('PUT /workflows/:id', () => {
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
 		).toBe(1);
+		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.connections).toEqual(payload.connections);
+		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
 	test('should update non-owned workflow if owner', async () => {

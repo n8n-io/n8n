@@ -742,6 +742,14 @@ describe('POST /workflows', () => {
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
 		).toBe(1);
+		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.connections).toEqual(payload.connections);
+		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 });
 
@@ -1271,6 +1279,14 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(
 				await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
 			).toBe(1);
+			const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+				where: {
+					workflowId: id,
+				},
+			});
+			expect(historyVersion).not.toBeNull();
+			expect(historyVersion!.connections).toEqual(payload.connections);
+			expect(historyVersion!.nodes).toEqual(payload.nodes);
 		});
 	});
 
