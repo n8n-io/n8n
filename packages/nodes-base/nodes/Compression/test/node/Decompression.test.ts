@@ -169,7 +169,7 @@ describe('Compression Node - Decompress Operation', () => {
 					}) as IBinaryData,
 			);
 
-			const result = await compression.execute.call(mockExecuteFunctions);
+			await compression.execute.call(mockExecuteFunctions);
 
 			expect(fflate.unzip).toHaveBeenCalledTimes(2);
 			expect(jest.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
