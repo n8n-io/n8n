@@ -1351,6 +1351,11 @@ describe('AskAssistantBuild', () => {
 	it('should track categorization telemetry when categorize_prompt tool completes', async () => {
 		renderComponent();
 
+		// Simulate streaming starts
+		builderStore.$patch({ streaming: true });
+		await flushPromises();
+
+		// Add categorization tool message
 		builderStore.toolMessages = [
 			{
 				id: faker.string.uuid(),
@@ -1373,6 +1378,8 @@ describe('AskAssistantBuild', () => {
 			},
 		];
 
+		// Simulate streaming stops (this triggers trackWorkflowModifications)
+		builderStore.$patch({ streaming: false });
 		await flushPromises();
 
 		expect(trackMock).toHaveBeenCalledWith('Classifier labels user prompt', {

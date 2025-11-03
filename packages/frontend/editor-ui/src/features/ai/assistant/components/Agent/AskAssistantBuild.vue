@@ -129,7 +129,43 @@ function dedupeToolNames(toolNames: string[]): string[] {
 	return [...new Set(toolNames)];
 }
 
+function isCategorizationData(
+	data: unknown,
+): data is { techniques: string[]; confidence?: number } {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'techniques' in data &&
+		Array.isArray(data.techniques) &&
+		data.techniques.every((t) => typeof t === 'string')
+	);
+}
+
 function trackWorkflowModifications() {
+	// Track categorization telemetry
+	builderStore.toolMessages.forEach((toolMsg) => {
+		if (toolMsg.toolName !== 'categorize_prompt') return;
+		if (toolMsg.status !== 'completed') return;
+		if (!toolMsg.toolCallId) return;
+		if (trackedCategorizations.value.has(toolMsg.toolCallId)) return;
+
+		const outputUpdate = toolMsg.updates.find((u) => u.type === 'output');
+		const categorizationData = outputUpdate?.data?.categorization;
+
+		if (!isCategorizationData(categorizationData)) return;
+
+		trackedCategorizations.value.add(toolMsg.toolCallId);
+
+		telemetry.track('Classifier labels user prompt', {
+			user_id: usersStore.currentUserId ?? undefined,
+			workflow_id: workflowsStore.workflowId,
+			classifier_labels: categorizationData.techniques,
+			confidence: categorizationData.confidence,
+			session_id: builderStore.trackingSessionId,
+			timestamp: new Date().toISOString(),
+		});
+	});
+
 	if (workflowUpdated.value) {
 		// Track tool usage for telemetry
 		const newToolMessages = builderStore.toolMessages.filter(
@@ -266,41 +302,6 @@ watch(
 			}
 		}
 	},
-);
-
-// Track categorization tool completion for telemetry
-watch(
-	() => builderStore.toolMessages,
-	(messages) => {
-		messages
-			.filter(
-				(msg) =>
-					msg.toolName === 'categorize_prompt' &&
-					msg.status === 'completed' &&
-					msg.toolCallId &&
-					!trackedCategorizations.value.has(msg.toolCallId),
-			)
-			.forEach((msg) => {
-				const outputUpdate = msg.updates.find((u) => u.type === 'output');
-				const categorizationData = outputUpdate?.data?.categorization as
-					| { techniques: string[]; confidence?: number }
-					| undefined;
-
-				if (categorizationData && msg.toolCallId) {
-					trackedCategorizations.value.add(msg.toolCallId);
-
-					telemetry.track('Classifier labels user prompt', {
-						user_id: usersStore.currentUserId ?? undefined,
-						workflow_id: workflowsStore.workflowId,
-						classifier_labels: categorizationData.techniques,
-						confidence: categorizationData.confidence,
-						session_id: builderStore.trackingSessionId,
-						timestamp: new Date().toISOString(),
-					});
-				}
-			});
-	},
-	{ deep: true },
 );
 
 // Reset on route change
