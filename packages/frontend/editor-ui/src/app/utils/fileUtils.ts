@@ -105,38 +105,3 @@ export async function convertFileToBinaryData(file: File): Promise<IBinaryData> 
 		reader.readAsDataURL(file);
 	});
 }
-
-/**
- * Creates a placeholder file for unavailable attachments
- */
-function createUnavailableFilePlaceholder(binaryData: IBinaryData): File {
-	const fileName = binaryData.fileName ?? 'unknown file';
-	const unavailableText = `File unavailable: ${fileName}`;
-	return new File([unavailableText], `[Unavailable] ${fileName}`, {
-		type: 'text/plain',
-	});
-}
-
-export function convertBinaryDataToFile(binaryData: IBinaryData): File {
-	try {
-		const base64Data = binaryData.data;
-		if (!base64Data) {
-			console.error('Binary data is missing for file:', binaryData.fileName);
-			return createUnavailableFilePlaceholder(binaryData);
-		}
-
-		const binaryString = atob(base64Data);
-		const bytes = new Uint8Array(binaryString.length);
-
-		for (let i = 0; i < binaryString.length; i++) {
-			bytes[i] = binaryString.charCodeAt(i);
-		}
-
-		return new File([bytes], binaryData.fileName ?? 'unnamed file', {
-			type: binaryData.mimeType,
-		});
-	} catch (error) {
-		console.error('Failed to convert binary data to file:', error, binaryData.fileName);
-		return createUnavailableFilePlaceholder(binaryData);
-	}
-}

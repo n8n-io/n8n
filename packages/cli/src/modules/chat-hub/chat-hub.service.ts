@@ -53,6 +53,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubCredentialsService, CredentialWithProjectId } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
@@ -86,36 +87,8 @@ export class ChatHubService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
-		private readonly binaryDataService: BinaryDataService,
+		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 	) {}
-
-	/**
-	 * Processes attachments by storing binary data through BinaryDataService.
-	 * This populates the 'id' field for attachments. When external storage is used,
-	 * BinaryDataService replaces base64 data with the storage mode string (e.g., "filesystem-v2").
-	 */
-	private async processAttachments(
-		attachments: IBinaryData[],
-		workflowId: string,
-	): Promise<IBinaryData[]> {
-		return await Promise.all(
-			attachments.map(async (attachment) => {
-				// If attachment already has an ID (filesystem reference) or data is missing, return as-is
-				if (attachment.id || !attachment.data) {
-					return attachment;
-				}
-
-				const buffer = Buffer.from(attachment.data, BINARY_ENCODING);
-
-				return await this.binaryDataService.store(
-					workflowId,
-					'temp', // TODO: execution ID isn't available here yet
-					buffer,
-					attachment,
-				);
-			}),
-		);
-	}
 
 	async getModels(
 		user: User,
@@ -1503,14 +1476,7 @@ export class ChatHubService {
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
 
-		// Convert messages to DTOs and hydrate attachments with base64 data
-		const messageDtos = await Promise.all(
-			messages.map(async (m) => {
-				const dto = this.convertMessageToDto(m);
-				dto.attachments = await this.hydrateAttachmentsWithBase64(dto.attachments);
-				return [m.id, dto] as const;
-			}),
-		);
+		const messageDtos = messages.map((m) => [m.id, this.convertMessageToDto(m)]);
 
 		return {
 			session: {
@@ -1533,31 +1499,6 @@ export class ChatHubService {
 		};
 	}
 
-	/**
-	 * Hydrates attachments by converting binary data to base64.
-	 * BinaryDataService.getAsBuffer handles both external storage (filesystem-v2, s3, etc)
-	 * and in-memory base64 data automatically.
-	 */
-	private async hydrateAttachmentsWithBase64(attachments: IBinaryData[]): Promise<IBinaryData[]> {
-		return await Promise.all(
-			attachments.map(async (attachment) => {
-				try {
-					const buffer = await this.binaryDataService.getAsBuffer(attachment);
-					return {
-						...attachment,
-						data: buffer.toString(BINARY_ENCODING),
-					};
-				} catch (error) {
-					this.logger.error(
-						`Failed to hydrate attachment ${attachment.id ?? 'unknown'}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-					);
-					// Return attachment as-is if we can't fetch the data
-					return attachment;
-				}
-			}),
-		);
-	}
-
 	private convertMessageToDto(message: ChatHubMessage): ChatHubMessageDto {
 		return {
 			id: message.id,
@@ -1578,7 +1519,10 @@ export class ChatHubService {
 			retryOfMessageId: message.retryOfMessageId,
 			revisionOfMessageId: message.revisionOfMessageId,
 
-			attachments: message.attachments ?? [],
+			attachments: (message.attachments ?? []).map(({ fileName, mimeType }) => ({
+				fileName,
+				mimeType,
+			})),
 		};
 	}
 

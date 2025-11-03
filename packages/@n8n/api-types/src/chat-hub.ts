@@ -1,4 +1,4 @@
-import type { IBinaryData, StructuredChunk } from 'n8n-workflow';
+import type { StructuredChunk } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -218,7 +218,7 @@ export interface ChatHubMessageDto {
 	retryOfMessageId: ChatMessageId | null;
 	revisionOfMessageId: ChatMessageId | null;
 
-	attachments: IBinaryData[];
+	attachments: Array<{ fileName?: string; mimeType?: string }>;
 }
 
 export type ChatHubConversationsResponse = ChatHubSessionDto[];

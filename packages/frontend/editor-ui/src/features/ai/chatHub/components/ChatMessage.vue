@@ -15,7 +15,8 @@ import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { convertBinaryDataToFile } from '@/utils/fileUtils';
+import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -37,6 +38,7 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+const rootStore = useRootStore();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -53,9 +55,17 @@ const speech = useSpeechSynthesis(messageContent, {
 const model = computed(() => unflattenModel(message));
 const agent = useAgent(model);
 
-const attachmentFiles = computed(() => {
-	return message.attachments.map((attachment) => convertBinaryDataToFile(attachment));
-});
+const attachments = computed(() =>
+	message.attachments.map(({ fileName, mimeType }, index) => ({
+		file: new File([], fileName ?? 'file', { type: mimeType }), // Placeholder file for display
+		downloadUrl: buildChatAttachmentUrl(
+			rootStore.restApiContext,
+			message.sessionId,
+			message.id,
+			index,
+		),
+	})),
+);
 
 async function handleCopy() {
 	const text = message.content;
@@ -169,6 +179,15 @@ onBeforeMount(() => {
 			</div>
 			<template v-else>
 				<div :class="$style.chatMessage">
+					<div v-if="attachments.length > 0" :class="$style.attachments">
+						<ChatFile
+							v-for="(attachment, index) in attachments"
+							:key="index"
+							:file="attachment.file"
+							:is-removable="false"
+							:href="attachment.downloadUrl"
+						/>
+					</div>
 					<VueMarkdown
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
@@ -180,15 +199,6 @@ onBeforeMount(() => {
 						:options="markdownOptions"
 						:plugins="[linksNewTabPlugin]"
 					/>
-					<div v-if="attachmentFiles.length > 0" :class="$style.attachments">
-						<ChatFile
-							v-for="(file, index) in attachmentFiles"
-							:key="index"
-							:file="file"
-							:is-removable="false"
-							:is-previewable="true"
-						/>
-					</div>
 				</div>
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
@@ -244,7 +254,7 @@ onBeforeMount(() => {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--xs);
+	margin-top: var(--spacing--xs);
 }
 
 .chatMessage {
