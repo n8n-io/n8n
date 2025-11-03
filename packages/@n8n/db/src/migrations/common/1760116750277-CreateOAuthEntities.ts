@@ -83,7 +83,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				column('id').int.primary.autoGenerate2.notNull,
 				column('userId').uuid.notNull,
 				column('clientId').varchar().notNull,
-				column('grantedAt').bigint.notNull.comment('Unix timestamp in seconds'),
+				column('grantedAt').bigint.notNull.comment('Unix timestamp in milliseconds'),
 			)
 			.withForeignKey('clientId', {
 				tableName: 'oauth_clients',
