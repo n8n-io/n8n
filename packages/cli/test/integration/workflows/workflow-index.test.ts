@@ -1,15 +1,17 @@
-import { testDb } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
+import { testDb } from '@n8n/backend-test-utils';
+import { DatabaseConfig } from '@n8n/config';
+import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { retryUntil } from '@test-integration/retry-until';
 import { ErrorReporter } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
+import { createOwner } from '../shared/db/users';
+
 import { EventService } from '@/events/event.service';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-
-import { createOwner } from '../shared/db/users';
-import { DatabaseConfig } from '@n8n/config';
 
 let workflowIndexService: WorkflowIndexService;
 let eventService: EventService;
@@ -45,63 +47,63 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-// NOTE: this feature isn't supported on legacy SQLite databases, so we skip the tests.
-if (Container.get(DatabaseConfig).isLegacySqlite) {
-	describe('WorkflowIndexService Integration', () => {
+describe('WorkflowIndexService Integration', () => {
+	if (Container.get(DatabaseConfig).isLegacySqlite) {
+		// NOTE: this feature isn't supported on legacy SQLite databases, so we skip the tests.
 		it('is not supported on legacy SQLite databases', async () => {});
-	});
-} else {
-	// NOTE: this feature isn't supported on legacy SQLite databases, so we skip the tests.
-	describe('WorkflowIndexService Integration', () => {
-		describe('workflow-created event', () => {
-			it('should index a new workflow with a single node', async () => {
-				// Arrange
-				const owner = await createOwner();
-				const workflowId = uuid();
-				const versionId = uuid();
+		return;
+	}
 
-				const workflow = {
-					id: workflowId,
-					name: 'Test Workflow',
-					active: false,
-					versionCounter: 1,
-					versionId,
-					nodes: [
-						{
-							id: 'node-1',
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 1,
-							position: [250, 300] as [number, number],
-							parameters: {},
-						},
-					],
-					connections: {},
-					settings: {},
-					triggerCount: 0,
-				};
+	describe('workflow-created event', () => {
+		it('should index a new workflow with a single node', async () => {
+			// Arrange
+			const owner = await createOwner();
+			const workflowId = uuid();
+			const versionId = uuid();
 
-				// Save the workflow to the database
-				const savedWorkflow = await workflowRepository.save(workflow);
-
-				// Act - emit the workflow-created event
-				eventService.emit('workflow-created', {
-					user: {
-						id: owner.id,
-						email: owner.email,
-						firstName: owner.firstName,
-						lastName: owner.lastName,
-						role: { slug: owner.role.slug },
+			const workflow = {
+				id: workflowId,
+				name: 'Test Workflow',
+				active: false,
+				versionCounter: 1,
+				versionId,
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
 					},
-					workflow: savedWorkflow,
-					publicApi: false,
-					projectId: uuid(),
-					projectType: 'personal',
-				});
+				],
+				connections: {},
+				settings: {},
+				triggerCount: 0,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			} satisfies IWorkflowDb;
 
-				// Wait for async event handler to complete
-				await new Promise((resolve) => setTimeout(resolve, 100));
+			// Save the workflow to the database
+			const savedWorkflow = await workflowRepository.save(workflow);
 
+			// Act - emit the workflow-created event
+			eventService.emit('workflow-created', {
+				user: {
+					id: owner.id,
+					email: owner.email,
+					firstName: owner.firstName,
+					lastName: owner.lastName,
+					role: { slug: owner.role.slug },
+				},
+				workflow: savedWorkflow,
+				publicApi: false,
+				projectId: uuid(),
+				projectType: 'personal',
+			});
+
+			await retryUntil(async () => {
 				// Assert - check that dependencies were indexed in the database
 				const dependencies = await workflowDependencyRepository.find({
 					where: { workflowId },
@@ -122,4 +124,4 @@ if (Container.get(DatabaseConfig).isLegacySqlite) {
 			});
 		});
 	});
-}
+});
