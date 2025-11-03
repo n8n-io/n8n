@@ -36,7 +36,7 @@ export class Logger implements LoggerType {
 
 	// Allow opt-in coloring in production by setting NO_COLOR to 'false' or '0'
 	private readonly noColorDefaultTrue =
-		process.env.NO_COLOR === 'false' || process.env.NO_COLOR === '0' ? false : true;
+		process.env.NO_COLOR !== 'false' && process.env.NO_COLOR !== '0';
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
