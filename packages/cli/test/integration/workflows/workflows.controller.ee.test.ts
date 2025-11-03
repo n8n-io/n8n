@@ -1047,33 +1047,44 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	describe('validate interim updates', () => {
-		it('should block owner updating workflow nodes on interim update by member', async () => {
+		it.only('should block owner updating workflow nodes on interim update by member', async () => {
 			// owner creates and shares workflow
-
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 			const {
 				id,
 				versionId: ownerVersionId,
 				versionCounter: ownerVersionCounter,
 			} = createResponse.body.data;
+			console.log('1. After CREATE - Owner has versionCounter:', ownerVersionCounter);
+
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
 
-			// member accesses and updates workflow name
-
+			// member gets workflow from the db and updates workflow name
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId, versionCounter: memberVersionCounter } =
 				memberGetResponse.body.data;
+			console.log('2. After GET - Member has versionCounter:', memberVersionCounter);
 
-			await authMemberAgent.patch(`/workflows/${id}`).send({
+			const memberUpdateResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
 				name: 'Update by member',
 				versionId: memberVersionId,
 				versionCounter: memberVersionCounter,
 			});
+			console.log(
+				'3. After PATCH by member - Response versionCounter:',
+				memberUpdateResponse.body.data?.versionCounter,
+			);
+
+			// Check actual DB value
+			const dbWorkflow = await workflowRepository.findOneBy({ id });
+			console.log('4. After PATCH - DB versionCounter:', dbWorkflow?.versionCounter);
+
+			expect(dbWorkflow?.versionCounter).toBe(memberVersionCounter + 1);
 
 			// owner blocked from updating workflow nodes
-
+			console.log('5. Owner attempts update with stale versionCounter:', ownerVersionCounter);
 			const updateAttemptResponse = await authOwnerAgent.patch(`/workflows/${id}`).send({
 				nodes: [],
 				versionId: ownerVersionId,

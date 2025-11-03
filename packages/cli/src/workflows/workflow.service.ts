@@ -314,6 +314,7 @@ export class WorkflowService {
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
 
+		console.log('Updating workflow with payload:', updatePayload);
 		await this.workflowRepository.update(workflowId, updatePayload);
 
 		const tagsDisabled = this.globalConfig.tags.disabled;
