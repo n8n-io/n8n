@@ -141,7 +141,7 @@ function isCategorizationData(
 	);
 }
 
-function trackWorkflowModifications() {
+function trackWorkflowCategorization() {
 	// Track categorization telemetry
 	builderStore.toolMessages.forEach((toolMsg) => {
 		if (toolMsg.toolName !== 'categorize_prompt') return;
@@ -165,7 +165,9 @@ function trackWorkflowModifications() {
 			timestamp: new Date().toISOString(),
 		});
 	});
+}
 
+function trackWorkflowModifications() {
 	if (workflowUpdated.value) {
 		// Track tool usage for telemetry
 		const newToolMessages = builderStore.toolMessages.filter(
@@ -282,6 +284,7 @@ watch(
 	async (isStreaming) => {
 		if (!isStreaming) {
 			trackWorkflowModifications();
+			trackWorkflowCategorization();
 		}
 
 		if (
