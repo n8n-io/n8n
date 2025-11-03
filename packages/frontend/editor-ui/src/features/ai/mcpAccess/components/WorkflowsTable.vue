@@ -129,7 +129,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 						data-test-id="mcp-oauth-clients-refresh-button"
 						size="small"
 						type="tertiary"
-						icon="refresh"
+						icon="refresh-cw"
 						:square="true"
 						@click="$emit('refresh')"
 					/>

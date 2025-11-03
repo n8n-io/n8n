@@ -49,7 +49,6 @@ const onRevokeClientAccess = (client: OAuthClientResponseDto) => {
 		</ol>
 		<div :class="$style['clients-table']">
 			<OAuthClientsTable
-				v-if="props.clientsLoading || props.clients.length > 0"
 				:data-test-id="'mcp-oauth-clients-table'"
 				:clients="props.clients"
 				:loading="props.clientsLoading"

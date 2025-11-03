@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import type { UserAction } from '@/Interface';
 import {
+	N8nActionBox,
 	N8nActionToggle,
 	N8nButton,
 	N8nDataTableServer,
@@ -99,13 +100,19 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 						data-test-id="mcp-oauth-clients-refresh-button"
 						size="small"
 						type="tertiary"
-						icon="refresh"
+						icon="refresh-cw"
 						:square="true"
 						@click="$emit('refresh')"
 					/>
 				</N8nTooltip>
 			</div>
+			<N8nActionBox
+				v-if="props.clients.length === 0"
+				data-test-id="empty-workflow-list-box"
+				:heading="i18n.baseText('settings.mcp.oAuthClients.table.empty.title')"
+			/>
 			<N8nDataTableServer
+				v-else
 				:class="$style['client-table']"
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
