@@ -8,7 +8,6 @@ import type {
 	IWebhookFunctions,
 	FormFieldsParameter,
 	NodeTypeAndVersion,
-	IBinaryData,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
@@ -369,11 +368,10 @@ export async function prepareFormReturnItem(
 		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
 
 		if (Array.isArray(filesInput)) {
-			bodyData[key] = filesInput.map<Omit<IBinaryData, 'data'>>((file) => ({
+			bodyData[key] = filesInput.map((file) => ({
 				filename: file.originalFilename,
 				mimetype: file.mimetype,
 				size: file.size,
-				fileExtension: file.originalFilename?.split('.').pop(),
 			}));
 			processFiles.push(...filesInput);
 			multiFile = true;
@@ -382,7 +380,6 @@ export async function prepareFormReturnItem(
 				filename: filesInput.originalFilename,
 				mimetype: filesInput.mimetype,
 				size: filesInput.size,
-				fileExtension: filesInput.originalFilename?.split('.').pop(),
 			};
 			processFiles.push(filesInput);
 		}
