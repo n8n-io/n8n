@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import Node from '@/features/workflows/canvas/components/elements/nodes/CanvasNode.vue';
-import Modal from '@/components/Modal.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import Modal from '@/app/components/Modal.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/app/constants';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue';
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
 import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import type { IWorkflowDb } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';

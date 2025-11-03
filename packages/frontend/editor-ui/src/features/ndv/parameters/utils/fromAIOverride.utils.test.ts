@@ -12,7 +12,7 @@ import type { INodeTypeDescription, NodePropertyTypes } from 'n8n-workflow';
 
 const getNodeType = vi.fn();
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
 	})),

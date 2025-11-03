@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useExecutionCommands } from './useExecutionCommands';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { getResourcePermissions } from '@n8n/permissions';
 import { setActivePinia } from 'pinia';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 const routerPushMock = vi.fn();
 const routerReplaceMock = vi.fn();
@@ -41,7 +41,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 const mockToastShowMessage = vi.fn();
 const mockToastShowError = vi.fn();
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockToastShowMessage,
 		showError: mockToastShowError,
@@ -49,14 +49,14 @@ vi.mock('@/composables/useToast', () => ({
 }));
 
 const mockMessageConfirm = vi.fn();
-vi.mock('@/composables/useMessage', () => ({
+vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({
 		confirm: mockMessageConfirm,
 	}),
 }));
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),

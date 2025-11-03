@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type {
@@ -10,14 +10,14 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { computed, inject, reactive, useTemplateRef, watch } from 'vue';
-import DropArea from '@/components/DropArea/DropArea.vue';
+import DropArea from '@/app/components/DropArea/DropArea.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from '../../utils/assignmentCollection.utils';
-import { propertyNameFromExpression } from '@/utils/mappingUtils';
+import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 import Draggable from 'vuedraggable';
 import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';

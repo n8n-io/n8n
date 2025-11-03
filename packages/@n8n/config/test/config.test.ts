@@ -179,6 +179,7 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			indexingEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -314,6 +315,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
 			disableBareRepos: false,
+			awsSystemCredentialsAccess: false,
 		},
 		executions: {
 			mode: 'regular',
