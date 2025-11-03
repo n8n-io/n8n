@@ -2,7 +2,7 @@ import type { SamlPreferences } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { UserRepository } from '@n8n/db';
 import type { Settings } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
@@ -22,7 +22,7 @@ import { SAML_PREFERENCES_DB_KEY } from '../constants';
 import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
 import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
 import { SamlValidator } from '../saml-validator';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -196,6 +196,7 @@ describe('SamlService', () => {
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
 		});
+		provisioningService = mock<ProvisioningService>();
 
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
