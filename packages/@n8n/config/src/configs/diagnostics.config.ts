@@ -15,7 +15,7 @@ class PostHogConfig {
 export class DiagnosticsConfig {
 	/** Whether diagnostics are enabled. */
 	@Env('N8N_DIAGNOSTICS_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/** Diagnostics config for frontend. */
 	@Env('N8N_DIAGNOSTICS_CONFIG_FRONTEND')

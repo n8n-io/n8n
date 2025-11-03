@@ -22,7 +22,7 @@ import { makeRestApiRequest } from '../utils';
 
 async function fetchNodeTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
 	for (let attempt = 0; attempt < retries; attempt++) {
-		const response = await axios.get(url);
+		const response = await axios.get(url, { withCredentials: true });
 
 		if (typeof response.data === 'object' && response.data !== null) {
 			return response.data;

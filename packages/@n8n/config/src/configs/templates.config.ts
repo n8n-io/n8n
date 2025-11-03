@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 export class TemplatesConfig {
 	/** Whether to load workflow templates. */
 	@Env('N8N_TEMPLATES_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/** Host to retrieve workflow templates from endpoints. */
 	@Env('N8N_TEMPLATES_HOST')

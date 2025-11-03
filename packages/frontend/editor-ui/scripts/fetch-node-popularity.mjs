@@ -8,7 +8,6 @@ const POPULARITY_ENDPOINT =
 	process.env.NODE_POPULARITY_ENDPOINT ||
 	'https://internal-production.app.n8n.cloud/webhook/nodes-popularity-scores';
 const FAIL_ON_ERROR = process.env.N8N_FAIL_ON_POPULARITY_FETCH_ERROR === 'true';
-const DISABLE_POPULARITY_FETCH = process.env.N8N_DISABLE_POPULARITY_FETCH !== 'false';
 const BUILD_DIR = path.join(__dirname, '..', '.build');
 const OUTPUT_FILE = path.join(BUILD_DIR, 'node-popularity.json');
 
@@ -70,14 +69,6 @@ async function fallbackToExistingData() {
 }
 
 async function main() {
-	// Check if popularity fetch is disabled
-	if (DISABLE_POPULARITY_FETCH) {
-		console.log('Node popularity fetch is disabled - using empty data');
-		await ensureBuildDir();
-		await savePopularityData([]);
-		return;
-	}
-
 	try {
 		// Try to fetch fresh data
 		const freshData = await fetchPopularityData();

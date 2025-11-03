@@ -123,7 +123,7 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 
 		const config = settingsStore.settings.posthog;
-		if (!config.enabled) {
+		if (!config || !config.enabled) {
 			return;
 		}
 

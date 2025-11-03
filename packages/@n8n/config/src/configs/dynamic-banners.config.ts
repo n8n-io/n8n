@@ -6,5 +6,5 @@ export class DynamicBannersConfig {
 	endpoint: string = 'https://api.n8n.io/api/banners';
 
 	@Env('N8N_DYNAMIC_BANNERS_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 }
