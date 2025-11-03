@@ -28,8 +28,8 @@ import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { userEvent } from '@testing-library/user-event';
 import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
-import { useToast } from '@/composables/useToast';
-import { useWorkflowState, type WorkflowState } from '@/composables/useWorkflowState';
+import { useToast } from '@/app/composables/useToast';
+import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
