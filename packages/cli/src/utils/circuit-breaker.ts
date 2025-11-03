@@ -1,5 +1,11 @@
 type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
+/**
+ * Error thrown when a circuit breaker is open and rejects requests.
+ *
+ * This error indicates that the circuit breaker has detected too many failures
+ * and is preventing requests from being executed to protect the downstream service.
+ */
 export class CircuitBreakerOpen extends Error {
 	constructor(message?: string) {
 		super(message);
@@ -7,60 +13,226 @@ export class CircuitBreakerOpen extends Error {
 	}
 }
 
+/**
+ * Implementation of the Circuit Breaker pattern for fault tolerance.
+ *
+ * A circuit breaker protects services from cascading failures by monitoring
+ * request failures and temporarily blocking requests when failure rates are high.
+ * This gives failing services time to recover without being overwhelmed by traffic.
+ *
+ * ## States
+ *
+ * The circuit breaker operates in three states:
+ *
+ * - **CLOSED**: Normal operation. Requests are executed. Failures are tracked
+ *   in a sliding time window. If failure count exceeds the threshold within
+ *   the window, the circuit transitions to OPEN.
+ *
+ * - **OPEN**: Failure state. All requests are immediately rejected with
+ *   CircuitBreakerOpen error without executing the function. After a timeout
+ *   period, the circuit transitions to HALF_OPEN to test recovery.
+ *
+ * - **HALF_OPEN**: Recovery testing. A limited number of requests are allowed
+ *   through to test if the service has recovered. If enough consecutive requests
+ *   succeed, the circuit transitions back to CLOSED. If any request fails,
+ *   the circuit immediately returns to OPEN.
+ *
+ * ## Sliding Window
+ *
+ * Failures are tracked in a time-based sliding window. Only failures within
+ * the configured window duration are counted. This prevents old failures from
+ * affecting current circuit state and allows natural recovery as failures age out.
+ *
+ * ## Concurrency Control
+ *
+ * In HALF_OPEN state, only a limited number of concurrent requests are allowed
+ * to prevent overwhelming a recovering service with a "thundering herd" of
+ * queued requests.
+ *
+ * @example
+ * ```typescript
+ * // Create a circuit breaker for webhook calls
+ * const breaker = new CircuitBreaker(
+ *   5000,   // timeout: Wait 5 seconds before testing recovery
+ *   5,      // maxFailures: Open circuit after 5 failures
+ *   2,      // halfOpenRequests: Need 2 successes to close circuit
+ *   10000,  // failureWindow: Count failures within 10 second window
+ * );
+ *
+ * // Use the circuit breaker
+ * try {
+ *   const result = await breaker.execute(async () => {
+ *     return await fetch('https://webhook.example.com/endpoint');
+ *   });
+ *   console.log('Success:', result);
+ * } catch (error) {
+ *   if (error instanceof CircuitBreakerOpen) {
+ *     console.log('Circuit is open, request blocked');
+ *   } else {
+ *     console.log('Request failed:', error);
+ *   }
+ * }
+ *
+ * // Check current state
+ * console.log(breaker.currentState()); // 'CLOSED' | 'OPEN' | 'HALF_OPEN'
+ * ```
+ */
 export class CircuitBreaker {
 	private state: CircuitBreakerState;
-	private failureCount: number;
+	private halfOpenCount: number;
 	private lastFailureTime: number;
 
+	private pendingHalfOpenRequests = 0;
+
+	private failureTimestamps: number[] = [];
+
+	/**
+	 * Creates a new circuit breaker instance.
+	 *
+	 * @param timeout - Time in milliseconds to wait before transitioning from OPEN to HALF_OPEN state.
+	 *   After this duration, the circuit will attempt to test if the service has recovered.
+	 *   Recommended: 2-10 seconds depending on service recovery characteristics.
+	 *
+	 * @param maxFailures - Maximum number of failures within the sliding window before the circuit opens.
+	 *   Once this threshold is exceeded, the circuit transitions to OPEN state and rejects all requests.
+	 *   Recommended: 3-10 failures depending on acceptable failure rate.
+	 *
+	 * @param halfOpenRequests - Number of consecutive successful requests required in HALF_OPEN state
+	 *   before transitioning back to CLOSED. This ensures the service is stable before fully recovering.
+	 *   Recommended: 1-3 requests to verify recovery without delay.
+	 *
+	 * @param failureWindow - Time window in milliseconds for counting failures (sliding window).
+	 *   Only failures within this window are counted toward the threshold. Older failures expire naturally.
+	 *   Recommended: 2-5x the timeout duration to capture relevant failure patterns.
+	 *
+	 * @param maxConcurrentHalfOpenRequests - Maximum number of requests allowed to execute concurrently
+	 *   in HALF_OPEN state. Prevents overwhelming a recovering service with queued requests.
+	 *   Default: 1 (recommended for most use cases).
+	 */
 	constructor(
-		// Timeout in milliseconds before transitioning from OPEN to HALF_OPEN
 		private readonly timeout: number,
-		// Maximum number of failures before transitioning from CLOSED to OPEN
 		private readonly maxFailures: number,
+		private readonly halfOpenRequests: number,
+		private readonly failureWindow: number,
+		private readonly maxConcurrentHalfOpenRequests = 1,
 	) {
 		this.state = 'CLOSED';
-		this.failureCount = 0;
 		this.lastFailureTime = 0;
+		this.halfOpenCount = 0;
 	}
 
+	/**
+	 * Returns the current state of the circuit breaker.
+	 *
+	 * @returns The current state: 'CLOSED' (normal operation), 'OPEN' (rejecting requests),
+	 *   or 'HALF_OPEN' (testing recovery).
+	 */
 	currentState(): CircuitBreakerState {
 		return this.state;
 	}
 
-	async execute<T>(fn: () => Promise<T>): Promise<T> {
-		if (this.state === 'OPEN') {
-			if (Date.now() - this.lastFailureTime >= this.timeout) {
-				this.state = 'HALF_OPEN';
-			}
+	private getFailureCount(): number {
+		const now = Date.now();
+		const windowStart = now - this.failureWindow;
+		this.failureTimestamps = this.failureTimestamps.filter((timestamp) => timestamp >= windowStart);
+		return this.failureTimestamps.length;
+	}
+
+	private clearFailures() {
+		this.failureTimestamps = [];
+	}
+
+	private recordFailure() {
+		const now = Date.now();
+		this.failureTimestamps.push(now);
+		this.lastFailureTime = now;
+
+		// Remove failures if they exceed the maximum allowed failures times 2
+		if (this.failureTimestamps.length > this.maxFailures * 2) {
+			this.failureTimestamps = this.failureTimestamps.slice(-this.maxFailures * 2);
 		}
+	}
+
+	private async handleOpenState<T>(fn: () => Promise<T>): Promise<T> {
+		if (Date.now() - this.lastFailureTime >= this.timeout) {
+			this.halfOpenCount = 0;
+			this.state = 'HALF_OPEN';
+			return await this.handleHalfOpenState(fn);
+		}
+		throw new CircuitBreakerOpen();
+	}
+
+	private async handleHalfOpenState<T>(fn: () => Promise<T>): Promise<T> {
+		if (this.pendingHalfOpenRequests >= this.maxConcurrentHalfOpenRequests) {
+			throw new CircuitBreakerOpen(
+				'Circuit breaker is half-open and testing requests, this request is rejected',
+			);
+		}
+
+		this.pendingHalfOpenRequests++;
+
+		try {
+			const result = await fn();
+			this.halfOpenCount++;
+			// Only after halfOpenRequests successful requests, we transition to CLOSED
+			if (this.halfOpenCount >= this.halfOpenRequests) {
+				this.state = 'CLOSED';
+				this.clearFailures();
+			}
+			return result;
+		} catch (error) {
+			// if an error occurs in the half open state, we immediately transition to OPEN
+			this.recordFailure();
+			this.state = 'OPEN';
+			throw error;
+		} finally {
+			this.pendingHalfOpenRequests--;
+		}
+	}
+
+	private async handleClosedState<T>(fn: () => Promise<T>): Promise<T> {
+		try {
+			return await fn();
+		} catch (error) {
+			this.recordFailure();
+			if (this.getFailureCount() >= this.maxFailures) {
+				this.state = 'OPEN';
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Executes a function with circuit breaker protection.
+	 *
+	 * The function is executed based on the current circuit state:
+	 * - **CLOSED**: Function executes normally. Failures are tracked.
+	 * - **OPEN**: Function is not executed. Throws CircuitBreakerOpen immediately.
+	 * - **HALF_OPEN**: Function executes if concurrency limit allows. Success/failure
+	 *   determines if circuit closes or reopens.
+	 *
+	 * @template T - The return type of the function being executed
+	 * @param fn - Async function to execute with circuit breaker protection
+	 * @returns A promise that resolves to the function's return value
+	 * @throws {CircuitBreakerOpen} When the circuit is open or half-open with max concurrent requests
+	 * @throws {Error} Any error thrown by the executed function
+	 *
+	 * @example
+	 * ```typescript
+	 * const result = await breaker.execute(async () => {
+	 *   const response = await fetch('https://api.example.com/data');
+	 *   return response.json();
+	 * });
+	 * ```
+	 */
+	async execute<T>(fn: () => Promise<T>): Promise<T> {
 		switch (this.state) {
-			case 'CLOSED':
-				try {
-					return await fn();
-				} catch (error) {
-					this.failureCount++;
-					this.lastFailureTime = Date.now();
-					if (this.failureCount >= this.maxFailures) {
-						this.state = 'OPEN';
-					}
-					throw error;
-				}
 			case 'OPEN':
-				throw new CircuitBreakerOpen();
+				return await this.handleOpenState(fn);
 			case 'HALF_OPEN':
-				try {
-					const result = await fn();
-					this.state = 'CLOSED';
-					this.failureCount = 0;
-					return result;
-				} catch (error) {
-					this.failureCount++;
-					this.lastFailureTime = Date.now();
-					if (this.failureCount >= this.maxFailures) {
-						this.state = 'OPEN';
-					}
-					throw error;
-				}
+				return await this.handleHalfOpenState(fn);
+			case 'CLOSED':
+				return await this.handleClosedState(fn);
 		}
 	}
 }

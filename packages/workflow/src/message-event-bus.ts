@@ -63,6 +63,8 @@ export interface MessageEventBusDestinationOptions {
 	subscribedEvents?: string[];
 	credentials?: INodeCredentials;
 	anonymizeAuditMessages?: boolean;
+	circuitBreakerMaxFailures?: number;
+	circuitBreakerMaxDuration?: number;
 }
 
 export interface MessageEventBusDestinationWebhookParameterItem {

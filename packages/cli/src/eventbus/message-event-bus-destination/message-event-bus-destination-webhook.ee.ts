@@ -123,7 +123,7 @@ export class MessageEventBusDestinationWebhook
 
 		axiosSetting.proxy = options.options?.proxy;
 
-		axiosSetting.timeout = options.options?.timeout ?? 10 * Time.seconds.toMilliseconds;
+		axiosSetting.timeout = options.options?.timeout ?? 5 * Time.seconds.toMilliseconds;
 
 		// TODO: make this configurable
 		const agentOptions: HTTPAgentOptions = {
@@ -132,8 +132,8 @@ export class MessageEventBusDestinationWebhook
 			maxSockets: options.options?.socket?.maxSockets ?? 100,
 			maxFreeSockets: options.options?.socket?.maxFreeSockets ?? 100,
 			maxTotalSockets: options.options?.socket?.maxTotalSockets ?? 100,
-			// Socket timeout in milliseconds defaults to 10 seconds
-			timeout: options.options?.socket?.timeout ?? 10 * Time.seconds.toMilliseconds,
+			// Socket timeout in milliseconds defaults to 5 seconds
+			timeout: options.options?.socket?.timeout ?? 5 * Time.seconds.toMilliseconds,
 		};
 
 		const httpsAgentOptions: HTTPSAgentOptions = {
