@@ -1,3 +1,4 @@
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import proxyFromEnv from 'proxy-from-env';
 import { ProxyAgent } from 'undici';
 
@@ -16,4 +17,22 @@ export function getProxyAgent(targetUrl?: string) {
 	}
 
 	return new ProxyAgent(proxyUrl);
+}
+
+/**
+ * Returns a Node.js HTTP/HTTPS proxy agent for use with AWS SDK v3 clients.
+ * AWS SDK v3 requires Node.js http.Agent/https.Agent instances (not undici ProxyAgent).
+ *
+ * @param targetUrl - The target URL to check proxy configuration for
+ * @returns HttpsProxyAgent instance or undefined if no proxy is configured
+ */
+export function getNodeProxyAgent(targetUrl?: string) {
+	const proxyUrl = proxyFromEnv.getProxyForUrl(targetUrl ?? 'https://example.nonexistent/');
+
+	if (!proxyUrl) {
+		return undefined;
+	}
+
+	// AWS SDK v3 needs Node.js http.Agent/https.Agent, not undici ProxyAgent
+	return new HttpsProxyAgent(proxyUrl);
 }

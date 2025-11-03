@@ -1,4 +1,6 @@
+import { BedrockRuntimeClient, BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockEmbeddings } from '@langchain/aws';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,6 +9,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getNodeProxyAgent } from '@utils/httpProxyAgent';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -107,15 +110,32 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		const credentials = await this.getCredentials('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
-		const embeddings = new BedrockEmbeddings({
+		// Create BedrockRuntimeClient with proxy support
+		// AWS SDK v3 requires requestHandler with NodeHttpHandler for proxy support
+		const proxyAgent = getNodeProxyAgent();
+		const clientConfig: BedrockRuntimeClientConfig = {
 			region: credentials.region as string,
-			model: modelName,
-			maxRetries: 3,
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,
 				accessKeyId: credentials.accessKeyId as string,
 				sessionToken: credentials.sessionToken as string,
 			},
+		};
+
+		if (proxyAgent) {
+			clientConfig.requestHandler = new NodeHttpHandler({
+				httpAgent: proxyAgent,
+				httpsAgent: proxyAgent,
+			});
+		}
+
+		// Pass the pre-configured client to avoid credential resolution proxy issues
+		const client = new BedrockRuntimeClient(clientConfig as never);
+
+		const embeddings = new BedrockEmbeddings({
+			client,
+			model: modelName,
+			maxRetries: 3,
 		});
 
 		return {
