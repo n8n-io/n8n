@@ -24,47 +24,21 @@ jobs:
       - name: Get the version
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" == "release" ]; then
-            echo "VERSION=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_OUTPUT
-          else
-            # Get the latest tag by version sorting
-              git fetch --tags
-              LATEST_TAG=$(git tag -l | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
-              
-              # If no tags found, start with 0.0.0
-              if [ -z "$LATEST_TAG" ]; then
-                LATEST_TAG="0.0.0"
-              fi
-              
-              echo "Latest tag: $LATEST_TAG"
-              
-              # Parse version components
-              IFS='.' read -r -a version_parts <<< "$LATEST_TAG"
-              major=${version_parts[0]:-0}
-              minor=${version_parts[1]:-0}
-              patch=${version_parts[2]:-0}
-              
-              # Bump version based on input
-              case "${{ github.event.inputs.version_bump }}" in
-                "major")
-                  major=$((major + 1))
-                  minor=0
-                  patch=0
-                  ;;
-                "minor")
-                  minor=$((minor + 1))
-                  patch=0
-                  ;;
-                "patch")
-                  patch=$((patch + 1))
-                  ;;
-              esac
-              
-              VERSION="$major.$minor.$patch"
-              echo "New version: $VERSION"
-            fi
-            echo "VERSION=$VERSION" >> $GITHUB_ENV
-            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          # Read version from root package.json
+          if [ ! -f package.json ]; then
+            echo "package.json not found in workspace root" >&2
+            exit 1
+          fi
+
+          VERSION=$(python -c "import json,sys;print(json.load(open('package.json'))['version'])")
+
+          if [ -z "$VERSION" ]; then
+            echo "No version field found in package.json" >&2
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create and push new tag
         if: github.event_name == 'workflow_dispatch'
