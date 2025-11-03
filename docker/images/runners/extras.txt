@@ -14,7 +14,6 @@ langchain
 langchain-openai
 langchain-anthropic
 langchain-google-genai
-pydantic-ai
 
 # Azure
 azure-identity
