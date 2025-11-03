@@ -28,7 +28,7 @@ import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
-describe('InsightsService', () => {
+describe('InsightsService (Integration)', () => {
 	const today = new Date();
 
 	beforeAll(async () => {
@@ -143,68 +143,73 @@ describe('InsightsService', () => {
 			workflow = await createWorkflow({}, project);
 		});
 
-		test('compacted data are summarized correctly', async () => {
-			const now = DateTime.utc();
+		test('should get summarized insights for the last 7', async () => {
 			// ARRANGE
-			// last 6 days
+			const endDate = DateTime.utc();
+			const startDate = endDate.minus({ days: 6 });
+
+			// Insights withing range
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
-				value: 1,
+				value: 8,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: endDate.minus({ day: 1 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 2 }),
+				value: 2,
+				periodUnit: 'hour',
+				periodStart: endDate.minus({ day: 2 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'failure',
-				value: 1,
+				value: 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: endDate.minus({ day: 2 }),
 			});
-			// last 12 days
+
+			// Insights within previous period
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
-				value: 1,
+				value: 15,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
+				periodStart: startDate.minus({ days: 1 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
+				type: 'failure',
+				value: 3,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
-			});
-			//Outside range should not be taken into account
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 13 }),
+				periodStart: startDate.minus({ days: 2 }),
 			});
 
-			const startDate = now.minus({ days: 6 }).toJSDate();
+			// Insights outside range should not be taken into account
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: startDate.minus({ days: 10 }),
+			});
 
 			// ACT
-			const summary = await insightsService.getInsightsSummary({ startDate, endDate: today });
+			const summary = await insightsService.getInsightsSummary({
+				startDate: startDate.toJSDate(),
+				endDate: endDate.toJSDate(),
+			});
 
 			// ASSERT
 			expect(summary).toEqual({
-				averageRunTime: { deviation: -123, unit: 'millisecond', value: 0 },
-				failed: { deviation: 1, unit: 'count', value: 1 },
-				failureRate: { deviation: 0.333, unit: 'ratio', value: 0.333 },
+				averageRunTime: { deviation: 0, unit: 'millisecond', value: 0 },
+				failed: { deviation: -1, unit: 'count', value: 2 },
+				failureRate: { deviation: 0, unit: 'ratio', value: 0.167 },
 				timeSaved: { deviation: 0, unit: 'minute', value: 0 },
-				total: { deviation: 2, unit: 'count', value: 3 },
+				total: { deviation: -6, unit: 'count', value: 12 },
 			});
 		});
 
 		test('no data for previous period should return null deviation', async () => {
 			// ARRANGE
 			const now = DateTime.utc();
-			// last 7 days
+
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
@@ -227,215 +232,73 @@ describe('InsightsService', () => {
 			]);
 		});
 
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		test.skip('mixed period data are summarized correctly', async () => {
-			// ARRANGE
-			const now = DateTime.utc();
-
-			// current period
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 14 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 2,
-				periodUnit: 'hour',
-				periodStart: now.minus({ day: 10 }),
-			});
-
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 11,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 13 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 8,
-				periodUnit: 'hour',
-				periodStart: now.minus({ day: 10, hours: 8 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 1,
-				periodUnit: 'hour',
-				periodStart: now.minus({ day: 9, hours: 7 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 35789,
-				periodUnit: 'week',
-				periodStart: now.minus({ day: 14 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'time_saved_min',
-				value: 15,
-				periodUnit: 'week',
-				periodStart: now.minus({ day: 14 }),
-			});
-
-			// previous period
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 16 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 17 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'week',
-				periodStart: now.minus({ day: 21 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'time_saved_min',
-				value: 10,
-				periodUnit: 'week',
-				periodStart: now.minus({ day: 21 }),
-			});
-
-			// out of range data (after selected period)
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 5,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 6 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 3,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 4 }),
-			});
-
-			// out of range data (before selected period)
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 22 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ year: 1 }),
-			});
-
-			const startDate = now.minus({ days: 14 }).toJSDate();
-			const endDate = now.minus({ days: 7 }).toJSDate();
-
-			// ACT
-			const summary = await insightsService.getInsightsSummary({ startDate, endDate });
-
-			// ASSERT
-			expect(summary).toEqual({
-				averageRunTime: { value: 1556.04, unit: 'millisecond', deviation: 1525.29 },
-				failed: { value: 20, unit: 'count', deviation: 18 },
-				failureRate: { value: 0.87, unit: 'ratio', deviation: 0.37 },
-				timeSaved: { value: 15, unit: 'minute', deviation: 5 },
-				total: { value: 23, unit: 'count', deviation: 19 },
-			});
-		});
-
 		test('filter by projectId', async () => {
 			// ARRANGE
-			const now = DateTime.utc();
+			const endDate = DateTime.utc();
+			const startDate = endDate.minus({ days: 6 });
 			const otherProject = await createTeamProject();
 			const otherWorkflow = await createWorkflow({}, otherProject);
 
-			// last 6 days
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now,
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 2 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now,
-			});
+			for (const wf of [workflow, otherWorkflow]) {
+				// Insights for the current period
+				await createCompactedInsightsEvent(wf, {
+					type: 'success',
+					value: 10,
+					periodUnit: 'day',
+					periodStart: endDate.minus({ days: 1 }),
+				});
+				await createCompactedInsightsEvent(wf, {
+					type: 'runtime_ms',
+					value: 400,
+					periodUnit: 'day',
+					periodStart: endDate.minus({ days: 1 }),
+				});
 
-			await createCompactedInsightsEvent(otherWorkflow, {
-				type: 'runtime_ms',
-				value: 430,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 1 }),
-			});
-			await createCompactedInsightsEvent(otherWorkflow, {
-				type: 'failure',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 3 }),
-			});
+				// Insights for the previous period
+				await createCompactedInsightsEvent(wf, {
+					type: 'success',
+					value: 15,
+					periodUnit: 'day',
+					periodStart: startDate.minus({ days: 2 }),
+				});
+				await createCompactedInsightsEvent(wf, {
+					type: 'runtime_ms',
+					value: 600,
+					periodUnit: 'day',
+					periodStart: startDate.minus({ days: 2 }),
+				});
 
-			// last 12 days
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
-			});
-			await createCompactedInsightsEvent(otherWorkflow, {
-				type: 'runtime_ms',
-				value: 45,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 11 }),
-			});
-
-			//Outside range should not be taken into account
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 13 }),
-			});
-			await createCompactedInsightsEvent(otherWorkflow, {
-				type: 'runtime_ms',
-				value: 100,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 20 }),
-			});
-
-			const startDate = now.minus({ days: 6 }).toJSDate();
+				// Insights outside range should not be taken into account
+				await createCompactedInsightsEvent(wf, {
+					type: 'success',
+					value: 2,
+					periodUnit: 'day',
+					periodStart: startDate.minus({ days: 10 }),
+				});
+				await createCompactedInsightsEvent(wf, {
+					type: 'runtime_ms',
+					value: 200,
+					periodUnit: 'day',
+					periodStart: startDate.minus({ days: 10 }),
+				});
+			}
 
 			// ACT
 			const summary = await insightsService.getInsightsSummary({
-				startDate,
-				endDate: now.toJSDate(),
+				startDate: startDate.toJSDate(),
+				endDate: endDate.toJSDate(),
 				projectId: project.id,
 			});
 
+			console.log(summary);
+
 			// ASSERT
 			expect(summary).toEqual({
-				averageRunTime: { deviation: -123, unit: 'millisecond', value: 0 },
-				failed: { deviation: 1, unit: 'count', value: 1 },
-				failureRate: { deviation: 0.333, unit: 'ratio', value: 0.333 },
-				timeSaved: { deviation: 0, unit: 'minute', value: 0 },
-				total: { deviation: 2, unit: 'count', value: 3 },
+				averageRunTime: { value: 40, unit: 'millisecond', deviation: 0 },
+				failed: { value: 0, unit: 'count', deviation: 0 },
+				failureRate: { value: 0, unit: 'ratio', deviation: 0 },
+				timeSaved: { value: 0, unit: 'minute', deviation: 0 },
+				total: { value: 10, unit: 'count', deviation: -5 },
 			});
 		});
 	});

@@ -57,6 +57,7 @@
 	"generic.fields": "fields",
 	"generic.folderCount": "Folder | {count} Folder | {count} Folders",
 	"generic.folder": "folder",
+	"generic.keepBuilding": "Keep building",
 	"generic.learnMore": "Learn more",
 	"generic.reset": "Reset",
 	"generic.resetAllFilters": "Reset all filters",
