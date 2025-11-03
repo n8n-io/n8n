@@ -126,8 +126,8 @@ class TaskRunner:
                 self.logger.info("Connected to broker")
                 await self._listen_for_messages()
 
-            except Exception:
-                raise WebsocketConnectionError(self.task_broker_uri)
+            except Exception as e:
+                self.logger.warning(f"Failed to connect to broker: {e} - retrying...")
 
             if not self.is_shutting_down:
                 self.websocket_connection = None
