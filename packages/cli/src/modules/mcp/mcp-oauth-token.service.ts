@@ -145,7 +145,7 @@ export class McpOAuthTokenService {
 		};
 	}
 
-	async verifyOAuthToken(token: string): Promise<User | null> {
+	async verifyOAuthAccessToken(token: string): Promise<User | null> {
 		try {
 			const authInfo = await this.verifyAccessToken(token);
 

@@ -37,7 +37,7 @@ export class McpOAuthService implements OAuthServerProvider {
 	get clientsStore(): OAuthRegisteredClientsStore {
 		return {
 			getClient: async (clientId: string): Promise<OAuthClientInformationFull | undefined> => {
-				const client = await this.oauthClientRepository.findOne({ where: { id: clientId } });
+				const client = await this.oauthClientRepository.findOneBy({ id: clientId });
 				if (!client) {
 					return undefined;
 				}
@@ -60,7 +60,7 @@ export class McpOAuthService implements OAuthServerProvider {
 				client: OAuthClientInformationFull,
 			): Promise<OAuthClientInformationFull> => {
 				try {
-					await this.oauthClientRepository.save({
+					await this.oauthClientRepository.insert({
 						id: client.client_id,
 						name: client.client_name,
 						redirectUris: client.redirect_uris,

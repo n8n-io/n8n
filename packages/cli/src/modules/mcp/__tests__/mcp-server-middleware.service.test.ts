@@ -58,12 +58,12 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthToken.mockResolvedValue(user);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(user);
 
 			const result = await service.getUserForToken(oauthToken);
 
 			expect(result).toEqual(user);
-			expect(oauthTokenService.verifyOAuthToken).toHaveBeenCalledWith(oauthToken);
+			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(oauthToken);
 			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
 		});
 
@@ -80,7 +80,7 @@ describe('McpServerMiddlewareService', () => {
 
 			expect(result).toEqual(user);
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
-			expect(oauthTokenService.verifyOAuthToken).not.toHaveBeenCalled();
+			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
 		it('should return user for valid API key (meta.isOAuth = false)', async () => {
@@ -97,7 +97,7 @@ describe('McpServerMiddlewareService', () => {
 
 			expect(result).toEqual(user);
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
-			expect(oauthTokenService.verifyOAuthToken).not.toHaveBeenCalled();
+			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
 		it('should return null for invalid JWT format', async () => {
@@ -107,7 +107,7 @@ describe('McpServerMiddlewareService', () => {
 			const result = await service.getUserForToken(invalidToken);
 
 			expect(result).toBeNull();
-			expect(oauthTokenService.verifyOAuthToken).not.toHaveBeenCalled();
+			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
 		it('should return null when OAuth token verification fails', async () => {
@@ -117,7 +117,7 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthToken.mockResolvedValue(null);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(null);
 
 			const result = await service.getUserForToken(oauthToken);
 
@@ -201,7 +201,7 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = jest.fn() as NextFunction;
 
-			oauthTokenService.verifyOAuthToken.mockResolvedValue(user);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(user);
 
 			const middleware = service.getAuthMiddleware();
 
@@ -247,7 +247,7 @@ describe('McpServerMiddlewareService', () => {
 			res.send.mockReturnThis();
 			const next = jest.fn() as NextFunction;
 
-			oauthTokenService.verifyOAuthToken.mockResolvedValue(null);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(null);
 
 			const middleware = service.getAuthMiddleware();
 

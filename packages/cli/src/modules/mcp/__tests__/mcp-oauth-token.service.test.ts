@@ -234,7 +234,7 @@ describe('McpOAuthTokenService', () => {
 		});
 	});
 
-	describe('verifyOAuthToken', () => {
+	describe('verifyOAuthAccessToken', () => {
 		it('should verify token and return user', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
@@ -251,7 +251,7 @@ describe('McpOAuthTokenService', () => {
 			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
 			userRepository.findOne.mockResolvedValue(user);
 
-			const result = await service.verifyOAuthToken(accessToken);
+			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toEqual(user);
 			expect(userRepository.findOne).toHaveBeenCalledWith({
@@ -263,7 +263,7 @@ describe('McpOAuthTokenService', () => {
 		it('should return null for invalid token', async () => {
 			const invalidToken = 'invalid.jwt.token';
 
-			const result = await service.verifyOAuthToken(invalidToken);
+			const result = await service.verifyOAuthAccessToken(invalidToken);
 
 			expect(result).toBeNull();
 		});
@@ -282,7 +282,7 @@ describe('McpOAuthTokenService', () => {
 			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
 			userRepository.findOne.mockResolvedValue(null);
 
-			const result = await service.verifyOAuthToken(accessToken);
+			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toBeNull();
 		});
