@@ -123,7 +123,26 @@ export const binaryFileTypeSchema = z.enum([
 
 export const binaryDataSchema = z.object({
 	data: z.string(),
-	mimeType: z.string(),
+	mimeType: z
+		.string()
+		.refine(
+			(mimeType) => {
+				// Extract base MIME type (ignore parameters after semicolon)
+				const baseMimeType = mimeType.split(';')[0].trim();
+
+				// Validate MIME type format (type/subtype)
+				return /^[a-zA-Z0-9][a-zA-Z0-9!#$&^_+-]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&^_+.-]*$/.test(
+					baseMimeType,
+				);
+			},
+			{
+				message: 'Invalid MIME type format',
+			},
+		)
+		.transform((mimeType) => {
+			// Strip parameters and return only the base MIME type
+			return mimeType.split(';')[0].trim();
+		}),
 	fileType: binaryFileTypeSchema.optional(),
 	fileName: z.string().optional(),
 	directory: z.string().optional(),
