@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import type { AuthorizationCode } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
@@ -10,7 +11,7 @@ import { AuthorizationCodeRepository } from './oauth-authorization-code.reposito
  */
 @Service()
 export class McpOAuthAuthorizationCodeService {
-	private readonly AUTHORIZATION_CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+	private readonly AUTHORIZATION_CODE_EXPIRY_MS = 10 * Time.minutes.toMilliseconds;
 
 	constructor(private readonly authorizationCodeRepository: AuthorizationCodeRepository) {}
 

@@ -1,6 +1,7 @@
 import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -17,8 +18,8 @@ import { RefreshTokenRepository } from './oauth-refresh-token.repository';
 @Service()
 export class McpOAuthTokenService {
 	private readonly MCP_AUDIENCE = 'mcp-server-api';
-	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 3600; // 1 hour
-	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * 24 * 3600 * 1000; // 30 days
+	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
+	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
 	constructor(
 		private readonly logger: Logger,
