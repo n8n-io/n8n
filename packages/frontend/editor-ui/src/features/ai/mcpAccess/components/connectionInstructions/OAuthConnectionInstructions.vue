@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/connectionInstructions/ConnectionParameter.vue';
-import OAuthClientsTable from '@/features/ai/mcpAccess/components/OAuthClientsTable.vue';
+import OAuthClientsTable from '@/features/ai/mcpAccess/components/connectionInstructions/OAuthClientsTable.vue';
 import { useI18n } from '@n8n/i18n';
 
 type Props = {

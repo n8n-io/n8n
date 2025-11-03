@@ -108,7 +108,7 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 			</div>
 			<N8nActionBox
 				v-if="props.clients.length === 0"
-				data-test-id="empty-workflow-list-box"
+				data-test-id="empty-oauth-clients-list-box"
 				:heading="i18n.baseText('settings.mcp.oAuthClients.table.empty.title')"
 			/>
 			<N8nDataTableServer
@@ -131,6 +131,7 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nActionToggle
+						data-test-id="mcp-oauth-client-action-toggle"
 						placement="bottom"
 						:actions="tableActions"
 						theme="dark"
