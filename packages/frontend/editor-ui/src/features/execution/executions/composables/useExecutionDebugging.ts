@@ -5,9 +5,9 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -24,7 +24,6 @@ export const useExecutionDebugging = () => {
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
-	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 
 	const pageRedirectionHelper = usePageRedirectionHelper();

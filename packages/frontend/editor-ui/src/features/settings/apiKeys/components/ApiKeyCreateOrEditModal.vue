@@ -15,7 +15,6 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { ElDatePicker } from 'element-plus';
 import {
@@ -55,7 +54,6 @@ const showExpirationDateSelector = ref(false);
 const apiKeyCreationDate = ref('');
 const selectedScopes = ref<ApiKeyScope[]>([]);
 
-const settingsStore = useSettingsStore();
 const apiKeyStore = useApiKeysStore();
 
 const apiKeyScopesEnabled = computed(() => true);

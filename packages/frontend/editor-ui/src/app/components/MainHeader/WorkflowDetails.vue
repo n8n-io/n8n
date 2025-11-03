@@ -48,7 +48,7 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { sanitizeFilename } from '@/app/utils/fileUtils';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -62,16 +62,9 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
-import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import {
-	N8nActionDropdown,
-	N8nBadge,
-	N8nButton,
-	N8nInlineTextEdit,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nActionDropdown, N8nBadge, N8nButton, N8nInlineTextEdit } from '@n8n/design-system';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -660,10 +653,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		default:
 			break;
 	}
-}
-
-function goToUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
 
 function goToWorkflowHistoryUpgrade() {

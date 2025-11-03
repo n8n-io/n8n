@@ -298,14 +298,6 @@ describe('GlobalConfig', () => {
 			releaseChannel: 'dev',
 			gracefulShutdownTimeout: 30,
 		},
-		license: {
-			serverUrl: 'https://license.n8n.io/v1',
-			autoRenewalEnabled: true,
-			detachFloatingOnShutdown: true,
-			activationKey: '',
-			tenantId: 1,
-			cert: '',
-		},
 		security: {
 			restrictFileAccessTo: '',
 			blockFileAccessToN8nFiles: true,

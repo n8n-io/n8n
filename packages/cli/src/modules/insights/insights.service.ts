@@ -238,16 +238,13 @@ export class InsightsService {
 	 *
 	 * @throws {UserError} if the license does not allow the selected date range
 	 */
-	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
+	validateDateFiltersLicense({ startDate, endDate: _endDate }: { startDate: Date; endDate: Date }) {
 		// we use `startOf('day')` because the license limits are based on full days
 		const today = DateTime.now().startOf('day');
 		const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
 		const daysToStartDate = today.diff(startDateStartOfDay, 'days').days;
 
-		const granularity = this.getDateFiltersGranularity({ startDate, endDate });
-
 		const maxHistoryInDays = -1 === -1 ? Number.MAX_SAFE_INTEGER : -1;
-		const isHourlyDateLicensed = true;
 
 		if (maxHistoryInDays < daysToStartDate) {
 			throw new UserError(

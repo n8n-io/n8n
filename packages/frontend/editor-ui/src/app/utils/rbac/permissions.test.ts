@@ -8,7 +8,6 @@ vi.mock('@/app/utils/rbac/checks', () => ({
 	isDefaultUser: vi.fn(),
 	isInstanceOwner: vi.fn(),
 	isAuthenticated: vi.fn(),
-	isEnterpriseFeatureEnabled: vi.fn(),
 	isValid: vi.fn(),
 }));
 
@@ -20,7 +19,6 @@ describe('hasPermission()', () => {
 		vi.mocked(checks.isDefaultUser).mockReturnValue(true);
 		vi.mocked(checks.isInstanceOwner).mockReturnValue(true);
 		vi.mocked(checks.isAuthenticated).mockReturnValue(true);
-		vi.mocked(checks.isEnterpriseFeatureEnabled).mockReturnValue(true);
 		vi.mocked(checks.isValid).mockReturnValue(true);
 
 		expect(
@@ -41,7 +39,6 @@ describe('hasPermission()', () => {
 		vi.mocked(checks.hasRole).mockReturnValue(true);
 		vi.mocked(checks.isGuest).mockReturnValue(true);
 		vi.mocked(checks.isAuthenticated).mockReturnValue(true);
-		vi.mocked(checks.isEnterpriseFeatureEnabled).mockReturnValue(true);
 		vi.mocked(checks.isValid).mockReturnValue(true);
 
 		vi.mocked(checks.hasScope).mockReturnValue(false);

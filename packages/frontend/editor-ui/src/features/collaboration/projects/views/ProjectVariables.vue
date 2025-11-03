@@ -4,7 +4,6 @@ import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
@@ -15,6 +14,7 @@ import type { BaseFilters, Resource, VariableResource, DatatableColumn } from '@
 
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nActionBox,
@@ -44,7 +44,6 @@ import ProjectHeader from '@/features/collaboration/projects/components/ProjectH
 import { isVariableResource } from '@/app/utils/typeGuards';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
-const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();

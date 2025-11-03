@@ -14,6 +14,8 @@ export const middleware: Middleware = {
 	authenticated: authenticatedMiddleware,
 	custom: customMiddleware,
 	defaultUser: defaultUserMiddleware,
+	// Enterprise features always enabled - no license check needed
+	enterprise: async () => undefined,
 	guest: guestMiddleware,
 	rbac: rbacMiddleware,
 	role: roleMiddleware,

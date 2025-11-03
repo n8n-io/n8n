@@ -6,7 +6,6 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type {
@@ -38,7 +37,6 @@ const i18n = useI18n();
 
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
-const settingsStore = useSettingsStore();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 

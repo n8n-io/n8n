@@ -204,8 +204,8 @@ export class FrontendService {
 					loginLabel: '',
 				},
 				ldap: {
-					loginEnabled: false,
-					loginLabel: '',
+					loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
+					loginLabel: this.globalConfig.sso.ldap.loginLabel,
 				},
 				oidc: {
 					loginEnabled: false,

@@ -28,7 +28,6 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import * as aiApi from '@/features/ai/assistant/assistant.api';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
@@ -318,7 +317,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		projectId?: string,
 		uiContext?: string,
 	): Promise<ICredentialsResponse> => {
-		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
 			name: data.name,
 			type: data.type,
@@ -400,20 +398,19 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
 	}): Promise<ICredentialsResponse> => {
-		if (useSettingsStore().true) {
-			await credentialsEeApi.setCredentialSharedWith(
-				useRootStore().restApiContext,
-				payload.credentialId,
-				{
-					shareWithIds: payload.sharedWithProjects.map((project) => project.id),
-				},
-			);
+		// Enterprise sharing features always enabled - license restrictions removed
+		await credentialsEeApi.setCredentialSharedWith(
+			useRootStore().restApiContext,
+			payload.credentialId,
+			{
+				shareWithIds: payload.sharedWithProjects.map((project) => project.id),
+			},
+		);
 
-			state.value.credentials[payload.credentialId] = {
-				...state.value.credentials[payload.credentialId],
-				sharedWithProjects: payload.sharedWithProjects,
-			};
-		}
+		state.value.credentials[payload.credentialId] = {
+			...state.value.credentials[payload.credentialId],
+			sharedWithProjects: payload.sharedWithProjects,
+		};
 		return state.value.credentials[payload.credentialId];
 	};
 

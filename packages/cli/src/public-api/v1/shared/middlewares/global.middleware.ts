@@ -3,7 +3,6 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
-import type { NextFunction } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -11,8 +10,6 @@ import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
-
-const UNLIMITED_USERS_QUOTA = -1;
 
 export type ProjectScopeResource = 'workflow' | 'credential';
 
@@ -82,7 +79,6 @@ export const validCursor = (
 	return next();
 };
 
-const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
 	return Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope);
 };
@@ -99,7 +95,7 @@ export const apiKeyHasScopeWithGlobalScopeFallback = (
 
 export const validLicenseWithUserQuota = (
 	_: express.Request,
-	res: express.Response,
+	_res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
 	// All users are allowed in enterprise mode

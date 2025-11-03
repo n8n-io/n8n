@@ -15,11 +15,14 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		super(ChatHubMessage, dataSource.manager);
 	}
 
-	async createChatMessage(message: Partial<ChatHubMessage>, trx?: EntityManager) {
+	async createChatMessage(
+		message: Partial<ChatHubMessage>,
+		trx?: EntityManager,
+	): Promise<ChatHubMessage> {
 		return await withTransaction(
 			this.manager,
 			trx,
-			async (em) => {
+			async (em): Promise<ChatHubMessage> => {
 				await em.insert(ChatHubMessage, message);
 				const saved = await em.findOneOrFail(ChatHubMessage, {
 					where: { id: message.id },

@@ -1,6 +1,5 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as vcApi from './sourceControl.api';
 import type { SourceControlPreferences, SshKeyTypes } from './sourceControl.types';
@@ -9,7 +8,6 @@ import type { SourceControlledFile } from '@n8n/api-types';
 
 export const useSourceControlStore = defineStore('sourceControl', () => {
 	const rootStore = useRootStore();
-	const settingsStore = useSettingsStore();
 
 	const isEnterpriseSourceControlEnabled = computed(() => true);
 

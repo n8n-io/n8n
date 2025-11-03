@@ -1,4 +1,4 @@
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { APIRequest, User } from '@n8n/db';
@@ -13,12 +13,10 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
-import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
-import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
@@ -90,12 +88,7 @@ const publicApiAgent = (
 	return agent;
 };
 
-export const setupTestServer = ({
-	endpointGroups,
-	enabledFeatures,
-	quotas,
-	modules,
-}: SetupProps): TestServer => {
+export const setupTestServer = ({ endpointGroups, modules }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
@@ -120,7 +113,6 @@ export const setupTestServer = ({
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
 		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
 		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
-		license: new LicenseMocker(),
 	};
 
 	// eslint-disable-next-line complexity
@@ -130,16 +122,6 @@ export const setupTestServer = ({
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
 		config.set('userManagement.isInstanceOwnerSetUp', true);
-
-		testServer.license.mock(Container.get(License));
-		testServer.license.mockLicenseState(Container.get(LicenseState));
-
-		if (enabledFeatures) {
-			testServer.license.setDefaults({
-				features: enabledFeatures,
-				quotas,
-			});
-		}
 
 		if (!endpointGroups) return;
 
@@ -182,10 +164,6 @@ export const setupTestServer = ({
 						await import('@/environments.ee/variables/variables.controller.ee');
 						break;
 
-					case 'license':
-						await import('@/license/license.controller');
-						break;
-
 					case 'metrics': {
 						const { PrometheusMetricsService } = await import(
 							'@/metrics/prometheus-metrics.service'
@@ -213,7 +191,6 @@ export const setupTestServer = ({
 					case 'ldap': {
 						const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
 						await import('@/ldap.ee/ldap.controller.ee');
-						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
 					}
@@ -334,9 +311,7 @@ export const setupTestServer = ({
 		testServer.httpServer.close();
 	});
 
-	beforeEach(() => {
-		testServer.license.reset();
-	});
+	beforeEach(() => {});
 
 	return testServer;
 };

@@ -11,7 +11,6 @@ import {
 	Role,
 	Scope as DBScope,
 	ScopeRepository,
-	GLOBAL_ADMIN_ROLE,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
@@ -20,15 +19,7 @@ import type {
 	AssignableProjectRole,
 	RoleNamespace,
 } from '@n8n/permissions';
-import {
-	combineScopes,
-	getAuthPrincipalScopes,
-	getRoleScopes,
-	isBuiltInRole,
-	PROJECT_ADMIN_ROLE_SLUG,
-	PROJECT_EDITOR_ROLE_SLUG,
-	PROJECT_VIEWER_ROLE_SLUG,
-} from '@n8n/permissions';
+import { combineScopes, getAuthPrincipalScopes, getRoleScopes } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -295,7 +286,7 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole) {
+	isRoleLicensed(_role: AssignableProjectRole) {
 		// All roles are licensed in enterprise mode
 		return true;
 	}

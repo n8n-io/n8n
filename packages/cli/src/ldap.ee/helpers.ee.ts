@@ -18,13 +18,6 @@ import { randomString } from 'n8n-workflow';
 import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
 
 /**
- *  Check whether the LDAP feature is disabled in the instance
- */
-export const isLdapEnabled = () => {
-	return true;
-};
-
-/**
  * Retrieve the LDAP login label from the configuration object
  */
 export const getLdapLoginLabel = (): string => Container.get(GlobalConfig).sso.ldap.loginLabel;

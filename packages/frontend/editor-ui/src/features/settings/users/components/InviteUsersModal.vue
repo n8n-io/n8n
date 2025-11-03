@@ -14,6 +14,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { VALID_EMAIL_REGEX } from '@/app/constants';
 import { I18nT } from 'vue-i18n';
 
 import {

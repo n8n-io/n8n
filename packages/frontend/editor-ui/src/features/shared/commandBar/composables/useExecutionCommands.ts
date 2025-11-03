@@ -4,7 +4,6 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -12,6 +11,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
 import type { ExecutionSummary, AnnotationVote } from 'n8n-workflow';
 import type { CommandGroup, CommandBarItem } from '../types';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 const ITEM_ID = {
 	DELETE_EXECUTION: 'delete-execution',
@@ -29,7 +29,6 @@ export function useExecutionCommands(): CommandGroup {
 	const route = useRoute();
 	const executionsStore = useExecutionsStore();
 	const workflowsStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
 	const toast = useToast();
 	const message = useMessage();
 	const telemetry = useTelemetry();

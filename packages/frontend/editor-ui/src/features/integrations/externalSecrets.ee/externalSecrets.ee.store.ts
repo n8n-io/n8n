@@ -1,7 +1,6 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import * as externalSecretsApi from '@n8n/rest-api-client';
 import { connectProvider } from '@n8n/rest-api-client';
 import { useRBACStore } from '@/app/stores/rbac.store';
@@ -9,7 +8,6 @@ import type { ExternalSecretsProvider } from '@n8n/api-types';
 
 export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const rootStore = useRootStore();
-	const settingsStore = useSettingsStore();
 	const rbacStore = useRBACStore();
 
 	const state = reactive({

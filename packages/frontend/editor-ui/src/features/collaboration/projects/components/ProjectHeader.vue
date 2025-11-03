@@ -25,6 +25,7 @@ import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { VIEWS } from '@/app/constants';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();

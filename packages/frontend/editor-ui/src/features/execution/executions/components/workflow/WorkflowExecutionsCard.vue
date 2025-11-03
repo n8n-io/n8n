@@ -8,7 +8,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { VIEWS } from '@/app/constants';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 
 import {
@@ -36,7 +36,6 @@ const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(() => true);
 const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);

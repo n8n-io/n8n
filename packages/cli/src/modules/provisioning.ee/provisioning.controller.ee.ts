@@ -9,13 +9,13 @@ export class ProvisioningController {
 
 	@Get('/config')
 	@GlobalScope('provisioning:manage')
-	async getConfig(_req: AuthenticatedRequest, res: Response) {
+	async getConfig(_req: AuthenticatedRequest, _res: Response) {
 		return await this.provisioningService.getConfig();
 	}
 
 	@Patch('/config')
 	@GlobalScope('provisioning:manage')
-	async patchConfig(req: AuthenticatedRequest, res: Response) {
+	async patchConfig(req: AuthenticatedRequest, _res: Response) {
 		return await this.provisioningService.patchConfig(req.body);
 	}
 }

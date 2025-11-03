@@ -19,6 +19,6 @@ export const sourceControlLicensedAndEnabledMiddleware: RequestHandler = (_req, 
 	}
 };
 
-export const sourceControlLicensedMiddleware: RequestHandler = (_req, res, next) => {
+export const sourceControlLicensedMiddleware: RequestHandler = (_req, _res, next) => {
 	next();
 };

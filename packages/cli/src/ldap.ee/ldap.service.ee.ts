@@ -20,7 +20,6 @@ import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
 	getAuthIdentityByLdapId,
-	isLdapEnabled,
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
@@ -459,8 +458,6 @@ export class LdapService {
 	}
 
 	async handleLdapLogin(loginId: string, password: string): Promise<User | undefined> {
-		if (!isLdapEnabled()) return undefined;
-
 		if (!this.config.loginEnabled) return undefined;
 
 		const { loginIdAttribute, userFilter } = this.config;

@@ -10,6 +10,6 @@ export const samlLicensedAndEnabledMiddleware: RequestHandler = (_, res, next) =
 	}
 };
 
-export const samlLicensedMiddleware: RequestHandler = (_, res, next) => {
+export const samlLicensedMiddleware: RequestHandler = (_, _res, next) => {
 	next();
 };

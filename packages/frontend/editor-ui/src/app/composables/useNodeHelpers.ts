@@ -42,7 +42,6 @@ import { EnableNodeToggleCommand } from '@/app/models/history';
 import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowState, type WorkflowState } from './useWorkflowState';
 
 declare namespace HttpRequestNode {
@@ -61,7 +60,6 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = opts.workflowState ?? injectWorkflowState();
-	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 

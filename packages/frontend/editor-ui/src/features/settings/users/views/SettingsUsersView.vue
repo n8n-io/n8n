@@ -49,8 +49,6 @@ const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
-
 const i18n = useI18n();
 
 const search = ref('');

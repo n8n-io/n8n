@@ -4,7 +4,6 @@ import {
 	isAuthenticated,
 	isDefaultUser,
 	isInstanceOwner,
-	isEnterpriseFeatureEnabled,
 	isGuest,
 	isValid,
 } from '@/app/utils/rbac/checks';
@@ -19,7 +18,8 @@ export const permissions: Permissions = {
 	custom: isValid,
 	defaultUser: isDefaultUser,
 	instanceOwner: isInstanceOwner,
-	enterprise: isEnterpriseFeatureEnabled,
+	// Enterprise features are always enabled - license restrictions removed
+	enterprise: () => true,
 	guest: isGuest,
 	rbac: hasScope,
 	role: hasRole,

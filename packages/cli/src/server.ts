@@ -21,7 +21,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
@@ -114,11 +113,10 @@ export class Server extends AbstractServer {
 			await import('@/controllers/debug.controller');
 		}
 
-		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
-			await import('@/ldap.ee/ldap.controller.ee');
-			await Container.get(LdapService).init();
-		}
+		// LDAP is always enabled
+		const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+		await import('@/ldap.ee/ldap.controller.ee');
+		await Container.get(LdapService).init();
 
 		if (inE2ETests) {
 		}

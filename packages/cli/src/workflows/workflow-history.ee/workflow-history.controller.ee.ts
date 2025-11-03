@@ -1,6 +1,6 @@
 import { PaginationDto } from '@n8n/api-types';
-import { RestController, Get, Middleware, Query } from '@n8n/decorators';
-import { Request, Response, NextFunction } from 'express';
+import { RestController, Get, Query } from '@n8n/decorators';
+import { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';

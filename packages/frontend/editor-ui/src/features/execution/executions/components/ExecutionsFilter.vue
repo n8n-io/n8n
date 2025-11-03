@@ -7,7 +7,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
 import { i18n as locale } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { isEmpty } from '@/app/utils/typesUtils';
 import type { Placement } from '@floating-ui/core';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
@@ -33,7 +32,6 @@ export type ExecutionFilterProps = {
 
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
-const settingsStore = useSettingsStore();
 const { debounce } = useDebounce();
 
 const telemetry = useTelemetry();

@@ -5,7 +5,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLogStreamingStore } from '../logStreaming.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -15,12 +14,12 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { LOG_STREAM_MODAL_KEY } from '@/app/constants';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip } from '@n8n/design-system';
 const environment = process.env.NODE_ENV;
 
-const settingsStore = useSettingsStore();
 const logStreamingStore = useLogStreamingStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();

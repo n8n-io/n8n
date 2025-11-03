@@ -7,7 +7,7 @@ export abstract class ResponseError extends BaseError {
 	/**
 	 * Optional metadata to be included in the error response.
 	 * This allows errors to include additional structured data beyond the standard
-	 * message, code, and hint fields. For example, LicenseEulaRequiredError uses
+	 * message, code, and hint fields. For example, some error types use
 	 * this to include the EULA URL that must be accepted.
 	 */
 	readonly meta?: Record<string, unknown>;

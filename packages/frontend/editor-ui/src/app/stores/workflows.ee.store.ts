@@ -1,7 +1,6 @@
 import * as workflowsApi from '@/app/api/workflows.ee';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { i18n } from '@n8n/i18n';
@@ -11,7 +10,6 @@ import { computed } from 'vue';
 
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, () => {
 	const rootStore = useRootStore();
-	const settingsStore = useSettingsStore();
 	const workflowStore = useWorkflowsStore();
 
 	const getWorkflowOwnerName = computed(() => {
