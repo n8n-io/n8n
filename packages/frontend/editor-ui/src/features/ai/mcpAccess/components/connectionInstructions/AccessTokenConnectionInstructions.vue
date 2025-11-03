@@ -32,17 +32,19 @@ const i18n = useI18n();
 // mcp.json value that's to be copied
 const connectionString = computed(() => {
 	return `
-"mcpServers": {
-  "n8n-mcp": {
-    "command": "npx",
-    "args": [
-      "-y",
-      "supergateway",
-      "--streamableHttp",
-      "${props.serverUrl}",
-      "--header",
-      "authorization:Bearer ${apiKeyText.value}"
-    ]
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "supergateway",
+        "--streamableHttp",
+        "${props.serverUrl}",
+        "--header",
+        "authorization:Bearer ${apiKeyText.value}"
+      ]
+    }
   }
 }
 `;
