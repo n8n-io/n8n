@@ -6,7 +6,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { SUPPORTED_SCOPES } from '../mcp-oauth-service';
 
-const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['mcp'] });
+const testServer = setupTestServer({ modules: ['mcp'], endpointGroups: ['mcp'] });
 
 let owner: User;
 

@@ -40,7 +40,7 @@ export class McpModule implements ModuleInterface {
 		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity');
 		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity');
 
-		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as any;
+		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
 	}
 
 	@OnShutdown()
