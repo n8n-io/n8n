@@ -94,7 +94,6 @@ describe('sso/saml/samlHelpers', () => {
 		});
 
 		test('returns the missing attributes from the flow result', () => {
-			// ARRANGE
 			const flowResult = {
 				extract: {
 					attributes: {
@@ -113,14 +112,12 @@ describe('sso/saml/samlHelpers', () => {
 				projectRoles: 'projectRoles',
 			};
 
-			// ACT
 			const result = helpers.getMappedSamlAttributesFromFlowResult(
 				flowResult,
 				attributeMapping,
 				jitClaimNames,
 			);
 
-			// ASSERT
 			expect(result).toEqual({
 				attributes: {
 					email: 'test@test.com',

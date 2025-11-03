@@ -36,7 +36,6 @@ import { isSsoJustInTimeProvisioningEnabled, reloadAuthenticationMethod } from '
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UrlService } from '@/services/url.service';
 
@@ -407,21 +406,8 @@ export class SamlService {
 		const samlPreferences = await this.settingsRepository.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
-		const provisioningConfigObject = await this.settingsRepository.findOne({
-			where: { key: PROVISIONING_PREFERENCES_DB_KEY },
-		});
 		if (samlPreferences) {
 			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
-			const provisioningConfig = jsonParse<ProvisioningConfigDto>(
-				provisioningConfigObject?.value ?? '{}',
-			);
-
-			if (prefs && prefs.mapping) {
-				// TODO: why are we storing this here?
-				// We'd need to refactor the parameterlist of this method to actually
-				// be able to store the configured n8nInstanceRole and n8nProjectRoles here
-				prefs.mapping.n8nInstanceRole = provisioningConfig.scopesInstanceRoleClaimName;
-			}
 
 			if (prefs) {
 				if (apply) {
