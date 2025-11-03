@@ -3,5 +3,5 @@
 # via 'N8N_RUNNERS_EXTERNAL_ALLOW' env variable on n8n-task-runners.json.
 
 # numpy==2.3.2
-requests
-google
+requests==2.32.3
+google-generativeai==0.8.3

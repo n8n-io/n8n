@@ -46,15 +46,15 @@ services:
       - redis
 
   task-runners:
-    image: ghcr.io/peterkostadinov/custom-runner:0.0.2
+    image: ghcr.io/peterkostadinov/custom-runner:1.118.0
     deploy:
       replicas: 1
     environment:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
       - N8N_RUNNERS_AUTH_TOKEN=super-secret-runner-auth-token
       - N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT=15
-      - N8N_RUNNERS_STDLIB_ALLOW=time,os,json
-      - N8N_RUNNERS_EXTERNAL_ALLOW=requests,google
+      - N8N_RUNNERS_STDLIB_ALLOW=*
+      - N8N_RUNNERS_EXTERNAL_ALLOW=*
       - GEMINI_API_KEY=AIzaSyBQPhYjIJ0lyzlfX2xH9SI5k57POj_aAbg
     depends_on:
       - n8n
