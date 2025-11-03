@@ -277,15 +277,15 @@ export class Compression implements INodeType {
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-						const fileExtension = (
-							binaryData.fileExtension ?? binaryData.fileName?.split('.').pop()
-						)?.toLowerCase();
+						const fileExtension = binaryData.fileExtension?.toLowerCase();
+
 						if (!fileExtension) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`File extension not found for binary data ${binaryPropertyName}`,
 							);
 						}
+
 						if (fileExtension === 'zip') {
 							const files = await unzip(binaryDataBuffer);
 
