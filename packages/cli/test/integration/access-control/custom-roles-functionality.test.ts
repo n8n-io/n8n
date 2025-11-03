@@ -208,7 +208,11 @@ describe('Custom Role Functionality Tests', () => {
 			// Should not be able to update
 			await member1Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Name', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Name',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(403);
 
 			// Should not be able to delete
@@ -293,7 +297,11 @@ describe('Custom Role Functionality Tests', () => {
 			// Test update operation
 			const updateResponse = await member3Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Multi-scope Workflow', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Multi-scope Workflow',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(200);
 
 			expect(updateResponse.body.data.name).toBe('Updated Multi-scope Workflow');
@@ -436,7 +444,11 @@ describe('Custom Role Functionality Tests', () => {
 			// Test forbidden endpoints: PATCH /workflows/:id (update)
 			await member1Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Forbidden Update', versionId: workflow.versionId })
+				.send({
+					name: 'Forbidden Update',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(403);
 
 			// Test forbidden endpoints: DELETE /workflows/:id (delete)
@@ -464,7 +476,11 @@ describe('Custom Role Functionality Tests', () => {
 			// Write-only roles should be able to update existing workflows
 			const updateResponse = await member2Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Write-Only Workflow', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Write-Only Workflow',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(200);
 
 			expect(updateResponse.body.data.name).toBe('Updated Write-Only Workflow');
@@ -494,7 +510,11 @@ describe('Custom Role Functionality Tests', () => {
 			// Test forbidden endpoints: PATCH /workflows/:id (update)
 			await member3Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Forbidden Update', versionId: workflow.versionId })
+				.send({
+					name: 'Forbidden Update',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(403);
 
 			// Test that delete-only role cannot actually delete due to system constraints
@@ -534,8 +554,7 @@ describe('Custom Role Functionality Tests', () => {
 				.send(createWorkflowPayload)
 				.expect(200);
 
-			const workflowId = createResponse.body.data.id;
-			const versionId = createResponse.body.data.versionId;
+			const { id: workflowId, versionId, versionCounter } = createResponse.body.data;
 
 			// Test read/list (allowed)
 			const listResponse = await member1Agent.get('/workflows').expect(200);
@@ -547,7 +566,7 @@ describe('Custom Role Functionality Tests', () => {
 			// Test update (allowed)
 			const updateResponse = await member1Agent
 				.patch(`/workflows/${workflowId}`)
-				.send({ name: 'Updated Mixed Permission Workflow', versionId })
+				.send({ name: 'Updated Mixed Permission Workflow', versionId, versionCounter })
 				.expect(200);
 
 			expect(updateResponse.body.data.name).toBe('Updated Mixed Permission Workflow');
@@ -615,8 +634,7 @@ describe('Custom Role Functionality Tests', () => {
 
 			// Handle the case where complex workflow creation might fail due to validation
 			if (createResponse.status === 200) {
-				const workflowId = createResponse.body.data.id;
-				const versionId = createResponse.body.data.versionId;
+				const { id: workflowId, versionId, versionCounter } = createResponse.body.data;
 
 				// Test reading complex structure
 				const getResponse = await member2Agent.get(`/workflows/${workflowId}`).expect(200);
@@ -629,6 +647,7 @@ describe('Custom Role Functionality Tests', () => {
 				const simpleUpdatePayload = {
 					name: 'Updated Complex Structure Workflow',
 					versionId,
+					versionCounter,
 				};
 
 				const updateResponse = await member2Agent
@@ -666,8 +685,7 @@ describe('Custom Role Functionality Tests', () => {
 					.send(simpleWorkflowPayload)
 					.expect(200);
 
-				const workflowId = simpleCreateResponse.body.data.id;
-				const versionId = simpleCreateResponse.body.data.versionId;
+				const { id: workflowId, versionId, versionCounter } = simpleCreateResponse.body.data;
 
 				// Test basic operations on simple workflow
 				const getResponse = await member2Agent.get(`/workflows/${workflowId}`).expect(200);
@@ -675,7 +693,7 @@ describe('Custom Role Functionality Tests', () => {
 
 				const updateResponse = await member2Agent
 					.patch(`/workflows/${workflowId}`)
-					.send({ name: 'Updated Simple Workflow', versionId })
+					.send({ name: 'Updated Simple Workflow', versionId, versionCounter })
 					.expect(200);
 
 				expect(updateResponse.body.data.name).toBe('Updated Simple Workflow');
@@ -696,7 +714,11 @@ describe('Custom Role Functionality Tests', () => {
 			// Should not be able to update workflow from teamProjectB
 			await member3Agent
 				.patch(`/workflows/${workflowB.id}`)
-				.send({ name: 'Forbidden Update', versionId: workflowB.versionId })
+				.send({
+					name: 'Forbidden Update',
+					versionId: workflowB.versionId,
+					versionCounter: workflowB.versionCounter,
+				})
 				.expect(403);
 
 			// Test workflow listing - member3 should not see workflows from projectB

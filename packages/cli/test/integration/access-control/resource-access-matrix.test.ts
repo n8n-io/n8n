@@ -43,6 +43,7 @@ let testUserAgent: SuperAgentTest;
 // Test data - created fresh for each test
 let testWorkflowId: string;
 let testWorkflowVersionId: string;
+let testWorkflowVersionCounter: number;
 let testCredentialId: string;
 
 describe('Resource Access Control Matrix Tests', () => {
@@ -124,6 +125,7 @@ describe('Resource Access Control Matrix Tests', () => {
 		const workflow = await createWorkflow({ name: 'Matrix Test Workflow' }, teamProject);
 		testWorkflowId = workflow.id;
 		testWorkflowVersionId = workflow.versionId;
+		testWorkflowVersionCounter = workflow.versionCounter;
 
 		// Create test credential via owner
 		const credentialPayload = randomCredentialPayload();
@@ -204,7 +206,11 @@ describe('Resource Access Control Matrix Tests', () => {
 			test('PATCH /workflows/:id should return 403', async () => {
 				await testUserAgent
 					.patch(`/workflows/${testWorkflowId}`)
-					.send({ name: 'Updated Name', versionId: testWorkflowVersionId })
+					.send({
+						name: 'Updated Name',
+						versionId: testWorkflowVersionId,
+						versionCounter: testWorkflowVersionCounter,
+					})
 					.expect(403);
 			});
 
@@ -287,7 +293,11 @@ describe('Resource Access Control Matrix Tests', () => {
 			test('PATCH /workflows/:id should return 200', async () => {
 				const response = await testUserAgent
 					.patch(`/workflows/${testWorkflowId}`)
-					.send({ name: 'Updated by All-Ops', versionId: testWorkflowVersionId })
+					.send({
+						name: 'Updated by All-Ops',
+						versionId: testWorkflowVersionId,
+						versionCounter: testWorkflowVersionCounter,
+					})
 					.expect(200);
 				expect(response.body.data.name).toBe('Updated by All-Ops');
 			});

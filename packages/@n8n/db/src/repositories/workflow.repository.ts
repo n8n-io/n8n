@@ -606,6 +606,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				'workflow.createdAt',
 				'workflow.updatedAt',
 				'workflow.versionId',
+				'workflow.versionCounter',
 				'workflow.settings',
 			]);
 			return;

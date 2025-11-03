@@ -608,6 +608,7 @@ describe('GET /workflows', () => {
 					updatedAt: any(String),
 					tags: [{ id: any(String), name: 'A' }],
 					versionId: any(String),
+					versionCounter: any(Number),
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
@@ -624,6 +625,7 @@ describe('GET /workflows', () => {
 					updatedAt: any(String),
 					tags: [],
 					versionId: any(String),
+					versionCounter: any(Number),
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
@@ -1470,6 +1472,7 @@ describe('GET /workflows?onlySharedWithMe=true', () => {
 					createdAt: any(String),
 					updatedAt: any(String),
 					versionId: any(String),
+					versionCounter: any(Number),
 					parentFolder: null,
 					homeProject: {
 						id: memberPersonalProject.id,
@@ -1543,6 +1546,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					updatedAt: any(String),
 					tags: [{ id: any(String), name: 'A' }],
 					versionId: any(String),
+					versionCounter: any(Number),
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
@@ -1559,6 +1563,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					updatedAt: any(String),
 					tags: [],
 					versionId: any(String),
+					versionCounter: any(Number),
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
@@ -2252,6 +2257,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const payload = {
 			name: 'name updated',
 			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
 			nodes: [
 				{
 					id: 'uuid-1234',
@@ -2308,6 +2314,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
 			active: true,
 		};
 
@@ -2317,7 +2324,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(activeWorkflowManagerLike.add).toBeCalled();
 
 		const {
-			data: { id, versionId, active },
+			data: { id, versionId, active, versionCounter },
 		} = response.body;
 
 		expect(id).toBe(workflow.id);
@@ -2329,6 +2336,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const workflow = await createWorkflow({ active: true }, owner);
 		const payload = {
 			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
 			active: false,
 		};
 
@@ -2339,7 +2347,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(activeWorkflowManagerLike.remove).toBeCalled();
 
 		const {
-			data: { id, versionId, active },
+			data: { id, versionId, active, versionCounter },
 		} = response.body;
 
 		expect(id).toBe(workflow.id);
@@ -2373,6 +2381,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
 			parentFolderId: folder1.id,
 		};
 
@@ -2392,6 +2401,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
 			parentFolderId: PROJECT_ROOT,
 		};
 
@@ -2419,6 +2429,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
 			parentFolderId: folder2.id,
 		};
 

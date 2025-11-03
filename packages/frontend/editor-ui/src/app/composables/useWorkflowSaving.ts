@@ -210,6 +210,7 @@ export function useWorkflowSaving({
 			}
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
+			workflowDataRequest.versionCounter = workflowsStore.workflowVersionCounter;
 
 			const deactivateReason = await getWorkflowDeactivationInfo(
 				currentWorkflow,
@@ -231,6 +232,7 @@ export function useWorkflowSaving({
 				forceSave,
 			);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
+			workflowsStore.setWorkflowVersionCounter(workflowData.versionCounter);
 
 			if (name) {
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
@@ -393,6 +395,7 @@ export function useWorkflowSaving({
 			workflowState.setActive(workflowData.active || false);
 			workflowState.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
+			workflowsStore.setWorkflowVersionCounter(workflowData.versionCounter);
 			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			uiStore.stateIsDirty = false;

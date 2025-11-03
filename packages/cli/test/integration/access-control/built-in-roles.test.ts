@@ -132,7 +132,11 @@ describe('Built-in Role Matrix Testing', () => {
 			// Test workflow update access
 			const updateResponse = await member1Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Admin Workflow', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Admin Workflow',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(200);
 			expect(updateResponse.body.data.name).toBe('Updated Admin Workflow');
 
@@ -223,7 +227,11 @@ describe('Built-in Role Matrix Testing', () => {
 			// Test workflow update access
 			const updateResponse = await member2Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Editor Workflow', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Editor Workflow',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(200);
 			expect(updateResponse.body.data.name).toBe('Updated Editor Workflow');
 
@@ -308,7 +316,11 @@ describe('Built-in Role Matrix Testing', () => {
 			// Test workflow update access (should be forbidden)
 			await member3Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Viewer Workflow', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Viewer Workflow',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(403);
 
 			// Test workflow delete access (should be forbidden)
@@ -395,7 +407,11 @@ describe('Built-in Role Matrix Testing', () => {
 			await member1Agent.get(`/workflows/${workflow.id}`).expect(200);
 			await member1Agent
 				.patch(`/workflows/${workflow.id}`)
-				.send({ name: 'Updated Personal Workflow', versionId: workflow.versionId })
+				.send({
+					name: 'Updated Personal Workflow',
+					versionId: workflow.versionId,
+					versionCounter: workflow.versionCounter,
+				})
 				.expect(200);
 			await member1Agent.post(`/workflows/${workflow.id}/archive`).send().expect(200);
 			await member1Agent.delete(`/workflows/${workflow.id}`).send().expect(200);

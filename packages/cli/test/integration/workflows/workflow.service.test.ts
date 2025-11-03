@@ -82,4 +82,46 @@ describe('update()', () => {
 
 		expect(addSpy).not.toHaveBeenCalled();
 	});
+
+	test('should allow name-only updates without nodes/connections', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflow({}, owner);
+
+		const updateData = {
+			name: 'New Name',
+			versionCounter: workflow.versionCounter,
+		} as any;
+
+		const updatedWorkflow = await workflowService.update(owner, updateData, workflow.id);
+
+		expect(updatedWorkflow.name).toBe('New Name');
+		// versionId should NOT change since nodes/connections weren't updated
+		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
+	});
+
+	test('should fetch missing connections from DB when updating nodes', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflow({}, owner);
+
+		const updateData = {
+			nodes: [
+				{
+					id: 'new-node',
+					name: 'New Node',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+					parameters: {},
+				},
+			],
+			versionCounter: workflow.versionCounter,
+		} as any;
+
+		const updatedWorkflow = await workflowService.update(owner, updateData, workflow.id);
+
+		expect(updatedWorkflow.nodes).toHaveLength(1);
+		expect(updatedWorkflow.nodes[0].name).toBe('New Node');
+		// versionId should change since nodes were updated
+		expect(updatedWorkflow.versionId).not.toBe(workflow.versionId);
+	});
 });

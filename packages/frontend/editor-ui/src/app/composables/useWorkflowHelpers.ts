@@ -597,6 +597,7 @@ export function useWorkflowHelpers() {
 			settings: workflowsStore.workflow.settings,
 			tags: workflowsStore.workflowTags,
 			versionId: workflowsStore.workflow.versionId,
+			versionCounter: workflowsStore.workflow.versionCounter,
 			meta: workflowsStore.workflow.meta,
 		};
 
@@ -844,11 +845,15 @@ export function useWorkflowHelpers() {
 		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
 		if (isCurrentWorkflow) {
 			data = partialData
-				? { versionId: workflowsStore.workflowVersionId }
+				? {
+						versionId: workflowsStore.workflowVersionId,
+						versionCounter: workflowsStore.workflowVersionCounter,
+					}
 				: await getWorkflowDataToSave();
 		} else {
-			const { versionId } = await workflowsStore.fetchWorkflow(workflowId);
+			const { versionId, versionCounter } = await workflowsStore.fetchWorkflow(workflowId);
 			data.versionId = versionId;
+			data.versionCounter = versionCounter;
 		}
 
 		if (active !== undefined) {
@@ -857,6 +862,7 @@ export function useWorkflowHelpers() {
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
+		workflowsStore.setWorkflowVersionCounter(workflow.versionCounter);
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(!!workflow.active);
@@ -959,6 +965,7 @@ export function useWorkflowHelpers() {
 		workflowState.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		workflowsStore.setWorkflowVersionCounter(workflowData.versionCounter);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
 		workflowsStore.setWorkflowScopes(workflowData.scopes);
 

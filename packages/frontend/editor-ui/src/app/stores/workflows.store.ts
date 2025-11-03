@@ -108,6 +108,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	tags: [],
 	pinData: {},
 	versionId: '',
+	versionCounter: 1,
 	usedCredentials: [],
 };
 
@@ -159,6 +160,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowId = computed(() => workflow.value.id);
 
 	const workflowVersionId = computed(() => workflow.value.versionId);
+
+	const workflowVersionCounter = computed(() => workflow.value.versionCounter);
 
 	const workflowSettings = computed(() => workflow.value.settings ?? { ...defaults.settings });
 
@@ -709,6 +712,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowVersionId(versionId: string) {
 		workflow.value.versionId = versionId;
+	}
+
+	function setWorkflowVersionCounter(versionCounter: number) {
+		workflow.value.versionCounter = versionCounter;
 	}
 
 	// replace invalid credentials in workflow
@@ -1790,6 +1797,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowName,
 		workflowId,
 		workflowVersionId,
+		workflowVersionCounter,
 		workflowSettings,
 		workflowTags,
 		allWorkflows,
@@ -1848,6 +1856,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addNodeExecutionStartedData,
 		setUsedCredentials,
 		setWorkflowVersionId,
+		setWorkflowVersionCounter,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,
 		setWorkflows,

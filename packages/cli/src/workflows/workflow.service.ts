@@ -16,7 +16,6 @@ import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { BinaryDataService } from 'n8n-core';
 import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
@@ -219,23 +218,24 @@ export class WorkflowService {
 			);
 		}
 
-		if (
-			!forceSave &&
-			workflowUpdateData.versionId !== '' &&
-			workflowUpdateData.versionId !== workflow.versionId
-		) {
+		if (!forceSave && workflowUpdateData.versionCounter !== workflow.versionCounter) {
 			throw new BadRequestError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 				100,
 			);
 		}
 
-		if (Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active'])).length > 0) {
-			// Update the workflow's version when changing properties such as
-			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
+		const nodesOrConnectionsChanged =
+			workflowUpdateData.nodes !== undefined || workflowUpdateData.connections !== undefined;
+
+		if (nodesOrConnectionsChanged) {
+			// To save a version, we need both nodes and connections
+			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
+			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
+
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
-				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
+				`Updating versionId for workflow ${workflowId} for user ${user.id} due to nodes/connections change`,
 				{
 					previousVersionId: workflow.versionId,
 					newVersionId: workflowUpdateData.versionId,
@@ -322,7 +322,8 @@ export class WorkflowService {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
-		if (workflowUpdateData.versionId !== workflow.versionId) {
+		// Only save workflow history when nodes or connections were actually changed
+		if (nodesOrConnectionsChanged) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 

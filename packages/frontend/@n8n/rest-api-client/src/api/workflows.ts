@@ -20,6 +20,7 @@ export interface WorkflowData {
 	tags?: string[];
 	pinData?: IPinData;
 	versionId?: string;
+	versionCounter?: number;
 	meta?: WorkflowMetadata;
 }
 
@@ -33,6 +34,7 @@ export interface WorkflowDataUpdate {
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
 	versionId?: string;
+	versionCounter?: number;
 	meta?: WorkflowMetadata;
 	parentFolderId?: string;
 	uiContext?: string;
