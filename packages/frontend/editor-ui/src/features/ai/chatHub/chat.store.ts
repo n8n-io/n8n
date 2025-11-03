@@ -658,6 +658,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			description: agent.description ?? null,
 			createdAt: agent.createdAt,
 			updatedAt: agent.updatedAt,
+			tools: agent.tools,
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
 

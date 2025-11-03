@@ -360,6 +360,7 @@ export interface ChatHubAgentDto {
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
+	tools: INodeDto[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -371,6 +372,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	credentialId: z.string(),
 	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
 	model: z.string().max(64),
+	tools: z.array(INodeSchema),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
@@ -380,6 +382,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	credentialId: z.string().optional(),
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
+	tools: z.array(INodeSchema).optional(),
 }) {}
 
 export interface EnrichedStructuredChunk extends StructuredChunk {

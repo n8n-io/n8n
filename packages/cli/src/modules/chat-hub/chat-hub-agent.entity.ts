@@ -1,6 +1,7 @@
 import { ChatHubProvider } from '@n8n/api-types';
-import { WithTimestamps, User, CredentialsEntity } from '@n8n/db';
+import { WithTimestamps, User, CredentialsEntity, JsonColumn } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { INode } from 'n8n-workflow';
 
 @Entity({ name: 'chat_hub_agents' })
 export class ChatHubAgent extends WithTimestamps {
@@ -62,4 +63,10 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 64, nullable: true })
 	model: string;
+
+	/**
+	 * The tools available to the agent as JSON `INode` definitions.
+	 */
+	@JsonColumn({ default: '[]' })
+	tools: INode[];
 }

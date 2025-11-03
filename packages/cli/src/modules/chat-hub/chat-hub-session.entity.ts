@@ -111,6 +111,9 @@ export class ChatHubSession extends WithTimestamps {
 	@OneToMany('ChatHubMessage', 'session')
 	messages?: Array<Relation<ChatHubMessage>>;
 
-	@JsonColumn()
+	/**
+	 * The tools available to the agent as JSON `INode` definitions.
+	 */
+	@JsonColumn({ default: '[]' })
 	tools: INode[];
 }
