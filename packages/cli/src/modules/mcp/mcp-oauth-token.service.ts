@@ -57,13 +57,13 @@ export class McpOAuthTokenService {
 		userId: string,
 	): Promise<void> {
 		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
-			await transactionManager.save(this.accessTokenRepository.target, {
+			await transactionManager.insert(this.accessTokenRepository.target, {
 				token: accessToken,
 				clientId,
 				userId,
 			});
 
-			await transactionManager.save(this.refreshTokenRepository.target, {
+			await transactionManager.insert(this.refreshTokenRepository.target, {
 				token: refreshToken,
 				clientId,
 				userId,

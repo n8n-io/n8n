@@ -33,7 +33,7 @@ describe('McpOAuthTokenService', () => {
 		) as jest.Mocked<RefreshTokenRepository>;
 
 		mockTransactionManager = {
-			save: jest.fn().mockResolvedValue(mock()),
+			insert: jest.fn().mockResolvedValue(mock()),
 		};
 
 		const mockManager: any = {
@@ -102,15 +102,15 @@ describe('McpOAuthTokenService', () => {
 
 			const mockManager = accessTokenRepository.manager as any;
 			expect(mockManager.transaction).toHaveBeenCalled();
-			expect(mockTransactionManager.save).toHaveBeenCalledTimes(2);
+			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
 
-			expect(mockTransactionManager.save).toHaveBeenCalledWith('AccessToken', {
+			expect(mockTransactionManager.insert).toHaveBeenCalledWith('AccessToken', {
 				token: accessToken,
 				clientId,
 				userId,
 			});
 
-			expect(mockTransactionManager.save).toHaveBeenCalledWith('RefreshToken', {
+			expect(mockTransactionManager.insert).toHaveBeenCalledWith('RefreshToken', {
 				token: refreshToken,
 				clientId,
 				userId,

@@ -28,7 +28,7 @@ export class McpOAuthAuthorizationCodeService {
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
-		await this.authorizationCodeRepository.save({
+		await this.authorizationCodeRepository.insert({
 			code,
 			clientId,
 			userId,
@@ -90,9 +90,9 @@ export class McpOAuthAuthorizationCodeService {
 			throw new Error('Redirect URI mismatch');
 		}
 
-		authRecord.used = true;
-		await this.authorizationCodeRepository.save(authRecord);
+		await this.authorizationCodeRepository.update({ code: authorizationCode }, { used: true });
 
+		authRecord.used = true;
 		return authRecord;
 	}
 

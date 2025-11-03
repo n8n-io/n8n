@@ -83,7 +83,7 @@ export class McpOAuthConsentService {
 			return { redirectUrl };
 		}
 
-		await this.userConsentRepository.save({
+		await this.userConsentRepository.insert({
 			userId,
 			clientId: sessionPayload.clientId,
 			grantedAt: Date.now(),

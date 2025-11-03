@@ -26,7 +26,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			const codeChallenge = 'challenge-abc';
 			const state = 'state-xyz';
 
-			authorizationCodeRepository.save.mockResolvedValue(mock<AuthorizationCode>());
+			authorizationCodeRepository.insert.mockResolvedValue(mock());
 
 			const result = await service.createAuthorizationCode(
 				clientId,
@@ -37,7 +37,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			);
 
 			expect(result).toHaveLength(64); // 32 bytes hex = 64 characters
-			expect(authorizationCodeRepository.save).toHaveBeenCalledWith({
+			expect(authorizationCodeRepository.insert).toHaveBeenCalledWith({
 				code: result,
 				clientId,
 				userId,
@@ -51,7 +51,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 		});
 
 		it('should handle null state', async () => {
-			authorizationCodeRepository.save.mockResolvedValue(mock<AuthorizationCode>());
+			authorizationCodeRepository.insert.mockResolvedValue(mock());
 
 			await service.createAuthorizationCode(
 				'client-123',
@@ -61,7 +61,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				null,
 			);
 
-			expect(authorizationCodeRepository.save).toHaveBeenCalledWith(
+			expect(authorizationCodeRepository.insert).toHaveBeenCalledWith(
 				expect.objectContaining({
 					state: null,
 				}),
@@ -128,7 +128,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			});
 
 			authorizationCodeRepository.findOne.mockResolvedValue(authRecord);
-			authorizationCodeRepository.save.mockResolvedValue(authRecord);
+			authorizationCodeRepository.update.mockResolvedValue(mock());
 
 			const result = await service.validateAndConsumeAuthorizationCode(
 				'code-123',
@@ -138,7 +138,10 @@ describe('McpOAuthAuthorizationCodeService', () => {
 
 			expect(result).toEqual(authRecord);
 			expect(authRecord.used).toBe(true);
-			expect(authorizationCodeRepository.save).toHaveBeenCalledWith(authRecord);
+			expect(authorizationCodeRepository.update).toHaveBeenCalledWith(
+				{ code: 'code-123' },
+				{ used: true },
+			);
 		});
 
 		it('should throw error when code already used', async () => {
@@ -189,12 +192,15 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			});
 
 			authorizationCodeRepository.findOne.mockResolvedValue(authRecord);
-			authorizationCodeRepository.save.mockResolvedValue(authRecord);
+			authorizationCodeRepository.update.mockResolvedValue(mock());
 
 			const result = await service.validateAndConsumeAuthorizationCode('code-123', 'client-123');
 
 			expect(result).toEqual(authRecord);
-			expect(authorizationCodeRepository.save).toHaveBeenCalledWith(authRecord);
+			expect(authorizationCodeRepository.update).toHaveBeenCalledWith(
+				{ code: 'code-123' },
+				{ used: true },
+			);
 		});
 	});
 
