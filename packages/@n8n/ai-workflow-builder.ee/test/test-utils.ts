@@ -12,10 +12,10 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import type { ProgrammaticEvaluationResult } from '@/validation/types';
-
 import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
 import type { SimpleWorkflow } from '../src/types/workflow';
+
+import type { ProgrammaticEvaluationResult } from '@/validation/types';
 
 export const mockProgress = (): MockProxy<ProgressReporter> => mock<ProgressReporter>();
 
@@ -499,11 +499,13 @@ export const expectNodeUpdated = (
 // Build add node input
 export const buildAddNodeInput = (overrides: {
 	nodeType: string;
+	nodeVersion?: number;
 	name?: string;
 	connectionParametersReasoning?: string;
 	connectionParameters?: Record<string, unknown>;
 }) => ({
 	nodeType: overrides.nodeType,
+	nodeVersion: overrides.nodeVersion ?? 1,
 	name: overrides.name ?? 'Test Node',
 	connectionParametersReasoning:
 		overrides.connectionParametersReasoning ??
@@ -544,10 +546,12 @@ export const buildUpdateNodeInput = (nodeId: string, changes: string[]) => ({
 // Build node details input
 export const buildNodeDetailsInput = (overrides: {
 	nodeName: string;
+	nodeVersion?: number;
 	withParameters?: boolean;
 	withConnections?: boolean;
 }) => ({
 	nodeName: overrides.nodeName,
+	nodeVersion: overrides.nodeVersion ?? 1,
 	withParameters: overrides.withParameters ?? false,
 	withConnections: overrides.withConnections ?? true,
 });

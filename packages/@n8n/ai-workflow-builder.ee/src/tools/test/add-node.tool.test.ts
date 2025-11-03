@@ -297,6 +297,77 @@ describe('AddNodeTool', () => {
 			const addedNode = content.update.workflowOperations?.[0]?.nodes?.[0];
 			expect(addedNode?.position?.[1]).toBeGreaterThan(100);
 		});
+
+		it('should add the correct node version when multiple versions exist', async () => {
+			// Create multiple versions of the same node type
+			const httpRequestV1 = {
+				...nodeTypes.httpRequest,
+				version: 1,
+				displayName: 'HTTP Request V1',
+			};
+			const httpRequestV2 = {
+				...nodeTypes.httpRequest,
+				version: 2,
+				displayName: 'HTTP Request V2',
+			};
+			const httpRequestV3 = {
+				...nodeTypes.httpRequest,
+				version: 3,
+				displayName: 'HTTP Request V3',
+			};
+
+			const toolWithMultipleVersions = createAddNodeTool([
+				httpRequestV1,
+				httpRequestV2,
+				httpRequestV3,
+				nodeTypes.code,
+			]).tool;
+
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-10');
+
+			// Request version 2 specifically
+			const result = await toolWithMultipleVersions.invoke(
+				buildAddNodeInput({
+					nodeType: 'n8n-nodes-base.httpRequest',
+					nodeVersion: 2,
+					name: 'HTTP Request V2',
+					connectionParametersReasoning: 'Need version 2 for specific features',
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectNodeAdded(content, {
+				name: 'HTTP Request V2',
+				type: 'n8n-nodes-base.httpRequest',
+			});
+
+			const addedNode = content.update.workflowOperations?.[0]?.nodes?.[0];
+			expect(addedNode?.typeVersion).toBe(2);
+			expectToolSuccess(content, 'Successfully added "HTTP Request V2"');
+		});
+
+		it('should fail when requesting a non-existent node version', async () => {
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-11');
+
+			const result = await addNodeTool.invoke(
+				buildAddNodeInput({
+					nodeType: 'n8n-nodes-base.code',
+					nodeVersion: 99, // Non-existent version
+					name: 'Code V99',
+					connectionParametersReasoning: 'Requesting non-existent version',
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			expectToolError(content, 'Error: Node type "n8n-nodes-base.code" not found');
+		});
 	});
 
 	describe('getCustomDisplayTitle', () => {
