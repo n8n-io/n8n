@@ -9,12 +9,12 @@ export class AddToolsColumnToChatHubTables1761830340990 implements ReversibleMig
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(table.sessions, [
 			column('tools')
-				.text.notNull.default("'[]'")
+				.json.notNull.default("'[]'")
 				.comment('Tools available to the agent as JSON node definitions'),
 		]);
 		await addColumns(table.agents, [
 			column('tools')
-				.text.notNull.default("'[]'")
+				.json.notNull.default("'[]'")
 				.comment('Tools available to the agent as JSON node definitions'),
 		]);
 	}
