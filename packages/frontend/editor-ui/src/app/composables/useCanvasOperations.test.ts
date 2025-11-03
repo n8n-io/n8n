@@ -76,7 +76,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
+import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
