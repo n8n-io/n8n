@@ -90,7 +90,6 @@ export class InstanceRiskReporter implements RiskReporter {
 
 		settings.features = {
 			communityPackagesEnabled: Container.get(CommunityPackagesConfig).enabled,
-			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
 			templatesEnabled: this.globalConfig.templates.enabled,
 			publicApiEnabled: isApiEnabled(),
 		};
@@ -147,14 +146,8 @@ export class InstanceRiskReporter implements RiskReporter {
 	}
 
 	private async getNextVersions(currentVersionName: string) {
-		const BASE_URL = this.globalConfig.versionNotifications.endpoint;
-		const { instanceId } = this.instanceSettings;
-
-		const response = await axios.get<n8n.Version[]>(BASE_URL + currentVersionName, {
-			headers: { 'n8n-instance-id': instanceId },
-		});
-
-		return response.data;
+		// Version notifications have been removed
+		return [];
 	}
 
 	private removeIconData(versions: n8n.Version[]) {

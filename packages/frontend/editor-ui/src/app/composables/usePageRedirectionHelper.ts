@@ -1,6 +1,5 @@
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '@/Interface';
@@ -9,26 +8,8 @@ import { N8N_PRICING_PAGE_URL } from '@/app/constants';
 export function usePageRedirectionHelper() {
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
-	const versionsStore = useVersionsStore();
 	const telemetry = useTelemetry();
 	const settingsStore = useSettingsStore();
-
-	/**
-	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
-	 * cloud dashboard that redirects the user to the /manage page where they can upgrade to a new n8n version.
-	 * Otherwise, it redirect them to our docs.
-	 */
-	const goToVersions = async () => {
-		let versionsLink = versionsStore.infoUrl;
-
-		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
-			versionsLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/manage',
-			});
-		}
-
-		location.href = versionsLink;
-	};
 
 	const goToDashboard = async () => {
 		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
@@ -99,7 +80,6 @@ export function usePageRedirectionHelper() {
 
 	return {
 		goToDashboard,
-		goToVersions,
 		goToUpgrade,
 	};
 }

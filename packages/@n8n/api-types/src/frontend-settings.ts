@@ -2,14 +2,6 @@ import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
 import { type InsightsDateRange } from './schemas/insights.schema';
 
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	whatsNewEnabled: boolean;
-	whatsNewEndpoint: string;
-	infoUrl: string;
-}
-
 export interface ITelemetryClientConfig {
 	url: string;
 	key: string;
@@ -100,11 +92,6 @@ export interface FrontendSettings {
 		userId?: string;
 		[key: string]: string | number | undefined;
 	};
-	versionNotifications: IVersionNotificationSettings;
-	dynamicBanners: {
-		endpoint: string;
-		enabled: boolean;
-	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
@@ -189,9 +176,6 @@ export interface FrontendSettings {
 	};
 	folders: {
 		enabled: boolean;
-	};
-	banners: {
-		dismissed: string[];
 	};
 	workflowHistory: {
 		pruneTime: number;

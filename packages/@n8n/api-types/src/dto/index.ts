@@ -21,7 +21,6 @@ export { InviteUsersRequestDto } from './invitation/invite-users-request.dto';
 export { AcceptInvitationRequestDto } from './invitation/accept-invitation-request.dto';
 
 export { OwnerSetupRequestDto } from './owner/owner-setup-request.dto';
-export { DismissBannerRequestDto } from './owner/dismiss-banner-request.dto';
 
 export { ForgotPasswordRequestDto } from './password-reset/forgot-password-request.dto';
 export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-token-query.dto';

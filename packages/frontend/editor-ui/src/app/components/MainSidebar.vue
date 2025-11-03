@@ -24,7 +24,6 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	RELEASE_NOTES_URL,
 	VIEWS,
-	WHATS_NEW_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
@@ -36,7 +35,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDebounce } from '@/app/composables/useDebounce';
@@ -47,7 +45,6 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/app/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import BecomeTemplateCreatorCta from '@/app/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
-import VersionUpdateCTA from '@/app/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { I18nT } from 'vue-i18n';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
@@ -67,7 +64,6 @@ const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
-const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
@@ -92,14 +88,6 @@ const user = useTemplateRef('user');
 // Component data
 const basePath = ref('');
 const fullyExpanded = ref(false);
-
-const showWhatsNewNotification = computed(
-	() =>
-		versionsStore.hasVersionUpdates ||
-		versionsStore.whatsNewArticles.some(
-			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
-		),
-);
 
 const isTemplatesExperimentEnabled = computed(() => {
 	return (
@@ -245,52 +233,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 		],
 	},
-	{
-		id: 'whats-new',
-		icon: 'bell',
-		notification: showWhatsNewNotification.value,
-		label: i18n.baseText('mainSidebar.whatsNew'),
-		position: 'bottom',
-		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
-		children: [
-			...versionsStore.whatsNewArticles.map(
-				(article) =>
-					({
-						id: `whats-new-article-${article.id}`,
-						label: article.title,
-						size: 'small',
-						customIconSize: 'small',
-						icon: {
-							type: 'emoji',
-							value: '•',
-							color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
-						},
-					}) satisfies IMenuItem,
-			),
-			{
-				id: 'full-changelog',
-				icon: 'external-link',
-				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
-				link: {
-					href: RELEASE_NOTES_URL,
-					target: '_blank',
-				},
-				size: 'small',
-				customIconSize: 'small',
-			},
-			{
-				id: 'version-upgrade-cta',
-				component: VersionUpdateCTA,
-				available: versionsStore.hasVersionUpdates,
-				props: {
-					disabled: !usersStore.canUserUpdateVersion,
-					tooltipText: !usersStore.canUserUpdateVersion
-						? i18n.baseText('whatsNew.updateNudgeTooltip')
-						: undefined,
-				},
-			},
-		],
-	},
 ]);
 
 const visibleMenuItems = computed(() =>
@@ -383,21 +325,8 @@ const handleSelect = (key: string) => {
 		}
 		case 'insights':
 			telemetry.track('User clicked insights link from side menu');
+			break;
 		default:
-			if (key.startsWith('whats-new-article-')) {
-				const articleId = Number(key.replace('whats-new-article-', ''));
-
-				telemetry.track("User clicked on what's new section", {
-					article_id: articleId,
-				});
-				uiStore.openModalWithData({
-					name: WHATS_NEW_MODAL_KEY,
-					data: {
-						articleId,
-					},
-				});
-			}
-
 			break;
 	}
 };

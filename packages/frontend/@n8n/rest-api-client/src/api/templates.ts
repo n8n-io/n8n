@@ -1,7 +1,6 @@
 import type { RawAxiosRequestHeaders } from 'axios';
 import type { INode, INodeCredentialsDetails } from 'n8n-workflow';
 
-import type { VersionNode } from './versions';
 import type { WorkflowData } from './workflows';
 import { get } from '../utils';
 
@@ -26,7 +25,7 @@ export interface IWorkflowTemplate {
 	};
 }
 
-export interface ITemplatesNode extends VersionNode {
+export interface ITemplatesNode {
 	id: number;
 	categories?: ITemplatesCategory[];
 }

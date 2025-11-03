@@ -41,13 +41,11 @@ export type PublicFrontendSettings = Pick<
 	| 'defaultLocale'
 	| 'versionCli'
 	| 'releaseChannel'
-	| 'versionNotifications'
 	| 'userManagement'
 	| 'sso'
 	| 'mfa'
 	| 'authCookie'
 	| 'oauthCallbackUrls'
-	| 'banners'
 	| 'previewMode'
 	| 'telemetry'
 > & {
@@ -164,17 +162,6 @@ export class FrontendService {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 			},
-			versionNotifications: {
-				enabled: this.globalConfig.versionNotifications.enabled,
-				endpoint: this.globalConfig.versionNotifications.endpoint,
-				whatsNewEnabled: this.globalConfig.versionNotifications.whatsNewEnabled,
-				whatsNewEndpoint: this.globalConfig.versionNotifications.whatsNewEndpoint,
-				infoUrl: this.globalConfig.versionNotifications.infoUrl,
-			},
-			dynamicBanners: {
-				endpoint: this.globalConfig.dynamicBanners.endpoint,
-				enabled: this.globalConfig.dynamicBanners.enabled,
-			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
 			posthog: {
@@ -283,9 +270,6 @@ export class FrontendService {
 			variables: {
 				limit: 0,
 			},
-			banners: {
-				dismissed: [],
-			},
 			askAi: {
 				enabled: false,
 			},
@@ -350,15 +334,6 @@ export class FrontendService {
 			showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
 		});
 
-		let dismissedBanners: string[] = [];
-
-		try {
-			dismissedBanners = config.getEnv('ui.banners.dismissed') ?? [];
-		} catch {
-			// not yet in DB
-		}
-
-		this.settings.banners.dismissed = dismissedBanners;
 		try {
 			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
 		} catch {
@@ -479,13 +454,11 @@ export class FrontendService {
 			defaultLocale,
 			versionCli,
 			releaseChannel,
-			versionNotifications,
 			userManagement,
 			sso,
 			mfa,
 			authCookie,
 			oauthCallbackUrls,
-			banners,
 			previewMode,
 			telemetry,
 			enterprise,
@@ -499,13 +472,11 @@ export class FrontendService {
 			defaultLocale,
 			versionCli,
 			releaseChannel,
-			versionNotifications,
 			userManagement,
 			sso,
 			mfa,
 			authCookie,
 			oauthCallbackUrls,
-			banners,
 			previewMode,
 			telemetry,
 			enterprise: { saml, ldap, oidc },

@@ -21,9 +21,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
-import { useBannersStore } from '@/features/shared/banners/banners.store';
-import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
@@ -46,9 +43,7 @@ export async function initializeCore() {
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
-	const versionsStore = useVersionsStore();
 	const ssoStore = useSSOStore();
-	const bannersStore = useBannersStore();
 
 	const toast = useToast();
 	const i18n = useI18n();
@@ -80,19 +75,6 @@ export async function initializeCore() {
 			oidc: true,
 		},
 	});
-
-	const banners: BannerName[] = [];
-	if (
-		!(settingsStore.settings.banners?.dismissed || []).includes('V1') &&
-		settingsStore.settings.versionCli.startsWith('1.')
-	) {
-		banners.push('V1');
-	}
-	bannersStore.loadStaticBanners({
-		banners,
-	});
-
-	versionsStore.initialize(settingsStore.settings.versionNotifications);
 
 	void useExternalHooks().run('app.mount');
 
@@ -131,8 +113,6 @@ export async function initializeAuthenticatedFeatures(
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const insightsStore = useInsightsStore();
-	const bannersStore = useBannersStore();
-	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
@@ -154,46 +134,19 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isCloudDeployment) {
-		void cloudPlanStore
-			.initialize()
-			.then(() => {
-				if (cloudPlanStore.userIsTrialing) {
-					if (cloudPlanStore.trialExpired) {
-						bannersStore.pushBannerToStack('TRIAL_OVER');
-					} else {
-						bannersStore.pushBannerToStack('TRIAL');
-					}
-				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
-					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
-				}
-			})
-			.catch((error) => {
-				console.error('Failed to initialize cloud plan store:', error);
-			});
+		void cloudPlanStore.initialize().catch((error) => {
+			console.error('Failed to initialize cloud plan store:', error);
+		});
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
-		void dataTableStore
-			.fetchDataTableSize()
-			.then(({ quotaStatus }) => {
-				if (quotaStatus === 'error') {
-					bannersStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
-				} else if (quotaStatus === 'warn') {
-					bannersStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
-				}
-			})
-			.catch((error) => {
-				console.error('Failed to fetch data table limits:', error);
-			});
+		void dataTableStore.fetchDataTableSize().catch((error) => {
+			console.error('Failed to fetch data table limits:', error);
+		});
 	}
 
 	if (insightsStore.isSummaryEnabled) {
 		void insightsStore.weeklySummary.execute();
-	}
-
-	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
-	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
-		void versionsStore.checkForNewVersions();
 	}
 
 	await Promise.all([
@@ -217,7 +170,6 @@ function registerAuthenticationHooks() {
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const postHogStore = usePostHog();
-	const bannersStore = useBannersStore();
 	const npsSurveyStore = useNpsSurveyStore();
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
@@ -231,11 +183,9 @@ function registerAuthenticationHooks() {
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();
-		void bannersStore.loadDynamicBanners();
 	});
 
 	usersStore.registerLogoutHook(() => {
-		bannersStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
 		postHogStore.reset();
 		cloudPlanStore.reset();

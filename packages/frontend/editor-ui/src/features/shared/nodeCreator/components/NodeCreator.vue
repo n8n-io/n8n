@@ -10,7 +10,6 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useActionsGenerator } from '../composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
@@ -37,7 +36,6 @@ const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 const uiStore = useUIStore();
-const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
@@ -55,7 +53,7 @@ const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 const nodeCreatorInlineStyle = computed(() => {
 	const rightPosition = getRightOffset();
 	return {
-		top: `${bannersStore.bannersHeight + uiStore.headerHeight}px`,
+		top: `${uiStore.headerHeight}px`,
 		right: `${rightPosition}px`,
 	};
 });

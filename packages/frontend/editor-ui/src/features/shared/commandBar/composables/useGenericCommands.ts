@@ -3,13 +3,12 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { WHATS_NEW_MODAL_KEY, VIEWS, ABOUT_MODAL_KEY } from '@/app/constants';
+import { VIEWS, ABOUT_MODAL_KEY } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import type { CommandGroup, CommandBarItem } from '../types';
 
 const ITEM_ID = {
-	WHATS_NEW: 'whats-new',
 	SETTINGS: 'settings',
 	SIGN_OUT: 'sign-out',
 	TEMPLATES: 'templates',
@@ -30,24 +29,6 @@ export function useGenericCommands(): CommandGroup {
 	const { getReportingURL } = useBugReporting();
 
 	const genericCommands = computed<CommandBarItem[]>(() => [
-		{
-			id: ITEM_ID.WHATS_NEW,
-			title: i18n.baseText('mainSidebar.whatsNew'),
-			section: i18n.baseText('commandBar.sections.general'),
-			handler: () => {
-				uiStore.openModal(WHATS_NEW_MODAL_KEY);
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'bell',
-				},
-			},
-			keywords: [
-				i18n.baseText('mainSidebar.whatsNew').toLowerCase(),
-				i18n.baseText('mainSidebar.whatsNew.fullChangelog').toLowerCase(),
-			],
-		},
 		{
 			id: ITEM_ID.TEMPLATES,
 			title: i18n.baseText('generic.templates'),

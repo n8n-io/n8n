@@ -10,7 +10,6 @@ import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
-import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
@@ -32,7 +31,6 @@ import { SsoConfig } from './configs/sso.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
-import { VersionNotificationsConfig } from './configs/version-notifications.config';
 import { WorkflowHistoryConfig } from './configs/workflow-history.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
@@ -72,12 +70,6 @@ export class GlobalConfig {
 
 	@Nested
 	userManagement: UserManagementConfig;
-
-	@Nested
-	versionNotifications: VersionNotificationsConfig;
-
-	@Nested
-	dynamicBanners: DynamicBannersConfig;
 
 	@Nested
 	publicApi: PublicApiConfig;
