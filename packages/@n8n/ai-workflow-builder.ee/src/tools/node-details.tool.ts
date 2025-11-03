@@ -2,14 +2,14 @@ import { tool } from '@langchain/core/tools';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderToolBase } from '@/utils/stream-processor';
+
 import { ValidationError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
 import type { NodeDetails } from '../types/nodes';
 import type { NodeDetailsOutput } from '../types/tools';
-
-import type { BuilderToolBase } from '@/utils/stream-processor';
 
 /**
  * Schema for node details tool input

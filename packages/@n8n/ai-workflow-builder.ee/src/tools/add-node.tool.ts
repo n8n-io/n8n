@@ -2,6 +2,8 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+
 import { NodeTypeNotFoundError, ValidationError } from '../errors';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
 import { calculateNodePosition } from './utils/node-positioning.utils';
@@ -12,8 +14,6 @@ import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpe
 import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
-
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 /**
  * Schema for node creation input
