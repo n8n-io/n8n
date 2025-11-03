@@ -3,7 +3,7 @@ import type { User, WorkflowHistory } from '@n8n/db';
 import { WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { ensureError } from 'n8n-workflow';
+import { ensureError, UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
@@ -66,7 +66,7 @@ export class WorkflowHistoryService {
 
 	async saveVersion(user: User, workflow: IWorkflowBase, workflowId: string) {
 		if (!workflow.nodes || !workflow.connections) {
-			throw new Error(
+			throw new UnexpectedError(
 				`Cannot save workflow history: nodes and connections are required for workflow ${workflowId}`,
 			);
 		}

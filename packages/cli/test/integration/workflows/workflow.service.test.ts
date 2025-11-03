@@ -1,5 +1,5 @@
 import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
-import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import { SharedWorkflowRepository, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
@@ -83,18 +83,32 @@ describe('update()', () => {
 		expect(addSpy).not.toHaveBeenCalled();
 	});
 
-	test('should throw error when nodes are missing during name change', async () => {
+	test('should fetch missing connections from DB when updating nodes', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflow({}, owner);
 
-		// Try to update only the name without nodes and connections
-		const updateData = {
-			name: 'New Name',
-			versionId: workflow.versionId, // Include current versionId to pass version conflict check
-		} as any;
+		const updateData: Partial<WorkflowEntity> = {
+			nodes: [
+				{
+					id: 'new-node',
+					name: 'New Node',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+					parameters: {},
+				},
+			],
+			versionId: workflow.versionId,
+		};
 
-		await expect(workflowService.update(owner, updateData, workflow.id)).rejects.toThrow(
-			`Cannot save workflow history: nodes and connections are required for workflow ${workflow.id}`,
+		const updatedWorkflow = await workflowService.update(
+			owner,
+			updateData as WorkflowEntity,
+			workflow.id,
 		);
+
+		expect(updatedWorkflow.nodes).toHaveLength(1);
+		expect(updatedWorkflow.nodes[0].name).toBe('New Node');
+		expect(updatedWorkflow.versionId).not.toBe(workflow.versionId);
 	});
 });
