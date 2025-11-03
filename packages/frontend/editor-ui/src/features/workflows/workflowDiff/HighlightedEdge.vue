@@ -14,7 +14,7 @@ const props = defineProps<CanvasEdgeProps>();
 				:key="segment[0]"
 				:style="{
 					strokeWidth: 15,
-					stroke: 'var(--edge-highlight-color)',
+					stroke: 'var(--edge--color--highlight)',
 				}"
 				:path="segment[0]"
 				:interaction-width="0"

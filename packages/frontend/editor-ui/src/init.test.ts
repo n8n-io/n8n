@@ -1,15 +1,15 @@
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { initializeAuthenticatedFeatures, initializeCore, state } from '@/init';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useVersionsStore } from '@/stores/versions.store';
-import { useBannersStore } from '@/stores/banners.store';
+import { useVersionsStore } from '@/app/stores/versions.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { STORES } from '@n8n/stores';
@@ -19,12 +19,12 @@ import { AxiosError } from 'axios';
 import merge from 'lodash/merge';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
-import { telemetry } from './plugins/telemetry';
+import { telemetry } from '@/app/plugins/telemetry';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
 }));
 
@@ -160,7 +160,7 @@ describe('Init', () => {
 
 			await initializeCore();
 
-			expect(bannersStore.initialize).toHaveBeenCalledWith({
+			expect(bannersStore.loadStaticBanners).toHaveBeenCalledWith({
 				banners: ['NON_PRODUCTION_LICENSE', 'V1'],
 			});
 		});

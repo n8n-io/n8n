@@ -18,7 +18,7 @@ import {
 	setValue,
 	shouldSkipParamValidation,
 } from './ndv.utils';
-import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
+import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { type Ref, ref } from 'vue';
 

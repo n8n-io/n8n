@@ -13,10 +13,10 @@ import {
 	CUSTOM_API_CALL_KEY,
 	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
 	OPEN_AI_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import { useActions } from '../../composables/useActions';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
@@ -25,7 +25,7 @@ import { useViewStacks } from '../../composables/useViewStacks';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import type { IDataObject } from 'n8n-workflow';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
@@ -33,7 +33,7 @@ import { getActiveViewCallouts, isNodePreviewKey } from '../../nodeCreator.utils
 
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
-import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{

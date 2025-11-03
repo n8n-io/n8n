@@ -10,6 +10,7 @@ const CONTAINER_ONLY_TAGS = [
 	'multi-main',
 	'task-runner',
 	'source-control',
+	'email',
 ];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 
@@ -96,7 +97,10 @@ export function getProjects(): Project[] {
 		workers: 1,
 		timeout: 300000,
 		retries: 0,
-		use: { containerConfig: {} },
+		use: {
+			// Default container config for performance tests, equivalent to @cloud:starter
+			containerConfig: { resourceQuota: { memory: 0.75, cpu: 0.5 }, env: { E2E_TESTS: 'true' } },
+		},
 	});
 
 	return projects;

@@ -9,7 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { useApiKeysStore } from '../apiKeys.store';
 import { DateTime } from 'luxon';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
