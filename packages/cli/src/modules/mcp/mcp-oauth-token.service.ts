@@ -123,7 +123,7 @@ export class McpOAuthTokenService {
 		}
 
 		if (decoded.aud !== this.MCP_AUDIENCE) {
-			throw new Error(`Invalid token audience: expected ${this.MCP_AUDIENCE}, got ${decoded.aud}`);
+			throw new Error(`Invalid token audience: expected ${this.MCP_AUDIENCE}`);
 		}
 
 		const accessTokenRecord = await this.accessTokenRepository.findOne({

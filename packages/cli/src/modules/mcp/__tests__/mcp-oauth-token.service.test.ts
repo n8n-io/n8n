@@ -66,7 +66,7 @@ describe('McpOAuthTokenService', () => {
 
 			expect(accessToken).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/); // JWT format
 
-			const decoded = jwtService.decode(accessToken) as any;
+			const decoded = jwtService.decode(accessToken);
 			expect(decoded.sub).toBe(userId);
 			expect(decoded.aud).toBe('mcp-server-api');
 			expect(decoded.client_id).toBe(clientId);
