@@ -2,6 +2,7 @@ import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
 import { OAuthClient } from './oauth-client';
+import { User } from './user';
 
 @Entity('oauth_authorization_codes')
 export class AuthorizationCode extends WithTimestamps {
@@ -18,6 +19,9 @@ export class AuthorizationCode extends WithTimestamps {
 	@Index()
 	@Column({ type: String })
 	clientId: string;
+
+	@ManyToOne(() => User, { onDelete: 'CASCADE' })
+	user: User;
 
 	@Index()
 	@Column({ type: String })

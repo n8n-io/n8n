@@ -217,7 +217,7 @@ describe('McpOAuthTokenService', () => {
 			});
 
 			await expect(service.verifyAccessToken(wrongAudienceToken)).rejects.toThrow(
-				'Invalid token audience',
+				'Invalid access token: JWT verification failed',
 			);
 		});
 
