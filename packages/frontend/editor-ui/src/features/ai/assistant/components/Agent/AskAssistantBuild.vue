@@ -34,6 +34,7 @@ const { goToUpgrade } = usePageRedirectionHelper();
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
+const trackedCategorizations = ref(new Set<string>());
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
@@ -103,6 +104,7 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	trackedTools.value.clear();
+	trackedCategorizations.value.clear();
 	workflowUpdated.value = undefined;
 }
 
@@ -264,6 +266,41 @@ watch(
 			}
 		}
 	},
+);
+
+// Track categorization tool completion for telemetry
+watch(
+	() => builderStore.toolMessages,
+	(messages) => {
+		messages
+			.filter(
+				(msg) =>
+					msg.toolName === 'categorize_prompt' &&
+					msg.status === 'completed' &&
+					msg.toolCallId &&
+					!trackedCategorizations.value.has(msg.toolCallId),
+			)
+			.forEach((msg) => {
+				const outputUpdate = msg.updates.find((u) => u.type === 'output');
+				const categorizationData = outputUpdate?.data?.categorization as
+					| { techniques: string[]; confidence?: number }
+					| undefined;
+
+				if (categorizationData && msg.toolCallId) {
+					trackedCategorizations.value.add(msg.toolCallId);
+
+					telemetry.track('Classifier labels user prompt', {
+						user_id: usersStore.currentUserId ?? undefined,
+						workflow_id: workflowsStore.workflowId,
+						classifier_labels: categorizationData.techniques,
+						confidence: categorizationData.confidence,
+						session_id: builderStore.trackingSessionId,
+						timestamp: new Date().toISOString(),
+					});
+				}
+			});
+	},
+	{ deep: true },
 );
 
 // Reset on route change
