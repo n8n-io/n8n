@@ -2,7 +2,54 @@
 # Installed at Docker image build time. Allow usage in the Code node
 # via 'N8N_RUNNERS_EXTERNAL_ALLOW' env variable on n8n-task-runners.json.
 
-# numpy==2.3.2
-requests==2.32.3
+# HTTP & Networking
+requests
+httpx
+
+# AI & LLM Libraries
+openai
+anthropic
 google-genai
+langchain
+langchain-openai
+langchain-anthropic
+langchain-google-genai
+pydantic-ai
+
+# Azure
+azure-ai-openai
+azure-storage-blob
+azure-identity
+
+# AWS
+boto3
+
+# Image Processing
 Pillow
+opencv-python
+imageio
+scikit-image
+
+# File Handling
+openpyxl
+xlsxwriter
+python-docx
+PyPDF2
+pypdf
+pdf2image
+
+# Data Processing
+pandas
+numpy
+
+# JSON & Data Validation
+pydantic
+
+# Database
+psycopg2-binary
+pymongo
+redis
+
+# Utilities
+python-dotenv
+PyYAML
