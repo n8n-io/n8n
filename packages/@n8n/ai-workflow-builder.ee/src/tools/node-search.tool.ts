@@ -2,14 +2,14 @@ import { tool } from '@langchain/core/tools';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderToolBase } from '@/utils/stream-processor';
-
 import { ValidationError, ToolExecutionError } from '../errors';
 import { NodeSearchEngine } from './engines/node-search-engine';
 import { createProgressReporter, createBatchProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import type { NodeSearchResult } from '../types/nodes';
 import type { NodeSearchOutput } from '../types/tools';
+
+import type { BuilderToolBase } from '@/utils/stream-processor';
 
 /**
  * Search query schema - simplified for better LLM compatibility

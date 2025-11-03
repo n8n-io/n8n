@@ -3,9 +3,6 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
-import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
-
 import { createParameterUpdaterChain } from '../chains/parameter-updater';
 import { ValidationError, ParameterUpdateError, ToolExecutionError } from '../errors';
 import type { UpdateNodeParametersOutput } from '../types/tools';
@@ -24,6 +21,9 @@ import {
 	updateNodeWithParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
+
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 /**
  * Schema for update node parameters input
@@ -170,7 +170,7 @@ export function createUpdateNodeParametersTool(
 				}
 
 				// Find the node type
-				const nodeType = findNodeType(node.type, nodeTypes);
+				const nodeType = findNodeType(node.type, node.typeVersion, nodeTypes);
 				if (!nodeType) {
 					const error = createNodeTypeNotFoundError(node.type);
 					reporter.error(error);

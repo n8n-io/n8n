@@ -2,8 +2,6 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
-
 import { NodeTypeNotFoundError, ValidationError } from '../errors';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
 import { calculateNodePosition } from './utils/node-positioning.utils';
@@ -15,11 +13,14 @@ import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
 
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+
 /**
  * Schema for node creation input
  */
 export const nodeCreationSchema = z.object({
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
+	nodeVersion: z.number().describe('The exact node version'),
 	name: z
 		.string()
 		.describe('A descriptive name for the node that clearly indicates its purpose in the workflow'),
@@ -106,7 +107,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 			try {
 				// Validate input using Zod schema
 				const validatedInput = nodeCreationSchema.parse(input);
-				const { nodeType, name, connectionParametersReasoning, connectionParameters } =
+				const { nodeType, nodeVersion, name, connectionParametersReasoning, connectionParameters } =
 					validatedInput;
 
 				// Report tool start
@@ -120,7 +121,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				reporter.progress(`Adding ${name} (${connectionParametersReasoning})`);
 
 				// Find the node type
-				const nodeTypeDesc = findNodeType(nodeType, nodeTypes);
+				const nodeTypeDesc = findNodeType(nodeType, nodeVersion, nodeTypes);
 				if (!nodeTypeDesc) {
 					const nodeError = new NodeTypeNotFoundError(nodeType);
 					const error = {
