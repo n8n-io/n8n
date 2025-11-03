@@ -1,7 +1,6 @@
 <script lang="ts">
 import type { BannerName } from '@n8n/api-types';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
-import NonProductionLicenseBanner from './banners/NonProductionLicenseBanner.vue';
 import TrialOverBanner from './banners/TrialOverBanner.vue';
 import TrialBanner from './banners/TrialBanner.vue';
 import V1Banner from './banners/V1Banner.vue';
@@ -20,7 +19,6 @@ export const N8N_BANNERS: N8nBanners = {
 	TRIAL_OVER: { priority: 260, component: TrialOverBanner as Component },
 	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
 	TRIAL: { priority: 150, component: TrialBanner as Component },
-	NON_PRODUCTION_LICENSE: { priority: 140, component: NonProductionLicenseBanner as Component },
 	DATA_TABLE_STORAGE_LIMIT_WARNING: {
 		priority: 300,
 		component: DataTableStorageLimitWarningBanner as Component,
