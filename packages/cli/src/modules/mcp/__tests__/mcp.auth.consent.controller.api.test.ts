@@ -2,12 +2,12 @@ import { testDb } from '@n8n/backend-test-utils';
 import type { User, OAuthClient } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { JwtService } from '@/services/jwt.service';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import { JwtService } from '@/services/jwt.service';
-import type { OAuthSessionPayload } from '../oauth-session.service';
 import { OAuthClientRepository } from '../oauth-client.repository';
+import type { OAuthSessionPayload } from '../oauth-session.service';
 
 const testServer = setupTestServer({ endpointGroups: ['mcp'] });
 
