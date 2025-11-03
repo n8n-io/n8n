@@ -49,7 +49,6 @@ const testServer = utils.setupTestServer({
 		'quota:maxTeamProjects': -1,
 	},
 });
-const license = testServer.license;
 
 const { objectContaining, arrayContaining, any } = expect;
 
