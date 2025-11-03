@@ -83,12 +83,10 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 							await this.receiveFromEventBus({ msg, confirmCallback });
 						});
 					} catch (error) {
-						if (error instanceof CircuitBreakerOpen) {
-							this.logger.warn(
-								`${this.__type}(${this.id}) event destination ${this.label} failed to send message: circuit break open!`,
-							);
-							return;
-						}
+						this.logger.error(
+							`${this.__type}(${this.id}) event destination ${this.label} failed to send message`,
+							{ error },
+						);
 					}
 				},
 			);
