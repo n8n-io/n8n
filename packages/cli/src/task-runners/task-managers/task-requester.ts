@@ -1,3 +1,4 @@
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
@@ -22,12 +23,13 @@ import { nanoid } from 'nanoid';
 
 import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
+import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
 
 export type RequestAccept = (jobId: string) => void;
-export type RequestReject = (reason: string) => void;
+export type RequestReject = (reason: string | Error) => void;
 
 export type TaskAccept = (data: TaskResultData) => void;
 export type TaskReject = (error: unknown) => void;
@@ -64,6 +66,8 @@ export abstract class TaskRequester {
 	constructor(
 		private readonly nodeTypes: NodeTypes,
 		private readonly eventService: EventService,
+		private readonly taskRunnersConfig: TaskRunnersConfig,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async startTask<TData, TError>(
@@ -250,6 +254,9 @@ export abstract class TaskRequester {
 			case 'broker:taskerror':
 				this.taskError(message.taskId, message.error);
 				break;
+			case 'broker:requestexpired':
+				this.requestExpired(message.requestId);
+				break;
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
 				break;
@@ -273,6 +280,19 @@ export abstract class TaskRequester {
 		}
 
 		acceptReject.accept(taskId);
+		this.requestAcceptRejects.delete(requestId);
+	}
+
+	requestExpired(requestId: string) {
+		const acceptReject = this.requestAcceptRejects.get(requestId);
+		if (!acceptReject) return;
+
+		const error = new TaskRequestTimeoutError({
+			timeout: this.taskRunnersConfig.taskRequestTimeout,
+			isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
+		});
+
+		acceptReject.reject(error);
 		this.requestAcceptRejects.delete(requestId);
 	}
 

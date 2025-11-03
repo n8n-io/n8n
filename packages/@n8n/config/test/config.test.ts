@@ -265,6 +265,7 @@ describe('GlobalConfig', () => {
 			maxOldSpaceSize: '',
 			maxConcurrency: 10,
 			taskTimeout: 300,
+			taskRequestTimeout: 20,
 			heartbeatInterval: 30,
 			insecureMode: false,
 			isNativePythonRunnerEnabled: false,

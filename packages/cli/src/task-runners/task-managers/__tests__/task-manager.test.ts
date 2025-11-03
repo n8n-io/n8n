@@ -1,3 +1,4 @@
+import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import set from 'lodash/set';
@@ -19,9 +20,16 @@ describe('TaskRequester', () => {
 	let instance: TestTaskRequester;
 	const mockNodeTypes = mock<NodeTypes>();
 	const mockEventService = mock<EventService>();
+	const mockTaskRunnersConfig = mock<TaskRunnersConfig>();
+	const mockGlobalConfig = mock<GlobalConfig>();
 
 	beforeEach(() => {
-		instance = new TestTaskRequester(mockNodeTypes, mockEventService);
+		instance = new TestTaskRequester(
+			mockNodeTypes,
+			mockEventService,
+			mockTaskRunnersConfig,
+			mockGlobalConfig,
+		);
 	});
 
 	describe('handleRpc', () => {

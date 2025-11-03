@@ -1,3 +1,4 @@
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { RequesterMessage } from '@n8n/task-runner';
 
@@ -14,8 +15,13 @@ export class LocalTaskRequester extends TaskRequester {
 
 	id = 'local-task-requester';
 
-	constructor(nodeTypes: NodeTypes, eventService: EventService) {
-		super(nodeTypes, eventService);
+	constructor(
+		nodeTypes: NodeTypes,
+		eventService: EventService,
+		taskRunnersConfig: TaskRunnersConfig,
+		globalConfig: GlobalConfig,
+	) {
+		super(nodeTypes, eventService, taskRunnersConfig, globalConfig);
 		this.registerRequester();
 	}
 
