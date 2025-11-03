@@ -47,9 +47,11 @@ describe('MCPConnectionInstructions', () => {
 		{
 			id: '1',
 			name: 'Test Client',
-			redirectUrl: 'http://localhost:3000/callback',
-			scopes: ['read', 'write'],
+			redirectUris: ['http://localhost/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'client_secret_basic',
 			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
 		},
 	];
 

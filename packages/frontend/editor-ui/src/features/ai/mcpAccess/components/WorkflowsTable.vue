@@ -126,7 +126,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 				</N8nHeading>
 				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
 					<N8nButton
-						data-test-id="mcp-oauth-clients-refresh-button"
+						data-test-id="mcp-workflows-refresh-button"
 						size="small"
 						type="tertiary"
 						icon="refresh-cw"
@@ -226,6 +226,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nActionToggle
+						data-test-id="mcp-workflow-action-toggle"
 						placement="bottom"
 						:actions="tableActions"
 						theme="dark"
