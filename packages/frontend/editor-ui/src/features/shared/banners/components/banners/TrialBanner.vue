@@ -6,12 +6,15 @@ import { computed } from 'vue';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const cloudPlanStore = useCloudPlanStore();
 
 const pageRedirectionHelper = usePageRedirectionHelper();
+
+const shouldShowTrialBanner = computed(() => cloudPlanStore.shouldShowDynamicTrialBanner);
+const trialBannerText = computed(() => cloudPlanStore.dynamicTrialBannerText);
 
 const trialDaysLeft = computed(() => -1 * cloudPlanStore.trialDaysLeft);
 const messageText = computed(() => {
@@ -52,6 +55,10 @@ const currentExecutions = computed(() => {
 });
 
 function onUpdatePlanClick() {
+	if (shouldShowTrialBanner.value) {
+		cloudPlanStore.dismissDynamicTrialBanner();
+	}
+
 	void pageRedirectionHelper.goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
@@ -86,9 +93,19 @@ function onUpdatePlanClick() {
 			</div>
 		</template>
 		<template #trailingContent>
-			<N8nButton type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
-				locale.baseText('generic.upgradeNow')
-			}}</N8nButton>
+			<div :class="$style.trailingContentWrapper">
+				<N8nBadge
+					v-if="shouldShowTrialBanner"
+					:class="$style.dynamicBanner"
+					size="small"
+					:show-border="false"
+					:bold="true"
+					>{{ trialBannerText }}</N8nBadge
+				>
+				<N8nButton type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
+					locale.baseText('generic.upgradeNow')
+				}}</N8nButton>
+			</div>
 		</template>
 	</BaseBanner>
 </template>
@@ -173,5 +190,19 @@ function onUpdatePlanClick() {
 
 .executionsCountSection {
 	margin-left: var(--spacing--xs);
+}
+
+.trailingContentWrapper {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.dynamicBanner {
+	color: var(--color--foreground--tint-2);
+	border: none;
+	background: var(--color--foreground--shade-2);
+	border-radius: var(--radius);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
 }
 </style>

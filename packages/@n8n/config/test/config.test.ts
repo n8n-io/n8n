@@ -315,6 +315,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
 			disableBareRepos: false,
+			awsSystemCredentialsAccess: false,
 		},
 		executions: {
 			mode: 'regular',

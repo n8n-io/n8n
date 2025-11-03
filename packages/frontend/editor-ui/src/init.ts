@@ -22,7 +22,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
-import { useBannersStore } from '@/app/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -91,7 +91,7 @@ export async function initializeCore() {
 	) {
 		banners.push('V1');
 	}
-	bannersStore.initialize({
+	bannersStore.loadStaticBanners({
 		banners,
 	});
 
@@ -234,6 +234,7 @@ function registerAuthenticationHooks() {
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();
+		void bannersStore.loadDynamicBanners();
 	});
 
 	usersStore.registerLogoutHook(() => {

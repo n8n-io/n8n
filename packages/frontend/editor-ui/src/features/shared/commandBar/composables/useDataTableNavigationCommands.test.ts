@@ -299,6 +299,14 @@ describe('useDataTableNavigationCommands', () => {
 			await vi.waitFor(() => {
 				const rootDataTables = commands.value.filter((cmd) => cmd.id === 'dt-1');
 				expect(rootDataTables).toHaveLength(1);
+				expect(rootDataTables[0].section).toBe('commandBar.sections.dataTables');
+				expect(rootDataTables[0].title).toEqual(
+					expect.objectContaining({
+						props: expect.objectContaining({
+							title: 'generic.openResource',
+						}),
+					}),
+				);
 			});
 		});
 	});

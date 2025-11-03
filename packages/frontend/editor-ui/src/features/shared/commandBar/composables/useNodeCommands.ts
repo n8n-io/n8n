@@ -13,6 +13,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
+import type { INodeUi, SimplifiedNodeType } from '@/Interface';
 
 const ITEM_ID = {
 	ADD_NODE: 'add-node',
@@ -45,81 +46,88 @@ export function useNodeCommands(options: {
 		(workflowPermissions.value[permission] === true && !isReadOnly.value && !isArchived.value) ||
 		workflowsStore.isNewWorkflow;
 
+	const mergedNodes = computed(() => {
+		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
+		const nodeTypes = nodeTypesStore.visibleNodeTypes;
+		return generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials).mergedNodes;
+	});
+
+	const buildAddNodeCommand = (node: SimplifiedNodeType, isRoot: boolean): CommandBarItem => {
+		const { name, displayName } = node;
+
+		const title = isRoot ? `${i18n.baseText('generic.add')} ${displayName}` : displayName;
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.nodes')
+			: i18n.baseText('commandBar.nodes.addNode');
+
+		return {
+			id: name,
+			title,
+			section,
+			keywords: [displayName],
+			icon: {
+				component: NodeIcon as Component,
+				props: {
+					nodeType: node,
+					size: 16,
+				},
+			},
+			handler: async () => {
+				const nodes = await addNodes([{ type: name }]);
+				if (nodes && nodes.length > 0) {
+					canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
+				}
+			},
+		};
+	};
+
 	const addNodeCommands = computed<CommandBarItem[]>(() => {
 		if (!hasPermission('update')) {
 			return [];
 		}
 
-		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
-		const nodeTypes = nodeTypesStore.visibleNodeTypes;
-		const { mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
-		return mergedNodes.map((node) => {
-			const { name, displayName } = node;
-
-			return {
-				id: name,
-				title: {
-					component: CommandBarItemTitle,
-					props: {
-						title: displayName,
-						actionText: i18n.baseText('generic.add'),
-					},
-				},
-				keywords: [displayName],
-				icon: {
-					component: NodeIcon as Component,
-					props: {
-						nodeType: node,
-						size: 16,
-					},
-				},
-				handler: async () => {
-					const nodes = await addNodes([{ type: name }]);
-					if (nodes && nodes.length > 0) {
-						canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
-					}
-				},
-			};
-		});
+		return mergedNodes.value.map((node) => buildAddNodeCommand(node, false));
 	});
 
 	const rootAddNodeCommandItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+		if (lastQuery.value.length <= 2 || !hasPermission('update')) {
 			return [];
 		}
 
-		return addNodeCommands.value;
+		return mergedNodes.value.map((node) => buildAddNodeCommand(node, true));
 	});
 
-	const openNodeCommands = computed<CommandBarItem[]>(() => {
-		return editableWorkflow.value.nodes.map((node) => {
-			const { id, name, type } = node;
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	const buildOpenNodeCommand = (node: INodeUi, isRoot: boolean): CommandBarItem => {
+		const { id, name, type } = node;
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		const title = isRoot
+			? i18n.baseText('generic.openResource', { interpolate: { resource: name } })
+			: name;
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.nodes')
+			: i18n.baseText('commandBar.nodes.openNode');
 
-			return {
-				id,
-				title: {
-					component: CommandBarItemTitle,
-					props: {
-						title: name,
-						actionText: i18n.baseText('generic.open'),
-					},
+		return {
+			id,
+			title,
+			section,
+			keywords: [name, type],
+			icon: {
+				component: NodeIcon,
+				props: {
+					nodeType,
+					size: 16,
 				},
-				section: i18n.baseText('commandBar.sections.nodes'),
-				keywords: [name, type],
-				icon: {
-					component: NodeIcon,
-					props: {
-						nodeType,
-						size: 16,
-					},
-				},
-				handler: () => {
-					setNodeActive(id, 'command_bar');
-				},
-				placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
-			};
-		});
+			},
+			handler: () => {
+				setNodeActive(id, 'command_bar');
+			},
+			placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
+		};
+	};
+
+	const openNodeCommands = computed<CommandBarItem[]>(() => {
+		return editableWorkflow.value.nodes.map((node) => buildOpenNodeCommand(node, false));
 	});
 
 	const rootOpenNodeCommandItems = computed<CommandBarItem[]>(() => {
@@ -127,7 +135,7 @@ export function useNodeCommands(options: {
 			return [];
 		}
 
-		return openNodeCommands.value;
+		return editableWorkflow.value.nodes.map((node) => buildOpenNodeCommand(node, true));
 	});
 
 	const nodeCommands = computed<CommandBarItem[]>(() => {

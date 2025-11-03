@@ -244,6 +244,7 @@ describe('useNodeCommands', () => {
 
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-node');
 			expect(openCommand?.children).toHaveLength(2);
+			expect(openCommand?.children?.[0].title).toEqual('Start');
 		});
 	});
 
@@ -297,15 +298,6 @@ describe('useNodeCommands', () => {
 				expect(commands.value.length).toBeLessThanOrEqual(3);
 			}
 		});
-
-		it('should show root add node items when query is longer than 2 characters', () => {
-			const { commands } = useNodeCommands({
-				lastQuery: ref('htt'),
-				activeNodeId: ref(null),
-			});
-
-			expect(commands.value).toBeDefined();
-		});
 	});
 
 	describe('root open node items', () => {
@@ -333,6 +325,7 @@ describe('useNodeCommands', () => {
 
 			const rootOpenNodes = commands.value.filter((cmd) => cmd.id === 'node-1');
 			expect(rootOpenNodes).toHaveLength(1);
+			expect(rootOpenNodes[0].title).toEqual('generic.openResource');
 		});
 	});
 });
