@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nTabs } from '@n8n/design-system';
+import { N8nHeading, N8nTabs, N8nText } from '@n8n/design-system';
 import type { ApiKey } from '@n8n/api-types';
 import type { TabOptions } from '@n8n/design-system';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import OAuthConnectionInstructions from '@/features/ai/mcpAccess/components/connectionInstructions/OAuthConnectionInstructions.vue';
 import AccessTokenConnectionInstructions from '@/features/ai/mcpAccess/components/connectionInstructions/AccessTokenConnectionInstructions.vue';
+import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 
 const MCP_ENDPOINT = 'mcp-server/http';
 
@@ -56,7 +57,7 @@ const onTabSelected = (tab: ConnectionTabType) => {
 		<div>
 			<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
 			<OAuthConnectionInstructions
-				v-if="selectedTab === 'oauth'"
+				v-show="selectedTab === 'oauth'"
 				:server-url="`${props.baseUrl}/${MCP_ENDPOINT}`"
 				:clients="props.oAuthClients"
 				:clients-loading="props.loadingOAuthClients"
@@ -64,12 +65,18 @@ const onTabSelected = (tab: ConnectionTabType) => {
 				@refresh="emit('refreshClientList')"
 			/>
 			<AccessTokenConnectionInstructions
-				v-else
+				v-show="selectedTab === 'token'"
 				:server-url="`${props.baseUrl}/${MCP_ENDPOINT}`"
 				:api-key="props.apiKey"
 				:loading-api-key="props.loadingApiKey"
 				@rotate-key="emit('rotateKey')"
 			/>
+			<N8nText size="small">
+				{{ i18n.baseText('settings.mcp.instructions.docs.part1') }}
+				<a :href="MCP_DOCS_PAGE_URL" target="_blank">
+					{{ i18n.baseText('settings.mcp.instructions.docs.part2') }}
+				</a>
+			</N8nText>
 		</div>
 	</div>
 </template>

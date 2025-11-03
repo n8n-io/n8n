@@ -63,7 +63,7 @@ const onRevokeClientAccess = (client: OAuthClientResponseDto) => {
 .container {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--xs) 0;
 }
 
 .instructions {

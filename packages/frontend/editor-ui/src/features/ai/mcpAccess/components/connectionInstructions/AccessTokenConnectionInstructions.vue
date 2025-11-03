@@ -10,11 +10,9 @@ import {
 	N8nLoading,
 	N8nMarkdown,
 	N8nNotice,
-	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/connectionInstructions/ConnectionParameter.vue';
-import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 
 type Props = {
 	serverUrl: string;
@@ -146,12 +144,6 @@ const apiKeyText = computed(() => {
 				</template>
 			</N8nInfoAccordion>
 		</div>
-		<N8nText size="small">
-			{{ i18n.baseText('settings.mcp.instructions.docs.part1') }}
-			<a :href="MCP_DOCS_PAGE_URL" target="_blank">
-				{{ i18n.baseText('settings.mcp.instructions.docs.part2') }}
-			</a>
-		</N8nText>
 	</div>
 </template>
 
