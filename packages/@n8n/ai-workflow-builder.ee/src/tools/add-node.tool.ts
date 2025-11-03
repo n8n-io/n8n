@@ -42,6 +42,7 @@ export const nodeCreationSchema = z.object({
  */
 function createNode(
 	nodeType: INodeTypeDescription,
+	typeVersion: number, // nodeType can have multiple versions
 	customName: string,
 	existingNodes: INode[],
 	nodeTypes: INodeTypeDescription[],
@@ -55,7 +56,7 @@ function createNode(
 	const position = calculateNodePosition(existingNodes, isSubNode(nodeType), nodeTypes);
 
 	// Create the node instance with connection parameters
-	return createNodeInstance(nodeType, uniqueName, position, connectionParameters);
+	return createNodeInstance(nodeType, typeVersion, uniqueName, position, connectionParameters);
 }
 
 /**
@@ -136,6 +137,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				// Create the new node
 				const newNode = createNode(
 					nodeTypeDesc,
+					nodeVersion,
 					name,
 					workflow.nodes, // Use current workflow nodes
 					nodeTypes,
