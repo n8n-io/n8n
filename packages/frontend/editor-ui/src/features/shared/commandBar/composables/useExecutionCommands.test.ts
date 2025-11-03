@@ -7,7 +7,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { getResourcePermissions } from '@n8n/permissions';
 import { setActivePinia } from 'pinia';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 const routerPushMock = vi.fn();
 const routerReplaceMock = vi.fn();
@@ -147,9 +146,7 @@ describe('useExecutionCommands', () => {
 		});
 
 		Object.defineProperty(mockSettingsStore, 'isEnterpriseFeatureEnabled', {
-			value: {
-				[EnterpriseEditionFeature.AdvancedExecutionFilters]: false,
-			},
+			value: {},
 		});
 
 		mockGetResourcePermissions.mockReturnValue({
@@ -398,9 +395,7 @@ describe('useExecutionCommands', () => {
 	describe('annotation commands', () => {
 		beforeEach(() => {
 			Object.defineProperty(mockSettingsStore, 'isEnterpriseFeatureEnabled', {
-				value: {
-					[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-				},
+				value: {},
 			});
 		});
 
@@ -418,9 +413,7 @@ describe('useExecutionCommands', () => {
 
 		it('should not include vote commands when annotation feature is disabled', () => {
 			Object.defineProperty(mockSettingsStore, 'isEnterpriseFeatureEnabled', {
-				value: {
-					[EnterpriseEditionFeature.AdvancedExecutionFilters]: false,
-				},
+				value: {},
 			});
 			mockExecutionsStore.activeExecution = createMockExecution('exec-1', 'success');
 

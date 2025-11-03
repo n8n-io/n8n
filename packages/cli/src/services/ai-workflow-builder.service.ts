@@ -7,7 +7,6 @@ import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import type { IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
@@ -22,7 +21,6 @@ export class WorkflowBuilderService {
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly license: License,
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
@@ -36,8 +34,8 @@ export class WorkflowBuilderService {
 			// Create AiAssistantClient if baseUrl is configured
 			const baseUrl = this.config.aiAssistant.baseUrl;
 			if (baseUrl) {
-				const licenseCert = await this.license.loadCertStr();
-				const consumerId = this.license.getConsumerId();
+				const licenseCert = '';
+				const consumerId = 'n8n-enterprise';
 
 				client = new AiAssistantClient({
 					licenseCert,

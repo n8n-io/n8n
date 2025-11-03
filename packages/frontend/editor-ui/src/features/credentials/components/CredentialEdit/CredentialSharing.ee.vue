@@ -3,7 +3,6 @@ import type { AllRolesMap, PermissionsRecord } from '@n8n/permissions';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@/app/stores/roles.store';
@@ -47,9 +46,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const sharedWithProjects = ref([...(props.credential?.sharedWithProjects ?? [])]);
 
-const isSharingEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
-);
+const isSharingEnabled = computed(() => true);
 const credentialOwnerName = computed(() => {
 	const { name, email } = splitName(props.credential?.homeProject?.name ?? '');
 	return name ?? email ?? '';

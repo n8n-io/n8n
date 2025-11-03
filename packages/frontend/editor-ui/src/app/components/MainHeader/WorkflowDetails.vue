@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/app/components/BreakpointsObserver.vue';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
@@ -12,7 +11,6 @@ import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTag
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import {
 	DUPLICATE_MODAL_KEY,
-	EnterpriseEditionFeature,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
@@ -259,7 +257,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 });
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
+	return true;
 });
 
 const workflowTagIds = computed(() => {
@@ -867,46 +865,16 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 					@update:workflow-active="onWorkflowActiveToggle"
 				/>
 			</span>
-			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
-				<div :class="$style.group">
-					<CollaborationPane v-if="!isNewWorkflow" />
-					<N8nButton
-						type="secondary"
-						data-test-id="workflow-share-button"
-						@click="onShareButtonClick"
-					>
-						{{ i18n.baseText('workflowDetails.share') }}
-					</N8nButton>
-				</div>
-				<template #fallback>
-					<N8nTooltip>
-						<N8nButton type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
-							{{ i18n.baseText('workflowDetails.share') }}
-						</N8nButton>
-						<template #content>
-							<I18nT
-								:keypath="
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
-										.tooltip
-								"
-								tag="span"
-								scope="global"
-							>
-								<template #action>
-									<a @click="goToUpgrade">
-										{{
-											i18n.baseText(
-												uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
-													.button as BaseTextKey,
-											)
-										}}
-									</a>
-								</template>
-							</I18nT>
-						</template>
-					</N8nTooltip>
-				</template>
-			</EnterpriseEdition>
+			<div :class="$style.group">
+				<CollaborationPane v-if="!isNewWorkflow" />
+				<N8nButton
+					type="secondary"
+					data-test-id="workflow-share-button"
+					@click="onShareButtonClick"
+				>
+					{{ i18n.baseText('workflowDetails.share') }}
+				</N8nButton>
+			</div>
 			<div :class="$style.group">
 				<SaveButton
 					type="primary"

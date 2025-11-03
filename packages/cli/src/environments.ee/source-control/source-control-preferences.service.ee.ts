@@ -15,7 +15,7 @@ import {
 	SOURCE_CONTROL_SSH_KEY_NAME,
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 } from './constants';
-import { generateSshKeyPair, isSourceControlLicensed } from './source-control-helper.ee';
+import { generateSshKeyPair } from './source-control-helper.ee';
 import { SourceControlConfig } from './source-control.config';
 import type { KeyPairType } from './types/key-pair-type';
 import { SourceControlPreferences } from './types/source-control-preferences';
@@ -225,7 +225,7 @@ export class SourceControlPreferencesService {
 	}
 
 	isSourceControlLicensedAndEnabled(): boolean {
-		return this.isSourceControlConnected() && isSourceControlLicensed();
+		return this.isSourceControlConnected();
 	}
 
 	getBranchName(): string {

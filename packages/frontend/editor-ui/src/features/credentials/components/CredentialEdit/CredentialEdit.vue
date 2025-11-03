@@ -25,7 +25,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -554,7 +553,6 @@ function onTabSelect(tab: string) {
 		tab,
 		workflow_id: workflowsStore.workflowId,
 		credential_id: credentialId.value,
-		sharing_enabled: EnterpriseEditionFeature.Sharing,
 	});
 }
 
@@ -696,10 +694,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		data: data as unknown as ICredentialDataDecryptedObject,
 	};
 
-	if (
-		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing] &&
-		credentialData.value.sharedWithProjects
-	) {
+	if (true && credentialData.value.sharedWithProjects) {
 		credentialDetails.sharedWithProjects = credentialData.value
 			.sharedWithProjects as ProjectSharingData[];
 	}
@@ -715,7 +710,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (isNewCredential) {
 		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+		if (true) {
 			credentialDetails.sharedWithProjects = credentialData.value
 				.sharedWithProjects as ProjectSharingData[];
 		}

@@ -9,26 +9,22 @@ import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '../constants';
-import { License } from '../license';
 
 @Service()
 export class AiService {
 	private client: AiAssistantClient | undefined;
 
-	constructor(
-		private readonly licenseService: License,
-		private readonly globalConfig: GlobalConfig,
-	) {}
+	constructor(private readonly globalConfig: GlobalConfig) {}
 
 	async init() {
-		const aiAssistantEnabled = this.licenseService.isAiAssistantEnabled();
+		const aiAssistantEnabled = true;
 
 		if (!aiAssistantEnabled) {
 			return;
 		}
 
-		const licenseCert = await this.licenseService.loadCertStr();
-		const consumerId = this.licenseService.getConsumerId();
+		const licenseCert = '';
+		const consumerId = 'unknown';
 		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
 		const logLevel = this.globalConfig.logging.level;
 

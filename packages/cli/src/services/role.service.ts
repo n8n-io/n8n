@@ -1,5 +1,4 @@
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -40,7 +39,6 @@ import { isUniqueConstraintError } from '@/response-helper';
 @Service()
 export class RoleService {
 	constructor(
-		private readonly license: LicenseState,
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
@@ -50,7 +48,7 @@ export class RoleService {
 		return {
 			...role,
 			scopes: role.scopes.map((s) => s.slug),
-			licensed: this.isRoleLicensed(role.slug),
+			licensed: true,
 			usedByUsers,
 		};
 	}
@@ -298,26 +296,7 @@ export class RoleService {
 	}
 
 	isRoleLicensed(role: AssignableProjectRole) {
-		// TODO: move this info into FrontendSettings
-
-		if (!isBuiltInRole(role)) {
-			// This is a custom role, there for we need to check if
-			// custom roles are licensed
-			return this.license.isCustomRolesLicensed();
-		}
-
-		switch (role) {
-			case PROJECT_ADMIN_ROLE_SLUG:
-				return this.license.isProjectRoleAdminLicensed();
-			case PROJECT_EDITOR_ROLE_SLUG:
-				return this.license.isProjectRoleEditorLicensed();
-			case PROJECT_VIEWER_ROLE_SLUG:
-				return this.license.isProjectRoleViewerLicensed();
-			case GLOBAL_ADMIN_ROLE.slug:
-				return this.license.isAdvancedPermissionsLicensed();
-			default:
-				// TODO: handle custom roles licensing
-				return true;
-		}
+		// All roles are licensed in enterprise mode
+		return true;
 	}
 }

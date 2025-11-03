@@ -1,4 +1,3 @@
-import type { LICENSE_FEATURES } from '@n8n/constants';
 import { Container, Service, type Constructable } from '@n8n/di';
 
 import { ModuleMetadata } from './module-metadata';
@@ -81,14 +80,11 @@ export interface ModuleInterface {
 
 export type ModuleClass = Constructable<ModuleInterface>;
 
-export type LicenseFlag = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
-
 export const BackendModule =
-	(opts: { name: string; licenseFlag?: LicenseFlag | LicenseFlag[] }): ClassDecorator =>
+	(opts: { name: string }): ClassDecorator =>
 	(target) => {
 		Container.get(ModuleMetadata).register(opts.name, {
 			class: target as unknown as ModuleClass,
-			licenseFlag: opts?.licenseFlag,
 		});
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return

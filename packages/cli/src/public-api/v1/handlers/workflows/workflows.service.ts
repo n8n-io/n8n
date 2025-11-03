@@ -12,7 +12,6 @@ import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@n8n/permissions';
 import type { WorkflowId } from 'n8n-workflow';
 
-import { License } from '@/license';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -24,18 +23,10 @@ export async function getSharedWorkflowIds(
 	scopes: Scope[],
 	projectId?: string,
 ): Promise<string[]> {
-	if (Container.get(License).isSharingEnabled()) {
-		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
-			scopes,
-			projectId,
-		});
-	} else {
-		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
-			workflowRoles: ['workflow:owner'],
-			projectRoles: [PROJECT_OWNER_ROLE_SLUG],
-			projectId,
-		});
-	}
+	return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
+		scopes,
+		projectId,
+	});
 }
 
 export async function getSharedWorkflow(

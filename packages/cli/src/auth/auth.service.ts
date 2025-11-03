@@ -13,7 +13,6 @@ import type { StringValue as TimeUnitValue } from 'ms';
 import config from '@/config';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -63,7 +62,6 @@ export class AuthService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
@@ -165,8 +163,8 @@ export class AuthService {
 
 	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
 		// TODO: move this check to the login endpoint in AuthController
-		// If the instance has exceeded its user quota, prevent non-owners from logging in
-		const isWithinUsersLimit = this.license.isWithinUsersLimit();
+		// All users are within the limit in enterprise mode
+		const isWithinUsersLimit = true;
 		if (
 			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
 			user.role.slug !== GLOBAL_OWNER_ROLE.slug &&

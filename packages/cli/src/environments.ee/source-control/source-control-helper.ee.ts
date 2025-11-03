@@ -9,8 +9,6 @@ import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
-import { License } from '@/license';
-
 import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
@@ -109,10 +107,7 @@ export function sourceControlFoldersExistCheck(
 	return existed;
 }
 
-export function isSourceControlLicensed() {
-	const license = Container.get(License);
-	return license.isSourceControlLicensed();
-}
+export function isSourceControlLicensed() {}
 
 export async function generateSshKeyPair(keyType: KeyPairType) {
 	const sshpk = await import('sshpk');

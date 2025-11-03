@@ -1,14 +1,9 @@
 import { Service } from '@n8n/di';
 
-import type { LicenseFlag, ModuleClass } from './module';
+import type { ModuleClass } from './module';
 
 type ModuleEntry = {
 	class: ModuleClass;
-	/*
-	 * If singular, checks if that feature ls licensed,
-	 * if multiple, checks that any of the features are licensed
-	 */
-	licenseFlag?: LicenseFlag | LicenseFlag[];
 };
 
 @Service()

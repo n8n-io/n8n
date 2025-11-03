@@ -17,7 +17,6 @@ import { ExecutionsConfig } from './configs/executions.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
-import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
@@ -141,9 +140,6 @@ export class GlobalConfig {
 
 	@Nested
 	generic: GenericConfig;
-
-	@Nested
-	license: LicenseConfig;
 
 	@Nested
 	security: SecurityConfig;

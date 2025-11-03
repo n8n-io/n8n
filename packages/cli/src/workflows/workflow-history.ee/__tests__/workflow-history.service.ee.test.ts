@@ -21,12 +21,9 @@ const testUser = Object.assign(new User(), {
 	firstName: 'John',
 	lastName: 'Doe',
 });
-let isWorkflowHistoryEnabled = true;
 
 jest.mock('@/workflows/workflow-history.ee/workflow-history-helper.ee', () => {
-	return {
-		isWorkflowHistoryEnabled: jest.fn(() => isWorkflowHistoryEnabled),
-	};
+	return {};
 });
 
 describe('WorkflowHistoryService', () => {
@@ -37,7 +34,6 @@ describe('WorkflowHistoryService', () => {
 	describe('saveVersion', () => {
 		it('should save a new version when workflow history is enabled and nodes and connections are present', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.connections = {};
@@ -59,7 +55,6 @@ describe('WorkflowHistoryService', () => {
 
 		it('should not save a new version when workflow history is disabled', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = false;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.connections = {};
@@ -75,7 +70,6 @@ describe('WorkflowHistoryService', () => {
 
 		it('should not save a new version when nodes or connections are missing', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.id = workflowId;
@@ -91,7 +85,6 @@ describe('WorkflowHistoryService', () => {
 
 		it('should log an error when failed to save workflow history version', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.connections = {};

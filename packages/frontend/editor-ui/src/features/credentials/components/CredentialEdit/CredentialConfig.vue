@@ -11,13 +11,11 @@ import { isCommunityPackageName } from 'n8n-workflow';
 
 import type { IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from './AuthTypeSelector.vue';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,
-	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
@@ -350,17 +348,15 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:redact-value="true"
 				/>
 			</template>
-			<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
-				<div>
-					<N8nInfoTip :bold="false">
-						{{
-							i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
-								interpolate: { credentialOwnerName },
-							})
-						}}
-					</N8nInfoTip>
-				</div>
-			</EnterpriseEdition>
+			<div v-else>
+				<N8nInfoTip :bold="false">
+					{{
+						i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
+							interpolate: { credentialOwnerName },
+						})
+					}}
+				</N8nInfoTip>
+			</div>
 
 			<CredentialInputs
 				v-if="credentialType && credentialPermissions.update"
@@ -387,16 +383,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
 			</N8nText>
 
-			<EnterpriseEdition :features="[EnterpriseEditionFeature.ExternalSecrets]">
-				<template #fallback>
-					<N8nInfoTip class="mt-s">
-						{{ i18n.baseText('credentialEdit.credentialConfig.externalSecrets') }}
-						<N8nLink bold :to="i18n.baseText('settings.externalSecrets.docs')" size="small">
-							{{ i18n.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
-						</N8nLink>
-					</N8nInfoTip>
-				</template>
-			</EnterpriseEdition>
+			<N8nInfoTip class="mt-s">
+				{{ i18n.baseText('credentialEdit.credentialConfig.externalSecrets') }}
+				<N8nLink bold :to="i18n.baseText('settings.externalSecrets.docs')" size="small">
+					{{ i18n.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
+				</N8nLink>
+			</N8nInfoTip>
 		</div>
 	</div>
 </template>

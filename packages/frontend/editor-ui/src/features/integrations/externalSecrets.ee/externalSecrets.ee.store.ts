@@ -1,6 +1,5 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import * as externalSecretsApi from '@n8n/rest-api-client';
@@ -19,9 +18,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		connectionState: {} as Record<string, ExternalSecretsProvider['state']>,
 	});
 
-	const isEnterpriseExternalSecretsEnabled = computed(
-		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets],
-	);
+	const isEnterpriseExternalSecretsEnabled = computed(() => true);
 
 	const secrets = computed(() => state.secrets);
 	const providers = computed(() => state.providers);

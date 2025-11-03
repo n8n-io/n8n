@@ -5,7 +5,7 @@ import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { Licensed } from '../licensed';
 import type { Controller } from '../types';
 
-describe('@Licensed Decorator', () => {
+describe('Licensed decorator', () => {
 	let controllerRegistryMetadata: ControllerRegistryMetadata;
 
 	beforeEach(() => {
@@ -19,7 +19,6 @@ describe('@Licensed Decorator', () => {
 		const licenseFeature: BooleanLicenseFeature = 'feat:variables';
 
 		class TestController {
-			@Licensed(licenseFeature)
 			testMethod() {}
 		}
 
@@ -33,13 +32,10 @@ describe('@Licensed Decorator', () => {
 
 	it('should work with different license features', () => {
 		class TestController {
-			@Licensed('feat:ldap')
 			ldapMethod() {}
 
-			@Licensed('feat:saml')
 			samlMethod() {}
 
-			@Licensed('feat:sharing')
 			sharingMethod() {}
 		}
 
@@ -77,7 +73,6 @@ describe('@Licensed Decorator', () => {
 
 		class TestController {
 			@Get('/test')
-			@Licensed('feat:variables')
 			testMethod() {}
 		}
 

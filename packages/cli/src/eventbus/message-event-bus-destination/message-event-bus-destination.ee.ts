@@ -5,8 +5,6 @@ import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-wo
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { License } from '@/license';
-
 import type { EventMessageTypes } from '../event-message-classes';
 import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
@@ -20,8 +18,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	readonly eventBusInstance: MessageEventBus;
 
 	protected readonly logger: Logger;
-
-	protected readonly license: License;
 
 	__type: MessageEventBusDestinationTypeNames;
 
@@ -38,7 +34,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	constructor(eventBusInstance: MessageEventBus, options: MessageEventBusDestinationOptions) {
 		// @TODO: Use DI
 		this.logger = Container.get(Logger);
-		this.license = Container.get(License);
 
 		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;

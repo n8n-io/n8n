@@ -1,10 +1,6 @@
 import { ref, computed } from 'vue';
 import { useHistoryStore } from '@/app/stores/history.store';
-import {
-	CUSTOM_API_CALL_KEY,
-	EnterpriseEditionFeature,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-} from '@/app/constants';
+import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
 import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -145,10 +141,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	function getForeignCredentialsIfSharingEnabled(
 		credentials: INodeCredentials | undefined,
 	): string[] {
-		if (
-			!credentials ||
-			!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]
-		) {
+		if (!credentials) {
 			return [];
 		}
 

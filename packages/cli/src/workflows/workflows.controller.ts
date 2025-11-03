@@ -16,7 +16,6 @@ import {
 	Body,
 	Delete,
 	Get,
-	Licensed,
 	Param,
 	Patch,
 	Post,
@@ -50,7 +49,6 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
-import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { FolderService } from '@/services/folder.service';
@@ -75,7 +73,6 @@ export class WorkflowsController {
 		private readonly workflowService: WorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectRepository: ProjectRepository,
@@ -115,7 +112,7 @@ export class WorkflowsController {
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 
-		if (this.license.isSharingEnabled()) {
+		if (true) {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
 
@@ -285,7 +282,7 @@ export class WorkflowsController {
 	async getWorkflow(req: WorkflowRequest.Get) {
 		const { workflowId } = req.params;
 
-		if (this.license.isSharingEnabled()) {
+		if (true) {
 			const relations: FindOptionsRelations<WorkflowEntity> = {
 				shared: {
 					project: {
@@ -358,7 +355,7 @@ export class WorkflowsController {
 		const { tags, parentFolderId, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const isSharingEnabled = this.license.isSharingEnabled();
+		const isSharingEnabled = true;
 		if (isSharingEnabled) {
 			updateData = await this.enterpriseWorkflowService.preventTampering(
 				updateData,
@@ -451,7 +448,7 @@ export class WorkflowsController {
 			throw new UnexpectedError('Workflow ID in body does not match workflow ID in URL');
 		}
 
-		if (this.license.isSharingEnabled()) {
+		if (true) {
 			const workflow = this.workflowRepository.create(req.body.workflowData);
 
 			const safeWorkflow = await this.enterpriseWorkflowService.preventTampering(
@@ -469,7 +466,6 @@ export class WorkflowsController {
 		);
 	}
 
-	@Licensed('feat:sharing')
 	@Put('/:workflowId/share')
 	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {

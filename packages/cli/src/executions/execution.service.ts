@@ -41,7 +41,6 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionFlattedResponse } from '@/interfaces';
-import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -107,7 +106,6 @@ export class ExecutionService {
 		private readonly waitTracker: WaitTracker,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly concurrencyControl: ConcurrencyControlService,
-		private readonly license: License,
 		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
@@ -298,9 +296,7 @@ export class ExecutionService {
 			}
 		}
 
-		if (requestFilters?.metadata && !this.license.isAdvancedExecutionFiltersEnabled()) {
-			delete requestFilters.metadata;
-		}
+		// Advanced execution filters are always enabled in enterprise mode
 
 		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
 			deleteBefore,

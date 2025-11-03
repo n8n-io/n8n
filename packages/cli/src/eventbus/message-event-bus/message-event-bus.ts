@@ -11,7 +11,6 @@ import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
@@ -75,7 +74,6 @@ export class MessageEventBus extends EventEmitter {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly publisher: Publisher,
 		private readonly recoveryService: ExecutionRecoveryService,
-		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
@@ -352,7 +350,7 @@ export class MessageEventBus extends EventEmitter {
 
 	shouldSendMsg(msg: EventMessageTypes): boolean {
 		return (
-			this.license.isLogStreamingEnabled() &&
+			true &&
 			Object.keys(this.destinations).length > 0 &&
 			this.hasAnyDestinationSubscribedToEvent(msg)
 		);

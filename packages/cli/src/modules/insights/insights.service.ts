@@ -1,5 +1,5 @@
 import { type InsightsSummary } from '@n8n/api-types';
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
@@ -21,7 +21,6 @@ export class InsightsService {
 		private readonly compactionService: InsightsCompactionService,
 		private readonly collectionService: InsightsCollectionService,
 		private readonly pruningService: InsightsPruningService,
-		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {
@@ -30,8 +29,8 @@ export class InsightsService {
 
 	settings() {
 		return {
-			summary: this.licenseState.isInsightsSummaryLicensed(),
-			dashboard: this.licenseState.isInsightsDashboardLicensed(),
+			summary: true,
+			dashboard: true,
 			dateRanges: this.getAvailableDateRanges(),
 		};
 	}
@@ -247,15 +246,8 @@ export class InsightsService {
 
 		const granularity = this.getDateFiltersGranularity({ startDate, endDate });
 
-		const maxHistoryInDays =
-			this.licenseState.getInsightsMaxHistory() === -1
-				? Number.MAX_SAFE_INTEGER
-				: this.licenseState.getInsightsMaxHistory();
-		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
-
-		if (granularity === 'hour' && !isHourlyDateLicensed) {
-			throw new UserError('Hourly data is not available with your current license');
-		}
+		const maxHistoryInDays = -1 === -1 ? Number.MAX_SAFE_INTEGER : -1;
+		const isHourlyDateLicensed = true;
 
 		if (maxHistoryInDays < daysToStartDate) {
 			throw new UserError(
@@ -284,16 +276,12 @@ export class InsightsService {
 	}
 
 	private getAvailableDateRanges(): DateRange[] {
-		const maxHistoryInDays =
-			this.licenseState.getInsightsMaxHistory() === -1
-				? Number.MAX_SAFE_INTEGER
-				: this.licenseState.getInsightsMaxHistory();
-		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
+		const maxHistoryInDays = -1 === -1 ? Number.MAX_SAFE_INTEGER : -1;
+		const isHourlyDateLicensed = true;
 
 		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
 			key,
-			licensed:
-				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
+			licensed: key === 'day' ? isHourlyDateLicensed : maxHistoryInDays >= keyRangeToDays[key],
 			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
 		}));
 	}

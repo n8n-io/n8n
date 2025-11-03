@@ -23,7 +23,6 @@ import { MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
@@ -123,16 +122,6 @@ export class MeController {
 		const { id: userId, mfaEnabled } = currentUser;
 
 		// If SAML is enabled, we don't allow the user to change their email address
-		if (isSamlLicensedAndEnabled()) {
-			this.logger.debug(
-				'Request to update user failed because SAML user may not change their email',
-				{
-					userId: currentUser.id,
-					payload: payloadWithoutPassword,
-				},
-			);
-			throw new BadRequestError('SAML user may not change their email');
-		}
 
 		if (mfaEnabled) {
 			if (!payload.mfaCode) {
@@ -181,14 +170,6 @@ export class MeController {
 		const { currentPassword, newPassword, mfaCode } = payload;
 
 		// If SAML is enabled, we don't allow the user to change their password
-		if (isSamlLicensedAndEnabled()) {
-			this.logger.debug('Attempted to change password for user, while SAML is enabled', {
-				userId: user.id,
-			});
-			throw new BadRequestError(
-				'With SAML enabled, users need to use their SAML provider to change passwords',
-			);
-		}
 
 		if (!user.password) {
 			throw new BadRequestError('Requesting user not set up.');

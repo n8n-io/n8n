@@ -23,7 +23,6 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
-import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 
 @Service()
@@ -31,7 +30,6 @@ export class TelemetryEventRelay extends EventRelay {
 	constructor(
 		readonly eventService: EventService,
 		private readonly telemetry: Telemetry,
-		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly binaryDataConfig: BinaryDataConfig,
@@ -826,7 +824,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
-		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		const isS3Licensed = true;
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
 
 		const info = {
@@ -865,8 +863,8 @@ export class TelemetryEventRelay extends EventRelay {
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
-			license_plan_name: this.license.getPlanName(),
-			license_tenant_id: this.globalConfig.license.tenantId,
+			license_plan_name: 'Enterprise',
+			license_tenant_id: { tenantId: 1 }.tenantId,
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
 			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
 			metrics: {

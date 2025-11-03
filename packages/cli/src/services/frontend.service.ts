@@ -4,9 +4,8 @@ import type {
 	ITelemetrySettings,
 	N8nEnvFeatFlags,
 } from '@n8n/api-types';
-import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -22,7 +21,6 @@ import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
-import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -32,10 +30,7 @@ import { PushConfig } from '@/push/push.config';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
-import {
-	getWorkflowHistoryLicensePruneTime,
-	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
+import { getWorkflowHistoryPruneTime } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 export type PublicEnterpriseSettings = Pick<
 	IEnterpriseSettings,
@@ -74,15 +69,13 @@ export class FrontendService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
-		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
-		private readonly licenseState: LicenseState,
-		private readonly moduleRegistry: ModuleRegistry,
+		private readonly moduleRegistry: any,
 		private readonly mfaService: MfaService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
@@ -200,7 +193,7 @@ export class FrontendService {
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
-				quota: this.license.getUsersLimit(),
+				quota: -1,
 				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
@@ -277,7 +270,7 @@ export class FrontendService {
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
-				provisioning: false,
+				provisioning: true,
 				projects: {
 					team: {
 						limit: 0,
@@ -292,7 +285,7 @@ export class FrontendService {
 			hideUsagePage: this.globalConfig.hideUsagePage,
 			license: {
 				consumerId: 'unknown',
-				environment: this.globalConfig.license.tenantId === 1 ? 'production' : 'staging',
+				environment: 'production',
 			},
 			variables: {
 				limit: 0,
@@ -328,7 +321,7 @@ export class FrontendService {
 				enabled: false,
 			},
 			evaluation: {
-				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
+				quota: -1,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			envFeatureFlags: this.collectEnvFeatureFlags(),
@@ -360,7 +353,7 @@ export class FrontendService {
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
-			quota: this.license.getUsersLimit(),
+			quota: -1,
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
 		});
@@ -382,68 +375,59 @@ export class FrontendService {
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
-		const isS3Licensed = this.license.isBinaryDataS3Licensed();
-		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
-		const isAskAiEnabled = this.license.isAskAiEnabled();
-		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
-		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
+		const isS3Licensed = true;
+		const isAiAssistantEnabled = true;
+		const isAskAiEnabled = true;
+		const isAiCreditsEnabled = true;
+		const isAiBuilderEnabled = true;
 
-		this.settings.license.planName = this.license.getPlanName();
-		this.settings.license.consumerId = this.license.getConsumerId();
+		this.settings.license.planName = 'Enterprise';
+		this.settings.license.consumerId = 'n8n-enterprise';
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
-			sharing: this.license.isSharingEnabled(),
-			logStreaming: this.license.isLogStreamingEnabled(),
-			ldap: this.license.isLdapEnabled(),
-			saml: this.license.isSamlEnabled(),
-			oidc: this.licenseState.isOidcLicensed(),
-			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
-			provisioning: false, // temporarily disabled until this feature is ready for release
-			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
-			variables: this.license.isVariablesEnabled(),
-			sourceControl: this.license.isSourceControlLicensed(),
-			externalSecrets: this.license.isExternalSecretsEnabled(),
-			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
-			debugInEditor: this.license.isDebugInEditorLicensed(),
+			sharing: true,
+			logStreaming: true,
+			ldap: true,
+			saml: true,
+			oidc: true,
+			mfaEnforcement: true,
+			provisioning: true, // temporarily disabled until this feature is ready for release
+			advancedExecutionFilters: true,
+			variables: true,
+			sourceControl: true,
+			externalSecrets: true,
+			showNonProdBanner: false,
+			debugInEditor: true,
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
-			workflowHistory:
-				this.license.isWorkflowHistoryLicensed() && this.globalConfig.workflowHistory.enabled,
-			workerView: this.license.isWorkerViewLicensed(),
-			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
-			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
-			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
-			customRoles: this.licenseState.isCustomRolesLicensed(),
+			workflowHistory: this.globalConfig.workflowHistory.enabled,
+			workerView: true,
+			advancedPermissions: true,
+			apiKeyScopes: true,
+			workflowDiffs: true,
+			customRoles: true,
 		});
 
-		if (this.license.isLdapEnabled()) {
-			Object.assign(this.settings.sso.ldap, {
-				loginLabel: getLdapLoginLabel(),
-				loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
-			});
-		}
+		Object.assign(this.settings.sso.ldap, {
+			loginLabel: getLdapLoginLabel(),
+			loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
+		});
 
-		if (this.license.isSamlEnabled()) {
-			Object.assign(this.settings.sso.saml, {
-				loginLabel: getSamlLoginLabel(),
-				loginEnabled: this.globalConfig.sso.saml.loginEnabled,
-			});
-		}
+		Object.assign(this.settings.sso.saml, {
+			loginLabel: getSamlLoginLabel(),
+			loginEnabled: this.globalConfig.sso.saml.loginEnabled,
+		});
 
-		if (this.licenseState.isOidcLicensed()) {
-			Object.assign(this.settings.sso.oidc, {
-				loginEnabled: this.globalConfig.sso.oidc.loginEnabled,
-			});
-		}
+		Object.assign(this.settings.sso.oidc, {
+			loginEnabled: this.globalConfig.sso.oidc.loginEnabled,
+		});
 
-		if (this.license.isVariablesEnabled()) {
-			this.settings.variables.limit = this.license.getVariablesLimit();
-		}
+		this.settings.variables.limit = -1;
 
-		if (this.globalConfig.workflowHistory.enabled && this.license.isWorkflowHistoryLicensed()) {
+		if (this.globalConfig.workflowHistory.enabled) {
 			Object.assign(this.settings.workflowHistory, {
 				pruneTime: getWorkflowHistoryPruneTime(),
-				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
+				licensePruneTime: getWorkflowHistoryPruneTime(),
 			});
 		}
 
@@ -463,7 +447,7 @@ export class FrontendService {
 
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
-			this.settings.aiCredits.credits = this.license.getAiCredits();
+			this.settings.aiCredits.credits = 999999;
 		}
 
 		if (isAiBuilderEnabled) {
@@ -481,12 +465,12 @@ export class FrontendService {
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
-		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
+		this.settings.enterprise.projects.team.limit = -1;
 
-		this.settings.folders.enabled = this.license.isFoldersEnabled();
+		this.settings.folders.enabled = true;
 
 		// Refresh evaluation settings
-		this.settings.evaluation.quota = this.licenseState.getMaxWorkflowsWithEvaluations();
+		this.settings.evaluation.quota = -1;
 
 		// Refresh environment feature flags
 		this.settings.envFeatureFlags = this.collectEnvFeatureFlags();

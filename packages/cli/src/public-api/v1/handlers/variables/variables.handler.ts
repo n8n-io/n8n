@@ -8,7 +8,6 @@ import type { Response } from 'express';
 
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
-	isLicensed,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
@@ -18,7 +17,6 @@ import type { VariablesRequest } from '@/requests';
 
 export = {
 	createVariable: [
-		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:create' }),
 		async (req: AuthenticatedRequest, res: Response) => {
 			const payload = CreateVariableRequestDto.safeParse(req.body);
@@ -31,7 +29,6 @@ export = {
 		},
 	],
 	updateVariable: [
-		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:update' }),
 		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
 			const payload = CreateVariableRequestDto.safeParse(req.body);
@@ -44,7 +41,6 @@ export = {
 		},
 	],
 	deleteVariable: [
-		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:delete' }),
 		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
 			await Container.get(VariablesController).deleteVariable(req);
@@ -53,7 +49,6 @@ export = {
 		},
 	],
 	getVariables: [
-		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:list' }),
 		validCursor,
 		async (req: VariablesRequest.GetAll, res: Response) => {

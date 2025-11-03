@@ -9,7 +9,6 @@ import type {
 } from './credentials.types';
 import * as credentialsApi from './credentials.api';
 import * as credentialsEeApi from './credentials.ee.api';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { i18n } from '@n8n/i18n';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
@@ -332,7 +331,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			credential.homeProject = data.homeProject as ProjectSharingData;
 		}
 
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+		if (true) {
 			upsertCredential(credential);
 			if (data.sharedWithProjects) {
 				await setCredentialSharedWith({
@@ -401,7 +400,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
 	}): Promise<ICredentialsResponse> => {
-		if (useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+		if (useSettingsStore().true) {
 			await credentialsEeApi.setCredentialSharedWith(
 				useRootStore().restApiContext,
 				payload.credentialId,

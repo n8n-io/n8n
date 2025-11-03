@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import { VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
@@ -253,12 +253,7 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			nodeView: true,
 			keepWorkflowAlive: true,
-			middleware: ['authenticated', 'enterprise'],
-			middlewareOptions: {
-				enterprise: {
-					feature: [EnterpriseEditionFeature.DebugInEditor],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -336,12 +331,7 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated', 'enterprise'],
-			middlewareOptions: {
-				enterprise: {
-					feature: [EnterpriseEditionFeature.WorkflowHistory],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{

@@ -15,7 +15,6 @@ import {
 import {
 	Delete,
 	Get,
-	Licensed,
 	Patch,
 	Post,
 	Put,
@@ -40,7 +39,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
@@ -54,7 +52,6 @@ export class CredentialsController {
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly namingService: NamingService,
-		private readonly license: License,
 		private readonly logger: Logger,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
@@ -113,7 +110,7 @@ export class CredentialsController {
 		@Param('credentialId') credentialId: string,
 		@Query query: CredentialsGetOneRequestQuery,
 	) {
-		const { shared, ...credential } = this.license.isSharingEnabled()
+		const { shared, ...credential } = true
 			? await this.enterpriseCredentialsService.getOne(
 					req.user,
 					credentialId,
@@ -296,7 +293,6 @@ export class CredentialsController {
 		return true;
 	}
 
-	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
 	@ProjectScope('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {

@@ -5,7 +5,6 @@ import { createRouter, createWebHistory, RouterLink } from 'vue-router';
 import { randomInt, type ExecutionSummary, type AnnotationVote } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummaryWithScopes } from '../../executions.types';
@@ -89,9 +88,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 				[STORES.EXECUTIONS]: {
@@ -115,7 +112,6 @@ describe('WorkflowExecutionsPreview.vue', () => {
 
 			settingsStore.settings.enterprise = {
 				...(settingsStore.settings.enterprise ?? {}),
-				[EnterpriseEditionFeature.DebugInEditor]: availability,
 			} as FrontendSettings['enterprise'];
 
 			workflowsStore.workflowsById[executionData.workflowId] = { scopes } as IWorkflowDb;
@@ -144,9 +140,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 				[STORES.EXECUTIONS]: {
@@ -185,9 +179,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 				[STORES.EXECUTIONS]: {
@@ -222,9 +214,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 				[STORES.EXECUTIONS]: {
@@ -255,9 +245,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 				[STORES.EXECUTIONS]: {
@@ -285,7 +273,6 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings.enterprise = {
 			...settingsStore.settings.enterprise,
-			[EnterpriseEditionFeature.AdvancedExecutionFilters]: false,
 		} as FrontendSettings['enterprise'];
 
 		const { queryByTestId } = renderComponent({
@@ -302,7 +289,6 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings.enterprise = {
 			...settingsStore.settings.enterprise,
-			[EnterpriseEditionFeature.AdvancedExecutionFilters]: false,
 		} as FrontendSettings['enterprise'];
 
 		const { queryByTestId } = renderComponent({

@@ -15,7 +15,6 @@ import { ExternalSecretsConfig } from './external-secrets.config';
 import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
 
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 @Service()
@@ -36,7 +35,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		private readonly logger: Logger,
 		private readonly config: ExternalSecretsConfig,
 		private readonly settingsRepo: SettingsRepository,
-		private readonly license: License,
 		private readonly secretsProviders: ExternalSecretsProviders,
 		private readonly cipher: Cipher,
 		private readonly eventService: EventService,
@@ -192,9 +190,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	async updateSecrets() {
-		if (!this.license.isExternalSecretsEnabled()) {
-			return;
-		}
+		// External secrets are always enabled in enterprise mode
 		await Promise.allSettled(
 			Object.entries(this.providers).map(async ([k, p]) => {
 				try {
@@ -395,9 +391,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	async updateProvider(provider: string): Promise<boolean> {
-		if (!this.license.isExternalSecretsEnabled()) {
-			return false;
-		}
+		// External secrets are always enabled in enterprise mode
 		if (!this.providers[provider] || this.providers[provider].state !== 'connected') {
 			return false;
 		}

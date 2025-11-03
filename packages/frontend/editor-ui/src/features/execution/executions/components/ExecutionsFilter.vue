@@ -4,7 +4,6 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { useDebounce } from '@/app/composables/useDebounce';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
 import { i18n as locale } from '@n8n/i18n';
@@ -53,9 +52,7 @@ const debouncedEmit = debounce(emit, {
 });
 
 const isCustomDataFilterTracked = ref(false);
-const isAdvancedExecutionFilterEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
-);
+const isAdvancedExecutionFilterEnabled = computed(() => true);
 const isAnnotationFiltersEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 const showTags = computed(() => false);
 

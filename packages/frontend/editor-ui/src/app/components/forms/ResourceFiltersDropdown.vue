@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, watch, onBeforeMount } from 'vue';
-import { EnterpriseEditionFeature } from '@/app/constants';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
@@ -138,10 +136,7 @@ onBeforeMount(async () => {
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
 			<slot :filters="modelValue" :set-key-value="setKeyValue" />
-			<EnterpriseEdition
-				v-if="shareable && projectsStore.isProjectHome"
-				:features="[EnterpriseEditionFeature.Sharing]"
-			>
+			<div v-if="shareable && projectsStore.isProjectHome">
 				<N8nInputLabel
 					:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
 					:bold="false"
@@ -156,7 +151,7 @@ onBeforeMount(async () => {
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
 				/>
-			</EnterpriseEdition>
+			</div>
 			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
 				<N8nLink @click="resetFilters">
 					{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}

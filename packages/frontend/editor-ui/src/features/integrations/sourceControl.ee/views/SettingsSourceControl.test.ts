@@ -7,7 +7,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import SettingsSourceControl from './SettingsSourceControl.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { nextTick } from 'vue';
 
 let pinia: ReturnType<typeof createPinia>;
@@ -40,7 +39,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render paywall state when there is no license', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = false;
+		settingsStore.settings.enterprise = false;
 		await nextTick();
 
 		const { getByTestId, queryByTestId } = renderComponent({
@@ -52,7 +51,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render licensed content', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		settingsStore.settings.enterprise = true;
 		await nextTick();
 
 		const { getByTestId, queryByTestId } = renderComponent({
@@ -65,7 +64,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render user flow happy path', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		settingsStore.settings.enterprise = true;
 		await nextTick();
 
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
@@ -152,7 +151,7 @@ describe('SettingsSourceControl', () => {
 
 	describe('Protocol Selection', () => {
 		beforeEach(() => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+			settingsStore.settings.enterprise = true;
 		});
 
 		it('should show SSH-specific fields when SSH protocol is selected', async () => {
@@ -204,7 +203,7 @@ describe('SettingsSourceControl', () => {
 
 	describe('should test repo URLs', () => {
 		beforeEach(() => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+			settingsStore.settings.enterprise = true;
 		});
 
 		describe('for ssh connection', () => {

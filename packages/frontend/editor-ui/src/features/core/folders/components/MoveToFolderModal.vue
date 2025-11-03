@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -20,7 +19,6 @@ import type {
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
 import { getResourcePermissions } from '@n8n/permissions';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import Modal from '@/app/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import ProjectMoveResourceModalCredentialsList from '@/features/collaboration/projects/components/ProjectMoveResourceModalCredentialsList.vue';
@@ -359,7 +357,7 @@ onMounted(async () => {
 			>
 				{{ descriptionMessage }}
 			</p>
-			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
+			<div :class="$style.content">
 				<div :class="$style.block">
 					<N8nText color="text-dark">
 						{{ i18n.baseText('folders.move.modal.project.label') }}
@@ -397,7 +395,7 @@ onMounted(async () => {
 						</span>
 					</N8nText>
 				</div>
-			</EnterpriseEdition>
+			</div>
 			<template v-if="selectedProject && isFolderSelectable">
 				<div :class="$style.block">
 					<N8nText color="text-dark">

@@ -73,7 +73,7 @@ export class MessageEventBusDestinationSyslog
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!this.license.isLogStreamingEnabled()) return sendResult;
+			// Log streaming is always enabled in enterprise mode
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		try {

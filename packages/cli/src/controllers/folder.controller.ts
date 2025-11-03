@@ -17,7 +17,6 @@ import {
 	Query,
 	Put,
 	Param,
-	Licensed,
 	Middleware,
 } from '@n8n/decorators';
 import { NextFunction, Response } from 'express';
@@ -57,7 +56,6 @@ export class ProjectController {
 
 	@Post('/')
 	@ProjectScope('folder:create')
-	@Licensed('feat:folders')
 	async createFolder(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -78,7 +76,6 @@ export class ProjectController {
 
 	@Get('/:folderId/tree')
 	@ProjectScope('folder:read')
-	@Licensed('feat:folders')
 	async getFolderTree(
 		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
 		_res: Response,
@@ -98,7 +95,6 @@ export class ProjectController {
 
 	@Get('/:folderId/credentials')
 	@ProjectScope('folder:read')
-	@Licensed('feat:folders')
 	async getFolderUsedCredentials(
 		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
 		_res: Response,
@@ -122,7 +118,6 @@ export class ProjectController {
 
 	@Patch('/:folderId')
 	@ProjectScope('folder:update')
-	@Licensed('feat:folders')
 	async updateFolder(
 		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
 		_res: Response,
@@ -144,7 +139,6 @@ export class ProjectController {
 
 	@Delete('/:folderId')
 	@ProjectScope('folder:delete')
-	@Licensed('feat:folders')
 	async deleteFolder(
 		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
 		_res: Response,
@@ -166,7 +160,6 @@ export class ProjectController {
 
 	@Get('/')
 	@ProjectScope('folder:list')
-	@Licensed('feat:folders')
 	async listFolders(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: Response,
@@ -181,7 +174,6 @@ export class ProjectController {
 
 	@Get('/:folderId/content')
 	@ProjectScope('folder:read')
-	@Licensed('feat:folders')
 	async getFolderContent(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
 		const { projectId, folderId } = req.params;
 
@@ -203,7 +195,6 @@ export class ProjectController {
 
 	@Put('/:folderId/transfer')
 	@ProjectScope('folder:move')
-	@Licensed('feat:folders')
 	async transferFolderToProject(
 		req: AuthenticatedRequest,
 		_res: unknown,

@@ -12,7 +12,6 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { createTestNode, createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import { faker } from '@faker-js/faker';
@@ -238,9 +237,7 @@ describe('useNodeHelpers()', () => {
 				currentUserHasAccess: false,
 			};
 
-			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
-				[EnterpriseEditionFeature.Sharing]: false,
-			});
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({});
 			mockedStore(useWorkflowsStore).usedCredentials = {
 				[credentialWithoutAccess.id]: credentialWithoutAccess,
 			};
@@ -257,9 +254,7 @@ describe('useNodeHelpers()', () => {
 		it('should return an empty array when credentials are undefined', () => {
 			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
 
-			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
-				[EnterpriseEditionFeature.Sharing]: true,
-			});
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({});
 
 			const result = getForeignCredentialsIfSharingEnabled(undefined);
 			expect(result).toEqual([]);
@@ -282,9 +277,7 @@ describe('useNodeHelpers()', () => {
 				currentUserHasAccess: true,
 			};
 
-			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
-				[EnterpriseEditionFeature.Sharing]: true,
-			});
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({});
 			mockedStore(useWorkflowsStore).usedCredentials = {
 				[credentialWithAccess1.id]: credentialWithAccess1,
 				[credentialWithAccess2.id]: credentialWithAccess2,
@@ -320,9 +313,7 @@ describe('useNodeHelpers()', () => {
 				currentUserHasAccess: false,
 			};
 
-			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
-				[EnterpriseEditionFeature.Sharing]: true,
-			});
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({});
 			mockedStore(useWorkflowsStore).usedCredentials = {
 				[credentialWithAccess.id]: credentialWithAccess,
 				[credentialWithoutAccess.id]: credentialWithoutAccess,

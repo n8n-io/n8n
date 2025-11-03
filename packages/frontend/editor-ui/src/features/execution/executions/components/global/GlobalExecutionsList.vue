@@ -8,7 +8,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 import type { PermissionsRecord } from '@n8n/permissions';
@@ -75,9 +74,7 @@ const workflows = computed<IWorkflowDb[]>(() => {
 	];
 });
 
-const isAnnotationEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
-);
+const isAnnotationEnabled = computed(() => true);
 
 // In 'queue' mode concurrency control is applied per worker and returning a global count
 // of concurrent executions would not be meaningful/helpful.

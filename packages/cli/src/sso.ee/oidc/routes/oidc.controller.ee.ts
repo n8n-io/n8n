@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -26,7 +26,6 @@ export class OidcController {
 	) {}
 
 	@Get('/config')
-	@Licensed('feat:oidc')
 	@GlobalScope('oidc:manage')
 	async retrieveConfiguration(_req: AuthenticatedRequest) {
 		const config = await this.oidcService.loadConfig();
@@ -37,7 +36,6 @@ export class OidcController {
 	}
 
 	@Post('/config')
-	@Licensed('feat:oidc')
 	@GlobalScope('oidc:manage')
 	async saveConfiguration(
 		_req: AuthenticatedRequest,
@@ -50,7 +48,6 @@ export class OidcController {
 	}
 
 	@Get('/login', { skipAuth: true })
-	@Licensed('feat:oidc')
 	async redirectToAuthProvider(_req: Request, res: Response) {
 		const authorization = await this.oidcService.generateLoginUrl();
 		const { samesite, secure } = this.globalConfig.auth.cookie;
@@ -71,7 +68,6 @@ export class OidcController {
 	}
 
 	@Get('/callback', { skipAuth: true })
-	@Licensed('feat:oidc')
 	async callbackHandler(req: AuthlessRequest, res: Response) {
 		const fullUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
 		const callbackUrl = new URL(fullUrl);

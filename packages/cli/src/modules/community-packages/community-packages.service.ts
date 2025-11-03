@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
@@ -18,8 +17,6 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
@@ -79,7 +76,6 @@ export class CommunityPackagesService {
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly publisher: Publisher,
-		private readonly license: License,
 		private readonly config: CommunityPackagesConfig,
 	) {}
 
@@ -364,9 +360,6 @@ export class CommunityPackagesService {
 
 	private getNpmRegistry() {
 		const { registry } = this.config;
-		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
-		}
 		return registry;
 	}
 

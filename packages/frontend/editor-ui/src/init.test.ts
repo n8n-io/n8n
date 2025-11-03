@@ -1,5 +1,4 @@
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { initializeAuthenticatedFeatures, initializeCore, state } from '@/init';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
@@ -138,7 +137,6 @@ describe('Init', () => {
 
 			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
 			settingsStore.settings.sso = { saml, ldap, oidc };
-			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
 

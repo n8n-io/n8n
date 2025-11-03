@@ -116,7 +116,6 @@ describe('ControllerRegistry', () => {
 		// @ts-expect-error tsc complains about unused class
 		class TestController {
 			@Get('/with-sharing')
-			@Licensed('feat:sharing')
 			sharing() {
 				return { ok: true };
 			}

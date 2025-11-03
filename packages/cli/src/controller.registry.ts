@@ -1,7 +1,6 @@
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { type BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
@@ -17,14 +16,12 @@ import { LastActiveAtService } from './services/last-active-at.service';
 
 import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
-import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
 @Service()
 export class ControllerRegistry {
 	constructor(
-		private readonly license: License,
 		private readonly authService: AuthService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: ControllerRegistryMetadata,
@@ -94,7 +91,6 @@ export class ControllerRegistry {
 							}),
 							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 						] as RequestHandler[])),
-				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
 				...controllerMiddlewares,
 				...route.middlewares,
@@ -116,16 +112,6 @@ export class ControllerRegistry {
 			limit: rateLimit.limit,
 			message: { message: 'Too many requests' },
 		});
-	}
-
-	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
-		return (_req, res, next) => {
-			if (!this.license.isLicensed(feature)) {
-				res.status(403).json({ status: 'error', message: 'Plan lacks license for this feature' });
-				return;
-			}
-			next();
-		};
 	}
 
 	private createScopedMiddleware(accessScope: AccessScope): RequestHandler {

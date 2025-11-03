@@ -1514,9 +1514,6 @@ importers:
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
         version: 1.17.0
-      '@n8n_io/license-sdk':
-        specifier: 2.24.1
-        version: 2.24.1
       '@parcel/watcher':
         specifier: ^2.5.1
         version: 2.5.1
@@ -6204,10 +6201,6 @@ packages:
   '@n8n_io/ai-assistant-sdk@1.17.0':
     resolution: {integrity: sha512-Zwfgf9N4aK9klCVC15xHL8R5ID8h9f6OAlW6fPJRV00cmBjX2gD8ZYaX92A9iGiKpmW5YG3mxPU7XTFVexB7wQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
-
-  '@n8n_io/license-sdk@2.24.1':
-    resolution: {integrity: sha512-nrITEzOmFonFXD5XtzHjpY/s1kpKksYQoY5HBqhzRkGq3ldEO3nLKDl6RG9AEtkKKlKkid3lzviZJCIDINZlQw==}
-    engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.1':
     resolution: {integrity: sha512-/zdRbEfTFjsm1NqnpPQHgZTkTdbp5v3VUxGeMA9098sps8jRCTraQkc3AQstJgHUm7ylBXJcIVhnVeLUMWAfwQ==}
@@ -14335,9 +14328,6 @@ packages:
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
 
-  node-machine-id@1.1.12:
-    resolution: {integrity: sha512-QNABxbrPa3qEIfrE6GOJ7BYIuignnJw7iQ2YPbc3Nla1HzRJjXzZOiikfF8m7eAMfichLt3M4VgLOetqgDmgGQ==}
-
   node-preload@0.2.1:
     resolution: {integrity: sha512-RM5oyBy45cLEoHqCeh+MNuFAxO0vTFBLskvQbOKnEE7YTTSN4tbN8QWDIPQ6L+WvKsB/qLEGpYe2ZZ9d4W9OIQ==}
     engines: {node: '>=8'}
@@ -22124,13 +22114,6 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.17.0': {}
 
-  '@n8n_io/license-sdk@2.24.1':
-    dependencies:
-      crypto-js: 4.2.0
-      node-machine-id: 1.1.12
-      node-rsa: 1.1.1
-      undici: 7.16.0
-
   '@n8n_io/riot-tmpl@4.0.1':
     dependencies:
       eslint-config-riot: 1.0.0
@@ -26972,7 +26955,8 @@ snapshots:
       randombytes: 2.1.0
       randomfill: 1.0.4
 
-  crypto-js@4.2.0: {}
+  crypto-js@4.2.0:
+    optional: true
 
   csrf@3.1.0:
     dependencies:
@@ -32122,8 +32106,6 @@ snapshots:
       he: 1.2.0
 
   node-int64@0.4.0: {}
-
-  node-machine-id@1.1.12: {}
 
   node-preload@0.2.1:
     dependencies:

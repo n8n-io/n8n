@@ -9,7 +9,6 @@ import { useProjectsStore } from '../projects.store';
 import ProjectTabs from './ProjectTabs.vue';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
-import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from './ProjectCreateResource.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -208,10 +207,7 @@ const menu = computed(() => {
 		});
 	}
 
-	if (
-		selectedMainButtonType.value !== ACTION_TYPES.VARIABLE &&
-		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]
-	) {
+	if (selectedMainButtonType.value !== ACTION_TYPES.VARIABLE && true) {
 		items.push({
 			value: ACTION_TYPES.VARIABLE,
 			label: i18n.baseText('variables.add.button.label'),

@@ -7,7 +7,6 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '../components/EventDestinationCard.vue';
@@ -46,7 +45,7 @@ const sortedItemKeysByLabel = computed(() => {
 
 const isLicensed = computed((): boolean => {
 	if (disableLicense.value) return false;
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.LogStreaming];
+	return true;
 });
 
 const canManageLogStreaming = computed((): boolean => {

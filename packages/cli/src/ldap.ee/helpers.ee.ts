@@ -15,15 +15,13 @@ import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { randomString } from 'n8n-workflow';
 
-import { License } from '@/license';
-
 import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
 export const isLdapEnabled = () => {
-	return Container.get(License).isLdapEnabled();
+	return true;
 };
 
 /**

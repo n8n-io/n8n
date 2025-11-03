@@ -26,7 +26,6 @@ import {
 	Get,
 	RestController,
 	Patch,
-	Licensed,
 	Body,
 	Param,
 	Query,
@@ -312,7 +311,6 @@ export class UsersController {
 
 	@Patch('/:id/role')
 	@GlobalScope('user:changeRole')
-	@Licensed('feat:advancedPermissions')
 	async changeGlobalRole(
 		req: AuthenticatedRequest,
 		_: Response,

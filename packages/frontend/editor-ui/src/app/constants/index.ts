@@ -4,7 +4,6 @@ export * from './auth';
 export * from './curl';
 export * from './durations';
 export * from './emails';
-export * from './enterprise';
 export * from './events';
 export * from './experiments';
 export * from './injectionKeys';

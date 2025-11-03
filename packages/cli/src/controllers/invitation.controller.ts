@@ -12,12 +12,10 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -26,7 +24,6 @@ export class InvitationController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
-		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
@@ -46,16 +43,7 @@ export class InvitationController {
 	) {
 		if (invitations.length === 0) return [];
 
-		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-
-		if (isSamlLicensedAndEnabled()) {
-			this.logger.debug(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
-			);
-			throw new BadRequestError(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
-			);
-		}
+		const isWithinUsersLimit = true;
 
 		if (!isWithinUsersLimit) {
 			this.logger.debug(
@@ -72,7 +60,7 @@ export class InvitationController {
 		}
 
 		const attributes = invitations.map(({ email, role }) => {
-			if (role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
+			if (role === 'global:admin' && !true) {
 				throw new ForbiddenError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
 				);

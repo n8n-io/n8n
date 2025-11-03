@@ -5,7 +5,6 @@ import Modal from '@/app/components/Modal.vue';
 import type { FormFieldValueUpdate, IFormInputs } from '@/Interface';
 import type { IInviteResponse, InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '../users.store';
@@ -123,7 +122,7 @@ const invitedUsers = computed((): IUser[] => {
 });
 
 const isAdvancedPermissionsEnabled = computed((): boolean => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
+	return true;
 });
 
 const validateEmails = (value: string | number | boolean | null | undefined) => {

@@ -4,10 +4,7 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 import type { StatusResult } from 'simple-git';
 
-import {
-	getTrackingInformationFromPullResult,
-	isSourceControlLicensed,
-} from '@/environments.ee/source-control/source-control-helper.ee';
+import { getTrackingInformationFromPullResult } from '@/environments.ee/source-control/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import type { ImportResult } from '@/environments.ee/source-control/types/import-result';
@@ -23,11 +20,6 @@ export = {
 			res: express.Response,
 		): Promise<ImportResult | StatusResult | Promise<express.Response>> => {
 			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
-			if (!isSourceControlLicensed()) {
-				return res
-					.status(401)
-					.json({ status: 'Error', message: 'Source Control feature is not licensed' });
-			}
 			if (!sourceControlPreferencesService.isSourceControlConnected()) {
 				return res
 					.status(400)

@@ -1,12 +1,7 @@
 import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import {
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	VIEWS,
-	WORKFLOW_SHARE_MODAL_KEY,
-} from '@/app/constants';
+import { MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import type { IWorkflowDb } from '@/Interface';
 import { STORES } from '@n8n/stores';
@@ -76,8 +71,6 @@ const initialState = {
 	[STORES.SETTINGS]: {
 		settings: {
 			enterprise: {
-				[EnterpriseEditionFeature.Sharing]: true,
-				[EnterpriseEditionFeature.WorkflowHistory]: true,
 				projects: {
 					team: {
 						limit: -1,

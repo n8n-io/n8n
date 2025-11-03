@@ -13,7 +13,6 @@ import type { UserRequest } from '@/requests';
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
-	isLicensed,
 	validCursor,
 	validLicenseWithUserQuota,
 } from '../../shared/middlewares/global.middleware';
@@ -105,7 +104,6 @@ export = {
 		},
 	],
 	changeRole: [
-		isLicensed('feat:advancedPermissions'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:changeRole' }),
 		async (req: ChangeRole, res: Response) => {
 			const validation = RoleChangeRequestDto.safeParse(req.body);

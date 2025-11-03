@@ -9,7 +9,6 @@ import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getResourcePermissions } from '@n8n/permissions';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
 import type { ExecutionSummary, AnnotationVote } from 'n8n-workflow';
 import type { CommandGroup, CommandBarItem } from '../types';
@@ -47,10 +46,7 @@ export function useExecutionCommands(): CommandGroup {
 		() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 	);
 
-	const isAnnotationEnabled = computed(
-		() =>
-			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
-	);
+	const isAnnotationEnabled = computed(() => true);
 
 	const hasAnnotation = computed(
 		() =>

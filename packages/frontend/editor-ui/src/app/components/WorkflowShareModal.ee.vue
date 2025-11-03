@@ -2,10 +2,8 @@
 import { computed, watch, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import Modal from './Modal.vue';
 import {
-	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SHARE_MODAL_KEY,
@@ -69,9 +67,7 @@ const sharedWithProjects = ref([
 ] as ProjectSharingData[]);
 const teamProject = ref(null as Project | null);
 
-const isSharingEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
-);
+const isSharingEnabled = computed(() => true);
 
 const isHomeTeamProject = computed(() => workflow.value.homeProject?.type === ProjectTypes.Team);
 
@@ -271,7 +267,7 @@ watch(
 						})
 					}}
 				</N8nInfoTip>
-				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
+				<div :class="$style.content">
 					<div>
 						<ProjectSharing
 							v-model="sharedWithProjects"
@@ -304,21 +300,7 @@ watch(
 							</I18nT>
 						</N8nInfoTip>
 					</div>
-					<template #fallback>
-						<N8nText>
-							<I18nT
-								:keypath="
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
-										.tooltip
-								"
-								tag="span"
-								scope="global"
-							>
-								<template #action />
-							</I18nT>
-						</N8nText>
-					</template>
-				</EnterpriseEdition>
+				</div>
 			</div>
 		</template>
 
@@ -330,11 +312,7 @@ watch(
 					}}
 				</N8nButton>
 			</div>
-			<EnterpriseEdition
-				v-else
-				:features="[EnterpriseEditionFeature.Sharing]"
-				:class="$style.actionButtons"
-			>
+			<div v-else :class="$style.actionButtons">
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
@@ -351,7 +329,7 @@ watch(
 				>
 					{{ i18n.baseText('workflows.shareModal.save') }}
 				</N8nButton>
-			</EnterpriseEdition>
+			</div>
 		</template>
 	</Modal>
 </template>

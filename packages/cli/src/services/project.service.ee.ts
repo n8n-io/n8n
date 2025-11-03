@@ -1,7 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import {
 	Project,
@@ -71,7 +70,6 @@ export class ProjectService {
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
-		private readonly licenseState: LicenseState,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
@@ -227,14 +225,6 @@ export class ProjectService {
 		data: CreateProjectDto,
 		trx: EntityManager,
 	) {
-		const limit = this.licenseState.getMaxTeamProjects();
-		if (limit !== UNLIMITED_LICENSE_QUOTA) {
-			const teamProjectCount = await trx.count(Project, { where: { type: 'team' } });
-			if (teamProjectCount >= limit) {
-				throw new TeamProjectOverQuotaError(limit);
-			}
-		}
-
 		const project = await trx.save(
 			Project,
 			this.projectRepository.create({ ...data, type: 'team' }),
@@ -296,7 +286,6 @@ export class ProjectService {
 		newRelations: Array<{ role: AssignableProjectRole; userId: string }>;
 	}> {
 		const project = await this.getTeamProjectWithRelations(projectId);
-		this.checkRolesLicensed(project, relations);
 
 		// Check that all roles exist
 		await this.roleService.checkRolesExist(
@@ -328,7 +317,6 @@ export class ProjectService {
 		relations: Array<{ userId: string; role: AssignableProjectRole }>,
 	) {
 		const project = await this.getTeamProjectWithRelations(projectId);
-		this.checkRolesLicensed(project, relations);
 
 		// Check that project role exists
 		await this.roleService.checkRolesExist(
@@ -372,7 +360,6 @@ export class ProjectService {
 		}>;
 	}> {
 		const project = await this.getTeamProjectWithRelations(projectId);
-		this.checkRolesLicensed(project, relations);
 
 		// Validate roles exist
 		await this.roleService.checkRolesExist(
@@ -424,21 +411,6 @@ export class ProjectService {
 		return project;
 	}
 
-	/** Check to see if the instance is licensed to use all roles provided */
-	private checkRolesLicensed(
-		project: Project,
-		relations: Array<{ role: AssignableProjectRole; userId: string }>,
-	) {
-		for (const { role, userId } of relations) {
-			const existing = project.projectRelations.find((pr) => pr.userId === userId);
-			// We don't throw an error if the user already exists with that role so
-			// existing projects continue working as is.
-			if (existing?.role?.slug !== role && !this.roleService.isRoleLicensed(role)) {
-				throw new UnlicensedProjectRoleError(role);
-			}
-		}
-	}
-
 	private isUserProjectOwner(project: Project, userId: string) {
 		return project.projectRelations.some(
 			(pr) => pr.userId === userId && pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
@@ -471,13 +443,6 @@ export class ProjectService {
 		const projectUserExists = project.projectRelations.some((r) => r.userId === userId);
 		if (!projectUserExists) {
 			throw new ProjectNotFoundError(projectId);
-		}
-
-		// License check: only allow change to roles that are licensed
-		const currentRelation = project.projectRelations.find((r) => r.userId === userId);
-		const currentRole = currentRelation?.role?.slug;
-		if (currentRole !== role && !this.roleService.isRoleLicensed(role)) {
-			throw new UnlicensedProjectRoleError(role);
 		}
 
 		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });

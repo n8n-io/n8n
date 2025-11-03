@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { LICENSE_FEATURES } from '@n8n/constants';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -17,7 +16,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
@@ -211,9 +209,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
 
 		/**
-		 * We temporarily license multi-main to allow it to set instance role,
-		 * which is needed by license init. Once the license is initialized,
-		 * the actual value will be used for the license check.
+		 * Multi-main is always licensed in enterprise mode
 		 */
 		if (isMultiMainEnabled) this.instanceSettings.setMultiMainLicensed(true);
 
@@ -223,11 +219,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
-		await this.initLicense();
-
-		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
-		}
+		// Multi-main is always licensed in enterprise mode
 
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');

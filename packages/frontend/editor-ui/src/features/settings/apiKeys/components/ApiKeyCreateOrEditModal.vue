@@ -2,7 +2,6 @@
 import ApiKeyScopes from './ApiKeyScopes.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import Modal from '@/app/components/Modal.vue';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -59,9 +58,7 @@ const selectedScopes = ref<ApiKeyScope[]>([]);
 const settingsStore = useSettingsStore();
 const apiKeyStore = useApiKeysStore();
 
-const apiKeyScopesEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ApiKeyScopes],
-);
+const apiKeyScopesEnabled = computed(() => true);
 
 const calculateExpirationDate = (daysFromNow: number) => {
 	const date = DateTime.now()

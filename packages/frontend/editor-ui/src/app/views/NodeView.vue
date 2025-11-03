@@ -52,7 +52,6 @@ import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
-	EnterpriseEditionFeature,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -334,11 +333,11 @@ async function initializeData() {
 			credentialsStore.fetchCredentialTypes(true),
 		];
 
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
+		if (true) {
 			promises.push(environmentsStore.fetchAllVariables());
 		}
 
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
+		if (true) {
 			promises.push(externalSecretsStore.fetchAllSecrets());
 		}
 

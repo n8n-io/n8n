@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import type { ExecutionSummary, AnnotationVote } from 'n8n-workflow';
 import WorkflowExecutionAnnotationTags from './WorkflowExecutionAnnotationTags.ee.vue';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
@@ -65,9 +64,7 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 			},
@@ -100,9 +97,7 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 			},
@@ -132,9 +127,7 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 			},
@@ -161,9 +154,7 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 			},
@@ -199,9 +190,7 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
+						enterprise: {},
 					},
 				},
 			},

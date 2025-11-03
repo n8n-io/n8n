@@ -1,0 +1,7 @@
+
+> n8n@1.118.0 typecheck /home/zhang/n8n-quanyuge/packages/cli
+> tsc --noEmit
+
+test/integration/controllers/role.controller.test.ts(1223,1): error TS1128: Declaration or statement expected.
+test/integration/controllers/role.controller.test.ts(1223,2): error TS1128: Declaration or statement expected.
+ ELIFECYCLE  Command failed with exit code 2.

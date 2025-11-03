@@ -8,7 +8,6 @@ import type { FlowResult } from 'samlify/types/src/flow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { License } from '@/license';
 import { PasswordUtility } from '@/services/password.utility';
 
 import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
@@ -51,12 +50,8 @@ export function setSamlLoginLabel(label: string): void {
 	Container.get(GlobalConfig).sso.saml.loginLabel = label;
 }
 
-export function isSamlLicensed(): boolean {
-	return Container.get(License).isSamlEnabled();
-}
-
 export function isSamlLicensedAndEnabled(): boolean {
-	return isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod();
+	return isSamlLoginEnabled() && isSamlCurrentAuthenticationMethod();
 }
 
 export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferences => {

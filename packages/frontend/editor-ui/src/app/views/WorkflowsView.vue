@@ -20,7 +20,6 @@ import { useToast } from '@/app/composables/useToast';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import {
 	DEFAULT_WORKFLOW_PAGE_SIZE,
-	EnterpriseEditionFeature,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	MODAL_CONFIRM,
 	VIEWS,
@@ -243,9 +242,7 @@ const mainBreadcrumbsActions = computed(
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const isShareable = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
-);
+const isShareable = computed(() => true);
 
 const foldersEnabled = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled;

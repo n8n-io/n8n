@@ -6,7 +6,6 @@ import userEvent from '@testing-library/user-event';
 import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -87,14 +86,14 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	it('should render correctly', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+		settingsStore.settings.enterprise = false;
 		const { getByTestId } = createComponent({ pinia });
 		await nextTick();
 		expect(getByTestId('workflow-settings-dialog')).toBeVisible();
 	});
 
 	it('should not render workflow caller policy when sharing is not enabled', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+		settingsStore.settings.enterprise = false;
 		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
@@ -105,7 +104,7 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	it('should render workflow caller policy when sharing is enabled', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		settingsStore.settings.enterprise = true;
 		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
@@ -114,7 +113,7 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	it('should render list of workflows field when policy is set to workflowsFromAList', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		settingsStore.settings.enterprise = true;
 		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
@@ -125,7 +124,7 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	it('should fetch all workflows and render them in the error workflows dropdown', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		settingsStore.settings.enterprise = true;
 		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
@@ -145,7 +144,7 @@ describe('WorkflowSettingsVue', () => {
 	it('should not remove valid workflow ID characters', async () => {
 		const validWorkflowList = '1234567890, abcde, efgh, 1234';
 
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		settingsStore.settings.enterprise = true;
 		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
@@ -162,7 +161,7 @@ describe('WorkflowSettingsVue', () => {
 		const invalidWorkflowList = '1234567890@, abc/de, ef*gh, 12%34';
 		const cleanedUpWorkflowList = '1234567890, abcde, efgh, 1234';
 
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		settingsStore.settings.enterprise = true;
 		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();

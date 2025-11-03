@@ -3,7 +3,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
@@ -58,7 +57,7 @@ describe('ProjectVariables', () => {
 	describe('should render empty state', () => {
 		it('when feature is disabled and user does not have create permission', async () => {
 			const settingsStore = mockedStore(useSettingsStore);
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = false;
+			settingsStore.settings.enterprise = false;
 
 			const usersStore = mockedStore(useUsersStore);
 			usersStore.currentUser = { globalScopes: ['variable:read', 'variable:list'] } as IUser;
@@ -74,7 +73,7 @@ describe('ProjectVariables', () => {
 
 		it('when feature is disabled and user has full access', async () => {
 			const settingsStore = mockedStore(useSettingsStore);
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = false;
+			settingsStore.settings.enterprise = false;
 
 			const usersStore = mockedStore(useUsersStore);
 			usersStore.currentUser = { globalScopes: fullAccessScopes } as IUser;
@@ -90,7 +89,7 @@ describe('ProjectVariables', () => {
 
 		it('when feature is enabled and user does not have create permission', async () => {
 			const settingsStore = mockedStore(useSettingsStore);
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+			settingsStore.settings.enterprise = true;
 
 			const usersStore = mockedStore(useUsersStore);
 			usersStore.currentUser = { globalScopes: ['variable:read', 'variable:list'] } as IUser;
@@ -110,7 +109,7 @@ describe('ProjectVariables', () => {
 		usersStore.currentUser = { globalScopes: fullAccessScopes } as IUser;
 
 		const settingsStore = mockedStore(useSettingsStore);
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+		settingsStore.settings.enterprise = true;
 
 		const environmentsStore = mockedStore(useEnvironmentsStore);
 		environmentsStore.variables = variables;
@@ -426,7 +425,7 @@ describe('ProjectVariables', () => {
 			usersStore.currentUser = { globalScopes: ['variable:read', 'variable:list'] } as IUser;
 
 			const settingsStore = mockedStore(useSettingsStore);
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+			settingsStore.settings.enterprise = true;
 
 			const environmentsStore = mockedStore(useEnvironmentsStore);
 			environmentsStore.variables = [
@@ -450,7 +449,7 @@ describe('ProjectVariables', () => {
 			usersStore.currentUser = { globalScopes: ['variable:read', 'variable:list'] } as IUser;
 
 			const settingsStore = mockedStore(useSettingsStore);
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+			settingsStore.settings.enterprise = true;
 
 			const environmentsStore = mockedStore(useEnvironmentsStore);
 			environmentsStore.variables = [

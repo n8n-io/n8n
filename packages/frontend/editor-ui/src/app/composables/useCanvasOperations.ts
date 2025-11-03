@@ -27,7 +27,6 @@ import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
-	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -2159,10 +2158,7 @@ export function useCanvasOperations() {
 				data.pinData[node.name] = pinDataForNode;
 			}
 
-			if (
-				nodeSaveData.credentials &&
-				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]
-			) {
+			if (nodeSaveData.credentials && true) {
 				nodeSaveData.credentials = filterAllowedCredentials(
 					nodeSaveData.credentials,
 					workflowsStore.usedCredentials,

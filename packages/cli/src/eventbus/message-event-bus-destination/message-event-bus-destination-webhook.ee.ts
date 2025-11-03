@@ -257,7 +257,7 @@ export class MessageEventBusDestinationWebhook
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!this.license.isLogStreamingEnabled()) return sendResult;
+			// Log streaming is always enabled in enterprise mode
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		// at first run, build this.requestOptions with the destination settings

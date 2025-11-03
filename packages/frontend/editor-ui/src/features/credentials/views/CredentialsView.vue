@@ -9,7 +9,6 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
-import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -189,8 +188,7 @@ const maybeEditCredential = async () => {
 
 const initialize = async () => {
 	loading.value = true;
-	const isVarsEnabled =
-		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
+	const isVarsEnabled = useSettingsStore().true;
 
 	const loadPromises = [
 		credentialsStore.fetchAllCredentials(

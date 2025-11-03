@@ -121,7 +121,6 @@ export class Server extends AbstractServer {
 		}
 
 		if (inE2ETests) {
-			await import('@/controllers/e2e.controller');
 		}
 
 		if (isMfaFeatureEnabled()) {

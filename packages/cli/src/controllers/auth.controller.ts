@@ -14,7 +14,6 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
@@ -33,7 +32,6 @@ export class AuthController {
 		private readonly authService: AuthService,
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
-		private readonly license: License,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly postHog?: PostHogClient,
@@ -140,7 +138,7 @@ export class AuthController {
 		@Query payload: ResolveSignupTokenQueryDto,
 	) {
 		const { inviterId, inviteeId } = payload;
-		const isWithinUsersLimit = this.license.isWithinUsersLimit();
+		const isWithinUsersLimit = true;
 
 		if (!isWithinUsersLimit) {
 			this.logger.debug('Request to resolve signup token failed because of users quota reached', {

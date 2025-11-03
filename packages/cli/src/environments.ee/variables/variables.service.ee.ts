@@ -1,11 +1,9 @@
 import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
 import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, Scope } from '@n8n/permissions';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
@@ -27,7 +25,6 @@ export class VariablesService {
 		private readonly cacheService: CacheService,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly eventService: EventService,
-		private readonly licenseState: LicenseState,
 		private readonly projectService: ProjectService,
 	) {}
 
@@ -164,21 +161,8 @@ export class VariablesService {
 	}
 
 	private async canCreateNewVariable() {
-		if (!this.licenseState.isVariablesLicensed()) {
-			throw new FeatureNotLicensedError('feat:variables');
-		}
-
-		// This defaults to -1 which is what we want if we've enabled
-		// variables via the config
-		const limit = this.licenseState.getMaxVariables();
-		if (limit === -1) {
-			return;
-		}
-
-		const variablesCount = (await this.getAllCached()).length;
-		if (limit <= variablesCount) {
-			throw new VariableCountLimitReachedError('Variables limit reached');
-		}
+		// All variables are allowed in enterprise mode
+		return;
 	}
 
 	async validateUniqueVariable(key: string, projectId?: string, id?: string) {

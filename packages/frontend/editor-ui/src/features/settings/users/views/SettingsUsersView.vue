@@ -10,9 +10,7 @@ import {
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/app/composables/useToast';
@@ -66,9 +64,7 @@ const usersTableState = ref<TableOptions>({
 	],
 });
 const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
-const isEnforceMFAEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
-);
+const isEnforceMFAEnabled = computed(() => true);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
@@ -119,9 +115,7 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 		},
 	];
 });
-const isAdvancedPermissionsEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
-);
+const isAdvancedPermissionsEnabled = computed(() => true);
 
 const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
 	return [
@@ -424,28 +418,12 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				}}</N8nText>
 			</div>
 			<div :class="$style.settingsContainerAction">
-				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
-					<ElSwitch
-						:model-value="settingsStore.isMFAEnforced"
-						size="large"
-						data-test-id="enable-force-mfa"
-						@update:model-value="onUpdateMfaEnforced"
-					/>
-					<template #fallback>
-						<N8nTooltip>
-							<ElSwitch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
-							<template #content>
-								<I18nT :keypath="tooltipKey" tag="span" scope="global">
-									<template #action>
-										<a @click="goToUpgrade">
-											{{ i18n.baseText('settings.personal.mfa.enforce.unlicensed_tooltip.link') }}
-										</a>
-									</template>
-								</I18nT>
-							</template>
-						</N8nTooltip>
-					</template>
-				</EnterpriseEdition>
+				<ElSwitch
+					:model-value="settingsStore.isMFAEnforced"
+					size="large"
+					data-test-id="enable-force-mfa"
+					@update:model-value="onUpdateMfaEnforced"
+				/>
 			</div>
 		</div>
 		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">

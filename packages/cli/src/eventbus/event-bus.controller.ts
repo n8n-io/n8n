@@ -1,5 +1,5 @@
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Delete, GlobalScope, Licensed } from '@n8n/decorators';
+import { RestController, Get, Post, Delete, GlobalScope } from '@n8n/decorators';
 import express from 'express';
 import type {
 	MessageEventBusDestinationWebhookOptions,
@@ -53,7 +53,6 @@ export class EventBusController {
 		return eventNamesAll;
 	}
 
-	@Licensed('feat:logStreaming')
 	@Get('/destination')
 	@GlobalScope('eventBusDestination:list')
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
@@ -64,7 +63,6 @@ export class EventBusController {
 		}
 	}
 
-	@Licensed('feat:logStreaming')
 	@Post('/destination')
 	@GlobalScope('eventBusDestination:create')
 	async postDestination(req: AuthenticatedRequest): Promise<any> {
@@ -109,7 +107,6 @@ export class EventBusController {
 		throw new BadRequestError('Body is not configuring MessageEventBusDestinationOptions');
 	}
 
-	@Licensed('feat:logStreaming')
 	@Get('/testmessage')
 	@GlobalScope('eventBusDestination:test')
 	async sendTestMessage(req: express.Request): Promise<boolean> {
@@ -119,7 +116,6 @@ export class EventBusController {
 		return false;
 	}
 
-	@Licensed('feat:logStreaming')
 	@Delete('/destination')
 	@GlobalScope('eventBusDestination:delete')
 	async deleteDestination(req: AuthenticatedRequest) {

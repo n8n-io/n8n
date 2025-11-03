@@ -17,7 +17,6 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
-	isLicensed,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
@@ -25,7 +24,6 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 type GetAll = PaginatedRequest;
 export = {
 	createProject: [
-		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:create' }),
 		async (req: AuthenticatedRequest, res: Response) => {
 			const payload = CreateProjectDto.safeParse(req.body);
@@ -39,7 +37,6 @@ export = {
 		},
 	],
 	updateProject: [
-		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const payload = UpdateProjectWithRelationsDto.safeParse(req.body);
@@ -58,7 +55,6 @@ export = {
 		},
 	],
 	deleteProject: [
-		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:delete' }),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const query = DeleteProjectDto.safeParse(req.query);
@@ -77,7 +73,6 @@ export = {
 		},
 	],
 	getProjects: [
-		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:list' }),
 		validCursor,
 		async (req: GetAll, res: Response) => {
@@ -99,7 +94,6 @@ export = {
 		},
 	],
 	addUsersToProject: [
-		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const payload = AddUsersToProjectDto.safeParse(req.body);
@@ -123,7 +117,6 @@ export = {
 		},
 	],
 	changeUserRoleInProject: [
-		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req: AuthenticatedRequest<{ projectId: string; userId: string }>, res: Response) => {
 			const payload = ChangeUserRoleInProject.safeParse(req.body);
@@ -146,7 +139,6 @@ export = {
 		},
 	],
 	deleteUserFromProject: [
-		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req: AuthenticatedRequest<{ projectId: string; userId: string }>, res: Response) => {
 			const { projectId, userId } = req.params;

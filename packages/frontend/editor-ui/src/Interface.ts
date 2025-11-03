@@ -894,27 +894,6 @@ export type ToggleNodeCreatorOptions = {
 export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeOption = AppliedThemeOption | 'system';
 
-export type EnterpriseEditionFeatureKey =
-	| 'AdvancedExecutionFilters'
-	| 'Sharing'
-	| 'Ldap'
-	| 'LogStreaming'
-	| 'Variables'
-	| 'Saml'
-	| 'Oidc'
-	| 'SourceControl'
-	| 'ExternalSecrets'
-	| 'AuditLogs'
-	| 'DebugInEditor'
-	| 'WorkflowHistory'
-	| 'WorkerView'
-	| 'AdvancedPermissions'
-	| 'ApiKeyScopes'
-	| 'EnforceMFA'
-	| 'Provisioning';
-
-export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
-
 export type Draggable = {
 	isDragging: boolean;
 	type: string;

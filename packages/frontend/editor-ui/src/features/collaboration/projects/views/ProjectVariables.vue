@@ -14,7 +14,6 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import type { BaseFilters, Resource, VariableResource, DatatableColumn } from '@/Interface';
 
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
@@ -76,9 +75,7 @@ const { isLoading, execute } = useAsyncState(environmentsStore.fetchAllVariables
 	immediate: true,
 });
 
-const isFeatureEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
-);
+const isFeatureEnabled = computed(() => true);
 
 const openCreateVariableModal = () => {
 	uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });

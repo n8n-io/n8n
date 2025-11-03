@@ -5,11 +5,7 @@ import { useToast } from '@/app/composables/useToast';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
-import {
-	EnterpriseEditionFeature,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '@/app/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -89,9 +85,7 @@ const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
 const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
-const isSharingEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
-);
+const isSharingEnabled = computed(() => true);
 const workflowOwnerName = computed(() => {
 	const fallback = i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromSameProject');
 

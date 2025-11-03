@@ -15,7 +15,6 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import type { IExecutionTrackProperties } from '@/interfaces';
-import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
@@ -56,7 +55,6 @@ export class Telemetry {
 	constructor(
 		private readonly logger: Logger,
 		private readonly postHog: PostHogClient,
-		private readonly license: License,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
@@ -138,8 +136,8 @@ export class Telemetry {
 
 		// License info
 		const pulsePacket = {
-			plan_name_current: this.license.getPlanName(),
-			quota: this.license.getTriggerLimit(),
+			plan_name_current: 'Enterprise',
+			quota: -1,
 			usage: await this.workflowRepository.getActiveTriggerCount(),
 			role_count: await Container.get(UserRepository).countUsersByRole(),
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),

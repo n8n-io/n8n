@@ -1,14 +1,11 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
-import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type { NextFunction } from 'express';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
@@ -87,22 +84,16 @@ export const validCursor = (
 
 const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	return Container.get(License).isApiKeyScopesEnabled()
-		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
-		: emptyMiddleware;
+	return Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope);
 };
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
 	if ('scope' in config) {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope)
-			: globalScope(config.scope);
+		return Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope);
 	} else {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope)
-			: globalScope(config.globalScope);
+		return Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope);
 	}
 };
 
@@ -111,20 +102,6 @@ export const validLicenseWithUserQuota = (
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	const license = Container.get(License);
-	if (license.getUsersLimit() !== UNLIMITED_USERS_QUOTA) {
-		return res.status(403).json({
-			message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
-		});
-	}
-
+	// All users are allowed in enterprise mode
 	return next();
-};
-
-export const isLicensed = (feature: BooleanLicenseFeature) => {
-	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		if (Container.get(License).isLicensed(feature)) return next();
-
-		return res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
-	};
 };

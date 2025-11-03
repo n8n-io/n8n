@@ -58,7 +58,7 @@ export class MessageEventBusDestinationSentry
 		let sendResult = false;
 		if (!this.sentryClient) return sendResult;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!this.license.isLogStreamingEnabled()) return sendResult;
+			// Log streaming is always enabled in enterprise mode
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		try {

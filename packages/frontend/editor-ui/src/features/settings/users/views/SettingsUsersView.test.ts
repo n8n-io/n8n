@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { type FrontendSettings, type Role, ROLE, type UsersList } from '@n8n/api-types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY, DELETE_USER_MODAL_KEY } from '../users.constants';
 import SettingsUsersView from './SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -153,7 +152,7 @@ describe('SettingsUsersView', () => {
 		settingsStore.settings.enterprise = {
 			mfaEnforcement: true,
 		} as FrontendSettings['enterprise'];
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = true;
+		settingsStore.settings.enterprise = true;
 		ssoStore.isSamlLoginEnabled = false;
 	});
 
@@ -270,7 +269,7 @@ describe('SettingsUsersView', () => {
 	});
 
 	it('should show advanced permissions notice when feature is disabled', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = false;
+		settingsStore.settings.enterprise = false;
 
 		renderComponent();
 
@@ -794,9 +793,6 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should handle advanced permissions upgrade click', async () => {
-			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions] =
-				false;
-
 			renderComponent();
 
 			const upgradeLink = screen.getByTestId('upgrade-permissions-link');

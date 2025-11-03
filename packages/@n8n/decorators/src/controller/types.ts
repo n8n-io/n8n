@@ -1,4 +1,3 @@
-import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
@@ -37,7 +36,6 @@ export interface RouteMetadata {
 	allowSkipMFA: boolean;
 	apiKeyAuth: boolean;
 	rateLimit?: boolean | RateLimit;
-	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
 	args: Arg[];
 }

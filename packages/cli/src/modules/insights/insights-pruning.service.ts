@@ -1,4 +1,4 @@
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { strict } from 'assert';
@@ -17,23 +17,17 @@ export class InsightsPruningService {
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly config: InsightsConfig,
-		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
 
 	get isPruningEnabled() {
-		return this.licenseState.getInsightsRetentionMaxAge() > -1 || this.config.maxAgeDays > -1;
+		return this.config.maxAgeDays > -1;
 	}
 
 	get pruningMaxAgeInDays() {
-		const toMaxSafeIfUnlimited = (days: number) => (days === -1 ? Number.MAX_SAFE_INTEGER : days);
-
-		const licenseMaxAge = toMaxSafeIfUnlimited(this.licenseState.getInsightsRetentionMaxAge());
-		const configMaxAge = toMaxSafeIfUnlimited(this.config.maxAgeDays);
-
-		return Math.min(licenseMaxAge, configMaxAge);
+		return this.config.maxAgeDays === -1 ? Number.MAX_SAFE_INTEGER : this.config.maxAgeDays;
 	}
 
 	startPruningTimer() {

@@ -1,6 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import SettingsExternalSecrets from './SettingsExternalSecrets.vue';
@@ -48,7 +47,7 @@ describe('SettingsExternalSecrets', () => {
 	});
 
 	it('should render licensed content', () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+		settingsStore.settings.enterprise = true;
 
 		const { getByTestId, queryByTestId } = renderComponent({ pinia });
 

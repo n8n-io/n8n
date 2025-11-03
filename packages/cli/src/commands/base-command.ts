@@ -1,14 +1,6 @@
 import 'reflect-metadata';
-import {
-	inDevelopment,
-	inTest,
-	LicenseState,
-	Logger,
-	ModuleRegistry,
-	ModulesConfig,
-} from '@n8n/backend-common';
+import { inDevelopment, inTest, Logger, ModuleRegistry, ModulesConfig } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthRolesService, DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -29,7 +21,6 @@ import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-clea
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
@@ -55,8 +46,6 @@ export abstract class BaseCommand<F = never> {
 	protected server?: AbstractServer;
 
 	protected shutdownService: ShutdownService = Container.get(ShutdownService);
-
-	protected license: License;
 
 	protected readonly globalConfig = Container.get(GlobalConfig);
 
@@ -205,15 +194,8 @@ export abstract class BaseCommand<F = never> {
 			);
 		}
 
-		const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
-		if (!isLicensed) {
-			this.logger.error(
-				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
-			);
-			return process.exit(1);
-		}
-
-		this.logger.debug('License found for external storage - Initializing object store service');
+		// S3 storage is always licensed in enterprise mode
+		this.logger.debug('S3 storage is enabled - Initializing object store service');
 		try {
 			await Container.get(ObjectStoreService).init();
 			this.logger.debug('Object store init completed');
@@ -243,32 +225,6 @@ export abstract class BaseCommand<F = never> {
 	async initExternalHooks() {
 		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
-	}
-
-	async initLicense(): Promise<void> {
-		this.license = Container.get(License);
-		await this.license.init();
-
-		Container.get(LicenseState).setLicenseProvider(this.license);
-
-		const { activationKey } = this.globalConfig.license;
-
-		if (activationKey) {
-			const hasCert = (await this.license.loadCertStr()).length > 0;
-
-			if (hasCert) {
-				return this.logger.debug('Skipping license activation');
-			}
-
-			try {
-				this.logger.debug('Attempting license activation');
-				await this.license.activate(activationKey);
-				this.logger.debug('License init complete');
-			} catch (e: unknown) {
-				const error = ensureError(e);
-				this.logger.error('Could not activate license', { error });
-			}
-		}
 	}
 
 	initWorkflowHistory() {
