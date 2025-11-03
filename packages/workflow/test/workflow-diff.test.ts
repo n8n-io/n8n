@@ -291,7 +291,9 @@ describe('groupWorkflows', () => {
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].changeTypes.size).toBe(0);
+			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
+			expect(grouped[0].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Eq);
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 
@@ -306,8 +308,9 @@ describe('groupWorkflows', () => {
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].changeTypes.size).toBe(1);
-			expect([...grouped[0].changeTypes][0].status).toBe(NodeDiffStatus.Added);
+			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
+			expect(grouped[0].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Added);
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 
@@ -322,8 +325,10 @@ describe('groupWorkflows', () => {
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].changeTypes.size).toBe(1);
-			expect([...grouped[0].changeTypes][0].status).toBe(NodeDiffStatus.Deleted);
+			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
+			expect(grouped[0].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Deleted);
+
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 
@@ -339,8 +344,11 @@ describe('groupWorkflows', () => {
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].changeTypes.size).toBe(1);
-			expect([...grouped[0].changeTypes][0].status).toBe(NodeDiffStatus.Modified);
+			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
+			expect(grouped[0].workflowChangeSet.nodes.get(modifiedNode2.id)?.status).toBe(
+				NodeDiffStatus.Modified,
+			);
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 
@@ -356,13 +364,15 @@ describe('groupWorkflows', () => {
 			expect(grouped.length).toBe(2);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].changeTypes.size).toBe(1);
-			expect([...grouped[0].changeTypes][0].status).toBe(NodeDiffStatus.Added);
+			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
+			expect(grouped[0].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Added);
 
 			expect(grouped[1].from).toEqual(workflows[1]);
 			expect(grouped[1].to).toEqual(workflows[2]);
-			expect(grouped[1].changeTypes.size).toBe(1);
-			expect([...grouped[1].changeTypes][0].status).toBe(NodeDiffStatus.Deleted);
+			expect(grouped[1].workflowChangeSet.nodes.size).toBe(2);
+			expect(grouped[1].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
+			expect(grouped[1].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Deleted);
 		});
 
 		it('should handle empty workflows array', () => {
@@ -379,7 +389,7 @@ describe('groupWorkflows', () => {
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[0]);
-			expect(grouped[0].changeTypes.size).toBe(0);
+			expect(grouped[0].workflowChangeSet.nodes.size).toBe(0);
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 	});
@@ -400,13 +410,8 @@ describe('groupWorkflows', () => {
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[2]);
 			expect(grouped[0].groupedWorkflows).toEqual([workflows[1]]);
-			expect(grouped[0].changeTypes.size).toBe(2);
-			expect([...grouped[0].changeTypes]).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ node: node2, status: NodeDiffStatus.Added }),
-					expect.objectContaining({ node: node2, status: NodeDiffStatus.Deleted }),
-				]),
-			);
+			expect(grouped[0].workflowChangeSet.nodes.size).toBe(1);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
 		});
 		it('should not apply an inapplicable rule', () => {
 			workflows = mock<IWorkflowBase[]>([
@@ -420,17 +425,13 @@ describe('groupWorkflows', () => {
 
 			const grouped = groupWorkflows(workflows, rules);
 
-			expect(grouped.length).toBe(1);
+			expect(grouped.length).toBe(2);
 			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[2]);
-			expect(grouped[0].groupedWorkflows).toEqual([workflows[1]]);
-			expect(grouped[0].changeTypes.size).toBe(2);
-			expect([...grouped[0].changeTypes]).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ node: node2, status: NodeDiffStatus.Added }),
-					expect.objectContaining({ node: node2, status: NodeDiffStatus.Deleted }),
-				]),
-			);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(grouped[1].from).toEqual(workflows[1]);
+			expect(grouped[1].to).toEqual(workflows[2]);
+			expect(grouped[1].groupedWorkflows).toEqual([]);
 		});
 	});
 });

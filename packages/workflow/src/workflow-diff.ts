@@ -66,9 +66,77 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 
 type ChangeType<N extends INode> = NodeDiff<N>;
 
+function mergeNodeDiff(
+	prev: NodeDiffStatus,
+	next: NodeDiffStatus,
+): NodeDiffStatus | 'undone' | 'invariant broken' {
+	switch (prev) {
+		case NodeDiffStatus.Added:
+			switch (next) {
+				case NodeDiffStatus.Added:
+					return 'invariant broken';
+				case NodeDiffStatus.Deleted:
+					return 'undone';
+				default:
+					return NodeDiffStatus.Added;
+			}
+		case NodeDiffStatus.Deleted:
+			switch (next) {
+				case NodeDiffStatus.Added:
+					return NodeDiffStatus.Modified;
+				default:
+					return 'invariant broken';
+			}
+		case NodeDiffStatus.Eq:
+			switch (next) {
+				case NodeDiffStatus.Added:
+					return 'invariant broken';
+				default:
+					return next;
+			}
+		case NodeDiffStatus.Modified:
+			switch (next) {
+				case NodeDiffStatus.Added:
+					return 'invariant broken';
+				case NodeDiffStatus.Deleted:
+					return NodeDiffStatus.Deleted;
+				default:
+					return NodeDiffStatus.Modified;
+			}
+	}
+}
+
+class WorkflowChangeSet<T extends { id: string }> {
+	constructor(public nodes: WorkflowDiff<T> = new Map()) {}
+
+	hasChanges() {
+		for (const nodeDiff of this.nodes.values()) {
+			if (nodeDiff.status !== NodeDiffStatus.Eq) return true;
+		}
+		return false;
+	}
+
+	mergeNext(wcs: WorkflowChangeSet<T>) {
+		for (const [key, diff] of wcs.nodes) {
+			const existing = this.nodes.get(key);
+			if (existing) {
+				const diffStatus = mergeNodeDiff(existing.status, diff.status);
+				if (diffStatus === 'invariant broken') {
+					throw new Error('invariant broken');
+				}
+				if (diffStatus === 'undone') {
+					this.nodes.delete(key);
+				} else {
+					this.nodes.set(key, { ...diff, status: diffStatus });
+				}
+			}
+		}
+	}
+}
+
 type GroupedWorkflowHistory<W extends IWorkflowBase> = {
-	changeTypes: Set<ChangeType<W['nodes'][number]>>;
-	inbetweens: W[];
+	workflowChangeSet: WorkflowChangeSet<W['nodes'][number]>;
+	groupedWorkflows: W[];
 	from: W;
 	to: W;
 };
@@ -78,15 +146,10 @@ function compareWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 	next: W,
 ): GroupedWorkflowHistory<W> {
 	const nodesDiff = compareWorkflowsNodes(previous.nodes, next.nodes);
-	const changeTypes = new Set<ChangeType<W['nodes'][number]>>();
-	const changedNodes = [...nodesDiff.entries()]
-		.filter(([k, v]) => v.status !== NodeDiffStatus.Eq)
-		.map((x) => x[1]);
-
-	for (const x of changedNodes) changeTypes.add(x);
+	const workflowChangeSet = new WorkflowChangeSet(nodesDiff);
 	return {
-		changeTypes,
-		inbetweens: [],
+		workflowChangeSet,
+		groupedWorkflows: [],
 		from: previous,
 		to: next,
 	};
@@ -103,7 +166,14 @@ export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 ): Array<GroupedWorkflowHistory<W>> {
 	if (workflows.length === 0) return [];
 	if (workflows.length === 1) {
-		return [{ changeTypes: new Set(), inbetweens: [], from: workflows[0], to: workflows[0] }];
+		return [
+			{
+				workflowChangeSet: new WorkflowChangeSet(),
+				groupedWorkflows: [],
+				from: workflows[0],
+				to: workflows[0],
+			},
+		];
 	}
 
 	const diffs: Array<GroupedWorkflowHistory<W>> = [];
@@ -121,13 +191,12 @@ export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 				if (shouldMerge) {
 					const right = diffs.pop();
 					if (!right) throw new Error('invariant broken');
-					for (const changeType of right.changeTypes) {
-						// merge diffs
-						diffs[i - 1].changeTypes.add(changeType);
-						diffs[i - 1].inbetweens.push(diffs[i - 1].to);
-						diffs[i - 1].inbetweens.push(...right.inbetweens);
-						diffs[i - 1].to = right.to;
-					}
+
+					// merge diffs
+					diffs[i - 1].workflowChangeSet.mergeNext(right.workflowChangeSet);
+					diffs[i - 1].groupedWorkflows.push(diffs[i - 1].to);
+					diffs[i - 1].groupedWorkflows.push(...right.groupedWorkflows);
+					diffs[i - 1].to = right.to;
 				}
 			}
 		}
