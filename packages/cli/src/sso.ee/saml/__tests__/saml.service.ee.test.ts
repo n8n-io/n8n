@@ -317,7 +317,10 @@ describe('SamlService', () => {
 		});
 	});
 
-	describe.only('handleSamlLogin', () => {
+	// TODO: add tests for getAttributesFromLoginResponse
+
+	describe('handleSamlLogin', () => {
+		// TODO: add test cases for remaining logic (so far only for onboarding user)
 		it('throws error for invalid email', async () => {
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				email: 'invalid',
