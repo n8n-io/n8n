@@ -30,14 +30,6 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create and push new tag
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git tag -a "$VERSION" -m "Auto-bumped version to $VERSION"
-          git push origin "$VERSION"
-
       - name: Set up Node.js 22.16
         uses: actions/setup-node@v3
         with:
