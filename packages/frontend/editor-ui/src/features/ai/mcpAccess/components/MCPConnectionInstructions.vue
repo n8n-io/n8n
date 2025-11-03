@@ -71,7 +71,7 @@ const onTabSelected = (tab: ConnectionTabType) => {
 				:loading-api-key="props.loadingApiKey"
 				@rotate-key="emit('rotateKey')"
 			/>
-			<N8nText size="small">
+			<N8nText size="small" data-test-id="mcp-connection-instructions-docs-text">
 				{{ i18n.baseText('settings.mcp.instructions.docs.part1') }}
 				<a :href="MCP_DOCS_PAGE_URL" target="_blank">
 					{{ i18n.baseText('settings.mcp.instructions.docs.part2') }}
