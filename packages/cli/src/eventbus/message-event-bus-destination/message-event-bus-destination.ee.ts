@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { EventDestinationsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -6,13 +7,12 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { License } from '@/license';
+import { CircuitBreaker, CircuitBreakerOpen } from '@/utils/circuit-breaker';
 
 import type { EventMessageTypes } from '../event-message-classes';
 import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
-import { CircuitBreaker, CircuitBreakerOpen } from '@/utils/circuit-breaker';
-import { Time } from '@n8n/constants';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
@@ -25,7 +25,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	protected readonly license: License;
 
-	protected circuitBreaker: CircuitBreaker;
+	protected circuitBreakerInstance: CircuitBreaker;
 
 	__type: MessageEventBusDestinationTypeNames;
 
@@ -52,7 +52,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		const maxConcurrentHalfOpenRequests =
 			options.circuitBreaker?.maxConcurrentHalfOpenRequests ?? 1;
 
-		this.circuitBreaker = new CircuitBreaker(
+		this.circuitBreakerInstance = new CircuitBreaker(
 			maxDuration,
 			maxFailures,
 			halfOpenRequests,
@@ -80,7 +80,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 					confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void,
 				) => {
 					try {
-						await this.circuitBreaker.execute(async () => {
+						await this.circuitBreakerInstance.execute(async () => {
 							await this.receiveFromEventBus({ msg, confirmCallback });
 						});
 					} catch (error) {
