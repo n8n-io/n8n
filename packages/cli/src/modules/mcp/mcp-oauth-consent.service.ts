@@ -6,6 +6,7 @@ import { McpOAuthHelpers } from './mcp-oauth.helpers';
 import { OAuthClientRepository } from './oauth-client.repository';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { UserConsentRepository } from './oauth-user-consent.repository';
+import { UserError } from 'n8n-workflow';
 
 /**
  * Manages OAuth consent flow for MCP server
@@ -63,7 +64,7 @@ export class McpOAuthConsentService {
 		try {
 			sessionPayload = this.oauthSessionService.verifySession(sessionToken);
 		} catch (error) {
-			throw new Error('Invalid or expired session');
+			throw new UserError('Invalid or expired session');
 		}
 
 		if (!approved) {
