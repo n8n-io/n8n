@@ -25,9 +25,7 @@ boto3
 
 # Image Processing
 Pillow
-opencv-python
 imageio
-scikit-image
 
 # File Handling
 openpyxl
