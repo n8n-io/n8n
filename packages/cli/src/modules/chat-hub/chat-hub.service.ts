@@ -18,12 +18,17 @@ import {
 	emptyChatModelsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
+import {
+	ExecutionRepository,
+	IExecutionResponse,
+	User,
+	WorkflowRepository,
+	generateNanoId,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
 import {
-	BINARY_ENCODING,
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
 	ManualExecutionCancelledError,
@@ -39,7 +44,6 @@ import {
 	INode,
 	type IBinaryData,
 } from 'n8n-workflow';
-import { BinaryDataService } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -382,17 +386,21 @@ export class ChatHubService {
 			payload;
 		const { provider } = model;
 
+		const workflowId = generateNanoId();
 		const selectedModel = this.getModelWithCredentials(model, credentials);
 
-		// Process attachments early to populate 'id' field via BinaryDataService
-		const processedAttachments = await this.processAttachments(attachments, sessionId);
+		// Store attachments early to populate 'id' field via BinaryDataService
+		const processedAttachments = await this.chatHubAttachmentService.store(attachments, workflowId);
 
 		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
 			async (trx) => {
-				const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
-				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
-				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-				const history = this.buildMessageHistory(messages, previousMessageId);
+				const history = await this.getSessionMessageHistory(
+					user,
+					sessionId,
+					selectedModel,
+					previousMessageId,
+					trx,
+				);
 
 				await this.saveHumanMessage(
 					{ ...payload, attachments: processedAttachments },
@@ -403,38 +411,16 @@ export class ChatHubService {
 					trx,
 				);
 
-				if (provider === 'n8n') {
-					return await this.prepareCustomAgentWorkflow(
-						user,
-						sessionId,
-						model.workflowId,
-						message,
-						processedAttachments,
-					);
-				}
-
-				if (provider === 'custom-agent') {
-					return await this.prepareChatAgentWorkflow(
-						model.agentId,
-						user,
-						sessionId,
-						history,
-						message,
-						processedAttachments,
-						trx,
-					);
-				}
-
-				return await this.prepareBaseChatWorkflow(
+				return await this.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
 					model,
 					history,
 					message,
-					undefined,
 					processedAttachments,
 					trx,
+					workflowId,
 				);
 			},
 		);
@@ -471,10 +457,6 @@ export class ChatHubService {
 			const session = await this.getChatSession(user, sessionId, selectedModel, true, trx);
 			const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
-			if (!['ai', 'human'].includes(messageToEdit.type)) {
-				throw new BadRequestError('Only human and AI messages can be edited');
-			}
-
 			if (messageToEdit.type === 'ai') {
 				// AI edits just change the original message without revisioning or response generation
 				await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
@@ -482,8 +464,13 @@ export class ChatHubService {
 			}
 
 			if (messageToEdit.type === 'human') {
-				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-				const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
+				const history = await this.getSessionMessageHistory(
+					user,
+					sessionId,
+					selectedModel,
+					messageToEdit.previousMessageId,
+					trx,
+				);
 
 				// If the message to edit isn't the original message, we want to point to the original message
 				const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
@@ -504,41 +491,19 @@ export class ChatHubService {
 					trx,
 				);
 
-				if (provider === 'n8n') {
-					return await this.prepareCustomAgentWorkflow(
-						user,
-						sessionId,
-						model.workflowId,
-						message,
-						attachments,
-					);
-				}
-
-				if (provider === 'custom-agent') {
-					return await this.prepareChatAgentWorkflow(
-						model.agentId,
-						user,
-						sessionId,
-						history,
-						message,
-						attachments,
-						trx,
-					);
-				}
-
-				return await this.prepareBaseChatWorkflow(
+				return await this.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
 					model,
 					history,
 					message,
-					undefined,
 					attachments,
 					trx,
 				);
 			}
-			return null;
+
+			throw new BadRequestError('Only human and AI messages can be edited');
 		});
 
 		if (!workflow) {
@@ -570,15 +535,19 @@ export class ChatHubService {
 			retryOfMessageId,
 			previousMessageId,
 		} = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, undefined, false, trx);
-			const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
+			const messageToRetry = await this.getChatMessage(sessionId, retryId, [], trx);
 
 			if (messageToRetry.type !== 'ai') {
 				throw new BadRequestError('Can only retry AI messages');
 			}
 
-			const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-			const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
+			const history = await this.getSessionMessageHistory(
+				user,
+				sessionId,
+				selectedModel,
+				messageToRetry.previousMessageId,
+				trx,
+			);
 
 			const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
 			if (!lastHumanMessage) {
@@ -597,39 +566,16 @@ export class ChatHubService {
 			const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
 			const message = lastHumanMessage ? lastHumanMessage.content : '';
 			const attachments = lastHumanMessage.attachments ?? [];
-
-			let workflow;
-			if (provider === 'n8n') {
-				workflow = await this.prepareCustomAgentWorkflow(
-					user,
-					sessionId,
-					model.workflowId,
-					message,
-					attachments,
-				);
-			} else if (provider === 'custom-agent') {
-				workflow = await this.prepareChatAgentWorkflow(
-					model.agentId,
-					user,
-					sessionId,
-					history,
-					message,
-					attachments,
-					trx,
-				);
-			} else {
-				workflow = await this.prepareBaseChatWorkflow(
-					user,
-					sessionId,
-					credentials,
-					model,
-					history,
-					message,
-					undefined,
-					attachments,
-					trx,
-				);
-			}
+			const workflow = await this.prepareReplyWorkflow(
+				user,
+				sessionId,
+				credentials,
+				model,
+				history,
+				message,
+				attachments,
+				trx,
+			);
 
 			return {
 				workflow,
@@ -651,6 +597,69 @@ export class ChatHubService {
 		);
 	}
 
+	private async getSessionMessageHistory(
+		user: User,
+		sessionId: ChatSessionId,
+		model: ModelWithCredentials,
+		lastMessageId: ChatMessageId | null,
+		trx: EntityManager,
+	): Promise<ChatHubMessage[]> {
+		const session = await this.getChatSession(user, sessionId, model, true, trx);
+
+		await this.ensurePreviousMessage(lastMessageId, sessionId, trx);
+
+		const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+
+		return this.buildMessageHistory(messages, lastMessageId);
+	}
+
+	private async prepareReplyWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		credentials: INodeCredentials,
+		model: ChatHubConversationModel,
+		history: ChatHubMessage[],
+		message: string,
+		attachments: IBinaryData[],
+		trx: EntityManager,
+		workflowId?: string,
+	) {
+		if (model.provider === 'n8n') {
+			return await this.prepareCustomAgentWorkflow(
+				user,
+				sessionId,
+				model.workflowId,
+				message,
+				attachments,
+			);
+		}
+
+		if (model.provider === 'custom-agent') {
+			return await this.prepareChatAgentWorkflow(
+				model.agentId,
+				user,
+				sessionId,
+				history,
+				message,
+				attachments,
+				trx,
+			);
+		}
+
+		return await this.prepareBaseChatWorkflow(
+			user,
+			sessionId,
+			credentials,
+			model,
+			history,
+			message,
+			undefined,
+			attachments,
+			trx,
+			workflowId,
+		);
+	}
+
 	private async prepareBaseChatWorkflow(
 		user: User,
 		sessionId: ChatSessionId,
@@ -661,6 +670,7 @@ export class ChatHubService {
 		systemMessage: string | undefined,
 		attachments: IBinaryData[],
 		trx: EntityManager,
+		workflowId?: string,
 	) {
 		const credential = await this.chatHubCredentialsService.ensureCredentials(
 			user,
@@ -680,6 +690,7 @@ export class ChatHubService {
 			model,
 			systemMessage,
 			trx,
+			workflowId,
 		);
 	}
 
@@ -691,6 +702,7 @@ export class ChatHubService {
 		message: string,
 		attachments: IBinaryData[],
 		trx: EntityManager,
+		workflowId?: string,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id);
 
@@ -735,6 +747,7 @@ export class ChatHubService {
 			systemMessage,
 			attachments,
 			trx,
+			workflowId,
 		);
 	}
 
@@ -1559,6 +1572,7 @@ export class ChatHubService {
 	}
 
 	async deleteAllSessions() {
+		await this.chatHubAttachmentService.deleteAll();
 		const result = await this.sessionRepository.deleteAll();
 		return result;
 	}
@@ -1666,6 +1680,7 @@ export class ChatHubService {
 			throw new NotFoundError('Session not found');
 		}
 
+		await this.chatHubAttachmentService.deleteAllBySessionId(sessionId);
 		await this.sessionRepository.deleteChatHubSession(sessionId);
 	}
 }
