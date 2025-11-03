@@ -1,4 +1,9 @@
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+	textInput,
+} from '@utils/descriptions';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -42,6 +47,14 @@ export class AgentV3 implements INodeType {
 					default: '',
 				},
 				promptTypeOptions,
+				{
+					...textFromGuardrailsNode,
+					displayOptions: {
+						show: {
+							promptType: ['guardrails'],
+						},
+					},
+				},
 				{
 					...textFromPreviousNode,
 					displayOptions: {

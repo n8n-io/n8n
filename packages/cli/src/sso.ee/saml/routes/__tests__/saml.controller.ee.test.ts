@@ -173,4 +173,77 @@ describe('SAML Login Flow', () => {
 		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/custom/redirect');
 	});
+
+	describe('Redirect URL Validation', () => {
+		test('allows redirect to relative URls starting with slash', async () => {
+			const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
+			const res = mock<Response>();
+
+			samlService.handleSamlLogin.mockResolvedValueOnce({
+				authenticatedUser: user,
+				attributes,
+				onboardingRequired: false,
+			});
+			await controller.acsPost(req, res, { RelayState: '/workflow/123' });
+
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/workflow/123');
+		});
+
+		test('validates redirect URL that is passed in via URL parameter', async () => {
+			const req = mock<AuthlessRequest>({
+				query: { redirect: '//evil.com/phishing' },
+				headers: {},
+			});
+			const res = mock<Response>();
+
+			samlService.getLoginRequestUrl.mockResolvedValueOnce({
+				binding: 'redirect',
+				context: { context: 'http://idp.example.com/login' } as any,
+			});
+
+			await controller.initSsoGet(req, res);
+
+			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
+		});
+
+		test('validates redirect URL that is passed in via referrer header', async () => {
+			const req = mock<AuthlessRequest>({
+				query: {},
+				headers: {
+					referer: 'http://localhost:5678/login?redirect=%2F%2Fevil.com%2Fphishing',
+				},
+			});
+			const res = mock<Response>();
+
+			samlService.getLoginRequestUrl.mockResolvedValueOnce({
+				binding: 'redirect',
+				context: { context: 'http://idp.example.com/login' } as any,
+			});
+
+			await controller.initSsoGet(req, res);
+
+			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
+		});
+
+		const hostWithoutRedirect = 'http://localhost:5678/';
+		test.each([
+			['https://evil.com/phishing'],
+			['//evil.com/phishing'],
+			['javascript:alert(1)'],
+			['%2F%2Fevil.com/phishing'],
+			['workflows/123'],
+		])('does not allow redirect to %s', async (blockedUrl: string) => {
+			const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
+			const res = mock<Response>();
+
+			samlService.handleSamlLogin.mockResolvedValueOnce({
+				authenticatedUser: user,
+				attributes,
+				onboardingRequired: false,
+			});
+			await controller.acsPost(req, res, { RelayState: blockedUrl });
+
+			expect(res.redirect).toHaveBeenCalledWith(hostWithoutRedirect);
+		});
+	});
 });

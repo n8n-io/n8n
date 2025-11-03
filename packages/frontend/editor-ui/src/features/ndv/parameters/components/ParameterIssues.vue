@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TitledList from '@/components/TitledList.vue';
+import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 defineProps<{

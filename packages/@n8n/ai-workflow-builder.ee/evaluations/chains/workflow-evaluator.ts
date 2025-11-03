@@ -9,6 +9,7 @@ import {
 	evaluateEfficiency,
 	evaluateDataFlow,
 	evaluateMaintainability,
+	evaluateBestPractices,
 } from './evaluators';
 import type { EvaluationInput, EvaluationResult } from '../types/evaluation';
 
@@ -27,6 +28,7 @@ export function calculateWeightedScore(result: EvaluationResult): number {
 		efficiency: 0.1,
 		dataFlow: 0.1,
 		maintainability: 0.05,
+		bestPractices: 0.1,
 
 		// Structural similarity (5% if applicable)
 		structuralSimilarity: 0.05,
@@ -47,7 +49,9 @@ export function calculateWeightedScore(result: EvaluationResult): number {
 	weightedSum += result.efficiency.score * weights.efficiency;
 	weightedSum += result.dataFlow.score * weights.dataFlow;
 	weightedSum += result.maintainability.score * weights.maintainability;
-	totalWeight += weights.efficiency + weights.dataFlow + weights.maintainability;
+	weightedSum += result.bestPractices.score * weights.bestPractices;
+	totalWeight +=
+		weights.efficiency + weights.dataFlow + weights.maintainability + weights.bestPractices;
 
 	// Add structural similarity only if applicable
 	if (result.structuralSimilarity?.applicable) {
@@ -90,6 +94,9 @@ function generateEvaluationSummary(result: EvaluationResult): string {
 	if (result.maintainability.score >= 0.8) strengths.push('maintainable structure');
 	else if (result.maintainability.score < 0.5) weaknesses.push('poor maintainability');
 
+	if (result.bestPractices.score >= 0.8) strengths.push('follows best practices');
+	else if (result.bestPractices.score < 0.5) weaknesses.push('deviates from best practices');
+
 	// Create summary
 	let summary = '';
 	if (strengths.length > 0) {
@@ -122,6 +129,7 @@ function identifyCriticalIssues(result: EvaluationResult): string[] | undefined 
 		{ name: 'efficiency', data: result.efficiency },
 		{ name: 'dataFlow', data: result.dataFlow },
 		{ name: 'maintainability', data: result.maintainability },
+		{ name: 'bestPractices', data: result.bestPractices },
 	];
 
 	for (const category of categories) {
@@ -156,6 +164,7 @@ export async function evaluateWorkflow(
 		efficiency,
 		dataFlow,
 		maintainability,
+		bestPractices,
 	] = await Promise.all([
 		// Core evaluations
 		evaluateFunctionality(llm, input),
@@ -165,6 +174,7 @@ export async function evaluateWorkflow(
 		evaluateEfficiency(llm, input),
 		evaluateDataFlow(llm, input),
 		evaluateMaintainability(llm, input),
+		evaluateBestPractices(llm, input),
 	]);
 
 	// Build the evaluation result
@@ -177,6 +187,7 @@ export async function evaluateWorkflow(
 		efficiency,
 		dataFlow,
 		maintainability,
+		bestPractices,
 		structuralSimilarity: {
 			violations: [],
 			score: 0,

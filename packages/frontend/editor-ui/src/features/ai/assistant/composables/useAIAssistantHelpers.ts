@@ -7,17 +7,21 @@ import type {
 	NodeOperationError,
 	INode,
 } from 'n8n-workflow';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { executionDataToJson, getMainAuthField, getNodeAuthOptions } from '@/utils/nodeTypesUtils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	executionDataToJson,
+	getMainAuthField,
+	getNodeAuthOptions,
+} from '@/app/utils/nodeTypesUtils';
 import type { ChatRequest } from '../assistant.types';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useDataSchema } from '@/composables/useDataSchema';
-import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useDataSchema } from '@/app/composables/useDataSchema';
+import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import type { IWorkflowDb } from '@/Interface';
-import { getObjectSizeInKB } from '@/utils/objectUtils';
+import { getObjectSizeInKB } from '@/app/utils/objectUtils';
 
 const CANVAS_VIEWS = [VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOW, VIEWS.EXECUTION_DEBUG];
 const EXECUTION_VIEWS = [VIEWS.EXECUTION_PREVIEW];

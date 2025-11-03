@@ -7,7 +7,12 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+	textInput,
+} from '@utils/descriptions';
 
 import { getToolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
@@ -54,6 +59,14 @@ export class AgentV2 implements INodeType {
 					default: '',
 				},
 				promptTypeOptions,
+				{
+					...textFromGuardrailsNode,
+					displayOptions: {
+						show: {
+							promptType: ['guardrails'],
+						},
+					},
+				},
 				{
 					...textFromPreviousNode,
 					displayOptions: {

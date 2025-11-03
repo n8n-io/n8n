@@ -28,7 +28,7 @@ afterAll(async () => {
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
 	let controller: InsightsController;
-	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
+	const sixDaysAgo = DateTime.now().minus({ days: 6 }).toJSDate();
 	const today = DateTime.now().toJSDate();
 	const licenseState = mock<LicenseState>();
 
@@ -62,7 +62,7 @@ describe('InsightsController', () => {
 
 			const callArgs =
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.startDate, sixDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
@@ -102,7 +102,7 @@ describe('InsightsController', () => {
 
 			const callArgs =
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.startDate, sixDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
@@ -146,7 +146,7 @@ describe('InsightsController', () => {
 
 			const callArgs =
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.startDate, sixDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
@@ -236,37 +236,6 @@ describe('InsightsController', () => {
 
 				const callArgs =
 					insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
-				expectDatesClose(callArgs.endDate, today);
-
-				expect(response).toEqual(expectedResponse);
-			});
-
-			it('should use the query dateRange filter in a backward compatible way', async () => {
-				const thirtyDaysAgo = DateTime.now().minus({ days: 30 }).toJSDate();
-
-				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
-					mockRepositoryResponse,
-				);
-
-				const response = await controller.getInsightsSummary(
-					mock<AuthenticatedRequest>(),
-					mock<Response>(),
-					{ dateRange: 'month', projectId: 'test-project' },
-				);
-
-				expect(
-					insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
-				).toHaveBeenCalledWith(
-					expect.objectContaining({
-						startDate: expect.any(Date),
-						endDate: expect.any(Date),
-						projectId: 'test-project',
-					}),
-				);
-
-				const callArgs =
-					insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
-				expectDatesClose(callArgs.startDate, thirtyDaysAgo);
 				expectDatesClose(callArgs.endDate, today);
 
 				expect(response).toEqual(expectedResponse);
@@ -430,7 +399,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.startDate, sixDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({ count: 0, data: [] });
@@ -464,7 +433,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.startDate, sixDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({ count: 3, data: mockRows });
@@ -537,42 +506,6 @@ describe('InsightsController', () => {
 				});
 
 				const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
-				expectDatesClose(callArgs.endDate, today);
-
-				expect(response).toEqual({ count: 3, data: mockRows });
-			});
-
-			it('should use the query dateRange filter in a backward compatible way', async () => {
-				// ARRANGE
-				const thirtyDaysAgo = DateTime.now().minus({ days: 30 }).toJSDate();
-				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
-					count: mockRows.length,
-					rows: mockRows,
-				});
-
-				// ACT
-				const response = await controller.getInsightsByWorkflow(
-					mock<AuthenticatedRequest>(),
-					mock<Response>(),
-					{
-						dateRange: 'month',
-						skip: 0,
-						take: 5,
-						sortBy: 'total:desc',
-					},
-				);
-
-				// ASSERT
-				expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
-					startDate: expect.any(Date),
-					endDate: expect.any(Date),
-					skip: 0,
-					take: 5,
-					sortBy: 'total:desc',
-				});
-
-				const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
-				expectDatesClose(callArgs.startDate, thirtyDaysAgo);
 				expectDatesClose(callArgs.endDate, today);
 
 				expect(response).toEqual({ count: 3, data: mockRows });
@@ -738,7 +671,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.startDate, sixDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual([]);
@@ -761,7 +694,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.startDate, sixDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual(expectedResponse);
@@ -807,7 +740,7 @@ describe('InsightsController', () => {
 				});
 
 				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-				expectDatesClose(callArgs.startDate, sevenDaysAgo);
+				expectDatesClose(callArgs.startDate, sixDaysAgo);
 				expectDatesClose(callArgs.endDate, today);
 
 				expect(response).toEqual(expectedResponse);
@@ -833,30 +766,6 @@ describe('InsightsController', () => {
 				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
 				expectDatesClose(callArgs.endDate, today);
 
-				expect(response).toEqual(expectedResponse);
-			});
-
-			it('should use the query dateRange filter in a backward compatible way', async () => {
-				const fourteenDaysAgo = DateTime.now().minus({ days: 14 }).toJSDate();
-				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
-
-				const response = await controller.getInsightsByTime(
-					mock<AuthenticatedRequest>(),
-					mock<Response>(),
-					{ dateRange: '2weeks', projectId: 'test-project' },
-				);
-
-				expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
-					insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
-					startDate: expect.any(Date),
-					endDate: expect.any(Date),
-					periodUnit: 'day',
-					projectId: 'test-project',
-				});
-
-				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-				expectDatesClose(callArgs.startDate, fourteenDaysAgo);
-				expectDatesClose(callArgs.endDate, today);
 				expect(response).toEqual(expectedResponse);
 			});
 
@@ -978,7 +887,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sevenDaysAgo);
+			expectDatesClose(callArgs.startDate, sixDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual(expectedResponse);
@@ -1003,7 +912,7 @@ describe('InsightsController', () => {
 				});
 
 				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-				expectDatesClose(callArgs.startDate, sevenDaysAgo);
+				expectDatesClose(callArgs.startDate, sixDaysAgo);
 				expectDatesClose(callArgs.endDate, today);
 
 				expect(response).toEqual(expectedResponse);
@@ -1026,34 +935,6 @@ describe('InsightsController', () => {
 					endDate,
 					periodUnit: 'week',
 				});
-
-				expect(response).toEqual(expectedResponse);
-			});
-
-			it('should use the query dateRange filter "quarter" in a backward compatible way', async () => {
-				// ARRANGE
-				const ninetyDaysAgo = DateTime.now().minus({ days: 90 }).toJSDate();
-				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
-
-				// ACT
-				const response = await controller.getTimeSavedInsightsByTime(
-					mock<AuthenticatedRequest>(),
-					mock<Response>(),
-					{ dateRange: 'quarter', projectId: 'test-project' },
-				);
-
-				// ASSERT
-				expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
-					insightTypes: ['time_saved_min'],
-					startDate: expect.any(Date),
-					endDate: expect.any(Date),
-					periodUnit: 'week',
-					projectId: 'test-project',
-				});
-
-				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-				expectDatesClose(callArgs.startDate, ninetyDaysAgo);
-				expectDatesClose(callArgs.endDate, today);
 
 				expect(response).toEqual(expectedResponse);
 			});

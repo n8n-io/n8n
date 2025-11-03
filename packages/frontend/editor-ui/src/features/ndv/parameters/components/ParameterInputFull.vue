@@ -2,17 +2,21 @@
 import { computed, type ComputedRef, ref, useTemplateRef, watch } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import FromAiOverrideButton from './ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from './ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from './ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { getMappedResult } from '@/utils/mappingUtils';
-import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
+import { getMappedResult } from '@/app/utils/mappingUtils';
+import {
+	hasExpressionMapping,
+	hasOnlyListMode,
+	isValueExpression,
+} from '@/app/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	isResourceLocatorValue,
@@ -27,9 +31,9 @@ import {
 	makeOverrideValue,
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverride.utils';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { inject } from 'vue';
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
 import { N8nInputLabel } from '@n8n/design-system';
 type Props = {

@@ -4,25 +4,25 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useUsageStore } from '../usage.store';
 import SettingsUsageAndPlan from './SettingsUsageAndPlan.vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { waitFor } from '@testing-library/vue';
-import { useRBACStore } from '@/stores/rbac.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(),
 }));
 
-vi.mock('@/composables/useDocumentTitle', () => ({
+vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),
 }));
 
-vi.mock('@/composables/usePageRedirectionHelper', () => ({
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({
 		goToUpgrade: vi.fn(),
 	}),
