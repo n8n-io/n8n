@@ -55,7 +55,6 @@ services:
       - N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT=15
       - N8N_RUNNERS_STDLIB_ALLOW=*
       - N8N_RUNNERS_EXTERNAL_ALLOW=*
-      - GEMINI_API_KEY=AIzaSyBQPhYjIJ0lyzlfX2xH9SI5k57POj_aAbg
     depends_on:
       - n8n
     networks:
