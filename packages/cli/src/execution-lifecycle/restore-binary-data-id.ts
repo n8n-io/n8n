@@ -27,11 +27,9 @@ export async function restoreBinaryDataId(
 	executionId: string,
 	workflowExecutionMode: WorkflowExecuteMode,
 ) {
-	const binaryDataConfig = Container.get(BinaryDataConfig);
-
 	if (
 		(workflowExecutionMode !== 'webhook' && workflowExecutionMode !== 'chat') ||
-		binaryDataConfig.mode === 'default'
+		Container.get(BinaryDataConfig).mode === 'default'
 	) {
 		return;
 	}
