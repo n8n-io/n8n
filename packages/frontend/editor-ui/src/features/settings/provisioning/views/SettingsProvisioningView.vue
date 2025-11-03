@@ -51,14 +51,12 @@ const form = reactive({
 const isFormDirty = computed(() => {
 	const config = provisioningStore.provisioningConfig;
 	if (!config) return false;
-	const formKeysThatMatchWithConfig: Array<keyof ProvisioningConfig> = [
+	const formKeysThatMatchWithConfig: Array<keyof typeof form & keyof ProvisioningConfig> = [
 		'scopesName',
 		'scopesInstanceRoleClaimName',
 		'scopesProjectsRolesClaimName',
 	];
-	const configChanged = formKeysThatMatchWithConfig.some(
-		(key) => (form as any)[key] !== (config as any)[key],
-	);
+	const configChanged = formKeysThatMatchWithConfig.some((key) => form[key] !== config[key]);
 	const provisioningEnabledChanged =
 		form.provisioningEnabled !==
 		(config.scopesProvisionInstanceRole && config.scopesProvisionProjectRoles);
