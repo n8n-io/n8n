@@ -129,9 +129,9 @@ export class MessageEventBusDestinationWebhook
 		const agentOptions: HTTPAgentOptions = {
 			// keepAlive to keep TCP connections alive for reuse
 			keepAlive: options.options?.socket?.keepAlive ?? true,
-			maxSockets: options.options?.socket?.maxSockets ?? 100,
-			maxFreeSockets: options.options?.socket?.maxFreeSockets ?? 100,
-			maxTotalSockets: options.options?.socket?.maxTotalSockets ?? 100,
+			maxSockets: options.options?.socket?.maxSockets ?? 10,
+			maxFreeSockets: options.options?.socket?.maxFreeSockets ?? 10,
+			maxTotalSockets: options.options?.socket?.maxTotalSockets ?? 10,
 			// Socket timeout in milliseconds defaults to 5 seconds
 			timeout: options.options?.socket?.timeout ?? 5 * Time.seconds.toMilliseconds,
 		};
@@ -173,7 +173,12 @@ export class MessageEventBusDestinationWebhook
 			return;
 		}
 
-		this.axiosRequestOptions = {};
+		this.axiosRequestOptions = {
+			headers: {},
+			method: this.method as Method,
+			url: this.url,
+			maxRedirects: 0,
+		};
 
 		this.credentialsHelper ??= Container.get(CredentialsHelper);
 
@@ -293,7 +298,7 @@ export class MessageEventBusDestinationWebhook
 		// we need to make a copy of the request here, because to access the credentials
 		// later on we are awaiting and therefore yielding to the event loop
 		// therefore a race condition can occur for multiple events being processed simultaneously
-		const request = {
+		const request: AxiosRequestConfig = {
 			...(this.axiosRequestOptions ?? {}),
 		};
 
@@ -383,10 +388,11 @@ export class MessageEventBusDestinationWebhook
 			}
 		} catch (error) {
 			this.logger.warn(
-				`Webhook destination ${this.label} failed to send message to: ${this.url} - ${
+				`Webhook destination ${this.label} (${this.id}) failed to send message to: ${this.url} - ${
 					(error as Error).message
 				}`,
 			);
+			throw error;
 		}
 
 		return sendResult;

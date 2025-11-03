@@ -80,7 +80,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 							);
 							return;
 						}
-						throw error;
 					}
 				},
 			);

@@ -1,3 +1,6 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
+
 type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
 /**
@@ -81,8 +84,10 @@ export class CircuitBreaker {
 	private state: CircuitBreakerState;
 	private halfOpenCount: number;
 	private lastFailureTime: number;
+	private logger: Logger;
 
 	private pendingHalfOpenRequests = 0;
+	private inflightRequests = 0;
 
 	private failureTimestamps: number[] = [];
 
@@ -119,6 +124,8 @@ export class CircuitBreaker {
 		this.state = 'CLOSED';
 		this.lastFailureTime = 0;
 		this.halfOpenCount = 0;
+
+		this.logger = Container.get(Logger).scoped('circuit-breaker');
 	}
 
 	/**
@@ -151,12 +158,22 @@ export class CircuitBreaker {
 		if (this.failureTimestamps.length > this.maxFailures * 2) {
 			this.failureTimestamps = this.failureTimestamps.slice(-this.maxFailures * 2);
 		}
+
+		this.logger.debug(
+			`Circuit breaker recording failure at ${now}: ${this.failureTimestamps.length} failures max ${this.maxFailures}`,
+		);
+	}
+
+	private changeToState(newState: CircuitBreakerState) {
+		if (newState === this.state) return;
+		this.logger.debug(`Circuit breaker changing state from ${this.state} to ${newState}`);
+		this.state = newState;
 	}
 
 	private async handleOpenState<T>(fn: () => Promise<T>): Promise<T> {
 		if (Date.now() - this.lastFailureTime >= this.timeout) {
 			this.halfOpenCount = 0;
-			this.state = 'HALF_OPEN';
+			this.changeToState('HALF_OPEN');
 			return await this.handleHalfOpenState(fn);
 		}
 		throw new CircuitBreakerOpen();
@@ -176,14 +193,14 @@ export class CircuitBreaker {
 			this.halfOpenCount++;
 			// Only after halfOpenRequests successful requests, we transition to CLOSED
 			if (this.halfOpenCount >= this.halfOpenRequests) {
-				this.state = 'CLOSED';
+				this.changeToState('CLOSED');
 				this.clearFailures();
 			}
 			return result;
 		} catch (error) {
 			// if an error occurs in the half open state, we immediately transition to OPEN
 			this.recordFailure();
-			this.state = 'OPEN';
+			this.changeToState('OPEN');
 			throw error;
 		} finally {
 			this.pendingHalfOpenRequests--;
@@ -196,7 +213,7 @@ export class CircuitBreaker {
 		} catch (error) {
 			this.recordFailure();
 			if (this.getFailureCount() >= this.maxFailures) {
-				this.state = 'OPEN';
+				this.changeToState('OPEN');
 			}
 			throw error;
 		}
@@ -226,13 +243,27 @@ export class CircuitBreaker {
 	 * ```
 	 */
 	async execute<T>(fn: () => Promise<T>): Promise<T> {
+		const wrapper = async () => {
+			this.inflightRequests++;
+			this.logger.debug(
+				`Executing function with circuit breaker protection, inflight requests: ${this.inflightRequests}`,
+			);
+			try {
+				return await fn();
+			} finally {
+				this.inflightRequests--;
+				this.logger.debug(
+					`Executed function with circuit breaker protection, inflight requests: ${this.inflightRequests}`,
+				);
+			}
+		};
 		switch (this.state) {
 			case 'OPEN':
-				return await this.handleOpenState(fn);
+				return await this.handleOpenState(wrapper);
 			case 'HALF_OPEN':
-				return await this.handleHalfOpenState(fn);
+				return await this.handleHalfOpenState(wrapper);
 			case 'CLOSED':
-				return await this.handleClosedState(fn);
+				return await this.handleClosedState(wrapper);
 		}
 	}
 }
