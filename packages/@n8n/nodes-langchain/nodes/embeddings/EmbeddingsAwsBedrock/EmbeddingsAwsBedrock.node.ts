@@ -1,6 +1,10 @@
-import { BedrockRuntimeClient, BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
+import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
+import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockEmbeddings } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { getNodeProxyAgent } from '@utils/httpProxyAgent';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -8,10 +12,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getNodeProxyAgent } from '@utils/httpProxyAgent';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -107,21 +107,24 @@ export class EmbeddingsAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('aws');
+		const credentials = await this.getCredentials<{
+			region: string;
+			secretAccessKey: string;
+			accessKeyId: string;
+			sessionToken: string;
+		}>('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
-		// Create BedrockRuntimeClient with proxy support
-		// AWS SDK v3 requires requestHandler with NodeHttpHandler for proxy support
-		const proxyAgent = getNodeProxyAgent();
 		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region as string,
+			region: credentials.region,
 			credentials: {
-				secretAccessKey: credentials.secretAccessKey as string,
-				accessKeyId: credentials.accessKeyId as string,
-				sessionToken: credentials.sessionToken as string,
+				secretAccessKey: credentials.secretAccessKey,
+				accessKeyId: credentials.accessKeyId,
+				sessionToken: credentials.sessionToken,
 			},
 		};
 
+		const proxyAgent = getNodeProxyAgent();
 		if (proxyAgent) {
 			clientConfig.requestHandler = new NodeHttpHandler({
 				httpAgent: proxyAgent,
@@ -129,13 +132,12 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			});
 		}
 
-		// Pass the pre-configured client to avoid credential resolution proxy issues
-		const client = new BedrockRuntimeClient(clientConfig as never);
-
+		const client = new BedrockRuntimeClient(clientConfig);
 		const embeddings = new BedrockEmbeddings({
 			client,
 			model: modelName,
 			maxRetries: 3,
+			region: credentials.region,
 		});
 
 		return {

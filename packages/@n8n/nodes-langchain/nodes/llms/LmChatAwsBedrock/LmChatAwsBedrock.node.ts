@@ -224,22 +224,26 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('aws');
+		const credentials = await this.getCredentials<{
+			region: string;
+			secretAccessKey: string;
+			accessKeyId: string;
+			sessionToken: string;
+		}>('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
 			maxTokensToSample: number;
 		};
 
-		// Create BedrockRuntimeClient with proxy support
-		// AWS SDK v3 requires requestHandler with NodeHttpHandler for proxy support
+		// We set-up client manually to pass httpAgent and httpsAgent
 		const proxyAgent = getNodeProxyAgent();
 		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region as string,
+			region: credentials.region,
 			credentials: {
-				secretAccessKey: credentials.secretAccessKey as string,
-				accessKeyId: credentials.accessKeyId as string,
-				...(credentials.sessionToken && { sessionToken: credentials.sessionToken as string }),
+				secretAccessKey: credentials.secretAccessKey,
+				accessKeyId: credentials.accessKeyId,
+				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
 			},
 		};
 
@@ -256,7 +260,7 @@ export class LmChatAwsBedrock implements INodeType {
 		const model = new ChatBedrockConverse({
 			client,
 			model: modelName,
-			region: credentials.region as string,
+			region: credentials.region,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			callbacks: [new N8nLlmTracing(this)],
