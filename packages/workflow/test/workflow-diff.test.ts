@@ -1,4 +1,12 @@
-import { compareNodes, compareWorkflowsNodes, NodeDiffStatus } from '../src/workflow-diff';
+import { mock } from 'vitest-mock-extended';
+import type { INode, IWorkflowBase } from '../src';
+import {
+	compareNodes,
+	compareWorkflowsNodes,
+	groupWorkflows,
+	NodeDiffStatus,
+	type DiffRule,
+} from '../src/workflow-diff';
 
 describe('NodeDiffStatus', () => {
 	it('should have correct enum values', () => {
@@ -259,5 +267,170 @@ describe('compareWorkflowsNodes', () => {
 		expect(diff.get('2')?.status).toBe(NodeDiffStatus.Modified);
 		expect(diff.get('3')?.status).toBe(NodeDiffStatus.Deleted);
 		expect(diff.get('4')?.status).toBe(NodeDiffStatus.Added);
+	});
+});
+
+describe('groupWorkflows', () => {
+	const node1 = mock<INode>({ id: '1', parameters: { a: 1 } });
+	const node2 = mock<INode>({ id: '2', parameters: { a: 2 } });
+
+	let rules: DiffRule[] = [];
+	let workflows: IWorkflowBase[];
+	beforeEach(() => {
+		rules = [];
+		workflows = [];
+	});
+	describe('basic grouping', () => {
+		it('should group workflows with no changes', () => {
+			workflows = mock<[IWorkflowBase, IWorkflowBase]>([
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1, node2] },
+			]);
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(1);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].changeTypes.size).toBe(0);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+		});
+
+		it('should group workflows with added nodes', () => {
+			workflows = mock<[IWorkflowBase, IWorkflowBase]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+			]);
+
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(1);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].changeTypes.size).toBe(1);
+			expect([...grouped[0].changeTypes][0].status).toBe(NodeDiffStatus.Added);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+		});
+
+		it('should group workflows with deleted nodes', () => {
+			workflows = mock<[IWorkflowBase, IWorkflowBase]>([
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+			]);
+
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(1);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].changeTypes.size).toBe(1);
+			expect([...grouped[0].changeTypes][0].status).toBe(NodeDiffStatus.Deleted);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+		});
+
+		it('should group workflows with modified nodes', () => {
+			const modifiedNode2 = { id: '2', parameter: { a: 3 } };
+			workflows = mock<[IWorkflowBase, IWorkflowBase]>([
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1, modifiedNode2] },
+			]);
+
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(1);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].changeTypes.size).toBe(1);
+			expect([...grouped[0].changeTypes][0].status).toBe(NodeDiffStatus.Modified);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+		});
+
+		it('should handle multiple workflow groups', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+			]);
+
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(2);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].changeTypes.size).toBe(1);
+			expect([...grouped[0].changeTypes][0].status).toBe(NodeDiffStatus.Added);
+
+			expect(grouped[1].from).toEqual(workflows[1]);
+			expect(grouped[1].to).toEqual(workflows[2]);
+			expect(grouped[1].changeTypes.size).toBe(1);
+			expect([...grouped[1].changeTypes][0].status).toBe(NodeDiffStatus.Deleted);
+		});
+
+		it('should handle empty workflows array', () => {
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(0);
+		});
+
+		it('should handle single workflow', () => {
+			const workflows = mock<IWorkflowBase[]>([{ id: '1', nodes: [node1] }]);
+
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(1);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[0]);
+			expect(grouped[0].changeTypes.size).toBe(0);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+		});
+	});
+	describe('rules', () => {
+		it('should apply a given rule', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+			]);
+
+			const alwaysMergeRule: DiffRule = (_l, _r) => true;
+			const rules = [alwaysMergeRule];
+
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(1);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[2]);
+			expect(grouped[0].groupedWorkflows).toEqual([workflows[1]]);
+			expect(grouped[0].changeTypes.size).toBe(2);
+			expect([...grouped[0].changeTypes]).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ node: node2, status: NodeDiffStatus.Added }),
+					expect.objectContaining({ node: node2, status: NodeDiffStatus.Deleted }),
+				]),
+			);
+		});
+		it('should not apply an inapplicable rule', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+			]);
+
+			const alwaysMergeRule: DiffRule = (_l, _r) => false;
+			const rules = [alwaysMergeRule];
+
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(1);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[2]);
+			expect(grouped[0].groupedWorkflows).toEqual([workflows[1]]);
+			expect(grouped[0].changeTypes.size).toBe(2);
+			expect([...grouped[0].changeTypes]).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ node: node2, status: NodeDiffStatus.Added }),
+					expect.objectContaining({ node: node2, status: NodeDiffStatus.Deleted }),
+				]),
+			);
+		});
 	});
 });
