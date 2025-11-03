@@ -15,9 +15,9 @@ import {
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useClipboard } from '@vueuse/core';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useChatState } from '@/features/execution/logs/composables/useChatState';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface Props {
 	sessionId: string;
@@ -386,8 +386,8 @@ onUnmounted(() => {
 	body[data-theme='dark'] & {
 		:global(.chat-layout) {
 			/* Body and Footer - darker background like the old design */
-			--chat--body--background: var(--color-background--xlight);
-			--chat--footer--background: var(--color-background--xlight);
+			--chat--body--background: var(--color--background--shade-1);
+			--chat--footer--background: var(--color--background--shade-1);
 			--chat--footer--color: var(--color--text);
 			--chat--footer--border-top: none;
 

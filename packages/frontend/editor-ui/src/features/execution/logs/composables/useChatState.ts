@@ -16,7 +16,7 @@ import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
 import type { INode, INodeParameters } from 'n8n-workflow';
-import { isChatNode } from '@/utils/aiUtils';
+import { isChatNode } from '@/app/utils/aiUtils';
 import { constructChatWebsocketUrl } from '@n8n/chat/utils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
