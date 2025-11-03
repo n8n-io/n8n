@@ -386,8 +386,8 @@ onUnmounted(() => {
 	body[data-theme='dark'] & {
 		:global(.chat-layout) {
 			/* Body and Footer - darker background like the old design */
-			--chat--body--background: var(--color--background--shade-1);
-			--chat--footer--background: var(--color--background--shade-1);
+			--chat--body--background: var(--color--background--light-2);
+			--chat--footer--background: var(--color--background--light-2);
 			--chat--footer--color: var(--color--text);
 			--chat--footer--border-top: none;
 
