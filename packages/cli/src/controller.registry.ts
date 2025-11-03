@@ -4,7 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
-import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
+import type { AccessScope, Controller, RateLimit, StaticRouterMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
@@ -19,8 +19,7 @@ import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
-import { StaticRouterMetadata } from '@n8n/decorators/src/controller/types';
+import { send } from '@/response-helper';
 
 @Service()
 export class ControllerRegistry {
@@ -53,7 +52,6 @@ export class ControllerRegistry {
 			(handlerName) => controller[handlerName].bind(controller) as RequestHandler,
 		);
 
-		// Register static routers if they exist
 		const staticRouters = (controllerClass as any).routers as StaticRouterMetadata[] | undefined;
 
 		if (staticRouters) {
@@ -127,12 +125,10 @@ export class ControllerRegistry {
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
 
-		// Rate limiting (if in production and configured)
 		if (inProduction && route.rateLimit) {
 			middlewares.push(this.createRateLimitMiddleware(route.rateLimit));
 		}
 
-		// Authentication (unless skipAuth is true)
 		if (!route.skipAuth) {
 			middlewares.push(
 				this.authService.createAuthMiddleware({
@@ -143,20 +139,16 @@ export class ControllerRegistry {
 			);
 		}
 
-		// License check (if configured)
 		if (route.licenseFeature) {
 			middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
 		}
 
-		// Scope check (if configured)
 		if (route.accessScope) {
 			middlewares.push(this.createScopedMiddleware(route.accessScope));
 		}
 
-		// Controller-level middlewares
 		middlewares.push(...controllerMiddlewares);
 
-		// Route-specific middlewares
 		if (route.middlewares) {
 			middlewares.push(...route.middlewares);
 		}

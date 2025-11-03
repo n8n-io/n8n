@@ -78,6 +78,11 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 	await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
 }
 
+test.use({
+	addContainerCapability: {
+		proxyServerEnabled: true,
+	},
+});
 test.describe('Langchain Integration @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
 		await proxyServer.clearAllExpectations();

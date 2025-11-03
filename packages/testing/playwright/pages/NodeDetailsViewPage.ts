@@ -42,6 +42,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByRole('combobox', { name: 'Select Credential' });
 	}
 
+	getCredentialSelectInput() {
+		return this.getNodeCredentialsSelect().locator('input');
+	}
+
 	async clickBackToCanvasButton() {
 		await this.clickByTestId('back-to-canvas');
 	}
@@ -199,6 +203,18 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInputHint() {
 		return this.page.getByTestId('parameter-input-hint');
+	}
+
+	getInputLabel() {
+		return this.page.getByTestId('input-label');
+	}
+
+	getNthParameter(index: number) {
+		return this.getNodeParameters().locator('.parameter-item').nth(index);
+	}
+
+	getCredentialsLabel() {
+		return this.page.getByTestId('credentials-label');
 	}
 
 	async makeWebhookRequest(path: string) {

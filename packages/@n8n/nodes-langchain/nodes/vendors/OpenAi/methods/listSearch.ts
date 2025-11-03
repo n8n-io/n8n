@@ -82,6 +82,13 @@ export async function modelSearch(
 	return await getModelSearch((model) => shouldIncludeModel(model.id, isCustomAPI))(this, filter);
 }
 
+export async function videoModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await getModelSearch((model) => model.id.includes('sora'))(this, filter);
+}
+
 export async function imageModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,

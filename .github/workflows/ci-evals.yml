@@ -7,6 +7,16 @@ on:
     paths:
       - 'packages/@n8n/ai-workflow-builder.ee/**'
       - '.github/workflows/ci-evals.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        default: 'master'
+      dataset:
+        description: 'LangSmith dataset to use.'
+        required: false
+        default: 'workflow-builder-canvas-prompts'
 
 jobs:
   evals:
@@ -17,8 +27,11 @@ jobs:
       LANGSMITH_TRACING: true
       LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
       LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+      LANGSMITH_DATASET_NAME: ${{ github.event.inputs.dataset || 'workflow-builder-canvas-prompts' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs-blacksmith

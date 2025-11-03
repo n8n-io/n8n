@@ -8,13 +8,12 @@ import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import isEmpty from 'lodash/isEmpty';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -67,12 +66,6 @@ import '@/webhooks/webhooks.controller';
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
-
-import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
-// import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
-
-import { McpOAuthService } from './modules/mcp/mcp-oauth-service';
-import { UrlService } from './services/url.service';
 
 @Service()
 export class Server extends AbstractServer {
@@ -226,25 +219,6 @@ export class Server extends AbstractServer {
 			}
 		}
 
-		// this.app.use(
-		// 	mcpAuthRouter({
-		// 		provider: Container.get(McpOAuthService),
-		// 		issuerUrl: new URL(`${Container.get(UrlService).getInstanceBaseUrl()}/mcp-oauth`),
-		// 		tokenOptions: {
-		// 			rateLimit: {
-		// 				windowMs: 5 * 1000,
-		// 				limit: 100,
-		// 			},
-		// 		},
-		// 		clientRegistrationOptions: {
-		// 			rateLimit: {
-		// 				windowMs: 60 * 1000, // 1 minute
-		// 				limit: 10, // Limit to 10 registrations per minute
-		// 			},
-		// 		},
-		// 	}),
-		// );
-
 		// Extract BrowserId from headers
 		this.app.use((req: APIRequest, _, next) => {
 			req.browserId = req.headers['browser-id'] as string;
@@ -253,84 +227,6 @@ export class Server extends AbstractServer {
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
-
-		// OAuth consent endpoints (must be after cookieParser)
-		// this.app.get(
-		// 	'/mcp/oauth/consent/details',
-		// 	async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		// 		try {
-		// 			const sessionId = req.cookies['n8n-oauth-session'] as string | undefined;
-
-		// 			if (!sessionId) {
-		// 				res.status(400).json({ error: 'No session found' });
-		// 				return;
-		// 			}
-
-		// 			// Authenticate the user
-		// 			const authService = Container.get(AuthService);
-		// 			const [user] = await authService.resolveJwt(req, res);
-
-		// 			if (!user) {
-		// 				res.status(401).json({ error: 'Unauthorized' });
-		// 				return;
-		// 			}
-
-		// 			const mcpOAuthService = Container.get(McpOAuthService);
-		// 			const details = await mcpOAuthService.getConsentDetails(sessionId, user.id);
-
-		// 			if (!details) {
-		// 				// Clear invalid session cookie
-		// 				res.clearCookie('n8n-oauth-session');
-		// 				res.status(400).json({ error: 'Invalid or expired session' });
-		// 				return;
-		// 			}
-
-		// 			res.json(details);
-		// 		} catch (error) {
-		// 			next(error);
-		// 		}
-		// 	},
-		// );
-
-		// this.app.post(
-		// 	'/mcp/oauth/consent/approve',
-		// 	async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		// 		try {
-		// 			const sessionId = req.cookies['n8n-oauth-session'] as string | undefined;
-
-		// 			if (!sessionId) {
-		// 				res.status(400).json({ error: 'No session found' });
-		// 				return;
-		// 			}
-
-		// 			// Authenticate the user
-		// 			const authService = Container.get(AuthService);
-		// 			const [user] = await authService.resolveJwt(req, res);
-
-		// 			if (!user) {
-		// 				res.status(401).json({ error: 'Unauthorized' });
-		// 				return;
-		// 			}
-
-		// 			const { approved } = req.body as { approved?: unknown };
-
-		// 			if (typeof approved !== 'boolean') {
-		// 				res.status(400).json({ error: 'Missing or invalid "approved" field' });
-		// 				return;
-		// 			}
-
-		// 			const mcpOAuthService = Container.get(McpOAuthService);
-		// 			const result = await mcpOAuthService.handleConsentDecision(sessionId, user.id, approved);
-
-		// 			// Clear the session cookie
-		// 			res.clearCookie('n8n-oauth-session');
-
-		// 			res.json(result);
-		// 		} catch (error) {
-		// 			next(error);
-		// 		}
-		// 	},
-		// );
 
 		const { restEndpoint, app } = this;
 
@@ -348,7 +244,7 @@ export class Server extends AbstractServer {
 			);
 		}
 
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.globalConfig.executions.mode === 'queue') {
 			const { ScalingService } = await import('@/scaling/scaling.service');
 			await Container.get(ScalingService).setupQueue();
 		}
@@ -373,17 +269,7 @@ export class Server extends AbstractServer {
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
-		// ----------------------------------------
-		// Settings
-		// ----------------------------------------
-
-		if (frontendService) {
-			// Returns the current settings for the UI
-			this.app.get(
-				`/${this.restEndpoint}/settings`,
-				ResponseHelper.send(async () => frontendService.getSettings()),
-			);
-		}
+		this.configureSettingsRoute();
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -581,6 +467,24 @@ export class Server extends AbstractServer {
 			);
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
+		}
+
+		installGlobalProxyAgent();
+	}
+
+	private configureSettingsRoute() {
+		const { frontendService } = this;
+		const authService = Container.get(AuthService);
+
+		if (frontendService) {
+			// Returns the current settings for the UI
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
+				ResponseHelper.send(async (req: AuthenticatedRequest) => {
+					return req.user ? frontendService.getSettings() : frontendService.getPublicSettings();
+				}),
+			);
 		}
 	}
 
