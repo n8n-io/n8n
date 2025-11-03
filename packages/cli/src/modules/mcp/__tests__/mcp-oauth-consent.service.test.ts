@@ -151,7 +151,7 @@ describe('McpOAuthConsentService', () => {
 				clientId: 'client-123',
 				userId: 'user-123',
 			});
-			expect(userConsentRepository.save).not.toHaveBeenCalled();
+			expect(userConsentRepository.insert).not.toHaveBeenCalled();
 		});
 
 		it('should handle user approval and generate authorization code', async () => {
@@ -166,14 +166,14 @@ describe('McpOAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.save.mockResolvedValue(mock());
+			userConsentRepository.insert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(sessionToken, userId, true);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
-			expect(userConsentRepository.save).toHaveBeenCalledWith({
+			expect(userConsentRepository.insert).toHaveBeenCalledWith({
 				userId: 'user-123',
 				clientId: 'client-123',
 				grantedAt: expect.any(Number),
@@ -203,7 +203,7 @@ describe('McpOAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.save.mockResolvedValue(mock());
+			userConsentRepository.insert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(sessionToken, userId, true);

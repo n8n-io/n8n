@@ -52,7 +52,7 @@ describe('McpOAuthService', () => {
 					clientSecretExpiresAt: null,
 				} as OAuthClient;
 
-				oauthClientRepository.findOne.mockResolvedValue(client);
+				oauthClientRepository.findOneBy.mockResolvedValue(client);
 
 				const result = await service.clientsStore.getClient('client-123');
 
@@ -78,7 +78,7 @@ describe('McpOAuthService', () => {
 					clientSecretExpiresAt: 1234567890,
 				} as OAuthClient;
 
-				oauthClientRepository.findOne.mockResolvedValue(client);
+				oauthClientRepository.findOneBy.mockResolvedValue(client);
 
 				const result = await service.clientsStore.getClient('client-123');
 
@@ -89,7 +89,7 @@ describe('McpOAuthService', () => {
 			});
 
 			it('should return undefined when client not found', async () => {
-				oauthClientRepository.findOne.mockResolvedValue(null);
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
 
 				const result = await service.clientsStore.getClient('nonexistent');
 
@@ -109,11 +109,11 @@ describe('McpOAuthService', () => {
 					scope: 'read write',
 				};
 
-				oauthClientRepository.save.mockResolvedValue({} as OAuthClient);
+				oauthClientRepository.insert.mockResolvedValue({} as any);
 
 				const result = await service.clientsStore.registerClient!(clientInfo);
 
-				expect(oauthClientRepository.save).toHaveBeenCalledWith({
+				expect(oauthClientRepository.insert).toHaveBeenCalledWith({
 					id: 'new-client-123',
 					name: 'New Client',
 					redirectUris: ['https://example.com/callback'],
@@ -138,11 +138,11 @@ describe('McpOAuthService', () => {
 					scope: 'read',
 				};
 
-				oauthClientRepository.save.mockResolvedValue({} as OAuthClient);
+				oauthClientRepository.insert.mockResolvedValue({} as any);
 
 				await service.clientsStore.registerClient!(clientInfo);
 
-				expect(oauthClientRepository.save).toHaveBeenCalledWith({
+				expect(oauthClientRepository.insert).toHaveBeenCalledWith({
 					id: 'new-client-123',
 					name: 'New Client',
 					redirectUris: ['https://example.com/callback'],
@@ -165,7 +165,7 @@ describe('McpOAuthService', () => {
 				};
 
 				const error = new Error('Database error');
-				oauthClientRepository.save.mockRejectedValue(error);
+				oauthClientRepository.insert.mockRejectedValue(error);
 
 				const result = await service.clientsStore.registerClient!(clientInfo);
 
