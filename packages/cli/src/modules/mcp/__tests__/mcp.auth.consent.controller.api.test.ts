@@ -56,7 +56,7 @@ describe('GET /rest/consent/details', () => {
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual({
+		expect(response.body.data).toEqual({
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
 		});
@@ -150,7 +150,7 @@ describe('GET /rest/consent/details', () => {
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
 
 		expect(ownerResponse.statusCode).toBe(200);
-		expect(ownerResponse.body.clientName).toBe('Test Client 2');
+		expect(ownerResponse.body.data.clientName).toBe('Test Client 2');
 
 		const memberResponse = await testServer
 			.authAgentFor(member)
@@ -158,7 +158,7 @@ describe('GET /rest/consent/details', () => {
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
 
 		expect(memberResponse.statusCode).toBe(200);
-		expect(memberResponse.body.clientName).toBe('Test Client 2');
+		expect(memberResponse.body.data.clientName).toBe('Test Client 2');
 	});
 });
 
@@ -193,12 +193,12 @@ describe('POST /rest/consent/approve', () => {
 			.send({ approved: true });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual({
+		expect(response.body.data).toEqual({
 			status: 'success',
 			redirectUrl: expect.stringContaining('https://example.com/callback?code='),
 		});
 
-		const redirectUrl = new URL(response.body.redirectUrl);
+		const redirectUrl = new URL(response.body.data.redirectUrl);
 		expect(redirectUrl.searchParams.get('code')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('code')?.length).toBeGreaterThan(32);
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
@@ -212,12 +212,12 @@ describe('POST /rest/consent/approve', () => {
 			.send({ approved: false });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual({
+		expect(response.body.data).toEqual({
 			status: 'success',
 			redirectUrl: expect.stringContaining('https://example.com/callback?error=access_denied'),
 		});
 
-		const redirectUrl = new URL(response.body.redirectUrl);
+		const redirectUrl = new URL(response.body.data.redirectUrl);
 		expect(redirectUrl.searchParams.get('error')).toBe('access_denied');
 		expect(redirectUrl.searchParams.get('error_description')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
@@ -362,7 +362,7 @@ describe('POST /rest/consent/approve', () => {
 			.send({ approved: true });
 
 		expect(ownerResponse.statusCode).toBe(200);
-		expect(ownerResponse.body.redirectUrl).toContain('code=');
+		expect(ownerResponse.body.data.redirectUrl).toContain('code=');
 
 		const newSessionToken = createSessionToken({
 			clientId: client.id,
@@ -378,7 +378,7 @@ describe('POST /rest/consent/approve', () => {
 			.send({ approved: false });
 
 		expect(memberResponse.statusCode).toBe(200);
-		expect(memberResponse.body.redirectUrl).toContain('error=access_denied');
+		expect(memberResponse.body.data.redirectUrl).toContain('error=access_denied');
 	});
 });
 
@@ -407,7 +407,7 @@ describe('Consent Flow - End-to-End', () => {
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
 
 		expect(detailsResponse.statusCode).toBe(200);
-		expect(detailsResponse.body.clientName).toBe('End-to-End Test Client');
+		expect(detailsResponse.body.data.clientName).toBe('End-to-End Test Client');
 
 		const approvalResponse = await testServer
 			.authAgentFor(owner)
@@ -416,9 +416,9 @@ describe('Consent Flow - End-to-End', () => {
 			.send({ approved: true });
 
 		expect(approvalResponse.statusCode).toBe(200);
-		expect(approvalResponse.body.status).toBe('success');
-		expect(approvalResponse.body.redirectUrl).toContain('code=');
-		expect(approvalResponse.body.redirectUrl).toContain('state=e2e-state');
+		expect(approvalResponse.body.data.status).toBe('success');
+		expect(approvalResponse.body.data.redirectUrl).toContain('code=');
+		expect(approvalResponse.body.data.redirectUrl).toContain('state=e2e-state');
 
 		const setCookieHeader = approvalResponse.headers['set-cookie'];
 		expect(setCookieHeader).toBeDefined();

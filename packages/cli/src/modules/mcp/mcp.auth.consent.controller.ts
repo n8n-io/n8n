@@ -29,8 +29,10 @@ export class McpConsentController {
 			}
 
 			res.json({
-				clientName: consentDetails.clientName,
-				clientId: consentDetails.clientId,
+				data: {
+					clientName: consentDetails.clientName,
+					clientId: consentDetails.clientId,
+				},
 			});
 		} catch (error) {
 			this.logger.error('Failed to get consent details', { error });
@@ -58,8 +60,10 @@ export class McpConsentController {
 			this.oauthSessionService.clearSession(res);
 
 			res.json({
-				status: 'success',
-				redirectUrl: result.redirectUrl,
+				data: {
+					status: 'success',
+					redirectUrl: result.redirectUrl,
+				},
 			});
 		} catch (error) {
 			this.logger.error('Failed to process consent', { error });
