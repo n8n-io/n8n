@@ -42,6 +42,7 @@ import {
 	getTools,
 	prepareMessages,
 	preparePrompt,
+	saveChatHistoryWithBinary,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
 
@@ -159,6 +160,7 @@ async function processEventStream(
 	returnIntermediateSteps: boolean = false,
 	memory?: BaseChatMemory,
 	input?: string,
+	passthroughBinaryImages: boolean = true,
 ): Promise<AgentResult> {
 	const agentResult: AgentResult = {
 		output: '',
@@ -258,7 +260,14 @@ async function processEventStream(
 
 	// Save conversation to memory if memory is connected
 	if (memory && input && agentResult.output) {
-		await memory.saveContext({ input }, { output: agentResult.output });
+		await saveChatHistoryWithBinary(
+			ctx,
+			memory,
+			itemIndex,
+			input,
+			agentResult.output,
+			passthroughBinaryImages,
+		);
 	}
 
 	// Include collected tool calls in the result
@@ -484,6 +493,7 @@ export async function toolsAgentExecute(
 					options.returnIntermediateSteps,
 					memory,
 					input,
+					options.passthroughBinaryImages ?? true,
 				);
 
 				// If result contains tool calls, build the request object like the normal flow
@@ -536,7 +546,14 @@ export async function toolsAgentExecute(
 							fullOutput = `[Used tools: ${toolContext}] ${fullOutput}`;
 						}
 
-						await memory.saveContext({ input }, { output: fullOutput });
+						await saveChatHistoryWithBinary(
+							this,
+							memory,
+							itemIndex,
+							input,
+							fullOutput,
+							options.passthroughBinaryImages ?? true,
+						);
 					}
 					// Include intermediate steps if requested
 					const result = { ...modelResponse.returnValues };
