@@ -8,8 +8,8 @@ import type { PullResult } from 'simple-git';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import {
-	sourceControlLicensedMiddleware,
-	sourceControlLicensedAndEnabledMiddleware,
+	sourceControlLicensedMiddleware, // No-op middleware (license checks removed)
+	sourceControlLicensedAndEnabledMiddleware, // Alias for sourceControlConnectedMiddleware
 } from './middleware/source-control-enabled-middleware.ee';
 import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';

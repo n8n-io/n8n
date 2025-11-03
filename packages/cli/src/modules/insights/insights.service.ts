@@ -4,7 +4,6 @@ import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
@@ -230,28 +229,7 @@ export class InsightsService {
 		});
 	}
 
-	/**
-	 * Checks if the selected date range is compliant with the license
-	 *
-	 * - If the granularity is 'hour', checks if the license allows hourly data access
-	 * - Checks if the start date is within the allowed history range
-	 *
-	 * @throws {UserError} if the license does not allow the selected date range
-	 */
-	validateDateFiltersLicense({ startDate, endDate: _endDate }: { startDate: Date; endDate: Date }) {
-		// we use `startOf('day')` because the license limits are based on full days
-		const today = DateTime.now().startOf('day');
-		const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
-		const daysToStartDate = today.diff(startDateStartOfDay, 'days').days;
-
-		const maxHistoryInDays = -1 === -1 ? Number.MAX_SAFE_INTEGER : -1;
-
-		if (maxHistoryInDays < daysToStartDate) {
-			throw new UserError(
-				'The selected date range exceeds the maximum history allowed by your license',
-			);
-		}
-	}
+	// License date range validation removed - all date ranges now allowed
 
 	private getDateFiltersGranularity({
 		startDate,

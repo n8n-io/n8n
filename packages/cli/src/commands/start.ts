@@ -208,9 +208,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
 
-		/**
-		 * Multi-main is always licensed in enterprise mode
-		 */
 		if (isMultiMainEnabled) this.instanceSettings.setMultiMainLicensed(true);
 
 		if (this.globalConfig.executions.mode === 'regular') {
@@ -218,8 +215,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		} else {
 			await this.initOrchestration();
 		}
-
-		// Multi-main is always licensed in enterprise mode
 
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');

@@ -11,8 +11,6 @@ type DebugInfo = {
 		nodeEnv: string | undefined;
 		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
 		executionMode: 'regular' | 'scaling (single-main)' | 'scaling (multi-main)';
-		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
-		consumerId?: string;
 		concurrency: number;
 	};
 	storage: {
@@ -72,20 +70,7 @@ export function useDebugInfo() {
 					: 'scaling (single-main)'
 				: 'regular',
 			concurrency: settingsStore.settings.concurrency,
-			license:
-				settingsStore.isCommunityPlan || !settingsStore.settings.license
-					? 'community'
-					: settingsStore.settings.license.environment === 'production'
-						? 'enterprise (production)'
-						: 'enterprise (sandbox)',
 		} as const;
-
-		if (!skipSensitive) {
-			return {
-				...info,
-				consumerId: !skipSensitive ? settingsStore.consumerId : undefined,
-			};
-		}
 
 		return info;
 	};

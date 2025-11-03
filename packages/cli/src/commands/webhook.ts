@@ -66,7 +66,6 @@ export class Webhook extends BaseCommand {
 		await super.init();
 		Container.get(DeprecationService).warn();
 
-		this.logger.debug('License init complete');
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();

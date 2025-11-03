@@ -4,7 +4,7 @@ import type {
 	ITelemetrySettings,
 	N8nEnvFeatFlags,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
@@ -32,10 +32,7 @@ import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import { getWorkflowHistoryPruneTime } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
-export type PublicEnterpriseSettings = Pick<
-	IEnterpriseSettings,
-	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
->;
+export type PublicEnterpriseSettings = Pick<IEnterpriseSettings, 'saml' | 'ldap' | 'oidc'>;
 
 export type PublicFrontendSettings = Pick<
 	FrontendSettings,
@@ -75,7 +72,7 @@ export class FrontendService {
 		private readonly securityConfig: SecurityConfig,
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
-		private readonly moduleRegistry: any,
+		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
@@ -251,42 +248,38 @@ export class FrontendService {
 				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
 			},
 			enterprise: {
-				sharing: false,
-				ldap: false,
-				saml: false,
-				oidc: false,
-				mfaEnforcement: false,
-				logStreaming: false,
-				advancedExecutionFilters: false,
-				variables: false,
-				sourceControl: false,
-				auditLogs: false,
-				externalSecrets: false,
-				showNonProdBanner: false,
-				debugInEditor: false,
-				binaryDataS3: false,
-				workflowHistory: false,
-				workerView: false,
-				advancedPermissions: false,
-				apiKeyScopes: false,
-				workflowDiffs: false,
+				// All enterprise features enabled - license system removed
+				sharing: true,
+				ldap: true,
+				saml: true,
+				oidc: true,
+				mfaEnforcement: true,
+				logStreaming: true,
+				advancedExecutionFilters: true,
+				variables: true,
+				sourceControl: true,
+				auditLogs: true,
+				externalSecrets: true,
+				debugInEditor: true,
+				binaryDataS3: true,
+				workflowHistory: true,
+				workerView: true,
+				advancedPermissions: true,
+				apiKeyScopes: true,
+				workflowDiffs: true,
 				provisioning: true,
 				projects: {
 					team: {
-						limit: 0,
+						limit: -1, // Unlimited
 					},
 				},
-				customRoles: false,
+				customRoles: true,
 			},
 			mfa: {
 				enabled: false,
 				enforced: false,
 			},
 			hideUsagePage: this.globalConfig.hideUsagePage,
-			license: {
-				consumerId: 'unknown',
-				environment: 'production',
-			},
 			variables: {
 				limit: 0,
 			},
@@ -381,8 +374,7 @@ export class FrontendService {
 		const isAiCreditsEnabled = true;
 		const isAiBuilderEnabled = true;
 
-		this.settings.license.planName = 'Enterprise';
-		this.settings.license.consumerId = 'n8n-enterprise';
+		// License system removed - no plan/consumerId needed
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
@@ -397,7 +389,6 @@ export class FrontendService {
 			variables: true,
 			sourceControl: true,
 			externalSecrets: true,
-			showNonProdBanner: false,
 			debugInEditor: true,
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory: this.globalConfig.workflowHistory.enabled,
@@ -498,8 +489,10 @@ export class FrontendService {
 			banners,
 			previewMode,
 			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
+			enterprise,
 		} = this.getSettings();
+
+		const { saml, ldap, oidc } = enterprise;
 
 		return {
 			settingsMode: 'public',
@@ -516,7 +509,7 @@ export class FrontendService {
 			banners,
 			previewMode,
 			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
+			enterprise: { saml, ldap, oidc },
 		};
 	}
 

@@ -89,7 +89,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
-		this.logger.debug('License init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();

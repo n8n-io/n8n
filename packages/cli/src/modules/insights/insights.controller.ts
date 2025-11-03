@@ -8,12 +8,9 @@ import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-ty
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Query, RestController } from '@n8n/decorators';
 import { DateTime } from 'luxon';
-import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 import { InsightsService } from './insights.service';
 
@@ -134,7 +131,7 @@ export class InsightsController {
 	} {
 		this.validateQueryDates(query);
 		const { startDate, endDate } = this.getSanitizedDateFilters(query);
-		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+		// License check removed - all date ranges now allowed
 		return { startDate, endDate };
 	}
 
@@ -156,17 +153,5 @@ export class InsightsController {
 		}
 
 		return { startDate: query.startDate, endDate: query.endDate ?? today };
-	}
-
-	private checkDatesFiltersAgainstLicense(dateFilters: { startDate: Date; endDate: Date }) {
-		try {
-			this.insightsService.validateDateFiltersLicense(dateFilters);
-		} catch (error: unknown) {
-			if (error instanceof UserError) {
-				throw new ForbiddenError(error.message);
-			}
-
-			throw new InternalServerError();
-		}
 	}
 }

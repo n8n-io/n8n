@@ -74,7 +74,7 @@ export class SourceControlService {
 		this.gitService.resetService();
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		await this.sourceControlPreferencesService.loadFromDbAndApplySourceControlPreferences();
-		if (this.sourceControlPreferencesService.isSourceControlLicensedAndEnabled()) {
+		if (this.sourceControlPreferencesService.isSourceControlConnected()) {
 			await this.initGitService();
 		}
 	}

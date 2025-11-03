@@ -107,8 +107,6 @@ export function sourceControlFoldersExistCheck(
 	return existed;
 }
 
-export function isSourceControlLicensed() {}
-
 export async function generateSshKeyPair(keyType: KeyPairType) {
 	const sshpk = await import('sshpk');
 	const keyPair: KeyPair = {

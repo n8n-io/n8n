@@ -194,7 +194,6 @@ export abstract class BaseCommand<F = never> {
 			);
 		}
 
-		// S3 storage is always licensed in enterprise mode
 		this.logger.debug('S3 storage is enabled - Initializing object store service');
 		try {
 			await Container.get(ObjectStoreService).init();

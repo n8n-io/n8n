@@ -57,14 +57,7 @@ export const useUsageStore = defineStore('usage', () => {
 	const instanceId = computed(() => settingsStore.settings.instanceId);
 	const managementToken = computed(() => state.data.managementToken);
 	const appVersion = computed(() => settingsStore.settings.versionCli);
-	const commonSubscriptionAppUrlQueryParams = computed(
-		() => `instanceid=${instanceId.value}&version=${appVersion.value}`,
-	);
-	const subscriptionAppUrl = computed(() =>
-		settingsStore.settings.license.environment === 'production'
-			? 'https://subscription.n8n.io'
-			: 'https://staging-subscription.n8n.io',
-	);
+	// Subscription URLs removed - no longer needed without license system
 
 	const setLoading = (loading: boolean) => {
 		state.loading = loading;
@@ -129,13 +122,9 @@ export const useUsageStore = defineStore('usage', () => {
 				: activeWorkflowTriggersCount.value / activeWorkflowTriggersLimit.value >=
 					state.data.usage.activeWorkflowTriggers.warningThreshold,
 		),
-		viewPlansUrl: computed(
-			() => `${subscriptionAppUrl.value}?${commonSubscriptionAppUrlQueryParams.value}`,
-		),
-		managePlanUrl: computed(
-			() =>
-				`${subscriptionAppUrl.value}/manage?token=${managementToken.value}&${commonSubscriptionAppUrlQueryParams.value}`,
-		),
+		// Plan URLs removed - subscriptions no longer needed
+		viewPlansUrl: computed(() => ''),
+		managePlanUrl: computed(() => ''),
 		isLoading: computed(() => state.loading),
 		telemetryPayload: computed<UsageTelemetry>(() => ({
 			instance_id: instanceId.value,

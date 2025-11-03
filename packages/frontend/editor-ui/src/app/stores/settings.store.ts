@@ -50,10 +50,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const databaseType = computed(() => settings.value?.databaseType);
 
-	const planName = computed(() => settings.value?.license.planName ?? 'Community');
-
-	const consumerId = computed(() => settings.value?.license.consumerId);
-
 	const binaryDataMode = computed(() => settings.value?.binaryDataMode);
 
 	const pruning = computed(() => settings.value?.pruning);
@@ -350,8 +346,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDevRelease,
 		isEnterpriseFeatureEnabled,
 		databaseType,
-		planName,
-		consumerId,
 		binaryDataMode,
 		pruning,
 		security,

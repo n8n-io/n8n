@@ -59,7 +59,7 @@ export class SourceControlPreferencesService {
 
 	isSourceControlSetup() {
 		return (
-			this.isSourceControlLicensedAndEnabled() &&
+			this.isSourceControlConnected() &&
 			this.getPreferences().repositoryUrl &&
 			this.getPreferences().branchName
 		);
@@ -222,10 +222,6 @@ export class SourceControlPreferencesService {
 
 	isSourceControlConnected(): boolean {
 		return this.sourceControlPreferences.connected;
-	}
-
-	isSourceControlLicensedAndEnabled(): boolean {
-		return this.isSourceControlConnected();
 	}
 
 	getBranchName(): string {
