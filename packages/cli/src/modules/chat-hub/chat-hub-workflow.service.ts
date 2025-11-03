@@ -62,7 +62,7 @@ export class ChatHubWorkflowService {
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
 			);
 
-			const { nodes, connections, executionData } = await this.buildChatWorkflow({
+			const { nodes, connections, executionData } = this.buildChatWorkflow({
 				userId,
 				sessionId,
 				history,
@@ -179,7 +179,7 @@ export class ChatHubWorkflowService {
 		];
 	}
 
-	private async buildChatWorkflow({
+	private buildChatWorkflow({
 		userId,
 		sessionId,
 		history,
