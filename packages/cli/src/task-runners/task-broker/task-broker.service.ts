@@ -550,13 +550,13 @@ export class TaskBroker {
 			await acceptPromise;
 		} catch (e) {
 			request.acceptInProgress = false;
-			clearTimeout(request.timeout);
 			if (e instanceof TaskRejectError) {
 				this.logger.info(`Task (${taskId}) rejected by Runner with reason "${e.reason}"`);
 				return;
 			}
 			if (e instanceof TaskDeferredError) {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
+				clearTimeout(request.timeout);
 				request.timeout = this.createRequestTimeout(request.requestId);
 				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
 				return;
