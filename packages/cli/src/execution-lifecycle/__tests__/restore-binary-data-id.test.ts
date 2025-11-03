@@ -60,7 +60,7 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 		it('should restore if binary data ID is missing execution ID', async () => {
 			const workflowId = '6HYhhKmJch2cYxGj';
-			const executionId = '999';
+			const executionId = 'temp';
 			const binaryDataFileUuid = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
 
 			const incorrectFileId = `workflows/${workflowId}/executions/temp/binary_data/${binaryDataFileUuid}`;

@@ -1497,8 +1497,6 @@ export class ChatHubService {
 
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
 
-		const messageDtos = messages.map((m) => [m.id, this.convertMessageToDto(m)]);
-
 		return {
 			session: {
 				id: session.id,
@@ -1515,7 +1513,7 @@ export class ChatHubService {
 				updatedAt: session.updatedAt.toISOString(),
 			},
 			conversation: {
-				messages: Object.fromEntries(messageDtos),
+				messages: Object.fromEntries(messages.map((m) => [m.id, this.convertMessageToDto(m)])),
 			},
 		};
 	}

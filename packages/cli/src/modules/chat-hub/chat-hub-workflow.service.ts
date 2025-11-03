@@ -62,27 +62,6 @@ export class ChatHubWorkflowService {
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
 			);
 
-			const newWorkflow = new WorkflowEntity();
-
-			if (workflowId) {
-				newWorkflow.id = workflowId; // Use provided workflowId so binary data cleanup works correctly
-			}
-			newWorkflow.versionId = uuidv4();
-			newWorkflow.name = `Chat ${sessionId}`;
-			newWorkflow.active = false;
-			newWorkflow.nodes = []; // Set later
-			newWorkflow.connections = {}; // Set later
-
-			const workflow = await em.save<WorkflowEntity>(newWorkflow);
-
-			await em.save<SharedWorkflow>(
-				this.sharedWorkflowRepository.create({
-					role: 'workflow:owner',
-					projectId,
-					workflow,
-				}),
-			);
-
 			const { nodes, connections, executionData } = await this.buildChatWorkflow({
 				userId,
 				sessionId,
@@ -94,9 +73,26 @@ export class ChatHubWorkflowService {
 				systemMessage,
 			});
 
-			workflow.nodes = nodes;
-			workflow.connections = connections;
-			await em.save(workflow);
+			const newWorkflow = new WorkflowEntity();
+
+			if (workflowId) {
+				newWorkflow.id = workflowId; // Use provided workflowId so binary data cleanup works correctly
+			}
+			newWorkflow.versionId = uuidv4();
+			newWorkflow.name = `Chat ${sessionId}`;
+			newWorkflow.active = false;
+			newWorkflow.nodes = nodes;
+			newWorkflow.connections = connections;
+
+			const workflow = await em.save<WorkflowEntity>(newWorkflow);
+
+			await em.save<SharedWorkflow>(
+				this.sharedWorkflowRepository.create({
+					role: 'workflow:owner',
+					projectId,
+					workflow,
+				}),
+			);
 
 			return {
 				workflowData: workflow,

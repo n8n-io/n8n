@@ -24,7 +24,6 @@ const emit = defineEmits<{
 	regenerate: [];
 	switchAlternative: [messageId: ChatMessageId];
 	readAloud: [];
-	openExecution: [];
 }>();
 
 const copyTooltip = computed(() => {
