@@ -84,9 +84,7 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 };
 
 export const SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT = {
-	name: '047_sso_jit_provisioning',
-	control: 'control',
-	variant: 'variant',
+	name: '050_sso_jit_provisioning',
 };
 
 export const EXPERIMENTS_TO_TRACK = [

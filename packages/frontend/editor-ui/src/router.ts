@@ -803,10 +803,7 @@ export const routes: RouteRecordRaw[] = [
 						},
 						custom: () => {
 							const posthogStore = usePostHog();
-							return posthogStore.isVariantEnabled(
-								SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
-								SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.variant,
-							);
+							return posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name);
 						},
 					},
 					telemetry: {

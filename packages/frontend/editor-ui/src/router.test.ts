@@ -142,7 +142,7 @@ describe('router', () => {
 			const rbacStore = useRBACStore();
 			const posthogStore = usePostHog();
 			rbacStore.setGlobalScopes(scopes);
-			posthogStore.overrides[SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name] = 'variant';
+			posthogStore.overrides[SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name] = true;
 
 			await router.push(path);
 
@@ -158,7 +158,7 @@ describe('router', () => {
 		const rbacStore = useRBACStore();
 		const posthogStore = usePostHog();
 		rbacStore.setGlobalScopes(['provisioning:manage']);
-		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValueOnce(false);
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValueOnce(false);
 
 		await router.push('/settings/provisioning');
 

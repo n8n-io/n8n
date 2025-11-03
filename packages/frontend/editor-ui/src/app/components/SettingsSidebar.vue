@@ -107,10 +107,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			available:
 				canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS) &&
 				// TODO: comment this back one once posthog experiment is done: settingsStore.isEnterpriseFeatureEnabled.provisioning,
-				posthogStore.isVariantEnabled(
-					SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
-					SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.variant,
-				),
+				posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name),
 			route: { to: { name: VIEWS.PROVISIONING_SETTINGS } },
 		},
 		{
