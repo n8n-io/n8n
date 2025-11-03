@@ -7,7 +7,7 @@ services:
       replicas: 1
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.n8n.rule=Host(`automations.proconversion-software.com`)"
+        - "traefik.http.routers.n8n.rule=Host(`your-host-here`)"
         - "traefik.http.routers.n8n.entrypoints=websecure"
         - "traefik.http.routers.n8n.tls=true"
         - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
@@ -18,7 +18,7 @@ services:
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=n8n
       - DB_POSTGRESDB_USER=n8n
-      - DB_POSTGRESDB_PASSWORD=N8nDb!2025Secure
+      - DB_POSTGRESDB_PASSWORD=your-db-password-here
       - QUEUE_MODE=redis
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -28,13 +28,11 @@ services:
       - N8N_RUNNERS_AUTH_TOKEN=super-secret-runner-auth-token
       - N8N_NATIVE_PYTHON_RUNNER=true
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
-      - N8N_RUNNERS_STDLIB_ALLOW=time,os,json
-      - N8N_RUNNERS_EXTERNAL_ALLOW=requests,google
       - N8N_GIT_NODE_DISABLE_BARE_REPOS=true
-      - N8N_HOST=automations.proconversion-software.com
+      - N8N_HOST=your-host-here
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
-      - WEBHOOK_URL=https://automations.proconversion-software.com/
+      - WEBHOOK_URL=your-domain-here
       - N8N_PROXY_HOPS=1
       - N8N_DISABLE_TELEMETRY=true
     volumes:
@@ -66,7 +64,7 @@ services:
     environment:
       - POSTGRES_DB=n8n
       - POSTGRES_USER=n8n
-      - POSTGRES_PASSWORD=N8nDb!2025Secure
+      - POSTGRES_PASSWORD=your-db-password-here
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
