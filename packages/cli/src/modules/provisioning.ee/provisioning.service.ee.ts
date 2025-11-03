@@ -50,7 +50,7 @@ export class ProvisioningService {
 	}
 
 	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
-		if (!this.isInstanceRoleProvisioningEnabled()) {
+		if (!(await this.isInstanceRoleProvisioningEnabled())) {
 			return;
 		}
 
@@ -120,7 +120,7 @@ export class ProvisioningService {
 	 * ]
 	 */
 	async provisionProjectRolesForUser(userId: string, projectIdToRoles: unknown): Promise<void> {
-		if (!this.isProjectRolesProvisioningEnabled()) {
+		if (!(await this.isProjectRolesProvisioningEnabled())) {
 			return;
 		}
 
