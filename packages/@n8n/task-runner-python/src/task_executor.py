@@ -6,12 +6,8 @@ import io
 import os
 import sys
 import logging
-import threading
-from typing import cast
 
 from src.errors import (
-    InvalidPipeMsgContentError,
-    InvalidPipeMsgLengthError,
     TaskCancelledError,
     TaskKilledError,
     TaskResultMissingError,
