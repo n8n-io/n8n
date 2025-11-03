@@ -93,6 +93,14 @@ export class McpConsentController {
 			this.sendInvalidSessionError(res);
 			return null;
 		}
-		return sessionToken;
+
+		try {
+			this.oauthSessionService.verifySession(sessionToken);
+			return sessionToken;
+		} catch (error) {
+			this.logger.debug('Invalid session token', { error });
+			this.sendInvalidSessionError(res, true);
+			return null;
+		}
 	}
 }
