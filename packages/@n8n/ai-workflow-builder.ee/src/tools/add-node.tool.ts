@@ -15,10 +15,7 @@ import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
 
-/**
- * Schema for node creation input
- */
-export const nodeCreationSchema = z.object({
+const baseSchema = {
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
 	name: z
 		.string()
@@ -34,6 +31,18 @@ export const nodeCreationSchema = z.object({
 		.describe(
 			'Parameters that affect node connections (e.g., mode: "insert" for Vector Store). Pass an empty object {} if no connection parameters are needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
 		),
+};
+
+/**
+ * Schema for node creation input
+ */
+export const nodeCreationSchema = z.object(baseSchema);
+
+/**
+ * Schema for E2E tests, we can specify the ID during E2E test runs to make them deterministic
+ */
+export const nodeCreationE2ESchema = z.object({
+	...baseSchema,
 	id: z
 		.string()
 		.optional()
@@ -111,9 +120,19 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 			);
 
 			try {
-				// Validate input using Zod schema
-				const validatedInput = nodeCreationSchema.parse(input);
-				const { nodeType, name, connectionParametersReasoning, connectionParameters, id } =
+				// Parse with appropriate schema based on environment
+				let id: string | undefined;
+				let validatedInput: z.infer<typeof nodeCreationSchema>;
+
+				if (process.env.E2E_TESTS) {
+					const e2eInput = nodeCreationE2ESchema.parse(input);
+					id = e2eInput.id;
+					validatedInput = e2eInput;
+				} else {
+					validatedInput = nodeCreationSchema.parse(input);
+				}
+
+				const { nodeType, name, connectionParametersReasoning, connectionParameters } =
 					validatedInput;
 
 				// Report tool start
@@ -139,7 +158,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					return createErrorResponse(config, error);
 				}
 
-				// Create the new node
+				// Create the new node (id will be undefined in production, defined in E2E if provided)
 				const newNode = createNode(
 					nodeTypeDesc,
 					name,
