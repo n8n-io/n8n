@@ -653,11 +653,6 @@ export class DataTableRowsRepository {
 		const isSqlite = ['sqlite', 'sqlite-pooled'].includes(dbType);
 		const isMy = ['mysql', 'mariadb'].includes(dbType);
 		const isPg = dbType === 'postgres';
-		const param = isSqlite
-			? toSqliteGlobFromPercent(searchTerm)
-			: isMy || isPg
-				? escapeLikeSpecials(searchTerm)
-				: searchTerm;
 
 		const allColumnNames: string[] = columns.map((c) => c.name);
 		if (allColumnNames.length === 0) return;
@@ -668,7 +663,7 @@ export class DataTableRowsRepository {
 		for (const col of allColumnNames) {
 			const colRef = `${tableRefQuoted}.${quoteIdentifier(col, dbType)}`;
 			if (isSqlite) {
-				conditions.push(`UPPER(CAST(${colRef} AS TEXT)) GLOB UPPER(:search) ESCAPE '\\'`);
+				conditions.push(`UPPER(CAST(${colRef} AS TEXT)) LIKE UPPER(:search) ESCAPE '\\'`);
 				continue;
 			}
 
@@ -687,7 +682,7 @@ export class DataTableRowsRepository {
 
 		if (conditions.length === 0) return;
 		const whereClause = `(${conditions.join(' OR ')})`;
-		query.andWhere(whereClause, { search: param });
+		query.andWhere(whereClause, { search: escapeLikeSpecials(searchTerm) });
 	}
 
 	private applyFilters<T extends ObjectLiteral>(

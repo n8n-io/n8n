@@ -199,7 +199,7 @@ describe('DataTableTable', () => {
 				search: 'john',
 			});
 
-			waitFor(() => {
+			await waitFor(() => {
 				expect(setCurrentPageMock).toHaveBeenCalledWith(1);
 			});
 		});
