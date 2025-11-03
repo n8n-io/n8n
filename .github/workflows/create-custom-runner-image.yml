@@ -2,6 +2,12 @@ name: Create Custom Runner Image
 
 on:
   workflow_dispatch:
+    inputs:
+      build_arm64:
+        description: 'Build for ARM64 (multi-arch)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-and-push:
@@ -30,6 +36,14 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Set up QEMU for multi-arch builds
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_arm64 == 'true')
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Set up Node.js 22.16
         uses: actions/setup-node@v3
         with:
@@ -51,10 +65,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image
-        run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/custom-runner:$VERSION -f docker/images/runners/Dockerfile .
+      - name: Build and push multi-arch
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_arm64 == 'true')
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/custom-runner:${{ env.VERSION }}
 
-      - name: Push Docker image
-        run: |
-          docker push ghcr.io/${{ github.repository_owner }}/custom-runner:$VERSION
+      - name: Build and push single-arch (manual trigger)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_arm64 != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/images/runners/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/custom-runner:${{ env.VERSION }}
