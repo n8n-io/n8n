@@ -43,7 +43,7 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { convertFileToBinaryData } from '@/utils/fileUtils';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 

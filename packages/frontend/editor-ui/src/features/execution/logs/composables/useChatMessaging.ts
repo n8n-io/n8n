@@ -21,7 +21,7 @@ import {
 	getInputKey,
 	processFiles,
 } from '@/features/execution/logs/logs.utils';
-import { convertFileToBinaryData } from '@/utils/fileUtils';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 
 export type RunWorkflowChatPayload = {
 	triggerNode: string;
