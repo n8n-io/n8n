@@ -20,12 +20,9 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const licensePruneTime = computed(() => settingsStore.settings.workflowHistory.licensePruneTime);
 	const pruneTime = computed(() => settingsStore.settings.workflowHistory.pruneTime);
-	const evaluatedPruneTime = computed(() => Math.min(pruneTime.value, licensePruneTime.value));
-	const shouldUpgrade = computed(
-		() => licensePruneTime.value !== -1 && licensePruneTime.value === pruneTime.value,
-	);
+	const evaluatedPruneTime = computed(() => pruneTime.value);
+	const shouldUpgrade = computed(() => false);
 
 	const getWorkflowHistory = async (
 		workflowId: string,

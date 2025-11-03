@@ -47,7 +47,6 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 					version,
 					deploymentType,
 					instanceId: settingsStore.settings.instanceId,
-					planName: settingsStore.settings.license?.planName,
 					userCreatedAt: usersStore.currentUser?.createdAt,
 					isOwner: usersStore.currentUser?.isOwner,
 					role: usersStore.currentUser?.role,

@@ -12,7 +12,7 @@ import axios from 'axios';
 import type { CreateCredentialDto } from '@n8n/api-types';
 
 export async function getCredentialTypes(baseUrl: string): Promise<ICredentialType[]> {
-	const { data } = await axios.get(baseUrl + 'types/credentials.json', { withCredentials: true });
+	const { data } = await axios.get(baseUrl + 'types/credentials.json');
 	return data;
 }
 

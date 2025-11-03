@@ -152,7 +152,6 @@ describe('Init', () => {
 		});
 
 		it('should initialize bannersStore with banners based on settings', async () => {
-			settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner = true;
 			settingsStore.settings.banners = { dismissed: [] };
 			settingsStore.settings.versionCli = '1.2.3';
 

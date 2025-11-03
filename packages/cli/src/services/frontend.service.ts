@@ -299,7 +299,6 @@ export class FrontendService {
 			},
 			workflowHistory: {
 				pruneTime: -1,
-				licensePruneTime: -1,
 			},
 			pruning: {
 				isEnabled: this.globalConfig.executions.pruneData,

@@ -33,7 +33,6 @@ export const defaultSettings: FrontendSettings = {
 		variables: false,
 		sourceControl: false,
 		auditLogs: false,
-		showNonProdBanner: false,
 		workflowHistory: false,
 		binaryDataS3: false,
 		externalSecrets: false,
@@ -55,7 +54,6 @@ export const defaultSettings: FrontendSettings = {
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
 	instanceId: '',
-	license: { environment: 'development', consumerId: 'unknown' },
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
@@ -143,7 +141,6 @@ export const defaultSettings: FrontendSettings = {
 	},
 	workflowHistory: {
 		pruneTime: 0,
-		licensePruneTime: 0,
 	},
 	security: {
 		blockFileAccessToN8nFiles: false,

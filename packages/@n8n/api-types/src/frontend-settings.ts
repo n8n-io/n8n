@@ -195,7 +195,6 @@ export interface FrontendSettings {
 	};
 	workflowHistory: {
 		pruneTime: number;
-		licensePruneTime: number;
 	};
 	aiCredits: {
 		enabled: boolean;

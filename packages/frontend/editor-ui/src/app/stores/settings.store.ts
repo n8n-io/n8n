@@ -174,8 +174,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
-	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
-
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
 	const setSettings = (newSettings: FrontendSettings) => {
@@ -389,7 +387,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataSuccessExecution,
 		saveManualExecutions,
 		saveDataProgressExecution,
-		isCommunityPlan,
 		isAskAiEnabled,
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,

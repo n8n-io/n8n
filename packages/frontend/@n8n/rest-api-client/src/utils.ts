@@ -108,13 +108,6 @@ export async function request(config: {
 	if (baseURL.startsWith('/')) {
 		options.headers!['browser-id'] = getBrowserId();
 	}
-	if (
-		import.meta.env.NODE_ENV !== 'production' &&
-		!baseURL.includes('api.n8n.io') &&
-		!baseURL.includes('n8n.cloud')
-	) {
-		options.withCredentials = options.withCredentials ?? true;
-	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
 		options.data = data;
 	} else if (data) {

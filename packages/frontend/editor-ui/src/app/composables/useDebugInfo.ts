@@ -47,7 +47,7 @@ export function useDebugInfo() {
 	const rootStore = useRootStore();
 	const { isTouchDevice, userAgent } = useDeviceSupport();
 
-	const coreInfo = (skipSensitive?: boolean) => {
+	const coreInfo = (_skipSensitive?: boolean) => {
 		const info = {
 			n8nVersion: rootStore.versionCli,
 			platform:

@@ -19,13 +19,7 @@ const MOCK_BASE_SETTINGS: RecursivePartial<ReturnType<typeof useSettingsStoreTyp
 	isQueueModeEnabled: false,
 	settings: {
 		concurrency: 10,
-		license: {
-			consumerId: 'consumer-id',
-			environment: 'production',
-		},
 	},
-	isCommunityPlan: true,
-	consumerId: 'consumer-123',
 	saveDataSuccessExecution: 'all',
 	saveDataErrorExecution: 'none',
 	saveDataProgressExecution: true,
