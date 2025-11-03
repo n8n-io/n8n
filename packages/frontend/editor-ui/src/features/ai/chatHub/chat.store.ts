@@ -46,9 +46,12 @@ import { retry } from '@n8n/utils/retry';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
+import { useToast } from '@/app/composables/useToast';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
+	const toast = useToast();
+
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
@@ -399,10 +402,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchSessions();
 	}
 
-	function onStreamError() {
+	function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
+
+		toast.showError(error, 'Could not send message');
 
 		const { sessionId } = streaming.value;
 
