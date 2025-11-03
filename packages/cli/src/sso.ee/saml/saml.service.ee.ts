@@ -1,8 +1,4 @@
-import type {
-	ProvisioningConfigDto,
-	SamlPreferences,
-	SamlPreferencesAttributeMapping,
-} from '@n8n/api-types';
+import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
