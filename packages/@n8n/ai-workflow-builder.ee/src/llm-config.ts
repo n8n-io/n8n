@@ -1,6 +1,7 @@
 // Different LLMConfig type for this file - specific to LLM providers
 import { MAX_OUTPUT_TOKENS } from '@/constants';
-import { getProxyAgent } from '@/utils/httpProxyAgent';
+
+import { getProxyAgent } from './utils/http-proxy-agent';
 
 interface LLMProviderConfig {
 	apiKey: string;
