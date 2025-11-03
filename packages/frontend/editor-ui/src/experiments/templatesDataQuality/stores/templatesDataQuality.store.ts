@@ -5,6 +5,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { defineStore } from 'pinia';
 import batch1TemplateIds from '../data/batch1TemplateIds.json';
 import batch2TemplateIds from '../data/batch2TemplateIds.json';
+import batch3TemplateIds from '../data/batch3TemplateIds.json';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 const NUMBER_OF_TEMPLATES = 6;
@@ -21,7 +22,9 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 			(posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
 				TEMPLATES_DATA_QUALITY_EXPERIMENT.variant1 ||
 				posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-					TEMPLATES_DATA_QUALITY_EXPERIMENT.variant2)
+					TEMPLATES_DATA_QUALITY_EXPERIMENT.variant2 ||
+				posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
+					TEMPLATES_DATA_QUALITY_EXPERIMENT.variant3)
 		);
 	};
 
@@ -38,7 +41,10 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 			posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
 			TEMPLATES_DATA_QUALITY_EXPERIMENT.variant1
 				? batch1TemplateIds
-				: batch2TemplateIds;
+				: posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
+						TEMPLATES_DATA_QUALITY_EXPERIMENT.variant2
+					? batch2TemplateIds
+					: batch3TemplateIds;
 		const result: number[] = [];
 		const picked = new Set<number>();
 		const count = Math.min(NUMBER_OF_TEMPLATES, ids.length);
