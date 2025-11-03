@@ -42,6 +42,7 @@
 	"generic.any": "Any",
 	"generic.cancel": "Cancel",
 	"generic.open": "Open",
+	"generic.openResource": "Open {resource}",
 	"generic.add": "Add",
 	"generic.close": "Close",
 	"generic.clear": "Clear",

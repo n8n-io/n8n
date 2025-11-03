@@ -4,6 +4,8 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
 
@@ -20,10 +22,27 @@ export class WorkflowIndexService {
 	constructor(
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly eventService: EventService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly batchSize = 100,
 	) {}
+
+	init() {
+		this.eventService.on('server-started', async (): Promise<void> => {
+			this.logger.info('Building workflow dependency index...');
+			await this.buildIndex().catch((e) => this.errorReporter.error(e));
+		});
+		this.eventService.on('workflow-created', async ({ workflow }) => {
+			await this.updateIndexFor(workflow);
+		});
+		this.eventService.on('workflow-saved', async ({ workflow }) => {
+			await this.updateIndexFor(workflow);
+		});
+		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
+			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+		});
+	}
 
 	async buildIndex() {
 		const batchSize = this.batchSize;

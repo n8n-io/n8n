@@ -6,7 +6,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, now, toCalendarDateTime, today } from '@internationalized/date';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -122,6 +122,20 @@ const range = shallowRef<{
 	end: maxDate.copy(),
 });
 
+/**
+ * Converts the range to a UTC date range with the current time
+ */
+const getFilteredRange = () => {
+	const timezone = getLocalTimeZone();
+	const startDate = toCalendarDateTime(range.value.start, now(timezone)).toDate(timezone);
+	const endDate = toCalendarDateTime(range.value.end, now(timezone)).toDate(timezone);
+
+	return {
+		startDate,
+		endDate,
+	};
+};
+
 const fetchPaginatedTableData = ({
 	page = 0,
 	itemsPerPage = 25,
@@ -138,9 +152,7 @@ const fetchPaginatedTableData = ({
 
 	const sortKey = sortBy.length ? transformFilter(sortBy[0]) : undefined;
 
-	const startDate = range.value.start?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
-	const endDate = range.value.end?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
-
+	const { startDate, endDate } = getFilteredRange();
 	void insightsStore.table.execute(0, {
 		skip,
 		take,
@@ -156,10 +168,7 @@ watch(
 	() => {
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
-		const startDate = range.value.start
-			?.toDate(getLocalTimeZone())
-			.toISOString() as unknown as Date;
-		const endDate = range.value.end?.toDate(getLocalTimeZone()).toISOString() as unknown as Date;
+		const { startDate, endDate } = getFilteredRange();
 
 		if (insightsStore.isSummaryEnabled) {
 			void insightsStore.summary.execute(0, {
@@ -174,6 +183,7 @@ watch(
 			endDate,
 			projectId: selectedProject.value?.id,
 		});
+
 		if (insightsStore.isDashboardEnabled) {
 			fetchPaginatedTableData({
 				sortBy: sortTableBy.value,
