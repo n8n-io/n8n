@@ -34,6 +34,7 @@ describe('McpOAuthTokenService', () => {
 
 		mockTransactionManager = {
 			insert: jest.fn().mockResolvedValue(mock()),
+			remove: jest.fn().mockResolvedValue(mock()),
 		};
 
 		const mockManager: any = {
@@ -42,6 +43,7 @@ describe('McpOAuthTokenService', () => {
 
 		(accessTokenRepository as any).manager = mockManager;
 		(accessTokenRepository as any).target = 'AccessToken';
+		(refreshTokenRepository as any).manager = mockManager;
 		(refreshTokenRepository as any).target = 'RefreshToken';
 
 		service = new McpOAuthTokenService(
@@ -120,7 +122,7 @@ describe('McpOAuthTokenService', () => {
 	});
 
 	describe('validateAndRotateRefreshToken', () => {
-		it('should rotate refresh token and return new token pair', async () => {
+		it('should rotate refresh token and return new token pair in a transaction', async () => {
 			const refreshToken = 'old-refresh-token';
 			const clientId = 'client-123';
 			const refreshTokenRecord = mock<RefreshToken>({
@@ -131,7 +133,6 @@ describe('McpOAuthTokenService', () => {
 			});
 
 			refreshTokenRepository.findOne.mockResolvedValue(refreshTokenRecord);
-			refreshTokenRepository.remove.mockResolvedValue(refreshTokenRecord);
 
 			const result = await service.validateAndRotateRefreshToken(refreshToken, clientId);
 
@@ -142,10 +143,23 @@ describe('McpOAuthTokenService', () => {
 				refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
 			});
 
-			expect(refreshTokenRepository.remove).toHaveBeenCalledWith(refreshTokenRecord);
-
-			const mockManager = accessTokenRepository.manager as any;
+			// Verify transaction was used
+			const mockManager = refreshTokenRepository.manager as any;
 			expect(mockManager.transaction).toHaveBeenCalled();
+
+			// Verify all operations happened inside the transaction
+			expect(mockTransactionManager.remove).toHaveBeenCalledWith(refreshTokenRecord);
+			expect(mockTransactionManager.insert).toHaveBeenCalledWith('AccessToken', {
+				token: expect.stringMatching(/^[\w-]+\.[\w-]+\.[\w-]+$/),
+				clientId,
+				userId: 'user-456',
+			});
+			expect(mockTransactionManager.insert).toHaveBeenCalledWith('RefreshToken', {
+				token: expect.stringMatching(/^[a-f0-9]{64}$/),
+				clientId,
+				userId: 'user-456',
+				expiresAt: expect.any(Number),
+			});
 		});
 
 		it('should throw error when refresh token not found', async () => {

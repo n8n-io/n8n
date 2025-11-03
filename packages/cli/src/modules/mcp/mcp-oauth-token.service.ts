@@ -97,9 +97,22 @@ export class McpOAuthTokenService {
 			clientId,
 		);
 
-		await this.refreshTokenRepository.remove(refreshTokenRecord);
+		await this.refreshTokenRepository.manager.transaction(async (transactionManager) => {
+			await transactionManager.remove(refreshTokenRecord);
 
-		await this.saveTokenPair(accessToken, newRefreshToken, clientId, refreshTokenRecord.userId);
+			await transactionManager.insert(this.accessTokenRepository.target, {
+				token: accessToken,
+				clientId,
+				userId: refreshTokenRecord.userId,
+			});
+
+			await transactionManager.insert(this.refreshTokenRepository.target, {
+				token: newRefreshToken,
+				clientId,
+				userId: refreshTokenRecord.userId,
+				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
+			});
+		});
 
 		this.logger.info('Refresh token rotated and new access token issued', {
 			clientId,
