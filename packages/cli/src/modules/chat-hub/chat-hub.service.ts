@@ -977,6 +977,14 @@ export class ChatHubService {
 			if (!result) {
 				throw new OperationalError('There was a problem executing the chat workflow.');
 			}
+
+			// Since we stored attachment files before execution ID is generated, file IDs contains placeholder /temp/.
+			// The engine takes care of updating actual file path, but we need to update the message table as well.
+			await this.chatHubAttachmentService.updateAttachmentPaths(
+				sessionId,
+				previousMessageId,
+				executionId,
+			);
 		} catch (error: unknown) {
 			if (error instanceof ManualExecutionCancelledError) {
 				return;

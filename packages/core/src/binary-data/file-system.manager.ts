@@ -3,10 +3,9 @@ import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'stream';
-import { v4 as uuid } from 'uuid';
 
 import type { BinaryData } from './types';
-import { assertDir, doesNotExist } from './utils';
+import { assertDir, doesNotExist, toFileId } from './utils';
 import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
@@ -26,7 +25,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		bufferOrStream: Buffer | Readable,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const fileId = this.toFileId(workflowId, executionId);
+		const fileId = toFileId(workflowId, executionId);
 		const filePath = this.resolvePath(fileId);
 
 		await assertDir(path.dirname(filePath));
@@ -109,7 +108,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		sourcePath: string,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const targetFileId = this.toFileId(workflowId, executionId);
+		const targetFileId = toFileId(workflowId, executionId);
 		const targetPath = this.resolvePath(targetFileId);
 
 		await assertDir(path.dirname(targetPath));
@@ -124,7 +123,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async copyByFileId(workflowId: string, executionId: string, sourceFileId: string) {
-		const targetFileId = this.toFileId(workflowId, executionId);
+		const targetFileId = toFileId(workflowId, executionId);
 		const sourcePath = this.resolvePath(sourceFileId);
 		const targetPath = this.resolvePath(targetFileId);
 		const sourceMetadata = await this.getMetadata(sourceFileId);
@@ -158,18 +157,6 @@ export class FileSystemManager implements BinaryData.Manager {
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------
-
-	/**
-	 * Generate an ID for a binary data file.
-	 *
-	 * The legacy ID format `{executionId}{uuid}` for `filesystem` mode is
-	 * no longer used on write, only when reading old stored execution data.
-	 */
-	private toFileId(workflowId: string, executionId: string) {
-		if (!executionId) executionId = 'temp'; // missing only in edge case, see PR #7244
-
-		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
-	}
 
 	private resolvePath(...args: string[]) {
 		const returnPath = path.join(this.storagePath, ...args);
