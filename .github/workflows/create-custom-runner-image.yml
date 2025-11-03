@@ -2,16 +2,6 @@ name: Create Custom Runner Image
 
 on:
   workflow_dispatch:
-    inputs:
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
 
 jobs:
   build-and-push:
