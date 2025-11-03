@@ -775,7 +775,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		 */
 		if (!isOAuthType.value) {
 			telemetry.track('User saved credentials', trackProperties);
-			await handleDynamicNotification(!!trackProperties.is_valid);
+			void handleDynamicNotification(!!trackProperties.is_valid);
 		}
 
 		await externalHooks.run('credentialEdit.saveCredential', trackProperties);
