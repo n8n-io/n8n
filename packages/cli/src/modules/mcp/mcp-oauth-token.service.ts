@@ -118,13 +118,9 @@ export class McpOAuthTokenService {
 		let decoded;
 
 		try {
-			decoded = this.jwtService.verify(token);
+			decoded = this.jwtService.verify(token, { audience: this.MCP_AUDIENCE });
 		} catch (error) {
 			throw new Error('Invalid access token: JWT verification failed');
-		}
-
-		if (decoded.aud !== this.MCP_AUDIENCE) {
-			throw new Error(`Invalid token audience: expected ${this.MCP_AUDIENCE}`);
 		}
 
 		const accessTokenRecord = await this.accessTokenRepository.findOne({
