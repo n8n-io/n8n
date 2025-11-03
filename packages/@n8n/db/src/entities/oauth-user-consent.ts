@@ -23,6 +23,6 @@ export class UserConsent {
 	@Column({ type: String })
 	clientId: string;
 
-	@Column({ type: 'int' })
+	@Column({ type: 'bigint' })
 	grantedAt: number;
 }

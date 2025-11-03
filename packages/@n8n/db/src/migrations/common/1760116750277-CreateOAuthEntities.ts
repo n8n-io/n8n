@@ -9,8 +9,11 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 			column('redirectUris').json.notNull,
 			column('grantTypes').json.notNull,
 			column('clientSecret').varchar(255),
-			column('clientSecretExpiresAt').int,
-			column('tokenEndpointAuthMethod').varchar(255).notNull.default("'none'"),
+			column('clientSecretExpiresAt').bigint,
+			column('tokenEndpointAuthMethod')
+				.varchar(255)
+				.notNull.default("'none'")
+				.comment('Possible values: none, client_secret_basic or client_secret_post'),
 		).withTimestamps;
 
 		// Create oauth_authorization_codes table
@@ -22,7 +25,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				column('redirectUri').varchar(255).notNull,
 				column('codeChallenge').varchar(255).notNull,
 				column('codeChallengeMethod').varchar(255).notNull,
-				column('expiresAt').int.notNull,
+				column('expiresAt').bigint.notNull,
 				column('state').varchar(255), // Should be nullable
 				column('used').bool.notNull.default(false),
 			)
@@ -35,10 +38,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				tableName: 'user',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			})
-			.withIndexOn('clientId')
-			.withIndexOn('userId')
-			.withIndexOn('expiresAt').withTimestamps;
+			}).withTimestamps;
 
 		// Create oauth_access_tokens table
 		await createTable('oauth_access_tokens')
@@ -56,9 +56,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				tableName: 'user',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			})
-			.withIndexOn('clientId')
-			.withIndexOn('userId');
+			});
 
 		// Create oauth_refresh_tokens table
 		await createTable('oauth_refresh_tokens')
@@ -66,23 +64,21 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				column('token').varchar(255).primary.notNull,
 				column('clientId').varchar(255).notNull,
 				column('userId').varchar(255).notNull,
-				column('expiresAt').int,
+				column('expiresAt').bigint.notNull,
 			)
 			.withForeignKey('clientId', {
 				tableName: 'oauth_clients',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			})
-			.withIndexOn('clientId')
-			.withIndexOn('userId').withTimestamps;
+			}).withTimestamps;
 
 		// Create oauth_user_consents table
 		await createTable('oauth_user_consents')
 			.withColumns(
-				column('id').int.primary.autoGenerate.notNull,
+				column('id').int.primary.autoGenerate2.notNull,
 				column('userId').varchar(255).notNull,
 				column('clientId').varchar(255).notNull,
-				column('grantedAt').int.notNull,
+				column('grantedAt').bigint.notNull.comment('Unix timestamp in seconds'),
 			)
 			.withForeignKey('clientId', {
 				tableName: 'oauth_clients',
@@ -94,8 +90,6 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withIndexOn('userId')
-			.withIndexOn('clientId')
 			.withUniqueConstraintOn(['userId', 'clientId']);
 	}
 
