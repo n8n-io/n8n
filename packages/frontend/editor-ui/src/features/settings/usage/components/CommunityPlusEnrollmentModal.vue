@@ -7,7 +7,6 @@ import { COMMUNITY_PLUS_DOCS_URL } from '../usage.constants';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useUsageStore } from '../usage.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
@@ -22,7 +21,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const toast = useToast();
-const usageStore = useUsageStore();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();
 
@@ -62,25 +60,15 @@ const confirm = async () => {
 		return;
 	}
 
-	isLoading.value = true;
-	try {
-		const { title, text } = await usageStore.registerCommunityEdition(email.value);
-		closeModal();
-		toast.showMessage({
-			title: title ?? i18n.baseText('communityPlusModal.success.title'),
-			message:
-				text ??
-				i18n.baseText('communityPlusModal.success.message', {
-					interpolate: { email: email.value },
-				}),
-			type: 'success',
-			duration: 0,
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('communityPlusModal.error.title'));
-	} finally {
-		isLoading.value = false;
-	}
+	// Community registration has been disabled in local-only mode
+	telemetry.track('User attempted community plus registration (disabled)');
+	closeModal();
+	toast.showMessage({
+		title: 'Community Registration Disabled',
+		message: 'This feature is not available in local-only mode',
+		type: 'info',
+		duration: 3000,
+	});
 };
 </script>
 

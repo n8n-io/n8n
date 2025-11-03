@@ -1,8 +1,6 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import type { UsageState } from '@n8n/api-types';
-import * as usageApi from '@n8n/rest-api-client/api/usage';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 export type UsageTelemetry = {
@@ -36,7 +34,6 @@ const DEFAULT_STATE: UsageState = {
 };
 
 export const useUsageStore = defineStore('usage', () => {
-	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
 	const state = reactive<UsageState>({ ...DEFAULT_STATE });
@@ -67,45 +64,12 @@ export const useUsageStore = defineStore('usage', () => {
 		state.data = data;
 	};
 
-	const getLicenseInfo = async () => {
-		const data = await usageApi.getLicense(rootStore.restApiContext);
-		setData(data);
-	};
-
-	const activateLicense = async (activationKey: string, eulaUri?: string) => {
-		const data = await usageApi.activateLicenseKey(rootStore.restApiContext, {
-			activationKey,
-			eulaUri,
-		});
-		setData(data);
-		await settingsStore.getSettings();
-		await settingsStore.getModuleSettings();
-	};
-
-	const refreshLicenseManagementToken = async () => {
-		try {
-			const data = await usageApi.renewLicense(rootStore.restApiContext);
-			setData(data);
-		} catch (error) {
-			await getLicenseInfo();
-		}
-	};
-
-	const requestEnterpriseLicenseTrial = async () => {
-		await usageApi.requestLicenseTrial(rootStore.restApiContext);
-	};
-
-	const registerCommunityEdition = async (email: string) =>
-		await usageApi.registerCommunityEdition(rootStore.restApiContext, { email });
+	// License system has been removed - no API calls needed
+	// System now uses default values only
 
 	return {
 		setLoading,
-		getLicenseInfo,
 		setData,
-		activateLicense,
-		refreshLicenseManagementToken,
-		requestEnterpriseLicenseTrial,
-		registerCommunityEdition,
 		planName,
 		planId,
 		activeWorkflowTriggersLimit,

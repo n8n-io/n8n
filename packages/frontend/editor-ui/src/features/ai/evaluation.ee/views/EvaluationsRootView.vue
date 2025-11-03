@@ -76,7 +76,6 @@ const evaluationsQuotaExceeded = computed(() => {
 
 const { isReady } = useAsyncState(async () => {
 	try {
-		await usageStore.getLicenseInfo();
 		await evaluationStore.fetchTestRuns(props.name);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));

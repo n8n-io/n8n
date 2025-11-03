@@ -56,7 +56,6 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -137,7 +136,6 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
-const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
 const templatesStore = useTemplatesStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
@@ -620,7 +618,6 @@ const initialize = async () => {
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
-		usageStore.getLicenseInfo(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(
 			route.params.projectId as string | undefined,
 			currentFolderId.value ?? undefined,
