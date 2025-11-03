@@ -39,14 +39,14 @@ describe('MCPConnectionInstructions', () => {
 		apiKey: 'test-api-key',
 		createdAt: '2024-01-01',
 		updatedAt: '2024-01-01',
+		expiresAt: null,
+		scopes: [],
 	};
 
 	const mockOAuthClients: OAuthClientResponseDto[] = [
 		{
 			id: '1',
 			name: 'Test Client',
-			clientId: 'client-1',
-			clientSecret: 'secret-1',
 			redirectUrl: 'http://localhost:3000/callback',
 			scopes: ['read', 'write'],
 			createdAt: '2024-01-01T00:00:00.000Z',
