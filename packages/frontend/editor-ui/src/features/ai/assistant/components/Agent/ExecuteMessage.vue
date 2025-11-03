@@ -1,18 +1,18 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue';
 import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
-import { useLogsStore } from '@/stores/logs.store';
-import { isChatNode } from '@/utils/aiUtils';
-import { useToast } from '@/composables/useToast';
+import { useLogsStore } from '@/app/stores/logs.store';
+import { isChatNode } from '@/app/utils/aiUtils';
+import { useToast } from '@/app/composables/useToast';
 import { N8nTooltip } from '@n8n/design-system';
 import { nextTick } from 'vue';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';

@@ -5,7 +5,7 @@ import {
 	AI_SUBCATEGORY,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { WorkflowOperationError, type IRunData, type Workflow } from 'n8n-workflow';
 import type { LogTreeCreationContext } from '../logs.types';

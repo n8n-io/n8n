@@ -14,7 +14,7 @@ import { deepCopy } from 'n8n-workflow';
 import get from 'lodash/get';
 
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
@@ -229,7 +229,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 
 		.button {
 			color: var(--color--text--shade-1);
-			font-weight: var(--font-weight-normal);
+			font-weight: var(--font-weight--regular);
 			--button--border-color: var(--color--foreground);
 			--button--color--background: var(--color--background);
 

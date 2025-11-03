@@ -1,14 +1,13 @@
 <script setup lang="ts">
+import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
+import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
 import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
 import { type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import { useChatStore } from '../chat.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
 
 const { session, isRenaming, active } = defineProps<{
 	session: ChatHubSessionDto;
@@ -23,20 +22,13 @@ const emit = defineEmits<{
 	delete: [sessionId: string];
 }>();
 
-const chatStore = useChatStore();
-const workflowsStore = useWorkflowsStore();
 const input = useTemplateRef('input');
 const editedLabel = ref('');
 
 type SessionAction = 'rename' | 'delete';
 
-const model = computed(() =>
-	restoreConversationModelFromMessageOrSession(
-		session,
-		chatStore.agents,
-		workflowsStore.workflowsById,
-	),
-);
+const model = computed(() => unflattenModel(session));
+const agent = useAgent(model);
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 	{
@@ -115,7 +107,7 @@ watch(
 			/>
 		</template>
 		<template #icon>
-			<ChatAgentAvatar v-if="model" :model="model" size="sm" />
+			<ChatAgentAvatar :agent="agent ?? null" size="sm" />
 		</template>
 	</ChatSidebarLink>
 </template>

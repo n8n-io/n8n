@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { within, waitFor } from '@testing-library/vue';
 import { getFilterOperator } from './utils';
 import get from 'lodash/get';
-import * as workFlowHelpers from '@/composables/useWorkflowHelpers';
+import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
 import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import type { FilterTypeOptions, FilterValue } from 'n8n-workflow';
 
