@@ -1,11 +1,12 @@
 import asyncio
 import logging
 import time
-from typing import Any, Callable, Awaitable
+from typing import Callable, Awaitable
 from dataclasses import dataclass
 from urllib.parse import urlparse
 import websockets
 from websockets.exceptions import InvalidStatus
+from websockets.asyncio.client import ClientConnection
 import random
 from src.errors import TaskCancelledError
 
@@ -78,7 +79,7 @@ class TaskRunner:
         self.name = RUNNER_NAME
         self.config = config
 
-        self.websocket_connection: Any | None = None
+        self.websocket_connection: ClientConnection | None = None
         self.can_send_offers = False
 
         self.open_offers: dict[str, TaskOffer] = {}
