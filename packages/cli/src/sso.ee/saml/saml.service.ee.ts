@@ -7,15 +7,10 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
-import https from 'https';
-import { InstanceSettings } from 'n8n-core';
+import { createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
-
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UrlService } from '@/services/url.service';
 
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error';
@@ -34,7 +29,11 @@ import { SamlValidator } from './saml-validator';
 import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
 import { isSsoJustInTimeProvisioningEnabled, reloadAuthenticationMethod } from '../sso-helpers';
+
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
+import { UrlService } from '@/services/url.service';
 
 @Service()
 export class SamlService {
@@ -444,11 +443,21 @@ export class SamlService {
 		if (!this._samlPreferences.metadataUrl)
 			throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
 		try {
-			// TODO:SAML: this will not work once axios is upgraded to > 1.2.0 (see checkServerIdentity)
-			const agent = new https.Agent({
-				rejectUnauthorized: !this._samlPreferences.ignoreSSL,
+			// Create a proxy-aware HTTPS agent that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY
+			// environment variables while also supporting SSL certificate validation options
+			const httpsAgent = createHttpsProxyAgent(
+				null, // Uses proxy from environment variables
+				this._samlPreferences.metadataUrl,
+				{
+					rejectUnauthorized: !this._samlPreferences.ignoreSSL,
+				},
+			);
+			const httpAgent = createHttpProxyAgent(null, this._samlPreferences.metadataUrl);
+
+			const response = await axios.get(this._samlPreferences.metadataUrl, {
+				httpsAgent,
+				httpAgent,
 			});
-			const response = await axios.get(this._samlPreferences.metadataUrl, { httpsAgent: agent });
 			if (response.status === 200 && response.data) {
 				const xml = (await response.data) as string;
 				const validationResult = await this.validator.validateMetadata(xml);

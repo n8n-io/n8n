@@ -4,7 +4,7 @@ import WorkflowCanvas from './WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { Workflow } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
-import { STICKY_NODE_TYPE } from '@/constants';
+import { STICKY_NODE_TYPE } from '@/app/constants';
 import { CanvasNodeRenderType } from '../canvas.types';
 import {
 	createTestNode,
@@ -12,7 +12,7 @@ import {
 	createTestWorkflowObject,
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import * as vueuse from '@vueuse/core';
 
 vi.mock('@vueuse/core', async () => {

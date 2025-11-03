@@ -14,7 +14,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { BASE_NODE_SURVEY_URL, VIEWS } from '@/constants';
+import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -25,28 +25,28 @@ import ParameterInputList from '@/features/ndv/parameters/components/ParameterIn
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
-import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import NodeActionsList from '@/components/NodeActionsList.vue';
+import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
+import NodeActionsList from '@/app/components/NodeActionsList.vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { importCurlEventBus } from '@/event-bus';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
-import NodeTitle from '@/components/NodeTitle.vue';
-import { RenameNodeCommand } from '@/models/history';
+import NodeTitle from '@/app/components/NodeTitle.vue';
+import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useHistoryStore } from '@/stores/history.store';
+import { useHistoryStore } from '@/app/stores/history.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { NodeSettingsTab } from '@/types/nodeSettings';
-import { getNodeIconSource } from '@/utils/nodeIcon';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { NodeSettingsTab } from '@/app/types/nodeSettings';
+import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import {
 	collectParametersByTab,
 	collectSettings,
@@ -59,12 +59,12 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
-import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/stores/settings.store';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 const props = withDefaults(
@@ -460,7 +460,9 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
 );
 
-const iconSource = computed(() => getNodeIconSource(nodeType.value ?? node.value?.type));
+const iconSource = computed(() =>
+	getNodeIconSource(nodeType.value ?? node.value?.type, node.value ?? null),
+);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
