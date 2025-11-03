@@ -97,7 +97,6 @@ export class ChatHubController {
 		);
 
 		res.setHeader('Content-Type', attachment.mimeType);
-		res.setHeader('Content-Disposition', `inline; filename="${attachment.fileName}"`);
 		res.setHeader('Content-Length', buffer.length);
 
 		res.send(buffer);
