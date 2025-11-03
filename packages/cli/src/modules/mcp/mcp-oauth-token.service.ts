@@ -2,12 +2,15 @@ import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { User, UserRepository } from '@n8n/db';
+import { User, UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { MoreThanOrEqual } from '@n8n/typeorm';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { JwtService } from '@/services/jwt.service';
 
+import { AccessToken } from './database/entities/oauth-access-token.entity';
+import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
 
@@ -76,55 +79,61 @@ export class McpOAuthTokenService {
 		refreshToken: string,
 		clientId: string,
 	): Promise<OAuthTokens> {
-		const refreshTokenRecord = await this.refreshTokenRepository.findOne({
-			where: {
+		return await withTransaction(this.refreshTokenRepository.manager, undefined, async (trx) => {
+			const now = Date.now();
+
+			const refreshTokenRecord = await trx.findOne(RefreshToken, {
+				where: {
+					token: refreshToken,
+					clientId,
+				},
+			});
+
+			if (!refreshTokenRecord) {
+				throw new Error('Invalid refresh token');
+			}
+
+			const result = await trx.delete(RefreshToken, {
 				token: refreshToken,
 				clientId,
-			},
-		});
+				expiresAt: MoreThanOrEqual(now),
+			});
 
-		if (!refreshTokenRecord) {
-			throw new Error('Invalid refresh token');
-		}
+			const numAffected = result.affected ?? 0;
+			if (numAffected < 1) {
+				throw new Error('Invalid refresh token');
+			}
 
-		if (refreshTokenRecord.expiresAt < Date.now()) {
-			await this.refreshTokenRepository.remove(refreshTokenRecord);
-			throw new Error('Refresh token expired');
-		}
+			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
+				refreshTokenRecord.userId,
+				clientId,
+			);
 
-		const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
-			refreshTokenRecord.userId,
-			clientId,
-		);
-
-		await this.refreshTokenRepository.manager.transaction(async (trx) => {
-			await trx.remove(refreshTokenRecord);
-
-			await trx.insert(this.accessTokenRepository.target, {
+			await trx.insert(AccessToken, {
 				token: accessToken,
 				clientId,
 				userId: refreshTokenRecord.userId,
 			});
 
-			await trx.insert(this.refreshTokenRepository.target, {
+			await trx.insert(RefreshToken, {
 				token: newRefreshToken,
 				clientId,
 				userId: refreshTokenRecord.userId,
-				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
+				expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
 			});
-		});
 
-		this.logger.info('Refresh token rotated and new access token issued', {
-			clientId,
-			userId: refreshTokenRecord.userId,
-		});
+			this.logger.info('Refresh token rotated and new access token issued', {
+				clientId,
+				userId: refreshTokenRecord.userId,
+			});
 
-		return {
-			access_token: accessToken,
-			token_type: 'Bearer',
-			expires_in: this.ACCESS_TOKEN_EXPIRY_SECONDS,
-			refresh_token: newRefreshToken,
-		};
+			return {
+				access_token: accessToken,
+				token_type: 'Bearer',
+				expires_in: this.ACCESS_TOKEN_EXPIRY_SECONDS,
+				refresh_token: newRefreshToken,
+			};
+		});
 	}
 
 	async verifyAccessToken(token: string): Promise<AuthInfo> {

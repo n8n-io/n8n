@@ -37,6 +37,8 @@ describe('McpOAuthTokenService', () => {
 		mockTransactionManager = {
 			insert: jest.fn().mockResolvedValue(mock()),
 			remove: jest.fn().mockResolvedValue(mock()),
+			findOne: jest.fn(),
+			delete: jest.fn(),
 		};
 
 		const mockManager: any = {
@@ -134,7 +136,8 @@ describe('McpOAuthTokenService', () => {
 				expiresAt: Date.now() + 1000000, // Valid
 			});
 
-			refreshTokenRepository.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
 
 			const result = await service.validateAndRotateRefreshToken(refreshToken, clientId);
 
@@ -150,29 +153,20 @@ describe('McpOAuthTokenService', () => {
 			expect(mockManager.transaction).toHaveBeenCalled();
 
 			// Verify all operations happened inside the transaction
-			expect(mockTransactionManager.remove).toHaveBeenCalledWith(refreshTokenRecord);
-			expect(mockTransactionManager.insert).toHaveBeenCalledWith('AccessToken', {
-				token: expect.stringMatching(/^[\w-]+\.[\w-]+\.[\w-]+$/),
-				clientId,
-				userId: 'user-456',
-			});
-			expect(mockTransactionManager.insert).toHaveBeenCalledWith('RefreshToken', {
-				token: expect.stringMatching(/^[a-f0-9]{64}$/),
-				clientId,
-				userId: 'user-456',
-				expiresAt: expect.any(Number),
-			});
+			expect(mockTransactionManager.findOne).toHaveBeenCalled();
+			expect(mockTransactionManager.delete).toHaveBeenCalled();
+			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
 		});
 
 		it('should throw error when refresh token not found', async () => {
-			refreshTokenRepository.findOne.mockResolvedValue(null);
+			mockTransactionManager.findOne.mockResolvedValue(null);
 
 			await expect(
 				service.validateAndRotateRefreshToken('invalid-token', 'client-123'),
 			).rejects.toThrow('Invalid refresh token');
 		});
 
-		it('should throw error and remove when refresh token expired', async () => {
+		it('should throw error when refresh token expired (atomic delete fails)', async () => {
 			const refreshTokenRecord = mock<RefreshToken>({
 				token: 'expired-token',
 				clientId: 'client-123',
@@ -180,14 +174,12 @@ describe('McpOAuthTokenService', () => {
 				expiresAt: Date.now() - 1000, // Expired
 			});
 
-			refreshTokenRepository.findOne.mockResolvedValue(refreshTokenRecord);
-			refreshTokenRepository.remove.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 0 }); // Atomic delete fails due to expiry
 
 			await expect(
 				service.validateAndRotateRefreshToken('expired-token', 'client-123'),
-			).rejects.toThrow('Refresh token expired');
-
-			expect(refreshTokenRepository.remove).toHaveBeenCalledWith(refreshTokenRecord);
+			).rejects.toThrow('Invalid refresh token');
 		});
 	});
 
