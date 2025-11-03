@@ -10,17 +10,19 @@ import {
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
-import { AuthenticatedRequest, OAuthClient } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { Response } from 'express';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { OAuthClient } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Response } from 'express';
 
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
-import { OAuthClientRepository } from './oauth-client.repository';
 import { OAuthSessionService } from './oauth-session.service';
+
+import { AccessTokenRepository } from './oauth-access-token.repository';
+import { AuthorizationCodeRepository } from './oauth-authorization-code.repository';
+import { OAuthClientRepository } from './oauth-client.repository';
+import { RefreshTokenRepository } from './oauth-refresh-token.repository';
+import { UserConsentRepository } from './oauth-user-consent.repository';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflow', 'tool:getWorkflowDetails'];
 
@@ -36,6 +38,10 @@ export class McpOAuthService implements OAuthServerProvider {
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly tokenService: McpOAuthTokenService,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
+		private readonly accessTokenRepository: AccessTokenRepository,
+		private readonly refreshTokenRepository: RefreshTokenRepository,
+		private readonly authorizationCodeRepository: AuthorizationCodeRepository,
+		private readonly userConsentRepository: UserConsentRepository,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {

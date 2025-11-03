@@ -10,10 +10,10 @@ import {
 	rotateApiKey,
 	fetchOAuthClients,
 	deleteOAuthClient,
-} from '@/features/mcpAccess/mcp.api';
+} from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/stores/settings.store';
-import { isWorkflowListItem } from '@/utils/typeGuards';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {

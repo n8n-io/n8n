@@ -15,8 +15,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import ProjectIcon from '@/features/projects/components/ProjectIcon.vue';
-import { VIEWS } from '@/constants';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { VIEWS } from '@/app/constants';
 import router from '@/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 

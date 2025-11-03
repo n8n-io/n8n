@@ -13,7 +13,7 @@ import {
 } from '@n8n/design-system';
 import { ref } from 'vue';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
-import TimeAgo from '@/components/TimeAgo.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 
 const i18n = useI18n();
 

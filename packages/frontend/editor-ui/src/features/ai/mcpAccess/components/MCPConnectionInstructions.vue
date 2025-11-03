@@ -5,8 +5,8 @@ import { N8nHeading, N8nTabs } from '@n8n/design-system';
 import type { ApiKey } from '@n8n/api-types';
 import type { TabOptions } from '@n8n/design-system';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
-import OAuthConnectionInstructions from '@/features/mcpAccess/components/connectionInstructions/OAuthConnectionInstructions.vue';
-import AccessTokenConnectionInstructions from '@/features/mcpAccess/components/connectionInstructions/AccessTokenConnectionInstructions.vue';
+import OAuthConnectionInstructions from '@/features/ai/mcpAccess/components/connectionInstructions/OAuthConnectionInstructions.vue';
+import AccessTokenConnectionInstructions from '@/features/ai/mcpAccess/components/connectionInstructions/AccessTokenConnectionInstructions.vue';
 
 const MCP_ENDPOINT = 'mcp-server/http';
 

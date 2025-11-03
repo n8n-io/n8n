@@ -40,7 +40,6 @@ export class McpOAuthClientsController {
 			redirectUris: client.redirectUris,
 			grantTypes: client.grantTypes,
 			tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
-			scopes: client.scopes,
 			createdAt: client.createdAt.toISOString(),
 			updatedAt: client.updatedAt.toISOString(),
 		}));

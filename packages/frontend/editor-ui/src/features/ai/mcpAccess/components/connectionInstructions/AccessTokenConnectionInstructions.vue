@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ApiKey } from '@n8n/api-types';
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nButton,
@@ -13,8 +13,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import ConnectionParameter from '@/features/mcpAccess/components/connectionInstructions/ConnectionParameter.vue';
-import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
+import ConnectionParameter from '@/features/ai/mcpAccess/components/connectionInstructions/ConnectionParameter.vue';
+import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 
 type Props = {
 	serverUrl: string;

@@ -10,7 +10,6 @@ export class OAuthClientResponseDto extends Z.class({
 	redirectUris: z.array(z.string()),
 	grantTypes: z.array(z.string()),
 	tokenEndpointAuthMethod: z.string(),
-	scopes: z.string(),
 	createdAt: z.string().datetime(), // Using string for date serialization over HTTP
 	updatedAt: z.string().datetime(),
 }) {}
@@ -26,7 +25,6 @@ export class ListOAuthClientsResponseDto extends Z.class({
 			redirectUris: z.array(z.string()),
 			grantTypes: z.array(z.string()),
 			tokenEndpointAuthMethod: z.string(),
-			scopes: z.string(),
 			createdAt: z.string().datetime(),
 			updatedAt: z.string().datetime(),
 		}),
