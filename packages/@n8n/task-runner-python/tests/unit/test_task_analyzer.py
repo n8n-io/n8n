@@ -136,6 +136,20 @@ class TestAttributeAccessValidation(TestTaskAnalyzer):
         for code in allowed_attributes:
             analyzer.validate(code)
 
+    def test_name_mangled_attributes_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            "license._Printer__filenames",
+            "obj._SomeClass__private_attr",
+            "help._Helper__name",
+            "credits._Printer__data",
+            "instance._MyClass__secret",
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "name-mangled" in exc_info.value.description.lower()
+
 
 class TestDynamicImportDetection(TestTaskAnalyzer):
     def test_various_dynamic_import_patterns(self, analyzer: TaskAnalyzer) -> None:
