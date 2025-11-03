@@ -1,15 +1,18 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
-import type { Response } from 'express';
-
 import type { OAuthClient, AuthorizationCode } from '@n8n/db';
+import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
 
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
+import { McpOAuthTokenService } from '../mcp-oauth-token.service';
+import { AccessTokenRepository } from '../oauth-access-token.repository';
+import { AuthorizationCodeRepository } from '../oauth-authorization-code.repository';
 import { OAuthClientRepository } from '../oauth-client.repository';
+import { RefreshTokenRepository } from '../oauth-refresh-token.repository';
 import { OAuthSessionService } from '../oauth-session.service';
+import { UserConsentRepository } from '../oauth-user-consent.repository';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
@@ -17,6 +20,10 @@ let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
 let tokenService: jest.Mocked<McpOAuthTokenService>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
+let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
+let refreshTokenRepository: jest.Mocked<RefreshTokenRepository>;
+let authorizationCodeRepository: jest.Mocked<AuthorizationCodeRepository>;
+let userConsentRepository: jest.Mocked<UserConsentRepository>;
 
 describe('McpOAuthService', () => {
 	beforeAll(() => {
@@ -25,6 +32,10 @@ describe('McpOAuthService', () => {
 		oauthClientRepository = mockInstance(OAuthClientRepository);
 		tokenService = mockInstance(McpOAuthTokenService);
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
+		accessTokenRepository = mockInstance(AccessTokenRepository);
+		refreshTokenRepository = mockInstance(RefreshTokenRepository);
+		authorizationCodeRepository = mockInstance(AuthorizationCodeRepository);
+		userConsentRepository = mockInstance(UserConsentRepository);
 
 		service = new McpOAuthService(
 			logger,
@@ -32,6 +43,10 @@ describe('McpOAuthService', () => {
 			oauthClientRepository,
 			tokenService,
 			authorizationCodeService,
+			accessTokenRepository,
+			refreshTokenRepository,
+			authorizationCodeRepository,
+			userConsentRepository,
 		);
 	});
 

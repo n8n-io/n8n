@@ -16,12 +16,11 @@ import { Response } from 'express';
 
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
-import { OAuthSessionService } from './oauth-session.service';
-
 import { AccessTokenRepository } from './oauth-access-token.repository';
 import { AuthorizationCodeRepository } from './oauth-authorization-code.repository';
 import { OAuthClientRepository } from './oauth-client.repository';
 import { RefreshTokenRepository } from './oauth-refresh-token.repository';
+import { OAuthSessionService } from './oauth-session.service';
 import { UserConsentRepository } from './oauth-user-consent.repository';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflow', 'tool:getWorkflowDetails'];
