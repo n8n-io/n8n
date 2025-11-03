@@ -798,9 +798,10 @@ describe('PATCH /workflows/:workflowId', () => {
 			const createResponse = await authOwnerAgent.post('/workflows').send(workflow);
 			const { id, versionId } = createResponse.body.data;
 
-			const response = await authOwnerAgent
-				.patch(`/workflows/${id}`)
-				.send({ name: 'new name', versionId });
+			const response = await authOwnerAgent.patch(`/workflows/${id}`).send({
+				name: 'new name',
+				versionId,
+			});
 
 			expect(response.statusCode).toBe(200);
 		});
@@ -1031,9 +1032,10 @@ describe('PATCH /workflows/:workflowId', () => {
 				.send({ shareWithIds: [anotherMemberPersonalProject.id] })
 				.expect(200);
 
-			const response = await authAnotherMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ versionId, nodes: changedNodes });
+			const response = await authAnotherMemberAgent.patch(`/workflows/${id}`).send({
+				versionId,
+				nodes: changedNodes,
+			});
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.nodes).toMatchObject(expectedNodes);

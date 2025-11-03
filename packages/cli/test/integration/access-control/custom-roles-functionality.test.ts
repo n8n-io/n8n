@@ -626,7 +626,10 @@ describe('Custom Role Functionality Tests', () => {
 				expect(Array.isArray(getResponse.body.data.tags)).toBe(true);
 
 				// Test updating complex structure (simplified payload to avoid internal errors)
-				const simpleUpdatePayload = { name: 'Updated Complex Structure Workflow', versionId };
+				const simpleUpdatePayload = {
+					name: 'Updated Complex Structure Workflow',
+					versionId,
+				};
 
 				const updateResponse = await member2Agent
 					.patch(`/workflows/${workflowId}`)
