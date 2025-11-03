@@ -1,6 +1,6 @@
-import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { WEBHOOK_NODE_TYPE } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 export function useMcp() {
 	const telemetry = useTelemetry();

@@ -137,9 +137,6 @@ COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
 # Copy Node.js runtime
 COPY --from=node-debian /usr/local/bin/node /runtime/usr/local/bin/node
 
-# Copy uv
-COPY --from=python-runner-builder /usr/local/bin/uv /runtime/usr/local/bin/uv
-
 # Copy task runners
 COPY --from=javascript-runner-builder /app/task-runner-javascript /runtime/opt/runners/task-runner-javascript
 COPY --from=python-runner-builder /app/task-runner-python /runtime/opt/runners/task-runner-python

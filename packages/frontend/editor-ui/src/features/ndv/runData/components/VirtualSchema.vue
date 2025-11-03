@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import Draggable from '@/components/Draggable.vue';
+import Draggable from '@/app/components/Draggable.vue';
 import VirtualSchemaHeader from './VirtualSchemaHeader.vue';
 import VirtualSchemaItem from './VirtualSchemaItem.vue';
 import {
@@ -11,15 +11,15 @@ import {
 	type RenderNotice,
 	type Renders,
 	type SchemaNode,
-} from '@/composables/useDataSchema';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+} from '@/app/composables/useDataSchema';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	type IRunExecutionData,
 	createResultError,
@@ -36,18 +36,18 @@ import {
 } from 'vue-virtual-scroller';
 import MappingPill from './MappingPill.vue';
 
-import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
+import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { isEmpty } from '@/utils/typesUtils';
+import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { isEmpty } from '@/app/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
-import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import { I18nT } from 'vue-i18n';
-import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';

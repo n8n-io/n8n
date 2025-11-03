@@ -52,10 +52,10 @@ import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import { languageFacet } from '../plugins/codemirror/format';
 import debounce from 'lodash/debounce';
-import { ignoreUpdateAnnotation } from '@/utils/forceParse';
+import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import type { TargetNodeParameterContext } from '@/Interface';
 import type { CodeNodeLanguageOption } from '../components/CodeNodeEditor/CodeNodeEditor.vue';
-import { isEventTargetContainedBy } from '@/utils/htmlUtils';
+import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};

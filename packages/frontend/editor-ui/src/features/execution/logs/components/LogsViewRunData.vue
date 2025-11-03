@@ -8,7 +8,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { PopOutWindowKey } from '@/constants';
+import { PopOutWindowKey } from '@/app/constants';
 import { isSubNodeLog } from '../logs.utils';
 import RunDataItemCount from '@/features/ndv/runData/components/RunDataItemCount.vue';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';

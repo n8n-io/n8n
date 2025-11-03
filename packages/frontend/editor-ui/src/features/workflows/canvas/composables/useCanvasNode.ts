@@ -1,9 +1,9 @@
-import { CanvasNodeKey } from '@/constants';
+import { CanvasNodeKey } from '@/app/constants';
 import { computed, inject } from 'vue';
 import { isCommunityPackageName } from 'n8n-workflow';
 import type { CanvasNodeData } from '../canvas.types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '../canvas.types';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
