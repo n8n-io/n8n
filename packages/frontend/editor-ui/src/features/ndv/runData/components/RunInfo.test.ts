@@ -4,7 +4,7 @@ import RunInfo from './RunInfo.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mock } from 'vitest-mock-extended';
 
-vi.mock('@/utils/formatters/dateFormatter', () => ({
+vi.mock('@/app/utils/formatters/dateFormatter', () => ({
 	convertToDisplayDateComponents: vi.fn(() => ({
 		date: 'Jan 15',
 		time: '10:30:00',

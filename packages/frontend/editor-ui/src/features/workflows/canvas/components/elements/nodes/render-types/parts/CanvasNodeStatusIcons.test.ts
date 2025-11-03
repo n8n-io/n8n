@@ -4,8 +4,8 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { VIEWS } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { VIEWS } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import type * as actualVueRouter from 'vue-router';

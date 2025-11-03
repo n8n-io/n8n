@@ -1,8 +1,8 @@
 import {
 	CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY,
 	LOCAL_STORAGE_CHAT_HUB_STATIC_SIDEBAR,
-} from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import { computed } from 'vue';
 import { MOBILE_MEDIA_QUERY } from '../constants';

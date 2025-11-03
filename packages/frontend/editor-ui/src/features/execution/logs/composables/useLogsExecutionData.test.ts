@@ -3,8 +3,8 @@ import { useLogsExecutionData } from './useLogsExecutionData';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nodeTypes } from '../__test__/data';
 import {
 	createTestNode,
@@ -14,18 +14,18 @@ import {
 } from '@/__tests__/mocks';
 import type { IRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import {
 	injectWorkflowState,
 	useWorkflowState,
 	type WorkflowState,
-} from '@/composables/useWorkflowState';
+} from '@/app/composables/useWorkflowState';
 import { computed } from 'vue';
 
-vi.mock('@/composables/useToast');
+vi.mock('@/app/composables/useToast');
 
-vi.mock('@/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowState');
+vi.mock('@/app/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/app/composables/useWorkflowState');
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(),
