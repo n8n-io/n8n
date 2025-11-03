@@ -128,7 +128,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			});
 
 			authorizationCodeRepository.findOne.mockResolvedValue(authRecord);
-			authorizationCodeRepository.update.mockResolvedValue(mock());
+			authorizationCodeRepository.update.mockResolvedValue({ affected: 1 } as any);
 
 			const result = await service.validateAndConsumeAuthorizationCode(
 				'code-123',
@@ -139,27 +139,26 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			expect(result).toEqual(authRecord);
 			expect(authRecord.used).toBe(true);
 			expect(authorizationCodeRepository.update).toHaveBeenCalledWith(
-				{ code: 'code-123' },
+				{ code: 'code-123', used: false },
 				{ used: true },
 			);
 		});
 
-		it('should throw error when code already used', async () => {
+		it('should throw error when code already used (atomic update fails)', async () => {
 			const authRecord = mock<AuthorizationCode>({
 				code: 'code-123',
 				clientId: 'client-123',
 				expiresAt: Date.now() + 10000,
-				used: true, // Already used
+				used: false,
+				redirectUri: 'https://example.com/callback',
 			});
 
 			authorizationCodeRepository.findOne.mockResolvedValue(authRecord);
-			authorizationCodeRepository.remove.mockResolvedValue(authRecord);
+			authorizationCodeRepository.update.mockResolvedValue({ affected: 0 } as any);
 
 			await expect(
 				service.validateAndConsumeAuthorizationCode('code-123', 'client-123'),
 			).rejects.toThrow('Authorization code already used');
-
-			expect(authorizationCodeRepository.remove).toHaveBeenCalledWith(authRecord);
 		});
 
 		it('should throw error when redirect URI mismatch', async () => {
@@ -192,13 +191,13 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			});
 
 			authorizationCodeRepository.findOne.mockResolvedValue(authRecord);
-			authorizationCodeRepository.update.mockResolvedValue(mock());
+			authorizationCodeRepository.update.mockResolvedValue({ affected: 1 } as any);
 
 			const result = await service.validateAndConsumeAuthorizationCode('code-123', 'client-123');
 
 			expect(result).toEqual(authRecord);
 			expect(authorizationCodeRepository.update).toHaveBeenCalledWith(
-				{ code: 'code-123' },
+				{ code: 'code-123', used: false },
 				{ used: true },
 			);
 		});

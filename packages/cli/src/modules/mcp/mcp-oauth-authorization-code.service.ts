@@ -81,16 +81,18 @@ export class McpOAuthAuthorizationCodeService {
 	): Promise<AuthorizationCode> {
 		const authRecord = await this.findAndValidateAuthorizationCode(authorizationCode, clientId);
 
-		if (authRecord.used) {
-			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Authorization code already used');
-		}
-
 		if (redirectUri && authRecord.redirectUri !== redirectUri) {
 			throw new Error('Redirect URI mismatch');
 		}
 
-		await this.authorizationCodeRepository.update({ code: authorizationCode }, { used: true });
+		const result = await this.authorizationCodeRepository.update(
+			{ code: authorizationCode, used: false },
+			{ used: true },
+		);
+
+		if (result.affected === 0) {
+			throw new Error('Authorization code already used');
+		}
 
 		authRecord.used = true;
 		return authRecord;
