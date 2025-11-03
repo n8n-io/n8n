@@ -989,7 +989,7 @@ describe('TaskBroker', () => {
 				taskType: 'taskType1',
 			};
 
-			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (offer, request) => {
+			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
 				clearTimeout(request.timeout);
 				const requests = taskBroker.getPendingTaskRequests();
 				const filtered = requests.filter((r) => r.requestId !== request.requestId);
@@ -1041,7 +1041,7 @@ describe('TaskBroker', () => {
 
 			const handleTimeoutSpy = jest.spyOn(taskBroker as any, 'handleRequestTimeout');
 
-			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (offer, request) => {
+			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
 				clearTimeout(request.timeout);
 				request.timeout = taskBroker['createRequestTimeout'](request.requestId);
 				taskBroker.setPendingTaskRequests([request]);
