@@ -19,6 +19,10 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_ACTIVATION_BATCH_SIZE')
 	activationBatchSize: number = 1;
 
+	/** Whether to enable workflow dependency indexing */
+	@Env('N8N_WORKFLOWS_INDEXING_ENABLED')
+	indexingEnabled: boolean = false;
+
 	/** Whether workflow sharing is disabled */
 	@Env('N8N_DISABLE_WORKFLOW_SHARING')
 	disableSharing: boolean = false;
