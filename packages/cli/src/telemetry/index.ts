@@ -235,8 +235,15 @@ export class Telemetry {
 			context: {},
 		};
 
-		// Limiting payload size to 32 KB
-		const payloadSize = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+		// Build the actual payload that will be sent to RudderStack (with fake IP)
+		const rudderStackPayload = {
+			...payload,
+			// provide a fake IP address to instruct RudderStack to not use the user's IP address
+			context: { ...payload.context, ip: '0.0.0.0' },
+		};
+
+		// Limiting payload size to 32 KB - measure the actual payload sent to RudderStack
+		const payloadSize = Buffer.byteLength(JSON.stringify(rudderStackPayload), 'utf8');
 		const maxPayloadSize = 32 << 10; // 32 KB
 
 		if (payloadSize > maxPayloadSize) {
@@ -258,11 +265,7 @@ export class Telemetry {
 
 		this.postHog?.track(payload);
 
-		return this.rudderStack.track({
-			...payload,
-			// provide a fake IP address to instruct RudderStack to not use the user's IP address
-			context: { ...payload.context, ip: '0.0.0.0' },
-		});
+		return this.rudderStack.track(rudderStackPayload);
 	}
 
 	// test helpers
