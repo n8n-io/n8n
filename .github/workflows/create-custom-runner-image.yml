@@ -2,6 +2,12 @@ name: Create Custom Runner Image
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Check to automatically bump the last pushed image tag (patch). When unchecked, the latest existing tag will be used (or "custom" if none exist).'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-and-push:
@@ -32,10 +38,72 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine image tag
+        id: determine_tag
+        env:
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: custom-runner
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUMP: ${{ github.event.inputs.bump }}
+        run: |
+          set -euo pipefail
+          # detect owner type (User or Organization)
+          OWNER_TYPE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/users/$OWNER" | jq -r .type // empty)
+          if [ "$OWNER_TYPE" = "Organization" ]; then
+            API_URL="https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE/versions?per_page=100"
+          else
+            API_URL="https://api.github.com/users/$OWNER/packages/container/$PACKAGE/versions?per_page=100"
+          fi
+
+          echo "Querying package versions from: $API_URL"
+          RESP=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$API_URL") || true
+
+          # If the package or versions endpoint returns an error or empty array, fallback
+          LATEST_TAG=$(echo "$RESP" | jq -r '.[0].metadata.container.tags[0] // empty') || true
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No existing tag found for $PACKAGE. Defaulting to 'custom'."
+            echo "tag=custom" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Found latest tag: $LATEST_TAG"
+
+          if [ "${BUMP}" = "true" ] || [ "${BUMP}" = "True" ]; then
+            # bump patch version when possible; preserve a leading 'v' if present
+            LEADING_V=""
+            if echo "$LATEST_TAG" | grep -q '^v'; then
+              LEADING_V=v
+              BASE_TAG=$(echo "$LATEST_TAG" | sed 's/^v//')
+            else
+              BASE_TAG="$LATEST_TAG"
+            fi
+
+            IFS='.' read -r MAJ MIN PATCH <<< "${BASE_TAG}"
+            if [ -n "$PATCH" ] && echo "$PATCH" | grep -Eq '^[0-9]+$'; then
+              NEW_PATCH=$((PATCH + 1))
+              NEW_TAG="${MAJ}.${MIN}.${NEW_PATCH}"
+            else
+              # Not a semantic version with numeric patch; append timestamp
+              NEW_TAG="${BASE_TAG}-$(date +%s)"
+            fi
+
+            if [ -n "$LEADING_V" ]; then
+              NEW_TAG="v${NEW_TAG}"
+            fi
+
+            echo "Bumped tag -> $NEW_TAG"
+            echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "Using latest tag -> $LATEST_TAG"
+            echo "tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          fi
+
+
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/custom-runner:custom -f docker/images/runners/Dockerfile .
+          docker build -t ghcr.io/${{ github.repository_owner }}/custom-runner:${{ steps.determine_tag.outputs.tag }} -f docker/images/runners/Dockerfile .
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ github.repository_owner }}/custom-runner:custom
+          docker push ghcr.io/${{ github.repository_owner }}/custom-runner:${{ steps.determine_tag.outputs.tag }}
