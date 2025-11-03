@@ -21,7 +21,6 @@
 			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:28:02Z"],
 			"anthropic-ratelimit-input-tokens-remaining": ["14944000"],
 			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
-			"anthropic-organization-id": ["b44609e6-8df3-4816-9268-994175db6d33"],
 			"X-Robots-Tag": ["none"],
 			"Server": ["cloudflare"],
 			"Date": ["Fri, 31 Oct 2025 16:28:06 GMT"],
