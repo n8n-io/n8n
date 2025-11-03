@@ -1,3 +1,4 @@
+import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from './../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
@@ -108,7 +109,6 @@ import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRole
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
 import type { Migration } from '../migration-types';
-import { CreateOAuthEntities1760116750277 } from 'migrations/common/1760116750277-CreateOAuthEntities';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
