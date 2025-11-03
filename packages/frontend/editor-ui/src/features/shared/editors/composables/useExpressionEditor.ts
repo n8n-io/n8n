@@ -17,15 +17,21 @@ import { ensureSyntaxTree } from '@codemirror/language';
 import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
 
-import { EXPRESSION_EDITOR_PARSER_TIMEOUT, ExpressionLocalResolveContextSymbol } from '@/constants';
+import {
+	EXPRESSION_EDITOR_PARSER_TIMEOUT,
+	ExpressionLocalResolveContextSymbol,
+} from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
-import { type ResolveParameterOptions, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import {
+	type ResolveParameterOptions,
+	useWorkflowHelpers,
+} from '@/app/composables/useWorkflowHelpers';
 import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '../plugins/codemirror/tooltips/InfoBoxTooltip';
-import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
-import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
+import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/app/types/expressions';
+import { getExpressionErrorMessage, getResolvableState } from '@/app/utils/expressions';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
@@ -38,12 +44,12 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useAutocompleteTelemetry } from '@/composables/useAutocompleteTelemetry';
-import { ignoreUpdateAnnotation } from '@/utils/forceParse';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useAutocompleteTelemetry } from '@/app/composables/useAutocompleteTelemetry';
+import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import { TARGET_NODE_PARAMETER_FACET } from '../plugins/codemirror/completions/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import { isEventTargetContainedBy } from '@/utils/htmlUtils';
+import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 export const useExpressionEditor = ({
 	editorRef,

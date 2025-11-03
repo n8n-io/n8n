@@ -9,21 +9,21 @@ import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import type { INodeUi, Schema } from '@/Interface';
-import { generateCodeForPrompt } from '@/api/ai';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useDataSchema } from '@/composables/useDataSchema';
+import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useI18n } from '@n8n/i18n';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	ASK_AI_MAX_PROMPT_LENGTH,
 	ASK_AI_MIN_PROMPT_LENGTH,
 	ASK_AI_LOADING_DURATION_MS,
-} from '@/constants';
+} from '@/app/constants';
 import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
 const emit = defineEmits<{
 	submit: [code: string];

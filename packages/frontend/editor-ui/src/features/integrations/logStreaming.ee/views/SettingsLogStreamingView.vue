@@ -1,21 +1,21 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeMount, onMounted, ref, getCurrentInstance } from 'vue';
 import { v4 as uuid } from 'uuid';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLogStreamingStore } from '../logStreaming.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
-import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '../components/EventDestinationCard.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip } from '@n8n/design-system';

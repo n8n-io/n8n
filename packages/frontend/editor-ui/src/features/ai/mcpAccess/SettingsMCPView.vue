@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useToast } from '@/composables/useToast';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useToast } from '@/app/composables/useToast';
 import type { UserAction, WorkflowListItem } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import router from '@/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
