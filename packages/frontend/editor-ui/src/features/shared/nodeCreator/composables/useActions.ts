@@ -44,9 +44,9 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../nodeCreator.utils';
 import { useI18n } from '@n8n/i18n';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
+import { useCanvasStore } from '@/app/stores/canvas.store';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 export const useActions = () => {
 	const workflowState = injectWorkflowState();
