@@ -17,9 +17,8 @@ langchain-google-genai
 pydantic-ai
 
 # Azure
-azure-ai-openai
-azure-storage-blob
 azure-identity
+azure-storage-blob
 
 # AWS
 boto3
