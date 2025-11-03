@@ -2,7 +2,7 @@ import type { SamlPreferences } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { UserRepository } from '@n8n/db';
 import type { Settings } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
