@@ -9,7 +9,7 @@ import WorkflowSelectorParameterInput, { type Props } from './WorkflowSelectorPa
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const { onDocumentVisible } = vi.hoisted(() => ({
 	onDocumentVisible: vi.fn(),
@@ -21,11 +21,11 @@ const mockToast = {
 	showError: vi.fn(),
 };
 
-vi.mock('@/composables/useDocumentVisibility', () => ({
+vi.mock('@/app/composables/useDocumentVisibility', () => ({
 	useDocumentVisibility: () => ({ onDocumentVisible }),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 

@@ -17,14 +17,14 @@ import {
 	DEFAULT_DATA_TABLE_PAGE_SIZE,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
-import { useDebounce } from '@/composables/useDebounce';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 import { N8nActionBox } from '@n8n/design-system';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 
 const i18n = useI18n();
 const route = useRoute();

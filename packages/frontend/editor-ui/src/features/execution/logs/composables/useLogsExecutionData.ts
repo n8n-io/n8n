@@ -1,8 +1,8 @@
 import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
 	createLogTree,
@@ -10,12 +10,15 @@ import {
 	mergeStartData,
 } from '@/features/execution/logs/logs.utils';
 import { parse } from 'flatted';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
-import { isChatNode } from '@/utils/aiUtils';
-import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { isChatNode } from '@/app/utils/aiUtils';
+import {
+	LOGS_EXECUTION_DATA_THROTTLE_DURATION,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/app/constants';
 import { useThrottleFn } from '@vueuse/core';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
 
 interface UseLogsExecutionDataOptions {

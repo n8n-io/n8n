@@ -7,7 +7,7 @@ import Assignment from './Assignment.vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
-import * as useResolvedExpression from '@/composables/useResolvedExpression';
+import * as useResolvedExpression from '@/app/composables/useResolvedExpression';
 
 const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 	pinia: createTestingPinia({

@@ -4,17 +4,17 @@ import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ButtonParameter, { type Props } from './ButtonParameter.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { usePostHog } from '@/stores/posthog.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
 
 vi.mock('@/features/ndv/shared/ndv.store');
-vi.mock('@/stores/workflows.store');
-vi.mock('@/stores/posthog.store');
+vi.mock('@/app/stores/workflows.store');
+vi.mock('@/app/stores/posthog.store');
 vi.mock('@n8n/stores/useRootStore');
-vi.mock('@/api/ai');
+vi.mock('@/features/ai/assistant/assistant.api');
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
@@ -25,7 +25,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		}),
 	}),
 }));
-vi.mock('@/composables/useToast');
+vi.mock('@/app/composables/useToast');
 
 describe('ButtonParameter', () => {
 	const defaultProps: Props = {

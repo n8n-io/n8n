@@ -9,7 +9,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
-vi.mock('@/components/NodeIcon.vue', () => ({
+vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: {
 		template: '<span />',
 	},
