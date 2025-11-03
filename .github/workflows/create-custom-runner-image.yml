@@ -45,8 +45,8 @@ jobs:
         run: |
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
-          git tag -a "${{ env.VERSION }}" -m "Auto-bumped version to ${{ env.VERSION }}"
-          git push origin "${{ env.VERSION }}"
+          git tag -a "$VERSION" -m "Auto-bumped version to $VERSION"
+          git push origin "$VERSION"
 
       - name: Set up Node.js 22.16
         uses: actions/setup-node@v3
@@ -71,8 +71,8 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/custom-runner:${{ env.VERSION }} -f docker/images/runners/Dockerfile .
+          docker build -t ghcr.io/${{ github.repository_owner }}/custom-runner:$VERSION -f docker/images/runners/Dockerfile .
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ github.repository_owner }}/custom-runner:${{ env.VERSION }}
+          docker push ghcr.io/${{ github.repository_owner }}/custom-runner:$VERSION
