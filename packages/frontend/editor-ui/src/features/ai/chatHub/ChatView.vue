@@ -23,7 +23,7 @@ import {
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
+import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -32,6 +32,7 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
+import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 
 const router = useRouter();
 const route = useRoute();
@@ -158,6 +159,16 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 const editingAgentId = ref<string | undefined>(undefined);
+
+const canAcceptFiles = computed(
+	() =>
+		editingAgentId.value === undefined &&
+		editingMessageId.value === undefined &&
+		!!selectedModel.value?.allowFileUploads &&
+		!isMissingSelectedCredential.value,
+);
+
+const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -387,6 +398,10 @@ function handleOpenWorkflow(workflowId: string) {
 
 	window.open(routeData.href, '_blank');
 }
+
+function onFilesDropped(files: File[]) {
+	inputRef.value?.addAttachments(files);
+}
 </script>
 
 <template>
@@ -396,9 +411,19 @@ function handleOpenWorkflow(workflowId: string) {
 			{
 				[$style.isNewSession]: isNewSession,
 				[$style.isMobileDevice]: isMobileDevice,
+				[$style.isDraggingFile]: fileDrop.isDragging.value,
 			},
 		]"
+		@dragenter="fileDrop.handleDragEnter"
+		@dragleave="fileDrop.handleDragLeave"
+		@dragover="fileDrop.handleDragOver"
+		@drop="fileDrop.handleDrop"
+		@paste="fileDrop.handlePaste"
 	>
+		<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
+			<N8nText size="large" color="text-dark">Drop files here to attach</N8nText>
+		</div>
+
 		<ChatConversationHeader
 			ref="headerRef"
 			:selected-model="selectedModel ?? null"
@@ -497,10 +522,40 @@ function handleOpenWorkflow(workflowId: string) {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
+	position: relative;
 
 	&.isMobileDevice {
 		margin: 0;
 		border: none;
+	}
+
+	&.isDraggingFile {
+		border-color: var(--color--secondary);
+	}
+}
+
+.dropOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	backdrop-filter: blur(6px);
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: var(--color--background--light-2);
+		opacity: 0.5;
+		z-index: -1;
 	}
 }
 

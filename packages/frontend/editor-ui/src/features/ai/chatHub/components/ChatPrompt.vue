@@ -140,6 +140,10 @@ defineExpose({
 	setText: (text: string) => {
 		message.value = text;
 	},
+	addAttachments: (files: File[]) => {
+		attachments.value.push(...files);
+		inputRef.value?.focus();
+	},
 });
 </script>
 
