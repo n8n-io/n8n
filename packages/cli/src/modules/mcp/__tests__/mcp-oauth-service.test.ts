@@ -3,12 +3,12 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 
-import type { OAuthClient, AuthorizationCode } from '@n8n/db';
-
+import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
+import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
-import { OAuthClientRepository } from '../oauth-client.repository';
+import { McpOAuthTokenService } from '../mcp-oauth-token.service';
 import { OAuthSessionService } from '../oauth-session.service';
 
 let logger: jest.Mocked<Logger>;

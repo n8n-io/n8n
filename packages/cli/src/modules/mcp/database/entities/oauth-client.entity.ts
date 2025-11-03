@@ -1,10 +1,10 @@
+import { JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, OneToMany } from '@n8n/typeorm';
 
-import { JsonColumn, WithTimestamps } from './abstract-entity';
-import type { AccessToken } from './oauth-access-token';
-import type { AuthorizationCode } from './oauth-authorization-code';
-import type { RefreshToken } from './oauth-refresh-token';
-import type { UserConsent } from './oauth-user-consent';
+import type { AccessToken } from './oauth-access-token.entity';
+import type { AuthorizationCode } from './oauth-authorization-code.entity';
+import type { RefreshToken } from './oauth-refresh-token.entity';
+import type { UserConsent } from './oauth-user-consent.entity';
 
 @Entity('oauth_clients')
 export class OAuthClient extends WithTimestamps {

@@ -17,7 +17,6 @@ import type { IUser, IUserSettings } from 'n8n-workflow';
 import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
-import type { UserConsent } from './oauth-user-consent';
 import type { ProjectRelation } from './project-relation';
 import { Role } from './role';
 import type { SharedCredentials } from './shared-credentials';
@@ -76,9 +75,6 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 
 	@OneToMany('ProjectRelation', 'user')
 	projectRelations: ProjectRelation[];
-
-	@OneToMany('UserConsent', 'user')
-	userConsents: UserConsent[];
 
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;

@@ -1,16 +1,16 @@
+import { User, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 
-import { OAuthClient } from './oauth-client';
-import { User } from './user';
+import { OAuthClient } from './oauth-client.entity';
 
-@Entity('oauth_access_tokens')
-export class AccessToken {
+@Entity('oauth_refresh_tokens')
+export class RefreshToken extends WithTimestamps {
 	@Column({ type: 'varchar', primary: true })
 	token: string;
 
 	@ManyToOne(
 		() => OAuthClient,
-		(client) => client.accessTokens,
+		(client) => client.refreshTokens,
 		{ onDelete: 'CASCADE' },
 	)
 	client: OAuthClient;
@@ -25,4 +25,8 @@ export class AccessToken {
 	@Index()
 	@Column({ type: String })
 	userId: string;
+
+	@Index()
+	@Column({ type: 'int' })
+	expiresAt: number;
 }

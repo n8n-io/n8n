@@ -8,8 +8,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import { JwtService } from '@/services/jwt.service';
 
-import { AccessTokenRepository } from './oauth-access-token.repository';
-import { RefreshTokenRepository } from './oauth-refresh-token.repository';
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
 
 /**
  * Manages OAuth 2.1 token lifecycle for MCP server

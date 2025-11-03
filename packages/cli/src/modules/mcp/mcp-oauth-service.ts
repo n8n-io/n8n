@@ -13,9 +13,9 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { Response } from 'express';
 
+import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
-import { OAuthClientRepository } from './oauth-client.repository';
 import { OAuthSessionService } from './oauth-session.service';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];

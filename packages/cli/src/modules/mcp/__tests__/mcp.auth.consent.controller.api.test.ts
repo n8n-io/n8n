@@ -1,15 +1,16 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { User, OAuthClient } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { JwtService } from '@/services/jwt.service';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import { OAuthClientRepository } from '../oauth-client.repository';
+import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import type { OAuthSessionPayload } from '../oauth-session.service';
 
-const testServer = setupTestServer({ endpointGroups: ['mcp'] });
+const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['mcp'] });
 
 let owner: User;
 let member: User;
@@ -324,7 +325,9 @@ describe('POST /rest/consent/approve', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { UserConsentRepository } = await import('../oauth-user-consent.repository');
+		const { UserConsentRepository } = await import(
+			'../database/repositories/oauth-user-consent.repository'
+		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
 			where: { userId: owner.id, clientId: client.id },
@@ -345,7 +348,9 @@ describe('POST /rest/consent/approve', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { UserConsentRepository } = await import('../oauth-user-consent.repository');
+		const { UserConsentRepository } = await import(
+			'../database/repositories/oauth-user-consent.repository'
+		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
 			where: { userId: owner.id, clientId: client.id },

@@ -1,9 +1,9 @@
 import { Time } from '@n8n/constants';
-import type { AuthorizationCode } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
-import { AuthorizationCodeRepository } from './oauth-authorization-code.repository';
+import type { AuthorizationCode } from './database/entities/oauth-authorization-code.entity';
+import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
 
 /**
  * Handles OAuth 2.1 authorization code lifecycle for MCP server

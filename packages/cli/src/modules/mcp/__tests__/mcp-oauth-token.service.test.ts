@@ -1,15 +1,17 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
-import type { User, AccessToken, RefreshToken } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
 
-import { AccessTokenRepository } from '../oauth-access-token.repository';
+import type { AccessToken } from '../database/entities/oauth-access-token.entity';
+import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
+import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
-import { RefreshTokenRepository } from '../oauth-refresh-token.repository';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
