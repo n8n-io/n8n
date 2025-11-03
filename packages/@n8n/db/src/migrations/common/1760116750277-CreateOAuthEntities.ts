@@ -70,6 +70,11 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				tableName: 'oauth_clients',
 				columnName: 'id',
 				onDelete: 'CASCADE',
+			})
+			.withForeignKey('userId', {
+				tableName: 'user',
+				columnName: 'id',
+				onDelete: 'CASCADE',
 			}).withTimestamps;
 
 		// Create oauth_user_consents table
