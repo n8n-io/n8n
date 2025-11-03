@@ -97,16 +97,16 @@ export class McpOAuthTokenService {
 			clientId,
 		);
 
-		await this.refreshTokenRepository.manager.transaction(async (transactionManager) => {
-			await transactionManager.remove(refreshTokenRecord);
+		await this.refreshTokenRepository.manager.transaction(async (trx) => {
+			await trx.remove(refreshTokenRecord);
 
-			await transactionManager.insert(this.accessTokenRepository.target, {
+			await trx.insert(this.accessTokenRepository.target, {
 				token: accessToken,
 				clientId,
 				userId: refreshTokenRecord.userId,
 			});
 
-			await transactionManager.insert(this.refreshTokenRepository.target, {
+			await trx.insert(this.refreshTokenRepository.target, {
 				token: newRefreshToken,
 				clientId,
 				userId: refreshTokenRecord.userId,

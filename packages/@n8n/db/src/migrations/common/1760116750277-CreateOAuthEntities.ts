@@ -4,7 +4,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		// Create oauth_clients table
 		await createTable('oauth_clients').withColumns(
-			column('id').varchar(255).primary.notNull,
+			column('id').varchar().primary.notNull,
 			column('name').varchar(255).notNull,
 			column('redirectUris').json.notNull,
 			column('grantTypes').json.notNull,
@@ -20,8 +20,8 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 		await createTable('oauth_authorization_codes')
 			.withColumns(
 				column('code').varchar(255).primary.notNull,
-				column('clientId').varchar(255).notNull,
-				column('userId').varchar(255).notNull,
+				column('clientId').varchar().notNull,
+				column('userId').uuid.notNull,
 				column('redirectUri').varchar(255).notNull,
 				column('codeChallenge').varchar(255).notNull,
 				column('codeChallengeMethod').varchar(255).notNull,
@@ -44,8 +44,8 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 		await createTable('oauth_access_tokens')
 			.withColumns(
 				column('token').varchar(255).primary.notNull,
-				column('clientId').varchar(255).notNull,
-				column('userId').varchar(255).notNull,
+				column('clientId').varchar().notNull,
+				column('userId').uuid.notNull,
 			)
 			.withForeignKey('clientId', {
 				tableName: 'oauth_clients',
@@ -62,8 +62,8 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 		await createTable('oauth_refresh_tokens')
 			.withColumns(
 				column('token').varchar(255).primary.notNull,
-				column('clientId').varchar(255).notNull,
-				column('userId').varchar(255).notNull,
+				column('clientId').varchar().notNull,
+				column('userId').uuid.notNull,
 				column('expiresAt').bigint.notNull.comment('Unix timestamp in milliseconds'),
 			)
 			.withForeignKey('clientId', {
@@ -81,8 +81,8 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 		await createTable('oauth_user_consents')
 			.withColumns(
 				column('id').int.primary.autoGenerate2.notNull,
-				column('userId').varchar(255).notNull,
-				column('clientId').varchar(255).notNull,
+				column('userId').uuid.notNull,
+				column('clientId').varchar().notNull,
 				column('grantedAt').bigint.notNull.comment('Unix timestamp in seconds'),
 			)
 			.withForeignKey('clientId', {
