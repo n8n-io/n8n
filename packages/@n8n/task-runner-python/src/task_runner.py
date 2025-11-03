@@ -129,7 +129,9 @@ class TaskRunner:
 
             except InvalidStatus as e:
                 if e.response.status_code == 403:
-                    self.logger.error(f"Authentication failed with status {e.response.status_code}: {e}")
+                    self.logger.error(
+                        f"Authentication failed with status {e.response.status_code}: {e}"
+                    )
                     raise
                 self.logger.warning(f"Failed to connect to broker: {e} - retrying...")
             except Exception as e:
