@@ -25,7 +25,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				column('redirectUri').varchar(255).notNull,
 				column('codeChallenge').varchar(255).notNull,
 				column('codeChallengeMethod').varchar(255).notNull,
-				column('expiresAt').bigint.notNull,
+				column('expiresAt').bigint.notNull.comment('Unix timestamp in milliseconds'),
 				column('state').varchar(255), // Should be nullable
 				column('used').bool.notNull.default(false),
 			)
@@ -64,7 +64,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 				column('token').varchar(255).primary.notNull,
 				column('clientId').varchar(255).notNull,
 				column('userId').varchar(255).notNull,
-				column('expiresAt').bigint.notNull,
+				column('expiresAt').bigint.notNull.comment('Unix timestamp in milliseconds'),
 			)
 			.withForeignKey('clientId', {
 				tableName: 'oauth_clients',
