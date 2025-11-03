@@ -211,13 +211,13 @@ const date = new Date(2000, 11, 19);
 
 // Test helper constants
 const DEFAULT_DATE_RANGE = {
-	startDate: '2000-12-13T00:00:00.000Z',
-	endDate: '2000-12-19T00:00:00.000Z',
+	startDate: new Date('2000-12-13T00:00:00.000Z'),
+	endDate: new Date('2000-12-19T00:00:00.000Z'),
 };
 
 const SINGLE_DAY_RANGE = {
-	startDate: '2000-12-19T00:00:00.000Z',
-	endDate: '2000-12-19T00:00:00.000Z',
+	startDate: new Date('2000-12-19T00:00:00.000Z'),
+	endDate: new Date('2000-12-19T00:00:00.000Z'),
 };
 
 const DEFAULT_TABLE_PARAMS = {
@@ -396,8 +396,8 @@ describe('InsightsDashboard', () => {
 			await userEvent.click(dayOption);
 
 			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
-				end_date: SINGLE_DAY_RANGE.endDate,
-				start_date: SINGLE_DAY_RANGE.startDate,
+				end_date: SINGLE_DAY_RANGE.endDate.toISOString(),
+				start_date: SINGLE_DAY_RANGE.startDate.toISOString(),
 				range_length_days: 1,
 				type: 'preset',
 			});
