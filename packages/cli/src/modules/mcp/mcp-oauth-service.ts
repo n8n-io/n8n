@@ -18,7 +18,7 @@ import { McpOAuthTokenService } from './mcp-oauth-token.service';
 import { OAuthClientRepository } from './oauth-client.repository';
 import { OAuthSessionService } from './oauth-session.service';
 
-export const SUPPORTED_SCOPES = ['tool:listWorkflow', 'tool:getWorkflowDetails'];
+export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 
 /**
  * OAuth 2.1 server implementation for MCP
