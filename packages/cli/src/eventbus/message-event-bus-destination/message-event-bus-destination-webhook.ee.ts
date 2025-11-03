@@ -105,6 +105,9 @@ export class MessageEventBusDestinationWebhook
 		this.axiosInstance = axios.create(axiosSetting);
 
 		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
+		this.logger.debug(
+			`MessageEventBusDestinationWebhook with options ${JSON.stringify(this.options)}`,
+		);
 	}
 
 	private buildAxiosSetting(
@@ -125,15 +128,14 @@ export class MessageEventBusDestinationWebhook
 
 		axiosSetting.timeout = options.options?.timeout ?? 5 * Time.seconds.toMilliseconds;
 
-		// TODO: make this configurable
 		const agentOptions: HTTPAgentOptions = {
 			// keepAlive to keep TCP connections alive for reuse
 			keepAlive: options.options?.socket?.keepAlive ?? true,
-			maxSockets: options.options?.socket?.maxSockets ?? 10,
-			maxFreeSockets: options.options?.socket?.maxFreeSockets ?? 10,
-			maxTotalSockets: options.options?.socket?.maxTotalSockets ?? 10,
+			maxSockets: options.options?.socket?.maxSockets ?? 50,
+			maxFreeSockets: options.options?.socket?.maxFreeSockets ?? 50,
+			maxTotalSockets: options.options?.socket?.maxSockets ?? 50,
 			// Socket timeout in milliseconds defaults to 5 seconds
-			timeout: options.options?.socket?.timeout ?? 5 * Time.seconds.toMilliseconds,
+			timeout: options.options?.timeout ?? 5 * Time.seconds.toMilliseconds,
 		};
 
 		const httpsAgentOptions: HTTPSAgentOptions = {

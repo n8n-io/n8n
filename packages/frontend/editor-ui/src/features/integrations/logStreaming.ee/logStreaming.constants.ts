@@ -1,5 +1,72 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+export const circuitBreakerOptions = {
+	displayName: 'Circuit Breaker Options',
+	name: 'circuitBreaker',
+	type: 'collection',
+	placeholder: 'Add Circuit Breaker Option',
+	description:
+		'A circuit breaker protects services from cascading failures by monitoring request failures and temporarily blocking requests when failure rates are high. This gives failing services time to recover without being overwhelmed by traffic.',
+	default: {},
+	options: [
+		{
+			displayName: 'Max Duration',
+			name: 'maxDuration',
+			type: 'number',
+			typeOptions: {
+				minValue: 100,
+			},
+			default: 300000,
+			description:
+				'Time in milliseconds to wait before transitioning from OPEN to HALF_OPEN state. After this duration, the circuit will attempt to test if the service has recovered.',
+		},
+		{
+			displayName: 'Max Failures',
+			name: 'maxFailures',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 5,
+			description:
+				'Maximum number of failures within the sliding window before the circuit opens. Once this threshold is exceeded, the circuit transitions to OPEN state and rejects all requests. Recommended: 3-10 failures depending on acceptable failure rate.',
+		},
+		{
+			displayName: 'Recovery Requests',
+			name: 'halfOpenRequests',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 2,
+			description:
+				'Number of consecutive successful requests required in HALF_OPEN state before transitioning back to CLOSED. This ensures the service is stable before fully recovering. Recommended: 1-3 requests to verify recovery without delay.',
+		},
+		{
+			displayName: 'Failure Window',
+			name: 'failureWindow',
+			type: 'number',
+			typeOptions: {
+				minValue: 100,
+			},
+			default: 60000,
+			description:
+				'Time window in milliseconds for counting failures (sliding window). Only failures within this window are counted toward the threshold. Older failures expire naturally.',
+		},
+		{
+			displayName: 'Max concurrent recovery requests',
+			name: 'maxConcurrentHalfOpenRequests',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 1,
+			description:
+				'Maximum number of requests allowed to execute concurrently in HALF_OPEN state. Prevents overwhelming a recovering service with queued requests.',
+		},
+	],
+};
+
 export const webhookModalDescription = [
 	{
 		displayName: 'Method',
@@ -390,12 +457,57 @@ export const webhookModalDescription = [
 				typeOptions: {
 					minValue: 1,
 				},
-				default: 10000,
+				default: 5000,
 				description:
 					'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 			},
+			{
+				displayName: 'Socket',
+				name: 'socket',
+				description: 'Socket options',
+				type: 'collection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {
+					keepAlive: true,
+					maxSockets: 50,
+					maxFreeSockets: 50,
+				},
+				options: [
+					{
+						displayName: 'Keep Alive',
+						name: 'keepAlive',
+						type: 'boolean',
+						default: true,
+						noDataExpression: true,
+						description: 'Whether to keep the sockets available.',
+					},
+					{
+						displayName: 'Max Sockets',
+						name: 'maxSockets',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 50,
+						description: 'Maximum number of sockets to keep open at any given time.',
+					},
+					{
+						displayName: 'Max Free Sockets',
+						name: 'maxFreeSockets',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 50,
+						description: 'Maximum number of sockets per host to leave open in a free state.',
+					},
+				],
+			},
 		],
 	},
+	circuitBreakerOptions,
 ] as INodeProperties[];
 
 export const syslogModalDescription = [
@@ -465,6 +577,7 @@ export const syslogModalDescription = [
 		noDataExpression: true,
 		description: 'Syslog app name parameter',
 	},
+	circuitBreakerOptions,
 ] as INodeProperties[];
 
 export const sentryModalDescription = [
@@ -476,4 +589,5 @@ export const sentryModalDescription = [
 		noDataExpression: true,
 		description: 'Your Sentry DSN Client Key',
 	},
+	circuitBreakerOptions,
 ] as INodeProperties[];

@@ -45,10 +45,20 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		this.license = Container.get(License);
 
 		// Circuit stays open for 3 minutes, after 10 failed attempts by default
-		const maxDuration = options.circuitBreakerMaxDuration ?? 3 * Time.minutes.toMilliseconds;
-		const maxFailures = options.circuitBreakerMaxFailures ?? 10;
+		const maxDuration = options.circuitBreaker?.maxDuration ?? 3 * Time.minutes.toMilliseconds;
+		const maxFailures = options.circuitBreaker?.maxFailures ?? 5;
+		const halfOpenRequests = options.circuitBreaker?.halfOpenRequests ?? 2;
+		const failureWindow = options.circuitBreaker?.failureWindow ?? 1 * Time.minutes.toMilliseconds;
+		const maxConcurrentHalfOpenRequests =
+			options.circuitBreaker?.maxConcurrentHalfOpenRequests ?? 1;
 
-		this.circuitBreaker = new CircuitBreaker(maxDuration, maxFailures, 2, maxDuration * 2);
+		this.circuitBreaker = new CircuitBreaker(
+			maxDuration,
+			maxFailures,
+			halfOpenRequests,
+			failureWindow,
+			maxConcurrentHalfOpenRequests,
+		);
 
 		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;
