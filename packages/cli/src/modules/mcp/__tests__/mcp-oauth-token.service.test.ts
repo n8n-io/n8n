@@ -32,17 +32,14 @@ describe('McpOAuthTokenService', () => {
 			RefreshTokenRepository,
 		) as jest.Mocked<RefreshTokenRepository>;
 
-		// Mock the transaction manager
 		mockTransactionManager = {
 			save: jest.fn().mockResolvedValue(mock()),
 		};
 
-		// Mock the manager with transaction support
 		const mockManager: any = {
 			transaction: jest.fn(async (cb: any) => await cb(mockTransactionManager)),
 		};
 
-		// Assign manager and target properties
 		(accessTokenRepository as any).manager = mockManager;
 		(accessTokenRepository as any).target = 'AccessToken';
 		(refreshTokenRepository as any).target = 'RefreshToken';
@@ -67,10 +64,8 @@ describe('McpOAuthTokenService', () => {
 
 			const { accessToken, refreshToken } = service.generateTokenPair(userId, clientId);
 
-			// Access token should be a JWT
 			expect(accessToken).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/); // JWT format
 
-			// Verify JWT claims
 			const decoded = jwtService.decode(accessToken) as any;
 			expect(decoded.sub).toBe(userId);
 			expect(decoded.aud).toBe('mcp-server-api');
@@ -80,7 +75,6 @@ describe('McpOAuthTokenService', () => {
 			expect(decoded.iat).toBeDefined();
 			expect(decoded.exp).toBeDefined();
 
-			// Refresh token should be opaque (hex string)
 			expect(refreshToken).toHaveLength(64); // 32 bytes hex = 64 characters
 			expect(refreshToken).toMatch(/^[a-f0-9]{64}$/);
 		});
@@ -110,15 +104,12 @@ describe('McpOAuthTokenService', () => {
 			expect(mockManager.transaction).toHaveBeenCalled();
 			expect(mockTransactionManager.save).toHaveBeenCalledTimes(2);
 
-			// Check access token save
 			expect(mockTransactionManager.save).toHaveBeenCalledWith('AccessToken', {
 				token: accessToken,
 				clientId,
 				userId,
-				revoked: false,
 			});
 
-			// Check refresh token save
 			expect(mockTransactionManager.save).toHaveBeenCalledWith('RefreshToken', {
 				token: refreshToken,
 				clientId,
@@ -151,10 +142,8 @@ describe('McpOAuthTokenService', () => {
 				refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
 			});
 
-			// Old refresh token should be removed
 			expect(refreshTokenRepository.remove).toHaveBeenCalledWith(refreshTokenRecord);
 
-			// New token pair should be saved
 			const mockManager = accessTokenRepository.manager as any;
 			expect(mockManager.transaction).toHaveBeenCalled();
 		});
@@ -196,7 +185,6 @@ describe('McpOAuthTokenService', () => {
 				token: accessToken,
 				clientId,
 				userId,
-				revoked: false,
 			});
 
 			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
@@ -222,7 +210,6 @@ describe('McpOAuthTokenService', () => {
 		});
 
 		it('should throw error for wrong audience', async () => {
-			// Create a JWT with wrong audience
 			const wrongAudienceToken = jwtService.sign({
 				sub: 'user-123',
 				aud: 'wrong-audience', // Not 'mcp-server-api'
@@ -245,25 +232,6 @@ describe('McpOAuthTokenService', () => {
 				'Invalid access token: not found in database',
 			);
 		});
-
-		it('should throw error when token is revoked', async () => {
-			const userId = 'user-123';
-			const clientId = 'client-456';
-			const { accessToken } = service.generateTokenPair(userId, clientId);
-
-			const revokedTokenRecord = mock<AccessToken>({
-				token: accessToken,
-				clientId,
-				userId,
-				revoked: true, // Revoked
-			});
-
-			accessTokenRepository.findOne.mockResolvedValue(revokedTokenRecord);
-
-			await expect(service.verifyAccessToken(accessToken)).rejects.toThrow(
-				'Access token has been revoked',
-			);
-		});
 	});
 
 	describe('verifyOAuthToken', () => {
@@ -276,7 +244,6 @@ describe('McpOAuthTokenService', () => {
 				token: accessToken,
 				clientId,
 				userId,
-				revoked: false,
 			});
 
 			const user = mock<User>({ id: userId });
@@ -310,7 +277,6 @@ describe('McpOAuthTokenService', () => {
 				token: accessToken,
 				clientId,
 				userId,
-				revoked: false,
 			});
 
 			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
@@ -323,24 +289,22 @@ describe('McpOAuthTokenService', () => {
 	});
 
 	describe('revokeAccessToken', () => {
-		it('should mark access token as revoked', async () => {
+		it('should delete access token', async () => {
 			const token = 'access-token-123';
 			const clientId = 'client-456';
 			const accessTokenRecord = mock<AccessToken>({
 				token,
 				clientId,
 				userId: 'user-123',
-				revoked: false,
 			});
 
 			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
-			accessTokenRepository.save.mockResolvedValue(accessTokenRecord);
+			accessTokenRepository.remove.mockResolvedValue(accessTokenRecord);
 
 			const result = await service.revokeAccessToken(token, clientId);
 
 			expect(result).toBe(true);
-			expect(accessTokenRecord.revoked).toBe(true);
-			expect(accessTokenRepository.save).toHaveBeenCalledWith(accessTokenRecord);
+			expect(accessTokenRepository.remove).toHaveBeenCalledWith(accessTokenRecord);
 			expect(logger.info).toHaveBeenCalledWith('Access token revoked', {
 				clientId,
 				userId: 'user-123',
@@ -353,7 +317,7 @@ describe('McpOAuthTokenService', () => {
 			const result = await service.revokeAccessToken('nonexistent-token', 'client-456');
 
 			expect(result).toBe(false);
-			expect(accessTokenRepository.save).not.toHaveBeenCalled();
+			expect(accessTokenRepository.remove).not.toHaveBeenCalled();
 		});
 	});
 

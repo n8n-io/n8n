@@ -7,6 +7,10 @@ import { OAuthClientRepository } from './oauth-client.repository';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { UserConsentRepository } from './oauth-user-consent.repository';
 
+/**
+ * Manages OAuth consent flow for MCP server
+ * Handles user authorization decisions and generates authorization codes
+ */
 @Service()
 export class McpOAuthConsentService {
 	constructor(
@@ -26,10 +30,8 @@ export class McpOAuthConsentService {
 		clientId: string;
 	} | null> {
 		try {
-			// Verify and decode the JWT session token
 			const sessionPayload = this.oauthSessionService.verifySession(sessionToken);
 
-			// Look up the client
 			const client = await this.oauthClientRepository.findOne({
 				where: { id: sessionPayload.clientId },
 			});
@@ -57,7 +59,6 @@ export class McpOAuthConsentService {
 		userId: string,
 		approved: boolean,
 	): Promise<{ redirectUrl: string }> {
-		// Verify the JWT session token
 		let sessionPayload: OAuthSessionPayload;
 		try {
 			sessionPayload = this.oauthSessionService.verifySession(sessionToken);
@@ -66,7 +67,6 @@ export class McpOAuthConsentService {
 		}
 
 		if (!approved) {
-			// User denied consent
 			const redirectUrl = McpOAuthHelpers.buildErrorRedirectUrl(
 				sessionPayload.redirectUri,
 				'access_denied',
@@ -82,7 +82,6 @@ export class McpOAuthConsentService {
 			return { redirectUrl };
 		}
 
-		// User approved - save consent and generate authorization code
 		await this.userConsentRepository.save({
 			userId,
 			clientId: sessionPayload.clientId,

@@ -51,7 +51,6 @@ describe('McpOAuthHelpers', () => {
 
 			const result = McpOAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
 
-			// URL class automatically encodes special characters
 			expect(result).toContain('code=code%2Bwith%2Fspecial%3Dchars');
 		});
 	});
@@ -145,7 +144,6 @@ describe('McpOAuthHelpers', () => {
 				state,
 			);
 
-			// URL class automatically encodes special characters
 			expect(result).toContain('error_description=');
 			expect(result).not.toContain('"'); // Should be encoded
 		});

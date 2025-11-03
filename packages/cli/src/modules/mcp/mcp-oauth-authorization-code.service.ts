@@ -4,6 +4,10 @@ import { randomBytes } from 'node:crypto';
 
 import { AuthorizationCodeRepository } from './oauth-authorization-code.repository';
 
+/**
+ * Handles OAuth 2.1 authorization code lifecycle for MCP server
+ * Generates, validates, and consumes authorization codes with PKCE support
+ */
 @Service()
 export class McpOAuthAuthorizationCodeService {
 	private readonly AUTHORIZATION_CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
@@ -85,7 +89,6 @@ export class McpOAuthAuthorizationCodeService {
 			throw new Error('Redirect URI mismatch');
 		}
 
-		// Mark as used
 		authRecord.used = true;
 		await this.authorizationCodeRepository.save(authRecord);
 

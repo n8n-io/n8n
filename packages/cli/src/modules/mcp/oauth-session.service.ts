@@ -13,6 +13,10 @@ export interface OAuthSessionPayload {
 const COOKIE_NAME = 'n8n-oauth-session';
 const SESSION_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
+/**
+ * Manages OAuth authorization session state using JWT-based cookies
+ * Stores temporary session data during the authorization flow
+ */
 @Service()
 export class OAuthSessionService {
 	constructor(private readonly jwtService: JwtService) {}

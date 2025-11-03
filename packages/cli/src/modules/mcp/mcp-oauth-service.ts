@@ -20,6 +20,10 @@ import { OAuthSessionService } from './oauth-session.service';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflow', 'tool:getWorkflowDetails'];
 
+/**
+ * OAuth 2.1 server implementation for MCP
+ * Implements MCP SDK OAuthServerProvider interface for client registration, authorization, and token management
+ */
 @Service()
 export class McpOAuthService implements OAuthServerProvider {
 	constructor(
@@ -85,14 +89,6 @@ export class McpOAuthService implements OAuthServerProvider {
 		this.logger.debug('Starting OAuth authorization', { clientId: client.client_id });
 
 		try {
-			// Always redirect to consent screen
-			// Note: MCP SDK validates all params (client_id, redirect_uri, code_challenge, etc.)
-			// before calling this method, so we don't need to validate again.
-			// - If authenticated: Consent page shows directly
-			// - If not authenticated: Consent endpoint (skipAuth: false) redirects to login
-			// Dynamic client registration creates new client_id on each connection,
-			// so we can't rely on existing consent checks to skip the consent screen.
-			// The consent table is still maintained for authorization history and user management.
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,
 				redirectUri: params.redirectUri,
@@ -124,14 +120,12 @@ export class McpOAuthService implements OAuthServerProvider {
 		_codeVerifier?: string,
 		redirectUri?: string,
 	): Promise<OAuthTokens> {
-		// Validate and consume the authorization code
 		const authRecord = await this.authorizationCodeService.validateAndConsumeAuthorizationCode(
 			authorizationCode,
 			client.client_id,
 			redirectUri,
 		);
 
-		// Generate and persist token pair
 		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
 			authRecord.userId,
 			client.client_id,
@@ -175,7 +169,6 @@ export class McpOAuthService implements OAuthServerProvider {
 	): Promise<void> {
 		const { token, token_type_hint } = request;
 
-		// Try to revoke as access token first (or if hint is 'access_token')
 		if (!token_type_hint || token_type_hint === 'access_token') {
 			const revoked = await this.tokenService.revokeAccessToken(token, client.client_id);
 			if (revoked) {
@@ -183,7 +176,6 @@ export class McpOAuthService implements OAuthServerProvider {
 			}
 		}
 
-		// Try to revoke as refresh token
 		if (!token_type_hint || token_type_hint === 'refresh_token') {
 			const revoked = await this.tokenService.revokeRefreshToken(token, client.client_id);
 			if (revoked) {
@@ -191,7 +183,6 @@ export class McpOAuthService implements OAuthServerProvider {
 			}
 		}
 
-		// If token not found, silently succeed per OAuth 2.0 spec
 		this.logger.debug('Token revocation requested for unknown token', {
 			clientId: client.client_id,
 		});

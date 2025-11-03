@@ -10,6 +10,10 @@ import { JwtService } from '@/services/jwt.service';
 import { AccessTokenRepository } from './oauth-access-token.repository';
 import { RefreshTokenRepository } from './oauth-refresh-token.repository';
 
+/**
+ * Manages OAuth 2.1 token lifecycle for MCP server
+ * Generates, validates, rotates, and revokes access and refresh tokens
+ */
 @Service()
 export class McpOAuthTokenService {
 	private readonly MCP_AUDIENCE = 'mcp-server-api';
@@ -24,11 +28,6 @@ export class McpOAuthTokenService {
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 	) {}
 
-	/**
-	 * Generate token pair (access + refresh)
-	 * Access token: JWT with MCP audience claim (RFC 8707)
-	 * Refresh token: Cryptographically secure opaque token
-	 */
 	generateTokenPair(
 		userId: string,
 		clientId: string,
@@ -50,25 +49,17 @@ export class McpOAuthTokenService {
 		return { accessToken, refreshToken };
 	}
 
-	/**
-	 * Save token pair to database with transaction
-	 * Ensures atomicity - both tokens saved or neither
-	 */
 	async saveTokenPair(
 		accessToken: string,
 		refreshToken: string,
 		clientId: string,
 		userId: string,
 	): Promise<void> {
-		// Wrap in transaction for atomicity
-		// Note: Access tokens are JWTs with embedded exp claim, validated by jwtService.verify()
-		// We store the JWT in DB only for immediate revocation capability
 		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
 			await transactionManager.save(this.accessTokenRepository.target, {
 				token: accessToken,
 				clientId,
 				userId,
-				revoked: false,
 			});
 
 			await transactionManager.save(this.refreshTokenRepository.target, {
@@ -80,15 +71,10 @@ export class McpOAuthTokenService {
 		});
 	}
 
-	/**
-	 * Validate refresh token and rotate (OAuth 2.1 security best practice)
-	 * Returns new token pair, invalidates old refresh token
-	 */
 	async validateAndRotateRefreshToken(
 		refreshToken: string,
 		clientId: string,
 	): Promise<OAuthTokens> {
-		// Validate refresh token
 		const refreshTokenRecord = await this.refreshTokenRepository.findOne({
 			where: {
 				token: refreshToken,
@@ -105,16 +91,13 @@ export class McpOAuthTokenService {
 			throw new Error('Refresh token expired');
 		}
 
-		// Generate new token pair (refresh token rotation for OAuth 2.1 security)
 		const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 			refreshTokenRecord.userId,
 			clientId,
 		);
 
-		// Invalidate old refresh token (prevents reuse)
 		await this.refreshTokenRepository.remove(refreshTokenRecord);
 
-		// Save new token pair to database
 		await this.saveTokenPair(accessToken, newRefreshToken, clientId, refreshTokenRecord.userId);
 
 		this.logger.info('Refresh token rotated and new access token issued', {
@@ -130,20 +113,8 @@ export class McpOAuthTokenService {
 		};
 	}
 
-	/**
-	 * Verify JWT access token
-	 * 3-step validation: JWT signature → MCP audience → revocation check
-	 */
 	async verifyAccessToken(token: string): Promise<AuthInfo> {
-		// Step 1: Verify JWT signature and decode claims
-		let decoded: {
-			sub: string;
-			aud: string;
-			client_id: string;
-			jti: string;
-			iat: number;
-			exp: number;
-		};
+		let decoded;
 
 		try {
 			decoded = this.jwtService.verify(token);
@@ -151,12 +122,10 @@ export class McpOAuthTokenService {
 			throw new Error('Invalid access token: JWT verification failed');
 		}
 
-		// Step 2: Validate audience (MCP spec requirement - RFC 8707)
 		if (decoded.aud !== this.MCP_AUDIENCE) {
 			throw new Error(`Invalid token audience: expected ${this.MCP_AUDIENCE}, got ${decoded.aud}`);
 		}
 
-		// Step 3: Check database for revocation (immediate revocation on user action)
 		const accessTokenRecord = await this.accessTokenRepository.findOne({
 			where: { token },
 		});
@@ -165,40 +134,25 @@ export class McpOAuthTokenService {
 			throw new Error('Invalid access token: not found in database');
 		}
 
-		if (accessTokenRecord.revoked) {
-			throw new Error('Access token has been revoked');
-		}
-
-		// JWT expiry is validated by jwtService.verify(), no need to check expiresAt again
-
-		// Return auth info from JWT claims
 		return {
 			token,
 			clientId: decoded.client_id,
-			scopes: [], // Scopes support deferred - MCP SDK supports it but n8n doesn't implement granular permissions yet
+			scopes: [],
 			extra: {
 				userId: decoded.sub,
 			},
 		};
 	}
 
-	/**
-	 * Verify OAuth access token and return user
-	 * Validates JWT signature, audience, revocation, and fetches user from database
-	 * Used by middleware for authentication
-	 */
 	async verifyOAuthToken(token: string): Promise<User | null> {
 		try {
-			// Verify token (JWT signature + audience + revocation check)
 			const authInfo = await this.verifyAccessToken(token);
 
-			// Extract userId from token claims
 			const userId = authInfo.extra?.userId as string;
 			if (!userId) {
 				return null;
 			}
 
-			// Fetch user from database
 			const user = await this.userRepository.findOne({
 				where: { id: userId },
 				relations: ['role'],
@@ -206,14 +160,10 @@ export class McpOAuthTokenService {
 
 			return user;
 		} catch (error) {
-			// Token validation failed
 			return null;
 		}
 	}
 
-	/**
-	 * Revoke access token (mark as revoked for immediate invalidation)
-	 */
 	async revokeAccessToken(token: string, clientId: string): Promise<boolean> {
 		const accessTokenRecord = await this.accessTokenRepository.findOne({
 			where: {
@@ -226,8 +176,7 @@ export class McpOAuthTokenService {
 			return false;
 		}
 
-		accessTokenRecord.revoked = true;
-		await this.accessTokenRepository.save(accessTokenRecord);
+		await this.accessTokenRepository.remove(accessTokenRecord);
 
 		this.logger.info('Access token revoked', {
 			clientId,
@@ -237,9 +186,6 @@ export class McpOAuthTokenService {
 		return true;
 	}
 
-	/**
-	 * Revoke refresh token (delete from database)
-	 */
 	async revokeRefreshToken(token: string, clientId: string): Promise<boolean> {
 		const refreshTokenRecord = await this.refreshTokenRepository.findOne({
 			where: {

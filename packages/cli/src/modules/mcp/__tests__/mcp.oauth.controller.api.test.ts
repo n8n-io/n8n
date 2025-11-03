@@ -64,7 +64,6 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 
 		const metadata = response.body;
 
-		// Required fields per RFC 8414
 		expect(metadata.issuer).toBeDefined();
 		expect(metadata.authorization_endpoint).toBeDefined();
 		expect(metadata.token_endpoint).toBeDefined();
@@ -191,9 +190,7 @@ describe('POST /mcp-oauth/register', () => {
 	});
 
 	test('should validate required fields in client registration', async () => {
-		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
-			// Missing required fields
-		});
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({});
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 	});
@@ -209,12 +206,10 @@ describe('GET /mcp-oauth/authorize', () => {
 			code_challenge_method: 'S256',
 		});
 
-		// Should redirect to login or return 401/403
 		expect([302, 400, 401, 403]).toContain(response.statusCode);
 	});
 
 	test('should accept valid authorization request parameters', async () => {
-		// First register a client
 		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
 			client_name: 'Test Client',
 			redirect_uris: ['https://example.com/callback'],
@@ -233,21 +228,18 @@ describe('GET /mcp-oauth/authorize', () => {
 			state: 'random-state',
 		});
 
-		// Should redirect to consent screen or error page
 		expect(response.statusCode).toBeGreaterThanOrEqual(200);
 	});
 });
 
 describe('POST /mcp-oauth/token', () => {
 	test('should be accessible without authentication', async () => {
-		// Token endpoint should accept client authentication via POST body
 		const response = await testServer.restlessAgent.post('/mcp-oauth/token').send({
 			grant_type: 'authorization_code',
 			code: 'invalid-code',
 			client_id: 'test-client',
 		});
 
-		// Should return error but not 401 (endpoint is accessible)
 		expect(response.statusCode).not.toBe(401);
 	});
 
@@ -283,8 +275,6 @@ describe('POST /mcp-oauth/revoke', () => {
 			client_id: 'test-client',
 		});
 
-		// Per OAuth spec, revocation should succeed even for invalid tokens
-		// Should not return 401
 		expect(response.statusCode).not.toBe(401);
 	});
 
@@ -295,7 +285,6 @@ describe('POST /mcp-oauth/revoke', () => {
 			token_type_hint: 'access_token',
 		});
 
-		// Should return 200 OK per OAuth 2.0 spec (even for unknown tokens)
 		expect([200, 204, 400]).toContain(response.statusCode);
 	});
 
@@ -305,7 +294,6 @@ describe('POST /mcp-oauth/revoke', () => {
 			client_id: 'test-client',
 		});
 
-		// Should still process the request
 		expect(response.statusCode).toBeGreaterThanOrEqual(200);
 	});
 });
@@ -325,7 +313,6 @@ describe('OAuth Discovery - Cross-validation', () => {
 		const authServer = authServerResponse.body;
 		const protectedResource = protectedResourceResponse.body;
 
-		// Authorization server issuer should match the protected resource's authorization server
 		expect(protectedResource.authorization_servers).toContain(authServer.issuer);
 	});
 

@@ -33,7 +33,6 @@ afterEach(async () => {
 
 describe('GET /rest/consent/details', () => {
 	test('should return consent details for valid session', async () => {
-		// Create a client
 		const client = await oauthClientRepository.save({
 			id: 'test-client-id',
 			name: 'Test OAuth Client',
@@ -42,7 +41,6 @@ describe('GET /rest/consent/details', () => {
 			tokenEndpointAuthMethod: 'none',
 		});
 
-		// Create a valid session token
 		const sessionPayload = {
 			clientId: client.id,
 			redirectUri: 'https://example.com/callback',
@@ -52,7 +50,6 @@ describe('GET /rest/consent/details', () => {
 
 		const sessionToken = createSessionToken(sessionPayload);
 
-		// Make request with session cookie
 		const response = await testServer
 			.authAgentFor(owner)
 			.get('/consent/details')
@@ -89,7 +86,6 @@ describe('GET /rest/consent/details', () => {
 	});
 
 	test('should return 400 when client does not exist', async () => {
-		// Create session for non-existent client
 		const sessionPayload = {
 			clientId: 'non-existent-client',
 			redirectUri: 'https://example.com/callback',
@@ -118,7 +114,6 @@ describe('GET /rest/consent/details', () => {
 			.set('Cookie', 'n8n-oauth-session=invalid-token');
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
-		// Check that clear cookie header is set
 		const setCookieHeader = response.headers['set-cookie'];
 		expect(setCookieHeader).toBeDefined();
 		expect(setCookieHeader[0]).toContain('n8n-oauth-session=');
@@ -149,7 +144,6 @@ describe('GET /rest/consent/details', () => {
 
 		const sessionToken = createSessionToken(sessionPayload);
 
-		// Test with owner
 		const ownerResponse = await testServer
 			.authAgentFor(owner)
 			.get('/consent/details')
@@ -158,7 +152,6 @@ describe('GET /rest/consent/details', () => {
 		expect(ownerResponse.statusCode).toBe(200);
 		expect(ownerResponse.body.clientName).toBe('Test Client 2');
 
-		// Test with member
 		const memberResponse = await testServer
 			.authAgentFor(member)
 			.get('/consent/details')
@@ -174,7 +167,6 @@ describe('POST /rest/consent/approve', () => {
 	let sessionToken: string;
 
 	beforeEach(async () => {
-		// Create a client for each test
 		client = await oauthClientRepository.save({
 			id: `test-client-${Date.now()}`,
 			name: 'Test OAuth Client',
@@ -206,7 +198,6 @@ describe('POST /rest/consent/approve', () => {
 			redirectUrl: expect.stringContaining('https://example.com/callback?code='),
 		});
 
-		// Verify redirect URL contains authorization code and state
 		const redirectUrl = new URL(response.body.redirectUrl);
 		expect(redirectUrl.searchParams.get('code')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('code')?.length).toBeGreaterThan(32);
@@ -226,7 +217,6 @@ describe('POST /rest/consent/approve', () => {
 			redirectUrl: expect.stringContaining('https://example.com/callback?error=access_denied'),
 		});
 
-		// Verify redirect URL contains error parameters
 		const redirectUrl = new URL(response.body.redirectUrl);
 		expect(redirectUrl.searchParams.get('error')).toBe('access_denied');
 		expect(redirectUrl.searchParams.get('error_description')).toBeTruthy();
@@ -242,7 +232,6 @@ describe('POST /rest/consent/approve', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		// Check that clear cookie header is set
 		const setCookieHeader = response.headers['set-cookie'];
 		expect(setCookieHeader).toBeDefined();
 		expect(setCookieHeader[0]).toContain('n8n-oauth-session=');
@@ -311,7 +300,6 @@ describe('POST /rest/consent/approve', () => {
 			.set('Cookie', 'n8n-oauth-session=invalid-token')
 			.send({ approved: true });
 
-		// Check that clear cookie header is set even on error
 		const setCookieHeader = response.headers['set-cookie'];
 		expect(setCookieHeader).toBeDefined();
 		expect(setCookieHeader[0]).toContain('n8n-oauth-session=');
@@ -336,7 +324,6 @@ describe('POST /rest/consent/approve', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		// Verify consent record was created
 		const { UserConsentRepository } = await import('../oauth-user-consent.repository');
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -358,7 +345,6 @@ describe('POST /rest/consent/approve', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		// Verify no consent record was created
 		const { UserConsentRepository } = await import('../oauth-user-consent.repository');
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -369,7 +355,6 @@ describe('POST /rest/consent/approve', () => {
 	});
 
 	test('should handle consent from different users', async () => {
-		// Owner approves
 		const ownerResponse = await testServer
 			.authAgentFor(owner)
 			.post('/consent/approve')
@@ -379,7 +364,6 @@ describe('POST /rest/consent/approve', () => {
 		expect(ownerResponse.statusCode).toBe(200);
 		expect(ownerResponse.body.redirectUrl).toContain('code=');
 
-		// Create new session for member
 		const newSessionToken = createSessionToken({
 			clientId: client.id,
 			redirectUri: 'https://example.com/callback',
@@ -387,7 +371,6 @@ describe('POST /rest/consent/approve', () => {
 			state: 'test-state-2',
 		});
 
-		// Member denies
 		const memberResponse = await testServer
 			.authAgentFor(member)
 			.post('/consent/approve')
@@ -401,7 +384,6 @@ describe('POST /rest/consent/approve', () => {
 
 describe('Consent Flow - End-to-End', () => {
 	test('should complete full consent flow from details to approval', async () => {
-		// Create a client
 		const client = await oauthClientRepository.save({
 			id: 'e2e-test-client',
 			name: 'End-to-End Test Client',
@@ -410,7 +392,6 @@ describe('Consent Flow - End-to-End', () => {
 			tokenEndpointAuthMethod: 'none',
 		});
 
-		// Create session
 		const sessionPayload = {
 			clientId: client.id,
 			redirectUri: 'https://example.com/callback',
@@ -420,7 +401,6 @@ describe('Consent Flow - End-to-End', () => {
 
 		const sessionToken = createSessionToken(sessionPayload);
 
-		// Step 1: Get consent details
 		const detailsResponse = await testServer
 			.authAgentFor(owner)
 			.get('/consent/details')
@@ -429,7 +409,6 @@ describe('Consent Flow - End-to-End', () => {
 		expect(detailsResponse.statusCode).toBe(200);
 		expect(detailsResponse.body.clientName).toBe('End-to-End Test Client');
 
-		// Step 2: Approve consent
 		const approvalResponse = await testServer
 			.authAgentFor(owner)
 			.post('/consent/approve')
@@ -441,7 +420,6 @@ describe('Consent Flow - End-to-End', () => {
 		expect(approvalResponse.body.redirectUrl).toContain('code=');
 		expect(approvalResponse.body.redirectUrl).toContain('state=e2e-state');
 
-		// Step 3: Verify cookie was cleared in the approval response
 		const setCookieHeader = approvalResponse.headers['set-cookie'];
 		expect(setCookieHeader).toBeDefined();
 		expect(setCookieHeader[0]).toContain('n8n-oauth-session=');

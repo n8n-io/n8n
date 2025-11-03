@@ -30,22 +30,17 @@ export class McpServerMiddlewareService {
 	 * Uses JWT metadata to determine token type and route to correct validation
 	 */
 	async getUserForToken(token: string): Promise<User | null> {
-		// Decode JWT to check metadata (without verification)
 		let decoded: { meta?: { isOAuth?: boolean } };
 		try {
 			decoded = this.jwtService.decode<{ meta?: { isOAuth?: boolean } }>(token);
 		} catch (error) {
-			// Not a valid JWT format
 			return null;
 		}
 
-		// Check if this is an OAuth access token
 		if (decoded?.meta?.isOAuth === true) {
-			// Validate OAuth token (JWT signature + audience + revocation + fetch user)
 			return await this.mcpAuthTokenService.verifyOAuthToken(token);
 		}
 
-		// This is an API key - validate JWT signature, issuer, audience, and fetch user
 		return await this.mcpServerApiKeyService.verifyApiKey(token);
 	}
 
@@ -69,7 +64,6 @@ export class McpServerMiddlewareService {
 				return;
 			}
 
-			// Try to authenticate with OAuth or API key
 			const user = await this.getUserForToken(token);
 
 			if (!user) {

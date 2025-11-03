@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useConsentStore } from '@/stores/consent.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useConsentStore } from '@/app/stores/consent.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { onMounted, computed } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
-import { MCP_DOCS_PAGE_URL } from '@/features/mcpAccess/mcp.constants';
-import { useToast } from '@/composables/useToast';
+import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
+import { useToast } from '@/app/composables/useToast';
 
 const ANTHROPIC_CLIENTS = ['claude', 'mcp inspector'];
 const LOVABLE_CLIENTS = ['lovable'];

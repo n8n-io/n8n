@@ -77,19 +77,13 @@ export class McpServerApiKeyService {
 		});
 	}
 
-	/**
-	 * Verify API key JWT and return user
-	 * Validates JWT signature, issuer, audience, and fetches user from database
-	 */
 	async verifyApiKey(apiKey: string): Promise<User | null> {
 		try {
-			// Verify JWT signature, issuer, and audience
 			this.jwtService.verify(apiKey, {
 				issuer: API_KEY_ISSUER,
 				audience: API_KEY_AUDIENCE,
 			});
 
-			// Fetch user from database
 			return await this.getUserForApiKey(apiKey);
 		} catch (error) {
 			return null;
@@ -100,7 +94,6 @@ export class McpServerApiKeyService {
 		const accessToken = await this.accessTokenRepository.findOne({
 			where: {
 				token,
-				revoked: false,
 			},
 		});
 
