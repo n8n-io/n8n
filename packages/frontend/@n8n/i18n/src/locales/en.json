@@ -2435,6 +2435,7 @@
 	"settings.provisioningConfirmDialog.breakingChangeRequiredSteps": "In order to migrate your existing access settings to your SSO provider, download the two csv files below. This step is mandatory.",
 	"settings.provisioningConfirmDialog.button.confirm": "Activate JIT",
 	"settings.provisioningConfirmDialog.button.cancel": "Cancel",
+	"settings.provisioningConfirmDialog.button.generateCsvExport": "Generate access settings CSV export",
 	"settings.provisioningConfirmDialog.button.downloadProjectRolesCsv": "Download existing project access settings",
 	"settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv": "Download exsiting instance role settings",
 	"settings.externalSecrets.title": "External Secrets",
