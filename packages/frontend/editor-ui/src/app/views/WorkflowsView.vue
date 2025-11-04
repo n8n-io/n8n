@@ -348,6 +348,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				resourceType: 'workflow',
 				id: resource.id,
 				name: resource.name,
+				description: resource.description,
 				active: resource.active ?? false,
 				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),

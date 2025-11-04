@@ -509,20 +509,26 @@ const tags = computed(
 		@click="onClick"
 	>
 		<template #header>
-			<N8nText
-				tag="h2"
-				bold
-				:class="{
-					[$style.cardHeading]: true,
-					[$style.cardHeadingArchived]: data.isArchived,
-				}"
-				data-test-id="workflow-card-name"
+			<N8nTooltip
+				:content="data.description"
+				:disabled="!data.description"
+				data-test-id="workflow-card-name-tooltip"
 			>
-				{{ data.name }}
-				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
-					{{ locale.baseText('workflows.item.readonly') }}
-				</N8nBadge>
-			</N8nText>
+				<N8nText
+					tag="h2"
+					bold
+					:class="{
+						[$style.cardHeading]: true,
+						[$style.cardHeadingArchived]: data.isArchived,
+					}"
+					data-test-id="workflow-card-name"
+				>
+					{{ data.name }}
+					<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+						{{ locale.baseText('workflows.item.readonly') }}
+					</N8nBadge>
+				</N8nText>
+			</N8nTooltip>
 		</template>
 		<div :class="$style.cardDescription">
 			<span v-show="data"
