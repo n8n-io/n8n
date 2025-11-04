@@ -18,7 +18,7 @@ vi.mock('@/features/core/dataTable/composables/useDataTableTypes', () => ({
 	}),
 }));
 
-vi.mock('@/composables/useDebounce', () => ({
+vi.mock('@/app/composables/useDebounce', () => ({
 	useDebounce: () => ({
 		debounce:
 			(fn: Function) =>

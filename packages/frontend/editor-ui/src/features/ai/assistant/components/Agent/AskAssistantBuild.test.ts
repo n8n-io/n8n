@@ -14,7 +14,7 @@ interface VueComponentInstance {
 
 // Mock workflow saving first before any other imports
 const saveCurrentWorkflowMock = vi.hoisted(() => vi.fn());
-vi.mock('@/composables/useWorkflowSaving', () => ({
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: vi.fn().mockReturnValue({
 		saveCurrentWorkflow: saveCurrentWorkflowMock,
 		getWorkflowDataToSave: vi.fn(),
@@ -106,11 +106,11 @@ import AskAssistantBuild from './AskAssistantBuild.vue';
 import { useBuilderStore } from '../../builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
-vi.mock('@/event-bus', () => ({
+vi.mock('@/app/event-bus', () => ({
 	nodeViewEventBus: {
 		emit: vi.fn(),
 	},
@@ -118,7 +118,7 @@ vi.mock('@/event-bus', () => ({
 
 // Mock telemetry
 const trackMock = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: trackMock,
 	}),
@@ -152,7 +152,7 @@ vi.mock('vue-router', () => {
 
 // Mock usePageRedirectionHelper
 const goToUpgradeMock = vi.fn();
-vi.mock('@/composables/usePageRedirectionHelper', () => ({
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({
 		goToUpgrade: goToUpgradeMock,
 	}),
@@ -1345,6 +1345,50 @@ describe('AskAssistantBuild', () => {
 
 			// Verify the ExecuteMessage component should NOT be rendered
 			expect(queryByTestId('execute-message-component')).not.toBeInTheDocument();
+		});
+	});
+
+	it('should track categorization telemetry when categorize_prompt tool completes', async () => {
+		renderComponent();
+
+		// Simulate streaming starts
+		builderStore.$patch({ streaming: true });
+		await flushPromises();
+
+		// Add categorization tool message
+		builderStore.toolMessages = [
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'categorize_prompt',
+				toolCallId: faker.string.uuid(),
+				status: 'completed',
+				updates: [
+					{
+						type: 'output',
+						data: {
+							categorization: {
+								techniques: ['chatbot', 'notification'],
+								confidence: 0.85,
+							},
+						},
+					},
+				],
+			},
+		];
+
+		// Simulate streaming stops (this triggers trackWorkflowModifications)
+		builderStore.$patch({ streaming: false });
+		await flushPromises();
+
+		expect(trackMock).toHaveBeenCalledWith('Classifier labels user prompt', {
+			user_id: undefined,
+			workflow_id: 'abc123',
+			classifier_labels: ['chatbot', 'notification'],
+			confidence: 0.85,
+			session_id: 'app_session_id',
+			timestamp: expect.any(String),
 		});
 	});
 

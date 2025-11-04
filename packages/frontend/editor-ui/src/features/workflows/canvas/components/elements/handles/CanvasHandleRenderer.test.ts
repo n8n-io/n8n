@@ -1,7 +1,7 @@
 import CanvasHandleRenderer from './CanvasHandleRenderer.vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
-import { CanvasNodeHandleKey } from '@/constants';
+import { CanvasNodeHandleKey } from '@/app/constants';
 import { ref } from 'vue';
 import { CanvasConnectionMode, type CanvasElementPortWithRenderData } from '../../../canvas.types';
 import { Position } from '@vue-flow/core';

@@ -7,14 +7,14 @@ import {
 } from './utils';
 
 const getVariant = vi.fn();
-vi.mock('@/stores/posthog.store', () => ({
+vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
 		getVariant,
 	})),
 }));
 
 let isTrialing = false;
-vi.mock('@/stores/cloudPlan.store', () => ({
+vi.mock('@/app/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: vi.fn(() => ({
 		userIsTrialing: isTrialing,
 		currentUserCloudInfo: {
@@ -23,7 +23,7 @@ vi.mock('@/stores/cloudPlan.store', () => ({
 	})),
 }));
 
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
 		userIsTrialing: isTrialing,
 		activeWorkflows: [1, 2, 3],
@@ -31,7 +31,7 @@ vi.mock('@/stores/workflows.store', () => ({
 }));
 
 const mockTrack = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: mockTrack,
 	})),

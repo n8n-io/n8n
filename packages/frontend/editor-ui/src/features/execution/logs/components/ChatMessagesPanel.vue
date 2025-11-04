@@ -8,8 +8,8 @@ import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
 import { computed, ref } from 'vue';
-import { useClipboard } from '@/composables/useClipboard';
-import { useToast } from '@/composables/useToast';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useToast } from '@/app/composables/useToast';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {

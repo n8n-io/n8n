@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { reactive, computed, toRefs } from 'vue';
 import type { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
-import { WEBHOOK_NODE_TYPE, DRAG_EVENT_DATA_KEY } from '@/constants';
+import { WEBHOOK_NODE_TYPE, DRAG_EVENT_DATA_KEY } from '@/app/constants';
 
-import { DEFAULT_NODE_SIZE, getNewNodePosition } from '@/utils/nodeViewUtils';
-import NodeIcon from '@/components/NodeIcon.vue';
+import { DEFAULT_NODE_SIZE, getNewNodePosition } from '@/app/utils/nodeViewUtils';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useActions } from '../../composables/useActions';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { N8nNodeCreatorNode } from '@n8n/design-system';
 export interface Props {

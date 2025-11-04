@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { type ITemplatesWorkflow } from '@n8n/rest-api-client';
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
 import { useRouter } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
-import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/constants';
-import NodeIcon from '@/components/NodeIcon.vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/app/constants';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nCard, N8nText } from '@n8n/design-system';
 

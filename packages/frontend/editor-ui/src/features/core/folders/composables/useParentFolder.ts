@@ -1,6 +1,6 @@
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 export function useParentFolder() {
 	const foldersStore = useFoldersStore();

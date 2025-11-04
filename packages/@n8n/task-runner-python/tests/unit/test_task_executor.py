@@ -3,6 +3,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 from src.task_executor import TaskExecutor
+from src.pipe_reader import PipeReader
 from src.errors import TaskCancelledError, TaskKilledError, TaskSubprocessFailedError
 from src.constants import SIGTERM_EXIT_CODE, SIGKILL_EXIT_CODE, PIPE_MSG_PREFIX_LENGTH
 from src.message_types.pipe import (
@@ -174,7 +175,7 @@ class TestTaskExecutorLowLevelIO:
         data = b"test data"
         mock_os_read.return_value = data
 
-        result = TaskExecutor._read_exact_bytes(999, len(data))
+        result = PipeReader._read_exact_bytes(999, len(data))
 
         assert result == data
         mock_os_read.assert_called_once_with(999, len(data))
@@ -183,7 +184,7 @@ class TestTaskExecutorLowLevelIO:
     def test_read_exact_bytes_multiple_reads(self, mock_os_read):
         mock_os_read.side_effect = [b"test", b" ", b"data"]
 
-        result = TaskExecutor._read_exact_bytes(999, 9)
+        result = PipeReader._read_exact_bytes(999, 9)
 
         assert result == b"test data"
         assert mock_os_read.call_count == 3
@@ -193,7 +194,7 @@ class TestTaskExecutorLowLevelIO:
         mock_os_read.side_effect = [b"test", b""]  # empty for EOF
 
         with pytest.raises(EOFError, match="Pipe closed before reading all data"):
-            TaskExecutor._read_exact_bytes(999, 10)
+            PipeReader._read_exact_bytes(999, 10)
 
     @patch("os.write")
     def test_write_bytes_write_failure(self, mock_os_write):

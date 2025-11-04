@@ -8,7 +8,7 @@ import type {
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 
 export function useExternalSecretsProvider(
 	provider:

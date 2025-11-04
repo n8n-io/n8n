@@ -1,12 +1,12 @@
 import { ref, computed } from 'vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Router } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import type { NodeParameterValue } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export function useWorkflowResourcesLocator(router: Router) {
 	const workflowsStore = useWorkflowsStore();

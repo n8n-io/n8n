@@ -6,8 +6,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import type { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -17,11 +17,11 @@ import {
 	createTestWorkflowObject,
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { nextTick } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
@@ -69,7 +69,7 @@ vi.mock('@/features/ndv/shared/ndv.store', () => {
 	};
 });
 
-vi.mock('@/stores/nodeTypes.store', () => {
+vi.mock('@/app/stores/nodeTypes.store', () => {
 	return {
 		useNodeTypesStore: vi.fn(() => mockNodeTypesState),
 	};

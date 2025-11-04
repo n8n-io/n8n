@@ -5,7 +5,7 @@ import type {
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
 import { getResourcePermissions } from '@n8n/permissions';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 const props = withDefaults(
 	defineProps<{
