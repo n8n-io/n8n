@@ -486,9 +486,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (typeof filter?.name === 'string' && filter.name !== '') {
-			qb.andWhere('LOWER(workflow.name) LIKE :name', {
-				name: `%${filter.name.toLowerCase()}%`,
-			});
+			const searchTerm = `%${filter.name.toLowerCase()}%`;
+			qb.andWhere(
+				"(LOWER(workflow.name) LIKE :searchTerm OR LOWER(COALESCE(workflow.description, '')) LIKE :searchTerm)",
+				{ searchTerm },
+			);
 		}
 	}
 
