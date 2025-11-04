@@ -1715,6 +1715,7 @@ const onWorkflowMoved = async (payload: {
 		await workflowsStore.updateWorkflow(payload.workflow.id, {
 			parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
 			versionId: workflowResource?.versionId,
+			versionCounter: workflowResource?.versionCounter,
 		});
 		if (!payload.options?.skipFetch) {
 			await fetchWorkflows();

@@ -357,6 +357,7 @@ const saveSettings = async () => {
 
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
+	data.versionCounter = workflowsStore.workflowVersionCounter;
 
 	try {
 		const workflowData = await workflowsStore.updateWorkflow(String(route.params.name), data);

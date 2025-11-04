@@ -218,7 +218,11 @@ export class WorkflowService {
 			);
 		}
 
-		if (!forceSave && workflowUpdateData.versionCounter !== workflow.versionCounter) {
+		if (
+			!forceSave &&
+			workflowUpdateData.versionCounter !== undefined &&
+			workflowUpdateData.versionCounter !== workflow.versionCounter
+		) {
 			throw new BadRequestError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 				100,

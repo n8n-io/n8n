@@ -1576,20 +1576,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Determine current settings and versionId for the target workflow
 		let currentSettings: IWorkflowSettings = {} as IWorkflowSettings;
 		let currentVersionId = '';
+		let currentVersionCounter: number | undefined;
 		const isCurrentWorkflow = id === workflow.value.id;
 
 		if (isCurrentWorkflow) {
 			currentSettings = workflow.value.settings ?? ({} as IWorkflowSettings);
 			currentVersionId = workflow.value.versionId;
+			currentVersionCounter = workflow.value.versionCounter;
 		} else {
 			const cached = workflowsById.value[id];
 			if (cached && cached.versionId) {
 				currentSettings = cached.settings ?? ({} as IWorkflowSettings);
 				currentVersionId = cached.versionId;
+				currentVersionCounter = cached.versionCounter;
 			} else {
 				const fetched = await fetchWorkflow(id);
 				currentSettings = fetched.settings ?? ({} as IWorkflowSettings);
 				currentVersionId = fetched.versionId;
+				currentVersionCounter = fetched.versionCounter;
 			}
 		}
 
@@ -1600,6 +1604,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const updated = await updateWorkflow(id, {
 			versionId: currentVersionId,
+			versionCounter: currentVersionCounter,
 			settings: newSettings,
 		});
 
