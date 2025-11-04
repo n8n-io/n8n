@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
 import type { CanvasConnectionData } from '../../../canvas.types';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionTypes } from 'n8n-workflow';

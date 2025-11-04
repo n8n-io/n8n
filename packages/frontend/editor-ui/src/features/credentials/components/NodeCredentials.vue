@@ -9,27 +9,27 @@ import type {
 } from 'n8n-workflow';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useToast } from '@/composables/useToast';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useToast } from '@/app/composables/useToast';
 
-import TitledList from '@/components/TitledList.vue';
+import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { assert } from '@n8n/utils/assert';
 import {
 	getAuthTypeForNodeCredential,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
-} from '@/utils/nodeTypesUtils';
-import { isEmpty } from '@/utils/typesUtils';
+} from '@/app/utils/nodeTypesUtils';
+import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 
@@ -42,7 +42,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;

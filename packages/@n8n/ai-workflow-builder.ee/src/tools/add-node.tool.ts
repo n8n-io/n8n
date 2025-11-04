@@ -17,6 +17,7 @@ import type { AddNodeOutput, ToolError } from '../types/tools';
 
 const baseSchema = {
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
+	nodeVersion: z.number().describe('The exact node version'),
 	name: z
 		.string()
 		.describe('A descriptive name for the node that clearly indicates its purpose in the workflow'),
@@ -56,6 +57,7 @@ export const nodeCreationE2ESchema = z.object({
  */
 function createNode(
 	nodeType: INodeTypeDescription,
+	typeVersion: number, // nodeType can have multiple versions
 	customName: string,
 	existingNodes: INode[],
 	nodeTypes: INodeTypeDescription[],
@@ -69,8 +71,8 @@ function createNode(
 	// Calculate position
 	const position = calculateNodePosition(existingNodes, isSubNode(nodeType), nodeTypes);
 
-	// Create the node instance with connection parameters and optional ID
-	return createNodeInstance(nodeType, uniqueName, position, connectionParameters, id);
+	// Create the node instance with connection parameters
+	return createNodeInstance(nodeType, typeVersion, uniqueName, position, connectionParameters, id);
 }
 
 /**
@@ -132,7 +134,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					validatedInput = nodeCreationSchema.parse(input);
 				}
 
-				const { nodeType, name, connectionParametersReasoning, connectionParameters } =
+				const { nodeType, nodeVersion, name, connectionParametersReasoning, connectionParameters } =
 					validatedInput;
 
 				// Report tool start
@@ -146,7 +148,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				reporter.progress(`Adding ${name} (${connectionParametersReasoning})`);
 
 				// Find the node type
-				const nodeTypeDesc = findNodeType(nodeType, nodeTypes);
+				const nodeTypeDesc = findNodeType(nodeType, nodeVersion, nodeTypes);
 				if (!nodeTypeDesc) {
 					const nodeError = new NodeTypeNotFoundError(nodeType);
 					const error = {
@@ -161,6 +163,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				// Create the new node (id will be undefined in production, defined in E2E if provided)
 				const newNode = createNode(
 					nodeTypeDesc,
+					nodeVersion,
 					name,
 					workflow.nodes, // Use current workflow nodes
 					nodeTypes,

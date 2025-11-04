@@ -11,7 +11,7 @@ import { NodeDiffStatus, type IConnections } from 'n8n-workflow';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 
 // Mock modules at top level
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
 		createWorkflowObject: vi.fn().mockReturnValue({
 			id: 'test-workflow',
@@ -21,7 +21,7 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType: vi.fn().mockReturnValue({
 			name: 'Test Node Type',
