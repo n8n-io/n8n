@@ -34,6 +34,7 @@ import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
 import { type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { sanitizeError } from '@/app/utils/sanitizeError';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -217,12 +218,33 @@ export async function fetchExecutionData(
  * Returns the run execution data from the execution object in a normalized format
  */
 export function getRunExecutionData(execution: SimplifiedExecution): IRunExecutionData {
-	return {
+	const runExecutionData = {
 		...execution.data,
 		startData: execution.data?.startData,
 		resultData: execution.data?.resultData ?? { runData: {} },
 		executionData: execution.data?.executionData,
 	};
+
+	// Sanitize error objects to prevent circular references
+	if (runExecutionData.resultData?.error) {
+		runExecutionData.resultData.error = sanitizeError(runExecutionData.resultData.error);
+	}
+
+	// Sanitize errors in run data for each node
+	if (runExecutionData.resultData?.runData) {
+		for (const nodeName in runExecutionData.resultData.runData) {
+			const nodeRunData = runExecutionData.resultData.runData[nodeName];
+			if (Array.isArray(nodeRunData)) {
+				for (const taskData of nodeRunData) {
+					if (taskData?.error) {
+						taskData.error = sanitizeError(taskData.error);
+					}
+				}
+			}
+		}
+	}
+
+	return runExecutionData;
 }
 
 /**
