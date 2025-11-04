@@ -105,13 +105,14 @@ const handleKeyDown = async (event: KeyboardEvent) => {
 		popoverOpen.value = false;
 	}
 
-	// Cmd/Ctrl + Enter - save and close
-	if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+	// Enter (without Shift) - save and close
+	if (event.key === 'Enter' && !event.shiftKey) {
 		event.preventDefault();
 		event.stopPropagation();
 		await saveDescription();
 		popoverOpen.value = false;
 	}
+	// Shift + Enter - allow default behavior (new line in textarea)
 };
 
 // Sync with external prop changes
@@ -171,7 +172,7 @@ watch(descriptionValue, (newValue) => {
 					</div>
 					<footer :class="$style['popover-footer']">
 						<div :class="$style.shortcut">
-							<N8nKeyboardShortcut :keys="['Enter']" :meta-key="true" />
+							<N8nKeyboardShortcut :keys="['Enter']" />
 							<N8nText color="text-light">{{
 								i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')
 							}}</N8nText>
