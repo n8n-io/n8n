@@ -132,7 +132,7 @@ export class MessageEventBusDestinationWebhook
 
 		axiosSetting.proxy = options.options?.proxy;
 
-		axiosSetting.timeout = options.options?.timeout ?? 5 * Time.seconds.toMilliseconds;
+		axiosSetting.timeout = options.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS;
 
 		const agentOptions: HTTPAgentOptions = {
 			// keepAlive to keep TCP connections alive for reuse
