@@ -90,6 +90,7 @@ export class MemoryMongoDbChat implements INodeType {
 			password: string;
 			tls: boolean;
 		}>('mongoDb');
+
 		const collectionName = this.getNodeParameter(
 			'collectionName',
 			itemIndex,
@@ -105,7 +106,6 @@ export class MemoryMongoDbChat implements INodeType {
 			connectionString = credentials.connectionString;
 			dbName = databaseName || credentials.database;
 		} else {
-			// Build connection string from individual fields
 			const host = credentials.host;
 			const port = credentials.port;
 			const user = credentials.user ? encodeURIComponent(credentials.user) : '';
@@ -114,9 +114,7 @@ export class MemoryMongoDbChat implements INodeType {
 			const tls = credentials.tls;
 
 			connectionString = `mongodb://${authString}${host}:${port}/?appname=n8n`;
-			if (tls) {
-				connectionString += '&ssl=true';
-			}
+			if (tls) connectionString += '&ssl=true';
 
 			dbName = databaseName || credentials.database;
 		}
@@ -153,9 +151,18 @@ export class MemoryMongoDbChat implements INodeType {
 				await client.close();
 			}
 
+			const safeMemory = {
+				memoryKey: memory.memoryKey,
+				k: memory.k,
+				chatHistory: async () => {
+					const messages = await memory.chatHistory.getMessages();
+					return messages.map(m => ({ input: m.input, output: m.output }));
+				},
+			};
+
 			return {
 				closeFunction,
-				response: logWrapper(memory, this),
+				response: logWrapper(safeMemory, this),
 			};
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
