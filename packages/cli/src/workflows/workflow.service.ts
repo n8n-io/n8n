@@ -495,11 +495,16 @@ export class WorkflowService {
 		this.eventService.emit('workflow-archived', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
 
-		workflow.isArchived = true;
-		workflow.active = false;
-		workflow.versionId = versionId;
+		// Fetch the workflow again to get the auto-incremented versionCounter
+		const updatedWorkflow = await this.workflowRepository.findOneBy({ id: workflowId });
 
-		return workflow;
+		if (!updatedWorkflow) {
+			throw new BadRequestError(
+				`Workflow with ID "${workflowId}" could not be found after archive.`,
+			);
+		}
+
+		return updatedWorkflow;
 	}
 
 	async unarchive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
@@ -521,10 +526,16 @@ export class WorkflowService {
 		this.eventService.emit('workflow-unarchived', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
 
-		workflow.isArchived = false;
-		workflow.versionId = versionId;
+		// Fetch the workflow again to get the auto-incremented versionCounter
+		const updatedWorkflow = await this.workflowRepository.findOneBy({ id: workflowId });
 
-		return workflow;
+		if (!updatedWorkflow) {
+			throw new BadRequestError(
+				`Workflow with ID "${workflowId}" could not be found after unarchive.`,
+			);
+		}
+
+		return updatedWorkflow;
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
