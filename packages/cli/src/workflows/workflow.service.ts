@@ -72,6 +72,12 @@ export class WorkflowService {
 		includeFolders?: boolean,
 		onlySharedWithMe?: boolean,
 	) {
+		if (options?.filter?.name !== undefined && options?.filter?.query === undefined) {
+			this.logger.warn(
+				'Deprecation warning: The "name" filter parameter is deprecated and will be removed in a future version. Please use "query" instead.',
+			);
+		}
+
 		let count;
 		let workflows;
 		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];

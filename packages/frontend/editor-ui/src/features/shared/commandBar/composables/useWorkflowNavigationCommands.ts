@@ -79,8 +79,8 @@ export function useWorkflowNavigationCommands(options: {
 
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsStore.searchWorkflows({
-				name: trimmed,
-				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived'],
+				query: trimmed,
+				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
 			});
 
 			const nodeTypeSearchPromise =

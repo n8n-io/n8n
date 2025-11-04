@@ -610,7 +610,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
 		filters: {
-			name?: string;
+			query?: string;
 			tags?: string[];
 			active?: boolean;
 			isArchived?: boolean;
@@ -653,20 +653,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function searchWorkflows({
 		projectId,
-		name,
+		query,
 		nodeTypes,
 		tags,
 		select,
 	}: {
 		projectId?: string;
-		name?: string;
+		query?: string;
 		nodeTypes?: string[];
 		tags?: string[];
 		select?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
-			name,
+			query,
 			nodeTypes,
 			tags,
 		};

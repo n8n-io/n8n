@@ -279,7 +279,7 @@ const loadTimezones = async () => {
 
 const loadWorkflows = async (searchTerm?: string) => {
 	const workflowsData = (await workflowsStore.searchWorkflows({
-		name: searchTerm,
+		query: searchTerm,
 	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {

@@ -673,7 +673,7 @@ const fetchWorkflows = async () => {
 			pageSize.value,
 			currentSort.value,
 			{
-				name: filters.value.search || undefined,
+				query: filters.value.search || undefined,
 				active: activeFilter,
 				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,

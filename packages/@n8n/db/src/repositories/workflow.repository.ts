@@ -303,7 +303,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			typeof options.filter?.parentFolderId === 'string' &&
 			options.filter.parentFolderId !== PROJECT_ROOT &&
 			typeof options.filter?.projectId === 'string' &&
-			options.filter.name
+			(options.filter.query || options.filter.name)
 		) {
 			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
 				options.filter.parentFolderId,
@@ -485,8 +485,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		if (typeof filter?.name === 'string' && filter.name !== '') {
-			const searchTerm = `%${filter.name.toLowerCase()}%`;
+		// Support both 'query' (new) and 'name' (legacy) parameters
+		// 'query' takes precedence if both are provided
+		const searchValue = filter?.query ?? filter?.name;
+
+		if (typeof searchValue === 'string' && searchValue !== '') {
+			const searchTerm = `%${searchValue.toLowerCase()}%`;
 			qb.andWhere(
 				"(LOWER(workflow.name) LIKE :searchTerm OR LOWER(COALESCE(workflow.description, '')) LIKE :searchTerm)",
 				{ searchTerm },

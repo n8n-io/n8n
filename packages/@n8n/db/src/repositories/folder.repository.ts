@@ -180,9 +180,11 @@ export class FolderRepository extends Repository<Folder> {
 			query.andWhere('folder.projectId = :projectId', { projectId: filter.projectId });
 		}
 
-		if (filter?.name && typeof filter.name === 'string') {
-			query.andWhere('LOWER(folder.name) LIKE LOWER(:name)', {
-				name: `%${filter.name}%`,
+		// Support both 'query' (new) and 'name' (legacy) parameters
+		const searchValue = filter?.query ?? filter?.name;
+		if (searchValue && typeof searchValue === 'string') {
+			query.andWhere('LOWER(folder.name) LIKE LOWER(:searchTerm)', {
+				searchTerm: `%${searchValue}%`,
 			});
 		}
 
