@@ -149,6 +149,7 @@ export class MemoryMongoDbChat implements INodeType {
 				k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
 			});
 
+			// wait for return before close
 			await memory.chatHistory.getMessages();
 
 			async function closeFunction() {
