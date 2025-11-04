@@ -6,7 +6,7 @@ const table = {
 } as const;
 
 export class AddToolsColumnToChatHubTables1761830340990 implements ReversibleMigration {
-	async up({ schemaBuilder: { addColumns, column }, queryRunner }: MigrationContext) {
+	async up({ schemaBuilder: { addColumns, column }, queryRunner, tablePrefix }: MigrationContext) {
 		await addColumns(table.sessions, [
 			column('tools').json.notNull.comment('Tools available to the agent as JSON node definitions'),
 		]);
@@ -17,8 +17,8 @@ export class AddToolsColumnToChatHubTables1761830340990 implements ReversibleMig
 		// Add a default value for existing rows
 		await Promise.all(
 			[
-				`UPDATE \`${table.sessions}\` SET \`tools\` = '[]' WHERE JSON_TYPE(\`tools\`) = 'NULL'`,
-				`UPDATE \`${table.agents}\` SET \`tools\` = '[]' WHERE JSON_TYPE(\`tools\`) = 'NULL'`,
+				`UPDATE \`${tablePrefix}${table.sessions}\` SET \`tools\` = '[]' WHERE JSON_TYPE(\`tools\`) = 'NULL'`,
+				`UPDATE \`${tablePrefix}${table.agents}\` SET \`tools\` = '[]' WHERE JSON_TYPE(\`tools\`) = 'NULL'`,
 			].map(async (query) => {
 				await queryRunner.query(query);
 			}),
