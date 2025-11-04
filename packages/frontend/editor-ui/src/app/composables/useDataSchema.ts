@@ -40,7 +40,13 @@ export function useDataSchema() {
 								? [
 										{
 											key: '0',
-											...getSchema(input[0], `${path}[0]`, excludeValues, collapseArrays),
+											...getSchema(
+												// If array contains objects, merge all their keys into one
+												input.every((item) => isObj(item)) ? merge({}, ...input) : input[0],
+												`${path}[0]`,
+												excludeValues,
+												collapseArrays,
+											),
 										},
 									]
 								: input.map((item, index) => ({
