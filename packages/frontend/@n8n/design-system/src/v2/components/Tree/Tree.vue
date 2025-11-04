@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { TreeRoot, TreeVirtualizer, useForwardPropsEmits, TreeItem } from 'reka-ui';
 
+import type { IMenuItem } from '@n8n/design-system/types';
+
 import type { N8nTreeProps, N8nTreeEmits } from '.';
+import MenuItem from '../MenuItem/MenuItem.vue';
 
 defineOptions({ name: 'Tree' });
 
@@ -25,18 +28,19 @@ function getLevelIndentation(level: number) {
 			:text-content="(opt) => opt.name"
 		>
 			<TreeItem
-				v-slot="{ handleToggle }"
+				v-slot="{ handleToggle, isExpanded }"
 				v-bind="item.bind"
 				:key="item.value.id"
 				:class="$style.TreeItem"
+				@toggle.prevent
 			>
 				<span
 					v-for="level in getLevelIndentation(item.level)"
 					:key="level"
 					:class="$style.TreeItemIdent"
 				/>
-				<slot name="item" :item="item.value" :handle-toggle="handleToggle">
-					{{ item.value.label }}
+				<slot :item="item.value" v-bind="$attrs">
+					<MenuItem :item="item.value as IMenuItem" />
 				</slot>
 			</TreeItem>
 		</TreeVirtualizer>
@@ -49,6 +53,10 @@ function getLevelIndentation(level: number) {
 	display: flex;
 	align-items: center;
 	height: 32px;
+}
+
+.TreeItemChild {
+	padding: 2px;
 }
 
 .TreeItemIdent {

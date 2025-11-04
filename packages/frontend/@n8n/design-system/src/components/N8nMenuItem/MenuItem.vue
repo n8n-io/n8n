@@ -61,14 +61,13 @@ const iconColor = computed(() => {
 	<div :data-test-id="item.id" :class="$style.menuItemWrapper">
 		<N8nTooltip :placement="'right'" :disabled="!compact" :show-after="500">
 			<template v-if="compact" #content>{{ item.label }}</template>
-
 			<N8nRoute
+				:id="item.id"
 				:to="to"
 				role="menuitem"
 				:class="[$style.menuItem, { [$style.active]: active }]"
 				:aria-label="props.ariaLabel"
 				data-test-id="menu-item"
-				:id="item.id"
 				@click="emit('click')"
 			>
 				<div
