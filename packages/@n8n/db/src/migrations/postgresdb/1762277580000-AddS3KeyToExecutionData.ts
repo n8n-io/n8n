@@ -2,6 +2,10 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddS3KeyToExecutionData1762277580000 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		await queryRunner.query(
+			`ALTER TABLE "${tablePrefix}execution_data" ALTER COLUMN "data" DROP NOT NULL`,
+		);
+
 		// Add new columns to execution_data table
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}execution_data" 
@@ -21,15 +25,17 @@ export class AddS3KeyToExecutionData1762277580000 implements ReversibleMigration
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext) {
-		// Drop indexes
 		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_${tablePrefix}execution_data_s3Key"`);
 		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_${tablePrefix}execution_data_storageMode"`);
 
-		// Drop columns
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}execution_data" 
 			DROP COLUMN "s3Key",
 			DROP COLUMN "storageMode"`,
+		);
+
+		await queryRunner.query(
+			`ALTER TABLE "${tablePrefix}execution_data" ALTER COLUMN "data" SET NOT NULL`,
 		);
 	}
 }

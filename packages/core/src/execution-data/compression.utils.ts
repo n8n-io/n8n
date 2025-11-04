@@ -10,7 +10,7 @@ const gunzipAsync = promisify(gunzip);
  */
 export async function compressExecutionData(data: IRunExecutionData): Promise<Buffer> {
 	try {
-		const jsonString = JSON.stringify(data);
+		const jsonString = JSON.stringify(data ?? {});
 		const compressed = await gzipAsync(Buffer.from(jsonString, 'utf8'));
 		return compressed;
 	} catch (error) {
