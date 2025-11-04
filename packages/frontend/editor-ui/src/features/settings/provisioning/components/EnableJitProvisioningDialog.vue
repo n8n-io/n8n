@@ -24,6 +24,7 @@ const {
 } = useAccessSettingsCsvExport();
 
 watch(visible, () => {
+	loadingActivatingJit.value = false;
 	accessSettingsCsvExportOnModalClose();
 });
 
