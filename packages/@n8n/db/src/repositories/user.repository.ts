@@ -12,9 +12,10 @@ export class UserRepository extends Repository<User> {
 		super(User, dataSource.manager);
 	}
 
-	async findManyByIds(userIds: string[]) {
+	async findManyByIds(userIds: string[], includeRole: boolean = false) {
 		return await this.find({
 			where: { id: In(userIds) },
+			relations: includeRole ? ['role'] : undefined,
 		});
 	}
 
