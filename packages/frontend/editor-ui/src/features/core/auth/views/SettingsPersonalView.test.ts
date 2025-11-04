@@ -8,7 +8,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { ROLE } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 
@@ -17,7 +16,6 @@ let settingsStore: ReturnType<typeof useSettingsStore>;
 let ssoStore: ReturnType<typeof useSSOStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let uiStore: ReturnType<typeof useUIStore>;
-let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 let server: ReturnType<typeof setupServer>;
 
 const renderComponent = createComponentRenderer(SettingsPersonalView);
@@ -47,7 +45,6 @@ describe('SettingsPersonalView', () => {
 		ssoStore = useSSOStore(pinia);
 		usersStore = useUsersStore(pinia);
 		uiStore = useUIStore(pinia);
-		cloudPlanStore = useCloudPlanStore(pinia);
 
 		usersStore.usersById[currentUser.id] = currentUser;
 		usersStore.currentUserId = currentUser.id;
@@ -164,18 +161,15 @@ describe('SettingsPersonalView', () => {
 	});
 
 	test.each([
-		['Default', ROLE.Default, false, 'Default role for new users'],
-		['Member', ROLE.Member, false, 'Create and manage own workflows and credentials'],
+		['Default', ROLE.Default, 'Default role for new users'],
+		['Member', ROLE.Member, 'Create and manage own workflows and credentials'],
 		[
 			'Admin',
 			ROLE.Admin,
-			false,
 			'Full access to manage workflows,tags, credentials, projects, users and more',
 		],
-		['Owner', ROLE.Owner, false, 'Manage everything'],
-		['Owner', ROLE.Owner, true, 'Manage everything and access Cloud dashboard'],
-	])('should show %s user role information', async (label, role, hasCloudPlan, tooltipText) => {
-		vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
+		['Owner', ROLE.Owner, 'Manage everything'],
+	])('should show %s user role information', async (label, role, tooltipText) => {
 		vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);
 
 		const { queryByTestId, getByText } = renderComponent({ pinia });

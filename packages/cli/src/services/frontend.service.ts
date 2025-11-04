@@ -173,8 +173,8 @@ export class FrontendService {
 				proxy: `${instanceBaseUrl}/${restEndpoint}/posthog`,
 				debug: this.globalConfig.logging.level === 'debug',
 			},
-			personalizationSurveyEnabled:
-				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
+			// Personalization survey disabled (tracking removed)
+			personalizationSurveyEnabled: false,
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: -1,
@@ -210,7 +210,6 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			logLevel: this.globalConfig.logging.level,
-			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
 				setup: false,

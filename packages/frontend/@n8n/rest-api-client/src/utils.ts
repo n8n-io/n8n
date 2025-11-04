@@ -7,13 +7,16 @@ import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import type { IRestApiContext } from './types';
 
+/**
+ * Returns a fixed browser identifier (no tracking)
+ *
+ * Previously this function generated and stored a unique browser ID in localStorage
+ * for tracking purposes. Now it returns a fixed value to prevent user tracking.
+ */
 const getBrowserId = () => {
-	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-	if (!browserId) {
-		browserId = crypto.randomUUID();
-		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
-	}
-	return browserId;
+	// Return a fixed identifier for this local instance
+	// No localStorage persistence = no cross-session tracking
+	return 'local-instance';
 };
 
 export const NO_NETWORK_ERROR_CODE = 999;

@@ -214,44 +214,14 @@ export class MeController {
 
 	/**
 	 * Store the logged-in user's survey answers.
+	 * No-op - Personalization survey disabled (tracking removed)
 	 */
 	@Post('/survey')
 	async storeSurveyAnswers(req: MeRequest.SurveyAnswers) {
-		const { body: personalizationAnswers } = req;
-
-		if (!personalizationAnswers) {
-			this.logger.debug(
-				'Request to store user personalization survey failed because of undefined payload',
-				{
-					userId: req.user.id,
-				},
-			);
-			throw new BadRequestError('Personalization answers are mandatory');
-		}
-
-		const validatedAnswers = plainToInstance(
-			PersonalizationSurveyAnswersV4,
-			personalizationAnswers,
-			{ excludeExtraneousValues: true },
-		);
-
-		await validateEntity(validatedAnswers);
-
-		await this.userRepository.save(
-			{
-				id: req.user.id,
-				personalizationAnswers: validatedAnswers,
-			},
-			{ transaction: false },
-		);
-
-		this.logger.info('User survey updated successfully', { userId: req.user.id });
-
-		this.eventService.emit('user-submitted-personalization-survey', {
+		// Survey disabled - no data stored or sent to external servers
+		this.logger.debug('Personalization survey disabled - request ignored', {
 			userId: req.user.id,
-			answers: validatedAnswers,
 		});
-
 		return { success: true };
 	}
 

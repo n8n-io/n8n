@@ -23,9 +23,10 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 			this.manager,
 			trx,
 			async (em): Promise<ChatHubMessage> => {
-				await em.insert(ChatHubMessage, message);
+				// Use type assertion to avoid deep type instantiation issues with self-referencing relations
+				await em.insert(ChatHubMessage, message as ChatHubMessage);
 				const saved = await em.findOneOrFail(ChatHubMessage, {
-					where: { id: message.id },
+					where: { id: message.id as string },
 				});
 				await this.chatSessionRepository.updateLastMessageAt(saved.sessionId, saved.createdAt, em);
 				return saved;

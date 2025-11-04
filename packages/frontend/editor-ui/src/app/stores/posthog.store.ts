@@ -1,41 +1,33 @@
+/**
+ * Local Feature Flags Store (PostHog Removed)
+ *
+ * This file maintains API compatibility with the original PostHog store
+ * but removes all external tracking and analytics functionality.
+ *
+ * Feature flags are now managed locally without any external dependencies.
+ */
+
 import type { Ref } from 'vue';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 import { useStorage } from '@/app/composables/useStorage';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
-import { useDebounce } from '@/app/composables/useDebounce';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-
-const EVENTS = {
-	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
-};
+import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
 export const usePostHog = defineStore('posthog', () => {
-	const usersStore = useUsersStore();
-	const settingsStore = useSettingsStore();
-	const telemetry = useTelemetry();
-	const rootStore = useRootStore();
-	const { debounce } = useDebounce();
-
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
-	const trackedDemoExp: Ref<FeatureFlags> = ref({});
-
 	const overrides: Ref<Record<string, string | boolean>> = ref({});
 
 	const reset = () => {
-		window.posthog?.reset?.();
+		// No PostHog reset needed
 		featureFlags.value = null;
-		trackedDemoExp.value = {};
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
-		return overrides.value[experiment] ?? featureFlags.value?.[experiment];
+		// Priority: overrides > server-provided featureFlags > false (default)
+		return overrides.value[experiment] ?? featureFlags.value?.[experiment] ?? false;
 	};
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
@@ -49,143 +41,82 @@ export const usePostHog = defineStore('posthog', () => {
 		return getVariant(experiment) === true;
 	};
 
+	// Initialize local feature flags override mechanism (for development/testing)
 	if (!window.featureFlags) {
-		// for testing
 		const cachedOverrides = useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value;
 		if (cachedOverrides) {
 			try {
-				console.log('Overriding feature flags', cachedOverrides);
+				console.log('[FeatureFlags] Loading overrides from localStorage');
 				const parsedOverrides = JSON.parse(cachedOverrides);
 				if (typeof parsedOverrides === 'object') {
-					overrides.value = JSON.parse(cachedOverrides);
+					overrides.value = parsedOverrides;
 				}
 			} catch (e) {
-				console.log('Could not override experiment', e);
+				console.warn('[FeatureFlags] Could not load overrides:', e);
 			}
 		}
 
 		window.featureFlags = {
-			// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
 			override: (name: string, value: string | boolean) => {
 				overrides.value[name] = value;
 				try {
 					useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value = JSON.stringify(overrides.value);
-				} catch (e) {}
+					console.log(`[FeatureFlags] Override set: ${name} = ${value}`);
+				} catch (e) {
+					console.error('[FeatureFlags] Failed to save override:', e);
+				}
 			},
-
 			getVariant,
 			getAll: () => featureFlags.value ?? {},
 		};
 	}
 
+	/**
+	 * No-op identify function (PostHog removed)
+	 */
 	const identify = () => {
-		const instanceId = rootStore.instanceId;
-		const user = usersStore.currentUser;
-		const versionCli = rootStore.versionCli;
-		const traits: Record<string, string | number> = {
-			instance_id: instanceId,
-			version_cli: versionCli,
-		};
-
-		if (user && typeof user.createdAt === 'string') {
-			traits.created_at_timestamp = new Date(user.createdAt).getTime();
-		}
-
-		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
-		const id = user ? `${instanceId}#${user.id}` : instanceId;
-		window.posthog?.identify?.(id, traits);
+		// Local feature flags - no external identification needed
 	};
 
-	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
-		const variant = featFlags[name];
-		if (!variant || trackedDemoExp.value[name] === variant) {
-			return;
-		}
-
-		telemetry.track(EVENTS.IS_PART_OF_EXPERIMENT, {
-			name,
-			variant,
-		});
-
-		trackedDemoExp.value[name] = variant;
-	};
-
-	const trackExperiments = (featFlags: FeatureFlags) => {
-		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
-	};
-	const trackExperimentsDebounced = debounce(trackExperiments, {
-		debounceTime: 2000,
-	});
-
+	/**
+	 * Initialize feature flags from server settings
+	 * PostHog initialization is completely removed
+	 */
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
-		if (!window.posthog) {
-			return;
-		}
-
-		const config = settingsStore.settings.posthog;
-		if (!config || !config.enabled) {
-			return;
-		}
-
-		const userId = usersStore.currentUserId;
-		if (!userId) {
-			return;
-		}
-
-		const instanceId = rootStore.instanceId;
-		const distinctId = `${instanceId}#${userId}`;
-
-		const options: Parameters<typeof window.posthog.init>[1] = {
-			api_host: settingsStore.settings.posthog.proxy,
-			autocapture: config.autocapture,
-			disable_session_recording: config.disableSessionRecording,
-			debug: config.debug,
-			session_recording: {
-				maskAllInputs: false,
-			},
-		};
-
-		window.posthog?.init(config.apiKey, options);
-		identify();
+		console.log('[FeatureFlags] Initializing local feature flags (PostHog disabled)');
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
-			options.bootstrap = {
-				distinctId,
-				featureFlags: evaluatedFeatureFlags,
-			};
-
-			// does not need to be debounced really, but tracking does not fire without delay on page load
-			trackExperimentsDebounced(featureFlags.value);
+			console.log('[FeatureFlags] Loaded feature flags from server:', evaluatedFeatureFlags);
 		} else {
-			// depend on client side evaluation if serverside evaluation fails
-			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
-				featureFlags.value = map;
-
-				// must be debounced because it is called multiple times by posthog
-				trackExperimentsDebounced(featureFlags.value);
-			});
+			console.log('[FeatureFlags] No feature flags provided, using defaults');
 		}
 	};
 
+	/**
+	 * No-op metadata setter (PostHog removed)
+	 */
 	const setMetadata = (metadata: IDataObject, target: 'user' | 'events') => {
-		if (typeof window.posthog?.people?.set !== 'function') return;
-		if (typeof window.posthog?.register !== 'function') return;
-
-		if (target === 'user') {
-			window.posthog?.people?.set(metadata);
-		} else if (target === 'events') {
-			window.posthog?.register(metadata);
-		}
+		// No external tracking - metadata not sent anywhere
 	};
 
+	/**
+	 * No-op capture function (PostHog removed)
+	 */
 	const capture = (event: string, properties: IDataObject) => {
-		if (typeof window.posthog?.capture === 'function') {
-			window.posthog.capture(event, properties);
-		}
+		// No external tracking - events not captured
 	};
+
+	// Always return false since PostHog is disabled
+	const isEnabled = computed(() => false);
 
 	return {
+		// State
+		featureFlags,
+		overrides,
+		isEnabled,
+
+		// Methods
 		init,
 		isFeatureEnabled,
 		isVariantEnabled,
@@ -194,6 +125,5 @@ export const usePostHog = defineStore('posthog', () => {
 		identify,
 		setMetadata,
 		capture,
-		overrides,
 	};
 });

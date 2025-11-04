@@ -42,9 +42,6 @@ describe('GlobalConfig', () => {
 		mfa: {
 			enabled: true,
 		},
-		hiringBanner: {
-			enabled: true,
-		},
 		personalization: {
 			enabled: true,
 		},

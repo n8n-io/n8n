@@ -6,7 +6,6 @@ import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -47,7 +46,6 @@ export const useGlobalEntityCreation = () => {
 	const DEFAULT_ICON: IconName = 'layers';
 
 	const settingsStore = useSettingsStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
 
@@ -219,15 +217,6 @@ export const useGlobalEntityCreation = () => {
 	};
 
 	const projectsLimitReachedMessage = computed(() => {
-		if (settingsStore.isCloudDeployment) {
-			return i18n.baseText('projects.create.limitReached.cloud', {
-				interpolate: {
-					planName: cloudPlanStore.currentPlanData?.displayName ?? '',
-					limit: projectsStore.teamProjectsLimit,
-				},
-			});
-		}
-
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
 			return i18n.baseText('projects.create.limitReached.self');
 		}

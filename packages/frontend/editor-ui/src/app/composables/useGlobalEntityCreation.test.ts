@@ -7,9 +7,7 @@ import { flushPromises } from '@vue/test-utils';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import type { CloudPlanState } from '@/Interface';
 
 import { VIEWS } from '@/app/constants';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -170,8 +168,6 @@ describe('useGlobalEntityCreation', () => {
 	it('should show plan and limit according to deployment type', () => {
 		const settingsStore = mockedStore(useSettingsStore);
 
-		const cloudPlanStore = mockedStore(useCloudPlanStore);
-		cloudPlanStore.currentPlanData = { displayName: 'Pro' } as CloudPlanState['data'];
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.isTeamProjectFeatureEnabled = true;
 		projectsStore.teamProjectsLimit = 10;
@@ -179,9 +175,7 @@ describe('useGlobalEntityCreation', () => {
 
 		settingsStore.isCloudDeployment = true;
 		const { projectsLimitReachedMessage, upgradeLabel } = useGlobalEntityCreation();
-		expect(projectsLimitReachedMessage.value).toContain(
-			'You have reached the Pro plan limit of 10.',
-		);
+		expect(projectsLimitReachedMessage.value).toContain('You have reached the  plan limit of 10.');
 		expect(upgradeLabel.value).toBe('Upgrade');
 
 		settingsStore.isCloudDeployment = false;

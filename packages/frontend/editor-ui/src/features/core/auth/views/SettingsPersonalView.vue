@@ -16,7 +16,6 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '../auth.eventBus';
@@ -88,7 +87,6 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
-const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 
 const currentUser = computed((): IUser | null => {
@@ -143,13 +141,7 @@ const roles = computed<Record<Role, RoleContent>>(() => ({
 	},
 	[ROLE.Owner]: {
 		name: i18n.baseText('auth.roles.owner'),
-		description: i18n.baseText('settings.personal.role.tooltip.owner', {
-			interpolate: {
-				cloudAccess: cloudPlanStore.hasCloudPlan
-					? i18n.baseText('settings.personal.role.tooltip.cloud')
-					: '',
-			},
-		}),
+		description: i18n.baseText('settings.personal.role.tooltip.owner'),
 	},
 }));
 

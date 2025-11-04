@@ -352,16 +352,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return await usersApi.getPasswordResetLink(rootStore.restApiContext, params);
 	};
 
+	/**
+	 * No-op - Personalization survey disabled (tracking removed)
+	 */
 	const submitPersonalizationSurvey = async (results: IPersonalizationLatestVersion) => {
-		await usersApi.submitPersonalizationSurvey(rootStore.restApiContext, results);
-		setPersonalizationAnswers(results);
+		// Survey disabled - no data sent to external servers
 	};
 
+	/**
+	 * No-op - Personalization survey disabled (tracking removed)
+	 */
 	const showPersonalizationSurvey = async () => {
-		const surveyEnabled = settingsStore.isPersonalizationSurveyEnabled;
-		if (surveyEnabled && currentUser.value && !currentUser.value.personalizationAnswers) {
-			uiStore.openModal(PERSONALIZATION_MODAL_KEY);
-		}
+		// Survey disabled - modal will not open
 	};
 
 	const fetchMfaQR = async () => {

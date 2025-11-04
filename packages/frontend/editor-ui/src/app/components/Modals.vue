@@ -84,7 +84,8 @@ import InviteUsersModal from '@/features/settings/users/components/InviteUsersMo
 import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
-import PersonalizationModal from '@/features/settings/users/components/PersonalizationModal.vue';
+// Personalization survey disabled (tracking removed)
+// import PersonalizationModal from '@/features/settings/users/components/PersonalizationModal.vue';
 import PreBuiltAgentsModal from '@/app/components/PreBuiltAgentsModal.vue';
 import ProjectMoveResourceModal from '@/features/collaboration/projects/components/ProjectMoveResourceModal.vue';
 import EventDestinationSettingsModal from '@/features/integrations/logStreaming.ee/components/EventDestinationSettingsModal.vue';
@@ -158,9 +159,12 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 			<ImportWorkflowUrlModal />
 		</ModalRoot>
 
+		<!-- Personalization survey disabled (tracking removed) -->
+		<!--
 		<ModalRoot :name="PERSONALIZATION_MODAL_KEY">
 			<PersonalizationModal />
 		</ModalRoot>
+		-->
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
 			<WorkflowTagsManager />

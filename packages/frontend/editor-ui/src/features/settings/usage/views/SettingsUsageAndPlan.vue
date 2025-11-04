@@ -19,10 +19,12 @@ onMounted(async () => {
 
 <template>
 	<div class="settings-usage-and-plan">
-		<N8nHeading tag="h2" size="2xlarge">Usage & Statistics</N8nHeading>
+		<N8nHeading tag="h2" size="2xlarge">{{
+			locale.baseText('settings.usageAndPlan.title')
+		}}</N8nHeading>
 		<div v-if="!usageStore.isLoading">
 			<N8nText :class="$style.subtitle" size="medium" color="text-light">
-				Monitor your workflow usage and activity
+				{{ locale.baseText('settings.usageAndPlan.subtitle') }}
 			</N8nText>
 
 			<div :class="$style.quota">

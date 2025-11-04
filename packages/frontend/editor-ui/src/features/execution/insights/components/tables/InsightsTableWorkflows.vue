@@ -54,7 +54,7 @@ const rows = computed(() => tableData.value.data);
 
 const headers = ref<Array<TableHeader<Item>>>([
 	{
-		title: 'Name',
+		title: i18n.baseText('insights.dashboard.table.name'),
 		key: 'workflowName',
 		width: 400,
 		disableSort: !props.isDashboardEnabled,

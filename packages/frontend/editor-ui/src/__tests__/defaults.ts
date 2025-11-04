@@ -52,7 +52,6 @@ export const defaultSettings: FrontendSettings = {
 	isMultiMain: false,
 	executionTimeout: 0,
 	hideUsagePage: false,
-	hiringBannerEnabled: false,
 	instanceId: '',
 	logLevel: 'info',
 	maxExecutionTimeout: 0,

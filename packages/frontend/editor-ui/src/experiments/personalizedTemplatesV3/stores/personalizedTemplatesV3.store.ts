@@ -1,19 +1,15 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_TEMPLATES_V3, () => {
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
-	const cloudPlanStore = useCloudPlanStore();
-	const settingsStore = useSettingsStore();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
 
@@ -27,22 +23,12 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 		const isLocalhost = window.location.hostname === 'localhost';
 		return (
 			posthogStore.getVariant(PERSONALIZED_TEMPLATES_V3.name) ===
-				PERSONALIZED_TEMPLATES_V3.variant &&
-			(isLocalhost || cloudPlanStore.userIsTrialing)
+				PERSONALIZED_TEMPLATES_V3.variant && isLocalhost
 		);
 	};
 
 	const hasChosenHubSpot = computed(() => {
-		const selectedApps = cloudPlanStore.selectedApps;
-
-		if (!selectedApps?.length) {
-			return false;
-		}
-
-		return (
-			selectedApps.includes('n8n-nodes-base.hubspot') ||
-			selectedApps.includes('n8n-nodes-base.hubspotTrigger')
-		);
+		return false;
 	});
 
 	const shouldShowTemplateTooltip = computed(() => {
@@ -100,41 +86,6 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 		hasInteractedWithTemplateRecommendations.value = true;
 		localStorage.setItem(INTERACTION_STORAGE_KEY, 'true');
 	}
-
-	const trackExperimentParticipation = async () => {
-		if (settingsStore.isCloudDeployment && !cloudPlanStore.state.initialized) {
-			try {
-				await cloudPlanStore.initialize();
-			} catch (error) {
-				console.warn('Could not load cloud plan data for experiment tracking:', error);
-				return;
-			}
-		}
-
-		if (!hasChosenHubSpot.value) {
-			return;
-		}
-
-		const variant = posthogStore.getVariant(PERSONALIZED_TEMPLATES_V3.name);
-		if (variant) {
-			telemetry.track('User is part of experiment', {
-				name: PERSONALIZED_TEMPLATES_V3.name,
-				variant,
-			});
-		}
-	};
-
-	let hasTrackedExperiment = false;
-	watch(
-		hasChosenHubSpot,
-		(hasHubSpot) => {
-			if (hasHubSpot && !hasTrackedExperiment) {
-				hasTrackedExperiment = true;
-				void trackExperimentParticipation();
-			}
-		},
-		{ immediate: true },
-	);
 
 	return {
 		isFeatureEnabled,

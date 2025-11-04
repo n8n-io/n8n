@@ -1,6 +1,5 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { BATCH_11AUG_EXPERIMENT } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -25,17 +24,13 @@ export const useReadyToRunWorkflowsStore = defineStore(
 		const foldersStore = useFoldersStore();
 		const workflowsStore = useWorkflowsStore();
 		const posthogStore = usePostHog();
-		const cloudPlanStore = useCloudPlanStore();
 
 		const isFeatureEnabled = computed(() => {
-			return (
-				[
-					BATCH_11AUG_EXPERIMENT.variantReadyToRun,
-					BATCH_11AUG_EXPERIMENT.variantReadyToRun2,
-					BATCH_11AUG_EXPERIMENT.variantReadyToRun3,
-				].includes(posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name)?.toString() ?? '') &&
-				cloudPlanStore.userIsTrialing
-			);
+			return [
+				BATCH_11AUG_EXPERIMENT.variantReadyToRun,
+				BATCH_11AUG_EXPERIMENT.variantReadyToRun2,
+				BATCH_11AUG_EXPERIMENT.variantReadyToRun3,
+			].includes(posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name)?.toString() ?? '');
 		});
 
 		const calloutDismissedRef = useLocalStorage(LOCAL_STORAGE_SETTING_KEY, false);

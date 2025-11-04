@@ -8,7 +8,6 @@ import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 import { nextTick } from 'vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 
 export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
@@ -53,9 +52,6 @@ function resetStores() {
 	usersStore.initialized = false;
 	usersStore.currentUserId = null;
 	usersStore.usersById = {};
-
-	const cloudPlanStore = useCloudPlanStore();
-	cloudPlanStore.currentUserCloudInfo = null;
 }
 
 function setup() {

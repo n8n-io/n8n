@@ -3,7 +3,6 @@ import { useToast } from '@/app/composables/useToast';
 import { READY_TO_RUN_V2_PART2_EXPERIMENT, VIEWS } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -32,15 +31,13 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const usersStore = useUsersStore();
 		const settingsStore = useSettingsStore();
 		const posthogStore = usePostHog();
-		const cloudPlanStore = useCloudPlanStore();
 		const workflowsStore = useWorkflowsStore();
 
 		const isFeatureEnabled = computed(() => {
 			const variant = posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
 			return (
-				(variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3 ||
-					variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant4) &&
-				cloudPlanStore.userIsTrialing
+				variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3 ||
+				variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant4
 			);
 		});
 

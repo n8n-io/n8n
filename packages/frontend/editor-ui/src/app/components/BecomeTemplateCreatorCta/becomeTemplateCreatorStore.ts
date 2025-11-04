@@ -2,7 +2,6 @@ import { DateTime } from 'luxon';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { STORES } from '@n8n/stores';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useStorage } from '@/app/composables/useStorage';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getBecomeCreatorCta } from '@n8n/rest-api-client/api/ctas';
@@ -12,7 +11,6 @@ const RESHOW_DISMISSED_AFTER_DAYS = 30;
 const POLL_INTERVAL_IN_MS = 15 * 60 * 1000; // 15 minutes
 
 export const useBecomeTemplateCreatorStore = defineStore(STORES.BECOME_TEMPLATE_CREATOR, () => {
-	const cloudPlanStore = useCloudPlanStore();
 	const rootStore = useRootStore();
 
 	//#region State
@@ -30,7 +28,7 @@ export const useBecomeTemplateCreatorStore = defineStore(STORES.BECOME_TEMPLATE_
 	});
 
 	const showBecomeCreatorCta = computed(() => {
-		return ctaMeetsCriteria.value && !cloudPlanStore.userIsTrialing && !isDismissed.value;
+		return ctaMeetsCriteria.value && !isDismissed.value;
 	});
 
 	//#endregion Computed
@@ -48,7 +46,7 @@ export const useBecomeTemplateCreatorStore = defineStore(STORES.BECOME_TEMPLATE_
 	};
 
 	const fetchUserCtasIfNeeded = async () => {
-		if (isDismissed.value || cloudPlanStore.userIsTrialing || ctaMeetsCriteria.value) {
+		if (isDismissed.value || ctaMeetsCriteria.value) {
 			return;
 		}
 

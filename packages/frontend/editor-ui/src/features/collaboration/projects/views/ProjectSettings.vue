@@ -14,7 +14,6 @@ import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@/app/stores/roles.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
@@ -44,7 +43,6 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
-const cloudPlanStore = useCloudPlanStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
@@ -625,7 +623,6 @@ onMounted(() => {
 		<ProjectRoleUpgradeDialog
 			v-model="upgradeDialogVisible"
 			:limit="projectsStore.teamProjectsLimit"
-			:plan-name="cloudPlanStore.currentPlanData?.displayName"
 		/>
 	</div>
 </template>

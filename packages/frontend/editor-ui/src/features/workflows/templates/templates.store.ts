@@ -1,6 +1,5 @@
 import { TEMPLATES_URLS } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { getTemplatePathByRole } from '@/experiments/utils';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
 import type {
@@ -83,7 +82,6 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const userStore = useUsersStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const workflowsStore = useWorkflowsStore();
 
 	const allCategories = computed(() => {
@@ -166,13 +164,11 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		return settingsStore.templatesHost !== TEMPLATES_URLS.DEFAULT_API_HOST;
 	});
 
-	const userRole = computed(
-		() =>
-			cloudPlanStore.currentUserCloudInfo?.role ??
-			(userStore.currentUser?.personalizationAnswers &&
-			'role' in userStore.currentUser.personalizationAnswers
-				? userStore.currentUser.personalizationAnswers.role
-				: undefined),
+	const userRole = computed(() =>
+		userStore.currentUser?.personalizationAnswers &&
+		'role' in userStore.currentUser.personalizationAnswers
+			? userStore.currentUser.personalizationAnswers.role
+			: undefined,
 	);
 
 	const websiteTemplateRepositoryParameters = computed(() => {

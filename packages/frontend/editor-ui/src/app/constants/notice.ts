@@ -1,25 +1,3 @@
-export const HIRING_BANNER = `
-                                                                    //////
-                                                                 ///////////
-                                                               /////      ////
-                                               ///////////////////         ////
-                                             //////////////////////       ////
-     ///////               ///////          ////                /////////////
-  ////////////          ////////////       ////                    ///////
- ////       ////       ////       ////    ////
-/////        /////////////         //////////
- /////     ////       ////       ////     ////
-  ////////////          ////////////       ////           ////////
-    ///////                //////           ////        /////////////
-                                             /////////////        ////
-                                                //////////        ////
-                                                       ////      ////
-                                                        ///////////
-                                                          //////
-
-Love n8n? Help us build the future of automation! https://n8n.io/careers?utm_source=n8n_user&utm_medium=console_output
-`;
-
 export const INSECURE_CONNECTION_WARNING = `
 <body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
 <h1 style="font-size: 40px">&#x1F6AB;</h1>

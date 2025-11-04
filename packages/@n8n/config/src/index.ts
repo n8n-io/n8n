@@ -15,7 +15,6 @@ import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
-import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
@@ -48,7 +47,6 @@ export { WorkflowsConfig } from './configs/workflows.config';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
 export { MfaConfig } from './configs/mfa.config';
-export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
@@ -161,9 +159,6 @@ export class GlobalConfig {
 	mfa: MfaConfig;
 
 	@Nested
-	hiringBanner: HiringBannerConfig;
-
-	@Nested
 	personalization: PersonalizationConfig;
 
 	@Nested
@@ -171,7 +166,7 @@ export class GlobalConfig {
 
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
-	defaultLocale: string = 'en';
+	defaultLocale: string = 'zh';
 
 	/** Whether to hide the page that shows active workflows and executions count. */
 	@Env('N8N_HIDE_USAGE_PAGE')

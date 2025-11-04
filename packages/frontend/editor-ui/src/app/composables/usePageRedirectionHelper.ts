@@ -1,5 +1,4 @@
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '@/Interface';
@@ -7,19 +6,11 @@ import { N8N_PRICING_PAGE_URL } from '@/app/constants';
 
 export function usePageRedirectionHelper() {
 	const usersStore = useUsersStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const telemetry = useTelemetry();
 	const settingsStore = useSettingsStore();
 
 	const goToDashboard = async () => {
-		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
-			const dashboardLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/dashboard',
-			});
-
-			location.href = dashboardLink;
-		}
-
+		// Dashboard functionality removed
 		return;
 	};
 
@@ -34,17 +25,11 @@ export function usePageRedirectionHelper() {
 		utm_campaign: UTMCampaign,
 		mode: 'open' | 'redirect' = 'open',
 	) => {
-		const { usageLeft, trialDaysLeft, userIsTrialing } = cloudPlanStore;
-		const { executionsLeft, workflowsLeft } = usageLeft;
 		const deploymentType = settingsStore.deploymentType;
 
 		telemetry.track('User clicked upgrade CTA', {
 			source,
-			isTrial: userIsTrialing,
 			deploymentType,
-			trialDaysLeft,
-			executionsLeft,
-			workflowsLeft,
 		});
 
 		const upgradeLink = await generateUpgradeLink(source, utm_campaign);
@@ -57,13 +42,7 @@ export function usePageRedirectionHelper() {
 	};
 
 	const generateUpgradeLink = async (source: string, utm_campaign: string) => {
-		let upgradeLink = N8N_PRICING_PAGE_URL;
-
-		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
-			upgradeLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/account/change-plan',
-			});
-		}
+		const upgradeLink = N8N_PRICING_PAGE_URL;
 
 		const url = new URL(upgradeLink);
 

@@ -29,7 +29,6 @@ import {
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -58,7 +57,6 @@ import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import MainSidebarUserArea from '@/app/components/MainSidebarUserArea.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
-const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
@@ -167,7 +165,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'insights',
 		icon: 'chart-column-decreasing',
-		label: 'Insights',
+		label: i18n.baseText('insights.heading'),
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
@@ -244,7 +242,6 @@ const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
 const showUserArea = computed(() => hasPermission(['authenticated']));
-const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
 onMounted(async () => {
 	window.addEventListener('resize', onResize);
@@ -468,13 +465,10 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		</div>
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
-				<ProjectNavigation
-					:collapsed="isCollapsed"
-					:plan-name="cloudPlanStore.currentPlanData?.displayName"
-				/>
+				<ProjectNavigation :collapsed="isCollapsed" />
 
 				<div :class="$style.bottomMenu">
-					<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
+					<BecomeTemplateCreatorCta v-if="fullyExpanded" />
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<N8nPopoverReka

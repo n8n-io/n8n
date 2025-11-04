@@ -1,11 +1,9 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { TEMPLATE_RECO_V2, VIEWS } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed } from 'vue';
 import { NODE_DATA, type PredefinedNodeData } from '../nodes/predefinedData';
 
 const PREDEFINED_NODES = Object.keys(NODE_DATA);
@@ -15,14 +13,10 @@ export const usePersonalizedTemplatesV2Store = defineStore(
 	() => {
 		const telemetry = useTelemetry();
 		const posthogStore = usePostHog();
-		const cloudPlanStore = useCloudPlanStore();
 		const templatesStore = useTemplatesStore();
 
 		const isFeatureEnabled = () => {
-			return (
-				posthogStore.getVariant(TEMPLATE_RECO_V2.name) === TEMPLATE_RECO_V2.variant &&
-				cloudPlanStore.userIsTrialing
-			);
+			return posthogStore.getVariant(TEMPLATE_RECO_V2.name) === TEMPLATE_RECO_V2.variant;
 		};
 
 		function getNodeData(nodeId: string): PredefinedNodeData {
@@ -46,13 +40,7 @@ export const usePersonalizedTemplatesV2Store = defineStore(
 		}
 
 		const nodes = computed(() => {
-			const selectedApps = cloudPlanStore.selectedApps;
-
-			if (!selectedApps?.length) {
-				return [];
-			}
-
-			return PREDEFINED_NODES.filter((nodeName) => selectedApps.includes(nodeName)).slice(0, 3);
+			return [];
 		});
 
 		function trackMinicardClick(tool: string) {

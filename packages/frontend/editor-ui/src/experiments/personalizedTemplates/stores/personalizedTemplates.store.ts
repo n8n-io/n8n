@@ -5,14 +5,13 @@ import {
 	TEMPLATE_ONBOARDING_EXPERIMENT,
 	VIEWS,
 } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { jsonParse } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 const SIMPLE_TEMPLATES = [6270, 5271, 2178];
 
@@ -66,7 +65,6 @@ function keepTop3Templates(templates: ITemplatesWorkflowFull[]) {
 export const usePersonalizedTemplatesStore = defineStore(STORES.PERSONALIZED_TEMPLATES, () => {
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
-	const cloudPlanStore = useCloudPlanStore();
 	const templatesStore = useTemplatesStore();
 
 	const allSuggestedWorkflows = ref<ITemplatesWorkflowFull[]>([]);
@@ -91,7 +89,7 @@ export const usePersonalizedTemplatesStore = defineStore(STORES.PERSONALIZED_TEM
 	const isFeatureEnabled = () => {
 		return (
 			posthogStore.getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
-				TEMPLATE_ONBOARDING_EXPERIMENT.variantSuggestedTemplates && cloudPlanStore.userIsTrialing
+			TEMPLATE_ONBOARDING_EXPERIMENT.variantSuggestedTemplates
 		);
 	};
 
@@ -160,18 +158,6 @@ export const usePersonalizedTemplatesStore = defineStore(STORES.PERSONALIZED_TEM
 	const getTemplateRoute = (id: number) => {
 		return { name: VIEWS.TEMPLATE, params: { id } };
 	};
-
-	watch(
-		() => cloudPlanStore.currentUserCloudInfo,
-		async (userInfo) => {
-			if (!userInfo) return;
-
-			const codingSkill = cloudPlanStore.codingSkill;
-			const selectedApps = cloudPlanStore.selectedApps ?? [];
-
-			await fetchSuggestedWorkflows(codingSkill, selectedApps);
-		},
-	);
 
 	return {
 		isFeatureEnabled,

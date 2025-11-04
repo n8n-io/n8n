@@ -11,7 +11,6 @@ import {
 	registerModuleResources,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -109,7 +108,6 @@ export async function initializeAuthenticatedFeatures(
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const insightsStore = useInsightsStore();
@@ -131,12 +129,6 @@ export async function initializeAuthenticatedFeatures(
 
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
-	}
-
-	if (settingsStore.isCloudDeployment) {
-		void cloudPlanStore.initialize().catch((error) => {
-			console.error('Failed to initialize cloud plan store:', error);
-		});
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
@@ -168,7 +160,6 @@ export async function initializeAuthenticatedFeatures(
 function registerAuthenticationHooks() {
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const postHogStore = usePostHog();
 	const npsSurveyStore = useNpsSurveyStore();
 	const telemetry = useTelemetry();
@@ -188,7 +179,6 @@ function registerAuthenticationHooks() {
 	usersStore.registerLogoutHook(() => {
 		npsSurveyStore.resetNpsSurveyOnLogOut();
 		postHogStore.reset();
-		cloudPlanStore.reset();
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 	});

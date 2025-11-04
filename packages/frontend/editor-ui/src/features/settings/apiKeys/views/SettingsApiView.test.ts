@@ -4,7 +4,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SettingsApiView from './SettingsApiView.vue';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '../apiKeys.store';
@@ -14,7 +13,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 setActivePinia(createTestingPinia());
 
 const settingsStore = mockedStore(useSettingsStore);
-const cloudStore = mockedStore(useCloudPlanStore);
 const apiKeysStore = mockedStore(useApiKeysStore);
 const rootStore = mockedStore(useRootStore);
 
@@ -60,26 +58,8 @@ describe('SettingsApiView', () => {
 		vi.clearAllMocks();
 	});
 
-	it('if user public api is not enabled and user is trialing it should show upgrade call to action', () => {
-		settingsStore.isPublicApiEnabled = false;
-		cloudStore.userIsTrialing = true;
-
-		renderComponent(SettingsApiView);
-
-		expect(screen.getByText('Upgrade to use API')).toBeInTheDocument();
-		expect(
-			screen.getByText(
-				'To prevent abuse, we limit API access to your workspace during your trial. If this is hindering your evaluation of n8n, please contact',
-			),
-		).toBeInTheDocument();
-		expect(screen.getByText('support@n8n.io')).toBeInTheDocument();
-
-		expect(screen.getByText('Upgrade plan')).toBeInTheDocument();
-	});
-
 	it('if user public api enabled and no API keys in account, it should create API key CTA', () => {
 		settingsStore.isPublicApiEnabled = true;
-		cloudStore.userIsTrialing = false;
 		apiKeysStore.apiKeys = [];
 
 		renderComponent(SettingsApiView);
@@ -98,7 +78,6 @@ describe('SettingsApiView', () => {
 		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
 		settingsStore.isSwaggerUIEnabled = true;
-		cloudStore.userIsTrialing = false;
 		apiKeysStore.apiKeys = [
 			{
 				id: '1',
@@ -157,7 +136,6 @@ describe('SettingsApiView', () => {
 		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
 		settingsStore.isSwaggerUIEnabled = false;
-		cloudStore.userIsTrialing = false;
 		apiKeysStore.apiKeys = [
 			{
 				id: '1',
@@ -209,7 +187,6 @@ describe('SettingsApiView', () => {
 
 	it('should show delete warning when trying to delete an API key', async () => {
 		settingsStore.isPublicApiEnabled = true;
-		cloudStore.userIsTrialing = false;
 		apiKeysStore.apiKeys = [
 			{
 				id: '1',

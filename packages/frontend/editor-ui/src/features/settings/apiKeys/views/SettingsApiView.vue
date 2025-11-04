@@ -5,7 +5,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { useI18n } from '@n8n/i18n';
@@ -23,7 +22,6 @@ import ApiKeyCard from '../components/ApiKeyCard.vue';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const cloudPlanStore = useCloudPlanStore();
 
 const { showError, showMessage } = useToast();
 const { confirm } = useMessage();
@@ -197,15 +195,6 @@ function onEdit(id: string) {
 				{{ i18n.baseText('settings.api.create.button') }}
 			</N8nButton>
 		</div>
-
-		<N8nActionBox
-			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
-			data-test-id="public-api-upgrade-cta"
-			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
-			:description="i18n.baseText('settings.api.trial.upgradePlan.description')"
-			:button-text="i18n.baseText('settings.api.trial.upgradePlan.cta')"
-			@click:button="onUpgrade"
-		/>
 
 		<N8nActionBox
 			v-if="isPublicApiEnabled && !apiKeysSortByCreationDate.length"
