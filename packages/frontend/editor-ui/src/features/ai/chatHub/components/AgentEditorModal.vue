@@ -3,7 +3,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
+import ModelSelectorModal from '@/features/ai/chatHub/components/ModelSelectorModal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
@@ -260,8 +260,8 @@ async function onDelete() {
 					:label="i18n.baseText('chatHub.agent.editor.model.label')"
 					:required="true"
 				>
-					<ModelSelector
-						:selectedAgent="selectedModel"
+					<ModelSelectorModal
+						:selected-agent="selectedModel"
 						:include-custom-agents="false"
 						:credentials="agentMergedCredentials"
 						@change="onModelChange"

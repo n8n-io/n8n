@@ -36,8 +36,8 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import ToolsSelector from './components/ToolsSelector.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';
+import ToolsSelectorModal from './components/ToolsSelectorModal.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -480,7 +480,7 @@ function handleOpenWorkflow(workflowId: string) {
 			@close="closeAgentEditor"
 		/>
 
-		<ToolsSelector
+		<ToolsSelectorModal
 			v-if="isToolsSelectorOpen"
 			:initial-value="selectedTools"
 			@update="onUpdateTools"
