@@ -2,8 +2,6 @@ import { inDevelopment, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { separate } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import axios from 'axios';
-import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
@@ -21,7 +19,6 @@ import { toFlaggedNode } from '@/security-audit/utils';
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
 	constructor(
-		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 	) {}
@@ -145,7 +142,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		}, []);
 	}
 
-	private async getNextVersions(currentVersionName: string) {
+	private async getNextVersions(_currentVersionName: string) {
 		// Version notifications have been removed
 		return [];
 	}

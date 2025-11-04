@@ -1,3 +1,4 @@
+import { computed } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { TEMPLATE_RECO_V2, VIEWS } from '@/app/constants';
 import { useFeatureFlags } from '@/app/stores/featureFlags.store';

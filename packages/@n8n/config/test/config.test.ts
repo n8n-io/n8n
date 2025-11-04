@@ -161,17 +161,6 @@ describe('GlobalConfig', () => {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
 		},
-		versionNotifications: {
-			enabled: true,
-			endpoint: 'https://api.n8n.io/api/versions/',
-			whatsNewEnabled: true,
-			whatsNewEndpoint: 'https://api.n8n.io/api/whats-new',
-			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
-		},
-		dynamicBanners: {
-			endpoint: 'https://api.n8n.io/api/banners',
-			enabled: true,
-		},
 		workflows: {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
@@ -381,6 +370,12 @@ describe('GlobalConfig', () => {
 		externalFrontendHooksUrls: '',
 		ai: {
 			enabled: false,
+		},
+		telemetry: {
+			enabled: true,
+			retentionDays: 30,
+			batchSize: 100,
+			batchIntervalMs: 500,
 		},
 	};
 

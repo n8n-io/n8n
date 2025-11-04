@@ -37,6 +37,10 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'api-requests', 'src$1'),
 	},
 	{
+		find: /^@n8n\/rest-api-client(.+)$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'rest-api-client', 'src$1'),
+	},
+	{
 		find: /^@n8n\/composables(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
 	},

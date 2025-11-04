@@ -112,3 +112,16 @@ export type {
 } from './schemas/external-secrets.schema';
 
 export type { UsageState } from './schemas/usage.schema';
+
+export type {
+	TelemetryEventDto,
+	TelemetryEventsResponse,
+	TelemetryStatsOverview,
+	TelemetryTopEvent,
+	TelemetryActiveUserStat,
+	TelemetryEventsQueryDto,
+	TelemetryStatsQueryDto,
+	TelemetryTopEventsQueryDto,
+} from './telemetry';
+
+export { TelemetryEventsQuerySchema, TelemetryStatsQuerySchema, TelemetryTopEventsQuerySchema } from './telemetry';

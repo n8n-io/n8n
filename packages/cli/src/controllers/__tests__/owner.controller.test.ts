@@ -1,4 +1,4 @@
-import type { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
+import type { OwnerSetupRequestDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
 	type AuthenticatedRequest,
@@ -16,7 +16,6 @@ import config from '@/config';
 import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
-import type { BannerService } from '@/services/banner.service';
 import type { PasswordUtility } from '@/services/password.utility';
 import type { UserService } from '@/services/user.service';
 
@@ -27,7 +26,6 @@ describe('OwnerController', () => {
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
 	const authService = mock<AuthService>();
-	const bannerService = mock<BannerService>();
 	const userService = mock<UserService>();
 	const userRepository = mock<UserRepository>();
 	const settingsRepository = mock<SettingsRepository>();
@@ -38,7 +36,6 @@ describe('OwnerController', () => {
 		eventService,
 		settingsRepository,
 		authService,
-		bannerService,
 		userService,
 		passwordUtility,
 		mock(),
@@ -98,25 +95,6 @@ describe('OwnerController', () => {
 			expect(configSetSpy).toHaveBeenCalledWith('userManagement.isInstanceOwnerSetUp', true);
 			expect(eventService.emit).toHaveBeenCalledWith('instance-owner-setup', { userId: 'userId' });
 			expect(result.id).toEqual('newUserId');
-		});
-	});
-
-	describe('dismissBanner', () => {
-		it('should not call dismissBanner if no banner is provided', async () => {
-			const payload = mock<DismissBannerRequestDto>({ banner: undefined });
-
-			const result = await controller.dismissBanner(mock(), mock(), payload);
-
-			expect(bannerService.dismissBanner).not.toHaveBeenCalled();
-			expect(result).toBeUndefined();
-		});
-
-		it('should call dismissBanner with the correct banner name', async () => {
-			const payload = mock<DismissBannerRequestDto>({ banner: 'TRIAL' });
-
-			await controller.dismissBanner(mock(), mock(), payload);
-
-			expect(bannerService.dismissBanner).toHaveBeenCalledWith('TRIAL');
 		});
 	});
 });

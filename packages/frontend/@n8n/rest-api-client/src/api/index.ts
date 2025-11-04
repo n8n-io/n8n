@@ -17,6 +17,7 @@ export * from './settings';
 export * from './module-settings';
 export * from './sso';
 export type * from './tags';
+export * from './telemetry';
 export * from './templates';
 export * from './third-party-licenses';
 export * from './usage';

@@ -1,0 +1,30 @@
+{
+	"name": "@n8n/admin-panel",
+	"version": "1.0.0",
+	"description": "n8n Admin Panel - Modular Management System",
+	"license": "SEE LICENSE IN LICENSE.md",
+	"type": "module",
+	"scripts": {
+		"dev": "vite --port 5679",
+		"build": "vite build",
+		"preview": "vite preview",
+		"typecheck": "vue-tsc --noEmit"
+	},
+	"dependencies": {
+		"vue": "catalog:frontend",
+		"vue-router": "catalog:frontend",
+		"pinia": "catalog:frontend",
+		"@n8n/design-system": "workspace:*",
+		"@n8n/i18n": "workspace:*",
+		"@n8n/api-types": "workspace:*",
+		"chart.js": "^4.4.0",
+		"vue-chartjs": "^5.3.0",
+		"date-fns": "^2.30.0"
+	},
+	"devDependencies": {
+		"@vitejs/plugin-vue": "catalog:frontend",
+		"typescript": "catalog:",
+		"vite": "catalog:",
+		"vue-tsc": "catalog:frontend"
+	}
+}

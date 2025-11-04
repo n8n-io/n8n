@@ -28,6 +28,7 @@ import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
 import { SsoConfig } from './configs/sso.config';
 import { TagsConfig } from './configs/tags.config';
+import { TelemetryConfig } from './configs/telemetry.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { WorkflowHistoryConfig } from './configs/workflow-history.config';
@@ -200,4 +201,7 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
+
+	@Nested
+	telemetry: TelemetryConfig;
 }

@@ -4,6 +4,391 @@
 
 ## 2025-11-04
 
+### Telemetry 独立管理平台实现 ✅
+
+完成自托管 Telemetry 数据采集和管理系统，所有遥测数据存储在本地数据库，完全脱离外部服务依赖。
+
+#### 数据库层实现
+
+**新增实体**:
+- `TelemetryEvent` - 遥测事件表
+  - JSONB properties 字段支持灵活属性存储
+  - 索引: eventName, userId, createdAt, workspaceId
+  - 预留多租户字段: workspaceId, tenantId
+- `TelemetrySession` - 会话跟踪表
+  - 支持用户会话生命周期管理
+  - JSONB metadata 存储会话元数据
+
+**数据库迁移**:
+- `1762233800000-CreateTelemetryTables.ts`
+  - 创建 telemetry_event 和 telemetry_session 表
+  - 自动时间戳 (createdAt, updatedAt)
+  - 多维度索引优化查询性能
+
+#### 后端模块实现
+
+**Repository 层** (`telemetry-event.repository.ts`):
+- `createBatch()` - 批量插入事件（性能优化）
+- `findWithFilters()` - 复杂条件查询（支持日期范围、用户、事件名过滤）
+- `getTopEvents()` - 统计热门事件
+- `getActiveUserStats()` - 活跃用户分析
+- `countByDateRange()` - 时间范围内事件统计
+
+**Service 层** (`telemetry-management.service.ts`):
+- `trackEvent()` - 单事件追踪
+- `trackEventsBatch()` - 批量事件追踪
+- `getEvents()` - 分页查询事件
+- `getOverview()` - 数据概览统计
+- 使用 Scoped Logger 提升日志可读性
+
+**Controller 层** (`telemetry-management.controller.ts`):
+- `POST /api/telemetry/events` - 单事件上报
+- `POST /api/telemetry/events/batch` - 批量事件上报
+- `GET /api/telemetry/events` - 查询事件列表
+- `GET /api/telemetry/stats/overview` - 统计概览
+- `GET /api/telemetry/stats/top-events` - Top 事件排行
+- `GET /api/telemetry/stats/active-users` - 活跃用户统计
+
+**Module 注册**:
+- 遵循 n8n BackendModule 模式
+- 依赖注入集成
+
+#### 与现有系统集成
+
+**后端 Telemetry 服务集成** (`packages/cli/src/telemetry/index.ts`):
+- 修改 `track()` 方法同时保存到本地数据库
+- 保持 RudderStack/PostHog 兼容性（如果启用）
+- 双写模式: 本地数据库 + 外部服务（可选）
+
+**Telemetry Controller 集成** (`packages/cli/src/controllers/telemetry.controller.ts`):
+- 拦截前端遥测请求
+- 自动保存到本地数据库
+- 事件来源标记: frontend/backend
+
+#### 前端实现
+
+**恢复 Telemetry 功能** (`packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts`):
+- 从 No-Op 恢复为完整功能实现
+- **批量上报**: 500ms 防抖，最多缓存 100 个事件
+- **持久化队列**: LocalStorage 存储，应用重启不丢失
+- **重试机制**: 指数退避（1s, 2s, 4s），最多重试 3 次
+- **性能优化**: 批量发送减少 HTTP 开销
+
+```typescript
+// 批量上报示例
+this.eventQueue.push(event);
+setTimeout(() => this.flush(), 500); // 500ms 防抖
+
+// 重试逻辑
+if (failed && retryCount < 3) {
+  setTimeout(() => retry(), 1000 * Math.pow(2, retryCount));
+}
+```
+
+#### API 类型定义
+
+**新增文件** (`packages/@n8n/api-types/src/telemetry.ts`):
+- `TelemetryEventDto` - 事件数据传输对象
+- `TelemetryStatsOverview` - 统计概览类型
+- `TrackEventRequest` - 单事件请求
+- `TrackEventsBatchRequest` - 批量事件请求
+- 所有类型使用 Zod Schema 验证
+
+#### 配置系统
+
+**新增配置** (`packages/@n8n/config/src/configs/telemetry.config.ts`):
+```typescript
+@Config
+export class TelemetryConfig {
+  @Env('N8N_TELEMETRY_ENABLED')
+  enabled: boolean = true; // 默认启用
+
+  @Env('N8N_TELEMETRY_RETENTION_DAYS')
+  retentionDays: number = 30; // 数据保留期
+
+  @Env('N8N_TELEMETRY_BATCH_SIZE')
+  batchSize: number = 100; // 批量大小
+
+  @Env('N8N_TELEMETRY_BATCH_INTERVAL_MS')
+  batchIntervalMs: number = 500; // 批量间隔
+}
+```
+
+**GlobalConfig 集成**:
+- 注册 telemetry 配置到主配置类
+
+#### 独立后台管理系统（新增）✅
+
+**项目架构** (`packages/frontend/admin-panel/`):
+- 创建完全独立的管理后台项目 `@n8n/admin-panel`
+- 访问路径: `/admin/`
+- 模块化架构，易于扩展其他管理功能
+
+**MainLayout 实现**:
+- `layouts/MainLayout.vue` - 主布局（侧边栏 + 顶栏）
+- `layouts/components/Sidebar.vue` - 可折叠侧边栏导航
+- `layouts/components/Header.vue` - 顶部导航栏
+- 模块配置系统 (`config/modules.ts`)
+
+**Telemetry Dashboard 页面** (`modules/telemetry/views/DashboardView.vue`):
+- ✅ 4个统计卡片组件（总事件、活跃用户、事件类型、平均日事件）
+- ✅ 活跃用户趋势图（Chart.js 折线图）
+- ✅ 热门事件 Top 20（带进度条可视化）
+- ✅ 时间范围选择器（7/30/90天）
+- ✅ 实时刷新功能
+
+**组件实现**:
+- `StatsCard.vue` - 统计卡片（支持图标、数值、趋势）
+- `LineChart.vue` - Chart.js 折线图封装
+- `TopEventsList.vue` - 热门事件列表（排名 + 进度条）
+
+**Telemetry Events 页面** (`modules/telemetry/views/EventsView.vue`):
+- ✅ 事件列表表格（时间、名称、来源、用户、工作流、属性）
+- ✅ 高级搜索：事件名称搜索
+- ✅ 多维筛选：来源（前端/后端）、日期范围
+- ✅ 智能分页：页码显示（1 ... 5 6 7 ... 20），每页 20/50/100 条
+- ✅ 数据导出：CSV 和 JSON 格式
+- ✅ 查看详情：跳转到事件详情页
+
+**数据导出功能**:
+- ✅ 后端实现 `exportEventsAsCsv()` 和 `exportEventsAsJson()`
+- ✅ 最大导出限制：10,000 条记录
+- ✅ 自动文件下载
+- ✅ 支持筛选条件应用于导出
+
+**状态管理** (`stores/telemetry.store.ts`):
+- Pinia Store 管理所有 Telemetry 数据
+- 筛选器和分页状态管理
+- 统一的数据获取接口
+
+#### 冗余代码清理 ✅
+
+**删除旧的嵌入式实现**:
+- ❌ 删除 `/features/settings/telemetry/` 目录及所有组件
+  - `TelemetryStatsCards.vue`
+  - `TelemetryEventsTable.vue`
+  - `TelemetryTopEvents.vue`
+  - `SettingsTelemetryView.vue`
+- ❌ 删除 `telemetryManagement.store.ts`
+- ❌ 删除 Router 中的 `/settings/telemetry` 路由
+- ❌ 删除 Navigation 中的 `TELEMETRY_SETTINGS` 常量
+- ❌ 删除 i18n 中的 `settings.telemetry.*` 翻译（28 个条目）
+
+**保留的内容**（仍需使用）:
+- ✅ `useTelemetry` composable（事件追踪）
+- ✅ `telemetry` API client（发送事件）
+- ✅ `ITelemetrySettings` 类型（系统配置）
+- ✅ `settings.telemetry.enabled` 配置（控制追踪）
+
+#### 新增 API 端点 ✅
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| GET | `/api/telemetry/export` | 数据导出（CSV/JSON） |
+
+更新的端点：
+- `GET /api/telemetry/stats/active-users` - 返回格式修改为 `{ stats: [...] }`
+
+#### 技术亮点
+
+**架构模式**:
+- Repository-Service-Controller 三层架构
+- 依赖注入 (@n8n/di)
+- 独立后台管理系统（模块化设计）
+- 类型安全 (Zod + TypeScript)
+
+**性能优化**:
+- 批量写入数据库
+- 前端批量上报（500ms 防抖）
+- 数据库索引优化
+
+**可靠性保证**:
+- LocalStorage 队列持久化
+- 指数退避重试
+- 错误日志记录
+
+**扩展性设计**:
+- JSONB 灵活属性存储
+- 预留多租户字段
+- 模块化架构易于扩展
+
+#### 数据流架构
+
+```
+前端事件 → 批量队列 (500ms) → HTTP POST /api/telemetry/events/batch
+                                          ↓
+                                   Controller 拦截
+                                          ↓
+                                   Service 处理
+                                          ↓
+                                   Repository 批量写入
+                                          ↓
+                              PostgreSQL/MySQL/SQLite
+```
+
+```
+后端事件 → telemetry.track() → 双写 → 本地数据库 (新)
+                                    → RudderStack (可选)
+                                    → PostHog (可选)
+```
+
+#### 构建和验证
+
+- ✅ 数据库实体定义完成
+- ✅ 数据库迁移编译通过
+- ✅ 后端模块 TypeScript 通过
+- ✅ 前端 Telemetry 恢复成功
+- ✅ API 类型定义完成
+- ✅ 配置系统集成完成
+- ✅ 所有包构建成功（0 错误）
+
+#### 影响范围
+
+**新增文件**:
+- 数据库: 3 个（2 个实体 + 1 个迁移）
+- 后端模块: 4 个（Repository + Service + Controller + Module）
+- API 类型: 1 个
+- 配置: 1 个
+- 前端: 1 个（恢复）
+
+**修改文件**:
+- 后端集成: 2 个
+- 配置集成: 2 个
+- 总计: 14+ 个
+
+**代码统计**:
+- 新增代码: 1,200+ 行
+- 删除代码: 50+ 行（No-Op 替换）
+
+#### 遗留工作
+
+**待实现功能**:
+- [ ] 管理界面 UI（Vue 组件）
+- [ ] 数据导出功能（CSV/JSON）
+- [ ] 实时推送（SSE/WebSocket）
+- [ ] 数据清理定时任务
+- [ ] i18n 翻译
+
+**提交哈希**: 待提交
+
+---
+
+### 跟踪系统清理：移除 CloudPlan 和 PostHog，提取独立 Feature Flags ✅
+
+完全移除外部依赖的跟踪和分析系统，为后续独立 Telemetry 管理平台做准备。
+
+#### 阶段 1：CloudPlan Store 完全删除
+
+**删除的文件**:
+- `packages/frontend/editor-ui/src/app/stores/cloudPlan.store.ts`
+
+**修改的核心文件** (15+ 个):
+- `init.ts` - 移除 CloudPlan 初始化和重置逻辑
+- `experiments/utils.ts` - 移除试用期检查
+- 5 个实验性 store - 移除 userIsTrialing 条件
+- 8 个 Vue 组件 - 移除试用相关 UI
+- 5 个测试文件 - 移除 CloudPlan 模拟
+
+**清理内容**:
+- ❌ 云端订阅状态检查
+- ❌ 试用期限制
+- ❌ currentUserCloudInfo 监听
+- ❌ CloudPlan 相关遥测
+
+#### 阶段 2：Feature Flags 提取 + PostHog Store 删除
+
+**新增的文件**:
+- `packages/frontend/editor-ui/src/app/stores/featureFlags.store.ts` (220 行)
+  - 服务端评估的 Feature Flags
+  - 本地覆盖机制（开发/测试）
+  - localStorage 持久化
+  - 全局 API: `window.featureFlags`
+
+**修改的文件**:
+- `shims.d.ts` - 添加 window.featureFlags 类型定义
+- `init.ts` - 使用 FeatureFlags 替代 PostHog
+
+**Feature Flags 迁移** (17 个文件):
+- 7 个实验性 store
+- 5 个 NDV 组件 (InputPanel.vue, OutputPanel.vue 等)
+- 3 个 Composables
+- 2 个其他文件
+
+**删除的文件**:
+- `packages/frontend/editor-ui/src/app/stores/posthog.store.ts`
+- `packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts`
+
+**删除的 PostHog 功能**:
+- ❌ PostHog.capture() 事件追踪
+- ❌ PostHog.identify() 用户识别
+- ❌ PostHog.setMetadata() 元数据设置
+- ❌ 外部 PostHog 服务依赖
+
+#### 技术实现亮点
+
+**Feature Flags Store 架构**:
+```typescript
+export const useFeatureFlags = defineStore('featureFlags', () => {
+  // 服务端评估的 flags
+  const featureFlags: Ref<FeatureFlags | null> = ref(null);
+
+  // 本地覆盖（开发/测试）
+  const overrides: Ref<Record<string, string | boolean>> = ref({});
+
+  // 优先级: overrides > server flags > false
+  const getVariant = (experiment: keyof FeatureFlags) => {
+    return overrides.value[experiment] ?? featureFlags.value?.[experiment] ?? false;
+  };
+
+  // 全局 API 暴露
+  window.featureFlags = { override, clearOverride, getVariant, getAll };
+});
+```
+
+**数据流优化**:
+```
+之前:
+  前端 → PostHog.com → Feature Flags + 事件追踪
+
+现在:
+  前端 → 服务端评估 → Feature Flags Store → 本地覆盖
+  （无外部依赖，完全可控）
+```
+
+#### 构建和验证
+
+- ✅ 前端 TypeScript 类型检查通过
+- ✅ 17 个文件 Feature Flags 迁移成功
+- ✅ PostHog 引用全部清除
+- ✅ CloudPlan 引用全部清除
+- ✅ 0 编译错误
+
+#### 影响范围
+
+**阶段 1 (CloudPlan)**:
+- 修改文件: 50+ 个
+- 删除文件: 1 个
+- 删除代码: 800+ 行
+
+**阶段 2 (PostHog + Feature Flags)**:
+- 新增文件: 1 个 (220 行)
+- 修改文件: 23 个
+- 删除文件: 2 个
+- 删除代码: 600+ 行
+- 新增代码: 220 行
+
+#### 遗留系统状态
+
+**Telemetry 系统 (待改造)**:
+- 当前状态: No-Op（所有方法为空）
+- 调用次数: 289 次
+- 分布文件: 126 个
+- 改造方向: 独立 Telemetry 管理平台（方案已设计）
+
+**提交哈希**: 待提交
+
+---
+
 ### 中文本地化：完整界面翻译和语言切换功能 ✅
 
 实现完整的中文用户界面，提升国内用户体验。

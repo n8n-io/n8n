@@ -18,6 +18,7 @@ import type { IExecutionTrackProperties } from '@/interfaces';
 import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
+import { TelemetryManagementService } from '@/modules/telemetry-management/telemetry-management.service';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -59,6 +60,7 @@ export class Telemetry {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly telemetryManagementService: TelemetryManagementService,
 	) {}
 
 	async init() {
@@ -214,10 +216,6 @@ export class Telemetry {
 	}
 
 	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
-		if (!this.rudderStack) {
-			return;
-		}
-
 		const { instanceId } = this.instanceSettings;
 		const { user_id } = properties;
 		const updatedProperties = {
@@ -226,20 +224,35 @@ export class Telemetry {
 			version_cli: N8N_VERSION,
 		};
 
-		const payload = {
-			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
-			event: eventName,
+		// Save to local database
+		void this.telemetryManagementService.trackEvent({
+			eventName,
 			properties: updatedProperties,
-			context: {},
-		};
-
-		this.postHog?.track(payload);
-
-		return this.rudderStack.track({
-			...payload,
-			// provide a fake IP address to instruct RudderStack to not use the user's IP address
-			context: { ...payload.context, ip: '0.0.0.0' },
+			userId: user_id ? String(user_id) : undefined,
+			workflowId: properties.workflow_id ? String(properties.workflow_id) : undefined,
+			instanceId,
+			source: 'backend',
 		});
+
+		// Still track with PostHog and RudderStack if enabled
+		if (this.rudderStack) {
+			const payload = {
+				userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
+				event: eventName,
+				properties: updatedProperties,
+				context: {},
+			};
+
+			this.postHog?.track(payload);
+
+			return this.rudderStack.track({
+				...payload,
+				// provide a fake IP address to instruct RudderStack to not use the user's IP address
+				context: { ...payload.context, ip: '0.0.0.0' },
+			});
+		}
+
+		return undefined;
 	}
 
 	// test helpers

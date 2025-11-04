@@ -43,6 +43,13 @@ packages/@n8n/api-types/src/schemas/banner-name.schema.ts
 packages/@n8n/api-types/src/dto/owner/dismiss-banner-request.dto.ts
 ```
 
+### 跟踪系统清理（第四阶段 - 2025-11-04）
+```
+packages/frontend/editor-ui/src/app/stores/cloudPlan.store.ts
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+```
+
 ### 测试文件清理
 ```
 80+ 个许可证相关的测试文件
