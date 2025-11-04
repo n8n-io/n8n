@@ -25,7 +25,6 @@ import {
 	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
 	LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
 	LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
-	Time,
 } from '@n8n/constants';
 
 export const isMessageEventBusDestinationWebhookOptions = (
