@@ -312,17 +312,13 @@ export class OidcService {
 
 	private async applySsoProvisioning(user: User, claims: any) {
 		const provisioningConfig = await this.provisioningService.getConfig();
-		if (await this.provisioningService.isInstanceRoleProvisioningEnabled()) {
-			await this.provisioningService.provisionInstanceRoleForUser(
-				user,
-				claims[provisioningConfig.scopesInstanceRoleClaimName],
-			);
+		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
+		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
+		if (instanceRole) {
+			await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
 		}
-		if (await this.provisioningService.isProjectRolesProvisioningEnabled()) {
-			await this.provisioningService.provisionProjectRolesForUser(
-				user.id,
-				claims[provisioningConfig.scopesProjectsRolesClaimName],
-			);
+		if (projectRoleMapping) {
+			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
 		}
 	}
 
