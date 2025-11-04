@@ -185,12 +185,9 @@ export class KafkaTriggerV2 implements INodeType {
 				);
 			}
 
-			const https = await import('https');
-
 			interface SchemaRegistryConfig {
 				host: string;
 				auth?: { username: string; password: string };
-				httpsAgent?: any;
 			}
 
 			const registryConfig: SchemaRegistryConfig = {
@@ -213,25 +210,6 @@ export class KafkaTriggerV2 implements INodeType {
 					username: schemaRegistryUsername as string,
 					password: schemaRegistryPassword as string,
 				};
-			} else if (schemaRegistryAuthType === 'tls') {
-				const clientCert = credentials.schemaRegistryClientCert;
-				const clientKey = credentials.schemaRegistryClientKey;
-				const caCert = credentials.schemaRegistryCaCert;
-
-				if (!clientCert || !clientKey) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Client Certificate and Client Key are required for TLS authentication',
-					);
-				}
-
-				const httpsAgent = new https.Agent({
-					cert: clientCert as string,
-					key: clientKey as string,
-					...(caCert && { ca: caCert as string }),
-					rejectUnauthorized: true,
-				});
-				registryConfig.httpsAgent = httpsAgent;
 			}
 
 			registry = new SchemaRegistry(registryConfig);

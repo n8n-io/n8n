@@ -130,10 +130,6 @@ export class KafkaV2 implements ICredentialType {
 					name: 'Basic Authentication',
 					value: 'basic',
 				},
-				{
-					name: 'TLS/SSL (mTLS)',
-					value: 'tls',
-				},
 			],
 			default: 'none',
 			description: 'Authentication method for Schema Registry',
@@ -169,60 +165,6 @@ export class KafkaV2 implements ICredentialType {
 			},
 			default: '',
 			description: 'Password for Schema Registry basic authentication',
-		},
-		// TLS/SSL Authentication
-		{
-			displayName: 'Client Certificate',
-			name: 'schemaRegistryClientCert',
-			type: 'string',
-			required: true,
-			typeOptions: {
-				password: true,
-			},
-			displayOptions: {
-				show: {
-					useSchemaRegistry: [true],
-					schemaRegistryAuthType: ['tls'],
-				},
-			},
-			default: '',
-			placeholder: '-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----',
-			description: 'Client certificate for TLS authentication (PEM format)',
-		},
-		{
-			displayName: 'Client Key',
-			name: 'schemaRegistryClientKey',
-			type: 'string',
-			required: true,
-			typeOptions: {
-				password: true,
-			},
-			displayOptions: {
-				show: {
-					useSchemaRegistry: [true],
-					schemaRegistryAuthType: ['tls'],
-				},
-			},
-			default: '',
-			placeholder: '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----',
-			description: 'Client private key for TLS authentication (PEM format)',
-		},
-		{
-			displayName: 'CA Certificate',
-			name: 'schemaRegistryCaCert',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			displayOptions: {
-				show: {
-					useSchemaRegistry: [true],
-					schemaRegistryAuthType: ['tls'],
-				},
-			},
-			default: '',
-			placeholder: '-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----',
-			description: 'CA certificate for TLS authentication (PEM format, optional)',
 		},
 	];
 }

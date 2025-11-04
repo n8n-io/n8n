@@ -288,54 +288,6 @@ describe('KafkaTrigger Node (V2)', () => {
 		]);
 	});
 
-	it('should use schema registry with TLS authentication', async () => {
-		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
-			mode: 'trigger',
-			node: {
-				parameters: {
-					topic: 'test-topic',
-					groupId: 'test-group',
-					options: { parallelProcessing: true },
-				},
-			},
-			credential: {
-				brokers: 'localhost:9092',
-				clientId: 'n8n-kafka',
-				ssl: false,
-				authentication: false,
-				useSchemaRegistry: true,
-				schemaRegistryUrl: 'https://localhost:8081',
-				schemaRegistryAuthType: 'tls',
-				schemaRegistryClientCert:
-					'-----BEGIN CERTIFICATE-----\nMOCK_CERT\n-----END CERTIFICATE-----',
-				schemaRegistryClientKey: '-----BEGIN PRIVATE KEY-----\nMOCK_KEY\n-----END PRIVATE KEY-----',
-				schemaRegistryCaCert: '-----BEGIN CERTIFICATE-----\nMOCK_CA\n-----END CERTIFICATE-----',
-			},
-		});
-
-		await publishMessage({
-			value: Buffer.from('test-message'),
-		});
-
-		expect(SchemaRegistry).toHaveBeenCalledWith(
-			expect.objectContaining({
-				host: 'https://localhost:8081',
-				httpsAgent: expect.any(Object),
-			}),
-		);
-		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
-		expect(emit).toHaveBeenCalledWith([
-			[
-				{
-					json: {
-						message: { data: 'decoded-data' },
-						topic: 'test-topic',
-					},
-				},
-			],
-		]);
-	});
-
 	it('should use schema registry without authentication when authType is none', async () => {
 		const { emit } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
 			mode: 'trigger',
@@ -538,31 +490,6 @@ describe('KafkaTrigger Node (V2)', () => {
 					schemaRegistryAuthType: 'basic',
 					schemaRegistryUsername: '',
 					schemaRegistryPassword: '',
-				},
-			}),
-		).rejects.toThrow(NodeOperationError);
-	});
-
-	it('should throw error when TLS certificates are missing', async () => {
-		await expect(
-			testTriggerNode(new KafkaTriggerV2(baseDescription), {
-				mode: 'trigger',
-				node: {
-					parameters: {
-						topic: 'test-topic',
-						groupId: 'test-group',
-					},
-				},
-				credential: {
-					brokers: 'localhost:9092',
-					clientId: 'n8n-kafka',
-					ssl: false,
-					authentication: false,
-					useSchemaRegistry: true,
-					schemaRegistryUrl: 'https://localhost:8081',
-					schemaRegistryAuthType: 'tls',
-					schemaRegistryClientCert: '',
-					schemaRegistryClientKey: '',
 				},
 			}),
 		).rejects.toThrow(NodeOperationError);
