@@ -122,34 +122,6 @@ describe('Assignment.vue', () => {
 		});
 	});
 
-	it('should auto-change type when dropping a value', async () => {
-		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
-
-		const { emitted } = renderComponent({
-			props: {
-				...DEFAULT_SETUP.props,
-				disableType: false,
-			},
-			global: {
-				stubs: {
-					ParameterInputFull: {
-						setup(_props, { emit }) {
-							emit('drop', '={{ 42 }}');
-							emit('blur');
-						},
-						template: '<div></div>',
-					},
-				},
-			},
-		});
-
-		const events = emitted('update:model-value');
-		const lastEvent = events.at(-1);
-		expect(lastEvent).toContainEqual(expect.objectContaining({ type: 'number' }));
-
-		spy.mockRestore();
-	});
-
 	it('should not auto-change type when disableType is true', async () => {
 		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
 
@@ -174,6 +146,34 @@ describe('Assignment.vue', () => {
 		const events = emitted('update:model-value');
 		const lastEvent = events.at(-1);
 		expect(lastEvent).not.toContainEqual(expect.objectContaining({ type: 'number' }));
+
+		spy.mockRestore();
+	});
+
+	it('should auto-change type when dropping a value', async () => {
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+
+		const { emitted } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				disableType: false,
+			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+							emit('blur');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
+		});
+
+		const events = emitted('update:model-value');
+		const lastEvent = events.at(-1);
+		expect(lastEvent).toContainEqual(expect.objectContaining({ type: 'number' }));
 
 		spy.mockRestore();
 	});

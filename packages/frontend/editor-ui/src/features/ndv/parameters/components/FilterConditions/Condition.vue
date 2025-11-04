@@ -225,7 +225,6 @@ watch(
 			<template #left>
 				<ParameterInputFull
 					v-if="!fixedLeftValue"
-					:key="leftParameter.type"
 					display-options
 					hide-label
 					hide-hint
@@ -251,7 +250,6 @@ watch(
 			</template>
 			<template v-if="!operator.singleValue" #right="{ breakpoint }">
 				<ParameterInputFull
-					:key="rightParameter.type"
 					display-options
 					hide-label
 					hide-hint
