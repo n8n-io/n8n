@@ -6,7 +6,6 @@ import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
-import { sanitizeError } from '@/app/utils/sanitizeError';
 
 /**
  * Handles the 'nodeExecuteAfter' event, which happens after a node is executed.
@@ -43,16 +42,10 @@ export async function nodeExecuteAfter(
 		}
 	}
 
-	// Sanitize error object to prevent circular references from breaking Vue reactivity
-	const sanitizedData = { ...pushData.data };
-	if (sanitizedData.error) {
-		sanitizedData.error = sanitizeError(sanitizedData.error);
-	}
-
 	const pushDataWithPlaceholderOutputData: PushPayload<'nodeExecuteAfterData'> = {
 		...pushData,
 		data: {
-			...sanitizedData,
+			...pushData.data,
 			data: placeholderOutputData,
 		},
 	};

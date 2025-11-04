@@ -345,7 +345,7 @@ export async function getInputConnectionData(
 				if (error instanceof ExecutionBaseError) {
 					if (error.functionality === 'configuration-node') throw error;
 				} else {
-					error = new NodeOperationError(parentNode, error, {
+					error = new NodeOperationError(connectedNode, error, {
 						itemIndex,
 					});
 				}
