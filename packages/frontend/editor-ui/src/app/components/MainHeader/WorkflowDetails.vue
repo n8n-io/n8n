@@ -857,7 +857,7 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
 				<WorkflowDescriptionPopover
-					v-else
+					v-else-if="!props.readOnly && workflowPermissions.update"
 					:workflow-id="props.id"
 					:workflow-description="props.description"
 				/>
