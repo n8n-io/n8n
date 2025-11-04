@@ -4,11 +4,11 @@ import type { IUser, UserAction } from '@n8n/design-system';
 import { DATA_TABLE_CARD_ACTIONS } from '@/features/core/dataTable/constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { N8nActionToggle } from '@n8n/design-system';
 type Props = {

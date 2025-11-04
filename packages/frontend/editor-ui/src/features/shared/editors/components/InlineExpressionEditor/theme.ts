@@ -35,10 +35,10 @@ export const inputTheme = ({ rows, isReadOnly } = { rows: 5, isReadOnly: false }
 			borderRadius: 'var(--input--radius, var(--radius))',
 			borderTopLeftRadius: 0,
 			borderTopRightRadius:
-				'var(--input-border-top-right-radius, var(--input--radius, var(--radius)))',
+				'var(--input-triple--radius--top-right, var(--input--radius, var(--radius)))',
 			borderBottomLeftRadius: 0,
 			borderBottomRightRadius:
-				'var(--input-border-bottom-right-radius, var(--input--radius, var(--radius)))',
+				'var(--input-triple--radius--bottom-right, var(--input--radius, var(--radius)))',
 			backgroundColor: 'white',
 		},
 		'.cm-cursor, .cm-dropCursor': {
