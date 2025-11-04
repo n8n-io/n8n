@@ -60,13 +60,13 @@ export const transformInsightsSummary = (data: InsightsSummary | null): Insights
 		: [];
 
 export const timeRangeMappings = {
-	day: 0,
-	week: 6,
-	'2weeks': 13,
-	month: 29,
-	quarter: 89,
+	day: 1,
+	week: 7,
+	'2weeks': 14,
+	month: 30,
+	quarter: 90,
 	'6months': 180,
-	year: 364,
+	year: 365,
 };
 
 export const getTimeRangeLabels = () => {

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
+import { AIBuilderPage } from './AIBuilderPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
@@ -59,6 +60,7 @@ export class n8nPage {
 
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
+	readonly aiBuilder: AIBuilderPage;
 	readonly becomeCreatorCTA: BecomeCreatorCTAPage;
 	readonly canvas: CanvasPage;
 	readonly communityNodes: CommunityNodesPage;
@@ -124,6 +126,7 @@ export class n8nPage {
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
+		this.aiBuilder = new AIBuilderPage(page);
 		this.becomeCreatorCTA = new BecomeCreatorCTAPage(page);
 		this.canvas = new CanvasPage(page);
 		this.communityNodes = new CommunityNodesPage(page);

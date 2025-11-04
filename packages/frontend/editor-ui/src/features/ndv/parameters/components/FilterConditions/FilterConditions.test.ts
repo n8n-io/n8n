@@ -1,7 +1,7 @@
 import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import * as workFlowHelpers from '@/composables/useWorkflowHelpers';
+import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import NodeIcon from '@/components/NodeIcon.vue';
-import type { NodeIconSource } from '@/utils/nodeIcon';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { useI18n } from '@n8n/i18n';
 
 import {

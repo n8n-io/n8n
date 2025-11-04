@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, watch } from 'vue';
 
-import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
+import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -11,29 +11,29 @@ import { isCommunityPackageName } from 'n8n-workflow';
 
 import type { IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from './AuthTypeSelector.vue';
-import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,
 	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
-} from '@/constants';
+} from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import Banner from '@/components/Banner.vue';
-import CopyInput from '@/components/CopyInput.vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import Banner from '@/app/components/Banner.vue';
+import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
 	N8nInlineAskAssistantButton,

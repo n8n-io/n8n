@@ -3,8 +3,8 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, ref } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 const emit = defineEmits<{
 	close: [];

@@ -19,7 +19,7 @@ import {
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptions } from '@utils/descriptions';
-import { getConnectedTools } from '@utils/helpers';
+import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
@@ -162,21 +162,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const credentials = await this.getCredentials('openAiApi');
 	const nodeVersion = this.getNode().typeVersion;
 
-	const prompt = this.getNodeParameter('prompt', i) as string;
-
-	let input;
-	if (prompt === 'auto') {
-		input = this.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
-	} else {
-		input = this.getNodeParameter('text', i) as string;
-	}
-
-	if (input === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
-		});
-	}
+	const input = getPromptInputByType({
+		ctx: this,
+		i,
+		inputKey: 'text',
+		promptTypeKey: 'prompt',
+	});
 
 	const assistantId = this.getNodeParameter('assistantId', i, '', { extractValue: true }) as string;
 

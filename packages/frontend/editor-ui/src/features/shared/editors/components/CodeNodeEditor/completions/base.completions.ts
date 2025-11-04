@@ -3,8 +3,8 @@ import { addInfoRenderer } from '../utils';
 import { addVarType } from '@/features/settings/environments.ee/completions/variables.completions';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { escapeMappingString } from '@/utils/mappingUtils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { escapeMappingString } from '@/app/utils/mappingUtils';
 import { useI18n } from '@n8n/i18n';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
