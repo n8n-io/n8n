@@ -15,7 +15,6 @@ breaking-changes/
       detection.types.ts      # Report types
       index.ts
    rules/
-      abstract-rule.ts        # Base class for all rules
       v2/                     # V2-specific rules
          removed-nodes.rule.ts
          process-env-access.rule.ts
@@ -32,41 +31,97 @@ breaking-changes/
 
 ### Detect Breaking Changes
 ```
-GET /breaking-changes?version=v2
+GET /breaking-changes/report?version=v2
 ```
 
 Returns:
 ```json
 {
+ "report": {
   "generatedAt": "2025-10-17T00:00:00.000Z",
   "targetVersion": "v2",
   "currentVersion": "1.x.x",
-  "totalIssues": 5,
-  "criticalIssues": 2,
-  "affectedWorkflowCount": 4,
-  "results": [
-    {
-      "ruleId": "removed-nodes-v2",
-      "isAffected": true,
-      "affectedWorkflows": [
-        {
-          "id": "wf-001",
-          "name": "Customer Onboarding",
-          "active": true,
-          "reason": "Uses removed nodes: n8n-nodes-base.spontit"
-        }
-      ],
-      "instanceIssues": [],
-      "recommendations": [
-        {
-          "action": "Update affected workflows",
-          "description": "Replace removed nodes with alternatives"
-        }
+  "instanceResults": [
+   {
+    "ruleId": "process-env-access-v2",
+    "ruleTitle": "Process Environment Access Restrictions",
+    "ruleDescription": "Access to process.env is now restricted",
+    "ruleSeverity": "high",
+    "instanceIssues": [
+     {
+      "title": "Environment access detected",
+      "description": "Workflows using process.env may be affected",
+      "level": "warning"
+     }
+    ],
+    "recommendations": [
+     {
+      "action": "Review environment variable usage",
+      "description": "Update workflows to use secure environment variable access"
+     }
+    ]
+   }
+  ],
+  "workflowResults": [
+   {
+    "ruleId": "removed-nodes-v2",
+    "ruleTitle": "Removed Deprecated Nodes",
+    "ruleDescription": "Several deprecated nodes have been removed",
+    "ruleSeverity": "critical",
+    "affectedWorkflows": [
+     {
+      "id": "wf-001",
+      "name": "Customer Onboarding",
+      "active": true,
+      "numberOfExecutions": 142,
+      "lastUpdatedAt": "2025-10-15T10:30:00.000Z",
+      "lastExecutedAt": "2025-10-16T14:22:00.000Z",
+      "issues": [
+       {
+        "title": "Node 'n8n-nodes-base.spontit' with name 'Spontit' has been removed",
+        "description": "The node type 'n8n-nodes-base.spontit' is no longer available",
+        "level": "error",
+        "nodeId": "node-123",
+        "nodeName": "Spontit"
+       }
       ]
-    }
+     }
+    ],
+    "recommendations": [
+     {
+      "action": "Update affected workflows",
+      "description": "Replace removed nodes with their updated versions or alternatives"
+     }
+    ]
+   }
   ]
+ },
+ "shouldCache": false
 }
 ```
+
+## Rule Types
+
+The system supports two types of rules:
+
+### Workflow Rules (`IBreakingChangeWorkflowRule`)
+
+- **Purpose**: Check individual workflows for breaking changes
+- **Methods**:
+  - `getMetadata()`: Returns rule metadata (version, title, description, severity, etc.)
+  - `detectWorkflow(workflow, nodesGroupedByType)`: Checks a single workflow and returns issues
+  - `getRecommendations(workflowResults)`: Returns recommendations based on detected issues
+- **Returns**: `WorkflowDetectionReport` with workflow-specific issues
+- **Example Use Cases**: Removed nodes, deprecated node features, changed node behavior
+
+### Instance Rules (`IBreakingChangeInstanceRule`)
+
+- **Purpose**: Check instance-level configuration and environment
+- **Methods**:
+  - `getMetadata()`: Returns rule metadata (version, title, description, severity, etc.)
+  - `detect()`: Checks the entire instance and returns issues
+- **Returns**: `InstanceDetectionReport` with instance-level issues and recommendations
+- **Example Use Cases**: Environment variable requirements, database version checks, configuration changes
 
 ## Adding Rules to the System
 
@@ -76,64 +131,131 @@ If you're adding a new breaking change rule for an existing version (e.g., v2), 
 
 #### Step 1: Create the Rule Class
 
-Create your rule file in the appropriate version directory (e.g., `rules/v2/my-new-rule.rule.ts`):
+There are two types of rules you can create:
+
+##### A. Workflow Rules (for checking workflows)
+
+Create your rule file in the appropriate version directory (e.g., `rules/v2/my-workflow-rule.rule.ts`):
 
 ```typescript
+import { BreakingChangeRecommendation } from '@n8n/api-types';
+import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from '@n8n/backend-common';
-import { ErrorReporter } from 'n8n-core';
+import { INode } from 'n8n-workflow';
 
-import type { DetectionResult, BreakingChangeMetadata } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory } from '../../types';
+import type {
+  BreakingChangeRuleMetadata,
+  IBreakingChangeWorkflowRule,
+  WorkflowDetectionReport,
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
-export class MyNewRule extends IBreakingChangeInstanceRule {
-	constructor(
-		protected readonly logger: Logger,
-		protected errorReporter: ErrorReporter,
-	) {
-		super(logger);
-	}
+export class MyWorkflowRule implements IBreakingChangeWorkflowRule {
+  id: string = 'my-workflow-rule-v2';
 
-	getMetadata(): BreakingChangeMetadata {
-		return {
-			id: 'my-rule-v2',
-			version: 'v2',
-			title: 'My Breaking Change',
-			description: 'Description of what changed',
-			category: BreakingChangeCategory.WORKFLOW,
-			severity: BreakingChangeSeverity.HIGH,
-			documentationUrl: 'https://docs.n8n.io/migration/v2/...',
-		};
-	}
+  getMetadata(): BreakingChangeRuleMetadata {
+    return {
+      version: 'v2',
+      title: 'My Workflow Breaking Change',
+      description: 'Description of what changed in workflows',
+      category: BreakingChangeCategory.workflow,
+      severity: 'high',
+      documentationUrl: 'https://docs.n8n.io/migration/v2/...',
+    };
+  }
 
-	async detect(): Promise<DetectionResult> {
-		const result = this.createEmptyResult(this.getMetadata().id);
+  async getRecommendations(): Promise<BreakingChangeRecommendation[]> {
+    return [
+      {
+        action: 'Update affected workflows',
+        description: 'Replace or update the affected nodes',
+      },
+    ];
+  }
 
-		try {
-			// Instance-level issues
-			result.instanceIssues.push({
-				type: 'configuration',
-				description: 'Database version XYZ is deprecated',
-				severity: BreakingChangeSeverity.HIGH,
-			});
+  async detectWorkflow(
+    _workflow: WorkflowEntity,
+    nodesGroupedByType: Map<string, INode[]>,
+  ): Promise<WorkflowDetectionReport> {
+    // Check if workflow uses specific node types
+    const affectedNodes = nodesGroupedByType.get('n8n-nodes-base.someNode') ?? [];
 
-			result.isAffected =
-				result.instanceIssues.length > 0;
+    if (affectedNodes.length === 0) {
+      return { isAffected: false, issues: [] };
+    }
 
-			if (result.isAffected) {
-				result.recommendations.push({
-					action: 'What to do',
-					description: 'How to fix it',
-					documentationUrl: 'https://docs.n8n.io/...',
-				});
-			}
-		} catch (error) {
-			this.errorReporter.error(error, { shouldBeLogged: true});
-		}
+    return {
+      isAffected: true,
+      issues: affectedNodes.map((node) => ({
+        title: `Node '${node.type}' with name '${node.name}' is affected`,
+        description: 'This node requires updates for v2 compatibility',
+        level: 'warning',
+        nodeId: node.id,
+        nodeName: node.name,
+      })),
+    };
+  }
+}
+```
 
-		return result;
-	}
+##### B. Instance Rules (for checking instance configuration)
+
+Create your rule file in the appropriate version directory (e.g., `rules/v2/my-instance-rule.rule.ts`):
+
+```typescript
+import { BreakingChangeRecommendation } from '@n8n/api-types';
+import { Service } from '@n8n/di';
+
+import type {
+  BreakingChangeRuleMetadata,
+  IBreakingChangeInstanceRule,
+  InstanceDetectionReport,
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
+
+@Service()
+export class MyInstanceRule implements IBreakingChangeInstanceRule {
+  id: string = 'my-instance-rule-v2';
+
+  getMetadata(): BreakingChangeRuleMetadata {
+    return {
+      version: 'v2',
+      title: 'My Instance Breaking Change',
+      description: 'Description of what changed at instance level',
+      category: BreakingChangeCategory.instance,
+      severity: 'critical',
+      documentationUrl: 'https://docs.n8n.io/migration/v2/...',
+    };
+  }
+
+  async detect(): Promise<InstanceDetectionReport> {
+    const instanceIssues = [];
+    const recommendations = [];
+
+    // Check instance-level configuration
+    // Example: check environment variables, database version, etc.
+    const hasIssue = false; // Your detection logic here
+
+    if (hasIssue) {
+      instanceIssues.push({
+        title: 'Configuration issue detected',
+        description: 'Database version XYZ is no longer supported',
+        level: 'error',
+      });
+
+      recommendations.push({
+        action: 'Upgrade database',
+        description: 'Update to database version ABC or higher',
+      });
+    }
+
+    return {
+      isAffected: instanceIssues.length > 0,
+      instanceIssues,
+      recommendations,
+    };
+  }
 }
 ```
 
@@ -148,10 +270,10 @@ import { RemovedNodesRule } from './removed-nodes.rule';
 import { MyNewRule } from './my-new-rule.rule'; // Import your rule
 
 const v2Rules = [
-	RemovedNodesRule,
-	ProcessEnvAccessRule,
-	FileAccessRule,
-	MyNewRule, // Add to array
+ RemovedNodesRule,
+ ProcessEnvAccessRule,
+ FileAccessRule,
+ MyNewRule, // Add to array
 ];
 
 export { v2Rules };
@@ -187,9 +309,9 @@ import { MySecondV3Rule } from './my-second-v3-rule.rule';
 // Import all v3 rules
 
 const v3Rules = [
-	MyFirstV3Rule,
-	MySecondV3Rule,
-	// Add all v3 rules here
+ MyFirstV3Rule,
+ MySecondV3Rule,
+ // Add all v3 rules here
 ];
 
 export { v3Rules };
@@ -211,24 +333,3 @@ type RuleInstances = InstanceType<RuleConstructors>;
 
 export { allRules, type RuleInstances };
 ```
-
-## Rule Categories
-
-- **WORKFLOW**: Changes affecting workflow execution
-- **INSTANCE**: Changes to instance configuration
-- **ENVIRONMENT**: Changes to environment variables
-- **DATABASE**: Changes to database requirements
-- **INFRASTRUCTURE**: Changes to deployment/infrastructure
-
-## Severity Levels
-
-- **CRITICAL**: Will cause immediate workflow failures
-- **HIGH**: May cause silent failures or require urgent action
-- **MEDIUM**: Should be addressed but not urgent
-- **LOW**: Optional improvements or deprecation notices
-
-## Permissions
-
-The `breakingChanges:list` scope is automatically granted to:
-- **Global Owners**
-- **Global Admins**
