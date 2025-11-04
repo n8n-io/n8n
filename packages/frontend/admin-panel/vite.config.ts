@@ -1,13 +1,20 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
+import icons from 'unplugin-icons/vite';
+
+const packagesDir = resolve(__dirname, '..', '..');
 
 export default defineConfig({
-	plugins: [vue()],
+	plugins: [vue(), icons({ compiler: 'vue3' })],
 	resolve: {
-		alias: {
-			'@': resolve(__dirname, './src'),
-		},
+		alias: [
+			{ find: '@', replacement: resolve(__dirname, './src') },
+			{
+				find: /^@n8n\/design-system(.+)$/,
+				replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
+			},
+		],
 	},
 	base: '/admin/',
 	server: {
@@ -22,6 +29,7 @@ export default defineConfig({
 	build: {
 		outDir: '../../cli/dist/public/admin',
 		emptyOutDir: true,
+		cssMinify: false,
 		rollupOptions: {
 			input: {
 				main: resolve(__dirname, 'index.html'),

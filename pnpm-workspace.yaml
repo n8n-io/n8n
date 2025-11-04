@@ -78,7 +78,9 @@ catalogs:
     vue: ^3.5.13
     vue-i18n: ^11.1.2
     vue-router: ^4.5.0
-    vue-tsc: ^2.2.8
+    vue-tsc: 2.2.8
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0
     element-plus: 2.4.3
+    chart.js: ^4.4.0
+    vue-chartjs: ^5.2.0

@@ -5,7 +5,9 @@
 		"outDir": "dist/types",
 		"strict": true,
 		"skipLibCheck": true,
-		"esModuleInterop": true
+		"esModuleInterop": true,
+		"types": [],
+		"lib": ["ES2021"]
 	},
 	"include": ["src"]
 }

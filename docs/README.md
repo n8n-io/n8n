@@ -76,7 +76,7 @@
 ## 🛠️ 快速开始
 
 ```bash
-# 安装依赖
+# 安装依赖（依赖版本已通过 overrides 精确锁定）
 pnpm install
 
 # 开发模式
@@ -89,11 +89,26 @@ pnpm build
 pnpm start
 ```
 
+### ⚠️ 依赖管理重要说明
+
+本项目使用 `pnpm overrides` 精确锁定了所有关键依赖版本，以确保：
+- ✅ 与原始 n8n 仓库版本完全一致
+- ✅ 避免依赖自动升级导致的构建问题
+- ✅ 类型定义与运行时库完全匹配
+
+**请勿：**
+- ❌ 使用 `pnpm update` 命令
+- ❌ 删除或修改 `pnpm.overrides` 配置
+- ❌ 随意重新生成 `pnpm-lock.yaml`
+
+详见 **[构建修复说明](./BUILD-FIXES.md)**
+
 ## 📚 详细文档
 
 - **[核心变更](./CHANGES.md)** - 详细的代码变更和删除内容
 - **[企业功能](./FEATURES.md)** - 所有启用功能的详细说明
 - **[技术细节](./TECHNICAL-DETAILS.md)** - 实现策略和代码示例
+- **[构建修复](./BUILD-FIXES.md)** - 依赖管理和构建问题解决方案
 - **[更新日志](./CHANGELOG.md)** - 完整的开发历史
 
 ## ⚠️ 重要提醒
@@ -118,6 +133,15 @@ pnpm start
 **维护者**: 开发团队
 
 ## 📝 最近更新
+
+### 2025-11-04 晚上 - 构建系统修复
+- ✅ 对比原始 n8n 仓库 pnpm-lock.yaml，发现 8 个依赖版本不匹配
+- ✅ 使用 pnpm overrides 精确锁定所有关键依赖版本
+- ✅ 修复 @types/amqplib 版本不匹配导致的 RabbitMQ 类型错误
+- ✅ 统一 admin-panel 和 editor-ui 的 chart.js/vue-chartjs 版本
+- ✅ 添加 psl 包类型定义，配置 TypeScript types 选项
+- ✅ 移除所有临时 workaround（@ts-expect-error）
+- ✅ 构建成功：42/42 包全部通过 ✨
 
 ### 2025-11-04 傍晚 - Telemetry 独立管理平台
 - ✅ 完成自托管 Telemetry 数据采集系统

@@ -17,8 +17,8 @@
 		"@n8n/design-system": "workspace:*",
 		"@n8n/i18n": "workspace:*",
 		"@n8n/api-types": "workspace:*",
-		"chart.js": "^4.4.0",
-		"vue-chartjs": "^5.3.0",
+		"chart.js": "catalog:frontend",
+		"vue-chartjs": "catalog:frontend",
 		"date-fns": "^2.30.0"
 	},
 	"devDependencies": {

@@ -64,7 +64,7 @@ function createConfig(supportCloud = true): ConfigArray {
 		},
 	);
 }
-export const config = createConfig();
-export const configWithoutCloudSupport = createConfig(false);
+export const config: ConfigArray = createConfig();
+export const configWithoutCloudSupport: ConfigArray = createConfig(false);
 
 export default config;

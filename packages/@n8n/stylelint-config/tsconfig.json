@@ -11,7 +11,8 @@
 		"declaration": true,
 		"declarationMap": true,
 		"downlevelIteration": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"types": []
 	},
 	"include": ["src/**/*"],
 	"exclude": ["dist", "node_modules", "**/*.test.ts"]
