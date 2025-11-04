@@ -1,10 +1,10 @@
 function readPackage(pkg) {
 	/**
-	 * Remove @swc/core from ts-node's peer dependencies to prevent ts-node in n8n packages
-	 * from switching over from tsc to swc. Client packages rely on ts-node using tsc and
-	 * will produce an incorrect bundle when their ts-node uses @swc/core
+	 * Remove @swc/core from ts-node's and tsup's peer dependencies to prevent them from
+	 * switching over from tsc to swc. Client packages rely on these using tsc and will
+	 * produce an incorrect bundle when using @swc/core.
 	 */
-	if (pkg.name === 'ts-node') {
+	if (pkg.name === 'ts-node' || pkg.name === 'tsup') {
 		if (pkg.peerDependencies?.['@swc/core']) delete pkg.peerDependencies['@swc/core'];
 		if (pkg.peerDependenciesMeta?.['@swc/core']) delete pkg.peerDependenciesMeta['@swc/core'];
 	}
