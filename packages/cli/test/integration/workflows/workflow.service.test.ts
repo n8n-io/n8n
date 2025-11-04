@@ -99,29 +99,63 @@ describe('update()', () => {
 		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
 	});
 
-	test('should fetch missing connections from DB when updating nodes', async () => {
+	test('should fetch both nodes and connections from DB when missing', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflow({}, owner);
+
+		const startNodeId = 'start-node-id';
+		const startNodeName = "When clicking 'Execute workflow'";
+		const endNodeId = 'end-node-id';
+		const endNodeName = 'Edit Fields';
+		const connections = {
+			[`${startNodeName}`]: {
+				main: [
+					[
+						{
+							node: `${endNodeName}`,
+							type: 'main' as const,
+							index: 0,
+						},
+					],
+				],
+			},
+		};
+
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						position: [288, 112],
+						id: startNodeId,
+						name: startNodeName,
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						parameters: {},
+					},
+					{
+						position: [512, 112],
+						id: endNodeId,
+						name: endNodeName,
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections,
+			},
+			owner,
+		);
 
 		const updateData = {
-			nodes: [
-				{
-					id: 'new-node',
-					name: 'New Node',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [250, 300],
-					parameters: {},
-				},
-			],
+			name: 'Updated Workflow Name',
 			versionCounter: workflow.versionCounter,
 		} as any;
 
 		const updatedWorkflow = await workflowService.update(owner, updateData, workflow.id);
 
-		expect(updatedWorkflow.nodes).toHaveLength(1);
-		expect(updatedWorkflow.nodes[0].name).toBe('New Node');
-		// versionId should change since nodes were updated
-		expect(updatedWorkflow.versionId).not.toBe(workflow.versionId);
+		expect(updatedWorkflow.name).toBe('Updated Workflow Name');
+		expect(updatedWorkflow.nodes).toHaveLength(2);
+		expect(updatedWorkflow.nodes[0].id).toBe(startNodeId);
+		expect(updatedWorkflow.nodes[1].id).toBe(endNodeId);
+		expect(updatedWorkflow.connections).toEqual(connections);
 	});
 });
