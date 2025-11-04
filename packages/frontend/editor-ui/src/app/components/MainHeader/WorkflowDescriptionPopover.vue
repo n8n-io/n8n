@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import {
+	N8nButton,
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
@@ -36,8 +37,12 @@ const descriptionValue = ref(props.workflowDescription);
 const popoverOpen = ref(false);
 const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
-
 const lastSavedDescription = ref(props.workflowDescription);
+
+const normalizedCurrentValue = computed(() => descriptionValue.value.trim() || '');
+const normalizedLastSaved = computed(() => lastSavedDescription.value.trim() || '');
+
+const canSave = computed(() => normalizedCurrentValue.value !== normalizedLastSaved.value);
 
 const isMcpEnabled = computed(() => settingsStore.isModuleActive('mcp'));
 
@@ -62,13 +67,6 @@ const textareaTip = computed(() => {
 });
 
 const saveDescription = async () => {
-	const normalizedCurrentValue = descriptionValue.value || '';
-	const normalizedLastSaved = lastSavedDescription.value || '';
-
-	if (normalizedCurrentValue === normalizedLastSaved) {
-		return;
-	}
-
 	isSaving.value = true;
 	uiStore.addActiveAction('workflowSaving');
 
@@ -100,19 +98,26 @@ const handleKeyDown = async (event: KeyboardEvent) => {
 	if (event.key === 'Escape') {
 		event.preventDefault();
 		event.stopPropagation();
-		descriptionValue.value = lastSavedDescription.value;
-		uiStore.stateIsDirty = false;
-		popoverOpen.value = false;
+		await cancel();
 	}
 
 	// Enter (without Shift) - save and close
 	if (event.key === 'Enter' && !event.shiftKey) {
 		event.preventDefault();
 		event.stopPropagation();
-		await saveDescription();
-		popoverOpen.value = false;
+		await save();
 	}
-	// Shift + Enter - allow default behavior (new line in textarea)
+};
+
+const cancel = async () => {
+	descriptionValue.value = lastSavedDescription.value;
+	uiStore.stateIsDirty = false;
+	popoverOpen.value = false;
+};
+
+const save = async () => {
+	await saveDescription();
+	popoverOpen.value = false;
 };
 
 // Sync with external prop changes
@@ -126,10 +131,9 @@ watch(
 
 // Set dirty flag when text changes
 watch(descriptionValue, (newValue) => {
-	const normalizedNewValue = newValue || '';
-	const normalizedLastSaved = lastSavedDescription.value || '';
+	const normalizedNewValue = newValue.trim() || '';
 
-	if (normalizedNewValue !== normalizedLastSaved) {
+	if (normalizedNewValue !== normalizedLastSaved.value) {
 		uiStore.stateIsDirty = true;
 	} else {
 		uiStore.stateIsDirty = false;
@@ -171,16 +175,21 @@ watch(descriptionValue, (newValue) => {
 						</N8nInputLabel>
 					</div>
 					<footer :class="$style['popover-footer']">
-						<div :class="$style.shortcut">
-							<N8nKeyboardShortcut :keys="['Enter']" />
-							<N8nText color="text-light">{{
-								i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')
-							}}</N8nText>
-						</div>
-						<div :class="$style.shortcut">
-							<N8nKeyboardShortcut :keys="['Esc']" />
-							<N8nText color="text-light">{{ i18n.baseText('generic.cancel') }}</N8nText>
-						</div>
+						<N8nButton
+							:label="i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')"
+							:size="'small'"
+							:loading="isSaving"
+							:disabled="!canSave || isSaving"
+							type="primary"
+							@click="save"
+						/>
+						<N8nButton
+							:label="i18n.baseText('generic.cancel')"
+							:size="'small'"
+							:disabled="isSaving"
+							type="tertiary"
+							@click="cancel"
+						/>
 					</footer>
 				</template>
 			</N8nPopoverReka>
@@ -208,13 +217,8 @@ watch(descriptionValue, (newValue) => {
 
 .popover-footer {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 	padding: 0 var(--spacing--xs) var(--spacing--xs);
-}
-
-.shortcut {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
 }
 </style>
