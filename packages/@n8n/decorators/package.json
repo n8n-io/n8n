@@ -25,7 +25,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/lodash": "catalog:",
-    "unplugin-swc": "^1.5.8",
+    "unplugin-swc": "1.4.5",
     "vitest": "catalog:"
   },
   "dependencies": {
