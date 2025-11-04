@@ -386,6 +386,17 @@ export class WorkflowService {
 			try {
 				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
 				await this.activeWorkflowManager.add(workflowId, workflow.active ? 'update' : 'activate');
+
+				// Re-fetch the workflow to get the latest versionCounter
+				const reloadedWorkflow = await this.workflowRepository.findOne({
+					select: ['versionCounter', 'versionId'],
+					where: { id: workflowId },
+				});
+
+				if (reloadedWorkflow) {
+					updatedWorkflow.versionCounter = reloadedWorkflow.versionCounter;
+					updatedWorkflow.versionId = reloadedWorkflow.versionId;
+				}
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
 				// and revert the versionId change so UI remains consistent
