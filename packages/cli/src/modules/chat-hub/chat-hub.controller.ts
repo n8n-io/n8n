@@ -90,16 +90,32 @@ export class ChatHubController {
 		// Verify user has access to this session
 		await this.chatService.getConversation(req.user.id, sessionId);
 
-		const { buffer, attachment } = await this.chatAttachmentService.getAttachment(
+		const [{ mimeType, fileSize, fileName }, data] = await this.chatAttachmentService.getAttachment(
 			sessionId,
 			messageId,
 			attachmentIndex,
 		);
 
-		res.setHeader('Content-Type', attachment.mimeType ?? 'application/octet-stream');
-		res.setHeader('Content-Length', buffer.length);
+		res.setHeader('Content-Type', mimeType ?? 'application/octet-stream');
 
-		res.send(buffer);
+		if (fileSize) {
+			res.setHeader('Content-Length', fileSize);
+		}
+
+		if (fileName) {
+			res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+		}
+
+		if (data.type === 'buffer') {
+			res.send(data.buffer);
+			return;
+		}
+
+		return await new Promise<void>((resolve, reject) => {
+			data.stream.on('end', resolve);
+			data.stream.on('error', reject);
+			data.stream.pipe(res);
+		});
 	}
 
 	@GlobalScope('chatHub:message')

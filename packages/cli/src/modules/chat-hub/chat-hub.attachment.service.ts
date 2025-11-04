@@ -7,6 +7,7 @@ import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type Stream from 'node:stream';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -61,14 +62,22 @@ export class ChatHubAttachmentService {
 		);
 	}
 
-	/**
-	 * Gets a specific attachment from a message by index and returns it as a buffer
+	/*
+	 * Gets a specific attachment from a message by index and returns it as either buffer or stream
 	 */
 	async getAttachment(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		attachmentIndex: number,
-	): Promise<{ buffer: Buffer; attachment: IBinaryData }> {
+	): Promise<
+		[
+			IBinaryData,
+			(
+				| { type: 'buffer'; buffer: Buffer<ArrayBufferLike> }
+				| { type: 'stream'; stream: Stream.Readable }
+			),
+		]
+	> {
 		const message = await this.messageRepository.getOneById(messageId, sessionId, []);
 
 		if (!message) {
@@ -81,9 +90,19 @@ export class ChatHubAttachmentService {
 			throw new NotFoundError('Attachment not found');
 		}
 
-		const buffer = await this.binaryDataService.getAsBuffer(attachment);
+		if (attachment.id) {
+			const stream = await this.binaryDataService.getAsStream(attachment.id);
 
-		return { buffer, attachment };
+			return [attachment, { type: 'stream', stream }];
+		}
+
+		if (attachment.data) {
+			const buffer = await this.binaryDataService.getAsBuffer(attachment);
+
+			return [attachment, { type: 'buffer', buffer }];
+		}
+
+		throw new NotFoundError('Attachment has no stored file');
 	}
 
 	/**
