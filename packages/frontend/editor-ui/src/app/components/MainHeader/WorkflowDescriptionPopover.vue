@@ -5,9 +5,7 @@ import {
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
-	N8nKeyboardShortcut,
 	N8nPopoverReka,
-	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +13,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 type Props = {
@@ -28,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const i18n = useI18n();
 const toast = useToast();
+const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
 const workflowStore = useWorkflowsStore();
@@ -74,6 +74,10 @@ const saveDescription = async () => {
 		await workflowStore.saveWorkflowDescription(props.workflowId, descriptionValue.value || null);
 		lastSavedDescription.value = descriptionValue.value;
 		uiStore.stateIsDirty = false;
+		telemetry.track('User set workflow description', {
+			workflow_id: props.workflowId,
+			description: descriptionValue.value,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflow.description.error.title'));
 		descriptionValue.value = lastSavedDescription.value;
