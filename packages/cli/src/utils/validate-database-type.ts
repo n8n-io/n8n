@@ -1,4 +1,4 @@
-export const supportedTypes = [
+export const supportedTypesForExport = [
 	'sqlite',
 	'sqlite-pooled',
 	'sqlite-memory',
@@ -9,12 +9,26 @@ export const supportedTypes = [
 	'mysqldb',
 ];
 
+export const supportedTypesForImport = [
+	'sqlite',
+	'sqlite-pooled',
+	'sqlite-memory',
+	'postgres',
+	'postgresql',
+];
+
 export function validateDbTypeForExportEntities(dbType: string) {
-	if (!supportedTypes.includes(dbType.toLowerCase())) {
+	if (!supportedTypesForExport.includes(dbType.toLowerCase())) {
 		throw new Error(
-			`Unsupported database type: ${dbType}. Supported types: ${supportedTypes.join(', ')}`,
+			`Unsupported database type: ${dbType}. Supported types: ${supportedTypesForExport.join(', ')}`,
 		);
 	}
 }
 
-export const validateDbTypeForImportEntities = validateDbTypeForExportEntities;
+export function validateDbTypeForImportEntities(dbType: string) {
+	if (!supportedTypesForImport.includes(dbType.toLowerCase())) {
+		throw new Error(
+			`Unsupported database type: ${dbType}. Supported types: ${supportedTypesForImport.join(', ')}`,
+		);
+	}
+}

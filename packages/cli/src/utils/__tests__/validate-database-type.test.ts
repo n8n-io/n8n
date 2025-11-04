@@ -1,9 +1,14 @@
-import { supportedTypes, validateDbTypeForExportEntities } from '../validate-database-type';
+import {
+	supportedTypesForExport,
+	supportedTypesForImport,
+	validateDbTypeForExportEntities,
+	validateDbTypeForImportEntities,
+} from '../validate-database-type';
 
 describe('validateDbTypeForExportEntities', () => {
 	it('should throw an error if the database type is not supported', () => {
 		expect(() => validateDbTypeForExportEntities('invalid')).toThrow(
-			'Unsupported database type: invalid. Supported types: ' + supportedTypes.join(', '),
+			'Unsupported database type: invalid. Supported types: ' + supportedTypesForExport.join(', '),
 		);
 	});
 
@@ -16,5 +21,27 @@ describe('validateDbTypeForExportEntities', () => {
 		expect(() => validateDbTypeForExportEntities('sqlite-pooled')).not.toThrow();
 		expect(() => validateDbTypeForExportEntities('sqlite-memory')).not.toThrow();
 		expect(() => validateDbTypeForExportEntities('postgresql')).not.toThrow();
+	});
+});
+
+describe('validateDbTypeForImportEntities', () => {
+	it('should throw an error if the database type is not supported', () => {
+		expect(() => validateDbTypeForImportEntities('invalid')).toThrow(
+			'Unsupported database type: invalid. Supported types: ' + supportedTypesForImport.join(', '),
+		);
+	});
+
+	it('should throw an error for MySQL/MariaDB (not supported for imports)', () => {
+		expect(() => validateDbTypeForImportEntities('mysql')).toThrow();
+		expect(() => validateDbTypeForImportEntities('mariadb')).toThrow();
+		expect(() => validateDbTypeForImportEntities('mysqldb')).toThrow();
+	});
+
+	it('should not throw an error if the database type is supported', () => {
+		expect(() => validateDbTypeForImportEntities('sqlite')).not.toThrow();
+		expect(() => validateDbTypeForImportEntities('postgres')).not.toThrow();
+		expect(() => validateDbTypeForImportEntities('sqlite-pooled')).not.toThrow();
+		expect(() => validateDbTypeForImportEntities('sqlite-memory')).not.toThrow();
+		expect(() => validateDbTypeForImportEntities('postgresql')).not.toThrow();
 	});
 });
