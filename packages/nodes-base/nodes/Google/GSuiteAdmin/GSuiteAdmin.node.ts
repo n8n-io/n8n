@@ -452,6 +452,10 @@ export class GSuiteAdmin implements INodeType {
 						const password = this.getNodeParameter('password', i) as string;
 						const username = this.getNodeParameter('username', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const changePasswordAtNextLogin = this.getNodeParameter(
+							'changePasswordAtNextLogin',
+							i,
+						) as boolean | undefined;
 
 						const body: IDataObject = {
 							name: {
@@ -467,6 +471,10 @@ export class GSuiteAdmin implements INodeType {
 								itemIndex: i,
 								description: "Please fill in the 'Username' parameter to create the user",
 							});
+						}
+
+						if (changePasswordAtNextLogin !== undefined) {
+							body.changePasswordAtNextLogin = changePasswordAtNextLogin;
 						}
 
 						if (additionalFields.phoneUi) {
@@ -721,7 +729,17 @@ export class GSuiteAdmin implements INodeType {
 							suspended?: boolean;
 							roles?: { [key: string]: boolean };
 							customSchemas?: IDataObject;
+							password?: string;
+							changePasswordAtNextLogin?: boolean;
 						} = {};
+
+						if (updateFields.password) {
+							body.password = updateFields.password as string;
+						}
+
+						if (updateFields.changePasswordAtNextLogin !== undefined) {
+							body.changePasswordAtNextLogin = updateFields.changePasswordAtNextLogin as boolean;
+						}
 
 						if (updateFields.firstName) {
 							body.name ??= {};
