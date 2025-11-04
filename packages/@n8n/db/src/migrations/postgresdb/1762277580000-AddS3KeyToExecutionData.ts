@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddS3KeyToExecutionData1700000000001 implements ReversibleMigration {
+export class AddS3KeyToExecutionData1762277580000 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// Add new columns to execution_data table
 		await queryRunner.query(
