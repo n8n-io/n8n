@@ -1,5 +1,5 @@
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
+import { BreakingChangeCategory } from '../../../types';
 import { RemovedNodesRule } from '../removed-nodes.rule';
 
 describe('RemovedNodesRule', () => {
@@ -19,7 +19,7 @@ describe('RemovedNodesRule', () => {
 				title: 'Removed Deprecated Nodes',
 				description: 'Several deprecated nodes have been removed and will no longer work',
 				category: BreakingChangeCategory.workflow,
-				severity: BreakingChangeSeverity.critical,
+				severity: 'critical',
 			});
 		});
 	});
@@ -77,7 +77,7 @@ describe('RemovedNodesRule', () => {
 			expect(result.issues[0].description).toBe(
 				`The node type '${nodeType}' is no longer available. Please replace it with an alternative.`,
 			);
-			expect(result.issues[0].level).toBe(IssueLevel.error);
+			expect(result.issues[0].level).toBe('error');
 		});
 
 		it('should detect multiple removed nodes in the same workflow', async () => {
