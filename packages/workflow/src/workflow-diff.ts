@@ -2,6 +2,11 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, IWorkflowBase } from '.';
 
+export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'>;
+export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
+	nodes: N[];
+};
+
 export const enum NodeDiffStatus {
 	Eq = 'equal',
 	Modified = 'modified',
@@ -16,7 +21,7 @@ export type NodeDiff<T> = {
 
 export type WorkflowDiff<T> = Map<string, NodeDiff<T>>;
 
-export function compareNodes<T extends { id: string }>(
+export function compareNodes<T extends DiffableNode>(
 	base: T | undefined,
 	target: T | undefined,
 ): boolean {
@@ -28,7 +33,7 @@ export function compareNodes<T extends { id: string }>(
 	return isEqual(baseNode, targetNode);
 }
 
-export function compareWorkflowsNodes<T extends { id: string }>(
+export function compareWorkflowsNodes<T extends DiffableNode>(
 	base: T[],
 	target: T[],
 	nodesEqual: (base: T | undefined, target: T | undefined) => boolean = compareNodes,
@@ -63,8 +68,6 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 
 	return diff;
 }
-
-type ChangeType<N extends INode> = NodeDiff<N>;
 
 function mergeNodeDiff(
 	prev: NodeDiffStatus,
@@ -106,7 +109,7 @@ function mergeNodeDiff(
 	}
 }
 
-class WorkflowChangeSet<T extends { id: string }> {
+export class WorkflowChangeSet<T extends DiffableNode> {
 	constructor(public nodes: WorkflowDiff<T> = new Map()) {}
 
 	hasChanges() {
@@ -134,7 +137,53 @@ class WorkflowChangeSet<T extends { id: string }> {
 	}
 }
 
-type GroupedWorkflowHistory<W extends IWorkflowBase> = {
+// determines whether the second node is a "superset" of the first one, i.e. whether no data
+// is lost if we were to cleanse the first node
+function nodeIsAdditive<T extends DiffableNode>(prevNode: T, nextNode: T) {
+	const { parameters: prevParams, ...prev } = prevNode;
+	const { parameters: nextParams, ...next } = nextNode;
+
+	// abort if the nodes don't match besides parameters
+	if (!compareNodes({ ...prev, parameters: {} }, { ...next, parameters: {} })) return false;
+
+	const params = Object.keys(prevParams);
+	// abort if prev has some field next does not have
+	if (params.some((x) => !Object.prototype.hasOwnProperty.call(nextParams, x))) return false;
+
+	for (const key of params) {
+		const left = prevParams[key];
+		const right = nextParams[key];
+		// non-strings must be exactly equal to not be lost data
+		if (typeof left === 'string' && typeof right === 'string') {
+			// strings must only be contained in the new string
+			if (!right.includes(left)) return false;
+		} else if (left !== right) return false;
+	}
+
+	return true;
+}
+
+function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
+	prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+	next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+) {
+	const diff = compareWorkflowsNodes(prev.from.nodes, next.to.nodes);
+
+	for (const d of diff.values()) {
+		if (d.status === NodeDiffStatus.Deleted) return false;
+		if (d.status === NodeDiffStatus.Added) continue;
+		const nextNode = next.from.nodes.find((x) => x.name === d.node.name);
+		if (!nextNode) throw new Error('invariant broken');
+		if (d.status === NodeDiffStatus.Modified && !nodeIsAdditive(d.node, nextNode)) return false;
+	}
+	return true;
+}
+
+export const RULES = {
+	mergeAdditiveChanges,
+};
+
+type GroupedWorkflowHistory<W extends DiffableWorkflow<DiffableNode>> = {
 	workflowChangeSet: WorkflowChangeSet<W['nodes'][number]>;
 	groupedWorkflows: W[];
 	from: W;

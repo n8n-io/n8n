@@ -1,10 +1,14 @@
 import { mock } from 'vitest-mock-extended';
-import type { INode, IWorkflowBase } from '../src';
+
+import { type INodeParameters, type IWorkflowBase } from '../src';
 import {
 	compareNodes,
 	compareWorkflowsNodes,
 	groupWorkflows,
 	NodeDiffStatus,
+	RULES,
+	WorkflowChangeSet,
+	type DiffableNode,
 	type DiffRule,
 } from '../src/workflow-diff';
 
@@ -38,7 +42,7 @@ describe('compareNodes', () => {
 		typeVersion: number;
 		webhookId: string;
 		credentials: Record<string, unknown>;
-		parameters: Record<string, unknown>;
+		parameters: INodeParameters;
 		position: [number, number];
 		disabled: boolean;
 	};
@@ -157,7 +161,7 @@ describe('compareWorkflowsNodes', () => {
 		typeVersion: number;
 		webhookId: string;
 		credentials: Record<string, unknown>;
-		parameters: Record<string, unknown>;
+		parameters: INodeParameters;
 	};
 
 	it('should detect equal nodes', () => {
@@ -271,8 +275,8 @@ describe('compareWorkflowsNodes', () => {
 });
 
 describe('groupWorkflows', () => {
-	const node1 = mock<INode>({ id: '1', parameters: { a: 1 } });
-	const node2 = mock<INode>({ id: '2', parameters: { a: 2 } });
+	const node1 = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
+	const node2 = mock<DiffableNode>({ id: '2', parameters: { a: 2 } });
 
 	let rules: DiffRule[] = [];
 	let workflows: IWorkflowBase[];
@@ -394,25 +398,6 @@ describe('groupWorkflows', () => {
 		});
 	});
 	describe('rules', () => {
-		it('should apply a given rule', () => {
-			workflows = mock<IWorkflowBase[]>([
-				{ id: '1', nodes: [node1] },
-				{ id: '1', nodes: [node1, node2] },
-				{ id: '1', nodes: [node1] },
-			]);
-
-			const alwaysMergeRule: DiffRule = (_l, _r) => true;
-			const rules = [alwaysMergeRule];
-
-			const grouped = groupWorkflows(workflows, rules);
-
-			expect(grouped.length).toBe(1);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[2]);
-			expect(grouped[0].groupedWorkflows).toEqual([workflows[1]]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(1);
-			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
-		});
 		it('should not apply an inapplicable rule', () => {
 			workflows = mock<IWorkflowBase[]>([
 				{ id: '1', nodes: [node1] },
@@ -432,6 +417,98 @@ describe('groupWorkflows', () => {
 			expect(grouped[1].from).toEqual(workflows[1]);
 			expect(grouped[1].to).toEqual(workflows[2]);
 			expect(grouped[1].groupedWorkflows).toEqual([]);
+		});
+		it('should apply a given rule', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+			]);
+
+			const alwaysMergeRule: DiffRule = (_l, _r) => true;
+			const rules = [alwaysMergeRule];
+
+			const grouped = groupWorkflows(workflows, rules);
+
+			expect(grouped.length).toBe(1);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[2]);
+			expect(grouped[0].groupedWorkflows).toEqual([workflows[1]]);
+			expect(grouped[0].workflowChangeSet.nodes.size).toBe(1);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
+		});
+		describe('mergeAdditiveChanges', () => {
+			const createWorkflow = (id: string, nodes: DiffableNode[]): IWorkflowBase => {
+				return {
+					id,
+					nodes,
+				} as IWorkflowBase;
+			};
+
+			test.each([
+				{
+					description: 'should return true when all changes are additive',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'value1', b: 'value2' }, name: 'n1' },
+					]),
+					expected: true,
+				},
+				{
+					description: 'should return false when a node is deleted',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', []),
+					expected: false,
+				},
+				{
+					description: 'should return false when a node is modified non-additively',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'differentValue' }, name: 'n1' },
+					]),
+					expected: false,
+				},
+				{
+					description: 'should return true when a node is added',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'value1' }, name: 'n1' },
+						{ id: '2', parameters: { b: 'value2' }, name: 'n1' },
+					]),
+					expected: true,
+				},
+				{
+					description: 'should return false when a node is modified and loses data',
+					baseWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'value1', b: 'value2' }, name: 'n1' },
+					]),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					expected: false,
+				},
+				{
+					description: 'should handle empty workflows',
+					baseWorkflow: createWorkflow('1', []),
+					nextWorkflow: createWorkflow('1', []),
+					expected: true,
+				},
+			])('$description', ({ baseWorkflow, nextWorkflow, expected }) => {
+				const result = RULES.mergeAdditiveChanges(
+					{
+						from: baseWorkflow,
+						to: baseWorkflow,
+						groupedWorkflows: [],
+						workflowChangeSet: new WorkflowChangeSet(),
+					},
+					{
+						from: nextWorkflow,
+						to: nextWorkflow,
+						groupedWorkflows: [],
+						workflowChangeSet: new WorkflowChangeSet(),
+					},
+				);
+
+				expect(result).toEqual(expected);
+			});
 		});
 	});
 });
