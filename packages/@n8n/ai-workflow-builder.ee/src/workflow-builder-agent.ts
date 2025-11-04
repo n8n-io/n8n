@@ -185,7 +185,7 @@ export class WorkflowBuilderAgent {
 			const workflowContext = [
 				'',
 				'<current_workflow_json>',
-				JSON.stringify(trimmedWorkflow, null, 2),
+				JSON.stringify(trimmedWorkflow),
 				'</current_workflow_json>',
 				'<trimmed_workflow_json_note>',
 				'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
@@ -193,11 +193,11 @@ export class WorkflowBuilderAgent {
 				'</trimmed_workflow_json_note>',
 				'',
 				'<current_simplified_execution_data>',
-				JSON.stringify(executionData, null, 2),
+				JSON.stringify(executionData),
 				'</current_simplified_execution_data>',
 				'',
 				'<current_execution_nodes_schemas>',
-				JSON.stringify(executionSchema, null, 2),
+				JSON.stringify(executionSchema),
 				'</current_execution_nodes_schemas>',
 			].join('\n');
 
