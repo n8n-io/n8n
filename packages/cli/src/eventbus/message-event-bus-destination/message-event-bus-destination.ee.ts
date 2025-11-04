@@ -50,8 +50,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		this.logger = Container.get(Logger);
 		this.license = Container.get(License);
 
-		const maxDuration =
-			options.circuitBreaker?.maxDuration ?? LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS;
+		const timeout = options.circuitBreaker?.maxDuration ?? LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS;
 		const maxFailures = options.circuitBreaker?.maxFailures ?? LOGSTREAMING_CB_DEFAULT_MAX_FAILURES;
 		const halfOpenRequests =
 			options.circuitBreaker?.halfOpenRequests ?? LOGSTREAMING_CB_DEFAULT_HALF_OPEN_REQUESTS;
@@ -61,13 +60,13 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			options.circuitBreaker?.maxConcurrentHalfOpenRequests ??
 			LOGSTREAMING_CB_DEFAULT_CONCURRENT_HALF_OPEN_REQUESTS;
 
-		this.circuitBreakerInstance = new CircuitBreaker(
-			maxDuration,
+		this.circuitBreakerInstance = new CircuitBreaker({
+			timeout,
 			maxFailures,
 			halfOpenRequests,
 			failureWindow,
 			maxConcurrentHalfOpenRequests,
-		);
+		});
 
 		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;

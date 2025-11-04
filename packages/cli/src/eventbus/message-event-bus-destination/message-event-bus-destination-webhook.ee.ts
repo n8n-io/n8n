@@ -153,9 +153,14 @@ export class MessageEventBusDestinationWebhook
 			httpsAgentOptions.rejectUnauthorized = false;
 		}
 
-		axiosSetting.httpsAgent = new HTTPSAgent(httpsAgentOptions);
-		axiosSetting.httpAgent = new HTTPAgent(agentOptions);
+		const url = new URL(options.url);
 
+		if (url.protocol === 'https:') {
+			axiosSetting.httpsAgent = new HTTPSAgent(httpsAgentOptions);
+		}
+		if (url.protocol === 'http:') {
+			axiosSetting.httpAgent = new HTTPAgent(agentOptions);
+		}
 		return axiosSetting;
 	}
 

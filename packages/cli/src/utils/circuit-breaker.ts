@@ -17,6 +17,46 @@ export class CircuitBreakerOpen extends Error {
 }
 
 /**
+ * Options to configure a circuit breaker instance.
+ */
+export interface CircuitBreakerOptions {
+	/**
+	 * Time in milliseconds to wait before transitioning from OPEN to HALF_OPEN state.
+	 * After this duration, the circuit will attempt to test if the service has recovered.
+	 * Recommended: 2-10 seconds depending on service recovery characteristics.
+	 */
+	timeout: number;
+
+	/**
+	 * Maximum number of failures within the sliding window before the circuit opens.
+	 * Once this threshold is exceeded, the circuit transitions to OPEN state and rejects all requests.
+	 * Recommended: 3-10 failures depending on acceptable failure rate.
+	 */
+	maxFailures: number;
+
+	/**
+	 * Number of consecutive successful requests required in HALF_OPEN state
+	 * before transitioning back to CLOSED. This ensures the service is stable before fully recovering.
+	 * Recommended: 1-3 requests to verify recovery without delay.
+	 */
+	halfOpenRequests: number;
+
+	/**
+	 * Time window in milliseconds for counting failures (sliding window).
+	 * Only failures within this window are counted toward the threshold. Older failures expire naturally.
+	 * Recommended: 2-5x the timeout duration to capture relevant failure patterns.
+	 */
+	failureWindow: number;
+
+	/**
+	 * Maximum number of requests allowed to execute concurrently
+	 * in HALF_OPEN state. Prevents overwhelming a recovering service with queued requests.
+	 * Default: 1 (recommended for most use cases).
+	 */
+	maxConcurrentHalfOpenRequests?: number;
+}
+
+/**
  * Implementation of the Circuit Breaker pattern for fault tolerance.
  *
  * A circuit breaker protects services from cascading failures by monitoring
@@ -91,39 +131,27 @@ export class CircuitBreaker {
 
 	private failureTimestamps: number[] = [];
 
+	private readonly timeout: number;
+	private readonly maxFailures: number;
+	private readonly halfOpenRequests: number;
+	private readonly failureWindow: number;
+	private readonly maxConcurrentHalfOpenRequests: number;
+
 	/**
 	 * Creates a new circuit breaker instance.
 	 *
-	 * @param timeout - Time in milliseconds to wait before transitioning from OPEN to HALF_OPEN state.
-	 *   After this duration, the circuit will attempt to test if the service has recovered.
-	 *   Recommended: 2-10 seconds depending on service recovery characteristics.
-	 *
-	 * @param maxFailures - Maximum number of failures within the sliding window before the circuit opens.
-	 *   Once this threshold is exceeded, the circuit transitions to OPEN state and rejects all requests.
-	 *   Recommended: 3-10 failures depending on acceptable failure rate.
-	 *
-	 * @param halfOpenRequests - Number of consecutive successful requests required in HALF_OPEN state
-	 *   before transitioning back to CLOSED. This ensures the service is stable before fully recovering.
-	 *   Recommended: 1-3 requests to verify recovery without delay.
-	 *
-	 * @param failureWindow - Time window in milliseconds for counting failures (sliding window).
-	 *   Only failures within this window are counted toward the threshold. Older failures expire naturally.
-	 *   Recommended: 2-5x the timeout duration to capture relevant failure patterns.
-	 *
-	 * @param maxConcurrentHalfOpenRequests - Maximum number of requests allowed to execute concurrently
-	 *   in HALF_OPEN state. Prevents overwhelming a recovering service with queued requests.
-	 *   Default: 1 (recommended for most use cases).
+	 * @param options - Configuration options for the circuit breaker.
 	 */
-	constructor(
-		private readonly timeout: number,
-		private readonly maxFailures: number,
-		private readonly halfOpenRequests: number,
-		private readonly failureWindow: number,
-		private readonly maxConcurrentHalfOpenRequests = 1,
-	) {
+	constructor(options: CircuitBreakerOptions) {
 		this.state = 'CLOSED';
 		this.lastFailureTime = 0;
 		this.halfOpenCount = 0;
+
+		this.timeout = options.timeout;
+		this.maxFailures = options.maxFailures;
+		this.halfOpenRequests = options.halfOpenRequests;
+		this.failureWindow = options.failureWindow;
+		this.maxConcurrentHalfOpenRequests = options.maxConcurrentHalfOpenRequests ?? 1;
 
 		this.logger = Container.get(Logger).scoped('circuit-breaker');
 	}

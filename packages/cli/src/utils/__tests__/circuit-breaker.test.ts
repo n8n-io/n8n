@@ -11,12 +11,12 @@ describe('CircuitBreaker', () => {
 
 	describe('initialization', () => {
 		it('should start in CLOSED state', () => {
-			const breaker = new CircuitBreaker(
-				1000, // timeout
-				3, // maxFailures
-				2, // halfOpenRequests
-				5000, // failureWindow
-			);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 
 			expect(breaker.currentState()).toBe('CLOSED');
 		});
@@ -24,7 +24,12 @@ describe('CircuitBreaker', () => {
 
 	describe('CLOSED state behavior', () => {
 		it('should execute function successfully when in CLOSED state', async () => {
-			const breaker = new CircuitBreaker(1000, 3, 2, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn().mockResolvedValue('success');
 
 			const result = await breaker.execute(mockFn);
@@ -35,7 +40,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should remain CLOSED after failures below threshold', async () => {
-			const breaker = new CircuitBreaker(1000, 3, 2, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			await expect(breaker.execute(mockFn)).rejects.toThrow('test error');
@@ -45,7 +55,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should transition to OPEN after reaching failure threshold', async () => {
-			const breaker = new CircuitBreaker(1000, 3, 2, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			await expect(breaker.execute(mockFn)).rejects.toThrow('test error');
@@ -58,7 +73,12 @@ describe('CircuitBreaker', () => {
 
 	describe('OPEN state behavior', () => {
 		it('should throw CircuitBreakerOpen when in OPEN state', async () => {
-			const breaker = new CircuitBreaker(1000, 2, 2, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 2,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			// Trigger circuit breaker to open
@@ -74,12 +94,12 @@ describe('CircuitBreaker', () => {
 
 		it('should transition to HALF_OPEN after timeout', async () => {
 			const timeout = 5000;
-			const breaker = new CircuitBreaker(
+			const breaker = new CircuitBreaker({
 				timeout,
-				2, // maxFailures
-				1, // halfOpenRequests - only need 1 success
-				10000, // failureWindow
-			);
+				maxFailures: 2,
+				halfOpenRequests: 1,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			// Trigger circuit breaker to open
@@ -101,7 +121,12 @@ describe('CircuitBreaker', () => {
 
 		it('should not transition to HALF_OPEN before timeout expires', async () => {
 			const timeout = 5000;
-			const breaker = new CircuitBreaker(timeout, 2, 1, 10000);
+			const breaker = new CircuitBreaker({
+				timeout,
+				maxFailures: 2,
+				halfOpenRequests: 1,
+				failureWindow: 10000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			// Open the circuit
@@ -121,12 +146,12 @@ describe('CircuitBreaker', () => {
 
 	describe('HALF_OPEN state behavior', () => {
 		it('should transition to CLOSED after required successful requests', async () => {
-			const breaker = new CircuitBreaker(
-				1000, // timeout
-				2, // maxFailures
-				2, // halfOpenRequests - need 2 successes
-				5000, // failureWindow
-			);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 2,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			// Open the circuit
@@ -149,7 +174,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should transition immediately to OPEN on any failure in HALF_OPEN', async () => {
-			const breaker = new CircuitBreaker(1000, 2, 2, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 2,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			// Open the circuit
@@ -168,7 +198,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should reject additional concurrent requests in HALF_OPEN state', async () => {
-			const breaker = new CircuitBreaker(1000, 2, 2, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 2,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn();
 
 			// Open the circuit
@@ -203,7 +238,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should reset failure count after successful recovery', async () => {
-			const breaker = new CircuitBreaker(1000, 2, 1, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 2,
+				halfOpenRequests: 1,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn();
 
 			// Open circuit
@@ -231,12 +271,12 @@ describe('CircuitBreaker', () => {
 
 	describe('sliding window behavior', () => {
 		it('should only count failures within the time window', async () => {
-			const breaker = new CircuitBreaker(
-				5000, // timeout
-				3, // maxFailures
-				2, // halfOpenRequests
-				10000, // failureWindow - 10 second window
-			);
+			const breaker = new CircuitBreaker({
+				timeout: 5000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 10000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			// First failure at t=0
@@ -257,12 +297,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should open circuit when failures occur within the window', async () => {
-			const breaker = new CircuitBreaker(
-				5000, // timeout
-				3, // maxFailures
-				2, // halfOpenRequests
-				10000, // failureWindow
-			);
+			const breaker = new CircuitBreaker({
+				timeout: 5000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 10000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			// First failure at t=0
@@ -280,12 +320,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should handle intermittent failures gracefully', async () => {
-			const breaker = new CircuitBreaker(
-				5000, // timeout
-				3, // maxFailures
-				2, // halfOpenRequests
-				5000, // failureWindow - 5 second window
-			);
+			const breaker = new CircuitBreaker({
+				timeout: 5000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn();
 
 			// Failure at t=0
@@ -312,12 +352,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should prevent memory leak by capping failure array size', async () => {
-			const breaker = new CircuitBreaker(
-				1000, // timeout
-				5, // maxFailures
-				2, // halfOpenRequests
-				10000, // failureWindow
-			);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 5,
+				halfOpenRequests: 2,
+				failureWindow: 10000,
+			});
 			const mockFn = jest
 				.fn()
 				.mockImplementation(
@@ -353,7 +393,12 @@ describe('CircuitBreaker', () => {
 
 	describe('edge cases', () => {
 		it('should handle successful execution after circuit opens', async () => {
-			const breaker = new CircuitBreaker(1000, 2, 1, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 2,
+				halfOpenRequests: 1,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn();
 
 			// Open circuit
@@ -379,12 +424,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should handle rapid failures at window boundary', async () => {
-			const breaker = new CircuitBreaker(
-				5000, // timeout
-				3, // maxFailures
-				2, // halfOpenRequests
-				5000, // failureWindow
-			);
+			const breaker = new CircuitBreaker({
+				timeout: 5000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn().mockRejectedValue(new Error('test error'));
 
 			// Two failures at t=0
@@ -403,7 +448,12 @@ describe('CircuitBreaker', () => {
 		});
 
 		it('should handle function that throws synchronously', async () => {
-			const breaker = new CircuitBreaker(1000, 3, 2, 5000);
+			const breaker = new CircuitBreaker({
+				timeout: 1000,
+				maxFailures: 3,
+				halfOpenRequests: 2,
+				failureWindow: 5000,
+			});
 			const mockFn = jest.fn(() => {
 				throw new Error('sync error');
 			});
