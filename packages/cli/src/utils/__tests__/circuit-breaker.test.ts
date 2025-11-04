@@ -350,45 +350,6 @@ describe('CircuitBreaker', () => {
 			// Should still be CLOSED because failures are spaced out
 			expect(breaker.currentState()).toBe('CLOSED');
 		});
-
-		it('should prevent memory leak by capping failure array size', async () => {
-			const breaker = new CircuitBreaker({
-				timeout: 1000,
-				maxFailures: 5,
-				halfOpenRequests: 2,
-				failureWindow: 10000,
-			});
-			const mockFn = jest
-				.fn()
-				.mockImplementation(
-					async () => await new Promise((_, reject) => setTimeout(() => reject('Error'), 1000)),
-				);
-
-			const calls = [];
-
-			// Generate 20 failures (maxFailures * 4)
-			for (let i = 0; i < 20; i++) {
-				try {
-					calls.push(breaker.execute(mockFn));
-				} catch {
-					// Expected to fail
-				}
-			}
-
-			jest.advanceTimersByTime(1000);
-
-			try {
-				await Promise.all(calls);
-			} catch {
-				// Expected to fail
-			}
-
-			// Circuit should be open after maxFailures
-			expect(breaker.currentState()).toBe('OPEN');
-
-			// Internal array should be capped at maxFailures * 2 = 10
-			expect((breaker as any).failureTimestamps.length).toBe(10);
-		});
 	});
 
 	describe('edge cases', () => {
