@@ -152,7 +152,7 @@ export class MemoryMongoDbChat implements INodeType {
 				await client.close();
 			}
 
-			// ✅ 기능 보존형 safeMemory
+			// safe memory object without circular structure
 			const safeMemory = {
 				memoryKey: memory.memoryKey,
 				k: memory.k,
