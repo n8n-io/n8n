@@ -1,4 +1,9 @@
-import type { INode, INodeTypeDescription, NodeParameterValueType } from 'n8n-workflow';
+import {
+	assert,
+	type INode,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+} from 'n8n-workflow';
 
 /**
  * Generate a unique node name by appending numbers if necessary
@@ -60,6 +65,7 @@ export function requiresWebhook(nodeType: INodeTypeDescription): boolean {
 /**
  * Create a new node instance with all required properties
  * @param nodeType - The node type description
+ * @param typeVersion - The node type version - nodeType can have multiple versions
  * @param name - The name for the node
  * @param position - The position of the node
  * @param parameters - Optional parameters for the node
@@ -67,15 +73,21 @@ export function requiresWebhook(nodeType: INodeTypeDescription): boolean {
  */
 export function createNodeInstance(
 	nodeType: INodeTypeDescription,
+	typeVersion: number,
 	name: string,
 	position: [number, number],
 	parameters: Record<string, NodeParameterValueType> = {},
 ): INode {
+	assert(
+		Array.isArray(nodeType.version)
+			? nodeType.version.includes(typeVersion)
+			: typeVersion === nodeType.version,
+	);
 	const node: INode = {
 		id: generateNodeId(),
 		name,
 		type: nodeType.name,
-		typeVersion: getLatestVersion(nodeType),
+		typeVersion,
 		position,
 		parameters,
 	};
