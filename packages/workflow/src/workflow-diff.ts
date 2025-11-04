@@ -132,6 +132,8 @@ export class WorkflowChangeSet<T extends DiffableNode> {
 				} else {
 					this.nodes.set(key, { ...diff, status: diffStatus });
 				}
+			} else {
+				this.nodes.set(key, { ...diff, status: NodeDiffStatus.Added });
 			}
 		}
 	}
