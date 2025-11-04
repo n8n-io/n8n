@@ -90,7 +90,8 @@ export class McpOAuthAuthorizationCodeService {
 			{ used: true },
 		);
 
-		if (result.affected === 0) {
+		const numAffected = result.affected ?? 0;
+		if (numAffected < 1) {
 			throw new Error('Authorization code already used');
 		}
 
