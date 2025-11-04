@@ -19,12 +19,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 
-const { initialValue } = defineProps<{
-	initialValue: INode[] | null;
-}>();
-
-const emit = defineEmits<{
-	update: [INode[]];
+const props = defineProps<{
+	modalName: string;
+	data: {
+		selected: INode[];
+		onConfirm: (tools: INode[]) => void;
+	};
 }>();
 
 const i18n = useI18n();
@@ -157,7 +157,7 @@ const isMissingCredentials = computed(() => {
 	return false;
 });
 
-function onConfirm() {
+function handleConfirm() {
 	const tools: INode[] = [];
 	for (const [providerKey, provider] of providers.value) {
 		const selected = selectedByProvider.value[providerKey];
@@ -186,7 +186,8 @@ function onConfirm() {
 		}
 	}
 
-	emit('update', tools);
+	props.data.onConfirm(tools);
+
 	modalBus.value.emit('close');
 }
 
@@ -195,10 +196,10 @@ function onCancel() {
 }
 
 watch(
-	() => initialValue,
-	(nodes: INode[] | null) => {
-		if (nodes?.length) {
-			restoreFromInitial(nodes);
+	() => props.data.selected,
+	(toolNodes: INode[]) => {
+		if (toolNodes?.length > 0) {
+			restoreFromInitial(toolNodes);
 		} else {
 			resetSelections();
 		}
@@ -213,7 +214,7 @@ onMounted(async () => {
 
 <template>
 	<Modal
-		name="toolsSelector"
+		:name="modalName"
 		:event-bus="modalBus"
 		width="50%"
 		max-width="720px"
@@ -300,7 +301,7 @@ onMounted(async () => {
 					<N8nButton type="tertiary" @click="onCancel">{{
 						i18n.baseText('chatHub.tools.editor.cancel')
 					}}</N8nButton>
-					<N8nButton type="primary" :disabled="isMissingCredentials" @click="onConfirm">{{
+					<N8nButton type="primary" :disabled="isMissingCredentials" @click="handleConfirm">{{
 						i18n.baseText('chatHub.tools.editor.confirm')
 					}}</N8nButton>
 				</div>

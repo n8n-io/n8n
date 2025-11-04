@@ -10,8 +10,8 @@ import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConvers
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/ai/chatHub/components/ChatStarter.vue';
-import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import {
+	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
@@ -37,7 +37,6 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { INodesSchema, type INode } from 'n8n-workflow';
-import ToolsSelectorModal from './components/ToolsSelectorModal.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -199,8 +198,6 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
-const editingAgentId = ref<string | undefined>(undefined);
-const isToolsSelectorOpen = ref(false);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -405,12 +402,7 @@ function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
-function handleConfigureTools() {
-	isToolsSelectorOpen.value = true;
-	uiStore.openModal('toolsSelector');
-}
-
-async function onUpdateTools(newTools: INode[]) {
+async function handleUpdateTools(newTools: INode[]) {
 	toolsSelection.value = newTools;
 	defaultTools.value = newTools;
 
@@ -423,11 +415,23 @@ async function onUpdateTools(newTools: INode[]) {
 	}
 }
 
+function closeAgentEditor() {
+	// TODO: Do we need some handling here?
+}
+
 async function handleEditAgent(agentId: string) {
 	try {
 		await chatStore.fetchCustomAgent(agentId);
-		editingAgentId.value = agentId;
-		uiStore.openModal('agentEditor');
+
+		uiStore.openModalWithData({
+			name: AGENT_EDITOR_MODAL_KEY,
+			data: {
+				agentId,
+				credentials: credentialsByProvider,
+				onClose: closeAgentEditor,
+				onCreateCustomAgent: handleSelectModel,
+			},
+		});
 	} catch (error) {
 		toast.showError(error, 'Failed to load agent');
 	}
@@ -435,12 +439,14 @@ async function handleEditAgent(agentId: string) {
 
 function openNewAgentCreator() {
 	chatStore.currentEditingAgent = null;
-	editingAgentId.value = undefined;
-	uiStore.openModal('agentEditor');
-}
-
-function closeAgentEditor() {
-	editingAgentId.value = undefined;
+	uiStore.openModalWithData({
+		name: AGENT_EDITOR_MODAL_KEY,
+		data: {
+			credentials: credentialsByProvider,
+			onClose: closeAgentEditor,
+			onCreateCustomAgent: handleSelectModel,
+		},
+	});
 }
 
 function handleOpenWorkflow(workflowId: string) {
@@ -470,20 +476,6 @@ function handleOpenWorkflow(workflowId: string) {
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
 			@open-workflow="handleOpenWorkflow"
-		/>
-
-		<AgentEditorModal
-			v-if="credentialsByProvider"
-			:agent-id="editingAgentId"
-			:credentials="credentialsByProvider"
-			@create-custom-agent="handleSelectModel"
-			@close="closeAgentEditor"
-		/>
-
-		<ToolsSelectorModal
-			v-if="isToolsSelectorOpen"
-			:initial-value="selectedTools"
-			@update="onUpdateTools"
 		/>
 
 		<N8nScrollArea
@@ -546,7 +538,7 @@ function handleOpenWorkflow(workflowId: string) {
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
-						@select-tools="handleConfigureTools"
+						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
 					/>
 				</div>

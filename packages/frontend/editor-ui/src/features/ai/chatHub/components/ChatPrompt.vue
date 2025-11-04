@@ -6,7 +6,7 @@ import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
-import SelectedToolsButton from './SelectedToolsButton.vue';
+import ToolsSelector from './ToolsSelector.vue';
 
 const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
@@ -20,7 +20,7 @@ const emit = defineEmits<{
 	submit: [string];
 	stop: [];
 	selectModel: [];
-	selectTools: [];
+	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
 }>();
 
@@ -99,8 +99,8 @@ watch(speechInput.error, (event) => {
 	}
 });
 
-function onSelectTools() {
-	emit('selectTools');
+function onSelectTools(tools: INode[]) {
+	emit('selectTools', tools);
 }
 
 defineExpose({
@@ -150,10 +150,10 @@ defineExpose({
 			/>
 
 			<div :class="$style.tools">
-				<SelectedToolsButton
+				<ToolsSelector
 					:selected="selectedTools ?? []"
 					:disabled="isMissingCredentials || !selectedModel || isResponding"
-					@click="onSelectTools"
+					@select="onSelectTools"
 				/>
 			</div>
 

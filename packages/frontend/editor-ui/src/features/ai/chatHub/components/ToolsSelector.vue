@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import type { INode } from 'n8n-workflow';
 import { computed, onMounted } from 'vue';
+import { TOOLS_SELECTOR_MODAL_KEY } from '../constants';
 
 const { selected } = defineProps<{
 	disabled: boolean;
@@ -11,9 +13,10 @@ const { selected } = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	click: [];
+	select: [INode[]];
 }>();
 
+const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const toolCount = computed(() => selected.length ?? 0);
@@ -33,8 +36,15 @@ onMounted(async () => {
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
 });
 
+const handleSelect = (tools: INode[]) => {
+	emit('select', tools);
+};
+
 const onClick = () => {
-	emit('click');
+	uiStore.openModalWithData({
+		name: TOOLS_SELECTOR_MODAL_KEY,
+		data: { selected, onConfirm: handleSelect },
+	});
 };
 </script>
 
@@ -46,7 +56,7 @@ const onClick = () => {
 		aria-label="Select tools"
 		@click="onClick"
 	>
-		<span v-if="toolCount" :class="$style.iconStack" aria-hidden="true">
+		<span v-if="toolCount" :class="$style.iconStack">
 			<NodeIcon
 				v-for="(nodeType, i) in displayToolNodeTypes"
 				:key="`${nodeType?.name}-${i}`"
@@ -57,7 +67,7 @@ const onClick = () => {
 				:size="12"
 			/>
 		</span>
-		<span v-else :class="$style.iconFallback" aria-hidden="true">
+		<span v-else :class="$style.iconFallback">
 			<N8nIcon icon="plus" :size="12" />
 		</span>
 
@@ -71,7 +81,7 @@ const onClick = () => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background-color: var(--color--background--light-3);
+	background-color: transparent;
 }
 
 .iconStack {
