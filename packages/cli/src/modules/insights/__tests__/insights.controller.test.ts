@@ -28,7 +28,7 @@ afterAll(async () => {
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
 	let controller: InsightsController;
-	const sixDaysAgo = DateTime.now().minus({ days: 6 }).toJSDate();
+	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
 	const licenseState = mock<LicenseState>();
 
@@ -62,7 +62,7 @@ describe('InsightsController', () => {
 
 			const callArgs =
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sixDaysAgo);
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
@@ -102,7 +102,7 @@ describe('InsightsController', () => {
 
 			const callArgs =
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sixDaysAgo);
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
@@ -146,7 +146,7 @@ describe('InsightsController', () => {
 
 			const callArgs =
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sixDaysAgo);
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({
@@ -399,7 +399,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sixDaysAgo);
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({ count: 0, data: [] });
@@ -433,7 +433,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByWorkflow.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sixDaysAgo);
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual({ count: 3, data: mockRows });
@@ -671,7 +671,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sixDaysAgo);
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual([]);
@@ -694,7 +694,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sixDaysAgo);
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual(expectedResponse);
@@ -740,7 +740,7 @@ describe('InsightsController', () => {
 				});
 
 				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-				expectDatesClose(callArgs.startDate, sixDaysAgo);
+				expectDatesClose(callArgs.startDate, sevenDaysAgo);
 				expectDatesClose(callArgs.endDate, today);
 
 				expect(response).toEqual(expectedResponse);
@@ -887,7 +887,7 @@ describe('InsightsController', () => {
 			});
 
 			const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-			expectDatesClose(callArgs.startDate, sixDaysAgo);
+			expectDatesClose(callArgs.startDate, sevenDaysAgo);
 			expectDatesClose(callArgs.endDate, today);
 
 			expect(response).toEqual(expectedResponse);
@@ -912,7 +912,7 @@ describe('InsightsController', () => {
 				});
 
 				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
-				expectDatesClose(callArgs.startDate, sixDaysAgo);
+				expectDatesClose(callArgs.startDate, sevenDaysAgo);
 				expectDatesClose(callArgs.endDate, today);
 
 				expect(response).toEqual(expectedResponse);
