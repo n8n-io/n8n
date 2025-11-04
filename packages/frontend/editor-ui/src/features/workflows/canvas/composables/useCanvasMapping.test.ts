@@ -813,6 +813,8 @@ describe('useCanvasMapping', () => {
 
 				// Check per-target tracking
 				expect(outputData.byTarget).toBeDefined();
+				assert(outputData.byTarget);
+
 				expect(outputData.byTarget[agent1Node.id]).toBeDefined();
 				expect(outputData.byTarget[agent2Node.id]).toBeDefined();
 
@@ -892,6 +894,8 @@ describe('useCanvasMapping', () => {
 
 				// Should also apply to per-target counts
 				expect(outputData.byTarget).toBeDefined();
+				assert(outputData.byTarget);
+
 				expect(outputData.byTarget[vectorStoreNode.id]).toBeDefined();
 				expect(outputData.byTarget[vectorStoreNode.id].total).toBe(3);
 			});
