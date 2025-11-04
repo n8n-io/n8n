@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
+import { SlidingWindow } from './SlidingWindow';
+
 type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
 /**
@@ -130,6 +132,7 @@ export class CircuitBreaker {
 	private inflightRequests = 0;
 
 	private failureTimestamps: number[] = [];
+	private slidingWindow: SlidingWindow;
 
 	private readonly timeout: number;
 	private readonly maxFailures: number;
@@ -153,6 +156,11 @@ export class CircuitBreaker {
 		this.failureWindow = options.failureWindow;
 		this.maxConcurrentHalfOpenRequests = options.maxConcurrentHalfOpenRequests ?? 1;
 
+		this.slidingWindow = new SlidingWindow({
+			durationMs: this.failureWindow,
+			maxEvents: this.maxFailures,
+		});
+
 		this.logger = Container.get(Logger).scoped('circuit-breaker');
 	}
 
@@ -167,25 +175,18 @@ export class CircuitBreaker {
 	}
 
 	private getFailureCount(): number {
-		const now = Date.now();
-		const windowStart = now - this.failureWindow;
-		this.failureTimestamps = this.failureTimestamps.filter((timestamp) => timestamp >= windowStart);
-		return this.failureTimestamps.length;
+		return this.slidingWindow.getCount();
 	}
 
 	private clearFailures() {
-		this.failureTimestamps = [];
+		this.slidingWindow.clear();
 	}
 
 	private recordFailure() {
 		const now = Date.now();
-		this.failureTimestamps.push(now);
 		this.lastFailureTime = now;
 
-		// Remove failures if they exceed the maximum allowed failures times 2
-		if (this.failureTimestamps.length > this.maxFailures * 2) {
-			this.failureTimestamps = this.failureTimestamps.slice(-this.maxFailures * 2);
-		}
+		this.slidingWindow.addEvent(now);
 
 		this.logger.debug(
 			`Circuit breaker recording failure at ${now}: ${this.failureTimestamps.length} failures max ${this.maxFailures}`,
