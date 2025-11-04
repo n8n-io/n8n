@@ -1,10 +1,19 @@
+export const supportedTypes = [
+	'sqlite',
+	'sqlite-pooled',
+	'sqlite-memory',
+	'postgres',
+	'postgresql',
+	'mysql',
+	'mariadb',
+	'mysqldb',
+];
+
 export function validateDbTypeForExportEntities(dbType: string) {
-	if (
-		!['sqlite', 'sqlite-pooled', 'sqlite-memory', 'postgres', 'postgresql'].includes(
-			dbType.toLowerCase(),
-		)
-	) {
-		throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
+	if (!supportedTypes.includes(dbType.toLowerCase())) {
+		throw new Error(
+			`Unsupported database type: ${dbType}. Supported types: ${supportedTypes.join(', ')}`,
+		);
 	}
 }
 

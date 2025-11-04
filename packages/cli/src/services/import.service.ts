@@ -568,13 +568,6 @@ export class ImportService {
 			);
 		}
 
-		// Check ID match (if both have IDs)
-		if (importId && dbId && importId !== dbId) {
-			throw new Error(
-				`Migration ID mismatch. Import data: ${String(importName)} (id: ${String(importId)}) does not match target database ${String(dbName)} (id: ${String(dbId)}). Cannot import data from different migration states.`,
-			);
-		}
-
 		this.logger.info(
 			'✅ Migration validation passed - import data matches target database migration state',
 		);
