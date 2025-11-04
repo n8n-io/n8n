@@ -50,7 +50,7 @@ const formatDateForFilename = (): string => {
 
 const escapeCsvValue = (value: string): string => {
 	// If value contains comma, quote, or newline, wrap in quotes and escape quotes
-	if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+	if (value.includes(',') || value.includes('"')) {
 		return `"${value.replace(/"/g, '""')}"`;
 	}
 	return value;
@@ -76,7 +76,6 @@ const onGenerateCsvExport = async () => {
 		expand: ['projectRelations'],
 		skip: 0,
 	};
-	await new Promise((resolve) => setTimeout(resolve, 3000));
 	userData.value = await usersApi.getUsers(rootStore.restApiContext, filter);
 	csvFilesAreReady.value = true;
 	loading.value = false;
