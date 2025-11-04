@@ -4,7 +4,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
-import { N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -170,8 +170,7 @@ defineExpose({
 			/>
 
 			<div :class="$style.tools">
-				<button
-					type="button"
+				<N8nButton
 					:class="$style.toolsButton"
 					:disabled="isMissingCredentials || !selectedModel || isResponding"
 					aria-label="Select tools"
@@ -193,7 +192,7 @@ defineExpose({
 					</span>
 
 					<N8nText size="small" bold>{{ toolsLabel }}</N8nText>
-				</button>
+				</N8nButton>
 			</div>
 
 			<div :class="$style.actions">
