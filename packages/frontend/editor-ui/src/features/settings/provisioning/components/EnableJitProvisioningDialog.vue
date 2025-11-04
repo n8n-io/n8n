@@ -29,14 +29,20 @@ watch(visible, () => {
 
 const onDownloadInstanceRolesCsv = async () => {
 	downloadingInstanceRolesCsv.value = true;
-	await downloadInstanceRolesCsv();
-	downloadingInstanceRolesCsv.value = false;
+	try {
+		await downloadInstanceRolesCsv();
+	} finally {
+		downloadingInstanceRolesCsv.value = false;
+	}
 };
 
 const onDownloadProjectRolesCsv = async () => {
 	downloadingProjectRolesCsv.value = true;
-	await downloadProjectRolesCsv();
-	downloadingProjectRolesCsv.value = false;
+	try {
+		await downloadProjectRolesCsv();
+	} finally {
+		downloadingProjectRolesCsv.value = false;
+	}
 };
 
 const onConfirmActivatingProvisioning = () => {
