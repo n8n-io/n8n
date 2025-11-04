@@ -164,11 +164,10 @@ function nodeIsAdditive<T extends DiffableNode>(prevNode: T, nextNode: T) {
 }
 
 function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
-	prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+	_prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
 	next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+	diff: WorkflowDiff<N>,
 ) {
-	const diff = compareWorkflowsNodes(prev.from.nodes, next.to.nodes);
-
 	for (const d of diff.values()) {
 		if (d.status === NodeDiffStatus.Deleted) return false;
 		if (d.status === NodeDiffStatus.Added) continue;
@@ -204,9 +203,13 @@ function compareWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 	};
 }
 
-export type DiffRule<W extends IWorkflowBase = IWorkflowBase> = (
+export type DiffRule<
+	W extends IWorkflowBase = IWorkflowBase,
+	N extends W['nodes'][number] = W['nodes'][number],
+> = (
 	prev: GroupedWorkflowHistory<W>,
 	next: GroupedWorkflowHistory<W>,
+	diff: WorkflowDiff<N>,
 ) => boolean;
 
 export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
@@ -233,10 +236,11 @@ export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 	let prevDiffsLength = diffs.length;
 	do {
 		prevDiffsLength = diffs.length;
-		for (const rule of rules) {
-			const n = diffs.length;
-			for (let i = n - 1; i > 0; --i) {
-				const shouldMerge = rule(diffs[i - 1], diffs[i]);
+		const n = diffs.length;
+		for (let i = n - 1; i > 0; --i) {
+			const diff = compareWorkflowsNodes(diffs[i - 1].from.nodes, diffs[i].to.nodes);
+			for (const rule of rules) {
+				const shouldMerge = rule(diffs[i - 1], diffs[i], diff);
 				if (shouldMerge) {
 					const right = diffs.pop();
 					if (!right) throw new Error('invariant broken');
@@ -246,6 +250,7 @@ export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 					diffs[i - 1].groupedWorkflows.push(diffs[i - 1].to);
 					diffs[i - 1].groupedWorkflows.push(...right.groupedWorkflows);
 					diffs[i - 1].to = right.to;
+					break;
 				}
 			}
 		}

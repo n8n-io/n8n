@@ -505,6 +505,7 @@ describe('groupWorkflows', () => {
 						groupedWorkflows: [],
 						workflowChangeSet: new WorkflowChangeSet(),
 					},
+					compareWorkflowsNodes(baseWorkflow.nodes, nextWorkflow.nodes),
 				);
 
 				expect(result).toEqual(expected);
