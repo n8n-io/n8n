@@ -1,7 +1,7 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { BATCH_11AUG_EXPERIMENT } from '@/app/constants';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
@@ -23,14 +23,14 @@ export const useReadyToRunWorkflowsStore = defineStore(
 		const i18n = useI18n();
 		const foldersStore = useFoldersStore();
 		const workflowsStore = useWorkflowsStore();
-		const posthogStore = usePostHog();
+		const featureFlagsStore = useFeatureFlags();
 
 		const isFeatureEnabled = computed(() => {
 			return [
 				BATCH_11AUG_EXPERIMENT.variantReadyToRun,
 				BATCH_11AUG_EXPERIMENT.variantReadyToRun2,
 				BATCH_11AUG_EXPERIMENT.variantReadyToRun3,
-			].includes(posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name)?.toString() ?? '');
+			].includes(featureFlagsStore.getVariant(BATCH_11AUG_EXPERIMENT.name)?.toString() ?? '');
 		});
 
 		const calloutDismissedRef = useLocalStorage(LOCAL_STORAGE_SETTING_KEY, false);
@@ -64,7 +64,7 @@ export const useReadyToRunWorkflowsStore = defineStore(
 		};
 
 		function getCardText() {
-			const variant = posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
+			const variant = featureFlagsStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
 
 			switch (variant) {
 				case BATCH_11AUG_EXPERIMENT.variantReadyToRun:
@@ -79,7 +79,7 @@ export const useReadyToRunWorkflowsStore = defineStore(
 		}
 
 		function getCalloutText() {
-			const variant = posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
+			const variant = featureFlagsStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
 
 			switch (variant) {
 				case BATCH_11AUG_EXPERIMENT.variantReadyToRun:

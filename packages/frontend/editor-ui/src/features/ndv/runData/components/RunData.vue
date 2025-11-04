@@ -73,7 +73,7 @@ import RunDataItemCount from './RunDataItemCount.vue';
 import RunDataDisplayModeSelect from './RunDataDisplayModeSelect.vue';
 import RunDataPaginationBar from './RunDataPaginationBar.vue';
 import { parseAiContent } from '@/app/utils/aiUtils';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from './RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/features/execution/executions/executions.utils';
@@ -230,7 +230,7 @@ const workflowState = injectWorkflowState();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
-const posthogStore = usePostHog();
+const featureFlagsStore = useFeatureFlags();
 
 const toast = useToast();
 const route = useRoute();
@@ -638,7 +638,7 @@ const isSchemaPreviewEnabled = computed(
 );
 
 const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
+	featureFlagsStore.isVariantEnabled(
 		NDV_UI_OVERHAUL_EXPERIMENT.name,
 		NDV_UI_OVERHAUL_EXPERIMENT.variant,
 	),

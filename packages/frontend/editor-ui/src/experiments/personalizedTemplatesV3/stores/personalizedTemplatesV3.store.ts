@@ -1,6 +1,6 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { STORES } from '@n8n/stores';
@@ -9,7 +9,7 @@ import { computed, ref } from 'vue';
 
 export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_TEMPLATES_V3, () => {
 	const telemetry = useTelemetry();
-	const posthogStore = usePostHog();
+	const featureFlagsStore = useFeatureFlags();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
 
@@ -22,7 +22,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 	const isFeatureEnabled = () => {
 		const isLocalhost = window.location.hostname === 'localhost';
 		return (
-			posthogStore.getVariant(PERSONALIZED_TEMPLATES_V3.name) ===
+			featureFlagsStore.getVariant(PERSONALIZED_TEMPLATES_V3.name) ===
 				PERSONALIZED_TEMPLATES_V3.variant && isLocalhost
 		);
 	};

@@ -8,7 +8,7 @@ import { AGENT_WITH_MEMORY } from '../workflows/1_agent_with_memory';
 import { AGENT_WITH_TOOLS } from '../workflows/2_agent_with_tools';
 import { AGENT_WITH_KNOWLEDGE } from '../workflows/3_agent_with_knowledge';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { TEMPLATE_ONBOARDING_EXPERIMENT } from '@/app/constants';
 import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -24,7 +24,7 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 
 		const foldersStore = useFoldersStore();
 		const workflowsStore = useWorkflowsStore();
-		const posthogStore = usePostHog();
+		const featureFlagsStore = useFeatureFlags();
 		const settingsStore = useSettingsStore();
 
 		const calloutDismissedRef = useLocalStorage(LOCAL_STORAGE_SETTING_KEY, false);
@@ -33,7 +33,7 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 		const isFeatureEnabled = computed(() => {
 			return (
 				settingsStore.isCloudDeployment &&
-				posthogStore.getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
+				featureFlagsStore.getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
 					TEMPLATE_ONBOARDING_EXPERIMENT.variantStarterPack
 			);
 		});

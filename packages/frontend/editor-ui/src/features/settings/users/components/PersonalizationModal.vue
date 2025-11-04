@@ -89,7 +89,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '../users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -106,7 +105,6 @@ const { showError } = useToast();
 const i18n = useI18n();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
-const posthogStore = usePostHog();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
@@ -594,8 +592,6 @@ const onSubmit = async (values: object) => {
 		await externalHooks.run('personalizationModal.onSubmit', completedSurvey);
 
 		await usersStore.submitPersonalizationSurvey(completedSurvey);
-
-		posthogStore.setMetadata(completedSurvey, 'user');
 	} catch (e) {
 		showError(e, 'Error while submitting results');
 	} finally {

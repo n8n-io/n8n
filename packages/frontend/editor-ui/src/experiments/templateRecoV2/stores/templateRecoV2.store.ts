@@ -1,6 +1,6 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { TEMPLATE_RECO_V2, VIEWS } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
@@ -12,11 +12,11 @@ export const usePersonalizedTemplatesV2Store = defineStore(
 	STORES.EXPERIMENT_TEMPLATE_RECO_V2,
 	() => {
 		const telemetry = useTelemetry();
-		const posthogStore = usePostHog();
+		const featureFlagsStore = useFeatureFlags();
 		const templatesStore = useTemplatesStore();
 
 		const isFeatureEnabled = () => {
-			return posthogStore.getVariant(TEMPLATE_RECO_V2.name) === TEMPLATE_RECO_V2.variant;
+			return featureFlagsStore.getVariant(TEMPLATE_RECO_V2.name) === TEMPLATE_RECO_V2.variant;
 		};
 
 		function getNodeData(nodeId: string): PredefinedNodeData {

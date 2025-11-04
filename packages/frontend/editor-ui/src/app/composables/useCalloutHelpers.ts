@@ -5,7 +5,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -35,7 +35,7 @@ export function useCalloutHelpers() {
 	const route = useRoute();
 	const router = useRouter();
 	const telemetry = useTelemetry();
-	const postHog = usePostHog();
+	const featureFlagsStore = useFeatureFlags();
 	const i18n = useI18n();
 
 	const rootStore = useRootStore();
@@ -213,7 +213,7 @@ export function useCalloutHelpers() {
 	};
 
 	const isPreBuiltAgentsExperimentEnabled = computed(() => {
-		return postHog.isVariantEnabled(
+		return featureFlagsStore.isVariantEnabled(
 			PRE_BUILT_AGENTS_EXPERIMENT.name,
 			PRE_BUILT_AGENTS_EXPERIMENT.variant,
 		);

@@ -13,7 +13,7 @@ import {
 } from '@/app/moduleInitializer/moduleInitializer';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -160,7 +160,7 @@ export async function initializeAuthenticatedFeatures(
 function registerAuthenticationHooks() {
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
-	const postHogStore = usePostHog();
+	const featureFlagsStore = useFeatureFlags();
 	const npsSurveyStore = useNpsSurveyStore();
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
@@ -171,14 +171,14 @@ function registerAuthenticationHooks() {
 
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
 		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
-		postHogStore.init(user.featureFlags);
+		featureFlagsStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();
 	});
 
 	usersStore.registerLogoutHook(() => {
 		npsSurveyStore.resetNpsSurveyOnLogOut();
-		postHogStore.reset();
+		featureFlagsStore.reset();
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 	});

@@ -26,6 +26,13 @@ declare global {
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;
 		maxPinnedDataSize?: number;
+		featureFlags?: {
+			override: (name: string, value: string | boolean) => void;
+			clearOverride: (name: string) => void;
+			clearAll: () => void;
+			getVariant: (name: string) => string | boolean | undefined;
+			getAll: () => Record<string, string | boolean | undefined>;
+		};
 	}
 
 	namespace JSX {

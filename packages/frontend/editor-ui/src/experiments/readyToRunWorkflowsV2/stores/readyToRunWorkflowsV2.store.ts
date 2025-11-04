@@ -3,7 +3,7 @@ import { useToast } from '@/app/composables/useToast';
 import { READY_TO_RUN_V2_PART2_EXPERIMENT, VIEWS } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
@@ -30,11 +30,11 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const credentialsStore = useCredentialsStore();
 		const usersStore = useUsersStore();
 		const settingsStore = useSettingsStore();
-		const posthogStore = usePostHog();
+		const featureFlagsStore = useFeatureFlags();
 		const workflowsStore = useWorkflowsStore();
 
 		const isFeatureEnabled = computed(() => {
-			const variant = posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
+			const variant = featureFlagsStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
 			return (
 				variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3 ||
 				variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant4
@@ -65,7 +65,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		});
 
 		const getCurrentVariant = () => {
-			return posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
+			return featureFlagsStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
 		};
 
 		const trackExecuteAiWorkflow = (status: string) => {

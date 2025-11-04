@@ -15,7 +15,7 @@ import { useExecutionCommands } from './useExecutionCommands';
 import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
 import type { CommandGroup } from '../types';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -27,14 +27,14 @@ export function useCommandBar() {
 	const workflowStore = useWorkflowsStore();
 	const router = useRouter();
 	const route = useRoute();
-	const postHog = usePostHog();
+	const featureFlagsStore = useFeatureFlags();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
 	const placeholder = i18n.baseText('commandBar.placeholder');
 
 	const isEnabled = computed(() =>
-		postHog.isVariantEnabled(COMMAND_BAR_EXPERIMENT.name, COMMAND_BAR_EXPERIMENT.variant),
+		featureFlagsStore.isVariantEnabled(COMMAND_BAR_EXPERIMENT.name, COMMAND_BAR_EXPERIMENT.variant),
 	);
 
 	const activeNodeId = ref<string | null>(null);

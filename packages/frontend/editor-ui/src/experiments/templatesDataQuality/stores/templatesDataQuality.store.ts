@@ -1,6 +1,6 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { TEMPLATES_DATA_QUALITY_EXPERIMENT, VIEWS } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { defineStore } from 'pinia';
 import batch1TemplateIds from '../data/batch1TemplateIds.json';
@@ -11,16 +11,16 @@ const NUMBER_OF_TEMPLATES = 6;
 
 export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', () => {
 	const telemetry = useTelemetry();
-	const posthogStore = usePostHog();
+	const featureFlagsStore = useFeatureFlags();
 	const templatesStore = useTemplatesStore();
 	const settingsStore = useSettingsStore();
 
 	const isFeatureEnabled = () => {
 		return (
 			settingsStore.isTemplatesEnabled &&
-			(posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
+			(featureFlagsStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
 				TEMPLATES_DATA_QUALITY_EXPERIMENT.variant1 ||
-				posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
+				featureFlagsStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
 					TEMPLATES_DATA_QUALITY_EXPERIMENT.variant2)
 		);
 	};
@@ -35,7 +35,7 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 
 	function getRandomTemplateIds(): number[] {
 		const ids =
-			posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
+			featureFlagsStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
 			TEMPLATES_DATA_QUALITY_EXPERIMENT.variant1
 				? batch1TemplateIds
 				: batch2TemplateIds;

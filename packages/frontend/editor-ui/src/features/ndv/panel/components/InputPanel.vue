@@ -26,7 +26,6 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
@@ -35,6 +34,7 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -105,7 +105,7 @@ const inputModes = [
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
-const posthogStore = usePostHog();
+const featureFlagsStore = useFeatureFlags();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 
@@ -274,7 +274,7 @@ const waitingMessage = computed(() => {
 });
 
 const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
+	featureFlagsStore.isVariantEnabled(
 		NDV_UI_OVERHAUL_EXPERIMENT.name,
 		NDV_UI_OVERHAUL_EXPERIMENT.variant,
 	),

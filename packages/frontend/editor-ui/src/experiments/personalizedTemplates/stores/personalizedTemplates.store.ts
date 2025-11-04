@@ -5,7 +5,7 @@ import {
 	TEMPLATE_ONBOARDING_EXPERIMENT,
 	VIEWS,
 } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
@@ -64,7 +64,7 @@ function keepTop3Templates(templates: ITemplatesWorkflowFull[]) {
 
 export const usePersonalizedTemplatesStore = defineStore(STORES.PERSONALIZED_TEMPLATES, () => {
 	const telemetry = useTelemetry();
-	const posthogStore = usePostHog();
+	const featureFlagsStore = useFeatureFlags();
 	const templatesStore = useTemplatesStore();
 
 	const allSuggestedWorkflows = ref<ITemplatesWorkflowFull[]>([]);
@@ -88,7 +88,7 @@ export const usePersonalizedTemplatesStore = defineStore(STORES.PERSONALIZED_TEM
 
 	const isFeatureEnabled = () => {
 		return (
-			posthogStore.getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
+			featureFlagsStore.getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
 			TEMPLATE_ONBOARDING_EXPERIMENT.variantSuggestedTemplates
 		);
 	};
