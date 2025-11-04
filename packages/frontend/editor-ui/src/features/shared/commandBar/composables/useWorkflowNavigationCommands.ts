@@ -219,7 +219,7 @@ export function useWorkflowNavigationCommands(options: {
 		return parts.join(' / ');
 	};
 
-	const createWorkflowCommand = (workflow: IWorkflowDb): CommandBarItem => {
+	const createWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
 		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
@@ -251,18 +251,27 @@ export function useWorkflowNavigationCommands(options: {
 
 		const suffix = getWorkflowProjectSuffix(workflow);
 
+		const name = workflow.name || i18n.baseText('commandBar.workflows.unnamed');
+		const title = isRoot
+			? i18n.baseText('generic.openResource', {
+					interpolate: { resource: name },
+				})
+			: name;
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.workflows')
+			: i18n.baseText('commandBar.workflows.open');
+
 		return {
 			id: workflow.id,
 			title: {
 				component: CommandBarItemTitle,
 				props: {
-					title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+					title,
 					suffix,
 					...(suffix ? { suffixIcon: getProjectIcon(workflow) } : {}),
-					actionText: i18n.baseText('generic.open'),
 				},
 			},
-			section: i18n.baseText('commandBar.sections.workflows'),
+			section,
 			...(keywords.length > 0 ? { keywords } : {}),
 			...(icon ? { icon } : {}),
 			handler: () => {
@@ -276,14 +285,14 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow));
+		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, false));
 	});
 
 	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow));
+		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, true));
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {

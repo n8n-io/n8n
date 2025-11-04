@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useBannersStore } from '@/app/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import * as dynamicBannersApi from '@n8n/rest-api-client/api/dynamic-banners';
 
@@ -25,21 +25,21 @@ describe('Banners store', () => {
 	});
 
 	it('should add non-production license banner to stack based on enterprise settings', () => {
-		bannersStore.initialize({
+		bannersStore.loadStaticBanners({
 			banners: ['NON_PRODUCTION_LICENSE'],
 		});
 		expect(bannersStore.bannerStack).toContain('NON_PRODUCTION_LICENSE');
 	});
 
 	it("should add V1 banner to stack if it's not dismissed", () => {
-		bannersStore.initialize({
+		bannersStore.loadStaticBanners({
 			banners: ['V1'],
 		});
 		expect(bannersStore.bannerStack).toContain('V1');
 	});
 
 	it("should not add V1 banner to stack if it's dismissed", () => {
-		bannersStore.initialize({
+		bannersStore.loadStaticBanners({
 			banners: [],
 		});
 
@@ -89,9 +89,7 @@ describe('Banners store', () => {
 			},
 		} as unknown as typeof freshSettingsStore.settings;
 
-		freshBannersStore.initialize({
-			banners: [],
-		});
+		await freshBannersStore.loadDynamicBanners();
 
 		await vi.waitFor(() => {
 			expect(freshBannersStore.bannerStack.length).toBeGreaterThan(0);

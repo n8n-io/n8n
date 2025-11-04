@@ -9,9 +9,11 @@ import type { BannerName } from '@n8n/api-types';
 import DynamicBannerComponent from '@/features/shared/banners/components/banners/DynamicBanner.vue';
 import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 export const useBannersStore = defineStore(STORES.BANNERS, () => {
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 	const rootStore = useRootStore();
 
 	// Dynamic banners fetched from API
@@ -41,11 +43,15 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 
 		try {
 			dynamicBanners.value = (
-				await getDynamicBanners(
-					settingsStore.settings.dynamicBanners.endpoint,
+				await getDynamicBanners(settingsStore.settings.dynamicBanners.endpoint, {
 					version,
 					deploymentType,
-				)
+					instanceId: settingsStore.settings.instanceId,
+					planName: settingsStore.settings.license?.planName,
+					userCreatedAt: usersStore.currentUser?.createdAt,
+					isOwner: usersStore.currentUser?.isOwner,
+					role: usersStore.currentUser?.role,
+				})
 			).map((item) => ({
 				...item,
 				id: `dynamic-banner-${item.id}`,
@@ -97,13 +103,15 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 		bannerStack.value = [];
 	};
 
-	const initialize = (options: { banners: BannerName[] }) => {
+	const loadStaticBanners = (options: { banners: BannerName[] }) => {
 		options.banners.forEach(pushBannerToStack);
-		void fetchDynamicBanners().then((banners) => {
-			banners
-				?.filter((banner) => !settingsStore.permanentlyDismissedBanners.includes(banner.id))
-				.forEach((banner) => pushBannerToStack(banner.id));
-		});
+	};
+
+	const loadDynamicBanners = async () => {
+		const banners = await fetchDynamicBanners();
+		banners
+			?.filter((banner) => !settingsStore.permanentlyDismissedBanners.includes(banner.id))
+			.forEach((banner) => pushBannerToStack(banner.id));
 	};
 
 	return {
@@ -120,6 +128,7 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 		updateBannersHeight,
 		pushBannerToStack,
 		clearBannerStack,
-		initialize,
+		loadStaticBanners,
+		loadDynamicBanners,
 	};
 });
