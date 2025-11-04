@@ -133,6 +133,7 @@ export class MemoryMongoDbChat implements INodeType {
 			const db = client.db(dbName);
 			const collection = db.collection(collectionName);
 
+			// Create MongoDB-based chat memory
 			const mongoDBChatHistory = new MongoDBChatMessageHistory({
 				collection,
 				sessionId,
@@ -151,13 +152,29 @@ export class MemoryMongoDbChat implements INodeType {
 				await client.close();
 			}
 
+			// ✅ 기능 보존형 safeMemory
 			const safeMemory = {
 				memoryKey: memory.memoryKey,
 				k: memory.k,
-				chatHistory: async () => {
-					const messages = await memory.chatHistory.getMessages();
-					return messages.map(m => ({ input: m.input, output: m.output }));
+
+				async loadMemoryVariables(inputs: Record<string, any>) {
+					try {
+						return await memory.loadMemoryVariables(inputs);
+					} catch (err) {
+						console.warn('Memory load failed, returning empty history:', err);
+						return {};
+					}
 				},
+
+				async saveContext(inputs: Record<string, any>, outputs: Record<string, any>) {
+					try {
+						await memory.saveContext(inputs, outputs);
+					} catch (err) {
+						console.warn('Memory save failed:', err);
+					}
+				},
+
+				chatHistory: memory.chatHistory,
 			};
 
 			return {
