@@ -149,7 +149,7 @@ export class MemoryMongoDbChat implements INodeType {
 				k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
 			});
 
-			console.log(memory);
+			await memory.chatHistory.getMessages();
 
 			async function closeFunction() {
 				await client.close();
