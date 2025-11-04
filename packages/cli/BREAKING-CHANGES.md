@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.113.0
+
+### What changed?
+
+Support for bare repositories in Git Node was dropped in the cloud version of n8n due to security reasons. Also, an environment variable `N8N_GIT_NODE_DISABLE_BARE_REPOS` was added that allows self-hosted users to disable bare repositories as well.
+
+### When is action necessary?
+
+If you have workflows that use the Git Node and work with bare git repositories.
+
 # 1.109.0
 
 ### What changed?

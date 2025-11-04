@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
+import { ApplicationError } from '@n8n/errors';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -1040,10 +1040,19 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
-			const inputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
-			const placeholdersDataInputData =
-				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+
+			const resultData = that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex];
+			let inputData;
+			let placeholdersDataInputData;
+
+			if (!resultData) {
+				inputData = this.connectionInputData?.[runIndex];
+				placeholdersDataInputData = inputData.json;
+			} else {
+				inputData =
+					that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
+				placeholdersDataInputData = inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+			}
 
 			if (!placeholdersDataInputData) {
 				throw new ExpressionError('No execution data available', {
@@ -1136,9 +1145,22 @@ export class WorkflowDataProxy {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
 									contextNode = parentMainInputNode?.name ?? contextNode;
 								}
-								const parentNodes = that.workflow.getParentNodes(contextNode);
-								if (!parentNodes.includes(nodeName)) {
-									throw createNoConnectionError(nodeName);
+								// Check if the node has any children and check parents for them instead of the activeNodeName
+								const children = that.workflow.getChildNodes(that.activeNodeName, 'ALL_NON_MAIN');
+								if (children.length === 0) {
+									// Node has no children, check parent of context node
+									const parents = that.workflow.getParentNodes(contextNode);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
+								} else {
+									// Node has children, check parent of children
+									const parents = children.flatMap((child) =>
+										that.workflow.getParentNodes(child, 'ALL'),
+									);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
 								}
 
 								ensureNodeExecutionData();

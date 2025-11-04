@@ -1,9 +1,4 @@
-import {
-	ImportWorkflowFromUrlDto,
-	ManualRunQueryDto,
-	ROLE,
-	TransferWorkflowBodyDto,
-} from '@n8n/api-types';
+import { ImportWorkflowFromUrlDto, ROLE, TransferWorkflowBodyDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
@@ -51,6 +46,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
@@ -89,6 +85,7 @@ export class WorkflowsController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderService: FolderService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly executionService: ExecutionService,
 	) {}
 
 	@Post('/')
@@ -140,8 +137,6 @@ export class WorkflowsController {
 
 		let project: Project | null;
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
 			const { projectId, parentFolderId } = req.body;
 			project =
 				projectId === undefined
@@ -164,6 +159,8 @@ export class WorkflowsController {
 				throw new UnexpectedError('No personal project found');
 			}
 
+			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+
 			if (parentFolderId) {
 				try {
 					const parentFolder = await this.folderService.findFolderInProjectOrFail(
@@ -171,7 +168,6 @@ export class WorkflowsController {
 						project.id,
 						transactionManager,
 					);
-					// @ts-ignore CAT-957
 					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
 				} catch {}
 			}
@@ -446,11 +442,7 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
-	async runManually(
-		req: WorkflowRequest.ManualRun,
-		_res: unknown,
-		@Query query: ManualRunQueryDto,
-	) {
+	async runManually(req: WorkflowRequest.ManualRun, _res: unknown) {
 		if (!req.body.workflowData.id) {
 			throw new UnexpectedError('You cannot execute a workflow without an ID');
 		}
@@ -474,7 +466,6 @@ export class WorkflowsController {
 			req.body,
 			req.user,
 			req.headers['push-ref'],
-			query.partialExecutionVersion,
 		);
 	}
 
@@ -561,6 +552,22 @@ export class WorkflowsController {
 			body.shareCredentials,
 			body.destinationParentFolderId,
 		);
+	}
+
+	@Get('/:workflowId/executions/last-successful')
+	@ProjectScope('workflow:read')
+	async getLastSuccessfulExecution(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+	) {
+		const lastExecution = await this.executionService.getLastSuccessfulExecution(workflowId);
+
+		if (lastExecution === undefined) {
+			throw new NotFoundError('No successful execution found for the workflow');
+		}
+
+		return lastExecution;
 	}
 
 	@Post('/with-node-types')

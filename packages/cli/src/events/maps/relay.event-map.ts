@@ -16,7 +16,7 @@ export type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: {
+	role?: {
 		slug: string;
 	};
 };
@@ -84,6 +84,20 @@ export type RelayEventMap = {
 
 	'workflow-saved': {
 		user: UserLike;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+	};
+
+	'workflow-activated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+	};
+
+	'workflow-deactivated': {
+		user: UserLike;
+		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
 	};
@@ -202,6 +216,11 @@ export type RelayEventMap = {
 	};
 
 	'user-retrieved-all-executions': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retried-execution': {
 		userId: string;
 		publicApi: boolean;
 	};
@@ -365,6 +384,10 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'execution-cancelled': {
+		executionId: string;
+	};
+
 	// #endregion
 
 	// #region Project
@@ -399,6 +422,7 @@ export type RelayEventMap = {
 		readOnlyInstance: boolean;
 		repoType: 'github' | 'gitlab' | 'other';
 		connected: boolean;
+		connectionType: 'ssh' | 'https';
 	};
 
 	'source-control-user-started-pull-ui': {
@@ -453,7 +477,13 @@ export type RelayEventMap = {
 
 	// #region Variable
 
-	'variable-created': {};
+	'variable-created': {
+		projectId?: string;
+	};
+
+	'variable-updated': {
+		projectId?: string;
+	};
 
 	// #endregion
 

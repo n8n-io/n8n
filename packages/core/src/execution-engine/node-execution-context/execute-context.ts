@@ -17,6 +17,7 @@ import type {
 	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
+	EngineResponse,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -35,7 +36,7 @@ import {
 } from './utils/binary-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { copyInputItems } from './utils/copy-input-items';
-import { getDataStoreHelperFunctions } from './utils/data-store-helper-functions';
+import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
@@ -65,6 +66,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
+		public subNodeExecutionResults?: EngineResponse,
 	) {
 		super(
 			workflow,
@@ -93,7 +95,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				connectionInputData,
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
-			...getDataStoreHelperFunctions(additionalData, workflow, node),
+			...getDataTableHelperFunctions(additionalData, workflow, node),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getDeduplicationHelperFunctions(workflow, node),
@@ -140,7 +142,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		const streamingEnabled = this.additionalData.streamingEnabled === true;
 
 		// Check current execution mode supports streaming
-		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated'];
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
 		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
 
 		return hasHandlers && isStreamingMode && streamingEnabled;

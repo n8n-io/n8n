@@ -387,7 +387,6 @@ export class CredentialsService {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
-		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
@@ -409,10 +408,6 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
-
-			savedCredential.data = newCredential.data;
-
 			const project =
 				projectId === undefined
 					? await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -436,6 +431,10 @@ export class CredentialsService {
 			if (project === null) {
 				throw new UnexpectedError('No personal project found');
 			}
+
+			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
+
+			savedCredential.data = newCredential.data;
 
 			const newSharedCredential = this.sharedCredentialsRepository.create({
 				role: 'credential:owner',

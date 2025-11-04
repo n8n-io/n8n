@@ -30,6 +30,7 @@ export async function runCommand(
 			cwd: opts.cwd,
 			env: { ...process.env, ...opts.env },
 			stdio: opts.stdio ?? ['ignore', 'pipe', 'pipe'],
+			shell: process.platform === 'win32',
 		};
 		const child =
 			opts.context === 'local'
@@ -65,10 +66,10 @@ export async function runCommand(
 		});
 
 		child.on('close', (code, signal) => {
+			printOutput();
 			if (code === 0) {
 				resolve();
 			} else {
-				printOutput();
 				reject(
 					new ChildProcessError(
 						`${cmd} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`,

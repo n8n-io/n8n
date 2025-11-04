@@ -59,20 +59,32 @@ export class ExecutionsController {
 		const noRange = !query.range.lastId || !query.range.firstId;
 
 		if (noStatus && noRange) {
-			const executions = await this.executionService.findLatestCurrentAndCompleted(query);
+			const [executions, concurrentExecutionsCount] = await Promise.all([
+				this.executionService.findLatestCurrentAndCompleted(query),
+				this.executionService.getConcurrentExecutionsCount(),
+			]);
 			await this.executionService.addScopes(
 				req.user,
 				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
 			);
-			return executions;
+			return {
+				...executions,
+				concurrentExecutionsCount,
+			};
 		}
 
-		const executions = await this.executionService.findRangeWithCount(query);
+		const [executions, concurrentExecutionsCount] = await Promise.all([
+			this.executionService.findRangeWithCount(query),
+			this.executionService.getConcurrentExecutionsCount(),
+		]);
 		await this.executionService.addScopes(
 			req.user,
 			executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
 		);
-		return executions;
+		return {
+			...executions,
+			concurrentExecutionsCount,
+		};
 	}
 
 	@Get('/:id')

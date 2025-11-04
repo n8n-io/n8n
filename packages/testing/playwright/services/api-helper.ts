@@ -11,6 +11,8 @@ import {
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { TagApiHelper } from './tag-api-helper';
+import { UserApiHelper } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
 
@@ -35,17 +37,21 @@ const DB_TAGS = {
 
 export class ApiHelpers {
 	request: APIRequestContext;
-	workflowApi: WorkflowApiHelper;
-	projectApi: ProjectApiHelper;
-	credentialApi: CredentialApiHelper;
-	variablesApi: VariablesApiHelper;
+	workflows: WorkflowApiHelper;
+	projects: ProjectApiHelper;
+	credentials: CredentialApiHelper;
+	variables: VariablesApiHelper;
+	users: UserApiHelper;
+	tags: TagApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
-		this.workflowApi = new WorkflowApiHelper(this);
-		this.projectApi = new ProjectApiHelper(this);
-		this.credentialApi = new CredentialApiHelper(this);
-		this.variablesApi = new VariablesApiHelper(this);
+		this.workflows = new WorkflowApiHelper(this);
+		this.projects = new ProjectApiHelper(this);
+		this.credentials = new CredentialApiHelper(this);
+		this.variables = new VariablesApiHelper(this);
+		this.users = new UserApiHelper(this);
+		this.tags = new TagApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
@@ -133,6 +139,10 @@ export class ApiHelpers {
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {
 		const credentials = this.getCredentials(role, memberIndex);
+		return await this.loginAndSetCookies(credentials);
+	}
+
+	async login(credentials: { email: string; password: string }): Promise<LoginResponseData> {
 		return await this.loginAndSetCookies(credentials);
 	}
 

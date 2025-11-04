@@ -12,7 +12,11 @@ import type {
 	AnnotationVote,
 	ExecutionSummary,
 	IUser,
+	IDataObject,
+	IBinaryKeyData,
+	IPairedItemData,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { CredentialsEntity } from './credentials-entity';
 import type { Folder } from './folder';
@@ -272,7 +276,13 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type AuthProviderType = 'ldap' | 'email' | 'saml' | 'oidc'; // | 'google';
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc']);
+
+export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
+
+export function isAuthProviderType(value: string): value is AuthProviderType {
+	return ALL_AUTH_PROVIDERS.safeParse(value).success;
+}
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: boolean;
@@ -378,3 +388,15 @@ export type AuthenticatedRequest<
 		'push-ref': string;
 	};
 };
+
+/**
+ * Simplified to prevent excessively deep type instantiation error from
+ * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
+ */
+export interface ISimplifiedPinData {
+	[nodeName: string]: Array<{
+		json: IDataObject;
+		binary?: IBinaryKeyData;
+		pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	}>;
+}

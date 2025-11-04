@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export class SidebarPage {
 	readonly page: Page;
@@ -11,8 +11,28 @@ export class SidebarPage {
 		await this.page.getByTestId('project-plus-button').click();
 	}
 
+	async clickHomeButton() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
 	async universalAdd() {
 		await this.page.getByTestId('universal-add').click();
+	}
+
+	async clickHomeMenuItem() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
+	async clickPersonalMenuItem() {
+		await this.page.getByTestId('project-personal-menu-item').click();
+	}
+
+	async clickWorkflowsLink(): Promise<void> {
+		await this.page.getByRole('link', { name: 'Workflows' }).click();
+	}
+
+	async clickCredentialsLink(): Promise<void> {
+		await this.page.getByRole('link', { name: 'Credentials' }).click();
 	}
 
 	async addProjectFromUniversalAdd() {
@@ -37,10 +57,79 @@ export class SidebarPage {
 	}
 
 	async clickProjectMenuItem(projectName: string) {
+		await this.expand();
 		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
 	}
 
 	getAddFirstProjectButton(): Locator {
 		return this.page.getByTestId('add-first-project-button');
+	}
+
+	getUserMenu(): Locator {
+		return this.page.getByTestId('main-sidebar-user-menu');
+	}
+
+	getLogoutMenuItem(): Locator {
+		return this.page.getByTestId('user-menu-item-logout');
+	}
+
+	getAboutModal(): Locator {
+		return this.page.getByTestId('about-modal');
+	}
+
+	async clickAboutMenuItem(): Promise<void> {
+		await this.page.getByTestId('help').click();
+		await this.page.getByTestId('about').click();
+	}
+
+	async openAboutModalViaShortcut(): Promise<void> {
+		await this.page.keyboard.press('Alt+Meta+o');
+	}
+
+	async closeAboutModal(): Promise<void> {
+		await this.page.getByTestId('close-about-modal-button').click();
+	}
+
+	getAdminPanel(): Locator {
+		return this.page.getByTestId('cloud-admin');
+	}
+
+	getTrialBanner(): Locator {
+		return this.page.getByTestId('banners-TRIAL');
+	}
+
+	getTemplatesLink(): Locator {
+		return this.page.getByTestId('templates').locator('a');
+	}
+
+	async openUserMenu(): Promise<void> {
+		await this.getUserMenu().click();
+	}
+
+	async clickSignout(): Promise<void> {
+		await this.expand();
+		await this.openUserMenu();
+		await this.getLogoutMenuItem().click();
+	}
+
+	async signOutFromWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+		await this.clickSignout();
+	}
+
+	async goToWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+	}
+
+	async expand() {
+		const collapseButton = this.page.locator('#collapse-change-button');
+		const chevronRight = this.page.locator(
+			'#collapse-change-button svg[data-icon="chevron-right"]',
+		);
+
+		await expect(collapseButton).toBeVisible();
+		if (await chevronRight.isVisible()) {
+			await collapseButton.click();
+		}
 	}
 }

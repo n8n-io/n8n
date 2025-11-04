@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22
+ARG NODE_VERSION=22.21.0
 
 # ==============================================================================
 # STAGE 1: Builder for Base Dependencies
@@ -16,6 +16,7 @@ RUN \
 # Install essential OS dependencies
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" >> /etc/apk/repositories && echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
     apk update && \
+    apk add --no-cache libxml2 && \
     apk add --no-cache \
         git \
         openssh \

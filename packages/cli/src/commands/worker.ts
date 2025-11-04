@@ -3,8 +3,9 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -60,11 +61,11 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	constructor() {
-		if (config.getEnv('executions.mode') !== 'queue') {
-			config.set('executions.mode', 'queue');
-		}
-
 		super();
+
+		if (this.globalConfig.executions.mode !== 'queue') {
+			this.globalConfig.executions.mode = 'queue';
+		}
 
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -86,8 +87,12 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.setConcurrency();
 		await super.init();
 
+		Container.get(DeprecationService).warn();
+
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await Container.get(CredentialsOverwrites).init();
+		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();

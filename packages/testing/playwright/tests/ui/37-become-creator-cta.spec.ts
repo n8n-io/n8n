@@ -30,6 +30,7 @@ test.describe('Become creator CTA', () => {
 
 		await setupRequirements(eligibleRequirements);
 		await n8n.goHome();
+		await n8n.sideBar.expand();
 
 		await expect(n8n.becomeCreatorCTA.getBecomeTemplateCreatorCta()).toBeVisible();
 

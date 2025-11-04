@@ -1,4 +1,4 @@
-import type { OidcConfigDto } from '@n8n/api-types';
+import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -10,34 +10,42 @@ import {
 	type User,
 	UserRepository,
 } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
-import { Cipher } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import * as client from 'openid-client';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { EnvHttpProxyAgent } from 'undici';
 
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
+	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../sso-helpers';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientId: '',
 	clientSecret: '',
 	discoveryEndpoint: '',
 	loginEnabled: false,
+	prompt: 'select_account',
 };
 
-type OidcRuntimeConfig = Pick<OidcConfigDto, 'clientId' | 'clientSecret' | 'loginEnabled'> & {
+type OidcRuntimeConfig = Pick<
+	OidcConfigDto,
+	'clientId' | 'clientSecret' | 'loginEnabled' | 'prompt'
+> & {
 	discoveryEndpoint: URL;
 };
 
@@ -59,6 +67,8 @@ export class OidcService {
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly provisioningService: ProvisioningService,
 	) {}
 
 	async init() {
@@ -167,11 +177,23 @@ export class OidcService {
 		const state = this.generateState();
 		const nonce = this.generateNonce();
 
+		const prompt = this.oidcConfig.prompt;
+
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const provisioningEnabled =
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles;
+
+		// Include the custom n8n scope if provisioning is enabled
+		const scope = provisioningEnabled
+			? `openid email profile ${provisioningConfig.scopesName}`
+			: 'openid email profile';
+
 		const authorizationURL = client.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
-			scope: 'openid email profile',
-			prompt: 'select_account',
+			scope,
+			prompt,
 			state: state.plaintext,
 			nonce: nonce.plaintext,
 		});
@@ -234,6 +256,8 @@ export class OidcService {
 		});
 
 		if (openidUser) {
+			await this.applySsoProvisioning(openidUser.user, claims);
+
 			return openidUser.user;
 		}
 
@@ -254,6 +278,7 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
+			await this.applySsoProvisioning(foundUser, claims);
 
 			return foundUser;
 		}
@@ -279,20 +304,77 @@ export class OidcService {
 				}),
 			);
 
+			await this.applySsoProvisioning(user, claims);
+
 			return user;
 		});
 	}
 
-	async loadConfig(decryptSecret = false): Promise<OidcRuntimeConfig> {
-		const currentConfig = await this.settingsRepository.findOneBy({
-			key: OIDC_PREFERENCES_DB_KEY,
-		});
+	private async applySsoProvisioning(user: User, claims: any) {
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
+		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
+		if (instanceRole) {
+			await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
+		}
+		if (projectRoleMapping) {
+			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
+		}
+	}
 
-		if (currentConfig) {
+	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
+		if (this.instanceSettings.isMultiMain) {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			await Container.get(Publisher).publishCommand({ command: 'reload-oidc-config' });
+		}
+	}
+
+	private isReloading = false;
+
+	@OnPubSubEvent('reload-oidc-config')
+	async reload(): Promise<void> {
+		if (this.isReloading) {
+			this.logger.warn('OIDC configuration reload already in progress');
+			return;
+		}
+		this.isReloading = true;
+		try {
+			this.logger.debug('OIDC configuration changed, starting to load it from the database');
+			const configFromDB = await this.loadConfigurationFromDatabase(true);
+			if (configFromDB) {
+				this.oidcConfig = configFromDB;
+				this.cachedOidcConfiguration = undefined;
+			} else {
+				this.logger.warn('OIDC configuration not found in database, ignoring reload message');
+			}
+			await reloadAuthenticationMethod();
+
+			const isOidcLoginEnabled = isOidcCurrentAuthenticationMethod();
+
+			this.logger.debug(`OIDC login is now ${isOidcLoginEnabled ? 'enabled' : 'disabled'}.`);
+
+			Container.get(GlobalConfig).sso.oidc.loginEnabled = isOidcLoginEnabled;
+		} catch (error) {
+			this.logger.error('OIDC configuration changed, failed to reload OIDC configuration', {
+				error,
+			});
+		} finally {
+			this.isReloading = false;
+		}
+	}
+
+	async loadConfigurationFromDatabase(
+		decryptSecret = false,
+	): Promise<OidcRuntimeConfig | undefined> {
+		const configFromDB = await this.settingsRepository.findByKey(OIDC_PREFERENCES_DB_KEY);
+
+		if (configFromDB) {
 			try {
-				const oidcConfig = jsonParse<OidcConfigDto>(currentConfig.value);
+				const configValue = jsonParse<OidcConfigDto>(configFromDB.value);
 
-				if (oidcConfig.discoveryEndpoint === '') return DEFAULT_OIDC_RUNTIME_CONFIG;
+				if (configValue.discoveryEndpoint === '') return undefined;
+
+				const oidcConfig = OidcConfigDto.parse(configValue);
 
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 
@@ -311,12 +393,16 @@ export class OidcService {
 				);
 			}
 		}
+		return undefined;
+	}
 
-		await this.settingsRepository.save({
-			key: OIDC_PREFERENCES_DB_KEY,
-			value: JSON.stringify(DEFAULT_OIDC_CONFIG),
-			loadOnStartup: true,
-		});
+	async loadConfig(decryptSecret = false): Promise<OidcRuntimeConfig> {
+		const currentConfig = await this.loadConfigurationFromDatabase(decryptSecret);
+
+		if (currentConfig) {
+			return currentConfig;
+		}
+
 		return DEFAULT_OIDC_RUNTIME_CONFIG;
 	}
 
@@ -333,7 +419,7 @@ export class OidcService {
 			newConfig.clientSecret = this.oidcConfig.clientSecret;
 		}
 		try {
-			const discoveredMetadata = await client.discovery(
+			const discoveredMetadata = await this.createProxyAwareConfiguration(
 				discoveryEndpoint,
 				newConfig.clientId,
 				newConfig.clientSecret,
@@ -344,17 +430,14 @@ export class OidcService {
 			this.logger.error('Failed to discover OIDC metadata', { error });
 			throw new UserError('Failed to discover OIDC metadata, based on the provided configuration');
 		}
-		await this.settingsRepository.update(
-			{
-				key: OIDC_PREFERENCES_DB_KEY,
-			},
-			{
-				value: JSON.stringify({
-					...newConfig,
-					clientSecret: this.cipher.encrypt(newConfig.clientSecret),
-				}),
-			},
-		);
+		await this.settingsRepository.save({
+			key: OIDC_PREFERENCES_DB_KEY,
+			value: JSON.stringify({
+				...newConfig,
+				clientSecret: this.cipher.encrypt(newConfig.clientSecret),
+			}),
+			loadOnStartup: true,
+		});
 
 		// TODO: Discuss this in product
 		// if (this.oidcConfig.loginEnabled && !newConfig.loginEnabled) {
@@ -371,6 +454,8 @@ export class OidcService {
 		);
 
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
+
+		await this.broadcastReloadOIDCConfigurationCommand();
 	}
 
 	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {
@@ -396,6 +481,46 @@ export class OidcService {
 		  } & OidcRuntimeConfig)
 		| undefined;
 
+	/**
+	 * Creates a proxy-aware configuration for openid-client.
+	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
+	 */
+	private async createProxyAwareConfiguration(
+		discoveryUrl: URL,
+		clientId: string,
+		clientSecret: string,
+	): Promise<client.Configuration> {
+		const configuration = await client.discovery(discoveryUrl, clientId, clientSecret);
+
+		// Check if proxy environment variables are set
+		const hasProxyConfig =
+			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
+
+		if (hasProxyConfig) {
+			this.logger.debug('Configuring OIDC client with proxy support', {
+				HTTP_PROXY: process.env.HTTP_PROXY,
+				HTTPS_PROXY: process.env.HTTPS_PROXY,
+				NO_PROXY: process.env.NO_PROXY,
+				ALL_PROXY: process.env.ALL_PROXY,
+			});
+
+			// Create a proxy agent that automatically reads from environment variables
+			const proxyAgent = new EnvHttpProxyAgent();
+
+			// Configure customFetch to use the proxy agent
+			configuration[client.customFetch] = async (...args) => {
+				const [url, options] = args;
+				return await fetch(url, {
+					...options,
+					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
+					dispatcher: proxyAgent,
+				});
+			};
+		}
+
+		return configuration;
+	}
+
 	private async getOidcConfiguration(): Promise<client.Configuration> {
 		const now = Date.now();
 		if (
@@ -408,7 +533,7 @@ export class OidcService {
 		) {
 			this.cachedOidcConfiguration = {
 				...this.oidcConfig,
-				configuration: client.discovery(
+				configuration: this.createProxyAwareConfiguration(
 					this.oidcConfig.discoveryEndpoint,
 					this.oidcConfig.clientId,
 					this.oidcConfig.clientSecret,

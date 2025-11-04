@@ -3,11 +3,12 @@ import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import {
 	FolderRepository,
-	TagRepository,
-	WorkflowTagMappingRepository,
+	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	TagRepository,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -16,18 +17,22 @@ import { In } from '@n8n/typeorm';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
+import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
+
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
+	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import {
 	getCredentialExportPath,
 	getFoldersPath,
+	getProjectExportPath,
 	getVariablesPath,
 	getWorkflowExportPath,
 	readFoldersFromSourceControlFile,
@@ -36,14 +41,14 @@ import {
 	stringContainsExpression,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
+import { VariablesService } from '../variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
+import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
-import { VariablesService } from '../variables/variables.service.ee';
-
-import { formatWorkflow } from '@/workflows/workflow.formatter';
+import { ExportableVariable } from './types/exportable-variable';
 
 @Service()
 export class SourceControlExportService {
@@ -51,12 +56,15 @@ export class SourceControlExportService {
 
 	private workflowExportFolder: string;
 
+	private projectExportFolder: string;
+
 	private credentialExportFolder: string;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
 		private readonly tagRepository: TagRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -67,6 +75,7 @@ export class SourceControlExportService {
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
+		this.projectExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_PROJECT_EXPORT_FOLDER);
 		this.credentialExportFolder = path.join(
 			this.gitFolder,
 			SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -190,10 +199,10 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportVariablesToWorkFolder(): Promise<ExportResult> {
+	async exportGlobalVariablesToWorkFolder(): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
-			const variables = await this.variablesService.getAllCached();
+			const variables = await this.variablesService.getAllCached({ globalOnly: true });
 			// do not export empty variables
 			if (variables.length === 0) {
 				return {
@@ -203,7 +212,12 @@ export class SourceControlExportService {
 				};
 			}
 			const fileName = getVariablesPath(this.gitFolder);
-			const sanitizedVariables = variables.map((e) => ({ ...e, value: '' }));
+			const sanitizedVariables: ExportableVariable[] = variables.map((e) => ({
+				id: e.id,
+				key: e.key,
+				type: e.type,
+				value: '',
+			}));
 			await fsWriteFile(fileName, JSON.stringify(sanitizedVariables, null, 2));
 			return {
 				count: sanitizedVariables.length,
@@ -261,7 +275,7 @@ export class SourceControlExportService {
 			// keep all folders that are not accessible by the current user
 			// if allowedProjects is undefined, all folders are accessible by the current user
 			const foldersToKeepUnchanged = context.hasAccessToAllProjects()
-				? existingFolders.folders
+				? []
 				: existingFolders.folders.filter((folder) => {
 						return !allowedProjects.some((project) => project.id === folder.homeProjectId);
 					});
@@ -305,27 +319,32 @@ export class SourceControlExportService {
 
 	async exportTagsToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
 		try {
+			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const tags = await this.tagRepository.find();
-			// do not export empty tags
+
 			if (tags.length === 0) {
+				await fsWriteFile(fileName, JSON.stringify({ tags: [], mappings: [] }, null, 2));
+
 				return {
 					count: 0,
 					folder: this.gitFolder,
-					files: [],
+					files: [{ id: '', name: fileName }],
 				};
 			}
+
 			const mappingsOfAllowedWorkflows = await this.workflowTagMappingRepository.find({
 				where:
 					this.sourceControlScopedService.getWorkflowTagMappingInAdminProjectsFromContextFilter(
 						context,
 					),
 			});
+
 			const allowedWorkflows = await this.workflowRepository.find({
 				where:
 					this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
 			});
-			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+
 			const existingTagsAndMapping = await readTagAndMappingsFromSourceControlFile(fileName);
 
 			// keep all mappings that are not accessible by the current user
@@ -350,12 +369,7 @@ export class SourceControlExportService {
 			return {
 				count: tags.length,
 				folder: this.gitFolder,
-				files: [
-					{
-						id: '',
-						name: fileName,
-					},
-				],
+				files: [{ id: '', name: fileName }],
 			};
 		} catch (error) {
 			this.logger.error('Failed to export tags to work folder', { error });
@@ -462,6 +476,65 @@ export class SourceControlExportService {
 		} catch (error) {
 			this.logger.error('Failed to export credentials to work folder', { error });
 			throw new UnexpectedError('Failed to export credentials to work folder', { cause: error });
+		}
+	}
+
+	/**
+	 * Writes candidates projects to files in the work folder.
+	 *
+	 * Only team projects are supported.
+	 * Personal project are not supported because they are not stable across instances
+	 * (different ids across instances).
+	 */
+	async exportTeamProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
+		try {
+			sourceControlFoldersExistCheck([this.projectExportFolder], true);
+
+			const projectIds = candidates.map((e) => e.id);
+			const projects = await this.projectRepository.find({
+				where: { id: In(projectIds), type: 'team' },
+				relations: ['variables'],
+			});
+
+			await Promise.all(
+				projects.map(async (project) => {
+					const fileName = getProjectExportPath(project.id, this.projectExportFolder);
+
+					const sanitizedProject: ExportableProject = {
+						id: project.id,
+						name: project.name,
+						icon: project.icon,
+						description: project.description,
+						type: 'team',
+						owner: {
+							type: 'team',
+							teamId: project.id,
+							teamName: project.name,
+						},
+						variableStubs: project.variables.map((variable) => ({
+							id: variable.id,
+							key: variable.key,
+							type: variable.type,
+							value: '',
+						})),
+					};
+
+					this.logger.debug(`Writing project ${project.id} to ${fileName}`);
+					return await fsWriteFile(fileName, JSON.stringify(sanitizedProject, null, 2));
+				}),
+			);
+
+			return {
+				count: projects.length,
+				folder: this.projectExportFolder,
+				files: projects.map((project) => ({
+					id: project.id,
+					name: getProjectExportPath(project.id, this.projectExportFolder),
+				})),
+			};
+		} catch (error) {
+			if (error instanceof UnexpectedError) throw error;
+			throw new UnexpectedError('Failed to export projects to work folder', { cause: error });
 		}
 	}
 }

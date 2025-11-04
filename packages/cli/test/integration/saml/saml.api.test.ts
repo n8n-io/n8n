@@ -50,10 +50,9 @@ describe('Instance owner', () => {
 			await authOwnerAgent
 				.patch('/me')
 				.send({
-					email: randomEmail(),
+					email: owner.email,
 					firstName: randomName(),
 					lastName: randomName(),
-					password: randomValidPassword(),
 				})
 				.expect(200);
 		});
@@ -302,6 +301,7 @@ describe('SAML email validation', () => {
 				firstName: 'John',
 				lastName: 'Doe',
 				userPrincipalName: 'john.doe',
+				n8nInstanceRole: 'n8n_instance_role',
 			});
 
 			const mockRequest = {} as express.Request;
@@ -319,6 +319,7 @@ describe('SAML email validation', () => {
 					firstName: 'John',
 					lastName: 'Doe',
 					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
 				});
 
 				const mockRequest = {} as express.Request;
@@ -342,6 +343,7 @@ describe('SAML email validation', () => {
 				firstName: 'John',
 				lastName: 'Doe',
 				userPrincipalName: 'john.doe',
+				n8nInstanceRole: 'n8n_instance_role',
 			});
 
 			// Should not throw an error for valid emails
@@ -358,6 +360,7 @@ describe('SAML email validation', () => {
 				firstName: 'John',
 				lastName: 'Doe',
 				userPrincipalName: 'john.doe',
+				n8nInstanceRole: 'n8n_instance_role',
 			});
 
 			const mockRequest = {} as express.Request;

@@ -13,7 +13,7 @@ export const cssVariables = `
   --chat--color-light-shade-100: #c2c5cc;
   --chat--color-medium: #d2d4d9;
   --chat--color-dark: #101330;
-  --chat--color-disabled: #777980;
+  --chat--color-disabled: #d2d4d9;
   --chat--color-typing: #404040;
 
   /* Base Layout */
@@ -105,7 +105,7 @@ export const cssVariables = `
 
   /* Send and File Buttons */
   --chat--input--send--button--background: var(--chat--color-white);
-  --chat--input--send--button--color: var(--chat--color-light);
+  --chat--input--send--button--color: var(--chat--color-secondary);
   --chat--input--send--button--background-hover: var(--chat--color-primary-shade-50);
   --chat--input--send--button--color-hover: var(--chat--color-secondary-shade-50);
   --chat--input--file--button--background: var(--chat--color-white);

@@ -15,8 +15,9 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		// 'data-table' isn't (yet) eligible module by default
-		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-table');
+		// 'mcp' and 'chat-hub' aren't (yet) eligible modules by default
+		const NON_DEFAULT_MODULES = ['mcp', 'chat-hub'];
+		const expectedModules = MODULE_NAMES.filter((name) => !NON_DEFAULT_MODULES.includes(name));
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
 
@@ -25,6 +26,9 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'external-secrets',
 			'community-packages',
+			'data-table',
+			'provisioning',
+			'breaking-changes',
 		]);
 	});
 
@@ -35,6 +39,8 @@ describe('eligibleModules', () => {
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'provisioning',
+			'breaking-changes',
 		]);
 	});
 

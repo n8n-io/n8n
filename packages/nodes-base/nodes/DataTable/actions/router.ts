@@ -10,7 +10,7 @@ import { DATA_TABLE_ID_FIELD } from '../common/fields';
 import { getDataTableProxyExecute } from '../common/utils';
 
 type DataTableNodeType = AllEntities<{
-	row: 'insert' | 'get' | 'deleteRows' | 'update' | 'upsert';
+	row: 'insert' | 'get' | 'rowExists' | 'rowNotExists' | 'deleteRows' | 'update' | 'upsert';
 }>;
 
 const BULK_OPERATIONS = ['insert'] as const;
@@ -20,11 +20,11 @@ function hasBulkExecute(operation: string): operation is (typeof BULK_OPERATIONS
 }
 
 function hasComplexId(ctx: IExecuteFunctions) {
-	const dataStoreIdExpr = ctx.getNodeParameter(`${DATA_TABLE_ID_FIELD}.value`, 0, undefined, {
+	const dataTableIdExpr = ctx.getNodeParameter(`${DATA_TABLE_ID_FIELD}.value`, 0, undefined, {
 		rawExpressions: true,
 	});
 
-	return typeof dataStoreIdExpr === 'string' && dataStoreIdExpr.includes('{');
+	return typeof dataTableIdExpr === 'string' && dataTableIdExpr.includes('{');
 }
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

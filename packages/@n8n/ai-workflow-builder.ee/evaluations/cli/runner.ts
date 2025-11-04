@@ -12,6 +12,7 @@ import {
 } from '../core/environment.js';
 import { runSingleTest, initializeTestTracking } from '../core/test-runner.js';
 import type { TestCase } from '../types/evaluation.js';
+import type { TestResult } from '../types/test-result.js';
 import {
 	calculateTestMetrics,
 	calculateCategoryAverages,
@@ -20,19 +21,37 @@ import {
 import { formatHeader, saveEvaluationResults } from '../utils/evaluation-helpers.js';
 import { generateMarkdownReport } from '../utils/evaluation-reporter.js';
 
+type CliEvaluationOptions = {
+	testCaseFilter?: string; // Optional test case ID to run only a specific test
+	testCases?: TestCase[]; // Optional array of test cases to run (if not provided, uses defaults and generation)
+	repetitions?: number; // Number of times to run each test (e.g. for cache warming analysis)
+};
+
 /**
  * Main CLI evaluation runner that executes all test cases in parallel
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
  */
-export async function runCliEvaluation(testCaseFilter?: string): Promise<void> {
+export async function runCliEvaluation(options: CliEvaluationOptions = {}): Promise<void> {
+	const { repetitions = 1, testCaseFilter } = options;
+
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
+	if (repetitions > 1) {
+		console.log(pc.yellow(`➔ Each test will be run ${repetitions} times for cache analysis`));
+	}
 	console.log();
 	try {
 		// Setup test environment
 		const { parsedNodeTypes, llm, tracer } = await setupTestEnvironment();
 
 		// Determine test cases to run
-		let testCases: TestCase[] = basicTestCases;
+		const providedTestCases =
+			options.testCases && options.testCases.length > 0 ? options.testCases : undefined;
+
+		let testCases: TestCase[] = providedTestCases ?? basicTestCases;
+
+		if (providedTestCases) {
+			console.log(pc.blue(`➔ Loaded ${providedTestCases.length} test cases from CSV`));
+		}
 
 		// Filter to single test case if specified
 		if (testCaseFilter) {
@@ -47,7 +66,7 @@ export async function runCliEvaluation(testCaseFilter?: string): Promise<void> {
 			}
 		} else {
 			// Optionally generate additional test cases
-			if (shouldGenerateTestCases()) {
+			if (!providedTestCases && shouldGenerateTestCases()) {
 				console.log(pc.blue('➔ Generating additional test cases...'));
 				const generatedCases = await generateTestCases(llm, howManyTestCasesToGenerate());
 				testCases = [...testCases, ...generatedCases];
@@ -59,37 +78,62 @@ export async function runCliEvaluation(testCaseFilter?: string): Promise<void> {
 		console.log(pc.dim(`Running ${testCases.length} test cases with concurrency=${concurrency}`));
 		console.log();
 
-		// Create progress bar
-		const progressBar = createProgressBar(testCases.length);
-
-		// Create concurrency limiter
-		const limit = pLimit(concurrency);
-
-		// Track progress
-		let completed = 0;
 		const startTime = Date.now();
-		const testResults = initializeTestTracking(testCases);
+		const allRepetitionResults: TestResult[][] = [];
 
-		// Run all test cases in parallel with concurrency limit
-		const promises = testCases.map(
-			async (testCase) =>
-				await limit(async () => {
-					updateProgress(progressBar, completed, testCases.length, `Running: ${testCase.name}`);
+		// Run tests for each repetition
+		for (let rep = 0; rep < repetitions; rep++) {
+			if (repetitions > 1) {
+				console.log(pc.cyan(`\n═══ Repetition ${rep + 1}/${repetitions} ═══\n`));
+			}
 
-					// Create a dedicated agent for this test to avoid state conflicts
-					const testAgent = createAgent(parsedNodeTypes, llm, tracer);
-					const result = await runSingleTest(testAgent, llm, testCase);
+			// Create progress bar for this repetition
+			const progressBar = createProgressBar(testCases.length);
 
-					testResults[testCase.id] = result.error ? 'fail' : 'pass';
-					completed++;
-					updateProgress(progressBar, completed, testCases.length);
-					return result;
-				}),
-		);
+			// Create concurrency limiter
+			const limit = pLimit(concurrency);
 
-		const results = await Promise.all(promises);
+			// Track progress
+			let completed = 0;
+			const testResults = initializeTestTracking(testCases);
+
+			// Run all test cases in parallel with concurrency limit
+			const promises = testCases.map(
+				async (testCase) =>
+					await limit(async () => {
+						updateProgress(progressBar, completed, testCases.length, `Running: ${testCase.name}`);
+
+						// Create a dedicated agent for this test to avoid state conflicts
+						const testAgent = createAgent(parsedNodeTypes, llm, tracer);
+						const result = await runSingleTest(testAgent, llm, testCase, parsedNodeTypes);
+
+						testResults[testCase.id] = result.error ? 'fail' : 'pass';
+						completed++;
+						updateProgress(progressBar, completed, testCases.length);
+						return result;
+					}),
+			);
+
+			const results = await Promise.all(promises);
+			progressBar.stop();
+			allRepetitionResults.push(results);
+
+			// Show brief stats for this repetition if running multiple times
+			if (repetitions > 1) {
+				const repStats = results.map((r) => r.cacheStats).filter((s) => s !== undefined);
+				if (repStats.length > 0) {
+					const avgHitRate = repStats.reduce((sum, s) => sum + s.cacheHitRate, 0) / repStats.length;
+					console.log(
+						pc.dim(`\n  Repetition ${rep + 1} cache hit rate: ${(avgHitRate * 100).toFixed(1)}%`),
+					);
+				}
+			}
+		}
+
 		const totalTime = Date.now() - startTime;
-		progressBar.stop();
+
+		// Use last repetition results for display (most representative)
+		const results = allRepetitionResults[allRepetitionResults.length - 1];
 
 		// Display results
 		displayResults(testCases, results, totalTime);

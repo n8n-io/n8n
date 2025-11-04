@@ -77,7 +77,10 @@ export class ExecutionRecoveryService {
 		 * because execution lifecycle hooks cause worker event logs to be partitioned.
 		 * Hence we need to filter out finished executions here.
 		 * */
-		if (!execution || (['success', 'error'].includes(execution.status) && execution.data)) {
+		if (
+			!execution ||
+			(['success', 'error', 'canceled'].includes(execution.status) && execution.data)
+		) {
 			return null;
 		}
 

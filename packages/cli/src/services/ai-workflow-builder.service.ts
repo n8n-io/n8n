@@ -8,7 +8,8 @@ import type { IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { NodeTypes } from '@/node-types';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
 
 /**
@@ -20,11 +21,12 @@ export class WorkflowBuilderService {
 	private service: AiWorkflowBuilderService | undefined;
 
 	constructor(
-		private readonly nodeTypes: NodeTypes,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly license: License,
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
+		private readonly push: Push,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -45,13 +47,31 @@ export class WorkflowBuilderService {
 				});
 			}
 
+			// Create callback that uses the push service
+			const onCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => {
+				this.push.sendToUsers(
+					{
+						type: 'updateBuilderCredits',
+						data: {
+							creditsQuota,
+							creditsClaimed,
+						},
+					},
+					[userId],
+				);
+			};
+
+			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+
 			this.service = new AiWorkflowBuilderService(
-				this.nodeTypes,
+				nodeTypeDescriptions,
 				client,
 				this.logger,
 				this.urlService.getInstanceBaseUrl(),
+				onCreditsUpdated,
 			);
 		}
+
 		return this.service;
 	}
 
@@ -64,5 +84,17 @@ export class WorkflowBuilderService {
 		const service = await this.getService();
 		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
+	}
+
+	async getSessionsMetadata(workflowId: string | undefined, user: IUser) {
+		const service = await this.getService();
+		const sessions = await service.getSessions(workflowId, user);
+		const hasMessages = sessions.sessions.length > 0 && sessions.sessions[0].messages.length > 0;
+		return { hasMessages };
+	}
+
+	async getBuilderInstanceCredits(user: IUser) {
+		const service = await this.getService();
+		return await service.getBuilderInstanceCredits(user);
 	}
 }

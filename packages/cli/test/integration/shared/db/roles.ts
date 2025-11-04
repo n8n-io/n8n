@@ -10,7 +10,7 @@ export async function createRole(overrides: Partial<Role> = {}): Promise<Role> {
 
 	const defaultRole: Partial<Role> = {
 		slug: `test-role-${Math.random().toString(36).substring(7)}`,
-		displayName: 'Test Role',
+		displayName: `Test Role ${Math.random().toString(36).substring(7)}`,
 		description: 'A test role for integration testing',
 		systemRole: false,
 		roleType: 'project',
@@ -42,6 +42,32 @@ export async function createCustomRoleWithScopes(
 	scopes: Scope[],
 	overrides: Partial<Role> = {},
 ): Promise<Role> {
+	return await createRole({
+		scopes,
+		systemRole: false,
+		...overrides,
+	});
+}
+
+/**
+ * Creates a custom role with specific scope slugs (using existing permission system scopes)
+ */
+export async function createCustomRoleWithScopeSlugs(
+	scopeSlugs: string[],
+	overrides: Partial<Role> = {},
+): Promise<Role> {
+	const scopeRepository = Container.get(ScopeRepository);
+
+	// Find existing scopes by their slugs
+	const scopes = await scopeRepository.findByList(scopeSlugs);
+
+	if (scopes.length !== scopeSlugs.length) {
+		const missingScopes = scopeSlugs.filter((slug) => !scopes.some((scope) => scope.slug === slug));
+		throw new Error(
+			`Could not find all scopes. Expected ${scopeSlugs.length}, found ${scopes.length}, missing: ${missingScopes.join(', ')}`,
+		);
+	}
+
 	return await createRole({
 		scopes,
 		systemRole: false,
@@ -138,11 +164,7 @@ export async function cleanupRolesAndScopes(): Promise<void> {
 		.getMany();
 
 	for (const role of testRoles) {
-		try {
-			await roleRepository.delete({ slug: role.slug });
-		} catch (error) {
-			// Ignore errors for system roles or roles with dependencies
-		}
+		await roleRepository.delete({ slug: role.slug });
 	}
 
 	// Delete test scopes
@@ -152,10 +174,6 @@ export async function cleanupRolesAndScopes(): Promise<void> {
 		.getMany();
 
 	for (const scope of testScopes) {
-		try {
-			await scopeRepository.delete({ slug: scope.slug });
-		} catch (error) {
-			// Ignore errors for scopes with dependencies
-		}
+		await scopeRepository.delete({ slug: scope.slug });
 	}
 }

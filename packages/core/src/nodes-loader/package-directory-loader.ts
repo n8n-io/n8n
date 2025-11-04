@@ -31,14 +31,18 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 	}
 
 	override async loadAll() {
-		const { n8n } = this.packageJson;
+		const { n8n, version, name } = this.packageJson;
 		if (!n8n) return;
 
 		const { nodes, credentials } = n8n;
 
+		const packageVersion = !['n8n-nodes-base', '@n8n/n8n-nodes-langchain'].includes(name)
+			? version
+			: undefined;
+
 		if (Array.isArray(nodes)) {
 			for (const nodePath of nodes) {
-				this.loadNodeFromFile(nodePath);
+				this.loadNodeFromFile(nodePath, packageVersion);
 			}
 		}
 

@@ -5,7 +5,7 @@ export class CrateDb implements ICredentialType {
 
 	displayName = 'CrateDB';
 
-	documentationUrl = 'crateDb';
+	documentationUrl = 'cratedb';
 
 	properties: INodeProperties[] = [
 		{

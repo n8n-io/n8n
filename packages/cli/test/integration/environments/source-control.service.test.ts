@@ -3,17 +3,19 @@ import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-uti
 import {
 	CredentialsEntity,
 	type Folder,
-	FolderRepository,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	Project,
 	type TagEntity,
-	TagRepository,
 	type User,
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createCredentials } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
+import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
+import { createUser } from '@test-integration/db/users';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
@@ -31,6 +33,7 @@ import type { SourceControlGitService } from '@/environments.ee/source-control/s
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
+import { SourceControlStatusService } from '@/environments.ee/source-control/source-control-status.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
 import type { ExportableFolder } from '@/environments.ee/source-control/types/exportable-folders';
@@ -39,10 +42,6 @@ import type { RemoteResourceOwner } from '@/environments.ee/source-control/types
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { createCredentials } from '@test-integration/db/credentials';
-import { createFolder } from '@test-integration/db/folders';
-import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
-import { createUser } from '@test-integration/db/users';
 
 jest.mock('fast-glob');
 
@@ -177,6 +176,7 @@ describe('SourceControlService', () => {
 
 	let gitService: SourceControlGitService;
 	let service: SourceControlService;
+	let statusService: SourceControlStatusService;
 
 	let cipher: Cipher;
 
@@ -425,6 +425,7 @@ describe('SourceControlService', () => {
 		};
 
 		gitService = mock<SourceControlGitService>();
+		statusService = Container.get(SourceControlStatusService);
 
 		service = new SourceControlService(
 			mock(),
@@ -433,14 +434,13 @@ describe('SourceControlService', () => {
 			Container.get(SourceControlExportService),
 			Container.get(SourceControlImportService),
 			Container.get(SourceControlScopedService),
-			Container.get(TagRepository),
-			Container.get(FolderRepository),
 			Container.get(EventService),
+			statusService,
 		);
 
 		// Skip actual git operations
 		service.sanityCheck = async () => {};
-		service.resetWorkfolder = async () => undefined;
+		statusService['resetWorkfolder'] = async () => undefined;
 
 		// Git mocking
 		gitFiles = {
@@ -874,11 +874,19 @@ describe('SourceControlService', () => {
 				const credentialFiles = result.statusResult
 					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
 					.map((change) => change.file);
+
+				const projectFiles = result.statusResult
+					.filter((change) => change.type === 'project' && change.status !== 'deleted')
+					.map((change) => change.file);
+
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
+				expect(projectFiles).toHaveLength(2);
 
 				expect(gitService.push).toBeCalled();
-				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				expect(fsWriteFile).toBeCalledTimes(
+					workflowFiles.length + credentialFiles.length + projectFiles.length + 2,
+				); // folders + tags
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
@@ -908,14 +916,22 @@ describe('SourceControlService', () => {
 				const credentialFiles = result.statusResult
 					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
 					.map((change) => change.file);
+				const projectFiles = result.statusResult
+					.filter((change) => change.type === 'project' && change.status !== 'deleted')
+					.map((change) => change.file);
+
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
-				const numberFilesToWrite = workflowFiles.length + credentialFiles.length + 2; // folders + tags
+				expect(projectFiles).toHaveLength(2);
+				const numberFilesToWrite =
+					workflowFiles.length + credentialFiles.length + projectFiles.length + 2; // folders + tags + projects
 
 				const filesToWrite =
 					allChanges.filter(
 						(change) =>
-							(change.type === 'workflow' || change.type === 'credential') &&
+							(change.type === 'workflow' ||
+								change.type === 'credential' ||
+								change.type === 'project') &&
 							change.status !== 'deleted',
 					).length + 2; // folders + tags
 
@@ -924,6 +940,7 @@ describe('SourceControlService', () => {
 
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(projectFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
 					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_FOLDERS_EXPORT_FILE)]),
 				);
@@ -961,11 +978,18 @@ describe('SourceControlService', () => {
 				const credentialFiles = result.statusResult
 					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
 					.map((change) => change.file);
+				const projectFiles = result.statusResult
+					.filter((change) => change.type === 'project' && change.status !== 'deleted')
+					.map((change) => change.file);
 
 				expect(workflowFiles).toHaveLength(2);
 				expect(credentialFiles).toHaveLength(1);
+				expect(projectFiles).toHaveLength(1);
 
-				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				// folders + tags + projects (1)
+				expect(fsWriteFile).toBeCalledTimes(
+					workflowFiles.length + credentialFiles.length + projectFiles.length + 2,
+				);
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
@@ -974,6 +998,7 @@ describe('SourceControlService', () => {
 				expect(Object.keys(updatedFiles)).toEqual(
 					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_TAGS_EXPORT_FILE)]),
 				);
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(projectFiles));
 			});
 
 			it('should throw ForbiddenError when trying to push workflows out of scope', async () => {

@@ -28,7 +28,7 @@ import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import { isVersionExists, verifyIntegrity } from './npm-utils';
+import { checkIfVersionExistsOrThrow, verifyIntegrity } from './npm-utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -398,7 +398,7 @@ export class CommunityPackagesService {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
 
-		await isVersionExists(packageName, packageVersion, this.getNpmRegistry());
+		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
 
 		try {
 			await this.downloadPackage(packageName, packageVersion);

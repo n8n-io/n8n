@@ -45,4 +45,14 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX')
 	disableWebhookHtmlSandboxing: boolean = false;
+
+	/**
+	 * Whether to disable bare repositories support in the Git node.
+	 */
+	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')
+	disableBareRepos: boolean = false;
+
+	/** Whether to allow access to AWS system credentials, e.g. in awsAssumeRole credentials */
+	@Env('N8N_AWS_SYSTEM_CREDENTIALS_ACCESS_ENABLED')
+	awsSystemCredentialsAccess: boolean = false;
 }

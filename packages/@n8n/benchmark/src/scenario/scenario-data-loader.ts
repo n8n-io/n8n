@@ -1,12 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import type { Workflow, Credential } from '@/n8n-api-client/n8n-api-client.types';
+import type { Workflow, Credential, DataTable } from '@/n8n-api-client/n8n-api-client.types';
 import type { Scenario } from '@/types/scenario';
 
 export type LoadableScenarioData = {
 	workflows: Workflow[];
 	credentials: Credential[];
+	dataTable: DataTable | null;
 };
 
 /**
@@ -26,9 +27,16 @@ export class ScenarioDataFileLoader {
 			) ?? [],
 		);
 
+		const dataTable = scenario.scenarioData.dataTableFile
+			? this.loadSingleDataTableFromFile(
+					path.join(scenario.scenarioDirPath, scenario.scenarioData.dataTableFile),
+				)
+			: null;
+
 		return {
 			workflows,
 			credentials,
+			dataTable,
 		};
 	}
 
@@ -51,6 +59,17 @@ export class ScenarioDataFileLoader {
 		} catch (error) {
 			const e = error as Error;
 			throw new Error(`Failed to parse workflow file ${workflowFilePath}: ${e.message}`);
+		}
+	}
+
+	private loadSingleDataTableFromFile(dataTableFilePath: string): DataTable {
+		const fileContent = fs.readFileSync(dataTableFilePath, 'utf8');
+
+		try {
+			return JSON.parse(fileContent) as DataTable;
+		} catch (error) {
+			const e = error as Error;
+			throw new Error(`Failed to parse data table file ${dataTableFilePath}: ${e.message}`);
 		}
 	}
 }

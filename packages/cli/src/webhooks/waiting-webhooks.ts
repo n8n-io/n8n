@@ -19,12 +19,6 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NodeTypes } from '@/node-types';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
@@ -32,6 +26,12 @@ import type {
 	IWebhookManager,
 	WaitingWebhookRequest,
 } from './webhook.types';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeTypes } from '@/node-types';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -211,7 +211,9 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+		});
 		const webhookData = this.webhookService
 			.getNodeWebhooks(workflow, workflowStartNode, additionalData)
 			.find(

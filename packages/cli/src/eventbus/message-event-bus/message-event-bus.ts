@@ -11,7 +11,6 @@ import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import config from '@/config';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -52,6 +51,7 @@ export interface MessageWithCallback {
 export interface MessageEventBusInitializeOptions {
 	skipRecoveryPass?: boolean;
 	workerId?: string;
+	webhookProcessorId?: string;
 }
 
 @Service()
@@ -113,10 +113,12 @@ export class MessageEventBus extends EventEmitter {
 		}
 
 		this.logger.debug('Initializing event writer');
-		if (options?.workerId) {
-			// only add 'worker' to log file name since the ID changes on every start and we
+		if (options?.workerId || options?.webhookProcessorId) {
+			// only add 'worker' or 'webhook-processor' to log file name since the ID changes on every start and we
 			// would not be able to recover the log files from the previous run not knowing it
-			const logBaseName = this.globalConfig.eventBus.logWriter.logBaseName + '-worker';
+			const logBaseName =
+				this.globalConfig.eventBus.logWriter.logBaseName +
+				(options.workerId ? '-worker' : '-webhook-processor');
 			this.logWriter = await MessageEventBusLogWriter.getInstance({
 				logBaseName,
 			});
@@ -147,7 +149,7 @@ export class MessageEventBus extends EventEmitter {
 
 			// if we are in queue mode, running jobs may still be running on a worker despite the main process
 			// crashing, so we can't just mark them as crashed
-			if (config.get('executions.mode') !== 'queue') {
+			if (this.globalConfig.executions.mode !== 'queue') {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {

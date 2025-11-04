@@ -1,32 +1,34 @@
-import { h } from 'vue';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useVersionsStore } from '@/stores/versions.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { useRolesStore } from './stores/roles.store';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
-import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
-import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import SourceControlInitializationErrorMessage from '@/features/integrations/sourceControl.ee/components/SourceControlInitializationErrorMessage.vue';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
-import type { BannerName } from '@n8n/api-types';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useRBACStore } from '@/stores/rbac.store';
 import {
+	registerModuleModals,
 	registerModuleProjectTabs,
 	registerModuleResources,
-	registerModuleModals,
-} from '@/moduleInitializer/moduleInitializer';
+	registerModuleSettingsPages,
+} from '@/app/moduleInitializer/moduleInitializer';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useVersionsStore } from '@/app/stores/versions.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
+import type { BannerName } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { h } from 'vue';
+import { useRolesStore } from '@/app/stores/roles.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 export const state = {
 	initialized: false,
@@ -46,7 +48,7 @@ export async function initializeCore() {
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
 	const ssoStore = useSSOStore();
-	const uiStore = useUIStore();
+	const bannersStore = useBannersStore();
 
 	const toast = useToast();
 	const i18n = useI18n();
@@ -89,7 +91,7 @@ export async function initializeCore() {
 	) {
 		banners.push('V1');
 	}
-	uiStore.initialize({
+	bannersStore.loadStaticBanners({
 		banners,
 	});
 
@@ -132,8 +134,9 @@ export async function initializeAuthenticatedFeatures(
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const insightsStore = useInsightsStore();
-	const uiStore = useUIStore();
+	const bannersStore = useBannersStore();
 	const versionsStore = useVersionsStore();
+	const dataTableStore = useDataTableStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -159,16 +162,31 @@ export async function initializeAuthenticatedFeatures(
 			.then(() => {
 				if (cloudPlanStore.userIsTrialing) {
 					if (cloudPlanStore.trialExpired) {
-						uiStore.pushBannerToStack('TRIAL_OVER');
+						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {
-						uiStore.pushBannerToStack('TRIAL');
+						bannersStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
-					uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
+					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
 				}
 			})
 			.catch((error) => {
 				console.error('Failed to initialize cloud plan store:', error);
+			});
+	}
+
+	if (settingsStore.isDataTableFeatureEnabled) {
+		void dataTableStore
+			.fetchDataTableSize()
+			.then(({ quotaStatus }) => {
+				if (quotaStatus === 'error') {
+					bannersStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
+				} else if (quotaStatus === 'warn') {
+					bannersStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
+				}
+			})
+			.catch((error) => {
+				console.error('Failed to fetch data table limits:', error);
 			});
 	}
 
@@ -192,6 +210,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
+	registerModuleSettingsPages();
 
 	authenticatedFeaturesInitialized = true;
 }
@@ -201,22 +220,25 @@ function registerAuthenticationHooks() {
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const postHogStore = usePostHog();
-	const uiStore = useUIStore();
+	const bannersStore = useBannersStore();
 	const npsSurveyStore = useNpsSurveyStore();
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
 	const settingsStore = useSettingsStore();
 
-	usersStore.registerLoginHook((user) => {
+	usersStore.registerLoginHook(async (user) => {
+		await settingsStore.getSettings();
+
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
-		telemetry.identify(rootStore.instanceId, user.id);
+		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();
+		void bannersStore.loadDynamicBanners();
 	});
 
 	usersStore.registerLogoutHook(() => {
-		uiStore.clearBannerStack();
+		bannersStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
 		postHogStore.reset();
 		cloudPlanStore.reset();

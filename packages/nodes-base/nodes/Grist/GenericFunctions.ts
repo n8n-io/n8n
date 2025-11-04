@@ -68,7 +68,8 @@ export function parseSortProperties(sortProperties: GristSortProperties) {
 }
 
 export function isSafeInteger(val: number) {
-	return !isNaN(val) && val > Number.MIN_VALUE && val < Number.MAX_VALUE;
+	//used MIN_SAFE_INTEGER and MAX_SAFE_INTEGER instead of MIN_VALUE and MAX_VALUE to avoid edge cases
+	return !isNaN(val) && val > Number.MIN_SAFE_INTEGER && val < Number.MAX_SAFE_INTEGER;
 }
 
 export function parseFilterProperties(filterProperties: GristFilterProperties) {

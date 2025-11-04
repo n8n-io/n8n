@@ -10,7 +10,6 @@ import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow'
 
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
@@ -22,6 +21,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: OptionsRequestDto,
 	): Promise<INodePropertyOptions[]> {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			credentials,
 			currentNodeParameters,
@@ -32,18 +33,12 @@ export class DynamicNodeParametersController {
 			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
-
-		if (projectId) {
-			if (await userHasScopes(req.user, ['dataStore:listProject'], false, { projectId })) {
-				// Project ID is currently only added on the additionalData if the user
-				// has data store listing permission for that project. We should consider
-				// turning this into a more general check, but as of now data stores are
-				// the only nodes with project specific resource locators where we want to ensure
-				// that only data stores belonging to their respective projects are shown.
-				additionalData.dataStoreProjectId = projectId;
-			}
-		}
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
 		if (methodName) {
 			return await this.service.getOptionsViaMethodName(
@@ -75,6 +70,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceLocatorRequestDto,
 	) {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			path,
 			methodName,
@@ -86,18 +83,12 @@ export class DynamicNodeParametersController {
 			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
-
-		if (projectId) {
-			if (await userHasScopes(req.user, ['dataStore:listProject'], false, { projectId })) {
-				// Project ID is currently only added on the additionalData if the user
-				// has data store listing permission for that project. We should consider
-				// turning this into a more general check, but as of now data stores are
-				// the only nodes with project specific resource locators where we want to ensure
-				// that only data stores belonging to their respective projects are shown.
-				additionalData.dataStoreProjectId = projectId;
-			}
-		}
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceLocatorResults(
 			methodName,
@@ -117,21 +108,17 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceMapperFieldsRequestDto,
 	) {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion, projectId } =
 			payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
-
-		if (projectId) {
-			if (await userHasScopes(req.user, ['dataStore:listProject'], false, { projectId })) {
-				// Project ID is currently only added on the additionalData if the user
-				// has data store listing permission for that project. We should consider
-				// turning this into a more general check, but as of now data stores are
-				// the only nodes with project specific resource locators where we want to ensure
-				// that only data stores belonging to their respective projects are shown.
-				additionalData.dataStoreProjectId = projectId;
-			}
-		}
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceMappingFields(
 			methodName,
@@ -149,9 +136,15 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceMapperFieldsRequestDto,
 	) {
-		const { path, methodName, currentNodeParameters, nodeTypeAndVersion } = payload;
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const { path, methodName, currentNodeParameters, nodeTypeAndVersion, projectId } = payload;
+
+		const additionalData = await getBase({
+			userId: req.user.id,
+			currentNodeParameters,
+			projectId,
+		});
 
 		return await this.service.getLocalResourceMappingFields(
 			methodName,
@@ -167,6 +160,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ActionResultRequestDto,
 	): Promise<NodeParameterValueType> {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			currentNodeParameters,
 			nodeTypeAndVersion,
@@ -174,9 +169,14 @@ export class DynamicNodeParametersController {
 			credentials,
 			handler,
 			payload: actionPayload,
+			projectId,
 		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
 
 		return await this.service.getActionResult(
 			handler,

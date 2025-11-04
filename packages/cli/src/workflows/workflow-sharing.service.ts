@@ -3,7 +3,6 @@ import { ProjectRelationRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	hasGlobalScope,
-	rolesWithScope,
 	type ProjectRole,
 	type WorkflowSharingRole,
 	type Scope,
@@ -47,9 +46,13 @@ export class WorkflowSharingService {
 		}
 
 		const projectRoles =
-			'scopes' in options ? rolesWithScope('project', options.scopes) : options.projectRoles;
+			'scopes' in options
+				? await this.roleService.rolesWithScope('project', options.scopes)
+				: options.projectRoles;
 		const workflowRoles =
-			'scopes' in options ? rolesWithScope('workflow', options.scopes) : options.workflowRoles;
+			'scopes' in options
+				? await this.roleService.rolesWithScope('workflow', options.scopes)
+				: options.workflowRoles;
 
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: {
