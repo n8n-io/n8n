@@ -1,13 +1,13 @@
-import { toFileId, toStream } from '@test/utils';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 
-import type { BinaryData } from '../types';
-
 import { FileSystemManager } from '@/binary-data/file-system.manager';
+import { toFileId, toStream } from '@test/utils';
+
+import type { BinaryData } from '../types';
 
 jest.mock('fs');
 jest.mock('fs/promises');
