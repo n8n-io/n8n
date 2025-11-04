@@ -39,16 +39,14 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 			instanceIssues: [
 				{
 					title: 'Binary data storage mode changed',
-					description:
-						'Binary files are now stored in ~/.n8n/binaryData/ directory by default instead of in memory. This removes the previous 512MB file size limit but increases disk usage.',
+					description: `Binary files are now stored in ${this.config.localStoragePath} directory by default instead of in memory. This removes the previous 512MB file size limit but increases disk usage.`,
 					level: 'info',
 				},
 			],
 			recommendations: [
 				{
 					action: 'Ensure adequate disk space',
-					description:
-						'Verify sufficient disk space is available for binary file storage in the ~/.n8n/binaryData/ directory',
+					description: `Verify sufficient disk space is available for binary file storage in the ${this.config.localStoragePath} directory`,
 				},
 				{
 					action: 'Configure persistent storage',

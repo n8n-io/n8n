@@ -46,22 +46,29 @@ describe('ProcessEnvAccessRule', () => {
 
 	describe('detectWorkflow()', () => {
 		it('should return no issues when N8N_BLOCK_ENV_ACCESS_IN_NODE is set to false', async () => {
-			process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+			const originalValue = process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+			try {
+				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
 
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Code', 'n8n-nodes-base.code', {
-					code: 'const apiKey = process.env.API_KEY;\nreturn { apiKey };',
-				}),
-			]);
+				const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+					createNode('Code', 'n8n-nodes-base.code', {
+						code: 'const apiKey = process.env.API_KEY;\nreturn { apiKey };',
+					}),
+				]);
 
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+				const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result).toEqual({
-				isAffected: false,
-				issues: [],
-			});
-
-			delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+				expect(result).toEqual({
+					isAffected: false,
+					issues: [],
+				});
+			} finally {
+				if (originalValue === undefined) {
+					delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+				} else {
+					process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = originalValue;
+				}
+			}
 		});
 
 		it('should return no issues when no process.env usage is found', async () => {

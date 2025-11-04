@@ -17,9 +17,9 @@ export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
-			title: 'Remove Pyodide based Python Code node',
+			title: 'Remove Pyodide-based Python in Code node',
 			description:
-				'The Pyodide-based Python Code node has been removed and replaced with a task runner-based implementation',
+				'The Pyodide-based Python implementation in the Code node has been removed and replaced with a native Python task runner implementation',
 			category: BreakingChangeCategory.workflow,
 			severity: 'critical',
 		};
@@ -51,15 +51,18 @@ export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {
 		_workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
-		// The Pyodide-based Python Code node type
-		const pyodideNodes = nodesGroupedByType.get('n8n-nodes-base.pythonCode') ?? [];
+		// Get all Code nodes (the Code node supports both JavaScript and Python)
+		const codeNodes = nodesGroupedByType.get('n8n-nodes-base.code') ?? [];
 
-		// Filter for nodes that are using Pyodide mode (not task runner mode)
-		const affectedNodes = pyodideNodes.filter((node) => {
-			// If the node has a mode parameter, check if it's set to 'pyodide'
-			// If no mode parameter exists, it's an old node using Pyodide by default
-			const mode = node.parameters?.mode;
-			return mode === undefined || mode === 'pyodide';
+		// Filter for Code nodes using the Pyodide-based Python implementation
+		// The 'language' parameter determines which language/implementation is used:
+		// - 'python' = Pyodide (being removed)
+		// - 'pythonNative' = Task runner (new implementation)
+		// - 'javaScript' = JavaScript (not affected)
+		const affectedNodes = codeNodes.filter((node) => {
+			const language = node.parameters?.language;
+			// Nodes with language='python' use Pyodide and are affected
+			return language === 'python';
 		});
 
 		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
@@ -67,9 +70,9 @@ export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {
 		return {
 			isAffected: true,
 			issues: affectedNodes.map((node) => ({
-				title: `Python Code node '${node.name}' uses removed Pyodide implementation`,
+				title: `Code node '${node.name}' uses removed Pyodide Python implementation`,
 				description:
-					'The Pyodide-based Python Code node is no longer supported. This node must be migrated to use the task runner-based implementation.',
+					'The Pyodide-based Python implementation (language="python") is no longer supported. This node must be migrated to use the task runner-based implementation (language="pythonNative").',
 				level: 'error',
 				nodeId: node.id,
 				nodeName: node.name,

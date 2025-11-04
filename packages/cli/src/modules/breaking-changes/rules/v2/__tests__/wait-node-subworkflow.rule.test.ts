@@ -54,7 +54,7 @@ describe('WaitNodeSubworkflowRule', () => {
 		it('should return no issues when workflow has no Wait nodes', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow'),
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
 			]);
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
@@ -64,7 +64,7 @@ describe('WaitNodeSubworkflowRule', () => {
 			});
 		});
 
-		it('should return no issues when workflow has Wait nodes but no Execute Workflow nodes', async () => {
+		it('should return no issues when workflow has Wait nodes but no Execute Workflow Trigger', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
 				createNode('Wait', 'n8n-nodes-base.wait'),
@@ -77,10 +77,10 @@ describe('WaitNodeSubworkflowRule', () => {
 			});
 		});
 
-		it('should return no issues when workflow has Execute Workflow nodes but no Wait nodes', async () => {
+		it('should return no issues when workflow has Execute Workflow Trigger but no Wait nodes', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow'),
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
 			]);
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
@@ -90,11 +90,11 @@ describe('WaitNodeSubworkflowRule', () => {
 			});
 		});
 
-		it('should detect workflow with both Wait and Execute Workflow nodes', async () => {
+		it('should detect sub-workflow with Wait nodes', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
 				createNode('Wait', 'n8n-nodes-base.wait'),
-				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
 			]);
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
@@ -102,20 +102,20 @@ describe('WaitNodeSubworkflowRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
 			expect(result.issues[0]).toMatchObject({
-				title: 'Workflow contains Wait nodes and Execute Workflow nodes',
+				title: 'Sub-workflow with Wait nodes has changed output behavior',
 				description: expect.stringContaining(
-					'Wait nodes in sub-workflows returned data from the node before the wait node',
+					'Wait nodes returned data from the node before the wait node',
 				),
 				level: 'warning',
 			});
 		});
 
-		it('should detect workflow with multiple Wait and Execute Workflow nodes', async () => {
+		it('should detect sub-workflow with multiple Wait nodes', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
 				createNode('Wait1', 'n8n-nodes-base.wait'),
 				createNode('Wait2', 'n8n-nodes-base.wait'),
-				createNode('ExecuteWorkflow1', 'n8n-nodes-base.executeWorkflow'),
-				createNode('ExecuteWorkflow2', 'n8n-nodes-base.executeWorkflow'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
 			]);
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
@@ -124,12 +124,12 @@ describe('WaitNodeSubworkflowRule', () => {
 			expect(result.issues).toHaveLength(1);
 		});
 
-		it('should detect complex workflow with Wait and Execute Workflow among other nodes', async () => {
+		it('should detect complex sub-workflow with Wait among other nodes', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
 				createNode('Wait', 'n8n-nodes-base.wait'),
 				createNode('Code', 'n8n-nodes-base.code'),
-				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow'),
 				createNode('Set', 'n8n-nodes-base.set'),
 			]);
 
@@ -138,6 +138,19 @@ describe('WaitNodeSubworkflowRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
 			expect(result.issues[0].level).toBe('warning');
+		});
+
+		it('should not detect regular workflow with Wait and Execute Workflow nodes', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow'),
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.isAffected).toBe(false);
+			expect(result.issues).toHaveLength(0);
 		});
 	});
 });

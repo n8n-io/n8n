@@ -58,24 +58,24 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeWorkflowRule {
 			return { isAffected: false, issues: [] };
 		}
 
-		// Check if the workflow contains Execute Workflow nodes
-		const executeWorkflowNodes = nodesGroupedByType.get('n8n-nodes-base.executeWorkflow') ?? [];
+		// Check if this workflow IS a subworkflow by looking for Execute Workflow Trigger
+		const executeWorkflowTriggerNodes =
+			nodesGroupedByType.get('n8n-nodes-base.executeWorkflowTrigger') ?? [];
 
-		if (executeWorkflowNodes.length === 0) {
+		if (executeWorkflowTriggerNodes.length === 0) {
 			return { isAffected: false, issues: [] };
 		}
 
-		// This workflow has both Wait nodes and Execute Workflow nodes
-		// It could be calling sub-workflows with wait nodes OR be called as a sub-workflow with wait nodes
-		// We'll flag it as potentially affected for users to review
+		// This workflow is a subworkflow (has Execute Workflow Trigger) and contains Wait nodes
+		// The output behavior has changed
 
 		return {
 			isAffected: true,
 			issues: [
 				{
-					title: 'Workflow contains Wait nodes and Execute Workflow nodes',
+					title: 'Sub-workflow with Wait nodes has changed output behavior',
 					description:
-						'This workflow contains both Wait nodes and Execute Workflow nodes. If this workflow calls sub-workflows with Wait nodes, or is called as a sub-workflow and contains Wait nodes, the data returned may have changed. Previously, Wait nodes in sub-workflows returned data from the node before the wait node. Now they return data from the last node.',
+						'This workflow is a sub-workflow (contains Execute Workflow Trigger) with Wait nodes. The data returned from Wait nodes in sub-workflows has changed. Previously, Wait nodes returned data from the node before the wait node. Now they return data from the last node in the workflow.',
 					level: 'warning',
 				},
 			],

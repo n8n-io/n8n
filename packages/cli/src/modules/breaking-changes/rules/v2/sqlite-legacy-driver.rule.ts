@@ -34,9 +34,10 @@ export class SqliteLegacyDriverRule implements IBreakingChangeInstanceRule {
 
 		const dbType = this.globalConfig.database.type;
 		const poolSize = this.globalConfig.database.sqlite.poolSize;
+		const enableWAL = this.globalConfig.database.sqlite.enableWAL;
 
-		// Only affected if using SQLite with poolSize < 1 (legacy driver)
-		if (dbType === 'sqlite' && poolSize < 1) {
+		// Only affected if using SQLite with poolSize < 1 (legacy driver) or WAL disabled
+		if (dbType === 'sqlite' && (poolSize < 1 || !enableWAL)) {
 			result.isAffected = true;
 			result.instanceIssues.push({
 				title: 'SQLite legacy driver removed',

@@ -31,6 +31,8 @@ describe('OAuthCallbackAuthRule', () => {
 
 			expect(result.isAffected).toBe(true);
 			expect(result.instanceIssues).toHaveLength(1);
+			expect(result.instanceIssues[0].title).toBe('OAuth callback authentication now required');
+			expect(result.instanceIssues[0].level).toBe('info');
 			expect(result.recommendations).toHaveLength(0);
 		});
 	});

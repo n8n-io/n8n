@@ -13,6 +13,7 @@ describe('SqliteLegacyDriverRule', () => {
 				type: 'postgresdb',
 				sqlite: {
 					poolSize: 0,
+					enableWAL: false,
 				},
 			},
 		});
@@ -29,9 +30,10 @@ describe('SqliteLegacyDriverRule', () => {
 			expect(result.instanceIssues).toHaveLength(0);
 		});
 
-		it('should not be affected when using SQLite with poolSize >= 1', async () => {
+		it('should not be affected when using SQLite with poolSize >= 1 and WAL enabled', async () => {
 			globalConfig.database.type = 'sqlite';
 			globalConfig.database.sqlite.poolSize = 3;
+			globalConfig.database.sqlite.enableWAL = true;
 
 			const result = await rule.detect();
 
@@ -42,6 +44,30 @@ describe('SqliteLegacyDriverRule', () => {
 		it('should be affected when using SQLite with poolSize < 1', async () => {
 			globalConfig.database.type = 'sqlite';
 			globalConfig.database.sqlite.poolSize = 0;
+
+			const result = await rule.detect();
+
+			expect(result.isAffected).toBe(true);
+			expect(result.instanceIssues).toHaveLength(2);
+			expect(result.instanceIssues[0].title).toBe('SQLite legacy driver removed');
+		});
+
+		it('should be affected when using SQLite with WAL disabled', async () => {
+			globalConfig.database.type = 'sqlite';
+			globalConfig.database.sqlite.poolSize = 3;
+			globalConfig.database.sqlite.enableWAL = false;
+
+			const result = await rule.detect();
+
+			expect(result.isAffected).toBe(true);
+			expect(result.instanceIssues).toHaveLength(2);
+			expect(result.instanceIssues[0].title).toBe('SQLite legacy driver removed');
+		});
+
+		it('should be affected when using SQLite with both poolSize < 1 and WAL disabled', async () => {
+			globalConfig.database.type = 'sqlite';
+			globalConfig.database.sqlite.poolSize = 0;
+			globalConfig.database.sqlite.enableWAL = false;
 
 			const result = await rule.detect();
 

@@ -6,9 +6,19 @@ import { SettingsFilePermissionsRule } from '../settings-file-permissions.rule';
 describe('SettingsFilePermissionsRule', () => {
 	let rule: SettingsFilePermissionsRule;
 	const instanceSettingsConfig = mock<InstanceSettingsConfig>({});
+	let originalEnvValue: string | undefined;
 
 	beforeEach(() => {
 		rule = new SettingsFilePermissionsRule(instanceSettingsConfig);
+		originalEnvValue = process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
+	});
+
+	afterEach(() => {
+		if (originalEnvValue === undefined) {
+			delete process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
+		} else {
+			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = originalEnvValue;
+		}
 	});
 
 	describe('detect()', () => {
@@ -20,8 +30,6 @@ describe('SettingsFilePermissionsRule', () => {
 			expect(result.isAffected).toBe(false);
 			expect(result.instanceIssues).toHaveLength(0);
 			expect(result.recommendations).toHaveLength(0);
-
-			delete process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
 		});
 
 		it('should be affected when enforceSettingsFilePermissions is not set to false', async () => {
