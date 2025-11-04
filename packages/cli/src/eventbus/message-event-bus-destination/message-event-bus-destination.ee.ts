@@ -1,5 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { Time } from '@n8n/constants';
+import {
+	LOGSTREAMING_CB_DEFAULT_CONCURRENT_HALF_OPEN_REQUESTS,
+	LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS,
+	LOGSTREAMING_CB_DEFAULT_HALF_OPEN_REQUESTS,
+	LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS,
+	LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
+} from '@n8n/constants';
 import { EventDestinationsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -44,12 +50,16 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		this.logger = Container.get(Logger);
 		this.license = Container.get(License);
 
-		const maxDuration = options.circuitBreaker?.maxDuration ?? 3 * Time.minutes.toMilliseconds;
-		const maxFailures = options.circuitBreaker?.maxFailures ?? 5;
-		const halfOpenRequests = options.circuitBreaker?.halfOpenRequests ?? 2;
-		const failureWindow = options.circuitBreaker?.failureWindow ?? 1 * Time.minutes.toMilliseconds;
+		const maxDuration =
+			options.circuitBreaker?.maxDuration ?? LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS;
+		const maxFailures = options.circuitBreaker?.maxFailures ?? LOGSTREAMING_CB_DEFAULT_MAX_FAILURES;
+		const halfOpenRequests =
+			options.circuitBreaker?.halfOpenRequests ?? LOGSTREAMING_CB_DEFAULT_HALF_OPEN_REQUESTS;
+		const failureWindow =
+			options.circuitBreaker?.failureWindow ?? LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS;
 		const maxConcurrentHalfOpenRequests =
-			options.circuitBreaker?.maxConcurrentHalfOpenRequests ?? 1;
+			options.circuitBreaker?.maxConcurrentHalfOpenRequests ??
+			LOGSTREAMING_CB_DEFAULT_CONCURRENT_HALF_OPEN_REQUESTS;
 
 		this.circuitBreakerInstance = new CircuitBreaker(
 			maxDuration,

@@ -20,7 +20,13 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
-import { Time } from '@n8n/constants';
+import {
+	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+	LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
+	LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
+	Time,
+} from '@n8n/constants';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -131,11 +137,13 @@ export class MessageEventBusDestinationWebhook
 		const agentOptions: HTTPAgentOptions = {
 			// keepAlive to keep TCP connections alive for reuse
 			keepAlive: options.options?.socket?.keepAlive ?? true,
-			maxSockets: options.options?.socket?.maxSockets ?? 50,
-			maxFreeSockets: options.options?.socket?.maxFreeSockets ?? 50,
-			maxTotalSockets: options.options?.socket?.maxSockets ?? 50,
+			maxSockets: options.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+			maxFreeSockets:
+				options.options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+			maxTotalSockets:
+				options.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
 			// Socket timeout in milliseconds defaults to 5 seconds
-			timeout: options.options?.timeout ?? 5 * Time.seconds.toMilliseconds,
+			timeout: options.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 		};
 
 		const httpsAgentOptions: HTTPSAgentOptions = {

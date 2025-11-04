@@ -3,6 +3,7 @@ export * from './browser';
 export * from './community-nodes';
 export * from './instance';
 export * from './execution';
+export * from './logstreaming';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',

@@ -1,4 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
+import {
+	LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS,
+	LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
+	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+} from '@n8n/constants';
 
 export const circuitBreakerOptions = {
 	displayName: 'Circuit Breaker Options',
@@ -10,37 +16,15 @@ export const circuitBreakerOptions = {
 	default: {},
 	options: [
 		{
-			displayName: 'Max Duration',
-			name: 'maxDuration',
-			type: 'number',
-			typeOptions: {
-				minValue: 100,
-			},
-			default: 300000,
-			description:
-				'Time in milliseconds to wait before transitioning from OPEN to HALF_OPEN state. After this duration, the circuit will attempt to test if the service has recovered.',
-		},
-		{
 			displayName: 'Max Failures',
 			name: 'maxFailures',
 			type: 'number',
 			typeOptions: {
 				minValue: 1,
 			},
-			default: 5,
+			default: LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
 			description:
-				'Maximum number of failures within the sliding window before the circuit opens. Once this threshold is exceeded, the circuit transitions to OPEN state and rejects all requests. Recommended: 3-10 failures depending on acceptable failure rate.',
-		},
-		{
-			displayName: 'Recovery Requests',
-			name: 'halfOpenRequests',
-			type: 'number',
-			typeOptions: {
-				minValue: 1,
-			},
-			default: 2,
-			description:
-				'Number of consecutive successful requests required in HALF_OPEN state before transitioning back to CLOSED. This ensures the service is stable before fully recovering. Recommended: 1-3 requests to verify recovery without delay.',
+				'After this many errors within the failure window n8n stops sending requests to prevent overloading the external service that’s not working properly.',
 		},
 		{
 			displayName: 'Failure Window',
@@ -49,20 +33,9 @@ export const circuitBreakerOptions = {
 			typeOptions: {
 				minValue: 100,
 			},
-			default: 60000,
+			default: LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS,
 			description:
 				'Time window in milliseconds for counting failures (sliding window). Only failures within this window are counted toward the threshold. Older failures expire naturally.',
-		},
-		{
-			displayName: 'Max concurrent recovery requests',
-			name: 'maxConcurrentHalfOpenRequests',
-			type: 'number',
-			typeOptions: {
-				minValue: 1,
-			},
-			default: 1,
-			description:
-				'Maximum number of requests allowed to execute concurrently in HALF_OPEN state. Prevents overwhelming a recovering service with queued requests.',
 		},
 	],
 };
@@ -471,8 +444,8 @@ export const webhookModalDescription = [
 				},
 				default: {
 					keepAlive: true,
-					maxSockets: 50,
-					maxFreeSockets: 50,
+					maxSockets: LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+					maxFreeSockets: LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 				},
 				options: [
 					{
@@ -490,8 +463,8 @@ export const webhookModalDescription = [
 						typeOptions: {
 							minValue: 1,
 						},
-						default: 50,
-						description: 'Maximum number of sockets to keep open at any given time.',
+						default: LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+						description: 'Maximum number of sockets per host to keep open at any given time.',
 					},
 					{
 						displayName: 'Max Free Sockets',
@@ -500,7 +473,7 @@ export const webhookModalDescription = [
 						typeOptions: {
 							minValue: 1,
 						},
-						default: 50,
+						default: LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 						description: 'Maximum number of sockets per host to leave open in a free state.',
 					},
 				],
