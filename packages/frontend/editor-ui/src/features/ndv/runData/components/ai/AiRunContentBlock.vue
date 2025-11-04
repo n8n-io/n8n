@@ -2,8 +2,8 @@
 import type { IAiDataContent } from '@/Interface';
 import capitalize from 'lodash/capitalize';
 import { computed, onMounted, ref, watch } from 'vue';
-import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, NodeError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import RunDataAi from '../RunDataParsedAiContent.vue';
 import { parseAiContent } from '@/app/utils/aiUtils';
 import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
@@ -12,6 +12,7 @@ import { saveAs } from 'file-saver';
 import { MAX_DISPLAY_DATA_SIZE_LOGS_VIEW } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
+
 const props = defineProps<{
 	runData: IAiDataContent;
 	error?: NodeError;
@@ -29,7 +30,6 @@ const parsedRun = computed(() => parseAiContent(props.runData.data ?? [], props.
 const contentParsed = computed(() =>
 	parsedRun.value.some((item) => item.parsedContent?.parsed === true),
 );
-const isDataWithinDisplayLimit = computed(() => dataSize.value < MAX_DISPLAY_DATA_SIZE_LOGS_VIEW);
 
 function getInitialExpandedState() {
 	const collapsedTypes = {
@@ -56,17 +56,15 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 	renderType.value = value;
 }
 
+function updateShowData() {
+	showData.value = dataSize.value < MAX_DISPLAY_DATA_SIZE_LOGS_VIEW;
+}
+
 function refreshDataSize() {
-	// Hide by default the data from being displayed
 	showData.value = false;
-	const byteSize = new Blob([JSON.stringify(props.runData.data)]).size;
-	dataSize.value = byteSize;
+	dataSize.value = new Blob([JSON.stringify(props.runData.data)]).size;
 
 	updateShowData();
-}
-function updateShowData() {
-	// Display data if it is reasonably small (< 128KB)
-	showData.value = isDataWithinDisplayLimit.value;
 }
 
 function onShowDataAnyway() {
