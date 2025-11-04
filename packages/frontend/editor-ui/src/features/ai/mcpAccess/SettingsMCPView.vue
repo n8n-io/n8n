@@ -74,6 +74,15 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		},
 	},
 	{
+		title: i18n.baseText('generic.description'),
+		key: 'description',
+		width: 300,
+		disableSort: true,
+		value(workflow) {
+			return workflow.description || '-';
+		},
+	},
+	{
 		title: '',
 		key: 'actions',
 		align: 'end',
