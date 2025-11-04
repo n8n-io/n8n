@@ -551,8 +551,6 @@ export class ImportService {
 		const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
 		const importName = latestImportMigration.name;
 		const dbName = latestDbMigration.name;
-		const importId = latestImportMigration.id;
-		const dbId = latestDbMigration.id;
 
 		// Check timestamp match
 		if (importTimestamp !== dbTimestamp) {
