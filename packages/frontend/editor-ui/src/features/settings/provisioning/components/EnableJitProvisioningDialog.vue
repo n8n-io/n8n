@@ -1,11 +1,9 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import * as usersApi from '@n8n/rest-api-client/api/users';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { type UsersList, type UsersListFilterDto } from '@n8n/api-types';
 import { ElDialog } from 'element-plus';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { ref, watch } from 'vue';
+import { useAccessSettingsCsvExport } from '@/features/settings/provisioning/composables/useAccessSettingsCsvExport';
 
 const visible = defineModel<boolean>();
 const emit = defineEmits<{
@@ -14,120 +12,30 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
-const loading = ref(false);
+const downloadingInstanceRolesCsv = ref(false);
+const downloadingProjectRolesCsv = ref(false);
+const {
+	hasDownloadedInstanceRoleCsv,
+	hasDownloadedProjectRoleCsv,
+	downloadProjectRolesCsv,
+	downloadInstanceRolesCsv,
+	accessSettingsCsvExportOnModalClose,
+} = useAccessSettingsCsvExport();
 
-const rootStore = useRootStore();
-const csvFilesAreReady = ref(false);
-const hasDownloadedInstanceRoleCsv = ref(false);
-const hasDownloadedProjectRoleCsv = ref(false);
-/**
- * Actual return type (due to select filter):
- * {
- *   count: number
- *   items: {
- * 		email: string
- * 		id: string
- * 		projectRelations: {
- * 			id: string
- * 			role: string
- * 			name: string (project displayname)
- * 		}[]
- * 	 }[]
- * }
- */
-const userData = ref<UsersList>();
-
-// Reset download flags when dialog is closed
 watch(visible, () => {
-	hasDownloadedInstanceRoleCsv.value = false;
-	hasDownloadedProjectRoleCsv.value = false;
+	accessSettingsCsvExportOnModalClose();
 });
 
-const formatDateForFilename = (): string => {
-	const now = new Date();
-	return `${now.getDate()}_${now.getMonth() + 1}_${now.getFullYear()}_${now.getHours()}_${now.getMinutes()}`;
+const onDownloadInstanceRolesCsv = async () => {
+	downloadingInstanceRolesCsv.value = true;
+	await downloadInstanceRolesCsv();
+	downloadingInstanceRolesCsv.value = false;
 };
 
-const escapeCsvValue = (value: string): string => {
-	// If value contains comma, quote, or newline, wrap in quotes and escape quotes
-	if (value.includes(',') || value.includes('"')) {
-		return `"${value.replace(/"/g, '""')}"`;
-	}
-	return value;
-};
-
-const downloadCsv = (csvContent: string, filename: string): void => {
-	const tempElement = document.createElement('a');
-	tempElement.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-	tempElement.setAttribute('download', filename);
-	tempElement.style.display = 'none';
-	document.body.appendChild(tempElement);
-	tempElement.click();
-	document.body.removeChild(tempElement);
-};
-
-const onGenerateCsvExport = async () => {
-	loading.value = true;
-	// TODO: extract dedicated composable to manage fetching user data
-	const filter: UsersListFilterDto = {
-		take: -1, // TODO: add pagination
-		select: ['email', 'role'],
-		sortBy: ['email:desc'],
-		expand: ['projectRelations'],
-		skip: 0,
-	};
-	userData.value = await usersApi.getUsers(rootStore.restApiContext, filter);
-	csvFilesAreReady.value = true;
-	loading.value = false;
-};
-
-const onDownloadInstanceRolesCsv = () => {
-	if (!userData.value) return;
-
-	loading.value = true;
-
-	const csvRows = ['email,instance_role'];
-
-	for (const user of userData.value.items) {
-		const email = escapeCsvValue(user.email ?? '');
-		const instanceRole = escapeCsvValue(user.role ?? '');
-		csvRows.push(`${email},${instanceRole}`);
-	}
-
-	const csvContent = csvRows.join('\n');
-	const filename = `n8n_instance_role_export_${formatDateForFilename()}.csv`;
-
-	downloadCsv(csvContent, filename);
-	hasDownloadedInstanceRoleCsv.value = true;
-	loading.value = false;
-};
-
-const onDownloadProjectRolesCsv = () => {
-	if (!userData.value) return;
-
-	loading.value = true;
-
-	const csvRows = ['email,project_displayname,project_id,project_role'];
-
-	for (const user of userData.value.items) {
-		const email = escapeCsvValue(user.email ?? '');
-
-		if (user.projectRelations && user.projectRelations.length > 0) {
-			for (const project of user.projectRelations) {
-				const projectName = escapeCsvValue(project.name ?? '');
-				const projectId = escapeCsvValue(project.id ?? '');
-				const projectRole = escapeCsvValue(project.role ?? '');
-				csvRows.push(`${email},${projectName},${projectId},${projectRole}`);
-			}
-		}
-	}
-
-	const csvContent = csvRows.join('\n');
-	const filename = `n8n_project_role_export_${formatDateForFilename()}.csv`;
-
-	downloadCsv(csvContent, filename);
-	hasDownloadedProjectRoleCsv.value = true;
-	loading.value = false;
+const onDownloadProjectRolesCsv = async () => {
+	downloadingProjectRolesCsv.value = true;
+	await downloadProjectRolesCsv();
+	downloadingProjectRolesCsv.value = false;
 };
 </script>
 <template>
@@ -151,61 +59,46 @@ const onDownloadProjectRolesCsv = () => {
 				locale.baseText('settings.provisioningConfirmDialog.breakingChangeRequiredSteps')
 			}}</N8nText>
 		</div>
-		<div v-if="!csvFilesAreReady" class="mb-s">
+		<div class="mb-s" :class="$style.buttonRow">
 			<N8nButton
-				type="primary"
+				type="secondary"
 				native-type="button"
 				data-test-id="provisioning-download-instance-roles-csv-button"
-				:disabled="loading"
-				:loading="loading"
-				@click="onGenerateCsvExport"
+				:disabled="downloadingInstanceRolesCsv"
+				:loading="downloadingInstanceRolesCsv"
+				:class="$style.button"
+				@click="onDownloadInstanceRolesCsv"
 				>{{
-					locale.baseText('settings.provisioningConfirmDialog.button.generateCsvExport')
+					locale.baseText('settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv')
 				}}</N8nButton
 			>
+			<N8nIcon
+				v-if="hasDownloadedInstanceRoleCsv"
+				icon="check"
+				color="success"
+				:class="$style.icon"
+			/>
 		</div>
-		<template v-else>
-			<div class="mb-s" :class="$style.buttonRow">
-				<N8nButton
-					type="secondary"
-					native-type="button"
-					data-test-id="provisioning-download-instance-roles-csv-button"
-					:disabled="loading"
-					:loading="loading"
-					:class="$style.button"
-					@click="onDownloadInstanceRolesCsv"
-					>{{
-						locale.baseText('settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv')
-					}}</N8nButton
-				>
-				<N8nIcon
-					v-if="hasDownloadedInstanceRoleCsv"
-					icon="check"
-					color="success"
-					:class="$style.icon"
-				/>
-			</div>
-			<div class="mb-s" :class="$style.buttonRow">
-				<N8nButton
-					type="secondary"
-					native-type="button"
-					data-test-id="provisioning-download-project-roles-csv-button"
-					:disabled="loading"
-					:loading="loading"
-					:class="$style.button"
-					@click="onDownloadProjectRolesCsv"
-					>{{
-						locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
-					}}</N8nButton
-				>
-				<N8nIcon
-					v-if="hasDownloadedProjectRoleCsv"
-					icon="check"
-					color="success"
-					:class="$style.icon"
-				/>
-			</div>
-		</template>
+		<div class="mb-s" :class="$style.buttonRow">
+			<N8nButton
+				type="secondary"
+				native-type="button"
+				data-test-id="provisioning-download-project-roles-csv-button"
+				:disabled="downloadingProjectRolesCsv"
+				:loading="downloadingProjectRolesCsv"
+				:class="$style.button"
+				@click="onDownloadProjectRolesCsv"
+				>{{
+					locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
+				}}</N8nButton
+			>
+			<N8nIcon
+				v-if="hasDownloadedProjectRoleCsv"
+				icon="check"
+				color="success"
+				:class="$style.icon"
+			/>
+		</div>
 		<template #footer>
 			<N8nButton
 				type="tertiary"
