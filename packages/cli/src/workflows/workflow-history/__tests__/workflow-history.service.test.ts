@@ -1,6 +1,7 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { User, WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -57,11 +58,14 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = '456';
 			// Nodes are set but connections is empty
 
-			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
-
-			// Assert
-			expect(workflowHistoryRepository.insert).not.toHaveBeenCalled();
+			// Act & Assert
+			await expect(
+				workflowHistoryService.saveVersion(testUser, workflow, workflowId),
+			).rejects.toThrowError(
+				new UnexpectedError(
+					`Cannot save workflow history: nodes and connections are required for workflow ${workflowId}`,
+				),
+			);
 		});
 
 		it('should log an error when failed to save workflow history version', async () => {
