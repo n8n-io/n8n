@@ -4,13 +4,6 @@ import type { Readable } from 'node:stream';
 
 import type { BinaryData } from './types';
 
-/**
- * Placeholder execution ID used when the actual execution ID is not yet available.
- * This is used in the binary data file path and will be replaced with the actual
- * execution ID after the workflow execution completes.
- */
-export const TEMP_EXECUTION_ID = 'temp';
-
 export const CONFIG_MODES = ['default', 'filesystem', 's3'] as const;
 
 const STORED_MODES = ['filesystem', 'filesystem-v2', 's3'] as const;
