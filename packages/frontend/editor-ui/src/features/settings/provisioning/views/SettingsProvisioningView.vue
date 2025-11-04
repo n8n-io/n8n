@@ -4,9 +4,6 @@ import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import { useProvisioningStore } from '../provisioning.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRouter } from 'vue-router';
-import { VIEWS } from '@/app/constants';
 import { N8nHeading, N8nText, N8nSpinner, N8nInput, N8nButton } from '@n8n/design-system';
 import { type ProvisioningConfig } from '@n8n/rest-api-client';
 
@@ -14,16 +11,9 @@ const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 const provisioningStore = useProvisioningStore();
-const settingsStore = useSettingsStore();
-const router = useRouter();
 
 // Check if provisioning feature is enabled
 onMounted(async () => {
-	if (!settingsStore.isEnterpriseFeatureEnabled.provisioning) {
-		await router.push({ name: VIEWS.SETTINGS });
-		return;
-	}
-
 	documentTitle.set(i18n.baseText('settings.provisioning.title'));
 
 	loading.value = true;
