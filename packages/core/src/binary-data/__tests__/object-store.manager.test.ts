@@ -34,7 +34,11 @@ describe('store()', () => {
 	it('should store a buffer', async () => {
 		const metadata = { mimeType: 'text/plain' };
 
-		const result = await objectStoreManager.store(workflowId, executionId, mockBuffer, metadata);
+		const result = await objectStoreManager.store(
+			{ type: 'execution', workflowId, executionId },
+			mockBuffer,
+			metadata,
+		);
 
 		expect(result.fileId.startsWith(prefix)).toBe(true);
 		expect(result.fileSize).toBe(mockBuffer.length);
