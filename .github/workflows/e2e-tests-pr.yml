@@ -3,6 +3,7 @@ name: PR E2E
 on:
   pull_request_review:
     types: [submitted]
+  workflow_dispatch:
 
 concurrency:
   group: e2e-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
@@ -11,7 +12,7 @@ concurrency:
 jobs:
   eligibility_check:
     name: Check Eligibility for Test Run
-    if: github.event.review.state == 'approved'
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
     uses: ./.github/workflows/check-run-eligibility.yml
     with:
       is_pr_approved_by_maintainer: true
@@ -20,14 +21,21 @@ jobs:
     name: Playwright
     uses: ./.github/workflows/playwright-test-reusable.yml
     needs: [eligibility_check]
-    if: needs.eligibility_check.outputs.should_run == 'true'
+    # Run for approved PRs or manual triggers
+    if: |
+      always() &&
+      ((github.event_name == 'pull_request_review' && needs.eligibility_check.outputs.should_run == 'true') ||
+       (github.event_name == 'workflow_dispatch'))
     secrets: inherit
 
   post-e2e-tests:
     name: E2E - Checks
     runs-on: ubuntu-latest
     needs: [eligibility_check, run-playwright-tests]
-    if: always() && needs.eligibility_check.result != 'skipped'
+    if: |
+      always() &&
+      ((github.event_name == 'pull_request_review' && needs.eligibility_check.result != 'skipped') ||
+       (github.event_name == 'workflow_dispatch'))
     steps:
       - name: Fail if tests failed
         if: needs.run-playwright-tests.result == 'failure'

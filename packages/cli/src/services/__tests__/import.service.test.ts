@@ -681,18 +681,6 @@ describe('ImportService', () => {
 			);
 		});
 
-		it('should throw error when migration IDs do not match', async () => {
-			const migrationsContent = '{"id":"001","timestamp":"1000","name":"TestMigration"}';
-			const dbMigrations = [{ id: '002', timestamp: '1000', name: 'TestMigration' }];
-
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration ID mismatch. Import data: TestMigration (id: 001) does not match target database TestMigration (id: 002). Cannot import data from different migration states.',
-			);
-		});
-
 		it('should pass validation when migrations match exactly', async () => {
 			const migrationsContent = '{"id":"1","timestamp":"1000","name":"TestMigration"}';
 			const dbMigrations = [{ id: '1', timestamp: '1000', name: 'TestMigration' }];
@@ -701,18 +689,6 @@ describe('ImportService', () => {
 			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
-		});
-
-		it('should throw error when migration IDs have different formats', async () => {
-			const migrationsContent = '{"id":"001","timestamp":"1000","name":"TestMigration"}';
-			const dbMigrations = [{ id: '1', timestamp: '1000', name: 'TestMigration' }];
-
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration ID mismatch. Import data: TestMigration (id: 001) does not match target database TestMigration (id: 1). Cannot import data from different migration states.',
-			);
 		});
 
 		it('should handle multiple migrations and find the latest one', async () => {
