@@ -58,6 +58,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		id: string;
 		settings: { availableInMCP?: boolean } | undefined;
 		versionId: string;
+		versionCounter: number;
 	}> {
 		const response = await toggleWorkflowMcpAccessApi(
 			rootStore.restApiContext,
@@ -65,10 +66,11 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		const { id, settings, versionId } = response;
+		const { id, settings, versionId, versionCounter } = response;
 
 		// Update local  version of the workflow
 		if (id === workflowsStore.workflowId) {
+			workflowsStore.setWorkflowVersionCounter(versionCounter);
 			workflowsStore.setWorkflowVersionId(versionId);
 			if (settings) {
 				workflowsStore.private.setWorkflowSettings(settings);
@@ -79,6 +81,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 				...workflowsStore.workflowsById[id],
 				settings,
 				versionId,
+				versionCounter,
 			};
 		}
 

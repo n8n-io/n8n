@@ -32,7 +32,12 @@ export async function toggleWorkflowMcpAccessApi(
 	context: IRestApiContext,
 	workflowId: string,
 	availableInMCP: boolean,
-): Promise<{ id: string; settings: IWorkflowSettings | undefined; versionId: string }> {
+): Promise<{
+	id: string;
+	settings: IWorkflowSettings | undefined;
+	versionId: string;
+	versionCounter: number;
+}> {
 	return await makeRestApiRequest(
 		context,
 		'PATCH',

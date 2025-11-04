@@ -97,6 +97,7 @@ export class McpSettingsController {
 			availableInMCP: dto.availableInMCP,
 		};
 		workflowUpdate.versionId = workflow.versionId;
+		workflowUpdate.versionCounter = workflow.versionCounter;
 
 		const updatedWorkflow = await this.workflowService.update(
 			req.user,
@@ -111,6 +112,7 @@ export class McpSettingsController {
 			id: updatedWorkflow.id,
 			settings: updatedWorkflow.settings,
 			versionId: updatedWorkflow.versionId,
+			versionCounter: updatedWorkflow.versionCounter,
 		};
 	}
 }
