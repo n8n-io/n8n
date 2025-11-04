@@ -1,4 +1,13 @@
-import { Get, RestController, GlobalScope, Query, Post } from '@n8n/decorators';
+import {
+	BreakingChangeInstanceRuleResult,
+	BreakingChangeLightReportResult,
+	BreakingChangeReportResult,
+	BreakingChangeWorkflowRuleResult,
+} from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { BreakingChangeService } from './breaking-changes.service';
 import { BreakingChangeVersion } from './types';
@@ -7,18 +16,59 @@ import { BreakingChangeVersion } from './types';
 export class BreakingChangesController {
 	constructor(private readonly service: BreakingChangeService) {}
 
-	/**
-	 * Get all registered breaking change rules
-	 */
-	@Get('/')
-	@GlobalScope('breakingChanges:list')
-	async listRules(@Query query: { version?: BreakingChangeVersion }) {
-		return await this.service.getDetectionResults(query.version ?? 'v2');
+	private getLightDetectionResults(
+		report: BreakingChangeReportResult['report'],
+	): BreakingChangeLightReportResult['report'] {
+		return {
+			...report,
+			workflowResults: report.workflowResults.map((r) => {
+				const { affectedWorkflows, ...otherFields } = r;
+				return { ...otherFields, nbAffectedWorkflows: affectedWorkflows.length };
+			}),
+		};
 	}
 
-	@Post('/refresh')
+	/**
+	 * Get all registered breaking change rules results
+	 */
+	@Get('/report')
 	@GlobalScope('breakingChanges:list')
-	async refreshCache(@Query query: { version?: BreakingChangeVersion }) {
-		return await this.service.refreshDetectionResults(query.version ?? 'v2');
+	async getDetectionReport(
+		@Query query: { version?: BreakingChangeVersion },
+	): Promise<BreakingChangeLightReportResult> {
+		const report = await this.service.getDetectionResults(query.version ?? 'v2');
+		return {
+			...report,
+			report: this.getLightDetectionResults(report.report),
+		};
+	}
+
+	@Post('/report/refresh')
+	@GlobalScope('breakingChanges:list')
+	async refreshCache(
+		@Query query: { version?: BreakingChangeVersion },
+	): Promise<BreakingChangeLightReportResult> {
+		const report = await this.service.refreshDetectionResults(query.version ?? 'v2');
+		return {
+			...report,
+			report: this.getLightDetectionResults(report.report),
+		};
+	}
+
+	/**
+	 * Get specific breaking change rules
+	 */
+	@Get('/report/:ruleId')
+	@GlobalScope('breakingChanges:list')
+	async getDetectionReportForRule(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('ruleId') ruleId: string,
+	): Promise<BreakingChangeInstanceRuleResult | BreakingChangeWorkflowRuleResult> {
+		const result = await this.service.getDetectionReportForRule(ruleId);
+		if (!result) {
+			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
+		}
+		return result;
 	}
 }
