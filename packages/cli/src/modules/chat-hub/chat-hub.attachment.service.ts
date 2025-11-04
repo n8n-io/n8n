@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
-import { Not } from '@n8n/typeorm';
+import { Not, IsNull } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import type { ChatHubMessage } from './chat-hub-message.entity';
@@ -120,7 +120,7 @@ export class ChatHubAttachmentService {
 	async deleteAll(): Promise<void> {
 		const messages = await this.messageRepository.find({
 			where: {
-				attachments: Not(null),
+				attachments: Not(IsNull()),
 			},
 			select: ['attachments'],
 		});
