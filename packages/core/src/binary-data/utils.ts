@@ -1,7 +1,6 @@
 import { UnexpectedError } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
-import { v4 as uuid } from 'uuid';
 
 import type { BinaryData } from './types';
 
@@ -59,28 +58,4 @@ export async function streamToBuffer(stream: Readable) {
 export async function binaryToBuffer(body: Buffer | Readable) {
 	if (Buffer.isBuffer(body)) return body;
 	return await streamToBuffer(body);
-}
-
-/**
- * Generates a file ID for binary data storage.
- * Format: workflows/<workflowId>/executions/<executionId>/binary_data/<uuid>
- */
-export function toFileId(workflowId: string, executionId: string): string {
-	if (!executionId) executionId = TEMP_EXECUTION_ID; // missing only in edge case, see PR #7244
-	return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
-}
-
-/**
- * Parses a file ID to extract workflowId and executionId.
- * Returns null if the format doesn't match.
- */
-export function parseFileId(fileId: string): { workflowId: string; executionId: string } | null {
-	const match = fileId.match(/^workflows\/([^/]+)\/executions\/([^/]+)\//);
-	if (!match) {
-		return null;
-	}
-	return {
-		workflowId: match[1],
-		executionId: match[2],
-	};
 }

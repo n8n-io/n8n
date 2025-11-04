@@ -171,6 +171,18 @@ export class BinaryDataService {
 		if (manager.deleteMany) await manager.deleteMany(ids);
 	}
 
+	async deleteManyByBinaryDataId(ids: string[]) {
+		const manager = this.managers[this.mode];
+
+		const fileIds = ids.flatMap((attachmentId) => {
+			const [, fileId] = attachmentId.split(':'); // remove mode
+
+			return fileId ? [fileId] : [];
+		});
+
+		await manager.deleteManyByStringifiedFileIds?.(fileIds);
+	}
+
 	async duplicateBinaryData(
 		workflowId: string,
 		executionId: string,

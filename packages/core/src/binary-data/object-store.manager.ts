@@ -1,10 +1,11 @@
 import { Service } from '@n8n/di';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
+import { v4 as uuid } from 'uuid';
 
 import { ObjectStoreService } from './object-store/object-store.service.ee';
 import type { BinaryData } from './types';
-import { binaryToBuffer, toFileId } from './utils';
+import { binaryToBuffer } from './utils';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
@@ -20,7 +21,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		bufferOrStream: Buffer | Readable,
 		metadata: BinaryData.PreWriteMetadata,
 	) {
-		const fileId = toFileId(workflowId, executionId);
+		const fileId = this.toFileId(workflowId, executionId);
 		const buffer = await binaryToBuffer(bufferOrStream);
 
 		await this.objectStoreService.put(fileId, buffer, metadata);
@@ -56,7 +57,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	async copyByFileId(workflowId: string, executionId: string, sourceFileId: string) {
-		const targetFileId = toFileId(workflowId, executionId);
+		const targetFileId = this.toFileId(workflowId, executionId);
 
 		const sourceFile = await this.objectStoreService.get(sourceFileId, { mode: 'buffer' });
 
@@ -74,7 +75,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		sourcePath: string,
 		metadata: BinaryData.PreWriteMetadata,
 	) {
-		const targetFileId = toFileId(workflowId, executionId);
+		const targetFileId = this.toFileId(workflowId, executionId);
 		const sourceFile = await fs.readFile(sourcePath);
 
 		await this.objectStoreService.put(targetFileId, sourceFile, metadata);
@@ -88,5 +89,15 @@ export class ObjectStoreManager implements BinaryData.Manager {
 
 		await this.objectStoreService.put(newFileId, oldFile, oldFileMetadata);
 		await this.objectStoreService.deleteOne(oldFileId);
+	}
+
+	// ----------------------------------
+	//         private methods
+	// ----------------------------------
+
+	private toFileId(workflowId: string, executionId: string) {
+		if (!executionId) executionId = 'temp'; // missing only in edge case, see PR #7244
+
+		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
 	}
 }

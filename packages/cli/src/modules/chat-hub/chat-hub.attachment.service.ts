@@ -1,7 +1,7 @@
-import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
-import { BinaryDataService, parseFileId, TEMP_EXECUTION_ID } from 'n8n-core';
+import { BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
+import { Not } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import { replaceTempExecutionId } from '@/execution-lifecycle/restore-binary-data-id';
@@ -16,7 +16,6 @@ export class ChatHubAttachmentService {
 	constructor(
 		private readonly binaryDataService: BinaryDataService,
 		private readonly messageRepository: ChatHubMessageRepository,
-		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -124,7 +123,9 @@ export class ChatHubAttachmentService {
 	 */
 	async deleteAll(): Promise<void> {
 		const messages = await this.messageRepository.find({
-			where: {},
+			where: {
+				attachments: Not(null),
+			},
 			select: ['attachments'],
 		});
 
@@ -146,18 +147,6 @@ export class ChatHubAttachmentService {
 			return;
 		}
 
-		await this.binaryDataService.deleteMany(
-			[...attachmentIds.values()].flatMap((attachmentId) => {
-				const [, fileId] = attachmentId.split(':');
-				const parsed = parseFileId(fileId);
-
-				if (!parsed) {
-					this.logger.warn(`Attachment file ${attachmentId} cannot be deleted during deleteAll`);
-					return [];
-				}
-
-				return [parsed];
-			}),
-		);
+		await this.binaryDataService.deleteManyByBinaryDataId(Array.from(attachmentIds.values()));
 	}
 }
