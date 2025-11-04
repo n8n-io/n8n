@@ -14,6 +14,7 @@ const emit = defineEmits<{
 const locale = useI18n();
 const downloadingInstanceRolesCsv = ref(false);
 const downloadingProjectRolesCsv = ref(false);
+const loadingActivatingJit = ref(false);
 const {
 	hasDownloadedInstanceRoleCsv,
 	hasDownloadedProjectRoleCsv,
@@ -37,6 +38,11 @@ const onDownloadProjectRolesCsv = async () => {
 	await downloadProjectRolesCsv();
 	downloadingProjectRolesCsv.value = false;
 };
+
+const onConfirmActivatingProvisioning = () => {
+	loadingActivatingJit.value = true;
+	emit('confirmProvisioning');
+};
 </script>
 <template>
 	<ElDialog
@@ -46,14 +52,21 @@ const onDownloadProjectRolesCsv = async () => {
 	>
 		<div class="mb-s">
 			<N8nText color="text-base">{{
-				locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.first')
+				locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.firstLine')
 			}}</N8nText>
 		</div>
-		<div class="mb-s">
-			<N8nText color="text-base">{{
-				locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.second')
-			}}</N8nText>
-		</div>
+		<ul :class="$style.list" class="mb-s">
+			<li>
+				<N8nText color="text-base">{{
+					locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.list.one')
+				}}</N8nText>
+			</li>
+			<li>
+				<N8nText color="text-base">{{
+					locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.list.two')
+				}}</N8nText>
+			</li>
+		</ul>
 		<div class="mb-s">
 			<N8nText color="text-base">{{
 				locale.baseText('settings.provisioningConfirmDialog.breakingChangeRequiredSteps')
@@ -110,9 +123,11 @@ const onDownloadProjectRolesCsv = async () => {
 			<N8nButton
 				type="primary"
 				native-type="button"
-				:disabled="loading || !(hasDownloadedInstanceRoleCsv && hasDownloadedProjectRoleCsv)"
+				:disabled="
+					loadingActivatingJit || !(hasDownloadedInstanceRoleCsv && hasDownloadedProjectRoleCsv)
+				"
 				data-test-id="provisioning-confirm-button"
-				@click="loading = true && emit('confirmProvisioning')"
+				@click="onConfirmActivatingProvisioning"
 				>{{ locale.baseText('settings.provisioningConfirmDialog.button.confirm') }}</N8nButton
 			>
 		</template>
@@ -131,5 +146,13 @@ const onDownloadProjectRolesCsv = async () => {
 
 .icon {
 	margin-left: var(--spacing--xs);
+}
+
+.list {
+	padding: 0 var(--spacing--sm);
+
+	li {
+		list-style: disc outside;
+	}
 }
 </style>
