@@ -17,7 +17,8 @@ import '@/dev/i18nHmr';
 import App from '@/App.vue';
 import router from './router';
 
-import { i18nInstance } from '@n8n/i18n';
+import { i18nInstance, setLanguage } from '@n8n/i18n';
+import { i18n as designSystemI18n } from '@n8n/design-system/locale';
 
 import { TelemetryPlugin } from '@/app/plugins/telemetry';
 import { GlobalComponentsPlugin } from '@/app/plugins/components';
@@ -48,6 +49,38 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+// Initialize locale from localStorage before mounting
+const initLocale = () => {
+	try {
+		const savedLocale = localStorage.getItem('n8n-locale') || 'zh';
+		if (savedLocale !== i18nInstance.global.locale.value) {
+			setLanguage(savedLocale);
+		}
+	} catch (e) {
+		console.warn('Failed to read saved locale from localStorage', e);
+	}
+};
+initLocale();
+
+// Initialize design-system i18n
+// Hook design-system's i18n to use the same translations as the main app
+designSystemI18n((key: string) => {
+	return i18nInstance.global.t(key);
+});
+
+// Load design-system locale based on current language
+const initDesignSystemLocale = async () => {
+	const currentLocale = i18nInstance.global.locale.value;
+	try {
+		const { use } = await import('@n8n/design-system/locale');
+		await use(currentLocale);
+	} catch (e) {
+		// Fallback to English if locale not found
+		console.warn(`Design system locale ${currentLocale} not found, using English`, e);
+	}
+};
+void initDesignSystemLocale();
 
 if (import.meta.env.VUE_SCAN) {
 	const { default: VueScan } = await import('z-vue-scan');

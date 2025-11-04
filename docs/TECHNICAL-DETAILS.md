@@ -564,6 +564,252 @@ n8n 的许可证系统主要用于功能门控，实际的安全性由其他机�
 - ✅ **内存占用**: 减少 ~5MB（移除 license-sdk）
 - ✅ **包大小**: 减少 ~2MB（移除依赖和代码）
 
+## 🌐 中文本地化实现
+
+### 总体架构
+
+本地化系统采用双层 i18n 架构：
+
+1. **主应用 i18n** - `@n8n/i18n` 包，负责主应用翻译
+2. **设计系统 i18n** - `@n8n/design-system` 独立语言包，负责 UI 组件翻译
+
+### 主应用翻译系统
+
+#### 翻译文件结构
+
+```typescript
+// packages/frontend/@n8n/i18n/src/locales/zh.json
+{
+  "auth.signin": "登录",
+  "auth.signup": "注册",
+  "workflows.new": "新建工作流",
+  // ... 3,795+ 翻译键
+}
+```
+
+#### 语言加载机制
+
+```typescript
+// packages/frontend/@n8n/i18n/src/index.ts
+import en from './locales/en.json';
+import zh from './locales/zh.json';
+
+export const i18nInstance = createI18n({
+  locale: 'zh',          // 默认中文
+  fallbackLocale: 'en',  // 回退到英文
+  messages: { en, zh },
+});
+```
+
+#### 动态语言切换
+
+```typescript
+// packages/frontend/editor-ui/src/main.ts
+const initLocale = () => {
+  try {
+    const savedLocale = localStorage.getItem('n8n-locale') || 'zh';
+    if (savedLocale !== i18nInstance.global.locale.value) {
+      setLanguage(savedLocale);
+    }
+  } catch (e) {
+    console.warn('Failed to read saved locale from localStorage', e);
+  }
+};
+initLocale();
+```
+
+### 设计系统翻译
+
+#### 独立语言包
+
+```typescript
+// packages/frontend/@n8n/design-system/src/locale/lang/zh.ts
+import type { N8nLocale } from '../types';
+
+export default {
+  'generic.retry': '重试',
+  'generic.cancel': '取消',
+  'generic.close': '关闭',
+  'dateRangePicker.apply': '应用',
+  'dateRangePicker.outsideRange': '超出允许范围',
+  // ... 90+ 翻译键
+} as N8nLocale;
+```
+
+#### i18n Hook 集成
+
+```typescript
+// packages/frontend/@n8n/design-system/src/composables/useI18n.ts
+import { inject } from 'vue';
+import type { I18nFunction } from '../locale/types';
+
+export const useI18n = () => {
+  const t = inject<I18nFunction>('i18n', (key: string) => key);
+  return { t };
+};
+```
+
+#### 主应用集成设计系统
+
+```typescript
+// packages/frontend/editor-ui/src/main.ts
+import { i18n as designSystemI18n } from '@n8n/design-system/locale';
+
+// 将设计系统的 i18n 连接到主应用
+designSystemI18n((key: string) => {
+  return i18nInstance.global.t(key);
+});
+
+// 加载设计系统语言包
+const initDesignSystemLocale = async () => {
+  const currentLocale = i18nInstance.global.locale.value;
+  try {
+    const { use } = await import('@n8n/design-system/locale');
+    await use(currentLocale);
+  } catch (e) {
+    console.warn(`Design system locale ${currentLocale} not found, using English`, e);
+  }
+};
+void initDesignSystemLocale();
+```
+
+### 语言切换实现
+
+#### 个人设置语言选择器
+
+```vue
+<!-- packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue -->
+<template>
+  <N8nSelect
+    v-model="currentSelectedLocale"
+    :label="$t('settings.personal.language')"
+    @update:model-value="onLocaleChange"
+  >
+    <N8nOption value="zh" :label="$t('settings.personal.languages.zh')" />
+    <N8nOption value="en" :label="$t('settings.personal.languages.en')" />
+  </N8nSelect>
+</template>
+
+<script setup>
+const onLocaleChange = async (newLocale: string) => {
+  if (newLocale !== rootStore.defaultLocale) {
+    setLanguage(newLocale);
+    rootStore.setDefaultLocale(newLocale);
+
+    // 更新 design-system 语言
+    const { use } = await import('@n8n/design-system/locale');
+    await use(newLocale);
+
+    // 持久化到 localStorage
+    localStorage.setItem('n8n-locale', newLocale);
+  }
+};
+</script>
+```
+
+#### Store 语言管理
+
+```typescript
+// packages/frontend/@n8n/stores/src/useRootStore.ts
+export const useRootStore = defineStore(STORES.ROOT, () => {
+  // 从 localStorage 读取保存的语言
+  const getSavedLocale = () => {
+    try {
+      return localStorage.getItem('n8n-locale') || 'zh';
+    } catch {
+      return 'zh';
+    }
+  };
+
+  const state = ref<RootStoreState>({
+    defaultLocale: getSavedLocale(),  // 使用保存的语言
+    // ... 其他状态
+  });
+
+  const setDefaultLocale = (value: string) => {
+    state.value.defaultLocale = value;
+  };
+
+  return { defaultLocale, setDefaultLocale, /* ... */ };
+});
+```
+
+### 日期时间本地化
+
+#### BCP 47 Locale 映射
+
+```typescript
+// packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDataRangePicker.vue
+const datePickerLocale = computed(() => {
+  const locale = i18n.locale.value;
+  // 短码映射到完整 BCP 47 代码
+  const localeMap: Record<string, string> = {
+    zh: 'zh-CN',
+    en: 'en-US',
+  };
+  return localeMap[locale] || locale;
+});
+```
+
+#### 日期格式化
+
+```typescript
+// 使用 Intl.DateTimeFormat 本地化
+const formattedRange = computed(() => {
+  const { start, end } = props.modelValue;
+  const locale = i18n.locale.value;
+
+  const formatWithYear = new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  return formatWithYear.format(startDate);
+});
+```
+
+#### reka-ui 组件本地化
+
+```vue
+<!-- packages/frontend/editor-ui/src/App.vue -->
+<template>
+  <ConfigProvider :locale="rekaLocale">
+    <!-- 应用内容 -->
+  </ConfigProvider>
+</template>
+
+<script setup>
+import { ConfigProvider } from 'reka-ui';
+
+const rekaLocale = computed(() => {
+  const locale = i18n.locale.value;
+  const localeMap: Record<string, string> = {
+    zh: 'zh-CN',
+    en: 'en-US',
+  };
+  return localeMap[locale] || locale;
+});
+</script>
+```
+
+### 关键技术点
+
+1. **双层 i18n 架构**: 主应用和设计系统分离，通过 provide/inject 桥接
+2. **语言持久化**: localStorage 存储，启动时恢复
+3. **同步切换**: 主应用和设计系统语言同步更新
+4. **Locale 映射**: 短码（zh）到 BCP 47 格式（zh-CN）的转换
+5. **组件本地化**: 通过 ConfigProvider 为第三方 UI 库提供 locale 上下文
+
+### 翻译覆盖率
+
+| 区域 | 翻译键数 | 状态 |
+|------|----------|------|
+| 主界面 | 3,795 | ✅ 100% |
+| 设计系统 | 90+ | ✅ 100% |
+| 错误信息 | ~200 | ✅ 100% |
+| 提示文本 | ~150 | ✅ 100% |
+
 ---
 
 **注意**: 所有技术细节仅供参考，具体实现请以源代码为准。

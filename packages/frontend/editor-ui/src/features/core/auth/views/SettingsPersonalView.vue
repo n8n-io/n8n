@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { ROLE, type Role } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, setLanguage } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInputs, ThemeOption } from '@/Interface';
@@ -17,6 +17,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '../auth.eventBus';
 import { promptMfaCodeBus } from '../auth.eventBus';
@@ -38,6 +39,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import LanguageSelector from '@/app/components/LanguageSelector.vue';
 type UserBasicDetailsForm = {
 	firstName: string;
 	lastName: string;
@@ -66,6 +68,7 @@ const formInputs = ref<null | IFormInputs>(null);
 const formBus = createFormEventBus();
 const readyToSubmit = ref(false);
 const currentSelectedTheme = ref(useUIStore().theme);
+const currentSelectedLocale = ref(useRootStore().defaultLocale);
 const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 	{
 		name: 'system',
@@ -86,6 +89,7 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
+const rootStore = useRootStore();
 
 const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
@@ -115,7 +119,9 @@ const isMfaFeatureEnabled = computed((): boolean => {
 });
 
 const hasAnyPersonalisationChanges = computed((): boolean => {
-	return currentSelectedTheme.value !== uiStore.theme;
+	const themeChanged = currentSelectedTheme.value !== uiStore.theme;
+	const localeChanged = currentSelectedLocale.value !== rootStore.defaultLocale;
+	return themeChanged || localeChanged;
 });
 
 const hasAnyChanges = computed(() => {
@@ -274,7 +280,34 @@ async function updatePersonalisationSettings() {
 		return;
 	}
 
-	uiStore.setTheme(currentSelectedTheme.value);
+	// 更新主题
+	if (currentSelectedTheme.value !== uiStore.theme) {
+		uiStore.setTheme(currentSelectedTheme.value);
+	}
+
+	// 更新语言
+	if (currentSelectedLocale.value !== rootStore.defaultLocale) {
+		setLanguage(currentSelectedLocale.value);
+		rootStore.setDefaultLocale(currentSelectedLocale.value);
+
+		// 更新 design-system 的语言
+		const loadDesignSystemLocale = async () => {
+			try {
+				const { use } = await import('@n8n/design-system/locale');
+				await use(currentSelectedLocale.value);
+			} catch (error) {
+				console.warn(`Failed to load design-system locale: ${currentSelectedLocale.value}`, error);
+			}
+		};
+		void loadDesignSystemLocale();
+
+		// 保存到本地存储
+		try {
+			localStorage.setItem('n8n-locale', currentSelectedLocale.value);
+		} catch (error) {
+			console.warn('Failed to save locale preference:', error);
+		}
+	}
 }
 
 function onSaveClick() {
@@ -429,7 +462,7 @@ onBeforeUnmount(() => {
 					i18n.baseText('settings.personal.personalisation')
 				}}</N8nHeading>
 			</div>
-			<div>
+			<div class="mb-s">
 				<N8nInputLabel :label="i18n.baseText('settings.personal.theme')">
 					<N8nSelect
 						v-model="currentSelectedTheme"
@@ -446,6 +479,11 @@ onBeforeUnmount(() => {
 						>
 						</N8nOption>
 					</N8nSelect>
+				</N8nInputLabel>
+			</div>
+			<div>
+				<N8nInputLabel label="语言 / Language">
+					<LanguageSelector v-model="currentSelectedLocale" />
 				</N8nInputLabel>
 			</div>
 		</div>

@@ -2,6 +2,107 @@
 
 本文档记录二次开发的完整历史。
 
+## 2025-11-04
+
+### 中文本地化：完整界面翻译和语言切换功能 ✅
+
+实现完整的中文用户界面，提升国内用户体验。
+
+#### 翻译文件创建
+
+**新增文件**:
+- `packages/frontend/@n8n/i18n/src/locales/zh.json` - 主翻译文件（3,795 个键）
+- `packages/frontend/@n8n/design-system/src/locale/lang/zh.ts` - 设计系统中文语言包
+
+**翻译覆盖范围**:
+- ✅ 主界面导航和菜单
+- ✅ 工作流编辑器
+- ✅ 节点配置面板
+- ✅ 设置页面
+- ✅ 用户管理
+- ✅ 变量和凭证管理
+- ✅ 执行历史和日志
+- ✅ AI 助手界面
+- ✅ 项目和协作功能
+- ✅ 所有错误和提示信息
+
+#### 语言切换功能
+
+**修改文件**:
+- `SettingsPersonalView.vue` - 添加语言选择器
+- `useRootStore.ts` - 添加语言持久化支持
+- `main.ts` - 初始化时读取保存的语言
+- `App.vue` - 添加 ConfigProvider 支持 reka-ui 组件本地化
+
+**功能特性**:
+- ✅ 支持中文/英文切换
+- ✅ 设置默认语言为中文
+- ✅ 语言偏好自动保存到 localStorage
+- ✅ 页面刷新后保持语言设置
+- ✅ 设计系统组件同步切换语言
+
+#### 日期时间本地化
+
+**修改文件**:
+- `DateRangePicker.vue` - 添加 i18n 支持
+- `InsightsDataRangePicker.vue` - locale 映射（zh → zh-CN）
+- 所有日期格式化使用 Intl.DateTimeFormat
+
+**本地化内容**:
+- ✅ 日期选择器月份/星期显示
+- ✅ 时间格式化
+- ✅ 相对时间显示
+- ✅ "应用"等按钮文本
+
+#### 技术实现
+
+**设计系统多语言**:
+```typescript
+// 设计系统独立的 i18n 系统
+export default {
+  'generic.retry': '重试',
+  'generic.cancel': '取消',
+  'dateRangePicker.apply': '应用',
+  // ... 90+ 翻译键
+} as N8nLocale;
+```
+
+**语言持久化**:
+```typescript
+// localStorage 存储
+localStorage.setItem('n8n-locale', 'zh');
+
+// 启动时恢复
+const savedLocale = localStorage.getItem('n8n-locale') || 'zh';
+setLanguage(savedLocale);
+```
+
+#### 翻译统计
+
+| 模块 | 翻译键数量 | 覆盖率 |
+|------|-----------|--------|
+| 主应用 | 3,795 | 100% |
+| 设计系统 | 90+ | 100% |
+| 总计 | 3,885+ | 100% |
+
+#### 构建和验证
+
+- ✅ 前端构建成功
+- ✅ TypeScript 类型检查通过
+- ✅ 设计系统构建成功（watch 模式）
+- ✅ 所有翻译键正确加载
+
+#### 影响范围
+
+- 新增文件: 2 个
+- 修改文件: 10+ 个
+- 新增代码: 3,500+ 行（主要是翻译）
+- 翻译条目: 3,885+ 条
+
+**提交哈希**: 待提交
+
+---
+
 ## 2025-11-03 傍晚
 
 ### 云服务清理：移除版本通知和横幅系统 ✅

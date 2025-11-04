@@ -11,7 +11,6 @@ import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting
 import {
 	APP_MODALS_ELEMENT_ID,
 	CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID,
-	HIRING_BANNER,
 	VIEWS,
 } from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
@@ -22,7 +21,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale, N8nCommandBar } from '@n8n/design-system';
-import { setLanguage } from '@n8n/i18n';
+import { ConfigProvider } from 'reka-ui';
+import { setLanguage, useI18n } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
@@ -43,6 +43,17 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
 const { APP_Z_INDEXES } = useStyles();
+const i18n = useI18n();
+
+// Convert locale to BCP 47 format for reka-ui
+const rekaLocale = computed(() => {
+	const locale = i18n.locale.value;
+	const localeMap: Record<string, string> = {
+		zh: 'zh-CN',
+		en: 'en-US',
+	};
+	return localeMap[locale] || locale;
+});
 
 const {
 	initialize: initializeCommandBar,
@@ -80,7 +91,6 @@ useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSourc
 
 onMounted(async () => {
 	setAppZIndexes();
-	logHiringBanner();
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
@@ -95,12 +105,6 @@ watch(showCommandBar, (newVal) => {
 onBeforeUnmount(() => {
 	window.removeEventListener('resize', updateGridWidth);
 });
-
-const logHiringBanner = () => {
-	if (settingsStore.isHiringBannerEnabled && !isDemoMode.value) {
-		console.log(HIRING_BANNER);
-	}
-};
 
 const updateGridWidth = async () => {
 	await nextTick();
@@ -137,54 +141,55 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 
 <template>
 	<LoadingView v-if="loading" />
-	<div
-		v-else
-		id="n8n-app"
-		:class="{
-			[$style.container]: true,
-			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
-		}"
-	>
-		<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
-			<div id="header" :class="$style.header">
-				<RouterView name="header" />
-			</div>
-			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
-				<RouterView name="sidebar" />
-			</div>
-			<div id="content" :class="$style.content">
-				<div :class="$style.contentWrapper">
-					<RouterView v-slot="{ Component }">
-						<KeepAlive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
-							<component :is="Component" />
-						</KeepAlive>
-						<component :is="Component" v-else />
-					</RouterView>
+	<ConfigProvider v-else :locale="rekaLocale">
+		<div
+			id="n8n-app"
+			:class="{
+				[$style.container]: true,
+				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
+			}"
+		>
+			<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
+				<div id="header" :class="$style.header">
+					<RouterView name="header" />
 				</div>
-				<div v-if="hasContentFooter" :class="$style.contentFooter">
-					<RouterView name="footer" />
+				<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
+					<RouterView name="sidebar" />
 				</div>
-			</div>
-			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
-				<Modals />
-			</div>
+				<div id="content" :class="$style.content">
+					<div :class="$style.contentWrapper">
+						<RouterView v-slot="{ Component }">
+							<KeepAlive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
+								<component :is="Component" />
+							</KeepAlive>
+							<component :is="Component" v-else />
+						</RouterView>
+					</div>
+					<div v-if="hasContentFooter" :class="$style.contentFooter">
+						<RouterView name="footer" />
+					</div>
+				</div>
+				<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
+					<Modals />
+				</div>
 
-			<N8nCommandBar
-				v-if="showCommandBar"
-				:items="items"
-				:placeholder="placeholder"
-				:context="context"
-				:is-loading="isCommandBarLoading"
-				:z-index="APP_Z_INDEXES.COMMAND_BAR"
-				@input-change="onCommandBarChange"
-				@navigate-to="onCommandBarNavigateTo"
-			/>
-			<Telemetry />
-			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
+				<N8nCommandBar
+					v-if="showCommandBar"
+					:items="items"
+					:placeholder="placeholder"
+					:context="context"
+					:is-loading="isCommandBarLoading"
+					:z-index="APP_Z_INDEXES.COMMAND_BAR"
+					@input-change="onCommandBarChange"
+					@navigate-to="onCommandBarNavigateTo"
+				/>
+				<Telemetry />
+				<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
+			</div>
+			<AssistantsHub />
+			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 		</div>
-		<AssistantsHub />
-		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
-	</div>
+	</ConfigProvider>
 </template>
 
 <style lang="scss" module>

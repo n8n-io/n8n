@@ -17,12 +17,13 @@ import {
 	DateRangePickerTrigger,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { useSlots, type Slots } from 'vue';
+import { useSlots, type Slots, computed } from 'vue';
 
 import Button from '../N8nButton/Button.vue';
 import IconButton from '../N8nIconButton';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
+import { useI18n } from '../../composables/useI18n';
 
 const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 	weekStartsOn: 1,
@@ -34,10 +35,21 @@ const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 const emit = defineEmits<N8nDateRangePickerRootEmits>();
 const forwarded = useForwardPropsEmits(props, emit);
 const slots: Slots = useSlots();
+const { t } = useI18n();
+
+// Ensure locale is passed through to reka-ui
+const forwardedWithLocale = computed(() => {
+	const locale = props.locale || 'en-US';
+	console.log('[DateRangePicker] Using locale:', locale);
+	return {
+		...forwarded.value,
+		locale,
+	};
+});
 </script>
 
 <template>
-	<DateRangePickerRoot v-bind="forwarded">
+	<DateRangePickerRoot v-bind="forwardedWithLocale">
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
 				<IconButton icon="calendar" type="secondary" aria-label="Open calendar" />
@@ -104,10 +116,10 @@ const slots: Slots = useSlots();
 
 					<div v-if="!hideInputs" :class="$style.DateFieldWrapper">
 						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
-						<div :class="$style.DateFieldError">Outside of allowed range</div>
+						<div :class="$style.DateFieldError">{{ t('dateRangePicker.outsideRange') }}</div>
 
 						<Button type="secondary" block class="mt-2xs" @click="emit('update:open', false)">
-							Apply
+							{{ t('dateRangePicker.apply') }}
 						</Button>
 					</div>
 				</div>

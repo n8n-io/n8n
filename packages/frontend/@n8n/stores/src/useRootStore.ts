@@ -35,10 +35,19 @@ export type RootStoreState = {
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
+	// Read saved locale from localStorage, fallback to 'zh'
+	const getSavedLocale = () => {
+		try {
+			return localStorage.getItem('n8n-locale') || 'zh';
+		} catch {
+			return 'zh';
+		}
+	};
+
 	const state = ref<RootStoreState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
 		restEndpoint: getConfigFromMetaTag('rest-endpoint') ?? 'rest',
-		defaultLocale: 'en',
+		defaultLocale: getSavedLocale(),
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
 		endpointFormWaiting: 'form-waiting',

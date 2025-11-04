@@ -89,4 +89,6 @@ export default {
 	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b>',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
+	'dateRangePicker.apply': 'Apply',
+	'dateRangePicker.outsideRange': 'Outside of allowed range',
 } as N8nLocale;

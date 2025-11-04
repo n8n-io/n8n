@@ -8,12 +8,11 @@ import type {
 	N8nDateRangePickerRootEmits,
 } from '@n8n/design-system';
 import { N8nButton, N8nDateRangePicker, N8nIcon } from '@n8n/design-system';
-import dateformat from 'dateformat';
 import { computed, ref, shallowRef, watch } from 'vue';
+import { useI18n } from '@n8n/i18n';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
-const DATE_FORMAT_DAY_MONTH_YEAR = 'd mmm, yyyy';
-const DATE_FORMAT_DAY_MONTH = 'd mmm';
+const i18n = useI18n();
 
 type Props = Pick<N8nDateRangePickerProps, 'maxValue' | 'minValue'>;
 type Value = {
@@ -133,20 +132,32 @@ function setPresetRange(days: number) {
 const formattedRange = computed(() => {
 	const { start, end } = props.modelValue;
 
-	if (!start) return 'Select range';
+	if (!start) return i18n.baseText('insights.selectRange');
 
-	const startStr = start.toString();
-	const endStr = end?.toString();
+	const locale = i18n.locale.value;
+	const startDate = start.toDate(getLocalTimeZone());
+	const endDate = end?.toDate(getLocalTimeZone());
 
-	if (!end || startStr === endStr) {
-		return dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR);
+	// 使用 Intl.DateTimeFormat 以支持多语言
+	const formatWithYear = new Intl.DateTimeFormat(locale, {
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric',
+	});
+	const formatWithoutYear = new Intl.DateTimeFormat(locale, {
+		day: 'numeric',
+		month: 'short',
+	});
+
+	if (!end || start.toString() === end.toString()) {
+		return formatWithYear.format(startDate);
 	}
 
 	if (start.year === end.year) {
-		return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+		return `${formatWithoutYear.format(startDate)} - ${formatWithYear.format(endDate)}`;
 	}
 
-	return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+	return `${formatWithYear.format(startDate)} - ${formatWithYear.format(endDate)}`;
 });
 
 function isActiveRange(presetValue: number) {
@@ -154,11 +165,28 @@ function isActiveRange(presetValue: number) {
 
 	return props.modelValue.end.compare(props.modelValue.start) === presetValue;
 }
+
+// Convert short locale code to full BCP 47 format for reka-ui
+const datePickerLocale = computed(() => {
+	const locale = i18n.locale.value;
+	// Map short locale codes to full BCP 47 codes
+	const localeMap: Record<string, string> = {
+		zh: 'zh-CN',
+		en: 'en-US',
+	};
+	return localeMap[locale] || locale;
+});
 </script>
 
 <template>
 	<!-- eslint-disable vue/no-multiple-template-root -->
-	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value>
+	<N8nDateRangePicker
+		v-model="range"
+		v-model:open="open"
+		:max-value
+		:min-value
+		:locale="datePickerLocale"
+	>
 		<template #trigger>
 			<N8nButton icon="calendar" type="secondary">{{ formattedRange }}</N8nButton>
 		</template>
