@@ -2315,6 +2315,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const payload = {
 			name: 'name updated',
 			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
@@ -2350,9 +2351,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(id).toBe(workflow.id);
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(true);
-		console.log('versionCounter:', versionCounter, 'expected:', workflow.versionCounter + 1);
-		// TODO: this is failing, fix it
-		// expect(versionCounter).toBe(workflow.versionCounter + 1);
+		expect(versionCounter).toBe(workflow.versionCounter + 1);
 	});
 
 	test('should deactivate workflow without changing version ID', async () => {
@@ -2376,8 +2375,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(id).toBe(workflow.id);
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(false);
-		// TODO: this is failing, fix it
-		// expect(versionCounter).toBe(workflow.versionCounter + 1);
+		expect(versionCounter).toBe(workflow.versionCounter + 1);
 	});
 
 	test('should update workflow meta', async () => {
