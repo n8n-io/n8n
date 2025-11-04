@@ -210,6 +210,16 @@ watch(descriptionValue, (newValue) => {
 	&.active {
 		color: var(--color--background--shade-2);
 	}
+
+	&:hover,
+	&:focus,
+	&:focus-visible,
+	&:active {
+		background: none;
+		background-color: transparent !important;
+		outline: none !important;
+		color: var(--color--background--shade-2) !important;
+	}
 }
 
 .description-edit-content {
