@@ -54,9 +54,9 @@ const textareaTip = computed(() => {
 	if (!isMcpEnabled.value) {
 		return i18n.baseText('workflow.description.tooltip');
 	}
-	const mcpTooltip = i18n.baseText('workflow.description.placehoder.mcp');
+	const mcpTooltip = i18n.baseText('workflow.description.placeholder.mcp');
 	const webhookNotice = hasWebhooks.value
-		? i18n.baseText('workflow.description.placehoder.mcp.webhook')
+		? i18n.baseText('workflow.description.placeholder.mcp.webhook')
 		: '';
 	return `${baseTooltip}. ${mcpTooltip}.\n${webhookNotice}`;
 });
@@ -77,12 +77,7 @@ const saveDescription = async () => {
 		lastSavedDescription.value = descriptionValue.value;
 		uiStore.stateIsDirty = false;
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('generic.error', {
-				interpolate: { message: (error as Error).message },
-			}),
-		);
+		toast.showError(error, i18n.baseText('workflow.description.error.title'));
 		descriptionValue.value = lastSavedDescription.value;
 	} finally {
 		isSaving.value = false;
@@ -151,6 +146,7 @@ watch(descriptionValue, (newValue) => {
 				<template #trigger>
 					<N8nIconButton
 						:class="{ [$style['description-button']]: true, [$style.active]: popoverOpen }"
+						:square="true"
 						icon="notebook-pen"
 						type="tertiary"
 						size="small"
