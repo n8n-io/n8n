@@ -5,7 +5,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { type UsersList, type UsersListFilterDto } from '@n8n/api-types';
 import { ElDialog } from 'element-plus';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 const visible = defineModel<boolean>();
 const emit = defineEmits<{
@@ -36,6 +36,12 @@ const hasDownloadedProjectRoleCsv = ref(false);
  * }
  */
 const userData = ref<UsersList>();
+
+// Reset download flags when dialog is closed
+watch(visible, () => {
+	hasDownloadedInstanceRoleCsv.value = false;
+	hasDownloadedProjectRoleCsv.value = false;
+});
 
 const formatDateForFilename = (): string => {
 	const now = new Date();
@@ -212,8 +218,9 @@ const onDownloadProjectRolesCsv = () => {
 			<N8nButton
 				type="primary"
 				native-type="button"
-				:disabled="loading || (!hasDownloadedInstanceRoleCsv && !hasDownloadedProjectRoleCsv)"
+				:disabled="loading || !(hasDownloadedInstanceRoleCsv && hasDownloadedProjectRoleCsv)"
 				data-test-id="provisioning-confirm-button"
+				@click="loading = true && emit('confirmProvisioning')"
 				>{{ locale.baseText('settings.provisioningConfirmDialog.button.confirm') }}</N8nButton
 			>
 		</template>
@@ -227,7 +234,7 @@ const onDownloadProjectRolesCsv = () => {
 }
 
 .button {
-	min-width: 320px;
+	min-width: 340px;
 }
 
 .icon {
