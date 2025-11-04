@@ -57,16 +57,16 @@ export function useAccessSettingsCsvExport() {
 	};
 
 	const downloadCsv = (csvContent: string, filename: string): void => {
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const url = URL.createObjectURL(blob);
 		const tempElement = document.createElement('a');
-		tempElement.setAttribute(
-			'href',
-			'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent),
-		);
+		tempElement.setAttribute('href', url);
 		tempElement.setAttribute('download', filename);
 		tempElement.style.display = 'none';
 		document.body.appendChild(tempElement);
 		tempElement.click();
 		document.body.removeChild(tempElement);
+		URL.revokeObjectURL(url); // remove blob from browser memory
 	};
 
 	const getUserData = async (): Promise<AccessSettingsUserData> => {
