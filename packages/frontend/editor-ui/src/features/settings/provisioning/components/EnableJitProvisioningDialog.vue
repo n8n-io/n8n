@@ -4,7 +4,7 @@ import * as usersApi from '@n8n/rest-api-client/api/users';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type UsersList, type UsersListFilterDto } from '@n8n/api-types';
 import { ElDialog } from 'element-plus';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { ref } from 'vue';
 
 const visible = defineModel<boolean>();
@@ -21,7 +21,7 @@ const csvFilesAreReady = ref(false);
 const hasDownloadedInstanceRoleCsv = ref(false);
 const hasDownloadedProjectRoleCsv = ref(false);
 /**
- * Actual type:
+ * Actual return type (due to select filter):
  * {
  *   count: number
  *   items: {
@@ -37,6 +37,29 @@ const hasDownloadedProjectRoleCsv = ref(false);
  */
 const userData = ref<UsersList>();
 
+const formatDateForFilename = (): string => {
+	const now = new Date();
+	return `${now.getDate()}_${now.getMonth() + 1}_${now.getFullYear()}_${now.getHours()}_${now.getMinutes()}`;
+};
+
+const escapeCsvValue = (value: string): string => {
+	// If value contains comma, quote, or newline, wrap in quotes and escape quotes
+	if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+		return `"${value.replace(/"/g, '""')}"`;
+	}
+	return value;
+};
+
+const downloadCsv = (csvContent: string, filename: string): void => {
+	const tempElement = document.createElement('a');
+	tempElement.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
+	tempElement.setAttribute('download', filename);
+	tempElement.style.display = 'none';
+	document.body.appendChild(tempElement);
+	tempElement.click();
+	document.body.removeChild(tempElement);
+};
+
 const onGenerateCsvExport = async () => {
 	loading.value = true;
 	// TODO: extract dedicated composable to manage fetching user data
@@ -47,20 +70,59 @@ const onGenerateCsvExport = async () => {
 		expand: ['projectRelations'],
 		skip: 0,
 	};
+	await new Promise((resolve) => setTimeout(resolve, 3000));
 	userData.value = await usersApi.getUsers(rootStore.restApiContext, filter);
 	csvFilesAreReady.value = true;
 	loading.value = false;
 };
 
 const onDownloadInstanceRolesCsv = () => {
-	// TODO: use data from userData to generate csv and download it
-	// Should contain only two columns: email, instance_role
+	if (!userData.value) return;
+
+	loading.value = true;
+
+	const csvRows = ['email,instance_role'];
+
+	for (const user of userData.value.items) {
+		const email = escapeCsvValue(user.email ?? '');
+		const instanceRole = escapeCsvValue(user.role ?? '');
+		csvRows.push(`${email},${instanceRole}`);
+	}
+
+	const csvContent = csvRows.join('\n');
+	const filename = `n8n_instance_role_export_${formatDateForFilename()}.csv`;
+
+	downloadCsv(csvContent, filename);
 	hasDownloadedInstanceRoleCsv.value = true;
+	loading.value = false;
 };
+
 const onDownloadProjectRolesCsv = () => {
-	// TODO: use data from userData to generate csv and download it
-	// Should contain only three columns: email, project_displayname, project_id, project_role
+	if (!userData.value) return;
+
+	loading.value = true;
+
+	const csvRows = ['email,project_displayname,project_id,project_role'];
+
+	for (const user of userData.value.items) {
+		const email = escapeCsvValue(user.email ?? '');
+
+		if (user.projectRelations && user.projectRelations.length > 0) {
+			for (const project of user.projectRelations) {
+				const projectName = escapeCsvValue(project.name ?? '');
+				const projectId = escapeCsvValue(project.id ?? '');
+				const projectRole = escapeCsvValue(project.role ?? '');
+				csvRows.push(`${email},${projectName},${projectId},${projectRole}`);
+			}
+		}
+	}
+
+	const csvContent = csvRows.join('\n');
+	const filename = `n8n_project_role_export_${formatDateForFilename()}.csv`;
+
+	downloadCsv(csvContent, filename);
 	hasDownloadedProjectRoleCsv.value = true;
+	loading.value = false;
 };
 </script>
 <template>
@@ -71,7 +133,12 @@ const onDownloadProjectRolesCsv = () => {
 	>
 		<div class="mb-s">
 			<N8nText color="text-base">{{
-				locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription')
+				locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.first')
+			}}</N8nText>
+		</div>
+		<div class="mb-s">
+			<N8nText color="text-base">{{
+				locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.second')
 			}}</N8nText>
 		</div>
 		<div class="mb-s">
@@ -85,6 +152,7 @@ const onDownloadProjectRolesCsv = () => {
 				native-type="button"
 				data-test-id="provisioning-download-instance-roles-csv-button"
 				:disabled="loading"
+				:loading="loading"
 				@click="onGenerateCsvExport"
 				>{{
 					locale.baseText('settings.provisioningConfirmDialog.button.generateCsvExport')
@@ -92,27 +160,45 @@ const onDownloadProjectRolesCsv = () => {
 			>
 		</div>
 		<template v-else>
-			<div class="mb-s">
+			<div class="mb-s" :class="$style.buttonRow">
 				<N8nButton
 					type="secondary"
 					native-type="button"
 					data-test-id="provisioning-download-instance-roles-csv-button"
+					:disabled="loading"
+					:loading="loading"
+					:class="$style.button"
 					@click="onDownloadInstanceRolesCsv"
 					>{{
 						locale.baseText('settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv')
 					}}</N8nButton
 				>
+				<N8nIcon
+					v-if="hasDownloadedInstanceRoleCsv"
+					icon="check"
+					color="success"
+					:class="$style.icon"
+				/>
 			</div>
-			<div class="mb-s">
+			<div class="mb-s" :class="$style.buttonRow">
 				<N8nButton
 					type="secondary"
 					native-type="button"
 					data-test-id="provisioning-download-project-roles-csv-button"
+					:disabled="loading"
+					:loading="loading"
+					:class="$style.button"
 					@click="onDownloadProjectRolesCsv"
 					>{{
 						locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
 					}}</N8nButton
 				>
+				<N8nIcon
+					v-if="hasDownloadedProjectRoleCsv"
+					icon="check"
+					color="success"
+					:class="$style.icon"
+				/>
 			</div>
 		</template>
 		<template #footer>
@@ -133,3 +219,18 @@ const onDownloadProjectRolesCsv = () => {
 		</template>
 	</ElDialog>
 </template>
+
+<style lang="scss" module>
+.buttonRow {
+	display: flex;
+	align-items: center;
+}
+
+.button {
+	min-width: 320px;
+}
+
+.icon {
+	margin-left: var(--spacing--xs);
+}
+</style>
