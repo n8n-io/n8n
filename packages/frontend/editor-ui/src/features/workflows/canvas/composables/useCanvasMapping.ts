@@ -364,6 +364,9 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	// Create a map for O(1) node lookups by name
+	const nodesByName = computed(() => new Map(nodes.value.map((n) => [n.name, n])));
+
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
@@ -394,19 +397,21 @@ export function useCanvasMapping({
 							};
 							// For non-main connections, check if items are wrapped in a response field
 							// (common for AI nodes like embeddings, tools, etc.)
+							// Note: We check only the first item assuming uniform structure across all items
 							let itemCount = connectionTypeOutputIndexData.length;
 							if (
 								connectionType !== NodeConnectionTypes.Main &&
 								connectionTypeOutputIndexData.length > 0
 							) {
 								const firstItem = connectionTypeOutputIndexData[0];
-								// Check if the data is wrapped in a response field
+								// AI nodes typically wrap all items uniformly in response field
 								if (
 									firstItem?.json &&
 									typeof firstItem.json === 'object' &&
 									'response' in firstItem.json &&
 									Array.isArray(firstItem.json.response)
 								) {
+									// Use response array length for all items (assuming uniform structure)
 									itemCount = firstItem.json.response.length;
 								}
 							}
@@ -420,7 +425,7 @@ export function useCanvasMapping({
 							if (connectionType !== NodeConnectionTypes.Main) {
 								const callingNodeName = runIteration.source?.[0]?.previousNode;
 								if (callingNodeName) {
-									const callingNode = nodes.value.find((n) => n.name === callingNodeName);
+									const callingNode = nodesByName.value.get(callingNodeName);
 									if (callingNode) {
 										const targetId = callingNode.id;
 										const outputEntry = acc[nodeId][connectionType][outputIndex];
@@ -761,9 +766,9 @@ export function useCanvasMapping({
 			// For non-main connections (model, memory, tool, etc.), only mark as executed
 			// if the target node also executed, since these are passive connections
 			const isMainConnection = type === NodeConnectionTypes.Main;
-			const targetHasExecutionData = nodeExecutionRunDataById.value[connection.target];
+			const targetNodeHasAnyExecution = nodeExecutionRunDataById.value[connection.target];
 
-			if (isMainConnection || targetHasExecutionData) {
+			if (isMainConnection || targetNodeHasAnyExecution) {
 				status = 'success';
 			}
 		}
