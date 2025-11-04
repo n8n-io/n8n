@@ -452,10 +452,6 @@ export class GSuiteAdmin implements INodeType {
 						const password = this.getNodeParameter('password', i) as string;
 						const username = this.getNodeParameter('username', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const changePasswordAtNextLogin = this.getNodeParameter(
-							'changePasswordAtNextLogin',
-							i,
-						) as boolean | undefined;
 
 						const body: IDataObject = {
 							name: {
@@ -473,8 +469,9 @@ export class GSuiteAdmin implements INodeType {
 							});
 						}
 
-						if (changePasswordAtNextLogin !== undefined) {
-							body.changePasswordAtNextLogin = changePasswordAtNextLogin;
+						if (additionalFields.changePasswordAtNextLogin !== undefined) {
+							body.changePasswordAtNextLogin =
+								additionalFields.changePasswordAtNextLogin as boolean;
 						}
 
 						if (additionalFields.phoneUi) {

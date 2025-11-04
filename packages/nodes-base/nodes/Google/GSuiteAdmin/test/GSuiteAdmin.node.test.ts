@@ -345,10 +345,10 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 						return 'SecurePassword123!';
 					case 'username':
 						return 'johndoe';
-					case 'changePasswordAtNextLogin':
-						return true;
 					case 'additionalFields':
-						return {};
+						return {
+							changePasswordAtNextLogin: true,
+						};
 					default:
 						return undefined;
 				}
@@ -403,10 +403,10 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 						return 'AnotherPassword456!';
 					case 'username':
 						return 'janesmith';
-					case 'changePasswordAtNextLogin':
-						return false;
 					case 'additionalFields':
-						return {};
+						return {
+							changePasswordAtNextLogin: false,
+						};
 					default:
 						return undefined;
 				}
@@ -456,8 +456,6 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 						return 'Password789!';
 					case 'username':
 						return 'bjohnson';
-					case 'changePasswordAtNextLogin':
-						return undefined;
 					case 'additionalFields':
 						return {};
 					default:
