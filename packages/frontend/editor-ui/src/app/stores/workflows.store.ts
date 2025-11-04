@@ -818,6 +818,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (workflowsById.value[id]) {
 			workflowsById.value[id].isArchived = true;
 			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+			workflowsById.value[id].versionCounter = updatedWorkflow.versionCounter;
 		}
 
 		setWorkflowInactive(id);
@@ -825,6 +826,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (id === workflow.value.id) {
 			setIsArchived(true);
 			setWorkflowVersionId(updatedWorkflow.versionId);
+			setWorkflowVersionCounter(updatedWorkflow.versionCounter);
 		}
 	}
 
@@ -837,11 +839,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (workflowsById.value[id]) {
 			workflowsById.value[id].isArchived = false;
 			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+			workflowsById.value[id].versionCounter = updatedWorkflow.versionCounter;
 		}
 
 		if (id === workflow.value.id) {
 			setIsArchived(false);
 			setWorkflowVersionId(updatedWorkflow.versionId);
+			setWorkflowVersionCounter(updatedWorkflow.versionCounter);
 		}
 	}
 
@@ -1611,12 +1615,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Update local store state to reflect the change
 		if (isCurrentWorkflow) {
 			setWorkflowVersionId(updated.versionId);
+			setWorkflowVersionCounter(updated.versionCounter);
 			setWorkflowSettings(updated.settings ?? {});
 		} else if (workflowsById.value[id]) {
 			workflowsById.value[id] = {
 				...workflowsById.value[id],
 				settings: updated.settings,
 				versionId: updated.versionId,
+				versionCounter: updated.versionCounter,
 			};
 		}
 

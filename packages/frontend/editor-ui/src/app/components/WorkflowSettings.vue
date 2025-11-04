@@ -362,6 +362,7 @@ const saveSettings = async () => {
 	try {
 		const workflowData = await workflowsStore.updateWorkflow(String(route.params.name), data);
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		workflowsStore.setWorkflowVersionCounter(workflowData.versionCounter);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;
