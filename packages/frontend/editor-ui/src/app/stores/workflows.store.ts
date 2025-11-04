@@ -96,6 +96,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
+	description: '',
 	active: false,
 	isArchived: false,
 	createdAt: -1,
@@ -883,6 +884,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setIsArchived(isArchived: boolean) {
 		workflow.value.isArchived = isArchived;
+	}
+
+	function setDescription(description: string | undefined) {
+		workflow.value.description = description;
 	}
 
 	async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
@@ -1859,6 +1864,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive,
 		fetchActiveWorkflows,
 		setIsArchived,
+		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
 		setWorkflowPinData,

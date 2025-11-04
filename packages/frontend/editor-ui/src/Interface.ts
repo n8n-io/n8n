@@ -235,6 +235,7 @@ export interface INewWorkflowData {
 export interface IWorkflowDb {
 	id: string;
 	name: string;
+	description?: string;
 	active: boolean;
 	isArchived: boolean;
 	createdAt: number | string;
