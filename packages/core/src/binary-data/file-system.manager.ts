@@ -74,12 +74,9 @@ export class FileSystemManager implements BinaryData.Manager {
 
 		// binary files stored in single dir - `filesystem`
 
-		const executionIds = locations
-			.filter(
-				(id): id is Extract<BinaryData.FileLocation, { type: 'execution' }> =>
-					id.type === 'execution',
-			)
-			.map((o) => o.executionId);
+		const executionIds = locations.flatMap((location) =>
+			location.type === 'execution' ? [location.executionId] : [],
+		);
 
 		const set = new Set(executionIds);
 		const fileNames = await fs.readdir(this.storagePath);
