@@ -30,6 +30,11 @@
       "import": "./dist/node.js",
       "require": "./dist/node.js",
       "types": "./dist/node.d.ts"
+    },
+    "./node-decorators": {
+      "import": "./dist/node-decorators.js",
+      "require": "./dist/node-decorators.js",
+      "types": "./dist/node-decorators.d.ts"
     }
   },
   "scripts": {
