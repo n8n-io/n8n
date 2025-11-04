@@ -76,6 +76,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 				nodes,
 				connections,
 				versionId: '',
+				versionCounter: 1,
 			},
 			finished: false,
 			mode: 'trigger',

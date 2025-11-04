@@ -9,6 +9,9 @@ export const workflowFactory = Factory.extend<IWorkflowDb>({
 	versionId(i: number) {
 		return i.toString();
 	},
+	versionCounter() {
+		return faker.number.int({ min: 1, max: 100 });
+	},
 	active() {
 		return faker.datatype.boolean();
 	},

@@ -120,6 +120,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			versionId: '',
+			versionCounter: 1,
 			scopes: [],
 			nodes: [],
 			connections: {},

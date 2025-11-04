@@ -164,6 +164,7 @@ describe('useWorkflowDiff', () => {
 				executionOrder: 'v1',
 			},
 			versionId: 'version-1',
+			versionCounter: 1,
 			isArchived: false,
 		});
 

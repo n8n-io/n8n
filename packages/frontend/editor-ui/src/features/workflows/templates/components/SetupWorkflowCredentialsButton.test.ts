@@ -29,6 +29,7 @@ const EMPTY_WORKFLOW = {
 	createdAt: -1,
 	updatedAt: -1,
 	versionId: '1',
+	versionCounter: 1,
 	name: 'Email Summary Agent ',
 	active: false,
 	isArchived: false,

@@ -66,6 +66,7 @@ describe('WorkflowSettingsVue', () => {
 				createdAt: 1,
 				updatedAt: 1,
 				versionId: '123',
+				versionCounter: 1,
 			},
 		]);
 		workflowsStore.getWorkflowById.mockImplementation(() => ({
@@ -78,6 +79,7 @@ describe('WorkflowSettingsVue', () => {
 			createdAt: 1,
 			updatedAt: 1,
 			versionId: '123',
+			versionCounter: 1,
 			scopes: ['workflow:update'],
 		}));
 	});
@@ -285,6 +287,7 @@ describe('WorkflowSettingsVue', () => {
 			createdAt: 1,
 			updatedAt: 1,
 			versionId: '123',
+			versionCounter: 1,
 			scopes: ['workflow:read'],
 		}));
 

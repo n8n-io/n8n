@@ -201,6 +201,7 @@ export function createTestWorkflow({
 		isArchived,
 		settings,
 		versionId: '1',
+		versionCounter: 1,
 		meta: {},
 		pinData,
 		...rest,

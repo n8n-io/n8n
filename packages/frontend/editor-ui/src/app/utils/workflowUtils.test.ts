@@ -42,6 +42,7 @@ describe('workflowUtils', () => {
 				// Workflow-level execution data that should be removed
 				pinData: { node1: [{ json: { data: 'execution-result' } }] },
 				versionId: '1.0',
+				versionCounter: 1,
 			};
 
 			const result = removeWorkflowExecutionData(mockWorkflow);
@@ -104,6 +105,7 @@ describe('workflowUtils', () => {
 				],
 				connections: {},
 				versionId: '2.0',
+				versionCounter: 1,
 			};
 
 			const result = removeWorkflowExecutionData(mockWorkflow);

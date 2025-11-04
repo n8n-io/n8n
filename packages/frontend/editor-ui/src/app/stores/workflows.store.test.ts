@@ -1950,6 +1950,7 @@ function generateMockExecutionEvents() {
 			active: false,
 			isArchived: false,
 			versionId: '1',
+			versionCounter: 1,
 		},
 		finished: false,
 		mode: 'cli',

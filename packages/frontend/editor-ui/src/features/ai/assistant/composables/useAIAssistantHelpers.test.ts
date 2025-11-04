@@ -460,6 +460,7 @@ const testWorkflow: IWorkflowDb = {
 	tags: [],
 	pinData: {},
 	versionId: '9f3263e3-d23d-4cc8-bff0-0fdecfbd82bf',
+	versionCounter: 1,
 	usedCredentials: [],
 	scopes: [
 		'workflow:create',

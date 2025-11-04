@@ -61,6 +61,7 @@ describe('EvaluationsRootView', () => {
 		tags: [],
 		pinData: {},
 		versionId: '',
+		versionCounter: 1,
 		usedCredentials: [],
 	};
 

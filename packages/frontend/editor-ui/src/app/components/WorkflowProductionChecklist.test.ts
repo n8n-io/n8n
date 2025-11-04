@@ -70,6 +70,7 @@ const mockWorkflow: IWorkflowDb = {
 	},
 	connections: {},
 	versionId: '1',
+	versionCounter: 1,
 	createdAt: Date.now(),
 	updatedAt: Date.now(),
 	isArchived: false,

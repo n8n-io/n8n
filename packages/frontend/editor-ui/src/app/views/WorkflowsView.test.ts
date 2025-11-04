@@ -458,6 +458,7 @@ describe('Folders', () => {
 		active: true,
 		isArchived: false,
 		versionId: '1',
+		versionCounter: 1,
 		homeProject: {
 			id: '1',
 			name: 'Project 1',

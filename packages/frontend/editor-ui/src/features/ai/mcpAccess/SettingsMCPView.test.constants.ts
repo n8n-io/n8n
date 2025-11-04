@@ -14,6 +14,7 @@ export const MCP_WORKFLOWS: WorkflowListItem[] = [
 			executionOrder: 'v1',
 		},
 		versionId: 'v1',
+		versionCounter: 1,
 		tags: [],
 		homeProject: {
 			id: 'project1',
@@ -41,6 +42,7 @@ export const MCP_WORKFLOWS: WorkflowListItem[] = [
 			executionOrder: 'v1',
 		},
 		versionId: 'v1',
+		versionCounter: 1,
 		tags: [],
 		homeProject: {
 			id: 'personal',
