@@ -1,25 +1,35 @@
 <script lang="ts" setup>
 import type { IAiDataContent } from '@/Interface';
 import capitalize from 'lodash/capitalize';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, NodeError } from 'n8n-workflow';
 import RunDataAi from '../RunDataParsedAiContent.vue';
 import { parseAiContent } from '@/app/utils/aiUtils';
-import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
 import NodeErrorView from '../error/NodeErrorView.vue';
+import { saveAs } from 'file-saver';
+import { MAX_DISPLAY_DATA_SIZE_LOGS_VIEW } from '@/app/constants';
+import { useI18n } from '@n8n/i18n';
+import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 const props = defineProps<{
 	runData: IAiDataContent;
 	error?: NodeError;
 }>();
 
+const i18n = useI18n();
+
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
 const isExpanded = ref(getInitialExpandedState());
 const renderType = ref<'rendered' | 'json'>('rendered');
+const dataSize = ref(0);
+const showData = ref(false);
+const dataSizeInMB = computed(() => (dataSize.value / (1024 * 1024)).toFixed(1));
 const parsedRun = computed(() => parseAiContent(props.runData.data ?? [], props.runData.type));
 const contentParsed = computed(() =>
 	parsedRun.value.some((item) => item.parsedContent?.parsed === true),
 );
+const isDataWithinDisplayLimit = computed(() => dataSize.value < MAX_DISPLAY_DATA_SIZE_LOGS_VIEW);
 
 function getInitialExpandedState() {
 	const collapsedTypes = {
@@ -45,6 +55,43 @@ function onBlockHeaderClick() {
 function onRenderTypeChange(value: 'rendered' | 'json') {
 	renderType.value = value;
 }
+
+function refreshDataSize() {
+	// Hide by default the data from being displayed
+	showData.value = false;
+	const byteSize = new Blob([JSON.stringify(props.runData.data)]).size;
+	dataSize.value = byteSize;
+
+	updateShowData();
+}
+function updateShowData() {
+	// Display data if it is reasonably small (< 128KB)
+	showData.value = isDataWithinDisplayLimit.value;
+}
+
+function onShowDataAnyway() {
+	showData.value = true;
+}
+
+function downloadJsonData() {
+	const fileName = props.runData.inOut === 'input' ? 'input_data' : 'output_data';
+	const blob = new Blob([JSON.stringify(props.runData.data, null, 2)], {
+		type: 'application/json',
+	});
+
+	saveAs(blob, `${fileName}.json`);
+}
+
+onMounted(() => {
+	refreshDataSize();
+});
+
+watch(
+	() => props.runData.data,
+	() => {
+		refreshDataSize();
+	},
+);
 </script>
 
 <template>
@@ -74,12 +121,39 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 		>
 			<NodeErrorView v-if="error" :error="error" :class="$style.error" show-details />
 			<RunDataAi
-				v-else
+				v-else-if="showData"
 				:data="runData.data"
 				:type="runData.type"
 				:content="parsedRun"
 				:render-type="renderType"
 			/>
+			<section v-else :class="$style.warning">
+				<NDVEmptyState
+					:title="i18n.baseText('ndv.output.tooMuchData.title')"
+					:class="$style.warningState"
+				>
+					<span
+						v-n8n-html="
+							i18n.baseText('ndv.output.logs.tooMuchData.message', {
+								interpolate: { size: dataSizeInMB, inOut: runData.inOut },
+							})
+						"
+					/>
+				</NDVEmptyState>
+				<div :class="$style.warningActions">
+					<N8nButton
+						outline
+						size="small"
+						:label="i18n.baseText('ndv.output.tooMuchData.showDataAnyway')"
+						@click.stop="onShowDataAnyway"
+					/>
+					<N8nButton
+						size="small"
+						:label="i18n.baseText('runData.downloadBinaryData')"
+						@click.stop="downloadJsonData"
+					/>
+				</div>
+			</section>
 		</main>
 	</div>
 </template>
@@ -143,5 +217,30 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 
 .error {
 	padding: var(--spacing--sm) 0;
+}
+
+.warning {
+	padding: var(--spacing--sm) var(--spacing--md);
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
+
+.warningState {
+	width: 100%;
+}
+
+.warningActions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	width: 100%;
+	align-items: center;
+}
+
+.warningActions :global(.n8n-button) {
+	min-width: 9rem;
 }
 </style>
