@@ -27,7 +27,7 @@ import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { usePostHog } from './app/stores/posthog.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
