@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import {
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
+	N8nKeyboardShortcut,
 	N8nPopoverReka,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useToast } from '@/app/composables/useToast';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 type Props = {
@@ -22,13 +26,18 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const i18n = useI18n();
+const toast = useToast();
 
 const settingsStore = useSettingsStore();
 const workflowStore = useWorkflowsStore();
+const uiStore = useUIStore();
 
 const descriptionValue = ref(props.workflowDescription);
 const popoverOpen = ref(false);
 const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
+const isSaving = ref(false);
+
+const lastSavedDescription = ref(props.workflowDescription);
 
 const isMcpEnabled = computed(() => settingsStore.isModuleActive('mcp'));
 
@@ -38,6 +47,8 @@ const hasWebhooks = computed(() => {
 	return workflow.nodes.some((node) => !node.disabled && node.type === WEBHOOK_NODE_TYPE);
 });
 
+// Descriptive tip that will be used as textarea placeholder and input label tooltip
+// Updated based on MCP and webhook presence
 const textareaTip = computed(() => {
 	const baseTooltip = i18n.baseText('workflow.description.tooltip');
 	if (!isMcpEnabled.value) {
@@ -50,13 +61,84 @@ const textareaTip = computed(() => {
 	return `${baseTooltip}. ${mcpTooltip}.\n${webhookNotice}`;
 });
 
+const saveDescription = async () => {
+	const normalizedCurrentValue = descriptionValue.value || '';
+	const normalizedLastSaved = lastSavedDescription.value || '';
+
+	if (normalizedCurrentValue === normalizedLastSaved) {
+		return;
+	}
+
+	isSaving.value = true;
+	uiStore.addActiveAction('workflowSaving');
+
+	try {
+		await workflowStore.saveWorkflowDescription(props.workflowId, descriptionValue.value || null);
+		lastSavedDescription.value = descriptionValue.value;
+		uiStore.stateIsDirty = false;
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('generic.error', {
+				interpolate: { message: (error as Error).message },
+			}),
+		);
+		descriptionValue.value = lastSavedDescription.value;
+	} finally {
+		isSaving.value = false;
+		uiStore.removeActiveAction('workflowSaving');
+	}
+};
+
 const handlePopoverOpenChange = async (open: boolean) => {
 	popoverOpen.value = open;
 	if (open) {
 		await nextTick();
 		descriptionInput.value?.focus();
+	} else {
+		await saveDescription();
 	}
 };
+
+const handleKeyDown = async (event: KeyboardEvent) => {
+	// Escape - cancel editing
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		descriptionValue.value = lastSavedDescription.value;
+		uiStore.stateIsDirty = false;
+		popoverOpen.value = false;
+	}
+
+	// Cmd/Ctrl + Enter - save and close
+	if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+		event.preventDefault();
+		event.stopPropagation();
+		await saveDescription();
+		popoverOpen.value = false;
+	}
+};
+
+// Sync with external prop changes
+watch(
+	() => props.workflowDescription,
+	(newValue) => {
+		descriptionValue.value = newValue;
+		lastSavedDescription.value = newValue;
+	},
+);
+
+// Set dirty flag when text changes
+watch(descriptionValue, (newValue) => {
+	const normalizedNewValue = newValue || '';
+	const normalizedLastSaved = lastSavedDescription.value || '';
+
+	if (normalizedNewValue !== normalizedLastSaved) {
+		uiStore.stateIsDirty = true;
+	} else {
+		uiStore.stateIsDirty = false;
+	}
+});
 </script>
 <template>
 	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('workflow.description.tooltip')">
@@ -87,9 +169,22 @@ const handlePopoverOpenChange = async (open: boolean) => {
 								:placeholder="textareaTip"
 								type="textarea"
 								:rows="6"
+								@keydown="handleKeyDown"
 							/>
 						</N8nInputLabel>
 					</div>
+					<footer :class="$style['popover-footer']">
+						<div :class="$style.shortcut">
+							<N8nKeyboardShortcut :keys="['Enter']" :meta-key="true" />
+							<N8nText color="text-light">{{
+								i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')
+							}}</N8nText>
+						</div>
+						<div :class="$style.shortcut">
+							<N8nKeyboardShortcut :keys="['Esc']" />
+							<N8nText color="text-light">{{ i18n.baseText('generic.cancel') }}</N8nText>
+						</div>
+					</footer>
 				</template>
 			</N8nPopoverReka>
 		</div>
@@ -112,5 +207,17 @@ const handlePopoverOpenChange = async (open: boolean) => {
 	flex-direction: column;
 	padding: var(--spacing--xs);
 	width: 400px;
+}
+
+.popover-footer {
+	display: flex;
+	justify-content: space-between;
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
+}
+
+.shortcut {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 </style>
