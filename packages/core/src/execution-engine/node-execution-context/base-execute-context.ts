@@ -138,8 +138,11 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 
 		const data = await this.binaryDataService.duplicateBinaryData(
-			this.workflow.id,
-			this.additionalData.executionId!,
+			{
+				type: 'execution',
+				workflowId: this.workflow.id,
+				executionId: this.additionalData.executionId!,
+			},
 			result.data,
 		);
 		return { ...result, data };

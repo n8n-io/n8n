@@ -18,13 +18,7 @@ import {
 	emptyChatModelsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import {
-	ExecutionRepository,
-	IExecutionResponse,
-	User,
-	WorkflowRepository,
-	generateNanoId,
-} from '@n8n/db';
+import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
@@ -386,11 +380,14 @@ export class ChatHubService {
 			payload;
 		const { provider } = model;
 
-		const workflowId = generateNanoId();
 		const selectedModel = this.getModelWithCredentials(model, credentials);
 
 		// Store attachments early to populate 'id' field via BinaryDataService
-		const processedAttachments = await this.chatHubAttachmentService.store(attachments, workflowId);
+		const processedAttachments = await this.chatHubAttachmentService.store(
+			sessionId,
+			messageId,
+			attachments,
+		);
 
 		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
 			async (trx) => {
@@ -420,7 +417,6 @@ export class ChatHubService {
 					message,
 					processedAttachments,
 					trx,
-					workflowId,
 				);
 			},
 		);
@@ -622,7 +618,6 @@ export class ChatHubService {
 		message: string,
 		attachments: IBinaryData[],
 		trx: EntityManager,
-		workflowId?: string,
 	) {
 		if (model.provider === 'n8n') {
 			return await this.prepareCustomAgentWorkflow(
@@ -656,7 +651,6 @@ export class ChatHubService {
 			undefined,
 			attachments,
 			trx,
-			workflowId,
 		);
 	}
 
@@ -670,7 +664,6 @@ export class ChatHubService {
 		systemMessage: string | undefined,
 		attachments: IBinaryData[],
 		trx: EntityManager,
-		workflowId?: string,
 	) {
 		const credential = await this.chatHubCredentialsService.ensureCredentials(
 			user,
@@ -690,7 +683,6 @@ export class ChatHubService {
 			model,
 			systemMessage,
 			trx,
-			workflowId,
 		);
 	}
 
@@ -702,7 +694,6 @@ export class ChatHubService {
 		message: string,
 		attachments: IBinaryData[],
 		trx: EntityManager,
-		workflowId?: string,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id);
 
@@ -747,7 +738,6 @@ export class ChatHubService {
 			systemMessage,
 			attachments,
 			trx,
-			workflowId,
 		);
 	}
 
@@ -990,14 +980,6 @@ export class ChatHubService {
 			if (!result) {
 				throw new OperationalError('There was a problem executing the chat workflow.');
 			}
-
-			// Since we stored attachment files before execution ID is generated, file IDs contains placeholder /temp/.
-			// The engine takes care of updating actual file path, but we need to update the message table as well.
-			await this.chatHubAttachmentService.updateAttachmentPaths(
-				sessionId,
-				previousMessageId,
-				executionId,
-			);
 		} catch (error: unknown) {
 			if (error instanceof ManualExecutionCancelledError) {
 				return;

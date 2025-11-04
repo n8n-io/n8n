@@ -66,8 +66,7 @@ export class BinaryDataService {
 	}
 
 	async copyBinaryFile(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		binaryData: IBinaryData,
 		filePath: string,
 	) {
@@ -86,12 +85,7 @@ export class BinaryDataService {
 			mimeType: binaryData.mimeType,
 		};
 
-		const { fileId, fileSize } = await manager.copyByFilePath(
-			workflowId,
-			executionId,
-			filePath,
-			metadata,
-		);
+		const { fileId, fileSize } = await manager.copyByFilePath(location, filePath, metadata);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
@@ -101,8 +95,7 @@ export class BinaryDataService {
 	}
 
 	async store(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		bufferOrStream: Buffer | Readable,
 		binaryData: IBinaryData,
 	) {
@@ -121,12 +114,7 @@ export class BinaryDataService {
 			mimeType: binaryData.mimeType,
 		};
 
-		const { fileId, fileSize } = await manager.store(
-			workflowId,
-			executionId,
-			bufferOrStream,
-			metadata,
-		);
+		const { fileId, fileSize } = await manager.store(location, bufferOrStream, metadata);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
@@ -163,12 +151,12 @@ export class BinaryDataService {
 		return await this.getManager(mode).getMetadata(fileId);
 	}
 
-	async deleteMany(ids: BinaryData.IdsForDeletion) {
+	async deleteMany(locations: BinaryData.FileLocation[]) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) return;
 
-		if (manager.deleteMany) await manager.deleteMany(ids);
+		if (manager.deleteMany) await manager.deleteMany(locations);
 	}
 
 	async deleteManyByBinaryDataId(ids: string[]) {
@@ -180,12 +168,11 @@ export class BinaryDataService {
 			return fileId ? [fileId] : [];
 		});
 
-		await manager.deleteManyByStringifiedFileIds?.(fileIds);
+		await manager.deleteManyByFileId?.(fileIds);
 	}
 
 	async duplicateBinaryData(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		inputData: Array<INodeExecutionData[] | null>,
 	) {
 		if (inputData && this.managers[this.mode]) {
@@ -195,11 +182,7 @@ export class BinaryDataService {
 						return await Promise.all(
 							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
-									return await this.duplicateBinaryDataInExecData(
-										workflowId,
-										executionId,
-										executionData,
-									);
+									return await this.duplicateBinaryDataInExecData(location, executionData);
 								}
 
 								return executionData;
@@ -234,8 +217,7 @@ export class BinaryDataService {
 	}
 
 	private async duplicateBinaryDataInExecData(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		executionData: INodeExecutionData,
 	) {
 		const manager = this.managers[this.mode];
@@ -254,7 +236,7 @@ export class BinaryDataService {
 
 				const [_mode, fileId] = binaryDataId.split(':');
 
-				return await manager?.copyByFileId(workflowId, executionId, fileId).then((newFileId) => ({
+				return await manager?.copyByFileId(location, fileId).then((newFileId) => ({
 					newId: this.createBinaryDataId(newFileId),
 					key,
 				}));

@@ -1,10 +1,9 @@
 import { Service } from '@n8n/di';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
-import { BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
+import { BinaryDataService } from 'n8n-core';
 import { Not } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
-import { replaceTempExecutionId } from '@/execution-lifecycle/restore-binary-data-id';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -23,7 +22,11 @@ export class ChatHubAttachmentService {
 	 * This populates the 'id' field for attachments. When external storage is used,
 	 * BinaryDataService replaces base64 data with the storage mode string (e.g., "filesystem-v2").
 	 */
-	async store(attachments: IBinaryData[], workflowId: string): Promise<IBinaryData[]> {
+	async store(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		attachments: IBinaryData[],
+	): Promise<IBinaryData[]> {
 		let totalSize = 0;
 		const attachmentsWithBuffer: Array<[IBinaryData, Buffer<ArrayBuffer>]> = [];
 
@@ -49,7 +52,11 @@ export class ChatHubAttachmentService {
 		return await Promise.all(
 			attachmentsWithBuffer.map(
 				async ([attachment, buffer]) =>
-					await this.binaryDataService.store(workflowId, TEMP_EXECUTION_ID, buffer, attachment),
+					await this.binaryDataService.store(
+						{ type: 'chat-hub-message-attachment', sessionId, messageId },
+						buffer,
+						attachment,
+					),
 			),
 		);
 	}
@@ -77,36 +84,6 @@ export class ChatHubAttachmentService {
 		const buffer = await this.binaryDataService.getAsBuffer(attachment);
 
 		return { buffer, attachment };
-	}
-
-	/**
-	 * Updates chat attachment paths by replacing /temp/ execution ID with the actual execution ID.
-	 * This is called after workflow execution completes and binary data files have been renamed.
-	 */
-	async updateAttachmentPaths(
-		sessionId: ChatSessionId,
-		messageId: ChatMessageId,
-		executionId: string,
-	): Promise<void> {
-		const message = await this.messageRepository.getOneById(messageId, sessionId, []);
-
-		if (!message || !message.attachments || message.attachments.length === 0) {
-			return;
-		}
-
-		const updatedAttachments = message.attachments.map((attachment) => {
-			if (!attachment.id) {
-				return attachment;
-			}
-
-			const result = replaceTempExecutionId(executionId, attachment.id);
-
-			return result ? { ...attachment, id: result.resolvedId } : attachment;
-		});
-
-		await this.messageRepository.updateChatMessage(messageId, {
-			attachments: updatedAttachments,
-		});
 	}
 
 	/**

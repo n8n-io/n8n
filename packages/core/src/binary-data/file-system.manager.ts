@@ -21,12 +21,11 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async store(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		bufferOrStream: Buffer | Readable,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const fileId = this.toFileId(workflowId, executionId);
+		const fileId = this.toFileId(location);
 		const filePath = this.resolvePath(fileId);
 
 		await assertDir(path.dirname(filePath));
@@ -70,12 +69,17 @@ export class FileSystemManager implements BinaryData.Manager {
 		return await jsonParse(await fs.readFile(filePath, { encoding: 'utf-8' }));
 	}
 
-	async deleteMany(ids: BinaryData.IdsForDeletion) {
-		if (ids.length === 0) return;
+	async deleteMany(locations: BinaryData.FileLocation[]) {
+		if (locations.length === 0) return;
 
 		// binary files stored in single dir - `filesystem`
 
-		const executionIds = ids.map((o) => o.executionId);
+		const executionIds = locations
+			.filter(
+				(id): id is Extract<BinaryData.FileLocation, { type: 'execution' }> =>
+					id.type === 'execution',
+			)
+			.map((o) => o.executionId);
 
 		const set = new Set(executionIds);
 		const fileNames = await fs.readdir(this.storagePath);
@@ -92,9 +96,19 @@ export class FileSystemManager implements BinaryData.Manager {
 
 		// binary files stored in nested dirs - `filesystem-v2`
 
-		const binaryDataDirs = ids.map(({ workflowId, executionId }) =>
-			this.resolvePath(`workflows/${workflowId}/executions/${executionId}`),
-		);
+		const binaryDataDirs: string[] = [];
+
+		for (const id of locations) {
+			if (id.type === 'execution') {
+				binaryDataDirs.push(
+					this.resolvePath(`workflows/${id.workflowId}/executions/${id.executionId}`),
+				);
+			} else if (id.type === 'chat-hub-message-attachment') {
+				binaryDataDirs.push(
+					this.resolvePath(`chat-hub/sessions/${id.sessionId}/messages/${id.messageId}`),
+				);
+			}
+		}
 
 		await Promise.all(
 			binaryDataDirs.map(async (dir) => {
@@ -104,12 +118,11 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async copyByFilePath(
-		workflowId: string,
-		executionId: string,
+		targetLocation: BinaryData.FileLocation,
 		sourcePath: string,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const targetFileId = this.toFileId(workflowId, executionId);
+		const targetFileId = this.toFileId(targetLocation);
 		const targetPath = this.resolvePath(targetFileId);
 
 		await assertDir(path.dirname(targetPath));
@@ -123,8 +136,8 @@ export class FileSystemManager implements BinaryData.Manager {
 		return { fileId: targetFileId, fileSize };
 	}
 
-	async copyByFileId(workflowId: string, executionId: string, sourceFileId: string) {
-		const targetFileId = this.toFileId(workflowId, executionId);
+	async copyByFileId(targetLocation: BinaryData.FileLocation, sourceFileId: string) {
+		const targetFileId = this.toFileId(targetLocation);
 		const sourcePath = this.resolvePath(sourceFileId);
 		const targetPath = this.resolvePath(targetFileId);
 		const sourceMetadata = await this.getMetadata(sourceFileId);
@@ -155,7 +168,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		await fs.rm(tempDir, { recursive: true });
 	}
 
-	async deleteManyByStringifiedFileIds(ids: string[]): Promise<void> {
+	async deleteManyByFileId(ids: string[]): Promise<void> {
 		const parsedIds = ids.flatMap((id) => {
 			const parsed = this.parseFileId(id);
 
@@ -175,21 +188,39 @@ export class FileSystemManager implements BinaryData.Manager {
 	 * The legacy ID format `{executionId}{uuid}` for `filesystem` mode is
 	 * no longer used on write, only when reading old stored execution data.
 	 */
-	private toFileId(workflowId: string, executionId: string) {
-		if (!executionId) executionId = 'temp'; // missing only in edge case, see PR #7244
-
-		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
+	private toFileId(location: BinaryData.FileLocation) {
+		switch (location.type) {
+			case 'execution': {
+				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
+				return `workflows/${location.workflowId}/executions/${executionId}/binary_data/${uuid()}`;
+			}
+			case 'chat-hub-message-attachment':
+				return `chat-hub/sessions/${location.sessionId}/messages/${location.messageId}/binary_data/${uuid()}`;
+		}
 	}
 
-	private parseFileId(fileId: string): { workflowId: string; executionId: string } | null {
-		const match = fileId.match(/^workflows\/([^/]+)\/executions\/([^/]+)\//);
-		if (!match) {
-			return null;
+	private parseFileId(fileId: string): BinaryData.FileLocation | null {
+		const executionMatch = fileId.match(/^workflows\/([^/]+)\/executions\/([^/]+)\//);
+
+		if (executionMatch) {
+			return {
+				type: 'execution',
+				workflowId: executionMatch[1],
+				executionId: executionMatch[2],
+			};
 		}
-		return {
-			workflowId: match[1],
-			executionId: match[2],
-		};
+
+		const chatHubMatch = fileId.match(/^chat-hub\/sessions\/([^/]+)\/messages\/([^/]+)\//);
+
+		if (chatHubMatch) {
+			return {
+				type: 'chat-hub-message-attachment',
+				sessionId: chatHubMatch[1],
+				messageId: chatHubMatch[2],
+			};
+		}
+
+		return null;
 	}
 
 	private resolvePath(...args: string[]) {

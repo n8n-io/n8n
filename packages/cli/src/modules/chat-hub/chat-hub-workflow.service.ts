@@ -55,7 +55,6 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel,
 		systemMessage?: string,
 		trx?: EntityManager,
-		workflowId?: string,
 	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
 			this.logger.debug(
@@ -75,9 +74,6 @@ export class ChatHubWorkflowService {
 
 			const newWorkflow = new WorkflowEntity();
 
-			if (workflowId) {
-				newWorkflow.id = workflowId; // Use provided workflowId so binary data cleanup works correctly
-			}
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
