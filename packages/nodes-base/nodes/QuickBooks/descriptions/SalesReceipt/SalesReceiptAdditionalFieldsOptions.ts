@@ -106,10 +106,13 @@ export const salesReceiptAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Deposit To Account Name or ID',
 		name: 'DepositToAccountRef',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAccounts',
+		},
 		default: '',
 		description:
-			'Account ID where the funds should be deposited. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Account where the funds should be deposited. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Document Number',
@@ -141,7 +144,10 @@ export const salesReceiptAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Payment Method Name or ID',
 		name: 'PaymentMethodRef',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getPaymentMethods',
+		},
 		default: '',
 		description:
 			'Method of payment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
