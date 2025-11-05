@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import SetupWorkflowCredentialsButton from './SetupWorkflowCredentialsButton.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');

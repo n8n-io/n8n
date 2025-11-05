@@ -26,7 +26,6 @@ import {
 } from '../service-provider.ee';
 import type { SamlLoginBinding } from '../types';
 import { getInitSSOFormView } from '../views/init-sso-post';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -35,7 +34,6 @@ export class SamlController {
 		private readonly samlService: SamlService,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
-		private readonly provisioningService: ProvisioningService,
 	) {}
 
 	@Get('/metadata', { skipAuth: true })
@@ -131,21 +129,13 @@ export class SamlController {
 				if (isSamlLicensedAndEnabled()) {
 					this.authService.issueCookie(res, loginResult.authenticatedUser, true, req.browserId);
 
-					const isRoleProvisioningEnabled =
-						await this.provisioningService.isInstanceRoleProvisioningEnabled();
-
-					if (isRoleProvisioningEnabled && loginResult.attributes.n8nInstanceRole) {
-						await this.provisioningService.provisionInstanceRoleForUser(
-							loginResult.authenticatedUser,
-							loginResult.attributes.n8nInstanceRole,
-						);
-					}
-
 					if (loginResult.onboardingRequired) {
 						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');
 					} else {
-						const redirectUrl = payload.RelayState ?? '/';
-						return res.redirect(this.urlService.getInstanceBaseUrl() + redirectUrl);
+						const safeRedirectUrl = payload.RelayState
+							? this.validateRedirectUrl(payload.RelayState)
+							: '/';
+						return res.redirect(this.urlService.getInstanceBaseUrl() + safeRedirectUrl);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);
@@ -179,7 +169,7 @@ export class SamlController {
 	 */
 	@Get('/initsso', { middlewares: [samlLicensedAndEnabledMiddleware], skipAuth: true })
 	async initSsoGet(req: AuthlessRequest<{}, {}, {}, { redirect?: string }>, res: Response) {
-		let redirectUrl = '';
+		let redirectUrl = req.query.redirect ?? '';
 		try {
 			const refererUrl = req.headers.referer;
 			if (refererUrl) {
@@ -194,7 +184,8 @@ export class SamlController {
 		} catch {
 			// ignore
 		}
-		return await this.handleInitSSO(res, redirectUrl || (req.query.redirect ?? ''));
+
+		return await this.handleInitSSO(res, this.validateRedirectUrl(redirectUrl));
 	}
 
 	/**
@@ -216,5 +207,27 @@ export class SamlController {
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
+	}
+
+	/**
+	 * Validates that a redirect URL is safe (relative path only, no external redirects)
+	 */
+	private validateRedirectUrl(redirectUrl: string): string {
+		if (typeof redirectUrl !== 'string' || redirectUrl.trim() === '') {
+			return '/';
+		}
+
+		const trimmed = redirectUrl.trim();
+
+		// Only allow paths starting with /
+		if (!trimmed.startsWith('/')) {
+			return '/';
+		}
+		// Reject protocol-relative URLs (//example.com)
+		if (trimmed.startsWith('//')) {
+			return '/';
+		}
+
+		return trimmed;
 	}
 }

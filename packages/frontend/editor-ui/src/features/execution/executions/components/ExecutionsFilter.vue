@@ -1,15 +1,15 @@
 <script lang="ts" setup>
-import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import { useDebounce } from '@/composables/useDebounce';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { EnterpriseEditionFeature } from '@/constants';
+import AnnotationTagsDropdown from '@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue';
+import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
 import { i18n as locale } from '@n8n/i18n';
-import { useSettingsStore } from '@/stores/settings.store';
-import { isEmpty } from '@/utils/typesUtils';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { isEmpty } from '@/app/utils/typesUtils';
 import type { Placement } from '@floating-ui/core';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
