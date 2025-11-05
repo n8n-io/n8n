@@ -1,7 +1,10 @@
+import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
+
+import type { CacheService } from '@/services/cache/cache.service';
 
 import { N8N_VERSION } from '../../../constants';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
@@ -10,8 +13,6 @@ import { createNode, createWorkflow } from './test-helpers';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
 import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule';
 import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule';
-
-import type { CacheService } from '@/services/cache/cache.service';
 
 describe('BreakingChangeService', () => {
 	const logger = mockLogger();
@@ -61,16 +62,13 @@ describe('BreakingChangeService', () => {
 
 			const report = await service.detect('v2');
 
-			expect(report).toMatchObject({
+			expect(report.report).toMatchObject({
 				targetVersion: 'v2',
 				currentVersion: N8N_VERSION,
-				summary: {
-					totalIssues: 0,
-					criticalIssues: 0,
-				},
-				results: [],
+				instanceResults: [],
+				workflowResults: [],
 			});
-			expect(report.generatedAt).toBeInstanceOf(Date);
+			expect(report.report.generatedAt).toBeInstanceOf(Date);
 		});
 
 		it('should aggregate results from multiple rules', async () => {
@@ -89,41 +87,25 @@ describe('BreakingChangeService', () => {
 			const report = await service.detect('v2');
 
 			// Verify report structure
-			expect(report.targetVersion).toBe('v2');
-			expect(report.currentVersion).toBe(N8N_VERSION);
-			expect(report.generatedAt).toBeInstanceOf(Date);
-
-			// Verify all three rules detected issues
-			expect(report.summary.totalIssues).toBe(3);
-			expect(report.summary.criticalIssues).toBe(1); // Only RemovedNodesRule is critical
+			expect(report.report.targetVersion).toBe('v2');
+			expect(report.report.currentVersion).toBe(N8N_VERSION);
+			expect(report.report.generatedAt).toBeInstanceOf(Date);
 
 			// Verify each rule's result is in the report
-			const removedNodesResult = report.results.find((r) => r.ruleId === 'removed-nodes-v2');
+			const removedNodesResult = report.report.workflowResults.find(
+				(r) => r.ruleId === 'removed-nodes-v2',
+			);
 			expect(removedNodesResult?.affectedWorkflows).toHaveLength(1);
 
-			const processEnvResult = report.results.find((r) => r.ruleId === 'process-env-access-v2');
+			const processEnvResult = report.report.workflowResults.find(
+				(r) => r.ruleId === 'process-env-access-v2',
+			);
 			expect(processEnvResult?.affectedWorkflows).toHaveLength(1);
 
-			const fileAccessResult = report.results.find(
+			const fileAccessResult = report.report.workflowResults.find(
 				(r) => r.ruleId === 'file-access-restriction-v2',
 			);
 			expect(fileAccessResult?.affectedWorkflows).toHaveLength(1);
-		});
-
-		it('should correctly count critical issues', async () => {
-			const { workflow: workflow1 } = createWorkflow('wf-1', 'Workflow 1', [
-				createNode('Spontit Node', 'n8n-nodes-base.spontit'), // Critical severity
-			]);
-			const { workflow: workflow2 } = createWorkflow('wf-2', 'Workflow 2', [
-				createNode('File Node', 'n8n-nodes-base.readWriteFile'), // High severity (not critical)
-			]);
-			workflowRepository.find.mockResolvedValue([workflow1, workflow2]);
-			workflowRepository.count.mockResolvedValue(2);
-
-			const report = await service.detect('v2');
-
-			expect(report.summary.totalIssues).toBe(2);
-			expect(report.summary.criticalIssues).toBe(1); // Only removed nodes is critical
 		});
 
 		it('should include all required fields in the report', async () => {
@@ -132,14 +114,11 @@ describe('BreakingChangeService', () => {
 
 			const report = await service.detect('v2');
 
-			expect(report).toHaveProperty('generatedAt');
-			expect(report).toHaveProperty('targetVersion', 'v2');
-			expect(report).toHaveProperty('currentVersion', N8N_VERSION);
-			expect(report).toHaveProperty('summary');
-			expect(report.summary).toHaveProperty('totalIssues');
-			expect(report.summary).toHaveProperty('criticalIssues');
-			expect(report).toHaveProperty('results');
-			expect(Array.isArray(report.results)).toBe(true);
+			expect(report.report).toHaveProperty('generatedAt');
+			expect(report.report).toHaveProperty('targetVersion', 'v2');
+			expect(report.report).toHaveProperty('currentVersion', N8N_VERSION);
+			expect(report.report).toHaveProperty('workflowResults');
+			expect(Array.isArray(report.report.workflowResults)).toBe(true);
 		});
 	});
 
@@ -180,6 +159,29 @@ describe('BreakingChangeService', () => {
 			// Second detection after the first completes should trigger a new detect call
 			await service.getDetectionResults('v2');
 			expect(detectSpy).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('getDetectionReportForRule()', () => {
+		it('should return undefined for unknown rule ID', async () => {
+			const result = await service.getDetectionReportForRule('unknown-rule-id');
+			expect(result).toBeUndefined();
+		});
+
+		it('should return correct report for a known workflow-level rule', async () => {
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
+			]);
+
+			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.count.mockResolvedValue(1);
+
+			const result = (await service.getDetectionReportForRule(
+				'removed-nodes-v2',
+			)) as BreakingChangeWorkflowRuleResult;
+			expect(result).toBeDefined();
+			expect(result?.ruleId).toBe('removed-nodes-v2');
+			expect(result?.affectedWorkflows).toHaveLength(1);
 		});
 	});
 });

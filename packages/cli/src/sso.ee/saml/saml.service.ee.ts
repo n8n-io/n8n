@@ -1,4 +1,4 @@
-import type { ProvisioningConfigDto, SamlPreferences } from '@n8n/api-types';
+import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
@@ -32,7 +32,7 @@ import { isSsoJustInTimeProvisioningEnabled, reloadAuthenticationMethod } from '
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UrlService } from '@/services/url.service';
 
 @Service()
@@ -48,8 +48,6 @@ export class SamlService {
 			firstName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
 			lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
 			userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
-			// this value is loaded on init from the provisioning config
-			n8nInstanceRole: '',
 		},
 		metadata: '',
 		metadataUrl: '',
@@ -86,6 +84,7 @@ export class SamlService {
 		private readonly userRepository: UserRepository,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly provisioningService: ProvisioningService,
 	) {}
 
 	async init(): Promise<void> {
@@ -220,6 +219,7 @@ export class SamlService {
 						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
 					)
 				) {
+					await this.applySsoProvisioning(user, attributes);
 					return {
 						authenticatedUser: user,
 						attributes,
@@ -229,6 +229,7 @@ export class SamlService {
 					// Login path for existing users that are NOT fully set up for SAML
 					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
 					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
+					await this.applySsoProvisioning(updatedUser, attributes);
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
@@ -239,6 +240,7 @@ export class SamlService {
 				// New users to be created JIT based on SAML attributes
 				if (isSsoJustInTimeProvisioningEnabled()) {
 					const newUser = await createUserFromSamlAttributes(attributes);
+					await this.applySsoProvisioning(newUser, attributes);
 					return {
 						authenticatedUser: newUser,
 						attributes,
@@ -253,6 +255,18 @@ export class SamlService {
 			attributes,
 			onboardingRequired: false,
 		};
+	}
+
+	private async applySsoProvisioning(user: User, attributes: SamlPreferencesAttributeMapping) {
+		if (attributes?.n8nInstanceRole) {
+			await this.provisioningService.provisionInstanceRoleForUser(user, attributes.n8nInstanceRole);
+		}
+		if (attributes?.n8nProjectRoles) {
+			await this.provisioningService.provisionProjectRolesForUser(
+				user.id,
+				attributes.n8nProjectRoles,
+			);
+		}
 	}
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
@@ -388,18 +402,8 @@ export class SamlService {
 		const samlPreferences = await this.settingsRepository.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
-		const provisioningConfigObject = await this.settingsRepository.findOne({
-			where: { key: PROVISIONING_PREFERENCES_DB_KEY },
-		});
 		if (samlPreferences) {
 			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
-			const provisioningConfig = jsonParse<ProvisioningConfigDto>(
-				provisioningConfigObject?.value ?? '{}',
-			);
-
-			if (prefs && prefs.mapping) {
-				prefs.mapping.n8nInstanceRole = provisioningConfig.scopesInstanceRoleClaimName;
-			}
 
 			if (prefs) {
 				if (apply) {
@@ -500,6 +504,10 @@ export class SamlService {
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,
 			this._samlPreferences.mapping,
+			{
+				instanceRole: await this.provisioningService.getInstanceRoleClaimName(),
+				projectRoles: await this.provisioningService.getProjectsRolesClaimName(),
+			},
 		);
 		if (!attributes) {
 			throw new AuthError('SAML Authentication failed. Invalid SAML response.');

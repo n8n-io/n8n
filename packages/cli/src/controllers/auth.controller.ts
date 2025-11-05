@@ -150,7 +150,9 @@ export class AuthController {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId], {
+			includeRole: true,
+		});
 
 		if (users.length !== 2) {
 			this.logger.debug(
