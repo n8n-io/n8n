@@ -98,8 +98,10 @@ const workflowSaving = useWorkflowSaving({ router });
 const isTagsEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
 const tagsSaving = ref(false);
-const workflowHeaderActionsRef =
-	useTemplateRef<InstanceType<typeof WorkflowHeaderActions>>('workflowHeaderActions');
+const workflowHeaderActionsRef = useTemplateRef<
+	| InstanceType<typeof WorkflowHeaderActions>
+	| InstanceType<typeof WorkflowHeaderDraftPublishActions>
+>('workflowHeaderActions');
 const tagsEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -573,7 +575,18 @@ onBeforeUnmount(() => {
 
 		<PushConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
-			<WorkflowHeaderDraftPublishActions v-if="isDraftPublishEnabled" />
+			<WorkflowHeaderDraftPublishActions
+				v-if="isDraftPublishEnabled"
+				:id="id"
+				ref="workflowHeaderActions"
+				:tags="tags"
+				:name="name"
+				:meta="meta"
+				:read-only="readOnly"
+				:is-archived="isArchived"
+				:is-new-workflow="isNewWorkflow"
+				:workflow-permissions="workflowPermissions"
+			/>
 			<WorkflowHeaderActions
 				v-else
 				:id="id"
