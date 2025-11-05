@@ -1,29 +1,28 @@
-import { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
-import {
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type {
 	AuthorizationParams,
 	OAuthServerProvider,
 } from '@modelcontextprotocol/sdk/server/auth/provider';
-import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
-import {
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
+import type {
 	OAuthClientInformationFull,
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth';
-import { Logger } from '@n8n/backend-common';
-import { OAuthClient } from '@n8n/db';
+import type { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { Response } from 'express';
+import type { Response } from 'express';
 
-import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
-import { AccessTokenRepository } from './oauth-access-token.repository';
-import { AuthorizationCodeRepository } from './oauth-authorization-code.repository';
-import { OAuthClientRepository } from './oauth-client.repository';
-import { RefreshTokenRepository } from './oauth-refresh-token.repository';
-import { OAuthSessionService } from './oauth-session.service';
-import { UserConsentRepository } from './oauth-user-consent.repository';
+import type { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
+import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
+import type { OAuthClientRepository } from './database/repositories/oauth-client.repository';
+import type { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import type { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
+import type { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
+import type { McpOAuthTokenService } from './mcp-oauth-token.service';
+import type { OAuthSessionService } from './oauth-session.service';
 
-export const SUPPORTED_SCOPES = ['tool:listWorkflow', 'tool:getWorkflowDetails'];
+export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 
 /**
  * OAuth 2.1 server implementation for MCP
@@ -46,7 +45,7 @@ export class McpOAuthService implements OAuthServerProvider {
 	get clientsStore(): OAuthRegisteredClientsStore {
 		return {
 			getClient: async (clientId: string): Promise<OAuthClientInformationFull | undefined> => {
-				const client = await this.oauthClientRepository.findOne({ where: { id: clientId } });
+				const client = await this.oauthClientRepository.findOneBy({ id: clientId });
 				if (!client) {
 					return undefined;
 				}
@@ -69,7 +68,7 @@ export class McpOAuthService implements OAuthServerProvider {
 				client: OAuthClientInformationFull,
 			): Promise<OAuthClientInformationFull> => {
 				try {
-					await this.oauthClientRepository.save({
+					await this.oauthClientRepository.insert({
 						id: client.client_id,
 						name: client.client_name,
 						redirectUris: client.redirect_uris,

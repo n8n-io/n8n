@@ -1,15 +1,17 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
-import type { User, AccessToken, RefreshToken } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
 
-import { AccessTokenRepository } from '../oauth-access-token.repository';
+import type { AccessToken } from '../database/entities/oauth-access-token.entity';
+import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
+import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
-import { RefreshTokenRepository } from '../oauth-refresh-token.repository';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
@@ -33,7 +35,10 @@ describe('McpOAuthTokenService', () => {
 		) as jest.Mocked<RefreshTokenRepository>;
 
 		mockTransactionManager = {
-			save: jest.fn().mockResolvedValue(mock()),
+			insert: jest.fn().mockResolvedValue(mock()),
+			remove: jest.fn().mockResolvedValue(mock()),
+			findOne: jest.fn(),
+			delete: jest.fn(),
 		};
 
 		const mockManager: any = {
@@ -42,6 +47,7 @@ describe('McpOAuthTokenService', () => {
 
 		(accessTokenRepository as any).manager = mockManager;
 		(accessTokenRepository as any).target = 'AccessToken';
+		(refreshTokenRepository as any).manager = mockManager;
 		(refreshTokenRepository as any).target = 'RefreshToken';
 
 		service = new McpOAuthTokenService(
@@ -102,15 +108,15 @@ describe('McpOAuthTokenService', () => {
 
 			const mockManager = accessTokenRepository.manager as any;
 			expect(mockManager.transaction).toHaveBeenCalled();
-			expect(mockTransactionManager.save).toHaveBeenCalledTimes(2);
+			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
 
-			expect(mockTransactionManager.save).toHaveBeenCalledWith('AccessToken', {
+			expect(mockTransactionManager.insert).toHaveBeenCalledWith('AccessToken', {
 				token: accessToken,
 				clientId,
 				userId,
 			});
 
-			expect(mockTransactionManager.save).toHaveBeenCalledWith('RefreshToken', {
+			expect(mockTransactionManager.insert).toHaveBeenCalledWith('RefreshToken', {
 				token: refreshToken,
 				clientId,
 				userId,
@@ -120,7 +126,7 @@ describe('McpOAuthTokenService', () => {
 	});
 
 	describe('validateAndRotateRefreshToken', () => {
-		it('should rotate refresh token and return new token pair', async () => {
+		it('should rotate refresh token and return new token pair in a transaction', async () => {
 			const refreshToken = 'old-refresh-token';
 			const clientId = 'client-123';
 			const refreshTokenRecord = mock<RefreshToken>({
@@ -130,8 +136,8 @@ describe('McpOAuthTokenService', () => {
 				expiresAt: Date.now() + 1000000, // Valid
 			});
 
-			refreshTokenRepository.findOne.mockResolvedValue(refreshTokenRecord);
-			refreshTokenRepository.remove.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
 
 			const result = await service.validateAndRotateRefreshToken(refreshToken, clientId);
 
@@ -142,21 +148,25 @@ describe('McpOAuthTokenService', () => {
 				refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
 			});
 
-			expect(refreshTokenRepository.remove).toHaveBeenCalledWith(refreshTokenRecord);
-
-			const mockManager = accessTokenRepository.manager as any;
+			// Verify transaction was used
+			const mockManager = refreshTokenRepository.manager as any;
 			expect(mockManager.transaction).toHaveBeenCalled();
+
+			// Verify all operations happened inside the transaction
+			expect(mockTransactionManager.findOne).toHaveBeenCalled();
+			expect(mockTransactionManager.delete).toHaveBeenCalled();
+			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
 		});
 
 		it('should throw error when refresh token not found', async () => {
-			refreshTokenRepository.findOne.mockResolvedValue(null);
+			mockTransactionManager.findOne.mockResolvedValue(null);
 
 			await expect(
 				service.validateAndRotateRefreshToken('invalid-token', 'client-123'),
 			).rejects.toThrow('Invalid refresh token');
 		});
 
-		it('should throw error and remove when refresh token expired', async () => {
+		it('should throw error when refresh token expired (atomic delete fails)', async () => {
 			const refreshTokenRecord = mock<RefreshToken>({
 				token: 'expired-token',
 				clientId: 'client-123',
@@ -164,14 +174,12 @@ describe('McpOAuthTokenService', () => {
 				expiresAt: Date.now() - 1000, // Expired
 			});
 
-			refreshTokenRepository.findOne.mockResolvedValue(refreshTokenRecord);
-			refreshTokenRepository.remove.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 0 }); // Atomic delete fails due to expiry
 
 			await expect(
 				service.validateAndRotateRefreshToken('expired-token', 'client-123'),
-			).rejects.toThrow('Refresh token expired');
-
-			expect(refreshTokenRepository.remove).toHaveBeenCalledWith(refreshTokenRecord);
+			).rejects.toThrow('Invalid refresh token');
 		});
 	});
 
@@ -217,7 +225,7 @@ describe('McpOAuthTokenService', () => {
 			});
 
 			await expect(service.verifyAccessToken(wrongAudienceToken)).rejects.toThrow(
-				'Invalid token audience',
+				'Invalid access token: JWT verification failed',
 			);
 		});
 
@@ -234,7 +242,7 @@ describe('McpOAuthTokenService', () => {
 		});
 	});
 
-	describe('verifyOAuthToken', () => {
+	describe('verifyOAuthAccessToken', () => {
 		it('should verify token and return user', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
@@ -251,7 +259,7 @@ describe('McpOAuthTokenService', () => {
 			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
 			userRepository.findOne.mockResolvedValue(user);
 
-			const result = await service.verifyOAuthToken(accessToken);
+			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toEqual(user);
 			expect(userRepository.findOne).toHaveBeenCalledWith({
@@ -263,7 +271,7 @@ describe('McpOAuthTokenService', () => {
 		it('should return null for invalid token', async () => {
 			const invalidToken = 'invalid.jwt.token';
 
-			const result = await service.verifyOAuthToken(invalidToken);
+			const result = await service.verifyOAuthAccessToken(invalidToken);
 
 			expect(result).toBeNull();
 		});
@@ -282,7 +290,7 @@ describe('McpOAuthTokenService', () => {
 			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
 			userRepository.findOne.mockResolvedValue(null);
 
-			const result = await service.verifyOAuthToken(accessToken);
+			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toBeNull();
 		});
@@ -292,32 +300,22 @@ describe('McpOAuthTokenService', () => {
 		it('should delete access token', async () => {
 			const token = 'access-token-123';
 			const clientId = 'client-456';
-			const accessTokenRecord = mock<AccessToken>({
-				token,
-				clientId,
-				userId: 'user-123',
-			});
 
-			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
-			accessTokenRepository.remove.mockResolvedValue(accessTokenRecord);
+			accessTokenRepository.delete.mockResolvedValue({ affected: 1 } as any);
 
 			const result = await service.revokeAccessToken(token, clientId);
 
 			expect(result).toBe(true);
-			expect(accessTokenRepository.remove).toHaveBeenCalledWith(accessTokenRecord);
-			expect(logger.info).toHaveBeenCalledWith('Access token revoked', {
-				clientId,
-				userId: 'user-123',
-			});
+			expect(accessTokenRepository.delete).toHaveBeenCalledWith({ token, clientId });
+			expect(logger.info).toHaveBeenCalledWith('Access token revoked', { clientId });
 		});
 
 		it('should return false when token not found', async () => {
-			accessTokenRepository.findOne.mockResolvedValue(null);
+			accessTokenRepository.delete.mockResolvedValue({ affected: 0 } as any);
 
 			const result = await service.revokeAccessToken('nonexistent-token', 'client-456');
 
 			expect(result).toBe(false);
-			expect(accessTokenRepository.remove).not.toHaveBeenCalled();
 		});
 	});
 
@@ -325,32 +323,22 @@ describe('McpOAuthTokenService', () => {
 		it('should delete refresh token', async () => {
 			const token = 'refresh-token-123';
 			const clientId = 'client-456';
-			const refreshTokenRecord = mock<RefreshToken>({
-				token,
-				clientId,
-				userId: 'user-123',
-			});
 
-			refreshTokenRepository.findOne.mockResolvedValue(refreshTokenRecord);
-			refreshTokenRepository.remove.mockResolvedValue(refreshTokenRecord);
+			refreshTokenRepository.delete.mockResolvedValue({ affected: 1 } as any);
 
 			const result = await service.revokeRefreshToken(token, clientId);
 
 			expect(result).toBe(true);
-			expect(refreshTokenRepository.remove).toHaveBeenCalledWith(refreshTokenRecord);
-			expect(logger.info).toHaveBeenCalledWith('Refresh token revoked', {
-				clientId,
-				userId: 'user-123',
-			});
+			expect(refreshTokenRepository.delete).toHaveBeenCalledWith({ token, clientId });
+			expect(logger.info).toHaveBeenCalledWith('Refresh token revoked', { clientId });
 		});
 
 		it('should return false when token not found', async () => {
-			refreshTokenRepository.findOne.mockResolvedValue(null);
+			refreshTokenRepository.delete.mockResolvedValue({ affected: 0 } as any);
 
 			const result = await service.revokeRefreshToken('nonexistent-token', 'client-456');
 
 			expect(result).toBe(false);
-			expect(refreshTokenRepository.remove).not.toHaveBeenCalled();
 		});
 	});
 });

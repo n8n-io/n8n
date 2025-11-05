@@ -32,6 +32,18 @@ export class McpModule implements ModuleInterface {
 		return { mcpAccessEnabled };
 	}
 
+	async entities() {
+		const { OAuthClient } = await import('./database/entities/oauth-client.entity');
+		const { AuthorizationCode } = await import(
+			'./database/entities/oauth-authorization-code.entity'
+		);
+		const { AccessToken } = await import('./database/entities/oauth-access-token.entity');
+		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity');
+		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity');
+
+		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
+	}
+
 	@OnShutdown()
 	async shutdown() {}
 }

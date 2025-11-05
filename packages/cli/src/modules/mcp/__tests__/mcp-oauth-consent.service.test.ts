@@ -1,13 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
-import type { OAuthClient } from '@n8n/db';
+import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { mock } from 'jest-mock-extended';
 
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthConsentService } from '../mcp-oauth-consent.service';
-import { OAuthClientRepository } from '../oauth-client.repository';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
-import { UserConsentRepository } from '../oauth-user-consent.repository';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
@@ -151,7 +151,7 @@ describe('McpOAuthConsentService', () => {
 				clientId: 'client-123',
 				userId: 'user-123',
 			});
-			expect(userConsentRepository.save).not.toHaveBeenCalled();
+			expect(userConsentRepository.insert).not.toHaveBeenCalled();
 		});
 
 		it('should handle user approval and generate authorization code', async () => {
@@ -166,14 +166,14 @@ describe('McpOAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.save.mockResolvedValue(mock());
+			userConsentRepository.insert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(sessionToken, userId, true);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
-			expect(userConsentRepository.save).toHaveBeenCalledWith({
+			expect(userConsentRepository.insert).toHaveBeenCalledWith({
 				userId: 'user-123',
 				clientId: 'client-123',
 				grantedAt: expect.any(Number),
@@ -203,7 +203,7 @@ describe('McpOAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.save.mockResolvedValue(mock());
+			userConsentRepository.insert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(sessionToken, userId, true);

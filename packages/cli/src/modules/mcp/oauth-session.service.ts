@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { Response } from 'express';
 
@@ -11,7 +12,7 @@ export interface OAuthSessionPayload {
 }
 
 const COOKIE_NAME = 'n8n-oauth-session';
-const SESSION_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+const SESSION_EXPIRY_MS = 10 * Time.minutes.toMilliseconds; // 10 minutes
 
 /**
  * Manages OAuth authorization session state using JWT-based cookies

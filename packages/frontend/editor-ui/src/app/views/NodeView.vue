@@ -2037,7 +2037,7 @@ onBeforeUnmount(() => {
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="startChat()"
 		>
-			<Suspense>
+			<Suspense v-if="!isCanvasReadOnly">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
 			<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">

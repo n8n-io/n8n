@@ -12,11 +12,6 @@ import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
 import { InvalidAuthToken } from './invalid-auth-token';
-import { AccessToken } from './oauth-access-token';
-import { AuthorizationCode } from './oauth-authorization-code';
-import { OAuthClient } from './oauth-client';
-import { RefreshToken } from './oauth-refresh-token';
-import { UserConsent } from './oauth-user-consent';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
@@ -71,11 +66,6 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
-	OAuthClient,
-	AuthorizationCode,
-	AccessToken,
-	RefreshToken,
-	UserConsent,
 };
 
 export const entities = {
@@ -112,9 +102,4 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
-	OAuthClient,
-	AuthorizationCode,
-	AccessToken,
-	RefreshToken,
-	UserConsent,
 };

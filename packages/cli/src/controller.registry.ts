@@ -102,7 +102,6 @@ export class ControllerRegistry {
 					}
 				: send(handler);
 
-			console.log(route.method.toUpperCase(), prefix + route.path);
 			router[route.method](route.path, ...middlewares, finalHandler);
 		}
 	}

@@ -1,8 +1,9 @@
-import type { AuthorizationCode } from '@n8n/db';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
-import { AuthorizationCodeRepository } from './oauth-authorization-code.repository';
+import type { AuthorizationCode } from './database/entities/oauth-authorization-code.entity';
+import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
 
 /**
  * Handles OAuth 2.1 authorization code lifecycle for MCP server
@@ -10,7 +11,7 @@ import { AuthorizationCodeRepository } from './oauth-authorization-code.reposito
  */
 @Service()
 export class McpOAuthAuthorizationCodeService {
-	private readonly AUTHORIZATION_CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+	private readonly AUTHORIZATION_CODE_EXPIRY_MS = 10 * Time.minutes.toMilliseconds;
 
 	constructor(private readonly authorizationCodeRepository: AuthorizationCodeRepository) {}
 
@@ -27,7 +28,7 @@ export class McpOAuthAuthorizationCodeService {
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
-		await this.authorizationCodeRepository.save({
+		await this.authorizationCodeRepository.insert({
 			code,
 			clientId,
 			userId,
@@ -80,18 +81,21 @@ export class McpOAuthAuthorizationCodeService {
 	): Promise<AuthorizationCode> {
 		const authRecord = await this.findAndValidateAuthorizationCode(authorizationCode, clientId);
 
-		if (authRecord.used) {
-			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Authorization code already used');
-		}
-
 		if (redirectUri && authRecord.redirectUri !== redirectUri) {
 			throw new Error('Redirect URI mismatch');
 		}
 
-		authRecord.used = true;
-		await this.authorizationCodeRepository.save(authRecord);
+		const result = await this.authorizationCodeRepository.update(
+			{ code: authorizationCode, used: false },
+			{ used: true },
+		);
 
+		const numAffected = result.affected ?? 0;
+		if (numAffected < 1) {
+			throw new Error('Authorization code already used');
+		}
+
+		authRecord.used = true;
 		return authRecord;
 	}
 

@@ -38,7 +38,7 @@ export class McpServerMiddlewareService {
 		}
 
 		if (decoded?.meta?.isOAuth === true) {
-			return await this.mcpAuthTokenService.verifyOAuthToken(token);
+			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token);
 		}
 
 		return await this.mcpServerApiKeyService.verifyApiKey(token);

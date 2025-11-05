@@ -1,12 +1,16 @@
+import { User } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Unique } from '@n8n/typeorm';
 
-import { OAuthClient } from './oauth-client';
+import { OAuthClient } from './oauth-client.entity';
 
 @Entity('oauth_user_consents')
 @Unique(['userId', 'clientId'])
 export class UserConsent {
 	@PrimaryGeneratedColumn()
 	id: number;
+
+	@ManyToOne(() => User, { onDelete: 'CASCADE' })
+	user: User;
 
 	@Index()
 	@Column({ type: String })
@@ -23,6 +27,6 @@ export class UserConsent {
 	@Column({ type: String })
 	clientId: string;
 
-	@Column({ type: 'int' })
+	@Column({ type: 'bigint' })
 	grantedAt: number;
 }

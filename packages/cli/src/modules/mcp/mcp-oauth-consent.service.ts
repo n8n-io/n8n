@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 
+import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
+import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthHelpers } from './mcp-oauth.helpers';
-import { OAuthClientRepository } from './oauth-client.repository';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
-import { UserConsentRepository } from './oauth-user-consent.repository';
 
 /**
  * Manages OAuth consent flow for MCP server
@@ -63,7 +64,7 @@ export class McpOAuthConsentService {
 		try {
 			sessionPayload = this.oauthSessionService.verifySession(sessionToken);
 		} catch (error) {
-			throw new Error('Invalid or expired session');
+			throw new UserError('Invalid or expired session');
 		}
 
 		if (!approved) {
@@ -82,7 +83,7 @@ export class McpOAuthConsentService {
 			return { redirectUrl };
 		}
 
-		await this.userConsentRepository.save({
+		await this.userConsentRepository.insert({
 			userId,
 			clientId: sessionPayload.clientId,
 			grantedAt: Date.now(),

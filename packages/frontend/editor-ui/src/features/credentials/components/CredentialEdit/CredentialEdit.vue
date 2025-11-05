@@ -40,6 +40,8 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { sendUserEvent, type DynamicNotification } from '@n8n/rest-api-client/api/cloudPlans';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
 import {
 	getNodeAuthOptions,
@@ -84,6 +86,7 @@ const message = useMessage();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
+const rootStore = useRootStore();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -772,12 +775,46 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		 */
 		if (!isOAuthType.value) {
 			telemetry.track('User saved credentials', trackProperties);
+			void handleDynamicNotification(!!trackProperties.is_valid);
 		}
 
 		await externalHooks.run('credentialEdit.saveCredential', trackProperties);
 	}
 
 	return credential;
+}
+
+async function handleDynamicNotification(isValid: boolean) {
+	if (!isValid || !settingsStore.isCloudDeployment) {
+		return;
+	}
+
+	try {
+		const response: DynamicNotification = await sendUserEvent(rootStore.restApiContext, {
+			eventType: 'credential-saved',
+			metadata: {
+				credential_type: credentialTypeName.value,
+			},
+		});
+
+		if (response.title && response.message) {
+			setTimeout(async () => {
+				try {
+					await message.confirm(response.message, response.title, {
+						confirmButtonText: i18n.baseText('generic.keepBuilding'),
+						cancelButtonText: '',
+						showCancelButton: false,
+						closeOnClickModal: true,
+						closeOnPressEscape: true,
+					});
+				} catch (error) {
+					// Silently fail
+				}
+			}, 15000);
+		}
+	} catch (error) {
+		// Silently fail
+	}
 }
 
 const createToastMessagingForNewCredentials = (project?: Project | null) => {
@@ -1010,6 +1047,7 @@ async function oAuthCredentialAuthorize() {
 		}
 
 		telemetry.track('User saved credentials', trackProperties);
+		void handleDynamicNotification(successfullyConnected);
 
 		if (successfullyConnected) {
 			oauthChannel.removeEventListener('message', receiveMessage);

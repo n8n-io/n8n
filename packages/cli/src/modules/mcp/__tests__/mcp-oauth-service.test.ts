@@ -1,18 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { OAuthClient, AuthorizationCode } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
+import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
+import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
-import { AccessTokenRepository } from '../oauth-access-token.repository';
-import { AuthorizationCodeRepository } from '../oauth-authorization-code.repository';
-import { OAuthClientRepository } from '../oauth-client.repository';
-import { RefreshTokenRepository } from '../oauth-refresh-token.repository';
 import { OAuthSessionService } from '../oauth-session.service';
-import { UserConsentRepository } from '../oauth-user-consent.repository';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
@@ -67,7 +68,7 @@ describe('McpOAuthService', () => {
 					clientSecretExpiresAt: null,
 				} as OAuthClient;
 
-				oauthClientRepository.findOne.mockResolvedValue(client);
+				oauthClientRepository.findOneBy.mockResolvedValue(client);
 
 				const result = await service.clientsStore.getClient('client-123');
 
@@ -93,7 +94,7 @@ describe('McpOAuthService', () => {
 					clientSecretExpiresAt: 1234567890,
 				} as OAuthClient;
 
-				oauthClientRepository.findOne.mockResolvedValue(client);
+				oauthClientRepository.findOneBy.mockResolvedValue(client);
 
 				const result = await service.clientsStore.getClient('client-123');
 
@@ -104,7 +105,7 @@ describe('McpOAuthService', () => {
 			});
 
 			it('should return undefined when client not found', async () => {
-				oauthClientRepository.findOne.mockResolvedValue(null);
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
 
 				const result = await service.clientsStore.getClient('nonexistent');
 
@@ -124,11 +125,11 @@ describe('McpOAuthService', () => {
 					scope: 'read write',
 				};
 
-				oauthClientRepository.save.mockResolvedValue({} as OAuthClient);
+				oauthClientRepository.insert.mockResolvedValue({} as any);
 
 				const result = await service.clientsStore.registerClient!(clientInfo);
 
-				expect(oauthClientRepository.save).toHaveBeenCalledWith({
+				expect(oauthClientRepository.insert).toHaveBeenCalledWith({
 					id: 'new-client-123',
 					name: 'New Client',
 					redirectUris: ['https://example.com/callback'],
@@ -153,11 +154,11 @@ describe('McpOAuthService', () => {
 					scope: 'read',
 				};
 
-				oauthClientRepository.save.mockResolvedValue({} as OAuthClient);
+				oauthClientRepository.insert.mockResolvedValue({} as any);
 
 				await service.clientsStore.registerClient!(clientInfo);
 
-				expect(oauthClientRepository.save).toHaveBeenCalledWith({
+				expect(oauthClientRepository.insert).toHaveBeenCalledWith({
 					id: 'new-client-123',
 					name: 'New Client',
 					redirectUris: ['https://example.com/callback'],
@@ -180,7 +181,7 @@ describe('McpOAuthService', () => {
 				};
 
 				const error = new Error('Database error');
-				oauthClientRepository.save.mockRejectedValue(error);
+				oauthClientRepository.insert.mockRejectedValue(error);
 
 				const result = await service.clientsStore.registerClient!(clientInfo);
 

@@ -6,7 +6,7 @@ import { ApiKeyAudience } from 'n8n-workflow';
 
 import { JwtService } from '@/services/jwt.service';
 
-import { AccessTokenRepository } from './oauth-access-token.repository';
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
