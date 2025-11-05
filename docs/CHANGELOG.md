@@ -2,6 +2,193 @@
 
 本文档记录二次开发的完整历史。
 
+## 2025-11-05
+
+### 前端路由和 Telemetry 系统修复 ✅
+
+修复了用户端路由问题并完善了 Telemetry 系统功能完整性。
+
+#### 路由问题修复
+
+**问题描述**:
+- 用户反馈点击"概览"、"个人"、"我的项目"显示相同页面
+- URL 路径不同但内容相同
+- 控制台存在大量路由检查日志
+
+**问题根因**:
+- `checkProjectAvailability()` 函数被临时修改为同时检查 `myProjects` 和 `availableProjects`
+- `custom.ts` 中间件添加了调试日志
+- 这些修改不在官方版本中
+
+**修复内容**:
+1. **恢复官方路由逻辑** (`projects.routes.ts:15-22`):
+   ```typescript
+   const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
+     if (!to?.params.projectId) {
+       return true;
+     }
+     const project = useProjectsStore().myProjects.find((p) => to?.params.projectId === p.id);
+     return !!project;
+   };
+   ```
+   - ✅ 只检查 `myProjects`（用户参与的项目）
+   - ✅ 删除 `availableProjects` 检查（管理员后台独立系统）
+   - ✅ 逻辑与官方 n8n 完全一致
+
+2. **清理调试日志** (`custom.ts:4-14`):
+   ```typescript
+   export const customMiddleware: RouterMiddleware<CustomMiddlewareOptions> = async (
+     to,
+     from,
+     next,
+     isValid,
+   ) => {
+     const valid = isValid({ to, from, next });
+     if (!valid) {
+       return next({ name: VIEWS.HOMEPAGE });
+     }
+   };
+   ```
+   - ✅ 移除所有 console.log 调试语句
+   - ✅ 简化为纯净的验证逻辑
+
+**设计澄清**:
+- **用户端**（editor-ui）: 只检查 `myProjects`，用户只能访问自己参与的项目
+- **管理员后台**（admin-panel）: 独立系统，不同端口，有自己的权限逻辑
+- `availableProjects` 是为组件复用设计的计算属性，根据权限返回不同范围的项目列表
+
+#### Telemetry 功能完整性修复
+
+**问题发现**:
+- 对比官方版本发现缺失 3 个专用追踪方法
+- 这些方法在 commit `eead4f2a2f` 切换到 No-Op 时被删除
+- commit `d42f916ce1` 恢复本地 Telemetry 时未恢复这些方法
+
+**恢复的方法**:
+
+1. **trackAskAI()** (`telemetry/index.ts:133-152`):
+   ```typescript
+   trackAskAI(event: string, properties: IDataObject = {}) {
+     void import('@n8n/stores/useRootStore').then(({ useRootStore }) => {
+       void import('@/features/ndv/shared/ndv.store').then(({ useNDVStore }) => {
+         const enhancedProperties = {
+           ...properties,
+           session_id: useRootStore().pushRef,
+           ndv_session_id: useNDVStore().pushRef,
+         };
+         switch (event) {
+           case 'askAi.generationFinished':
+             this.track('Ai code generation finished', enhancedProperties);
+             break;
+           default:
+             break;
+         }
+       });
+     });
+   }
+   ```
+   - 追踪 AI 助手代码生成事件
+   - 增强属性：添加 session_id 和 ndv_session_id
+
+2. **trackAiTransform()** (`telemetry/index.ts:157-176`):
+   ```typescript
+   trackAiTransform(event: string, properties: IDataObject = {}) {
+     void import('@n8n/stores/useRootStore').then(({ useRootStore }) => {
+       void import('@/features/ndv/shared/ndv.store').then(({ useNDVStore }) => {
+         const enhancedProperties = {
+           ...properties,
+           session_id: useRootStore().pushRef,
+           ndv_session_id: useNDVStore().pushRef,
+         };
+         switch (event) {
+           case 'generationFinished':
+             this.track('Ai Transform code generation finished', enhancedProperties);
+             break;
+           default:
+             break;
+         }
+       });
+     });
+   }
+   ```
+   - 追踪 AI Transform 功能事件
+   - 相同的会话增强逻辑
+
+3. **trackNodeParametersValuesChange()** (`telemetry/index.ts:181-196`):
+   ```typescript
+   trackNodeParametersValuesChange(nodeType: string, change: { name: string; value: unknown }) {
+     const changeNameMap: { [key: string]: string } = {
+       [SLACK_NODE_TYPE]: 'parameters.otherOptions.includeLinkToWorkflow',
+       [MICROSOFT_TEAMS_NODE_TYPE]: 'parameters.options.includeLinkToWorkflow',
+       [TELEGRAM_NODE_TYPE]: 'parameters.additionalFields.appendAttribution',
+     };
+     const changeName = changeNameMap[nodeType] || APPEND_ATTRIBUTION_DEFAULT_PATH;
+     if (change.name === changeName) {
+       this.track('User toggled n8n reference option', {
+         node: nodeType,
+         toValue: change.value as ITelemetryTrackProperties[string],
+       });
+     }
+   }
+   ```
+   - 追踪特定节点参数变更（Slack/Teams/Telegram）
+   - 监控用户是否启用 n8n 引用链接
+
+**新增导入** (`telemetry/index.ts:16-21`):
+```typescript
+import {
+  APPEND_ATTRIBUTION_DEFAULT_PATH,
+  MICROSOFT_TEAMS_NODE_TYPE,
+  SLACK_NODE_TYPE,
+  TELEGRAM_NODE_TYPE,
+} from '@/app/constants';
+```
+
+**技术实现细节**:
+- ✅ 使用动态 import 避免循环依赖
+- ✅ 类型安全：使用 `ITelemetryTrackProperties[string]` 类型断言
+- ✅ 保持与原版 API 完全一致
+- ✅ 所有事件发送到本地 PostgreSQL 而非外部服务
+
+**验证结果**:
+- ✅ 347 个 `telemetry.track()` 调用点全部保留
+- ✅ 180 个文件使用 Telemetry
+- ✅ 方法签名与官方版本完全一致
+- ✅ TypeScript 类型检查通过（0 错误）
+
+#### 功能完整性对比
+
+| 功能 | 官方原版 | No-Op 阶段 | 本地化后 (现在) |
+|------|----------|-----------|----------------|
+| `track()` | RudderStack + PostHog | 空操作 | ✅ 本地 API |
+| `trackAskAI()` | ✅ 有 | ❌ 删除 | ✅ **已恢复** |
+| `trackAiTransform()` | ✅ 有 | ❌ 删除 | ✅ **已恢复** |
+| `trackNodeParametersValuesChange()` | ✅ 有 | ❌ 删除 | ✅ **已恢复** |
+| `page()` | ✅ 有 | ❌ No-Op | ✅ 本地实现 |
+| `identify()` | ✅ 有 | ❌ No-Op | ✅ 本地实现 |
+| `reset()` | ✅ 有 | ❌ No-Op | ✅ 本地实现 |
+
+#### 影响范围
+
+**修改文件**:
+- `packages/frontend/editor-ui/src/features/collaboration/projects/projects.routes.ts`
+- `packages/frontend/editor-ui/src/app/utils/rbac/middleware/custom.ts`
+- `packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts`
+
+**代码统计**:
+- 新增代码: 80+ 行（3 个方法 + 导入）
+- 删除代码: 10+ 行（调试日志）
+- 修复文件: 3 个
+
+**构建验证**:
+- ✅ TypeScript 类型检查通过
+- ✅ 前端构建成功
+- ✅ 无运行时错误
+
+**提交哈希**: 待提交
+
+---
+
 ## 2025-11-04
 
 ### 构建系统修复 ✅

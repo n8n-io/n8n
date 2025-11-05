@@ -13,6 +13,12 @@ import type { ITelemetrySettings } from '@n8n/api-types';
 import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import { sendTelemetryEventsBatch } from '@n8n/rest-api-client/api/telemetry';
+import {
+	APPEND_ATTRIBUTION_DEFAULT_PATH,
+	MICROSOFT_TEAMS_NODE_TYPE,
+	SLACK_NODE_TYPE,
+	TELEGRAM_NODE_TYPE,
+} from '@/app/constants';
 
 interface QueuedEvent {
 	event_name: string;
@@ -119,6 +125,74 @@ export class Telemetry {
 	 */
 	flushPageEvents() {
 		this.pageEventQueue = [];
+	}
+
+	/**
+	 * Track Ask AI events
+	 */
+	trackAskAI(event: string, properties: IDataObject = {}) {
+		// Dynamically import stores to avoid circular dependencies
+		void import('@n8n/stores/useRootStore').then(({ useRootStore }) => {
+			void import('@/features/ndv/shared/ndv.store').then(({ useNDVStore }) => {
+				const enhancedProperties = {
+					...properties,
+					session_id: useRootStore().pushRef,
+					ndv_session_id: useNDVStore().pushRef,
+				};
+
+				switch (event) {
+					case 'askAi.generationFinished':
+						this.track('Ai code generation finished', enhancedProperties);
+						break;
+					default:
+						break;
+				}
+			});
+		});
+	}
+
+	/**
+	 * Track AI Transform events
+	 */
+	trackAiTransform(event: string, properties: IDataObject = {}) {
+		// Dynamically import stores to avoid circular dependencies
+		void import('@n8n/stores/useRootStore').then(({ useRootStore }) => {
+			void import('@/features/ndv/shared/ndv.store').then(({ useNDVStore }) => {
+				const enhancedProperties = {
+					...properties,
+					session_id: useRootStore().pushRef,
+					ndv_session_id: useNDVStore().pushRef,
+				};
+
+				switch (event) {
+					case 'generationFinished':
+						this.track('Ai Transform code generation finished', enhancedProperties);
+						break;
+					default:
+						break;
+				}
+			});
+		});
+	}
+
+	/**
+	 * Track node parameter value changes
+	 */
+	trackNodeParametersValuesChange(nodeType: string, change: { name: string; value: unknown }) {
+		const changeNameMap: { [key: string]: string } = {
+			[SLACK_NODE_TYPE]: 'parameters.otherOptions.includeLinkToWorkflow',
+			[MICROSOFT_TEAMS_NODE_TYPE]: 'parameters.options.includeLinkToWorkflow',
+			[TELEGRAM_NODE_TYPE]: 'parameters.additionalFields.appendAttribution',
+		};
+
+		const changeName = changeNameMap[nodeType] || APPEND_ATTRIBUTION_DEFAULT_PATH;
+
+		if (change.name === changeName) {
+			this.track('User toggled n8n reference option', {
+				node: nodeType,
+				toValue: change.value as ITelemetryTrackProperties[string],
+			});
+		}
 	}
 
 	/**
