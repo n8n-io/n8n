@@ -135,15 +135,16 @@ export class ToolSerpApi implements INodeType {
 		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
 			const tool = await getTool(this, itemIndex);
 			const item = inputData[itemIndex].json;
+			const queryString = item.input ?? item.chatInput;
 
-			if (typeof item.input !== 'string' || !item.input) {
+			if (typeof queryString !== 'string' || !queryString) {
 				throw new NodeOperationError(
 					this.getNode(),
 					`Missing search query input at itemIndex ${itemIndex}`,
 				);
 			}
 
-			const result = (await tool.invoke(item)) as string;
+			const result = await tool.invoke(queryString);
 
 			returnData.push({
 				json: {

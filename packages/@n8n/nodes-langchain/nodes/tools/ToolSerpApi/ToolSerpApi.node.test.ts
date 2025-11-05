@@ -69,7 +69,7 @@ describe('ToolSerpApi', () => {
 					},
 				],
 			]);
-			expect(SerpAPI.prototype.invoke).toHaveBeenCalledWith(inputData[0].json);
+			expect(SerpAPI.prototype.invoke).toHaveBeenCalledWith(inputData[0].json.input);
 		});
 
 		it('should handle multiple input items', async () => {
@@ -162,6 +162,68 @@ describe('ToolSerpApi', () => {
 
 			await expect(node.execute.call(mockExecute)).rejects.toThrow(
 				'Missing search query input at itemIndex 0',
+			);
+		});
+
+		it('should fallback to chatInput if input is not provided', async () => {
+			const node = new ToolSerpApi();
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { chatInput: 'fallback query test' },
+				},
+			];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ name: 'test serpapi' })),
+				getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+				getNodeParameter: jest.fn().mockReturnValue({}),
+			});
+
+			const mockResult = 'Fallback query results';
+			SerpAPI.prototype.invoke = jest.fn().mockResolvedValue(mockResult);
+
+			const result = await node.execute.call(mockExecute);
+
+			expect(SerpAPI.prototype.invoke).toHaveBeenCalledWith(inputData[0].json.chatInput);
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							response: mockResult,
+						},
+						pairedItem: {
+							item: 0,
+						},
+					},
+				],
+			]);
+		});
+
+		it('should throw error if neither input nor chatInput is provided', async () => {
+			const node = new ToolSerpApi();
+			const inputData: INodeExecutionData[] = [
+				{
+					json: {},
+				},
+			];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ name: 'test serpapi' })),
+				getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+				getNodeParameter: jest.fn().mockReturnValue({}),
+				logger: {
+					error: jest.fn(),
+				},
+			});
+
+			await expect(node.execute.call(mockExecute)).rejects.toThrow(
+				'No query string found at index 0',
+			);
+
+			expect(mockExecute.logger.error).toHaveBeenCalledWith(
+				'[ToolSerpApi] Missing query string at index 0',
 			);
 		});
 	});
