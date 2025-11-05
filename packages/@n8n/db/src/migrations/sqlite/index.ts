@@ -213,8 +213,8 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowDependencyTable1760314000000,
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
-	AddS3KeyToExecutionData1762277580000,
 	ChangeDependencyInfoToJson1761655473000,
+	AddS3KeyToExecutionData1762277580000,
 ];
 
 export { sqliteMigrations };

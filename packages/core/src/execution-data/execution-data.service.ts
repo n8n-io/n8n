@@ -28,6 +28,15 @@ export class ExecutionDataService {
 				mimeType: 'application/gzip',
 			});
 
+			// 100 KB
+			if (compressedData.length > 1024 * 100) {
+				this.logger.warn('Execution data is too large', {
+					executionId,
+					s3Key,
+					compressedSize: compressedData.length,
+				});
+			}
+
 			this.logger.debug('Stored execution data in S3', {
 				executionId,
 				s3Key,
@@ -47,6 +56,9 @@ export class ExecutionDataService {
 	async retrieve(executionId: string, s3Key: string): Promise<IRunExecutionData> {
 		try {
 			const compressedData = await this.objectStoreService.get(s3Key, { mode: 'buffer' });
+			if (!compressedData || compressedData.length === 0) {
+				return {} as IRunExecutionData;
+			}
 			const data = await decompressExecutionData(compressedData);
 
 			this.logger.debug('Retrieved execution data from S3', {

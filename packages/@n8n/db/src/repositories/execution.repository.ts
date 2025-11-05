@@ -165,6 +165,44 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.getMany();
 	}
 
+	async getExecutionData(
+		execution: ExecutionEntity,
+		options?: { unflattenData?: boolean },
+	): Promise<IRunExecutionData | string | undefined> {
+		const { executionData } = execution;
+
+		if (!executionData) return undefined;
+
+		if (executionData.storageMode !== 's3' && executionData.data) {
+			return options?.unflattenData
+				? (parse(executionData.data) as IRunExecutionData)
+				: executionData.data;
+		}
+
+		if (executionData.storageMode === 's3' && executionData.s3Key) {
+			try {
+				const retrievedData = await this.executionDataService.retrieve(
+					execution.id,
+					executionData.s3Key,
+				);
+				if (!options?.unflattenData) {
+					return stringify(retrievedData);
+				} else {
+					return retrievedData;
+				}
+			} catch (error) {
+				this.logger.error('Failed to retrieve execution data from S3', {
+					executionId: execution.id,
+					s3Key: executionData.s3Key,
+					error,
+				});
+				throw error;
+			}
+		}
+
+		return undefined;
+	}
+
 	async findMultipleExecutions(
 		queryParams: FindManyOptions<ExecutionEntity>,
 		options?: {
@@ -215,34 +253,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				valid.map(async (execution): Promise<IExecutionResponse> => {
 					const { executionData, metadata, ...rest } = execution;
 
-					let executionDataParsed: IRunExecutionData | string | undefined;
-					if (executionData) {
-						if (executionData.storageMode === 's3' && executionData.s3Key) {
-							try {
-								executionDataParsed = await this.executionDataService.retrieve(
-									execution.id,
-									executionData.s3Key,
-								);
-								if (!options?.unflattenData) {
-									executionDataParsed = stringify(executionDataParsed);
-								}
-							} catch (error) {
-								this.logger.error('Failed to retrieve execution data from S3', {
-									executionId: execution.id,
-									s3Key: executionData.s3Key,
-									error,
-								});
-								throw error;
-							}
-						} else if (executionData.data) {
-							executionDataParsed = options?.unflattenData
-								? (parse(executionData.data) as IRunExecutionData)
-								: executionData.data;
-						}
-					}
+					const data = await this.getExecutionData(execution, options);
+
 					return {
 						...rest,
-						data: executionDataParsed,
+						data,
 						workflowData: executionData.workflowData,
 						customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 					} as IExecutionResponse;
@@ -353,36 +368,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			});
 		}
 
-		let executionDataParsed: IRunExecutionData | string | undefined;
-		if (options?.includeData && executionData) {
-			if (executionData.storageMode === 's3' && executionData.s3Key) {
-				try {
-					executionDataParsed = await this.executionDataService.retrieve(
-						execution.id,
-						executionData.s3Key,
-					);
-					if (!options?.unflattenData) {
-						executionDataParsed = stringify(executionDataParsed);
-					}
-				} catch (error) {
-					this.logger.error('Failed to retrieve execution data from S3', {
-						executionId: execution.id,
-						s3Key: executionData.s3Key,
-						error,
-					});
-					throw error;
-				}
-			} else if (executionData.data) {
-				executionDataParsed = options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
-					: executionData.data;
-			}
-		}
-
 		return {
 			...rest,
 			...(options?.includeData && {
-				data: executionDataParsed,
+				data: await this.getExecutionData(execution, options),
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			}),
@@ -589,6 +578,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 			return;
 		}
+
+		await Promise.all(
+			executions.map(async (execution) => {
+				const executionData = await this.executionDataRepository.findOne({
+					select: ['s3Key'],
+					where: { executionId: execution.id },
+				});
+				if (executionData?.s3Key) {
+					await this.executionDataService.delete([executionData.s3Key]);
+				}
+			}),
+		);
 
 		const ids = executions.map(({ id, workflowId }) => ({
 			executionId: id,
