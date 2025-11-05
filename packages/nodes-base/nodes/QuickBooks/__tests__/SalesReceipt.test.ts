@@ -295,60 +295,111 @@ describe('Sales Receipt', () => {
 	});
 
 	describe('delete operation', () => {
-		test('should require salesreceiptId parameter', () => {
-			// Verify that the delete operation has the required parameter
-			// In a real scenario, this would validate the parameter configuration
-			const salesReceiptId = '123';
-			expect(salesReceiptId).toBeDefined();
-			expect(typeof salesReceiptId).toBe('string');
-		});
+		test('should create and delete a sales receipt with mocked API', async () => {
+			// Mock the getSyncToken function
+			const mockGetSyncToken = jest.fn().mockResolvedValue('5');
 
-		test('should format delete request body correctly', () => {
-			// Test that the delete request body has the correct structure
+			// Mock the quickBooksApiRequest function
+			const mockQuickBooksApiRequest = jest.fn();
+
+			// Mock create response
+			mockQuickBooksApiRequest.mockResolvedValueOnce({
+				SalesReceipt: {
+					Id: '149',
+					SyncToken: '0',
+					CustomerRef: { value: '1' },
+					Line: [
+						{
+							DetailType: 'SalesItemLineDetail',
+							Amount: 100.0,
+							Description: 'Test Item',
+							SalesItemLineDetail: {
+								ItemRef: { value: '1' },
+								TaxCodeRef: { value: 'TAX' },
+								Qty: 1,
+							},
+						},
+					],
+				},
+			});
+
+			// Mock delete response
+			mockQuickBooksApiRequest.mockResolvedValueOnce({
+				SalesReceipt: {
+					Id: '149',
+					SyncToken: '5',
+					status: 'Deleted',
+				},
+			});
+
+			// STEP 1: Simulate create operation
+			// This represents the request body that would be sent to create a sales receipt
+			const createBody = {
+				CustomerRef: { value: '1' },
+				Line: [
+					{
+						DetailType: 'SalesItemLineDetail',
+						Amount: 100.0,
+						Description: 'Test Item',
+						SalesItemLineDetail: {
+							ItemRef: { value: '1' },
+							TaxCodeRef: { value: 'TAX' },
+							Qty: 1,
+						},
+					},
+				],
+			};
+
+			const createResponse = await mockQuickBooksApiRequest(
+				'POST',
+				'/v3/company/123/salesreceipt',
+				{},
+				createBody,
+			);
+
+			// Verify create was called correctly
+			expect(mockQuickBooksApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/v3/company/123/salesreceipt',
+				{},
+				createBody,
+			);
+			expect(createResponse.SalesReceipt.Id).toBe('149');
+			expect(createResponse.SalesReceipt.SyncToken).toBe('0');
+
+			// STEP 2: Get SyncToken for delete
+			// In the actual implementation, getSyncToken fetches the current SyncToken
+			const syncToken = await mockGetSyncToken();
+			expect(mockGetSyncToken).toHaveBeenCalled();
+			expect(syncToken).toBe('5');
+
+			// STEP 3: Simulate delete operation
+			// This represents the delete request with the required query string and body
+			const deleteQs = { operation: 'delete' };
 			const deleteBody = {
-				Id: '123',
-				SyncToken: '0',
+				Id: '149',
+				SyncToken: syncToken,
 			};
 
-			expect(deleteBody).toHaveProperty('Id');
-			expect(deleteBody).toHaveProperty('SyncToken');
-			expect(deleteBody.Id).toBe('123');
-			expect(deleteBody.SyncToken).toBe('0');
-		});
+			const deleteResponse = await mockQuickBooksApiRequest(
+				'POST',
+				'/v3/company/123/salesreceipt',
+				deleteQs,
+				deleteBody,
+			);
 
-		test('should use correct query parameter for delete operation', () => {
-			// Verify the query string includes operation=delete
-			const queryString = {
-				operation: 'delete',
-			};
+			// Verify delete was called correctly
+			expect(mockQuickBooksApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/v3/company/123/salesreceipt',
+				{ operation: 'delete' },
+				{ Id: '149', SyncToken: '5' },
+			);
+			expect(deleteResponse.SalesReceipt.Id).toBe('149');
+			expect(deleteResponse.SalesReceipt.status).toBe('Deleted');
 
-			expect(queryString.operation).toBe('delete');
-		});
-
-		test('should handle multiple sales receipt IDs', () => {
-			// Test that different IDs are handled correctly
-			const ids = ['123', '456', '789'];
-
-			ids.forEach((id) => {
-				expect(id).toBeDefined();
-				expect(typeof id).toBe('string');
-				expect(id.length).toBeGreaterThan(0);
-			});
-		});
-
-		test('should validate SyncToken format', () => {
-			// SyncToken is typically a string number like "0", "1", "2"
-			const validSyncTokens = ['0', '1', '2', '10'];
-			const invalidSyncTokens = ['', null, undefined];
-
-			validSyncTokens.forEach((token) => {
-				expect(token).toBeDefined();
-				expect(typeof token).toBe('string');
-			});
-
-			invalidSyncTokens.forEach((token) => {
-				expect(token).toBeFalsy();
-			});
+			// Verify both operations were called
+			expect(mockQuickBooksApiRequest).toHaveBeenCalledTimes(2);
 		});
 	});
 });
