@@ -5,6 +5,7 @@ export * from './Estimate/EstimateDescription';
 export * from './Invoice/InvoiceDescription';
 export * from './Item/ItemDescription';
 export * from './Payment/PaymentDescription';
+export * from './SalesReceipt/SalesReceiptDescription';
 export * from './Vendor/VendorDescription';
 export * from './Purchase/PurchaseDescription';
 export * from './Transaction/TransactionDescription';

@@ -186,7 +186,8 @@ export async function getSyncToken(
 ) {
 	const resourceId = this.getNodeParameter(`${resource}Id`, i);
 	const getEndpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
-	const propertyName = capitalCase(resource);
+	// Special handling for salesreceipt which returns as 'SalesReceipt' not 'Salesreceipt'
+	const propertyName = resource === 'salesreceipt' ? 'SalesReceipt' : capitalCase(resource);
 	const {
 		[propertyName]: { SyncToken },
 	} = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
@@ -320,7 +321,7 @@ export function processLines(this: IExecuteFunctions, lines: IDataObject[], reso
 				delete line.itemId;
 				delete line.TaxCodeRef;
 			}
-		} else if (resource === 'invoice') {
+		} else if (resource === 'invoice' || resource === 'salesReceipt') {
 			if (line.DetailType === 'SalesItemLineDetail') {
 				line.SalesItemLineDetail = {
 					ItemRef: {
@@ -379,7 +380,7 @@ export function populateFields(
 			} else {
 				body[key] = value;
 			}
-		} else if (resource === 'estimate' || resource === 'invoice') {
+		} else if (resource === 'estimate' || resource === 'invoice' || resource === 'salesReceipt') {
 			if (key === 'BillAddr' || key === 'ShipAddr') {
 				const { details } = value as { details: GeneralAddress };
 				body[key] = pickBy(details, (detail) => detail !== '');
@@ -400,11 +401,19 @@ export function populateFields(
 					value,
 				};
 			} else if (key.endsWith('Ref')) {
-				const { details } = value as { details: Ref };
-				body[key] = {
-					name: details.name,
-					value: details.value,
-				};
+				if (typeof value === 'string') {
+					// For simple string refs like PaymentMethodRef or DepositToAccountRef
+					body[key] = {
+						value,
+					};
+				} else {
+					// For complex refs with name and value
+					const { details } = value as { details: Ref };
+					body[key] = {
+						name: details.name,
+						value: details.value,
+					};
+				}
 			} else if (key === 'TotalTax') {
 				body.TxnTaxDetail = {
 					TotalTax: value,
