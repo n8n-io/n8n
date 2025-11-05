@@ -364,7 +364,7 @@ export class AwsSqs implements INodeType {
 						'Action=ReceiveMessage',
 						`MaxNumberOfMessages=${receiveOptions.maxNumberOfMessages || 1}`,
 						`WaitTimeSeconds=${receiveOptions.waitTimeSeconds || 0}`,
-						`VisibilityTimeout=${receiveOptions.visibilityTimeout || 30}`,
+						`VisibilityTimeout=${receiveOptions.visibilityTimeout ?? 30}`,
 						'AttributeName.1=All',
 						'MessageAttributeName.1=All',
 					];
