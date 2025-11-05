@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import '@/polyfills';
-
 import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/features/shared/banners/components/BannerStack.vue';
