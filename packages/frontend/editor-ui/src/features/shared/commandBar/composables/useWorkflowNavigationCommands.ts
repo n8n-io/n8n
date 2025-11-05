@@ -87,14 +87,32 @@ export function useWorkflowNavigationCommands(options: {
 				matchedNodeTypeNames.length > 0
 					? workflowsStore.searchWorkflows({
 							nodeTypes: matchedNodeTypeNames,
-							select: ['id', 'name', 'active', 'nodes', 'ownedBy', 'parentFolder', 'isArchived'],
+							select: [
+								'id',
+								'name',
+								'active',
+								'nodes',
+								'ownedBy',
+								'parentFolder',
+								'isArchived',
+								'description',
+							],
 						})
 					: Promise.resolve([]);
 
 			const tagSearchPromise = matchedTag
 				? workflowsStore.searchWorkflows({
 						tags: [matchedTag.name],
-						select: ['id', 'name', 'active', 'ownedBy', 'tags', 'parentFolder', 'isArchived'],
+						select: [
+							'id',
+							'name',
+							'active',
+							'ownedBy',
+							'tags',
+							'parentFolder',
+							'isArchived',
+							'description',
+						],
 					})
 				: Promise.resolve([]);
 
