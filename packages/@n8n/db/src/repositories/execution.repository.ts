@@ -330,7 +330,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.errorReporter.error('Found successful execution where data is empty stringified array', {
 				extra: {
 					executionId: execution.id,
-					workflowId: executionData?.workflowData.id,
+					workflowId: executionData?.workflow.id,
 				},
 			});
 		}

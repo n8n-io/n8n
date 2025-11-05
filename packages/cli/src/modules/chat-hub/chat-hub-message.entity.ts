@@ -127,7 +127,7 @@ export class ChatHubMessage extends WithTimestamps {
 		() => ChatHubMessage,
 		(m: ChatHubMessage) => m.previousMessage,
 	)
-	responses?: Array<Relation<ChatHubMessage>>;
+	responses?: Relation<ChatHubMessage[]>;
 
 	/**
 	 * ID of the message that this message is a retry of (if applicable).
@@ -156,7 +156,7 @@ export class ChatHubMessage extends WithTimestamps {
 		() => ChatHubMessage,
 		(m: ChatHubMessage) => m.retryOfMessage,
 	)
-	retries?: Array<Relation<ChatHubMessage>>;
+	retries?: Relation<ChatHubMessage[]>;
 
 	/**
 	 * ID of the message that this message is a revision/edit of (if applicable).
@@ -185,7 +185,7 @@ export class ChatHubMessage extends WithTimestamps {
 		() => ChatHubMessage,
 		(m: ChatHubMessage) => m.revisionOfMessage,
 	)
-	revisions?: Array<Relation<ChatHubMessage>>;
+	revisions?: Relation<ChatHubMessage[]>;
 
 	/**
 	 * Status of the message, e.g. 'running', 'success', 'error', 'cancelled'.

@@ -22,7 +22,7 @@ export class WorkflowHistory extends WithTimestamps {
 	@Column()
 	authors: string;
 
-	@ManyToOne('WorkflowEntity', {
+	@ManyToOne(() => WorkflowEntity, {
 		onDelete: 'CASCADE',
 	})
 	workflow: Relation<WorkflowEntity>;

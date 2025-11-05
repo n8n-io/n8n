@@ -2,10 +2,11 @@ import { Service } from '@n8n/di';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { IWorkflowBase } from 'n8n-workflow';
+
+import { ISimplifiedPinData } from 'entities/types-db';
 
 import { ExecutionData } from '../entities';
-import { IWorkflowBase } from 'n8n-workflow';
-import { ISimplifiedPinData } from 'entities/types-db';
 
 @Service()
 export class ExecutionDataRepository extends Repository<ExecutionData> {
@@ -32,10 +33,6 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 			where: {
 				executionId: In(executionIds),
 			},
-		}).then((executionData) =>
-			executionData.map(({ workflowData, workflowHistory }) =>
-				workflowHistory ? { ...workflowHistory.workflow, ...workflowHistory } : workflowData,
-			),
-		);
+		}).then((executionData) => executionData.map(({ workflow }) => workflow));
 	}
 }

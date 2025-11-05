@@ -10,7 +10,7 @@ import {
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
 
-import type { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubMessage } from './chat-hub-message.entity';
 
 @Entity({ name: 'chat_hub_sessions' })
 export class ChatHubSession extends WithTimestamps {
@@ -33,7 +33,7 @@ export class ChatHubSession extends WithTimestamps {
 	/**
 	 * The user that owns this chat session.
 	 */
-	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@ManyToOne(() => User, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'ownerId' })
 	owner?: Relation<User>;
 
@@ -53,7 +53,7 @@ export class ChatHubSession extends WithTimestamps {
 	/**
 	 * The selected credential to use by default with the selected LLM provider (if applicable).
 	 */
-	@ManyToOne('CredentialsEntity', { onDelete: 'SET NULL', nullable: true })
+	@ManyToOne(() => CredentialsEntity, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'credentialId' })
 	credential?: Relation<CredentialsEntity> | null;
 
@@ -78,7 +78,7 @@ export class ChatHubSession extends WithTimestamps {
 	/**
 	 * Custom n8n agent workflow to use (if applicable)
 	 */
-	@ManyToOne('WorkflowEntity', { onDelete: 'SET NULL', nullable: true })
+	@ManyToOne(() => WorkflowEntity, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'workflowId' })
 	workflow?: Relation<WorkflowEntity> | null;
 
@@ -100,6 +100,6 @@ export class ChatHubSession extends WithTimestamps {
 	/**
 	 * All messages that belong to this chat session.
 	 */
-	@OneToMany('ChatHubMessage', 'session')
-	messages?: Array<Relation<ChatHubMessage>>;
+	@OneToMany(() => ChatHubMessage, 'session')
+	messages?: Relation<ChatHubMessage[]>;
 }
