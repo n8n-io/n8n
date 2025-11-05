@@ -184,10 +184,17 @@ export async function getSyncToken(
 	companyId: string,
 	resource: string,
 ) {
-	const resourceId = this.getNodeParameter(`${resource}Id`, i);
-	const getEndpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
-	// Special handling for salesreceipt which returns as 'SalesReceipt' not 'Salesreceipt'
-	const propertyName = resource === 'salesreceipt' ? 'SalesReceipt' : capitalCase(resource);
+	// Special handling for salesReceipt which has inconsistent naming
+	// - Resource: 'salesReceipt' (camelCase)
+	// - Parameter: 'salesreceiptId' (lowercase)
+	// - Endpoint: '/salesreceipt/' (lowercase)
+	// - Response property: 'SalesReceipt' (PascalCase)
+	const parameterName = resource === 'salesReceipt' ? 'salesreceipt' : resource;
+	const endpointName = resource === 'salesReceipt' ? 'salesreceipt' : resource;
+	const propertyName = resource === 'salesReceipt' ? 'SalesReceipt' : capitalCase(resource);
+
+	const resourceId = this.getNodeParameter(`${parameterName}Id`, i);
+	const getEndpoint = `/v3/company/${companyId}/${endpointName}/${resourceId}`;
 	const {
 		[propertyName]: { SyncToken },
 	} = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});

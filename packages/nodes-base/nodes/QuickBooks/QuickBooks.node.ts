@@ -1116,7 +1116,7 @@ export class QuickBooks implements INodeType {
 
 						const body: IDataObject = {
 							Id: this.getNodeParameter('salesreceiptId', i),
-							SyncToken: await getSyncToken.call(this, i, companyId, 'salesreceipt'),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
 						};
 
 						const endpoint = `/v3/company/${companyId}/salesreceipt`;
