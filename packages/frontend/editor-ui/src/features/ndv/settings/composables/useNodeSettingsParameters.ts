@@ -9,11 +9,11 @@ import {
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import {
 	mustHideDuringCustomApiCall,
@@ -21,18 +21,18 @@ import {
 	updateDynamicConnections,
 	updateParameterByPath,
 } from '@/features/ndv/shared/ndv.utils';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import {
 	getMainAuthField,
 	getNodeAuthFields,
 	isAuthRelatedParameter,
-} from '@/utils/nodeTypesUtils';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
-import { useSettingsStore } from '@/stores/settings.store';
+} from '@/app/utils/nodeTypesUtils';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();

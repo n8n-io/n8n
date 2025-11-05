@@ -22,7 +22,7 @@ import {
 	operatorTypeToNodeProperty,
 	resolveCondition,
 } from './utils';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 
 import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
@@ -276,7 +276,7 @@ const onBlur = (): void => {
 	left: 0;
 	opacity: 0;
 	transition: opacity 100ms ease-in;
-	color: var(--icon-base-color);
+	color: var(--icon--color);
 }
 
 .defaultTopPadding {

@@ -341,11 +341,11 @@ defineExpose({ isWithinDropdown });
 
 <style lang="scss" module>
 :root .popover {
-	--content-height: 236px;
+	--content--height: 236px;
 	padding: 0 !important;
 	border: var(--border);
 	display: flex;
-	max-height: calc(var(--content-height) + var(--spacing--xl));
+	max-height: calc(var(--content--height) + var(--spacing--xl));
 	flex-direction: column;
 
 	& ::-webkit-scrollbar {
