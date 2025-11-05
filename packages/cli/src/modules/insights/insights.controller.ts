@@ -152,7 +152,7 @@ export class InsightsController {
 
 		if (!query.startDate) {
 			return {
-				startDate: DateTime.now().minus({ days: 6 }).toJSDate(),
+				startDate: DateTime.now().minus({ days: 7 }).toJSDate(),
 				endDate: today,
 			};
 		}

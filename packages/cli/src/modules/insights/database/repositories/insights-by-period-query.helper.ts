@@ -84,46 +84,62 @@ export const getDateRangesCommonTableExpressionQuery = ({
 	startDate: Date;
 	endDate: Date;
 }) => {
-	const today = DateTime.now().startOf('day');
-	const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
-	const endDateStartOfDay = DateTime.fromJSDate(endDate).startOf('day');
+	let today = DateTime.now();
+	let startDateTime = DateTime.fromJSDate(startDate);
+	let endDateTime = DateTime.fromJSDate(endDate);
 
-	const daysFromEndDateToToday = Math.floor(today.diff(endDateStartOfDay, 'days').days);
-	const daysDiff = Math.floor(endDateStartOfDay.diff(startDateStartOfDay, 'days').days);
+	// If the end date is in a past day, use start of day for both dates
+	const useStartOfDay = today.diff(endDateTime, 'days').days >= 1;
 
-	const isEndDateToday = daysFromEndDateToToday === 0;
-
-	let prevStartDateSql: string;
-	let startDateSql: string;
-	let endDateSql: string;
-
-	if (daysDiff === 0 && isEndDateToday) {
-		// Last 24 hours
-		prevStartDateSql = getDatetimeSql({ dbType, daysFromToday: 2, useStartOfDay: false });
-		startDateSql = getDatetimeSql({ dbType, daysFromToday: 1, useStartOfDay: false });
-		endDateSql = getDatetimeSql({ dbType, daysFromToday: 0, useStartOfDay: false });
-	} else {
-		const dateRangeInDays = daysDiff + 1;
-
-		const daysFromStartDateToToday = Math.floor(today.diff(startDateStartOfDay, 'days').days);
-		const prevStartDaysFromToday = daysFromStartDateToToday + dateRangeInDays;
-
-		prevStartDateSql = getDatetimeSql({
-			dbType,
-			daysFromToday: prevStartDaysFromToday,
-			useStartOfDay: true,
-		});
-
-		startDateSql = getDatetimeSql({
-			dbType,
-			daysFromToday: daysFromStartDateToToday,
-			useStartOfDay: true,
-		});
-
-		endDateSql = isEndDateToday
-			? getDatetimeSql({ dbType, daysFromToday: 0, useStartOfDay: false })
-			: getDatetimeSql({ dbType, daysFromToday: daysFromEndDateToToday - 1, useStartOfDay: true });
+	if (useStartOfDay) {
+		startDateTime = startDateTime.startOf('day');
+		endDateTime = endDateTime.startOf('day');
+		today = today.startOf('day');
 	}
+
+	// Check if times are exactly the same but timezone differs (DST transition case)
+	const offsetDiff = Math.abs(startDateTime.offset - endDateTime.offset);
+
+	// If same wall-clock time but different timezone offset (max 2 hours), normalize to same timezone
+	if (
+		startDateTime.hour === endDateTime.hour &&
+		startDateTime.minute === endDateTime.minute &&
+		startDateTime.second === endDateTime.second &&
+		offsetDiff > 0 &&
+		offsetDiff <= 120 // Max 2 hours difference in minutes
+	) {
+		// Change the startDateTime to so that time matches
+		startDateTime = startDateTime.plus({ minutes: offsetDiff });
+	}
+
+	// Convert to UTC to avoid DST issues when calculating day differences
+	const startDateTimeUTC = startDateTime.toUTC();
+	const endDateTimeUTC = endDateTime.toUTC();
+	const todayUTC = today.toUTC();
+
+	const daysFromEndDateToToday = Math.round(todayUTC.diff(endDateTimeUTC, 'days').days);
+	const daysDiff = Math.round(endDateTimeUTC.diff(startDateTimeUTC, 'days').days);
+
+	const daysFromStartDateToToday = Math.floor(todayUTC.diff(startDateTimeUTC, 'days').days);
+	const prevStartDaysFromToday = daysFromStartDateToToday + daysDiff;
+
+	const prevStartDateSql = getDatetimeSql({
+		dbType,
+		daysFromToday: prevStartDaysFromToday,
+		useStartOfDay,
+	});
+
+	const startDateSql = getDatetimeSql({
+		dbType,
+		daysFromToday: daysFromStartDateToToday,
+		useStartOfDay,
+	});
+
+	const endDateSql = getDatetimeSql({
+		dbType,
+		daysFromToday: daysFromEndDateToToday,
+		useStartOfDay,
+	});
 
 	return sql`SELECT
 			${prevStartDateSql} AS prev_start_date,

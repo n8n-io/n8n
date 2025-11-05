@@ -14,6 +14,9 @@ import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { mock } from 'vitest-mock-extended';
+import type { IUser } from '@n8n/rest-api-client';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -76,6 +79,7 @@ let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 let projectPages: ReturnType<typeof useProjectPages>;
+let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
@@ -83,6 +87,7 @@ describe('ProjectHeader', () => {
 		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
+		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
 		projectPages = useProjectPages();
 
@@ -526,6 +531,40 @@ describe('ProjectHeader', () => {
 					},
 				}),
 			);
+		});
+
+		it('should enable variable create button if project scope allows it', () => {
+			const project = createTestProject({
+				scopes: ['projectVariable:create'],
+			});
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(getByTestId('add-resource-variable')).toBeInTheDocument();
+			expect(getByTestId('add-resource-variable')).toBeEnabled();
+		});
+
+		it('should enable create variable button if global scope allows it', () => {
+			usersStore.currentUser = mock<IUser>({
+				globalScopes: ['variable:create'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(getByTestId('add-resource-variable')).toBeInTheDocument();
+			expect(getByTestId('add-resource-variable')).toBeEnabled();
+		});
+
+		it('should not enable variable create button if no scope allows it', () => {
+			const project = createTestProject({
+				scopes: [],
+			});
+			projectsStore.currentProject = project;
+
+			const { queryByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(queryByTestId('add-resource-variable')).toBeDisabled();
 		});
 	});
 });
