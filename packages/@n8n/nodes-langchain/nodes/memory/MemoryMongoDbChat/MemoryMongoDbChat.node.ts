@@ -128,8 +128,8 @@ export class MemoryMongoDbChat implements INodeType {
 			);
 		}
 
+		const client = new MongoClient(connectionString);
 		try {
-			const client = new MongoClient(connectionString);
 			await client.connect();
 
 			const db = client.db(dbName);
