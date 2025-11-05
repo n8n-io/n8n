@@ -499,6 +499,9 @@ describe('WorkflowDescriptionPopover', () => {
 
 	describe('MCP and webhook tooltips', () => {
 		it('should show base tooltip when MCP is disabled', async () => {
+			// Ensure MCP is disabled
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
+
 			const { getByTestId } = renderComponent({
 				props: {
 					workflowId: 'test-workflow-id',
@@ -510,10 +513,14 @@ describe('WorkflowDescriptionPopover', () => {
 
 			// The tooltip text appears as placeholder in the textarea
 			const textarea = getByTestId('workflow-description-input');
-			expect(textarea.getAttribute('placeholder')).toContain('Edit workflow description');
+			const placeholder = textarea.getAttribute('placeholder');
+			expect(placeholder).toContain('Edit workflow description');
+			// When MCP is disabled, should not contain MCP-specific text
+			expect(placeholder).not.toContain('MCP clients');
 		});
 
 		it('should show MCP tooltip when MCP is enabled', async () => {
+			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
 
 			const { getByTestId } = renderComponent({
@@ -526,13 +533,20 @@ describe('WorkflowDescriptionPopover', () => {
 			await userEvent.click(getByTestId('workflow-description-button'));
 
 			const textarea = getByTestId('workflow-description-input');
+			const placeholder = textarea.getAttribute('placeholder');
+
 			// When MCP is enabled, the placeholder includes both base tooltip and MCP-specific text
-			// For now, just test that the placeholder is the base tooltip since MCP might not be fully enabled in tests
-			expect(textarea.getAttribute('placeholder')).toContain('Edit workflow description');
+			expect(placeholder).toContain('Edit workflow description');
+			expect(placeholder).toContain('MCP clients');
+			// Should not include webhook notice when no webhooks
+			expect(placeholder).not.toContain('webhook');
 		});
 
 		it('should show webhook notice when workflow has webhooks and MCP is enabled', async () => {
+			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+
+			// Set up workflow with an enabled webhook node
 			workflowsStore.workflow = {
 				id: 'test-workflow-id',
 				name: 'Test Workflow',
@@ -565,13 +579,20 @@ describe('WorkflowDescriptionPopover', () => {
 			await userEvent.click(getByTestId('workflow-description-button'));
 
 			const textarea = getByTestId('workflow-description-input');
-			// When MCP is enabled and webhook is present, the placeholder includes webhook notice
-			// For now, just test that the placeholder is the base tooltip since MCP might not be fully enabled in tests
-			expect(textarea.getAttribute('placeholder')).toContain('Edit workflow description');
+			const placeholder = textarea.getAttribute('placeholder');
+
+			// When MCP is enabled and webhook is present, the placeholder includes all three parts
+			expect(placeholder).toContain('Edit workflow description');
+			expect(placeholder).toContain('MCP clients');
+			expect(placeholder).toContain('webhook inputs');
+			expect(placeholder).toContain('payload format');
 		});
 
 		it('should not show webhook notice for disabled webhook nodes', async () => {
+			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+
+			// Set up workflow with a disabled webhook node
 			workflowsStore.workflow = {
 				id: 'test-workflow-id',
 				name: 'Test Workflow',
@@ -604,7 +625,13 @@ describe('WorkflowDescriptionPopover', () => {
 			await userEvent.click(getByTestId('workflow-description-button'));
 
 			const textarea = getByTestId('workflow-description-input');
-			expect(textarea.getAttribute('placeholder')).not.toContain('webhook URL');
+			const placeholder = textarea.getAttribute('placeholder');
+
+			// Should show MCP text but not webhook notice for disabled webhooks
+			expect(placeholder).toContain('Edit workflow description');
+			expect(placeholder).toContain('MCP clients');
+			expect(placeholder).not.toContain('webhook inputs');
+			expect(placeholder).not.toContain('payload format');
 		});
 	});
 
