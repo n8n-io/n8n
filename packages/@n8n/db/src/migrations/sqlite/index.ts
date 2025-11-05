@@ -101,6 +101,7 @@ import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRole
 import type { Migration } from '../migration-types';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
+import { AddS3KeyToExecutionData1762277580000 } from './1762277580000-AddS3KeyToExecutionData';
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
 import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-CreateChatHubAgentTable';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
@@ -213,6 +214,7 @@ const sqliteMigrations: Migration[] = [
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
 	ChangeDependencyInfoToJson1761655473000,
+	AddS3KeyToExecutionData1762277580000,
 ];
 
 export { sqliteMigrations };

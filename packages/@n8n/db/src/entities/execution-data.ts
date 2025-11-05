@@ -6,10 +6,12 @@ import { ExecutionEntity } from './execution-entity';
 import { ISimplifiedPinData } from './types-db';
 import { idStringifier } from '../utils/transformers';
 
+export type ExecutionDataStorageMode = 'database' | 's3';
+
 @Entity()
 export class ExecutionData {
-	@Column('text')
-	data: string;
+	@Column('text', { nullable: true })
+	data: string | null;
 
 	// WARNING: the workflowData column has been changed from IWorkflowDb to IWorkflowBase
 	// when ExecutionData was introduced as a separate entity.
@@ -26,6 +28,12 @@ export class ExecutionData {
 
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
+
+	@Column('varchar', { nullable: true })
+	s3Key: string | null;
+
+	@Column('varchar', { default: 'database' })
+	storageMode: ExecutionDataStorageMode;
 
 	@OneToOne('ExecutionEntity', 'executionData', {
 		onDelete: 'CASCADE',

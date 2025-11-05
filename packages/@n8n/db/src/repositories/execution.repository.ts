@@ -24,6 +24,7 @@ import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { ExecutionDataService } from 'n8n-core/dist/execution-data/execution-data.service';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -139,6 +140,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly executionDataService: ExecutionDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -161,6 +163,44 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			)
 			.select('execution.id')
 			.getMany();
+	}
+
+	async getExecutionData(
+		execution: ExecutionEntity,
+		options?: { unflattenData?: boolean },
+	): Promise<IRunExecutionData | string | undefined> {
+		const { executionData } = execution;
+
+		if (!executionData) return undefined;
+
+		if (executionData.storageMode !== 's3' && executionData.data) {
+			return options?.unflattenData
+				? (parse(executionData.data) as IRunExecutionData)
+				: executionData.data;
+		}
+
+		if (executionData.storageMode === 's3' && executionData.s3Key) {
+			try {
+				const retrievedData = await this.executionDataService.retrieve(
+					execution.id,
+					executionData.s3Key,
+				);
+				if (!options?.unflattenData) {
+					return stringify(retrievedData);
+				} else {
+					return retrievedData;
+				}
+			} catch (error) {
+				this.logger.error('Failed to retrieve execution data from S3', {
+					executionId: execution.id,
+					s3Key: executionData.s3Key,
+					error,
+				});
+				throw error;
+			}
+		}
+
+		return undefined;
 	}
 
 	async findMultipleExecutions(
@@ -206,30 +246,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const executions = await this.find(queryParams);
 
-		if (options?.includeData && options?.unflattenData) {
+		if (options?.includeData) {
 			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
 			this.reportInvalidExecutions(invalid);
-			return valid.map((execution) => {
-				const { executionData, metadata, ...rest } = execution;
-				return {
-					...rest,
-					data: parse(executionData.data) as IRunExecutionData,
-					workflowData: executionData.workflowData,
-					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				} as IExecutionResponse;
-			});
-		} else if (options?.includeData) {
-			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
-			this.reportInvalidExecutions(invalid);
-			return valid.map((execution) => {
-				const { executionData, metadata, ...rest } = execution;
-				return {
-					...rest,
-					data: execution.executionData.data,
-					workflowData: execution.executionData.workflowData,
-					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				} as IExecutionFlattedDb;
-			});
+			return await Promise.all(
+				valid.map(async (execution): Promise<IExecutionResponse> => {
+					const { executionData, metadata, ...rest } = execution;
+
+					const data = await this.getExecutionData(execution, options);
+
+					return {
+						...rest,
+						data,
+						workflowData: executionData.workflowData,
+						customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+					} as IExecutionResponse;
+				}),
+			);
 		}
 
 		return executions.map((execution) => {
@@ -338,9 +371,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return {
 			...rest,
 			...(options?.includeData && {
-				data: options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
-					: executionData.data,
+				data: await this.getExecutionData(execution, options),
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			}),
@@ -356,7 +387,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
 		const { connections, nodes, name, settings } = currentWorkflow ?? {};
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
-		const data = stringify(dataObj);
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
@@ -364,7 +394,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
 			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
 			const { id: executionId } = inserted[0] as { id: string };
-			await this.executionDataRepository.insert({ executionId, workflowData, data });
+
+			if (this.executionDataService.isS3Mode()) {
+				const s3Key = await this.executionDataService.store(executionId, dataObj);
+				await this.executionDataRepository.insert({
+					executionId,
+					workflowData,
+					data: null,
+					s3Key,
+					storageMode: 's3',
+				});
+			} else {
+				const data = stringify(dataObj);
+				await this.executionDataRepository.insert({ executionId, workflowData, data });
+			}
 			return String(executionId);
 		} else {
 			// All other database drivers should create executions and execution-data atomically
@@ -374,10 +417,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					createdAt: new Date(),
 				});
 				const { id: executionId } = inserted[0] as { id: string };
-				await this.executionDataRepository.createExecutionDataForExecution(
-					{ executionId, workflowData, data },
-					transactionManager,
-				);
+
+				if (this.executionDataService.isS3Mode()) {
+					const s3Key = await this.executionDataService.store(executionId, dataObj);
+					await this.executionDataRepository.createExecutionDataForExecution(
+						{ executionId, workflowData, data: null, s3Key, storageMode: 's3' },
+						transactionManager,
+					);
+				} else {
+					const data = stringify(dataObj);
+					await this.executionDataRepository.createExecutionDataForExecution(
+						{ executionId, workflowData, data },
+						transactionManager,
+					);
+				}
 				return String(executionId);
 			});
 		}
@@ -406,10 +459,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return await Promise.all([
-			this.delete(ids.executionId),
-			this.binaryDataService.deleteMany([ids]),
-		]);
+		const executionData = await this.executionDataRepository.findOne({
+			select: ['s3Key'],
+			where: { executionId: ids.executionId },
+		});
+
+		const deletePromises = [this.delete(ids.executionId), this.binaryDataService.deleteMany([ids])];
+
+		if (executionData?.s3Key) {
+			deletePromises.push(this.executionDataService.delete([executionData.s3Key]));
+		}
+
+		return await Promise.all(deletePromises);
 	}
 
 	async setRunning(executionId: string) {
@@ -435,7 +496,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executionData: Partial<ExecutionData> = {};
 
 		if (workflowData) executionData.workflowData = workflowData;
-		if (data) executionData.data = stringify(data);
+
+		if (data) {
+			const storageMode = await this.executionDataRepository.findStorageMode(executionId);
+			if (storageMode === 's3') {
+				const s3Key = await this.executionDataService.store(executionId, data);
+				executionData.s3Key = s3Key;
+				executionData.data = null;
+			} else {
+				executionData.data = stringify(data);
+			}
+		}
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 
@@ -507,6 +578,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 			return;
 		}
+
+		await Promise.all(
+			executions.map(async (execution) => {
+				const executionData = await this.executionDataRepository.findOne({
+					select: ['s3Key'],
+					where: { executionId: execution.id },
+				});
+				if (executionData?.s3Key) {
+					await this.executionDataService.delete([executionData.s3Key]);
+				}
+			}),
+		);
 
 		const ids = executions.map(({ id, workflowId }) => ({
 			executionId: id,
