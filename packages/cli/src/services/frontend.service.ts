@@ -1,4 +1,9 @@
-import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
+import type {
+	FrontendSettings,
+	IEnterpriseSettings,
+	ITelemetrySettings,
+	N8nEnvFeatFlags,
+} from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -9,6 +14,8 @@ import uniq from 'lodash/uniq';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
+
+import { UrlService } from './url.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
@@ -30,7 +37,30 @@ import {
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
-import { UrlService } from './url.service';
+export type PublicEnterpriseSettings = Pick<
+	IEnterpriseSettings,
+	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
+>;
+
+export type PublicFrontendSettings = Pick<
+	FrontendSettings,
+	| 'settingsMode'
+	| 'instanceId'
+	| 'defaultLocale'
+	| 'versionCli'
+	| 'releaseChannel'
+	| 'versionNotifications'
+	| 'userManagement'
+	| 'sso'
+	| 'mfa'
+	| 'authCookie'
+	| 'oauthCallbackUrls'
+	| 'banners'
+	| 'previewMode'
+	| 'telemetry'
+> & {
+	enterprise: PublicEnterpriseSettings;
+};
 
 @Service()
 export class FrontendService {
@@ -105,6 +135,7 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			settingsMode: 'authenticated',
 			inE2ETests,
 			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
@@ -149,6 +180,10 @@ export class FrontendService {
 				whatsNewEnabled: this.globalConfig.versionNotifications.whatsNewEnabled,
 				whatsNewEndpoint: this.globalConfig.versionNotifications.whatsNewEndpoint,
 				infoUrl: this.globalConfig.versionNotifications.infoUrl,
+			},
+			dynamicBanners: {
+				endpoint: this.globalConfig.dynamicBanners.endpoint,
+				enabled: this.globalConfig.dynamicBanners.enabled,
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
@@ -418,7 +453,8 @@ export class FrontendService {
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
-			this.settings.aiAssistant.setup = !!this.globalConfig.aiAssistant.baseUrl;
+			this.settings.aiAssistant.setup =
+				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
 		}
 
 		if (isAskAiEnabled) {
@@ -456,6 +492,48 @@ export class FrontendService {
 		this.settings.envFeatureFlags = this.collectEnvFeatureFlags();
 
 		return this.settings;
+	}
+
+	/**
+	 * Only add settings that are absolutely necessary for non-authenticated pages
+	 * @returns Public settings for unauthenticated users
+	 */
+	getPublicSettings(): PublicFrontendSettings {
+		// Get full settings to ensure all required properties are initialized
+		const {
+			instanceId,
+			defaultLocale,
+			versionCli,
+			releaseChannel,
+			versionNotifications,
+			userManagement,
+			sso,
+			mfa,
+			authCookie,
+			oauthCallbackUrls,
+			banners,
+			previewMode,
+			telemetry,
+			enterprise: { saml, ldap, oidc, showNonProdBanner },
+		} = this.getSettings();
+
+		return {
+			settingsMode: 'public',
+			instanceId,
+			defaultLocale,
+			versionCli,
+			releaseChannel,
+			versionNotifications,
+			userManagement,
+			sso,
+			mfa,
+			authCookie,
+			oauthCallbackUrls,
+			banners,
+			previewMode,
+			telemetry,
+			enterprise: { saml, ldap, oidc, showNonProdBanner },
+		};
 	}
 
 	getModuleSettings() {

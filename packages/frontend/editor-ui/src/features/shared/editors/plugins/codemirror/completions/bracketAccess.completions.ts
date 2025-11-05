@@ -1,7 +1,7 @@
 import { prefixMatch, longestCommonPrefix, resolveAutocompleteExpression } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Resolved } from './types';
-import { escapeMappingString } from '@/utils/mappingUtils';
+import { escapeMappingString } from '@/app/utils/mappingUtils';
 import { TARGET_NODE_PARAMETER_FACET } from './constants';
 
 /**
