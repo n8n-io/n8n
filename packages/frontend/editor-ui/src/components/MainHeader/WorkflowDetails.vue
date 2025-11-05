@@ -9,6 +9,7 @@ import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklis
 import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
+	DRAFT_PUBLISH_EXPERIMENT,
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -19,7 +20,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-
+import { usePostHog } from '@/stores/posthog.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -34,6 +35,7 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import WorkflowHeaderActions from '@/components/MainHeader/WorkflowHeaderActions.vue';
+import WorkflowHeaderDraftPublishActions from '@/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -82,6 +84,7 @@ const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
+const posthogStore = usePostHog();
 
 const router = useRouter();
 const route = useRoute();
@@ -140,6 +143,10 @@ const currentFolderForBreadcrumbs = computed(() => {
 		return foldersStore.getCachedFolder(folderId);
 	}
 	return null;
+});
+
+const isDraftPublishEnabled = computed(() => {
+	return posthogStore.isFeatureEnabled(DRAFT_PUBLISH_EXPERIMENT.name);
 });
 
 watch(
@@ -541,7 +548,9 @@ onBeforeUnmount(() => {
 
 		<PushConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
+			<WorkflowHeaderDraftPublishActions v-if="isDraftPublishEnabled" />
 			<WorkflowHeaderActions
+				v-else
 				:id="id"
 				ref="workflowHeaderActions"
 				:name="name"
