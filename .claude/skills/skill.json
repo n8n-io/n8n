@@ -1,0 +1,10 @@
+{
+  "skills": [
+    {
+      "name": "n8n-workflow-builder",
+      "description": "Expert n8n workflow automation builder - creates production-ready workflows based on n8n documentation and best practices",
+      "path": "n8n-workflow-builder.md",
+      "tags": ["automation", "n8n", "workflows", "ai-agents", "integrations"]
+    }
+  ]
+}
