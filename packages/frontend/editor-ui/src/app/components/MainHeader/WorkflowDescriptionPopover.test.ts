@@ -270,7 +270,7 @@ describe('WorkflowDescriptionPopover', () => {
 
 		it('should disable cancel button during save', async () => {
 			workflowsStore.saveWorkflowDescription = vi.fn(
-				() => new Promise((resolve) => setTimeout(resolve, 100)),
+				async () => await new Promise((resolve) => setTimeout(resolve, 100)),
 			);
 
 			const { getByTestId } = renderComponent({
