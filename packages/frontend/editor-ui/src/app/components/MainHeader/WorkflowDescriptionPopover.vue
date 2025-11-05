@@ -39,8 +39,8 @@ const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
 const lastSavedDescription = ref(props.workflowDescription);
 
-const normalizedCurrentValue = computed(() => descriptionValue.value.trim() || '');
-const normalizedLastSaved = computed(() => lastSavedDescription.value.trim() || '');
+const normalizedCurrentValue = computed(() => (descriptionValue.value || '').trim());
+const normalizedLastSaved = computed(() => (lastSavedDescription.value || '').trim());
 
 const canSave = computed(() => normalizedCurrentValue.value !== normalizedLastSaved.value);
 

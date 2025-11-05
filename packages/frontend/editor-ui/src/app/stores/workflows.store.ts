@@ -1642,7 +1642,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// Update local store state
 		if (isCurrentWorkflow) {
-			setDescription(description ?? '');
+			setDescription(updated.description ?? '');
 			if (updated.versionId !== currentVersionId) {
 				setWorkflowVersionId(updated.versionId);
 			}

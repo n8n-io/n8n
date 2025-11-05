@@ -114,7 +114,7 @@ const mcpToggleDisabled = computed(() => {
 const mcpToggleTooltip = computed(() => {
 	if (!isInstanceMcpAccessEnabled.value) {
 		return i18n.baseText('mcp.instanceLevelAccessDisabled.description');
-	} else if (!isEligibleForMcpAccess(workflow.value!)) {
+	} else if (!isEligibleForMcp.value) {
 		return i18n.baseText('mcp.workflowNotEligable.description');
 	}
 	return i18n.baseText('workflowSettings.availableInMCP.tooltip');

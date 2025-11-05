@@ -242,7 +242,6 @@ export function useWorkflowNavigationCommands(options: {
 		const workflowName = workflow.name;
 		keywords = [...keywords, workflowName];
 
-		// Add description to keywords if it exists
 		if (workflow.description) {
 			keywords = [...keywords, workflow.description];
 		}
