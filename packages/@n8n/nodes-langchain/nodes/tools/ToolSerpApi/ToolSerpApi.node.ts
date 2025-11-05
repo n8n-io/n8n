@@ -135,7 +135,7 @@ export class ToolSerpApi implements INodeType {
 		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
 			const tool = await getTool(this, itemIndex);
 			const item = inputData[itemIndex].json;
-			const queryString = item.input ?? item.chatInput;
+			const queryString = item.input || item.chatInput;
 
 			if (typeof queryString !== 'string' || !queryString) {
 				throw new NodeOperationError(
