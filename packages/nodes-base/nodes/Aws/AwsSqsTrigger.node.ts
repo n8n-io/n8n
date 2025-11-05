@@ -88,7 +88,7 @@ export class AwsSqsTrigger implements INodeType {
 						},
 						default: 1,
 						description:
-							'How often to check for messages (in minutes). Use 1 for every minute, 5 for every 5 minutes, etc. Set to 0 for continuous polling.',
+							'Delay between polls (in minutes). Note: The actual interval includes this delay plus the SQS long polling wait time (default 20 seconds). Set to 0 for continuous polling with minimal delay.',
 					},
 					{
 						displayName: 'Max Number of Messages',
