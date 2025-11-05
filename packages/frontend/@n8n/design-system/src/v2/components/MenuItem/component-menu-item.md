@@ -63,38 +63,39 @@ const items = ref<IMenuItem[]>([...])
 </script>
 
 <template>
-<N8nTree>// <- TBD
-  <N8nMenuItem
-		as="a"
-		v-for="item in items"
-		:item="item"
-		:collapsed="collapsed"
-	>
-		<template #toggle>
-			<N8nIconButton
-				size="mini"
-				type="highlight"
-				icon="chevron-right"
-				icon-size="medium"
-				aria-label="Go to details"
-			/>
-		</template>
-		<template #actions>
-			<N8nIconButton
-				size="mini"
-				type="highlight"
-				icon="ellipsis"
-				icon-size="medium"
-				aria-label="Go to details"
-			/>
-			<N8nIconButton
-				size="mini"
-				type="highlight"
-				icon="plus"
-				icon-size="medium"
-				aria-label="Go to details"
-			/>
-		</template>
+	<N8nTree>// <- TBD
+		<N8nMenuItem
+			as="a"
+			v-for="item in items"
+			:item="item"
+			:collapsed="collapsed"
+		>
+			<template #toggle>
+				<N8nIconButton
+					size="mini"
+					type="highlight"
+					icon="chevron-right"
+					icon-size="medium"
+					aria-label="Go to details"
+				/>
+			</template>
+			<template #actions>
+				<N8nIconButton
+					size="mini"
+					type="highlight"
+					icon="ellipsis"
+					icon-size="medium"
+					aria-label="Go to details"
+				/>
+				<N8nIconButton
+					size="mini"
+					type="highlight"
+					icon="plus"
+					icon-size="medium"
+					aria-label="Go to details"
+				/>
+			</template>
+		</N8nMenuItem>
 	</N8nTree>
 </template>
 ```
