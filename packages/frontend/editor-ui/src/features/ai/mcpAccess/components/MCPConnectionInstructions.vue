@@ -35,7 +35,7 @@ const selectedTab = ref<ConnectionTabType>('oauth');
 
 const tabs = ref<Array<TabOptions<ConnectionTabType>>>([
 	{
-		label: i18n.baseText('settings.mcp.instructions.tabs.oath'),
+		label: i18n.baseText('settings.mcp.instructions.tabs.oauth'),
 		value: 'oauth',
 	},
 	{
@@ -58,7 +58,7 @@ const onTabSelected = (tab: ConnectionTabType) => {
 			<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
 			<OAuthConnectionInstructions
 				v-show="selectedTab === 'oauth'"
-				:server-url="`${props.baseUrl}/${MCP_ENDPOINT}`"
+				:server-url="`${props.baseUrl}${MCP_ENDPOINT}`"
 				:clients="props.oAuthClients"
 				:clients-loading="props.loadingOAuthClients"
 				@revoke-client="emit('revokeClient', $event)"
@@ -66,7 +66,7 @@ const onTabSelected = (tab: ConnectionTabType) => {
 			/>
 			<AccessTokenConnectionInstructions
 				v-show="selectedTab === 'token'"
-				:server-url="`${props.baseUrl}/${MCP_ENDPOINT}`"
+				:server-url="`${props.baseUrl}${MCP_ENDPOINT}`"
 				:api-key="props.apiKey"
 				:loading-api-key="props.loadingApiKey"
 				@rotate-key="emit('rotateKey')"

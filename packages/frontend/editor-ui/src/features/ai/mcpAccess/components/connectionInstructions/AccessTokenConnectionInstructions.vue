@@ -131,7 +131,7 @@ const apiKeyText = computed(() => {
 				<template #customContent>
 					<N8nMarkdown :content="connectionCode"></N8nMarkdown>
 					<N8nTooltip
-						:disables="!isSupported"
+						:disabled="!isSupported"
 						:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
 					>
 						<N8nButton

@@ -104,7 +104,6 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 			/>
 			<N8nDataTableServer
 				v-else
-				:class="$style['client-table']"
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
 				:items="props.clients"
