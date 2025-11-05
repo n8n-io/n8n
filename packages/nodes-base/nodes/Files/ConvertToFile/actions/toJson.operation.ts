@@ -110,7 +110,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				items.map((item) => item.json),
 				{
 					fileName: options.fileName as string,
-					mimeType: options.jsonl ? 'text/jsonl' : 'application/json',
+					mimeType: options.jsonl ? 'application/jsonl' : 'application/json',
 					encoding: options.encoding as string,
 					addBOM: options.addBOM as boolean,
 					format: options.format as boolean,
@@ -148,7 +148,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					encoding: options.encoding as string,
 					addBOM: options.addBOM as boolean,
 					format: options.format as boolean,
-					mimeType: options.jsonl ? 'text/jsonl' : 'application/json',
+					mimeType: options.jsonl ? 'application/jsonl' : 'application/json',
 					itemIndex: i,
 				});
 
