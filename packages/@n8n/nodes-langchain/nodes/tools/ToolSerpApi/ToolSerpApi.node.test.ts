@@ -194,17 +194,33 @@ describe('ToolSerpApi', () => {
 				getNode: jest.fn(() => mock<INode>({ name: 'test serpapi' })),
 				getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
 				getNodeParameter: jest.fn().mockReturnValue({}),
-				logger: {
-					error: jest.fn(),
-				},
 			});
 
 			await expect(node.execute.call(mockExecute)).rejects.toThrow(
 				'No query string found at index 0',
 			);
+		});
 
-			expect(mockExecute.logger.error).toHaveBeenCalledWith(
-				'[ToolSerpApi] Missing query string at index 0',
+		it.each([
+			['', 'empty string'],
+			[123, 'number'],
+			[{ query: 'test' }, 'object'],
+			[['query1'], 'array'],
+			[null, 'null'],
+			[undefined, 'undefined'],
+		])('should throw error for invalid query type: %s', async (invalidInput, _description) => {
+			const node = new ToolSerpApi();
+			const inputData: INodeExecutionData[] = [{ json: { input: invalidInput } }];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ name: 'test serpapi' })),
+				getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+				getNodeParameter: jest.fn().mockReturnValue({}),
+			});
+
+			await expect(node.execute.call(mockExecute)).rejects.toThrow(
+				'No query string found at index 0',
 			);
 		});
 	});

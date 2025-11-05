@@ -135,10 +135,9 @@ export class ToolSerpApi implements INodeType {
 		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
 			const tool = await getTool(this, itemIndex);
 			const item = inputData[itemIndex].json;
-			const queryString = (item.input ?? item.chatInput) as string;
+			const queryString = item.input || item.chatInput;
 
-			if (!queryString) {
-				this.logger.error(`[ToolSerpApi] Missing query string at index ${itemIndex}`);
+			if (typeof queryString !== 'string' || !queryString) {
 				throw new NodeOperationError(this.getNode(), `No query string found at index ${itemIndex}`);
 			}
 
