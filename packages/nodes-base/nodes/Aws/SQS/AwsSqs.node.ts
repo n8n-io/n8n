@@ -409,7 +409,7 @@ export class AwsSqs implements INodeType {
 								} catch (error) {
 									// Log but don't fail if delete fails
 									this.logger.warn('Failed to delete message after receive', {
-										error: error.message,
+										error: (error as Error).message,
 									});
 								}
 							}
