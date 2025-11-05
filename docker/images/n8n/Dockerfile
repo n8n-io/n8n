@@ -26,6 +26,7 @@ RUN set -e; \
     case "$TARGETPLATFORM" in \
         "linux/amd64") ARCH_NAME="amd64" ;; \
         "linux/arm64") ARCH_NAME="arm64" ;; \
+        "linux/aarch64") ARCH_NAME="aarchß64" ;; \
         *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
     esac; \
     mkdir /launcher-temp && cd /launcher-temp; \
