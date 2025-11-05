@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { N8nHeading, N8nSelect, N8nButton, N8nCard } from '@n8n/design-system';
+import { N8nHeading, N8nSelect, N8nButton, N8nCard, N8nIcon } from '@n8n/design-system';
 import { useTelemetryStore } from '../stores/telemetry.store';
 import StatsCard from '../components/StatsCard.vue';
 import LineChart from '../components/LineChart.vue';
@@ -24,9 +24,7 @@ const activeUsersChartData = computed(() => {
 		return { labels: [], datasets: [] };
 	}
 
-	const labels = telemetryStore.activeUsersData.map((item) =>
-		format(new Date(item.date), 'MM-dd'),
-	);
+	const labels = telemetryStore.activeUsersData.map((item) => format(new Date(item.date), 'MM-dd'));
 	const data = telemetryStore.activeUsersData.map((item) => item.active_users);
 
 	return {
@@ -83,7 +81,7 @@ onMounted(() => {
 					size="small"
 					@update:model-value="handleTimeRangeChange"
 				/>
-				<N8nButton type="secondary" size="small" icon="sync-alt" @click="handleRefresh">
+				<N8nButton type="secondary" size="small" icon="refresh-ccw" @click="handleRefresh">
 					刷新
 				</N8nButton>
 			</div>
@@ -94,7 +92,7 @@ onMounted(() => {
 			<StatsCard
 				title="总事件数"
 				:value="telemetryStore.overview?.totalEvents || 0"
-				icon="chart-line"
+				icon="activity"
 				:loading="loading"
 			/>
 			<StatsCard
@@ -106,17 +104,15 @@ onMounted(() => {
 			<StatsCard
 				title="唯一事件类型"
 				:value="telemetryStore.topEvents?.length || 0"
-				icon="tags"
+				icon="tag"
 				:loading="loading"
 			/>
 			<StatsCard
 				title="平均每日事件"
 				:value="
-					telemetryStore.overview
-						? Math.round(telemetryStore.overview.totalEvents / timeRange)
-						: 0
+					telemetryStore.overview ? Math.round(telemetryStore.overview.totalEvents / timeRange) : 0
 				"
-				icon="calendar-day"
+				icon="calendar"
 				:loading="loading"
 			/>
 		</div>
@@ -135,7 +131,7 @@ onMounted(() => {
 					:height="300"
 				/>
 				<div v-else :class="$style.emptyChart">
-					<font-awesome-icon icon="chart-line" />
+					<N8nIcon icon="activity" size="xlarge" />
 					<p>暂无数据</p>
 				</div>
 			</N8nCard>

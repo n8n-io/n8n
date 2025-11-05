@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nHeading, N8nText, N8nButton } from '@n8n/design-system';
+import { N8nHeading, N8nText, N8nButton, N8nIcon } from '@n8n/design-system';
 import { useAuthStore } from '@/stores/auth.store';
 
 const authStore = useAuthStore();
@@ -18,7 +18,7 @@ function handleContactAdmin() {
 	<div :class="$style.container">
 		<div :class="$style.content">
 			<div :class="$style.iconWrapper">
-				<font-awesome-icon icon="shield-alt" :class="$style.icon" />
+				<N8nIcon icon="ban" size="xlarge" :class="$style.icon" />
 			</div>
 
 			<N8nHeading tag="h1" size="2xlarge" :class="$style.title"> 403 - 访问被拒绝 </N8nHeading>
@@ -41,9 +41,7 @@ function handleContactAdmin() {
 			</div>
 
 			<div :class="$style.actions">
-				<N8nButton type="primary" size="large" @click="handleBackToHome">
-					返回首页
-				</N8nButton>
+				<N8nButton type="primary" size="large" @click="handleBackToHome"> 返回首页 </N8nButton>
 				<N8nButton type="secondary" size="large" @click="handleContactAdmin">
 					联系管理员
 				</N8nButton>
@@ -74,10 +72,11 @@ function handleContactAdmin() {
 
 .iconWrapper {
 	margin-bottom: var(--spacing--lg);
+	display: flex;
+	justify-content: center;
 }
 
 .icon {
-	font-size: 80px;
 	color: var(--color--danger);
 }
 

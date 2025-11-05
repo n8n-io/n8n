@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useAuthStore } from '@/stores/auth.store';
 
 const emit = defineEmits<{
@@ -22,7 +22,7 @@ function goToMainApp() {
 		<!-- 左侧 -->
 		<div :class="$style.left">
 			<button :class="$style.menuBtn" @click="emit('toggle-sidebar')">
-				<font-awesome-icon icon="bars" />
+				<N8nIcon icon="menu" size="medium" />
 			</button>
 		</div>
 
@@ -30,14 +30,14 @@ function goToMainApp() {
 		<div :class="$style.right">
 			<!-- 返回主应用 -->
 			<N8nButton type="secondary" size="small" @click="goToMainApp">
-				<font-awesome-icon icon="arrow-left" />
+				<N8nIcon icon="arrow-left" size="small" />
 				返回 n8n
 			</N8nButton>
 
 			<!-- 用户信息 -->
 			<div :class="$style.user">
 				<div :class="$style.userAvatar">
-					<font-awesome-icon icon="user-circle" />
+					<N8nIcon icon="circle-user-round" size="large" />
 				</div>
 				<div :class="$style.userInfo">
 					<div :class="$style.userName">{{ authStore.userName }}</div>
@@ -47,7 +47,7 @@ function goToMainApp() {
 
 			<!-- 退出登录 -->
 			<N8nButton type="secondary" size="small" @click="handleLogout">
-				<font-awesome-icon icon="sign-out-alt" />
+				<N8nIcon icon="log-out" size="small" />
 				退出
 			</N8nButton>
 		</div>

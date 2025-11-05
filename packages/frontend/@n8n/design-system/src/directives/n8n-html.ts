@@ -1,4 +1,4 @@
-import sanitize from 'sanitize-html';
+import xss, { whiteList } from 'xss';
 import type { DirectiveBinding, FunctionDirective } from 'vue';
 
 /**
@@ -17,15 +17,17 @@ import type { DirectiveBinding, FunctionDirective } from 'vue';
  */
 
 const configuredSanitize = (html: string) =>
-	sanitize(html, {
-		allowedTags: sanitize.defaults.allowedTags.concat(['img', 'input']),
-		allowedAttributes: {
-			...sanitize.defaults.allowedAttributes,
+	xss(html, {
+		whiteList: {
+			...whiteList,
+			img: ['src', 'alt', 'title', 'width', 'height'],
 			input: ['type', 'id', 'checked'],
 			code: ['class'],
-			a: sanitize.defaults.allowedAttributes.a.concat(['data-*']),
+			a: [...(whiteList.a || []), 'data-*'],
 			div: ['class'],
 		},
+		stripIgnoreTag: true,
+		stripIgnoreTagBody: ['script'],
 	});
 
 export const n8nHtml: FunctionDirective<HTMLElement, string> = (

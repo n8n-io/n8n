@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { N8nIcon } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { modules } from '@/config/modules';
@@ -32,7 +33,7 @@ function navigateTo(module: AdminModule) {
 		<!-- Logo -->
 		<div :class="$style.logo">
 			<div :class="$style.logoIcon">
-				<font-awesome-icon icon="cogs" />
+				<N8nIcon icon="settings" size="large" />
 			</div>
 			<transition name="fade">
 				<div v-if="!collapsed" :class="$style.logoText">n8n 管理后台</div>
@@ -54,7 +55,7 @@ function navigateTo(module: AdminModule) {
 				@click="navigateTo(module)"
 			>
 				<div :class="$style.navIcon">
-					<font-awesome-icon :icon="module.icon" />
+					<N8nIcon :icon="module.icon" size="medium" />
 				</div>
 				<transition name="fade">
 					<div v-if="!collapsed" :class="$style.navText">

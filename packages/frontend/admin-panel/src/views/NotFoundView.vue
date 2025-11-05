@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nHeading, N8nText, N8nButton } from '@n8n/design-system';
+import { N8nHeading, N8nText, N8nButton, N8nIcon } from '@n8n/design-system';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -13,7 +13,7 @@ function handleBackToDashboard() {
 	<div :class="$style.container">
 		<div :class="$style.content">
 			<div :class="$style.iconWrapper">
-				<font-awesome-icon icon="search" :class="$style.icon" />
+				<N8nIcon icon="search" size="xlarge" :class="$style.icon" />
 			</div>
 
 			<N8nHeading tag="h1" size="2xlarge" :class="$style.title"> 404 - 页面未找到 </N8nHeading>
@@ -53,10 +53,11 @@ function handleBackToDashboard() {
 
 .iconWrapper {
 	margin-bottom: var(--spacing--lg);
+	display: flex;
+	justify-content: center;
 }
 
 .icon {
-	font-size: 80px;
 	color: var(--color--warning);
 }
 

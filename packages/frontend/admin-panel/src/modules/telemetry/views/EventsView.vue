@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { N8nHeading, N8nInput, N8nSelect, N8nButton, N8nCard } from '@n8n/design-system';
+import { N8nHeading, N8nInput, N8nSelect, N8nButton, N8nCard, N8nIcon } from '@n8n/design-system';
 import { useTelemetryStore } from '../stores/telemetry.store';
 import { format } from 'date-fns';
 import type { TelemetryEventDto } from '@n8n/api-types';
@@ -155,7 +155,7 @@ onMounted(() => {
 				<p :class="$style.subtitle">查看和搜索所有 Telemetry 事件</p>
 			</div>
 			<div :class="$style.exportButtons">
-				<N8nButton type="secondary" size="small" icon="file-csv" @click="handleExport('csv')">
+				<N8nButton type="secondary" size="small" icon="file-text" @click="handleExport('csv')">
 					导出 CSV
 				</N8nButton>
 				<N8nButton type="secondary" size="small" icon="file-code" @click="handleExport('json')">
@@ -176,7 +176,7 @@ onMounted(() => {
 						@keyup.enter="handleSearch"
 					>
 						<template #prefix>
-							<font-awesome-icon icon="search" />
+							<N8nIcon icon="search" size="small" />
 						</template>
 					</N8nInput>
 
@@ -187,12 +187,7 @@ onMounted(() => {
 						:class="$style.sourceFilter"
 					/>
 
-					<input
-						v-model="startDate"
-						type="date"
-						:class="$style.dateInput"
-						placeholder="开始日期"
-					/>
+					<input v-model="startDate" type="date" :class="$style.dateInput" placeholder="开始日期" />
 
 					<input v-model="endDate" type="date" :class="$style.dateInput" placeholder="结束日期" />
 				</div>
@@ -225,12 +220,12 @@ onMounted(() => {
 		<!-- Events Table -->
 		<N8nCard :class="$style.tableCard">
 			<div v-if="telemetryStore.loading" :class="$style.loading">
-				<font-awesome-icon icon="spinner" spin />
+				<N8nIcon icon="spinner" size="xlarge" />
 				<p>加载中...</p>
 			</div>
 
 			<div v-else-if="telemetryStore.events.length === 0" :class="$style.empty">
-				<font-awesome-icon icon="inbox" />
+				<N8nIcon icon="inbox" size="xlarge" />
 				<p>暂无数据</p>
 			</div>
 

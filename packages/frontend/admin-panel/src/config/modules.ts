@@ -20,7 +20,7 @@ export const modules: AdminModule[] = [
 	{
 		id: 'telemetry',
 		name: 'Telemetry 数据分析',
-		icon: 'chart-line',
+		icon: 'activity',
 		path: '/telemetry',
 		enabled: true,
 		description: '查看和分析应用程序遥测事件数据',
@@ -28,7 +28,7 @@ export const modules: AdminModule[] = [
 			{
 				id: 'telemetry-dashboard',
 				name: '仪表板',
-				icon: 'tachometer-alt',
+				icon: 'gauge',
 				path: '/telemetry/dashboard',
 				enabled: true,
 			},
@@ -42,7 +42,7 @@ export const modules: AdminModule[] = [
 			{
 				id: 'telemetry-analytics',
 				name: '数据分析',
-				icon: 'chart-bar',
+				icon: 'chart-column-decreasing',
 				path: '/telemetry/analytics',
 				enabled: true,
 			},
@@ -58,7 +58,7 @@ export const modules: AdminModule[] = [
 	{
 		id: 'workspaces',
 		name: '工作空间管理',
-		icon: 'layer-group',
+		icon: 'layers',
 		path: '/workspaces',
 		enabled: false, // 未实现
 		description: '管理个人和团队工作空间',
@@ -66,7 +66,7 @@ export const modules: AdminModule[] = [
 	{
 		id: 'users',
 		name: '用户管理',
-		icon: 'user-cog',
+		icon: 'settings',
 		path: '/users',
 		enabled: false, // 未实现
 		description: '全面监控和控制用户生命周期',
@@ -90,7 +90,7 @@ export const modules: AdminModule[] = [
 	{
 		id: 'billing',
 		name: '计费管理',
-		icon: 'dollar-sign',
+		icon: 'coins',
 		path: '/billing',
 		enabled: false, // 未实现
 		description: '计费、充值和订阅管理',

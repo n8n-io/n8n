@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { N8nIcon } from '@n8n/design-system';
 import { computed } from 'vue';
 
 interface Props {
@@ -34,18 +35,18 @@ const trendClass = computed(() => {
 		<div :class="$style.header">
 			<span :class="$style.title">{{ title }}</span>
 			<div v-if="icon" :class="$style.icon">
-				<font-awesome-icon :icon="icon" />
+				<N8nIcon :icon="icon" size="medium" />
 			</div>
 		</div>
 
 		<div v-if="loading" :class="$style.loading">
-			<font-awesome-icon icon="spinner" spin />
+			<N8nIcon icon="spinner" size="large" />
 		</div>
 
 		<div v-else :class="$style.content">
 			<div :class="$style.value">{{ formattedValue }}</div>
 			<div v-if="trend" :class="[$style.trend, $style[trendClass]]">
-				<font-awesome-icon :icon="trend.isPositive ? 'arrow-up' : 'arrow-down'" />
+				<N8nIcon :icon="trend.isPositive ? 'arrow-up' : 'arrow-down'" size="small" />
 				{{ Math.abs(trend.value) }}%
 			</div>
 		</div>

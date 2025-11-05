@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { N8nIcon } from '@n8n/design-system';
 import { computed } from 'vue';
 
 interface TopEvent {
@@ -35,12 +36,12 @@ function getBarWidth(count: number): number {
 <template>
 	<div :class="$style.container">
 		<div v-if="loading" :class="$style.loading">
-			<font-awesome-icon icon="spinner" spin />
+			<N8nIcon icon="spinner" size="xlarge" />
 			加载中...
 		</div>
 
 		<div v-else-if="displayEvents.length === 0" :class="$style.empty">
-			<font-awesome-icon icon="inbox" />
+			<N8nIcon icon="inbox" size="xlarge" />
 			<p>暂无数据</p>
 		</div>
 
