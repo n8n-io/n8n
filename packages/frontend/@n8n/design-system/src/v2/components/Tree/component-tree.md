@@ -42,142 +42,34 @@ By default, it uses `IMenuItem` but can be used with custom types for different 
 - `default`: `{ item: FlattenedItem<T>; handleToggle: () => void; isExpanded: boolean }` - Main content for each tree item.
 ### Template usage example
 
-#### Basic Usage (with IMenuItem - default)
+#### Basic Usage (with IMenuItem - and MenuItem component)
 
 ```vue
 <script setup lang="ts">
 import type { IMenuItem } from '@n8n/design-system/types'
 
-const items = ref<IMenuItem[]>([
-  {
-    id: 'folder-1',
-    label: 'Documents',
-    icon: 'folder',
-    children: [
-      {
-        id: 'file-1',
-        label: 'README.md',
-        icon: 'file-text',
-      },
-      {
-        id: 'file-2',
-        label: 'package.json',
-        icon: 'file-code',
-      }
-    ]
-  },
-  {
-    id: 'folder-2',
-    label: 'Images',
-    icon: 'image',
-    children: [
-      {
-        id: 'file-3',
-        label: 'logo.png',
-        icon: 'image',
-      }
-    ]
-  }
-])
+const items = ref<IMenuItem[]>([...])
 
-const expanded = ref(['folder-1'])
-const selected = ref<string[]>([])
 </script>
 
 <template>
-  <N8nTree
-    v-model="selected"
-    v-model:expanded="expanded"
-    :items="items"
-  >
-    <template #default="{ item, handleToggle, isExpanded }">
-      <div class="tree-item">
-        <N8nIconButton
-          v-if="item.value.children?.length"
-          size="mini"
-          type="highlight"
-          :icon="isExpanded ? 'chevron-down' : 'chevron-right'"
-          @click="handleToggle"
-        />
-        <N8nIcon :icon="item.value.icon" />
-        <span>{{ item.value.label }}</span>
-      </div>
-    </template>
+  <N8nTree :items="items">
+		<template #default="{ item, handleToggle, isExpanded }">
+			<MenuItem :key="item.value.id" :item="item.value">
+				<template v-if="item.value.children && item.value.children.length > 0" #toggle>
+					<N8nIconButton
+						size="mini"
+						type="highlight"
+						:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
+						icon-size="medium"
+						aria-label="Expand"
+						@click="handleToggle"
+					/>
+				</template>
+			</MenuItem>
   </N8nTree>
 </template>
 ```
-
-#### Generic Usage (with custom types)
-
-```vue
-<script setup lang="ts">
-import type { TreeItem } from '@n8n/design-system/components/Tree'
-
-// Define a custom tree item type
-interface FileSystemItem extends TreeItem {
-  name: string
-  type: 'folder' | 'file'
-  size?: number
-  children?: FileSystemItem[]
-}
-
-const items = ref<FileSystemItem[]>([
-  {
-    id: 'folder-1',
-    name: 'Documents',
-    type: 'folder',
-    children: [
-      {
-        id: 'file-1',
-        name: 'README.md',
-        type: 'file',
-        size: 1024,
-      },
-      {
-        id: 'file-2',
-        name: 'package.json',
-        type: 'file',
-        size: 2048,
-      }
-    ]
-  },
-  {
-    id: 'file-3',
-    name: 'config.json',
-    type: 'file',
-    size: 512,
-  }
-])
-
-const expanded = ref<string[]>([])
-const selected = ref<string[]>([])
-</script>
-
-<template>
-  <N8nTree
-    v-model="selected"
-    v-model:expanded="expanded"
-    :items="items"
-  >
-    <template #default="{ item, handleToggle, isExpanded }">
-      <div class="tree-item">
-        <N8nIconButton
-          v-if="item.value.children?.length"
-          size="mini"
-          type="highlight"
-          :icon="isExpanded ? 'chevron-down' : 'chevron-right'"
-          @click="handleToggle"
-        />
-        <N8nIcon :icon="item.value.type === 'folder' ? 'folder' : 'file'" />
-        <span>{{ item.value.name }}</span>
-        <span v-if="item.value.size" class="file-size">({{ item.value.size }} bytes)</span>
-      </div>
-    </template>
-  </N8nTree>
-</template>
-```
-
-#### With custom getKey function
 
 ```vue
 <script setup lang="ts">
