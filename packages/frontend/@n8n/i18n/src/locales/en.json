@@ -586,7 +586,7 @@
 	"codeNodeEditor.linter.allItems.itemCall": "`item` is a property to access, not a method to call. Did you mean `.item` without brackets?",
 	"codeNodeEditor.linter.allItems.itemMatchingNoArg": "`.itemMatching()` expects an item index to be passed in as its argument.",
 	"codeNodeEditor.linter.allItems.unavailableItem": "Legacy `item` is only available in the 'Run Once for Each Item' mode.",
-	"codeNodeEditor.linter.allItems.unavailableProperty": "`.item` is only available in the 'Run Once for Each Item' mode. Use `.first()` instead.",
+	"codeNodeEditor.linter.allItems.unavailableProperty": "`.item` only works correctly in 'Run Once for Each Item' mode. It will always return the first item here. Use `.first()` instead.",
 	"codeNodeEditor.linter.allItems.unavailableVar": "is only available in the 'Run Once for Each Item' mode.",
 	"codeNodeEditor.linter.bothModes.directAccess.firstOrLastCall": "@:_reusableBaseText.codeNodeEditor.linter.useJson",
 	"codeNodeEditor.linter.bothModes.directAccess.itemProperty": "@:_reusableBaseText.codeNodeEditor.linter.useJson",
