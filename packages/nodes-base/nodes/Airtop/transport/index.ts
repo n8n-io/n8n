@@ -41,3 +41,10 @@ export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 		Promise<T>
 	>(this, 'airtopApi', options);
 }
+
+export async function webhookApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	options: IHttpRequestOptions,
+): Promise<IDataObject> {
+	return await this.helpers.httpRequestWithAuthentication.call(this, 'airtopApi', options);
+}
