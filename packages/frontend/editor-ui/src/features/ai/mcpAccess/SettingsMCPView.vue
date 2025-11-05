@@ -78,8 +78,8 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		key: 'description',
 		width: 300,
 		disableSort: true,
-		value(workflow) {
-			return workflow.description || '-';
+		value() {
+			return;
 		},
 	},
 	{
@@ -311,6 +311,19 @@ onMounted(async () => {
 								></N8nIcon>
 							</N8nLink>
 						</template>
+						<template #[`item.description`]="{ item }">
+							<N8nTooltip
+								:content="item.description"
+								:disabled="!item.description"
+								:popper-class="$style['description-poper']"
+							>
+								<div :class="$style['description-cell']">
+									<N8nText data-test-id="mcp-workflow-description">
+										{{ item.description || '-' }}
+									</N8nText>
+								</div>
+							</N8nTooltip>
+						</template>
 						<template #[`item.parentFolder`]="{ item }">
 							<span v-if="item.parentFolder" :class="$style['folder-cell']">
 								<N8nLink
@@ -435,6 +448,20 @@ onMounted(async () => {
 	tr:last-child {
 		border-bottom: none !important;
 	}
+}
+
+.description-cell {
+	display: flex;
+	font-style: italic;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	overflow: hidden;
+}
+
+.description-poper {
+	min-width: 300px;
 }
 
 .table-link {
