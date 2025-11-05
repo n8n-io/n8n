@@ -1270,6 +1270,8 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 							executionTimeout: 3600,
 							timezone: 'America/New_York',
 							executionOrder: 'v1',
+							callerPolicy: 'workflowsFromSameOwner',
+							availableInMCP: false,
 						},
 					};
 
@@ -1551,6 +1553,8 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 							saveDataSuccessExecution: 'all',
 							executionTimeout: 3600,
 							timezone: 'America/New_York',
+							callerPolicy: 'workflowsFromSameOwner',
+							availableInMCP: false,
 						},
 					};
 

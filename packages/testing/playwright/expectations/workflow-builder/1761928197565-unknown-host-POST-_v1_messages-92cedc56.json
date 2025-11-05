@@ -1,0 +1,177 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["15811"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"retry-after": ["54"],
+			"request-id": ["req_011CUfbFdq12Y1MuWwRnUCXb"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2025-10-31T16:28:09Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15499000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-10-31T16:28:22Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["499000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:28:09Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 31 Oct 2025 16:28:22 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["9974860befe56974-MAN"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01MUKETQCj4jR5Q46eJfPgmV",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_013thFL8v3q6of8iUoQWizXT",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "n8n-nodes-base.manualTrigger",
+							"name": "Manual Trigger",
+							"connectionParametersReasoning": "Manual Trigger is a trigger node with static outputs, no connection parameters needed",
+							"connectionParameters": {},
+							"id": "d123eb89-4451-42b7-910d-5c2e930acfd1"
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01G8Z3KuuRQgo5g4BXtAmYUa",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "n8n-nodes-base.set",
+							"name": "Workflow Configuration",
+							"connectionParametersReasoning": "Set node has static inputs/outputs, no connection parameters needed",
+							"connectionParameters": {},
+							"id": "262224c9-60a6-499d-9a8c-397342ad7474"
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01L8K8CGhbgV6Ze2dWtd1Cac",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "n8n-nodes-base.youTube",
+							"name": "Get Video Details",
+							"connectionParametersReasoning": "YouTube node has static inputs/outputs, no connection parameters needed",
+							"connectionParameters": {},
+							"id": "8ec7a72a-cd79-47e2-b598-f2200b5b3ccf"
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01KNwD4y2r2QTkRB8UJtHbeH",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "n8n-nodes-base.youTube",
+							"name": "Get Video Captions",
+							"connectionParametersReasoning": "YouTube node has static inputs/outputs, no connection parameters needed",
+							"connectionParameters": {},
+							"id": "b1dcd8e3-1d2b-450f-bdc9-15932e811a53"
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01KbQ7NVJSd69hHhBtfpvoxq",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "n8n-nodes-base.set",
+							"name": "Merge Video Data",
+							"connectionParametersReasoning": "Set node has static inputs/outputs, no connection parameters needed",
+							"connectionParameters": {},
+							"id": "12143dd5-e8ae-4837-8775-547521b10f7b"
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01NJeeLN4wyjHUaKsAV1GMYN",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "@n8n/n8n-nodes-langchain.googleGemini",
+							"name": "Generate Chapters with AI",
+							"connectionParametersReasoning": "Google Gemini node has dynamic inputs based on resource and operation parameters. For text message operation, it accepts main input and optional ai_tool connections. Setting resource to text and operation to message.",
+							"connectionParameters": {
+								"resource": "text",
+								"operation": "message"
+							},
+							"id": "d472a92f-5792-4e22-89f1-a5b5ecf7d7ce"
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01LuFTi539bJ6vW8ep3x8ftH",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "n8n-nodes-base.code",
+							"name": "Format Chapters",
+							"connectionParametersReasoning": "Code node has static inputs/outputs, no connection parameters needed",
+							"connectionParameters": {},
+							"id": "6c79cb79-bbfa-4754-aa57-3f306db18dca"
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01SHXumSgbGXkQLzvezk4iKq",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "n8n-nodes-base.youTube",
+							"name": "Update Video Description",
+							"connectionParametersReasoning": "YouTube node has static inputs/outputs, no connection parameters needed",
+							"connectionParameters": {},
+							"id": "638257a9-de32-4968-9538-3cc0a6427f60"
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01RWis13u9kDHJMaJR2w9JPo",
+						"name": "add_nodes",
+						"input": {
+							"nodeType": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+							"name": "Google Gemini Chat Model",
+							"connectionParametersReasoning": "Google Gemini Chat Model is an AI sub-node that provides ai_languageModel output, no connection parameters needed",
+							"connectionParameters": {},
+							"id": "7080dd0f-5f71-4ad2-ae11-24a4062e4239"
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 4,
+					"cache_creation_input_tokens": 2241,
+					"cache_read_input_tokens": 19047,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 2241,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 1147,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFNVUtFVFFDajRqUjVRNDZlSmZQZ21WIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMTN0aEZMOHYzcTZvZjhpVW9RV2l6WFQiLCJuYW1lIjoiYWRkX25vZGVzIiwiaW5wdXQiOnsibm9kZVR5cGUiOiJuOG4tbm9kZXMtYmFzZS5tYW51YWxUcmlnZ2VyIiwibmFtZSI6Ik1hbnVhbCBUcmlnZ2VyIiwiY29ubmVjdGlvblBhcmFtZXRlcnNSZWFzb25pbmciOiJNYW51YWwgVHJpZ2dlciBpcyBhIHRyaWdnZXIgbm9kZSB3aXRoIHN0YXRpYyBvdXRwdXRzLCBubyBjb25uZWN0aW9uIHBhcmFtZXRlcnMgbmVlZGVkIiwiY29ubmVjdGlvblBhcmFtZXRlcnMiOnt9fX0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxRzhaM0t1dVJRZ281ZzRCWHRBbVlVYSIsIm5hbWUiOiJhZGRfbm9kZXMiLCJpbnB1dCI6eyJub2RlVHlwZSI6Im44bi1ub2Rlcy1iYXNlLnNldCIsIm5hbWUiOiJXb3JrZmxvdyBDb25maWd1cmF0aW9uIiwiY29ubmVjdGlvblBhcmFtZXRlcnNSZWFzb25pbmciOiJTZXQgbm9kZSBoYXMgc3RhdGljIGlucHV0cy9vdXRwdXRzLCBubyBjb25uZWN0aW9uIHBhcmFtZXRlcnMgbmVlZGVkIiwiY29ubmVjdGlvblBhcmFtZXRlcnMiOnt9fX0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxTDhLOENHaGJnVjZaZTJkV3RkMUNhYyIsIm5hbWUiOiJhZGRfbm9kZXMiLCJpbnB1dCI6eyJub2RlVHlwZSI6Im44bi1ub2Rlcy1iYXNlLnlvdVR1YmUiLCJuYW1lIjoiR2V0IFZpZGVvIERldGFpbHMiLCJjb25uZWN0aW9uUGFyYW1ldGVyc1JlYXNvbmluZyI6IllvdVR1YmUgbm9kZSBoYXMgc3RhdGljIGlucHV0cy9vdXRwdXRzLCBubyBjb25uZWN0aW9uIHBhcmFtZXRlcnMgbmVlZGVkIiwiY29ubmVjdGlvblBhcmFtZXRlcnMiOnt9fX0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxS053RDR5MnIyUVRrUkI4VUp0SGJlSCIsIm5hbWUiOiJhZGRfbm9kZXMiLCJpbnB1dCI6eyJub2RlVHlwZSI6Im44bi1ub2Rlcy1iYXNlLnlvdVR1YmUiLCJuYW1lIjoiR2V0IFZpZGVvIENhcHRpb25zIiwiY29ubmVjdGlvblBhcmFtZXRlcnNSZWFzb25pbmciOiJZb3VUdWJlIG5vZGUgaGFzIHN0YXRpYyBpbnB1dHMvb3V0cHV0cywgbm8gY29ubmVjdGlvbiBwYXJhbWV0ZXJzIG5lZWRlZCIsImNvbm5lY3Rpb25QYXJhbWV0ZXJzIjp7fX19LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUtiUTdOVkpTZDY5aEhoQnRmcHZveHEiLCJuYW1lIjoiYWRkX25vZGVzIiwiaW5wdXQiOnsibm9kZVR5cGUiOiJuOG4tbm9kZXMtYmFzZS5zZXQiLCJuYW1lIjoiTWVyZ2UgVmlkZW8gRGF0YSIsImNvbm5lY3Rpb25QYXJhbWV0ZXJzUmVhc29uaW5nIjoiU2V0IG5vZGUgaGFzIHN0YXRpYyBpbnB1dHMvb3V0cHV0cywgbm8gY29ubmVjdGlvbiBwYXJhbWV0ZXJzIG5lZWRlZCIsImNvbm5lY3Rpb25QYXJhbWV0ZXJzIjp7fX19LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMU5KZWVMTjR3eWpIVWFLc0FWMUdNWU4iLCJuYW1lIjoiYWRkX25vZGVzIiwiaW5wdXQiOnsibm9kZVR5cGUiOiJAbjhuL244bi1ub2Rlcy1sYW5nY2hhaW4uZ29vZ2xlR2VtaW5pIiwibmFtZSI6IkdlbmVyYXRlIENoYXB0ZXJzIHdpdGggQUkiLCJjb25uZWN0aW9uUGFyYW1ldGVyc1JlYXNvbmluZyI6Ikdvb2dsZSBHZW1pbmkgbm9kZSBoYXMgZHluYW1pYyBpbnB1dHMgYmFzZWQgb24gcmVzb3VyY2UgYW5kIG9wZXJhdGlvbiBwYXJhbWV0ZXJzLiBGb3IgdGV4dCBtZXNzYWdlIG9wZXJhdGlvbiwgaXQgYWNjZXB0cyBtYWluIGlucHV0IGFuZCBvcHRpb25hbCBhaV90b29sIGNvbm5lY3Rpb25zLiBTZXR0aW5nIHJlc291cmNlIHRvIHRleHQgYW5kIG9wZXJhdGlvbiB0byBtZXNzYWdlLiIsImNvbm5lY3Rpb25QYXJhbWV0ZXJzIjp7InJlc291cmNlIjoidGV4dCIsIm9wZXJhdGlvbiI6Im1lc3NhZ2UifX19LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUx1RlRpNTM5Yko2dlc4ZXAzeDhmdEgiLCJuYW1lIjoiYWRkX25vZGVzIiwiaW5wdXQiOnsibm9kZVR5cGUiOiJuOG4tbm9kZXMtYmFzZS5jb2RlIiwibmFtZSI6IkZvcm1hdCBDaGFwdGVycyIsImNvbm5lY3Rpb25QYXJhbWV0ZXJzUmVhc29uaW5nIjoiQ29kZSBub2RlIGhhcyBzdGF0aWMgaW5wdXRzL291dHB1dHMsIG5vIGNvbm5lY3Rpb24gcGFyYW1ldGVycyBuZWVkZWQiLCJjb25uZWN0aW9uUGFyYW1ldGVycyI6e319fSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDFTSFh1bVNnYkdYa1FMenZlems0aUtxIiwibmFtZSI6ImFkZF9ub2RlcyIsImlucHV0Ijp7Im5vZGVUeXBlIjoibjhuLW5vZGVzLWJhc2UueW91VHViZSIsIm5hbWUiOiJVcGRhdGUgVmlkZW8gRGVzY3JpcHRpb24iLCJjb25uZWN0aW9uUGFyYW1ldGVyc1JlYXNvbmluZyI6IllvdVR1YmUgbm9kZSBoYXMgc3RhdGljIGlucHV0cy9vdXRwdXRzLCBubyBjb25uZWN0aW9uIHBhcmFtZXRlcnMgbmVlZGVkIiwiY29ubmVjdGlvblBhcmFtZXRlcnMiOnt9fX0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxUldpczEzdTlrREhKTWFKUjJ3OUpQbyIsIm5hbWUiOiJhZGRfbm9kZXMiLCJpbnB1dCI6eyJub2RlVHlwZSI6IkBuOG4vbjhuLW5vZGVzLWxhbmdjaGFpbi5sbUNoYXRHb29nbGVHZW1pbmkiLCJuYW1lIjoiR29vZ2xlIEdlbWluaSBDaGF0IE1vZGVsIiwiY29ubmVjdGlvblBhcmFtZXRlcnNSZWFzb25pbmciOiJHb29nbGUgR2VtaW5pIENoYXQgTW9kZWwgaXMgYW4gQUkgc3ViLW5vZGUgdGhhdCBwcm92aWRlcyBhaV9sYW5ndWFnZU1vZGVsIG91dHB1dCwgbm8gY29ubmVjdGlvbiBwYXJhbWV0ZXJzIG5lZWRlZCIsImNvbm5lY3Rpb25QYXJhbWV0ZXJzIjp7fX19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6NCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjoyMjQxLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTkwNDcsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjIyNDEsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxMTQ3LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCJ9fQ=="
+		}
+	},
+	"id": "1761928197565-unknown-host-POST-_v1_messages-92cedc56.json",
+	"priority": 19,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1,
+		"unlimited": false
+	}
+}

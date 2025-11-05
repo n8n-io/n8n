@@ -4,8 +4,8 @@
  */
 
 import { useI18n } from '@n8n/i18n';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 import type {
@@ -53,16 +53,16 @@ import {
 	SIMULATE_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WAIT_NODE_TYPE,
-} from '@/constants';
-import { sanitizeHtml } from '@/utils/htmlUtils';
+} from '@/app/constants';
+import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
-import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { getNodeIconSource } from '@/utils/nodeIcon';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
+import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 export function useCanvasMapping({
 	nodes,
@@ -109,7 +109,7 @@ export function useCanvasMapping({
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
 		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
-		const icon = getNodeIconSource(source);
+		const icon = getNodeIconSource(source, node);
 
 		return {
 			type: CanvasNodeRenderType.Default,

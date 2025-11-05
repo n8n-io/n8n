@@ -1,3 +1,121 @@
+# [1.119.0](https://github.com/n8n-io/n8n/compare/n8n@1.118.0...n8n@1.119.0) (2025-11-03)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** AI Agent v3 only sees first tool response item ([#21429](https://github.com/n8n-io/n8n/issues/21429)) ([d35ba6b](https://github.com/n8n-io/n8n/commit/d35ba6b3707085e8618f12724382a69dccdabedf))
+* **ai-builder:** Do not show validation issues as tool errors ([#21310](https://github.com/n8n-io/n8n/issues/21310)) ([3290bf0](https://github.com/n8n-io/n8n/commit/3290bf0d92ef5d935ad8d84fa7466e204c0260b6))
+* **ai-builder:** Fixing canvas buttons - if workflow builder is enabled always show "build with AI" button ([#21354](https://github.com/n8n-io/n8n/issues/21354)) ([3b53649](https://github.com/n8n-io/n8n/commit/3b536491658719a2b4d2d6c10586acee4d834f98))
+* **ai-builder:** Hide the excute and refine dialog in the workflow builder if task was aborted ([#21355](https://github.com/n8n-io/n8n/issues/21355)) ([f79d968](https://github.com/n8n-io/n8n/commit/f79d968151466d383df2fdf7a17caf34ed7e554f))
+* **Airtop Node:** Fix file upload and add support for session recording ([#21248](https://github.com/n8n-io/n8n/issues/21248)) ([4e9ee11](https://github.com/n8n-io/n8n/commit/4e9ee11c237d987eda647b01067c3646c7f29790))
+* **core:** Add execution hints support for tools ([#21238](https://github.com/n8n-io/n8n/issues/21238)) ([8971a5a](https://github.com/n8n-io/n8n/commit/8971a5af8f9dd52c4c040978e5c56125ffbc934d))
+* **core:** Allow dynamic node parameters in Public API schema ([#21345](https://github.com/n8n-io/n8n/issues/21345)) ([eb46201](https://github.com/n8n-io/n8n/commit/eb4620199e7942ad49a0407d8bfa4f209ce167ff))
+* **core:** Disable ANSI colors in production debug logs ([#21344](https://github.com/n8n-io/n8n/issues/21344)) ([fa1ae8a](https://github.com/n8n-io/n8n/commit/fa1ae8afd61a0d0a640016034767d07597409459))
+* **core:** Ensure reconnect on broker down in native Python runner ([#21475](https://github.com/n8n-io/n8n/issues/21475)) ([fbd60d2](https://github.com/n8n-io/n8n/commit/fbd60d2a076d5baf02223360c8415db63890db45))
+* **core:** Fix AI Agent v3 Tool Execution Issues ([#21477](https://github.com/n8n-io/n8n/issues/21477)) ([11531c8](https://github.com/n8n-io/n8n/commit/11531c89365fbd03f87c608012d6aece5f86fc77))
+* **core:** Grant admins full data table access ([#21316](https://github.com/n8n-io/n8n/issues/21316)) ([18012d9](https://github.com/n8n-io/n8n/commit/18012d98c8fd6290041a2faae5ea51f82a6ea8e1))
+* **core:** Harden security restrictions in native Python runner ([#21263](https://github.com/n8n-io/n8n/issues/21263)) ([7cea1e2](https://github.com/n8n-io/n8n/commit/7cea1e26fe3cf82da0a69d34f2efbc2427156797))
+* **core:** Only select executionData from DB when requested ([#21234](https://github.com/n8n-io/n8n/issues/21234)) ([4be0180](https://github.com/n8n-io/n8n/commit/4be0180f59be02e23c220343719a194500a8ba56))
+* **core:** Protect against name-mangling in native Python runner ([#21482](https://github.com/n8n-io/n8n/issues/21482)) ([9a56529](https://github.com/n8n-io/n8n/commit/9a56529d5d9b6091ef2a599d190827d78eaa1407))
+* **editor:** Fix `Cannot read properties of undefined` error in evaluation loop ([#21225](https://github.com/n8n-io/n8n/issues/21225)) ([27a3ce7](https://github.com/n8n-io/n8n/commit/27a3ce7d63e8801baa6fe2e4aa9bba4cfd26a061))
+* **editor:** Fix event propagating and causing multiple telemetry calls for the same event ([#21385](https://github.com/n8n-io/n8n/issues/21385)) ([e551ce8](https://github.com/n8n-io/n8n/commit/e551ce850dcbf11f05b4210a8d663dfab323dbca))
+* **editor:** Handle `executionFinished` event correctly for non-persisted executions ([#21333](https://github.com/n8n-io/n8n/issues/21333)) ([8e2f55b](https://github.com/n8n-io/n8n/commit/8e2f55b371b9bba40505ebf147610d5924a6d347))
+* **editor:** Hide credentials setup button in read-only mode ([#21351](https://github.com/n8n-io/n8n/issues/21351)) ([638588e](https://github.com/n8n-io/n8n/commit/638588e728f527e83fb3fdfb1902941dea1e6e1c))
+* **editor:** Keep loading executions initially until they fill up the sidebar ([#21279](https://github.com/n8n-io/n8n/issues/21279)) ([900b2c3](https://github.com/n8n-io/n8n/commit/900b2c3a6119ab9234c88cc0fc32252a2c72ef12))
+* **editor:** Lowercase resource in `Create Workflow/Credential/Folder` button copy ([#21320](https://github.com/n8n-io/n8n/issues/21320)) ([56805ca](https://github.com/n8n-io/n8n/commit/56805ca000297a750a105ad32cfaad6a3bb83059))
+* **editor:** Match user pagination options with API limits ([#21377](https://github.com/n8n-io/n8n/issues/21377)) ([b1243ce](https://github.com/n8n-io/n8n/commit/b1243ce06eb1f2ee78dbc2184eb70949359e5f37))
+* **editor:** Prevent 'sin' text concatenation in execution display ([#21343](https://github.com/n8n-io/n8n/issues/21343)) ([f88f09c](https://github.com/n8n-io/n8n/commit/f88f09c0b7450c9477205dd7705587bc6b5e9db1))
+* **editor:** Swap data table modal button order and fix copy ([#21318](https://github.com/n8n-io/n8n/issues/21318)) ([72ef61c](https://github.com/n8n-io/n8n/commit/72ef61c47953d54064db9533b3267337774d9145))
+* Fix inconsistent insight date range query behaviour ([#21368](https://github.com/n8n-io/n8n/issues/21368)) ([440e83b](https://github.com/n8n-io/n8n/commit/440e83bdfc1e0bf822090e144bfff4abcd3dd3e2))
+* Fix insights query date range calculation in backend ([#21409](https://github.com/n8n-io/n8n/issues/21409)) ([1a70592](https://github.com/n8n-io/n8n/commit/1a70592b120f7f7acc2800ef878f50fd0119d12b))
+* **Google Calendar Node:** Fix event operation ([#21414](https://github.com/n8n-io/n8n/issues/21414)) ([c4b9470](https://github.com/n8n-io/n8n/commit/c4b947042734fa196f8f4e7a57959154d70bea56))
+* **OpenAi Node:** Allow `additionalProperties: {}` in tools ([#21328](https://github.com/n8n-io/n8n/issues/21328)) ([866ff1b](https://github.com/n8n-io/n8n/commit/866ff1b504a85ba24e62dc48d7d5c486d2b02d45))
+* Update packages for security fixes ([#21375](https://github.com/n8n-io/n8n/issues/21375)) ([c553c4d](https://github.com/n8n-io/n8n/commit/c553c4d56679f9477407c4f6ec394d0b374513d5))
+* Update task runner to 1.4.1 ([#21481](https://github.com/n8n-io/n8n/issues/21481)) ([9dea202](https://github.com/n8n-io/n8n/commit/9dea2024cc48db054bf11c8b5ff72905161ec98c))
+* **Xero Node:** Fix currency dropdown sending wrong value to API ([#19499](https://github.com/n8n-io/n8n/issues/19499)) ([49fabcf](https://github.com/n8n-io/n8n/commit/49fabcf4c16dc3dd3deabb9be39c9c51216c3f5d))
+
+
+### Features
+
+* Add credential tests for ConvertKit, FormIo ([#20361](https://github.com/n8n-io/n8n/issues/20361)) ([8ba12d9](https://github.com/n8n-io/n8n/commit/8ba12d98b2491ee508171f604fb4c3be23d0123f))
+* **ai-builder:** Categorize prompts for taxonomy approach ([#20862](https://github.com/n8n-io/n8n/issues/20862)) ([409462b](https://github.com/n8n-io/n8n/commit/409462b09d9ff7ed8ced9ddd9fcf3cb63edb5338))
+* **ai-builder:** Check sub-nodes are connected to root node ([#21330](https://github.com/n8n-io/n8n/issues/21330)) ([7c0d1db](https://github.com/n8n-io/n8n/commit/7c0d1db43c03c4115820dace7efb4c59cad4eeb5))
+* **API:** Improve workflow settings specs in public API ([#21297](https://github.com/n8n-io/n8n/issues/21297)) ([e356d54](https://github.com/n8n-io/n8n/commit/e356d546a1fc1253feeb01afe08f772f5716a979))
+* AWS Assume role credentials ([#20626](https://github.com/n8n-io/n8n/issues/20626)) ([f65b6a8](https://github.com/n8n-io/n8n/commit/f65b6a82a95f0fd298422faa5f6cf3f69bbd3249))
+* **Bitbucket Trigger Node:** Access token credentials ([#20912](https://github.com/n8n-io/n8n/issues/20912)) ([6ec2c82](https://github.com/n8n-io/n8n/commit/6ec2c820f426b7c87f1f3d0a66d1c6113b0c50ff))
+* **core:** Build workflow index on server start and workflow updates ([#21441](https://github.com/n8n-io/n8n/issues/21441)) ([6df508f](https://github.com/n8n-io/n8n/commit/6df508fa1dc08a697c77a2ab6bb56ca25e03b882))
+* **core:** Create breaking change audit rule engine ([#20918](https://github.com/n8n-io/n8n/issues/20918)) ([7d4ec36](https://github.com/n8n-io/n8n/commit/7d4ec363f8ee364bf60f6e02d0d1232cb434c24e))
+* **core:** Implement EULA acceptance handling in license activation process ([#21095](https://github.com/n8n-io/n8n/issues/21095)) ([ef9d9f4](https://github.com/n8n-io/n8n/commit/ef9d9f43cea569a38c8de38d7700fa157ac0ec72))
+* **core:** Introduce distroless runners image ([#21389](https://github.com/n8n-io/n8n/issues/21389)) ([eb62988](https://github.com/n8n-io/n8n/commit/eb629887dc5e1e5d8d4be8c3488cb966c3707662))
+* **core:** Only allow relative redirects on SAML login ([#21266](https://github.com/n8n-io/n8n/issues/21266)) ([77badda](https://github.com/n8n-io/n8n/commit/77badda95b69ac07bd067d701b3ea9fbcac39fd9))
+* **core:** Use custom agent to handle http(s) proxies ([#21264](https://github.com/n8n-io/n8n/issues/21264)) ([8987659](https://github.com/n8n-io/n8n/commit/8987659813605e562ca0028dd4b16276228652fb))
+* Deprecate insights dateRange query filter ([#21233](https://github.com/n8n-io/n8n/issues/21233)) ([ab269f6](https://github.com/n8n-io/n8n/commit/ab269f6bb885d27b4a365c1e65340da4e954ab44))
+* **editor:** Add `Create variable` button to project overview ([#21348](https://github.com/n8n-io/n8n/issues/21348)) ([c41eefd](https://github.com/n8n-io/n8n/commit/c41eefd560be7e5cf93ccf96babac2e2bbf9e700))
+* **editor:** Add meta information in telemetry property ([#21350](https://github.com/n8n-io/n8n/issues/21350)) ([284939f](https://github.com/n8n-io/n8n/commit/284939ffdc993c02d4c8e18206a12c9e41e5b141))
+* **editor:** Allow duplicate and import in workflow menu if user has update permission ([#21338](https://github.com/n8n-io/n8n/issues/21338)) ([64929cf](https://github.com/n8n-io/n8n/commit/64929cf79c7e6aa24c6a111ec40f7a3c56fdaf19))
+* **editor:** Auto-select all credentials by default in push modal ([#21216](https://github.com/n8n-io/n8n/issues/21216)) ([cd403bd](https://github.com/n8n-io/n8n/commit/cd403bda12379381b5828ea786824b4c38ac6433))
+* **editor:** Dynamic banners support ([#21045](https://github.com/n8n-io/n8n/issues/21045)) ([2cb8e84](https://github.com/n8n-io/n8n/commit/2cb8e843588284bf5bf0a3d9251d5b3b9f182edb))
+* **editor:** Implement EULA acceptance modal and integrate with license activation flow ([#21027](https://github.com/n8n-io/n8n/issues/21027)) ([9767afd](https://github.com/n8n-io/n8n/commit/9767afde196b93186a6423e154f651664ec83cb4))
+* **editor:** Remove beta labels from Data table feature ([#21322](https://github.com/n8n-io/n8n/issues/21322)) ([8f5bc13](https://github.com/n8n-io/n8n/commit/8f5bc139d875171484aa596ee165c223e1085ddb))
+* **Guardrails Node:** Add new node ([#20755](https://github.com/n8n-io/n8n/issues/20755)) ([453f908](https://github.com/n8n-io/n8n/commit/453f90816b1193f042458084f46bb957ca2ae7b1))
+* **MCP Client Tool Node:** Add support for OAuth2 with Dynamic Client Registration ([#21034](https://github.com/n8n-io/n8n/issues/21034)) ([6177f67](https://github.com/n8n-io/n8n/commit/6177f67d99468d1c133f54a357681d6af1b08d50))
+* **OpenAI Node:** Add Responses API support to chat model ([#20969](https://github.com/n8n-io/n8n/issues/20969)) ([5312358](https://github.com/n8n-io/n8n/commit/5312358ae5aad8dc5a98732595c85a52921fdae3))
+* Support dynamic node icons using expressions ([#20814](https://github.com/n8n-io/n8n/issues/20814)) ([71de992](https://github.com/n8n-io/n8n/commit/71de992eb9181543960d6d509efaef6ef5146293))
+
+
+
+# [1.118.0](https://github.com/n8n-io/n8n/compare/n8n@1.117.0...n8n@1.118.0) (2025-10-27)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Only use ai-tool output when reconstructing steps ([#21061](https://github.com/n8n-io/n8n/issues/21061)) ([255db6a](https://github.com/n8n-io/n8n/commit/255db6a268260b13075dc861c0a96b5bdaad9d3b))
+* **AI Agent Node:** Respect maxIterations parameter ([#21081](https://github.com/n8n-io/n8n/issues/21081)) ([4ea2757](https://github.com/n8n-io/n8n/commit/4ea2757df67519c0b7e1de19a35c55d74ed93266))
+* **ai-builder:** Auto-generate names only for workflows with default names ([#21162](https://github.com/n8n-io/n8n/issues/21162)) ([4a4d1fe](https://github.com/n8n-io/n8n/commit/4a4d1feffb07a1beef77d2278e2e943909ba4657))
+* **ai-builder:** Format user message to avoid markdown formatting errors ([#21033](https://github.com/n8n-io/n8n/issues/21033)) ([70523e1](https://github.com/n8n-io/n8n/commit/70523e19c813ce290aa8bfcb0fc3ecafe0226139))
+* **ai-builder:** Prompt input scrolling fix and update max line from 6 -> 10 ([#21165](https://github.com/n8n-io/n8n/issues/21165)) ([3caa5ac](https://github.com/n8n-io/n8n/commit/3caa5ac3a5bfe38b5364be171cf32945978cc8e8))
+* **Call n8n Sub-Workflow Tool Node:** Fix return format for execute path ([#21010](https://github.com/n8n-io/n8n/issues/21010)) ([b9b322e](https://github.com/n8n-io/n8n/commit/b9b322edacd556c7d4b8718ae487e8ca04862bc4))
+* **core:** Check all parents of subnodes for expression resolution ([#21141](https://github.com/n8n-io/n8n/issues/21141)) ([1c4b838](https://github.com/n8n-io/n8n/commit/1c4b838512fdd47e1591f0791d4fe2bf93685de2))
+* **core:** Handle rejected promises from Rudderstack SDK ([#21083](https://github.com/n8n-io/n8n/issues/21083)) ([520a9d4](https://github.com/n8n-io/n8n/commit/520a9d4940f450bb2bfb30d7878041dc86a2cf79))
+* **editor:** Close NDV on AI Builder message ([#21158](https://github.com/n8n-io/n8n/issues/21158)) ([f37864e](https://github.com/n8n-io/n8n/commit/f37864e09918ee6680447033cf4e1e7dde213a71))
+* **editor:** Fix tool params schema for object and array fields ([#20956](https://github.com/n8n-io/n8n/issues/20956)) ([b2e0f8c](https://github.com/n8n-io/n8n/commit/b2e0f8cdc0058fb764c37964864858327405f2d1))
+* **editor:** Icon picker always on top ([#21116](https://github.com/n8n-io/n8n/issues/21116)) ([9d764d0](https://github.com/n8n-io/n8n/commit/9d764d06e3b8a713e33c6b305cd71990b612f5e5))
+* **HTTP Request Node:** Fix expression value handling in `url` parameter ([#21101](https://github.com/n8n-io/n8n/issues/21101)) ([0a82e8d](https://github.com/n8n-io/n8n/commit/0a82e8d23bab97c1367a63b7cd35646d7f8781d0))
+* **Merge Node:** Block file access for alasql ([#20858](https://github.com/n8n-io/n8n/issues/20858)) ([79f1cca](https://github.com/n8n-io/n8n/commit/79f1cca9af0ad92b08356cbd2f70d83f512edb6e))
+* **n8n Form Node:** From trigger selection ([#21069](https://github.com/n8n-io/n8n/issues/21069)) ([8b42820](https://github.com/n8n-io/n8n/commit/8b428201638b9fe20ac22a2e797256a07a9b28ca))
+* **OpenAI Node:** Don't include function calls when conversation id is used ([#21047](https://github.com/n8n-io/n8n/issues/21047)) ([2fff388](https://github.com/n8n-io/n8n/commit/2fff38827ae0e61bad951bfe36a5c40ca9e86aac))
+* Pin `@lezer/common` version ([#21074](https://github.com/n8n-io/n8n/issues/21074)) ([30ac847](https://github.com/n8n-io/n8n/commit/30ac8476a240b5a33c9ea429483c652e5eacccf9))
+* Sanitize cURL URLs with <PLACEHOLDER> to {PLACEHOLDER} ([#21032](https://github.com/n8n-io/n8n/issues/21032)) ([1e2bd08](https://github.com/n8n-io/n8n/commit/1e2bd08edc81c8a6778143f2d979dc243bd05ac6))
+* Update playwright version ([#21096](https://github.com/n8n-io/n8n/issues/21096)) ([e61de6f](https://github.com/n8n-io/n8n/commit/e61de6fc0dc42cc41e5a3a96f0ed7e04361fe969))
+* Use correct enum import in CLI node templates ([#20950](https://github.com/n8n-io/n8n/issues/20950)) ([1853108](https://github.com/n8n-io/n8n/commit/18531086a91a1f7e0c503b87deee1ca2e2da668d))
+
+
+### Features
+
+* Add logic to parse and apply global roles for sso provisioning ([#21007](https://github.com/n8n-io/n8n/issues/21007)) ([dc1437f](https://github.com/n8n-io/n8n/commit/dc1437fd0043b67c2d0d8ab9ad5ed76630278314))
+* Add past execution schema viewing in NDV ([#20954](https://github.com/n8n-io/n8n/issues/20954)) ([4698b93](https://github.com/n8n-io/n8n/commit/4698b93a5a205f419edf40b423460e72abaa4155))
+* Add patch endpoint and reload mechanisms for sso provisioning configuration ([#20904](https://github.com/n8n-io/n8n/issues/20904)) ([ef688de](https://github.com/n8n-io/n8n/commit/ef688de6dcddcb58aca8ab639f7b89ce5ec2f420))
+* **ai-builder:** Properly separate system and user prompts in AI nodes  ([#21068](https://github.com/n8n-io/n8n/issues/21068)) ([8659a73](https://github.com/n8n-io/n8n/commit/8659a73e31555450753fc8b5b47305cd30ec2000))
+* Allow OIDC logins to sync instance roles ([#21055](https://github.com/n8n-io/n8n/issues/21055)) ([fcbf143](https://github.com/n8n-io/n8n/commit/fcbf1433f6b7715be52333b91fc2663e7a8193e7))
+* **core:** Add an incrementing version counter for the workflow entity ([#20816](https://github.com/n8n-io/n8n/issues/20816)) ([dd61458](https://github.com/n8n-io/n8n/commit/dd6145879fa7866a510482bb999318b8934977cd))
+* **core:** Add programmatic workflow validation in AI workflow builder ([#20998](https://github.com/n8n-io/n8n/issues/20998)) ([fa7cdf3](https://github.com/n8n-io/n8n/commit/fa7cdf39bdd2daff8710460d8c584f7dd43d0966))
+* **core:** Handle project variables sync on source control ([#21001](https://github.com/n8n-io/n8n/issues/21001)) ([832774d](https://github.com/n8n-io/n8n/commit/832774db805dc72c313baabb6fc37704fb658f59))
+* **core:** Support `N8N_BLOCK_RUNNER_ENV_ACCESS` in native Python runner ([#21215](https://github.com/n8n-io/n8n/issues/21215)) ([8527e4b](https://github.com/n8n-io/n8n/commit/8527e4b6f1b35472ac472e5c3857cb0e072acb0a))
+* **editor:** Add custom date range options to insights dashboard ([#20952](https://github.com/n8n-io/n8n/issues/20952)) ([bf873e3](https://github.com/n8n-io/n8n/commit/bf873e37c7c6a5c48d3eb61a1dc78c00f0870bc9))
+* **editor:** Remove flag for project variables ([#21037](https://github.com/n8n-io/n8n/issues/21037)) ([8e7eb98](https://github.com/n8n-io/n8n/commit/8e7eb98ec65db50a0f23e25f164a52b9a0e88d77))
+* Improve tests for loginUser ([#21144](https://github.com/n8n-io/n8n/issues/21144)) ([85fb6e4](https://github.com/n8n-io/n8n/commit/85fb6e4a8b387e4fc86a2a5a53631638d5d2d04c))
+* Only publish provisioning config changes on multi-main ([#21134](https://github.com/n8n-io/n8n/issues/21134)) ([65b6b0e](https://github.com/n8n-io/n8n/commit/65b6b0e4d8d2a2b91ae342055a11388df9d467ee))
+* **OpenAI Node:** Remove built-in MCP from V2 ([#21159](https://github.com/n8n-io/n8n/issues/21159)) ([12833ea](https://github.com/n8n-io/n8n/commit/12833eaf42974c0f5d0fb2df801d0e9a7c328457))
+* **OpenAI Node:** Remove completions from V2 ([#21078](https://github.com/n8n-io/n8n/issues/21078)) ([1d41e47](https://github.com/n8n-io/n8n/commit/1d41e47af115b0dcd7476235a79140678d69899f))
+* Parse and apply provisioned project role mappings ([#21025](https://github.com/n8n-io/n8n/issues/21025)) ([ca624c6](https://github.com/n8n-io/n8n/commit/ca624c65b549f9e8522e1a787acd066e1434c7b8))
+* Provision project roles from OIDC SSO ([#21107](https://github.com/n8n-io/n8n/issues/21107)) ([fa4c979](https://github.com/n8n-io/n8n/commit/fa4c979945faf6c836d74198e82fbcb1780e0af9))
+* Reduce unauthentication information in settings endpoint ([#21133](https://github.com/n8n-io/n8n/issues/21133)) ([c859f4e](https://github.com/n8n-io/n8n/commit/c859f4e7932695059718ade5e601cf59baf0ac07))
+* Support values configuration type for credentials in MongoDB Vector Store ([#20888](https://github.com/n8n-io/n8n/issues/20888)) ([701f4f8](https://github.com/n8n-io/n8n/commit/701f4f8f29f0e141a48f0ee1d3e609a4ac054d55))
+* Trigger projects export and import on push and pull ([#20459](https://github.com/n8n-io/n8n/issues/20459)) ([333ce1f](https://github.com/n8n-io/n8n/commit/333ce1f105022ef4a8fae02c4a7952b464c58d09))
+* Wire up saml to instance role provisioning ([#21080](https://github.com/n8n-io/n8n/issues/21080)) ([b8a62c8](https://github.com/n8n-io/n8n/commit/b8a62c893f7356e651d1ac1d9d337fa89b05e52a))
+
+
+
 # [1.117.0](https://github.com/n8n-io/n8n/compare/n8n@1.116.0...n8n@1.117.0) (2025-10-21)
 
 

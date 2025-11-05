@@ -49,6 +49,8 @@ describe('css-var-naming rule', () => {
 					--reka-color-primary: #0d6efd;
 					--reka--button--color--background--primary: #0d6efd;
 					--reka--other: #333;
+					--ag-other: #333;
+					--chat-other: #333;
 				}
 			`;
 			const result = await lintCSS(namespacePattern);
@@ -429,7 +431,7 @@ describe('css-var-naming rule', () => {
 		it('should reject namespace with muted value before color--text property', async () => {
 			const invalidOrder = `
 				:root {
-					--chat--muted--color--text: #888;
+					--namespace--muted--color--text: #888;
 				}
 			`;
 			const result = await lintCSS(invalidOrder);
