@@ -1197,6 +1197,7 @@
 	"mainSidebar.whatsNew": "What’s New",
 	"mainSidebar.whatsNew.fullChangelog": "Full changelog",
 	"mcp.workflowNotEligable.description": "Only active, webhook-triggered workflows can be accessible through MCP",
+	"mcp.instanceLevelAccessDisabled.description": "Instance-level MCP access is disabled. Enable it to allow workflow-level access.",
 	"mcp.workflowDeactivated.title": "MCP Access Disabled",
 	"mcp.productionCheklist.title": "Enable MCP access",
 	"mcp.productionCheklist.description": "Allow MCP clients to access this workflow",
