@@ -1,9 +1,10 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import router from '@/router';
-import { VIEWS } from '@/app/constants';
+import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT, VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
@@ -116,8 +117,6 @@ describe('router', () => {
 		],
 		['/settings/ldap', VIEWS.WORKFLOWS, []],
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
-		['/settings/provisioning', VIEWS.WORKFLOWS, []],
-		['/settings/provisioning', VIEWS.PROVISIONING_SETTINGS, ['provisioning:manage']],
 	])(
 		'should resolve %s to %s with %s user permissions',
 		async (path, name, scopes) => {
@@ -132,6 +131,39 @@ describe('router', () => {
 		},
 		10000,
 	);
+
+	// TODO: move these tests cases to the test.each above once experiment is over.
+	test.each<[string, RouteRecordName, Scope[]]>([
+		['/settings/provisioning', VIEWS.WORKFLOWS, []],
+		['/settings/provisioning', VIEWS.PROVISIONING_SETTINGS, ['provisioning:manage']],
+	])(
+		'should resolve %s to %s with %s user permissions',
+		async (path, name, scopes) => {
+			const rbacStore = useRBACStore();
+			const posthogStore = usePostHog();
+			rbacStore.setGlobalScopes(scopes);
+			posthogStore.overrides[SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name] = true;
+
+			await router.push(path);
+
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	// TODO: remove this test once experiment is over
+	test('should not resolve /settings/provisioning while experiment is not active', async () => {
+		await router.push('/');
+		const rbacStore = useRBACStore();
+		const posthogStore = usePostHog();
+		rbacStore.setGlobalScopes(['provisioning:manage']);
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValueOnce(false);
+
+		await router.push('/settings/provisioning');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
 
 	test.each([
 		[VIEWS.PERSONAL_SETTINGS, true],
