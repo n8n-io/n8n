@@ -886,7 +886,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.isArchived = isArchived;
 	}
 
-	function setDescription(description: string | undefined) {
+	function setDescription(description: string | undefined | null) {
 		workflow.value.description = description;
 	}
 

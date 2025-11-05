@@ -18,7 +18,7 @@ import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 type Props = {
 	workflowId: string;
-	workflowDescription?: string;
+	workflowDescription?: string | null;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -135,7 +135,7 @@ watch(
 
 // Set dirty flag when text changes
 watch(descriptionValue, (newValue) => {
-	const normalizedNewValue = newValue.trim() || '';
+	const normalizedNewValue = (newValue ?? '').trim();
 
 	if (normalizedNewValue !== normalizedLastSaved.value) {
 		uiStore.stateIsDirty = true;
