@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { TreeRoot, TreeVirtualizer, useForwardPropsEmits, TreeItem } from 'reka-ui';
 
-import type { IMenuItem } from '@n8n/design-system/types';
+import { N8nIconButton } from '@n8n/design-system/components';
 
 import type { N8nTreeProps, N8nTreeEmits } from '.';
 import MenuItem from '../MenuItem/MenuItem.vue';
@@ -40,7 +40,36 @@ function getLevelIndentation(level: number) {
 					:class="$style.TreeItemIdent"
 				/>
 				<slot :item="item.value" v-bind="$attrs">
-					<MenuItem :item="item.value as IMenuItem" />
+					<MenuItem :item="item.value">
+						<template #chevron-button>
+							<N8nIconButton
+								size="mini"
+								type="highlight"
+								:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
+								icon-size="medium"
+								aria-label="Go to details"
+								@click="handleToggle"
+							/>
+						</template>
+						<template #secondary>
+							<N8nIconButton
+								size="mini"
+								type="highlight"
+								icon="ellipsis"
+								icon-size="medium"
+								aria-label="Go to details"
+							/>
+						</template>
+						<template #tertiary>
+							<N8nIconButton
+								size="mini"
+								type="highlight"
+								icon="plus"
+								icon-size="medium"
+								aria-label="Go to details"
+							/>
+						</template>
+					</MenuItem>
 				</slot>
 			</TreeItem>
 		</TreeVirtualizer>
@@ -52,11 +81,7 @@ function getLevelIndentation(level: number) {
 	position: relative;
 	display: flex;
 	align-items: center;
-	height: 32px;
-}
-
-.TreeItemChild {
-	padding: 2px;
+	width: 100%;
 }
 
 .TreeItemIdent {
@@ -65,7 +90,7 @@ function getLevelIndentation(level: number) {
 	width: 0.5rem;
 	min-width: 0.5rem;
 	align-self: stretch;
-	margin-left: 0.75rem;
+	margin-left: 1rem;
 	border-left: 1px solid var(--color--foreground);
 }
 

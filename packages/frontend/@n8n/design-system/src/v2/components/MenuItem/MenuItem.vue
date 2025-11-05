@@ -10,11 +10,15 @@ import type { IMenuItem } from '@n8n/design-system/types';
 
 interface Props {
 	item: IMenuItem;
+	collapsed?: boolean;
 }
 
 const props = withDefaults(defineProps<PrimitiveProps & Props>(), {
 	as: 'button',
 });
+
+// TODO active state
+// TODO icon hover
 
 const icon = computed<
 	{ value: IconName; type: 'icon' } | { value: string; type: 'emoji' } | undefined
@@ -23,41 +27,48 @@ const icon = computed<
 		return props.item.icon;
 	} else if (typeof props.item.icon === 'string') {
 		return { value: props.item.icon, type: 'icon' };
-	} else if (typeof props.item.icon === 'object') {
-		return { value: props.item.icon.value, type: 'icon' };
 	}
-
 	return undefined;
 });
 
-const hasChevronSlot = computed(() => !!useSlots()['chevron-button']);
-const hasActions = computed(() => !!useSlots().secondary || !!useSlots().tertiary);
+const hasToggleSlot = computed(() => !!useSlots()['toggle'] && !props.collapsed);
+const hasActionsSlot = computed(() => !!useSlots()['actions'] && !props.collapsed);
 </script>
 
 <template>
-	<Primitive v-bind="props" :class="$style.MenuItem">
+	<Primitive
+		v-bind="props"
+		:class="[
+			$style.MenuItem,
+			{ [$style.MenuItemCollapsed]: collapsed, [$style.MenuItemDisabled]: item.disabled },
+		]"
+	>
 		<div v-if="icon" :class="$style.MenuItemIcon">
+			<span v-if="item.notification" :class="$style.MenuItemNotification" />
 			<N8nText
 				v-if="icon.type === 'emoji'"
-				:class="{ [$style.MenuItemIconToHide]: hasChevronSlot }"
+				:class="{ [$style.MenuItemIconToHide]: hasToggleSlot }"
 				>{{ icon.value }}</N8nText
 			>
 			<N8nIcon
 				v-else
-				:class="{ [$style.MenuItemIconToHide]: hasChevronSlot }"
+				:class="{ [$style.MenuItemIconToHide]: hasToggleSlot }"
 				color="text-base"
+				size="large"
 				:icon="icon.value"
 			/>
-			<div v-if="hasChevronSlot" :class="[$style.MenuItemActions, $style.MenuItemActionChevron]">
-				<slot name="chevron-button"></slot>
+			<div v-if="hasToggleSlot" :class="[$style.MenuItemActions, $style.MenuItemActionChevron]">
+				<slot name="toggle"></slot>
 			</div>
 		</div>
-		<N8nText color="text-dark" :class="$style.MenuItemLabel">
+		<N8nText v-if="!collapsed" color="text-dark" :class="$style.MenuItemLabel">
 			{{ item.label }}
 		</N8nText>
-		<div v-if="hasActions" :class="[$style.MenuItemActions, $style.MenuItemActionsRight]">
-			<slot name="secondary"></slot>
-			<slot name="tertiary"></slot>
+		<div v-if="!collapsed" :class="$style.MenuItemIcon">
+			<N8nIcon v-if="item.secondaryIcon" :icon="item.secondaryIcon.name" color="text-light" />
+		</div>
+		<div v-if="hasActionsSlot" :class="[$style.MenuItemActions, $style.MenuItemActionsRight]">
+			<slot name="actions"></slot>
 		</div>
 	</Primitive>
 </template>
@@ -74,6 +85,10 @@ const hasActions = computed(() => !!useSlots().secondary || !!useSlots().tertiar
 	gap: var(--spacing--4xs);
 	width: 100%;
 	position: relative;
+}
+
+.MenuItemCollapsed {
+	width: var(--spacing--xl);
 }
 
 .MenuItem:hover,
@@ -96,6 +111,16 @@ const hasActions = computed(() => !!useSlots().secondary || !!useSlots().tertiar
 	height: var(--spacing--lg);
 }
 
+.MenuItemNotification {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: var(--spacing--4xs);
+	height: var(--spacing--4xs);
+	background-color: var(--color--primary);
+	border-radius: 50%;
+}
+
 .MenuItemActions {
 	opacity: 0;
 }
@@ -111,6 +136,7 @@ const hasActions = computed(() => !!useSlots().secondary || !!useSlots().tertiar
 .MenuItem:has(:focus-visible) .MenuItemIconToHide {
 	opacity: 0;
 }
+
 .MenuItemActionChevron {
 	position: absolute;
 	left: 1px;
@@ -138,5 +164,12 @@ const hasActions = computed(() => !!useSlots().secondary || !!useSlots().tertiar
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	text-align: left;
+}
+
+.MenuItemDisabled,
+.MenuItemDisabled:disabled {
+	opacity: 0.75;
+	pointer-events: none;
+	cursor: not-allowed;
 }
 </style>

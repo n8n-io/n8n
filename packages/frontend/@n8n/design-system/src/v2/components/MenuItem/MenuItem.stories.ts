@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
+import N8nIconButton from '@n8n/design-system/components/N8nIconButton';
 import type { IMenuItem } from '@n8n/design-system/types/menu';
 
 import MenuItem from './MenuItem.vue';
@@ -12,7 +13,7 @@ export default {
 const Template: StoryFn = (args) => ({
 	setup: () => ({ args }),
 	components: { MenuItem },
-	template: '<MenuItem v-bind="args" />',
+	template: '<div style="max-width: 220px; margin: 20px auto;"><MenuItem v-bind="args" /></div>',
 });
 
 export const Default = Template.bind({});
@@ -22,6 +23,28 @@ Default.args = {
 		label: 'Item label',
 		icon: 'layers',
 		size: 'medium',
+	} as IMenuItem,
+};
+
+export const Collapsed = Template.bind({});
+Collapsed.args = {
+	item: {
+		id: 'item1',
+		label: 'Item label',
+		icon: 'layers',
+		size: 'medium',
+	} as IMenuItem,
+	collapsed: true,
+};
+
+export const Disabled = Template.bind({});
+Disabled.args = {
+	item: {
+		id: 'item1',
+		label: 'Item label',
+		icon: 'layers',
+		size: 'medium',
+		disabled: true,
 	} as IMenuItem,
 };
 
@@ -38,24 +61,54 @@ EmojiAsIcon.args = {
 	} as IMenuItem,
 };
 
+export const SecondaryIcon = Template.bind({});
+SecondaryIcon.args = {
+	item: {
+		id: 'item1',
+		label: 'Help',
+		icon: 'circle-help',
+		size: 'medium',
+		notification: true,
+		secondaryIcon: {
+			name: 'chevron-right',
+		},
+	} as IMenuItem,
+};
+
 const SlotsFilled: StoryFn = (args) => ({
 	setup: () => ({ args }),
-	components: { MenuItem },
-	template: `<MenuItem v-bind="args">
-	<template #chevron-button>
-		<div style="width: 24px; height: 24px; background-color: red;"></div>
-	</template>
-		<template #secondary>
-		<div style="width: 24px; height: 24px; background-color: blue;"></div>
-	</template>
-	<template #tertiary>
-		<div style="width: 24px; height: 24px; background-color: green;"></div>
-	</template>
-</MenuItem>`,
+	components: { MenuItem, N8nIconButton },
+	template: `<div style="max-width: 220px; margin: 20px auto;"><MenuItem v-bind="args">
+			<template #toggle>
+				<N8nIconButton
+					size="mini"
+					type="highlight"
+					icon="chevron-right"
+					icon-size="medium"
+					aria-label="Go to details"
+				/>
+			</template>
+			<template #actions>
+				<N8nIconButton
+					size="mini"
+					type="highlight"
+					icon="ellipsis"
+					icon-size="medium"
+					aria-label="Go to details"
+				/>
+				<N8nIconButton
+					size="mini"
+					type="highlight"
+					icon="plus"
+					icon-size="medium"
+					aria-label="Go to details"
+				/>
+			</template>
+</MenuItem></div>`,
 });
 
-export const WithChevronButtonSlot = SlotsFilled.bind({});
-WithChevronButtonSlot.args = {
+export const WithSlots = SlotsFilled.bind({});
+WithSlots.args = {
 	item: {
 		id: 'item1',
 		label: 'Item label',

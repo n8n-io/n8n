@@ -23,13 +23,20 @@ Default.args = {
 		{
 			id: 'item1',
 			label: 'Root Item 1',
+			icon: 'folder',
 			children: [
-				{ id: 'child1', label: 'Child 1', children: [{ id: 'subchild1', label: 'Subchild 1' }] },
+				{
+					id: 'child1',
+					icon: 'folder',
+					label: 'Child 1',
+					children: [{ id: 'subchild1', label: 'Subchild 1' }],
+				},
 				{ id: 'child2', label: 'Child 2' },
 			],
 		},
 		{
 			id: 'item2',
+			icon: 'folder',
 			label: 'Root Item 2',
 		},
 	] satisfies IMenuItem[],

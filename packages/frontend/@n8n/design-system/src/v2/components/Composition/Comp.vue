@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 
-import { N8nIconButton } from '@n8n/design-system/components';
 import type { IMenuItem } from '@n8n/design-system/types';
 
 import MenuItem from '../MenuItem/MenuItem.vue';
@@ -147,35 +146,13 @@ const items = ref<IMenuItem[]>([
 
 <template>
 	<div class="wrapper">
-		<MenuItem v-for="item in items" :key="item.id" :item="item" as="button">
-			<template #chevron-button>
-				<N8nIconButton
-					size="mini"
-					type="highlight"
-					icon="chevron-right"
-					icon-size="medium"
-					aria-label="Go to details"
-				/>
-			</template>
-			<template #secondary>
-				<N8nIconButton
-					size="mini"
-					type="highlight"
-					icon="ellipsis"
-					icon-size="medium"
-					aria-label="Go to details"
-				/>
-			</template>
-			<template #tertiary>
-				<N8nIconButton
-					size="mini"
-					type="highlight"
-					icon="plus"
-					icon-size="medium"
-					aria-label="Go to details"
-				/>
-			</template>
-		</MenuItem>
+		<MenuItem
+			v-for="item in items"
+			:key="item.id"
+			:item="item"
+			as="button"
+			secondary-icon="chevron-right"
+		/>
 	</div>
 </template>
 
