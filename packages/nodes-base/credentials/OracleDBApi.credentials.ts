@@ -51,7 +51,7 @@ export class OracleDBApi implements ICredentialType {
 			displayName: 'Privilege',
 			name: 'privilege',
 			type: 'options',
-			description: 'The privilege to use when establishing connection to the database',
+			description: 'The privilege to use when connecting to the database',
 			default: undefined,
 			options: privilegeOptions,
 		},

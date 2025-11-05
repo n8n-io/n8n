@@ -822,6 +822,17 @@ function generateBindVariablesList(
 	return query.replace(regex, generatedSqlString);
 }
 
+function isSerializedBuffer(val: unknown): val is { type: 'Buffer'; data: number[] } {
+	return (
+		typeof val === 'object' &&
+		val !== null &&
+		'type' in val &&
+		'data' in val &&
+		(val as any).type === 'Buffer' &&
+		Array.isArray((val as any).data)
+	);
+}
+
 export function getBindParameters(
 	query: string,
 	parameterList: ExecuteOpBindParam[],
@@ -845,22 +856,23 @@ export function getBindParameters(
 					break;
 				case 'blob':
 					bindVal = item.valueBlob;
+
+					// Allow null or undefined to represent SQL NULL BLOB values
+					if (bindVal === null) {
+						break;
+					}
+
 					if (Buffer.isBuffer(bindVal)) {
 						break;
 					}
 
 					// Serialized form: { type: 'Buffer', data: [...] }
-					if (
-						bindVal &&
-						typeof bindVal === 'object' &&
-						(bindVal as any).type === 'Buffer' &&
-						Array.isArray((bindVal as any).data)
-					) {
+					if (isSerializedBuffer(bindVal)) {
 						bindVal = Buffer.from((bindVal as any).data);
 						break;
 					}
 					throw new UserError(
-						'BLOB data must be valid Buffer or \'{ type: "Buffer", data: [...] }\'',
+						'BLOB data must be a valid Buffer or \'{ type: "Buffer", data: [...] }\'',
 					);
 				case 'date': {
 					const val = item.valueDate;
