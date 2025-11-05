@@ -4,7 +4,7 @@ Primitive style wrapper for re-use across different types of menus: Sidebar, Dro
 
 - **Component Name:** N8nMenuItem
 - **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?m=auto&node-id=2388-8034&t=lj9ZucXrX3UZMu4U-1)
-- **Reka UI Component:** [Select](https://reka-ui.com/docs/utilities/primitive)
+- **Reka UI Component:** [Primitive](https://reka-ui.com/docs/utilities/primitive)
 
 
 ## Public API definition
@@ -53,5 +53,48 @@ const items = ref<IMenuItem[]>([
 		:item="item"
 		:collapsed="collapsed"
 	/>
+</template>
+```
+
+```Typescript
+<script setup lang="ts">
+const collapsed = ref(false)
+const items = ref<IMenuItem[]>([...])
+</script>
+
+<template>
+<N8nTree>// <- TBD
+  <N8nMenuItem
+		as="a"
+		v-for="item in items"
+		:item="item"
+		:collapsed="collapsed"
+	>
+		<template #toggle>
+			<N8nIconButton
+				size="mini"
+				type="highlight"
+				icon="chevron-right"
+				icon-size="medium"
+				aria-label="Go to details"
+			/>
+		</template>
+		<template #actions>
+			<N8nIconButton
+				size="mini"
+				type="highlight"
+				icon="ellipsis"
+				icon-size="medium"
+				aria-label="Go to details"
+			/>
+			<N8nIconButton
+				size="mini"
+				type="highlight"
+				icon="plus"
+				icon-size="medium"
+				aria-label="Go to details"
+			/>
+		</template>
+	</N8nTree>
 </template>
 ```
