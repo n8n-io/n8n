@@ -16,6 +16,7 @@ import type { NodeDetailsOutput } from '../types/tools';
  */
 const nodeDetailsSchema = z.object({
 	nodeName: z.string().describe('The exact node type name (e.g., n8n-nodes-base.httpRequest)'),
+	nodeVersion: z.number().describe('The exact node version'),
 	withParameters: z
 		.boolean()
 		.optional()
@@ -144,7 +145,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 			try {
 				// Validate input using Zod schema
 				const validatedInput = nodeDetailsSchema.parse(input);
-				const { nodeName, withParameters, withConnections } = validatedInput;
+				const { nodeName, nodeVersion, withParameters, withConnections } = validatedInput;
 
 				// Report tool start
 				reporter.start(validatedInput);
@@ -153,7 +154,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				reportProgress(reporter, `Looking up details for ${nodeName}...`);
 
 				// Find the node type
-				const nodeType = findNodeType(nodeName, nodeTypes);
+				const nodeType = findNodeType(nodeName, nodeVersion, nodeTypes);
 
 				if (!nodeType) {
 					const error = createNodeTypeNotFoundError(nodeName);

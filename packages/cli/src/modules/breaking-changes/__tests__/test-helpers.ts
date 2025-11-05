@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity, WorkflowStatistics } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
 export const createWorkflow = (id: string, name: string, nodes: INode[], active = true) => ({
@@ -7,6 +7,13 @@ export const createWorkflow = (id: string, name: string, nodes: INode[], active 
 		name,
 		active,
 		nodes,
+		statistics: [
+			{
+				count: 1,
+				rootCount: 1,
+				latestEvent: new Date(),
+			} as WorkflowStatistics,
+		],
 	} as WorkflowEntity,
 	nodesGroupedByType: nodes.reduce((map, node) => {
 		if (!map.has(node.type)) {
