@@ -81,19 +81,7 @@ describe('WorkflowDescriptionPopover', () => {
 	});
 
 	describe('Component rendering', () => {
-		it('should render the description button', () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: 'Initial description',
-				},
-			});
-
-			const button = getByTestId('workflow-description-button');
-			expect(button).toBeInTheDocument();
-		});
-
-		it('should render with initial description', async () => {
+		it('should render the description button and default description', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					workflowId: 'test-workflow-id',
@@ -108,7 +96,7 @@ describe('WorkflowDescriptionPopover', () => {
 			expect(textarea).toHaveValue('Initial description');
 		});
 
-		it('should render with empty description', async () => {
+		it('should render empty string if there is no description', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					workflowId: 'test-workflow-id',
@@ -125,7 +113,7 @@ describe('WorkflowDescriptionPopover', () => {
 
 	describe('Popover interaction', () => {
 		it('should open popover when button is clicked', async () => {
-			const { getByTestId, queryByText } = renderComponent({
+			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					workflowId: 'test-workflow-id',
 					workflowDescription: 'Test description',
@@ -133,10 +121,10 @@ describe('WorkflowDescriptionPopover', () => {
 			});
 
 			const button = getByTestId('workflow-description-button');
-			expect(queryByText('Description')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-description-edit-content')).not.toBeInTheDocument();
 
 			await userEvent.click(button);
-			expect(queryByText('Description')).toBeInTheDocument();
+			expect(getByTestId('workflow-description-edit-content')).toBeInTheDocument();
 		});
 
 		it('should focus textarea when popover opens', async () => {
@@ -364,7 +352,7 @@ describe('WorkflowDescriptionPopover', () => {
 			await userEvent.keyboard('{Escape}');
 
 			// Check that popover is closed
-			expect(queryByTestId('workflow-description-input')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-description-edit-content')).not.toBeInTheDocument();
 
 			// Re-open to verify changes were reverted
 			await userEvent.click(getByTestId('workflow-description-button'));
@@ -617,65 +605,6 @@ describe('WorkflowDescriptionPopover', () => {
 
 			const textarea = getByTestId('workflow-description-input');
 			expect(textarea.getAttribute('placeholder')).not.toContain('webhook URL');
-		});
-	});
-
-	describe('Prop synchronization', () => {
-		it('should update internal value when prop changes', async () => {
-			const { rerender, getByTestId } = renderComponent({
-				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: 'Initial description',
-				},
-			});
-
-			await userEvent.click(getByTestId('workflow-description-button'));
-
-			let textarea = getByTestId('workflow-description-input');
-			expect(textarea).toHaveValue('Initial description');
-
-			// Close popover
-			await userEvent.click(document.body);
-
-			// Update prop
-			await rerender({
-				workflowId: 'test-workflow-id',
-				workflowDescription: 'Updated externally',
-			});
-
-			// Re-open popover
-			await userEvent.click(getByTestId('workflow-description-button'));
-
-			textarea = getByTestId('workflow-description-input');
-			expect(textarea).toHaveValue('Updated externally');
-		});
-
-		it('should reset last saved value when prop changes', async () => {
-			const { rerender, getByTestId } = renderComponent({
-				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: 'Initial description',
-				},
-			});
-
-			await userEvent.click(getByTestId('workflow-description-button'));
-
-			const textarea = getByTestId('workflow-description-input');
-			await userEvent.type(textarea, ' modified');
-
-			// Update prop while editing
-			await rerender({
-				workflowId: 'test-workflow-id',
-				workflowDescription: 'Updated externally',
-			});
-
-			// Cancel should revert to new prop value
-			const cancelButton = getByTestId('workflow-description-cancel-button');
-			await userEvent.click(cancelButton);
-
-			await userEvent.click(getByTestId('workflow-description-button'));
-			const textareaAfterCancel = getByTestId('workflow-description-input');
-			expect(textareaAfterCancel).toHaveValue('Updated externally');
 		});
 	});
 

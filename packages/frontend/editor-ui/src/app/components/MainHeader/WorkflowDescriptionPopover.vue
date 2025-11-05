@@ -164,7 +164,10 @@ watch(descriptionValue, (newValue) => {
 					/>
 				</template>
 				<template #content>
-					<div :class="$style['description-edit-content']">
+					<div
+						:class="$style['description-edit-content']"
+						data-test-id="workflow-description-edit-content"
+					>
 						<N8nInputLabel
 							:label="i18n.baseText('generic.description')"
 							:tooltip-text="textareaTip"
