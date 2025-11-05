@@ -1050,11 +1050,11 @@ export class QuickBooks implements INodeType {
 							}
 						});
 
-						let body = {
+						let body: IDataObject = {
 							CustomerRef: {
 								value: this.getNodeParameter('CustomerRef', i),
 							},
-						} as IDataObject;
+						};
 
 						body.Line = processLines.call(this, lines, resource);
 
@@ -1070,14 +1070,14 @@ export class QuickBooks implements INodeType {
 						//         salesReceipt: delete
 						// ----------------------------------
 
-						const qs = {
+						const qs: IDataObject = {
 							operation: 'delete',
-						} as IDataObject;
+						};
 
-						const body = {
+						const body: IDataObject = {
 							Id: this.getNodeParameter('salesreceiptId', i),
 							SyncToken: await getSyncToken.call(this, i, companyId, 'salesreceipt'),
-						} as IDataObject;
+						};
 
 						const endpoint = `/v3/company/${companyId}/salesreceipt`;
 						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
