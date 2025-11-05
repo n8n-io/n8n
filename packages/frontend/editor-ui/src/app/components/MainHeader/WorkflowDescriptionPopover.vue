@@ -146,7 +146,7 @@ watch(descriptionValue, (newValue) => {
 </script>
 <template>
 	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('workflow.description.tooltip')">
-		<div :class="$style['description-popover-wrapper']">
+		<div :class="$style['description-popover-wrapper']" data-test-id="workflow-description-popover">
 			<N8nPopoverReka
 				id="workflow-description-popover"
 				:open="popoverOpen"
@@ -156,6 +156,7 @@ watch(descriptionValue, (newValue) => {
 					<N8nIconButton
 						:class="{ [$style['description-button']]: true, [$style.active]: popoverOpen }"
 						:square="true"
+						data-test-id="workflow-description-button"
 						icon="notebook-pen"
 						type="tertiary"
 						size="small"
@@ -172,8 +173,9 @@ watch(descriptionValue, (newValue) => {
 								ref="descriptionInput"
 								v-model="descriptionValue"
 								:placeholder="textareaTip"
-								type="textarea"
 								:rows="6"
+								data-test-id="workflow-description-input"
+								type="textarea"
 								@keydown="handleKeyDown"
 							/>
 						</N8nInputLabel>
@@ -185,6 +187,7 @@ watch(descriptionValue, (newValue) => {
 							:loading="isSaving"
 							:disabled="!canSave || isSaving"
 							type="primary"
+							data-test-id="workflow-description-save-button"
 							@click="save"
 						/>
 						<N8nButton
@@ -192,6 +195,7 @@ watch(descriptionValue, (newValue) => {
 							:size="'small'"
 							:disabled="isSaving"
 							type="tertiary"
+							data-test-id="workflow-description-cancel-button"
 							@click="cancel"
 						/>
 					</footer>
