@@ -208,30 +208,46 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const executions = await this.find(queryParams);
 
-		if (options?.includeData && options?.unflattenData) {
+		if (options?.includeData) {
 			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
 			this.reportInvalidExecutions(invalid);
-			return valid.map((execution) => {
-				const { executionData, metadata, ...rest } = execution;
-				return {
-					...rest,
-					data: executionData.data ? (parse(executionData.data) as IRunExecutionData) : undefined,
-					workflowData: executionData.workflowData,
-					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				} as IExecutionResponse;
-			});
-		} else if (options?.includeData) {
-			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
-			this.reportInvalidExecutions(invalid);
-			return valid.map((execution) => {
-				const { executionData, metadata, ...rest } = execution;
-				return {
-					...rest,
-					data: execution.executionData.data,
-					workflowData: execution.executionData.workflowData,
-					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				} as IExecutionFlattedDb;
-			});
+			return await Promise.all(
+				valid.map(async (execution): Promise<IExecutionResponse> => {
+					const { executionData, metadata, ...rest } = execution;
+
+					let executionDataParsed: IRunExecutionData | string | undefined;
+					if (executionData) {
+						if (executionData.storageMode === 's3' && executionData.s3Key) {
+							try {
+								executionDataParsed = await this.executionDataService.retrieve(
+									execution.id,
+									executionData.s3Key,
+								);
+								if (!options?.unflattenData) {
+									executionDataParsed = stringify(executionDataParsed);
+								}
+							} catch (error) {
+								this.logger.error('Failed to retrieve execution data from S3', {
+									executionId: execution.id,
+									s3Key: executionData.s3Key,
+									error,
+								});
+								throw error;
+							}
+						} else if (executionData.data) {
+							executionDataParsed = options?.unflattenData
+								? (parse(executionData.data) as IRunExecutionData)
+								: executionData.data;
+						}
+					}
+					return {
+						...rest,
+						data: executionDataParsed,
+						workflowData: executionData.workflowData,
+						customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+					} as IExecutionResponse;
+				}),
+			);
 		}
 
 		return executions.map((execution) => {
