@@ -4,6 +4,8 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { ExecutionData } from '../entities';
+import { IWorkflowBase } from 'n8n-workflow';
+import { ISimplifiedPinData } from 'entities/types-db';
 
 @Service()
 export class ExecutionDataRepository extends Repository<ExecutionData> {
@@ -18,12 +20,22 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 		return await transactionManager.insert(ExecutionData, data);
 	}
 
-	async findByExecutionIds(executionIds: string[]) {
+	async findByExecutionIds(executionIds: string[]): Promise<
+		Array<
+			Omit<IWorkflowBase, 'pinData'> & {
+				pinData?: ISimplifiedPinData;
+			}
+		>
+	> {
 		return await this.find({
-			select: ['workflowData'],
+			select: ['workflowData', 'workflowHistory'],
 			where: {
 				executionId: In(executionIds),
 			},
-		}).then((executionData) => executionData.map(({ workflowData }) => workflowData));
+		}).then((executionData) =>
+			executionData.map(({ workflowData, workflowHistory }) =>
+				workflowHistory ? { ...workflowHistory.workflow, ...workflowHistory } : workflowData,
+			),
+		);
 	}
 }

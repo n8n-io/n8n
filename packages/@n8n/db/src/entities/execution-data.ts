@@ -1,9 +1,19 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryColumn } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	JoinColumn,
+	JoinTable,
+	ManyToOne,
+	OneToOne,
+	PrimaryColumn,
+	Relation,
+} from '@n8n/typeorm';
 import { IWorkflowBase } from 'n8n-workflow';
 
 import { JsonColumn } from './abstract-entity';
 import { ExecutionEntity } from './execution-entity';
 import { ISimplifiedPinData } from './types-db';
+import { WorkflowHistory } from './workflow-history';
 import { idStringifier } from '../utils/transformers';
 
 @Entity()
@@ -24,14 +34,30 @@ export class ExecutionData {
 	@JsonColumn()
 	workflowData: Omit<IWorkflowBase, 'pinData'> & { pinData?: ISimplifiedPinData };
 
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	workflowVersionId: string | null;
+
+	@ManyToOne(() => WorkflowHistory, { onDelete: 'SET NULL', nullable: true })
+	@JoinTable({
+		joinColumn: {
+			name: 'workflowVersionId',
+			referencedColumnName: 'versionId',
+		},
+	})
+	workflowHistory?: Relation<WorkflowHistory> | null;
+
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
 
-	@OneToOne('ExecutionEntity', 'executionData', {
-		onDelete: 'CASCADE',
-	})
+	@OneToOne(
+		() => ExecutionEntity,
+		(ee) => ee.executionData,
+		{
+			onDelete: 'CASCADE',
+		},
+	)
 	@JoinColumn({
 		name: 'executionId',
 	})
-	execution: ExecutionEntity;
+	execution: Relation<ExecutionEntity>;
 }

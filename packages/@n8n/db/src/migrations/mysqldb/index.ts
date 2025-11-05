@@ -1,3 +1,4 @@
+import { AddWorkflowVersionIdToExecutionData1762310956274 } from './../common/1762310956274-AddWorkflowVersionIdToExecutionData';
 import { DropUnusedChatHubColumns1760965142113 } from './1760965142113-DropUnusedChatHubColumns';
 import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
@@ -221,4 +222,5 @@ export const mysqlMigrations: Migration[] = [
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
 	ChangeDependencyInfoToJson1761655473000,
+	AddWorkflowVersionIdToExecutionData1762310956274,
 ];
