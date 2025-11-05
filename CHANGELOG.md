@@ -1,3 +1,12 @@
+## [1.118.2](https://github.com/n8n-io/n8n/compare/n8n@1.118.1...n8n@1.118.2) (2025-11-05)
+
+
+### Bug Fixes
+
+* **core:** Fix AI Agent v3 Tool Execution Issues ([#21477](https://github.com/n8n-io/n8n/issues/21477)) ([0c04ff4](https://github.com/n8n-io/n8n/commit/0c04ff47ecd7757ec9b7561e2fdb73e2bfcc22af))
+
+
+
 ## [1.118.1](https://github.com/n8n-io/n8n/compare/n8n@1.118.0...n8n@1.118.1) (2025-10-28)
 
 
