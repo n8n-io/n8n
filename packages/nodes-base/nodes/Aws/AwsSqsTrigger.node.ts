@@ -168,11 +168,11 @@ export class AwsSqsTrigger implements INodeType {
 			queueUrl = `https://sqs.${region}.amazonaws.com/${accountId}/${queueName}`;
 		}
 
-		const maxNumberOfMessages = (options.maxNumberOfMessages as number) || 10;
+		const maxNumberOfMessages = (options.maxNumberOfMessages as number) ?? 10;
 		const waitTimeSeconds = (options.waitTimeSeconds as number) ?? 20;
 		const pollIntervalMinutes = (options.pollIntervalMinutes as number) ?? 1;
 		const pollInterval = pollIntervalMinutes * 60 * 1000; // Convert minutes to milliseconds
-		const visibilityTimeout = (options.visibilityTimeout as number) || 30;
+		const visibilityTimeout = (options.visibilityTimeout as number) ?? 30;
 		const deleteAfterProcessing = options.deleteAfterProcessing !== false;
 		const emitIndividually = options.emitIndividually !== false;
 
