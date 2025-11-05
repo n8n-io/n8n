@@ -2348,6 +2348,26 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
+	test('should update the version counter', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			name: 'name updated',
+			versionId: workflow.versionId,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const {
+			data: { id, versionCounter },
+		} = response.body;
+
+		expect(response.statusCode).toBe(200);
+
+		expect(id).toBe(workflow.id);
+		expect(versionCounter).toBe(workflow.versionCounter + 1);
+	});
+
 	test('should not create workflow history version when not licensed', async () => {
 		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
