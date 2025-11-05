@@ -2,11 +2,25 @@ import type { TreeRootProps, TreeRootEmits, TreeItemProps } from 'reka-ui';
 
 import type { IMenuItem } from '@n8n/design-system/types/menu';
 
-export type N8nTreeProps = Omit<TreeRootProps<IMenuItem>, 'getKey'> & {
+/**
+ * Base interface that tree items must implement
+ */
+export interface TreeItem {
 	/**
-	 * Tree data structure using IMenuItem type
+	 * Unique identifier for the tree item
 	 */
-	items: IMenuItem[];
+	id: string;
+	/**
+	 * Optional children array for nested tree structure
+	 */
+	children?: TreeItem[];
+}
+
+export type N8nTreeProps<T extends TreeItem = IMenuItem> = Omit<TreeRootProps<T>, 'getKey'> & {
+	/**
+	 * Tree data structure using generic type T
+	 */
+	items: T[];
 	/**
 	 * Estimated height of each tree item (in px) - used for virtualization
 	 */
@@ -14,11 +28,11 @@ export type N8nTreeProps = Omit<TreeRootProps<IMenuItem>, 'getKey'> & {
 	/**
 	 * Optional function to get unique key from each item - defaults to item.id
 	 */
-	getKey?: (item: IMenuItem) => string;
+	getKey?: (item: T) => string;
 };
 
 export type N8nTreeEmits = TreeRootEmits;
 
-export type N8nTreeItemProps = TreeItemProps<IMenuItem>;
+export type N8nTreeItemProps<T extends TreeItem = IMenuItem> = TreeItemProps<T>;
 
 export { default as Tree } from './Tree.vue';

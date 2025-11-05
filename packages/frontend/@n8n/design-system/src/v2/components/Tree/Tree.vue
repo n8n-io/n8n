@@ -1,19 +1,30 @@
-<script setup lang="ts">
-import { TreeRoot, TreeVirtualizer, useForwardPropsEmits, TreeItem } from 'reka-ui';
+<script setup lang="ts" generic="T extends BaseTreeItem = IMenuItem">
+import {
+	TreeRoot,
+	TreeVirtualizer,
+	useForwardPropsEmits,
+	TreeItem,
+	type FlattenedItem,
+} from 'reka-ui';
 
 import type { IMenuItem } from '@n8n/design-system/types';
 
-import type { N8nTreeProps, N8nTreeEmits } from '.';
+import type { N8nTreeProps, N8nTreeEmits, TreeItem as BaseTreeItem } from '.';
 
 defineOptions({ name: 'Tree' });
 
-const props = withDefaults(defineProps<N8nTreeProps>(), {
+const props = withDefaults(defineProps<N8nTreeProps<T>>(), {
 	estimateSize: 32,
-	getKey: (item: IMenuItem) => item.id,
+	getKey: (item: T) => item.id,
 });
 
 const emit = defineEmits<N8nTreeEmits>();
 const forwarded = useForwardPropsEmits(props, emit);
+
+// Define slots with properly typed generic parameters
+defineSlots<{
+	default(props: { item: FlattenedItem<T>; handleToggle: () => void; isExpanded: boolean }): void;
+}>();
 
 function getLevelIndentation(level: number) {
 	return new Array((level || 1) - 1).map((_, i) => i);
@@ -39,7 +50,11 @@ function getLevelIndentation(level: number) {
 					:key="level"
 					:class="$style.TreeItemIdent"
 				/>
-				<slot :item="item" :handle-toggle="handleToggle" :is-expanded="isExpanded" />
+				<slot
+					:item="item as FlattenedItem<T>"
+					:handle-toggle="handleToggle"
+					:is-expanded="isExpanded"
+				/>
 			</TreeItem>
 		</TreeVirtualizer>
 	</TreeRoot>

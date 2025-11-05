@@ -327,11 +327,7 @@ function updateModelValue(selectedItems: any) {
 			@update:model-value="(v) => updateModelValue(v)"
 		>
 			<template #default="{ item, handleToggle, isExpanded }">
-				<MenuItem
-					:key="item.value.id"
-					:item="item.value as IMenuItem"
-					@mouseover="() => console.log(item._id)"
-				>
+				<MenuItem :key="item.value.id" :item="item.value" @mouseover="() => console.log(item._id)">
 					<template v-if="item.value.children && item.value.children.length > 0" #toggle>
 						<N8nIconButton
 							size="mini"
