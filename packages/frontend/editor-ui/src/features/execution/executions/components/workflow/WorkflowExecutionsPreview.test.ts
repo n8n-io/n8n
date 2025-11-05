@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory, RouterLink } from 'vue-router';
 import { randomInt, type ExecutionSummary, type AnnotationVote } from 'n8n-workflow';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummaryWithScopes } from '../../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -19,7 +19,7 @@ import { nextTick } from 'vue';
 const showMessage = vi.fn();
 const showError = vi.fn();
 const showToast = vi.fn();
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, showToast }),
 }));
 

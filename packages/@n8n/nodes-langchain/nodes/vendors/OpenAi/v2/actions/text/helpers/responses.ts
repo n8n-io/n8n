@@ -234,37 +234,6 @@ export async function createRequest(
 			);
 		}
 
-		const mcpServers = get(builtInTools.mcpServers, 'mcpServerOptions') as
-			| IDataObject[]
-			| undefined;
-		if (Array.isArray(mcpServers) && mcpServers.length) {
-			for (const mcpServer of mcpServers) {
-				let allowedTools: string[] | undefined;
-				const allowedToolsRaw = get(mcpServer, 'allowedTools', '') as string;
-				if (allowedToolsRaw) {
-					allowedTools = toArray(allowedToolsRaw);
-				}
-
-				const headersRaw = get(mcpServer, 'headers', '') as string;
-
-				newTools.push(
-					removeEmptyProperties({
-						type: 'mcp',
-						server_label: mcpServer.serverLabel as string,
-						server_url: mcpServer.serverUrl as string,
-						connector_id: mcpServer.connectorId as string,
-						authorization: mcpServer.authorization as string,
-						allowed_tools: allowedTools,
-						headers: headersRaw
-							? jsonParse(headersRaw, { errorMessage: 'Failed to parse headers' })
-							: undefined,
-						require_approval: 'never',
-						server_description: mcpServer.serverDescription as string,
-					}),
-				);
-			}
-		}
-
 		if (builtInTools.codeInterpreter) {
 			newTools.push({
 				type: 'code_interpreter',

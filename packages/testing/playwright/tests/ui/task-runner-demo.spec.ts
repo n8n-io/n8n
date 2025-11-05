@@ -1,6 +1,12 @@
 import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
 
+test.use({
+	addContainerCapability: {
+		taskRunner: true,
+	},
+});
+
 /**
  * Task Runner Capability Tests
  *

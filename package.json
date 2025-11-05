@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.117.0",
+  "version": "1.119.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -22,9 +22,6 @@
     "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "dev:fe": "run-p start \"dev:fe:editor --filter=@n8n/design-system\"",
     "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
-    "dev:e2e": "cd cypress && pnpm run test:e2e:dev",
-    "debug:flaky:e2e": "cd cypress && pnpm run test:flaky",
-    "dev:e2e:server": "run-p start dev:fe:editor",
     "clean": "turbo run clean",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
     "format": "turbo run format && node scripts/format.mjs",
@@ -36,7 +33,6 @@
     "lint:fix": "turbo run lint:fix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "generate:third-party-licenses": "node scripts/generate-third-party-licenses.mjs",
-    "replace-css-tokens": "bash ./scripts/replace-css-tokens.sh",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
@@ -44,6 +40,10 @@
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
+    "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**'",
+    "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**'",
+    "test:ci:backend:unit": "turbo run test:unit --continue --filter='!./packages/frontend/**'",
+    "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**'",
     "test:affected": "turbo run test --affected --concurrency=1",
     "test:with:docker": "pnpm --filter=n8n-playwright test:container:standard",
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
@@ -89,6 +89,7 @@
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
+      "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
@@ -111,7 +112,9 @@
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "form-data": "4.0.4",
-      "tmp": "0.2.4"
+      "tmp": "0.2.4",
+      "nodemailer": "7.0.10",
+      "validator": "13.15.20"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

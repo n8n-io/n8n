@@ -21,6 +21,8 @@ import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { DatabaseConfig } from '@n8n/config';
 
 @Service()
 export class ImportService {
@@ -52,6 +54,8 @@ export class ImportService {
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly workflowIndexService: WorkflowIndexService,
+		private readonly databaseConfig: DatabaseConfig,
 	) {}
 
 	async initRecords() {
@@ -79,6 +83,7 @@ export class ImportService {
 			}
 		}
 
+		const insertedWorkflows: IWorkflowBase[] = [];
 		const { manager: dbManager } = this.credentialsRepository;
 		await dbManager.transaction(async (tx) => {
 			for (const workflow of workflows) {
@@ -92,6 +97,7 @@ export class ImportService {
 
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
+				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
@@ -116,6 +122,15 @@ export class ImportService {
 				}
 			}
 		});
+
+		// Directly update the index for the important workflows, since they don't generate
+		// workflow-update events during import.
+		// Workflow indexing isn't supported on legacy SQLite.
+		if (!this.databaseConfig.isLegacySqlite) {
+			for (const workflow of insertedWorkflows) {
+				await this.workflowIndexService.updateIndexFor(workflow);
+			}
+		}
 	}
 
 	async replaceInvalidCreds(workflow: IWorkflowBase) {
@@ -551,8 +566,6 @@ export class ImportService {
 		const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
 		const importName = latestImportMigration.name;
 		const dbName = latestDbMigration.name;
-		const importId = latestImportMigration.id;
-		const dbId = latestDbMigration.id;
 
 		// Check timestamp match
 		if (importTimestamp !== dbTimestamp) {
@@ -565,13 +578,6 @@ export class ImportService {
 		if (importName !== dbName) {
 			throw new Error(
 				`Migration name mismatch. Import data: ${String(importName)} does not match target database ${String(dbName)}. Cannot import data from different migration states.`,
-			);
-		}
-
-		// Check ID match (if both have IDs)
-		if (importId && dbId && importId !== dbId) {
-			throw new Error(
-				`Migration ID mismatch. Import data: ${String(importName)} (id: ${String(importId)}) does not match target database ${String(dbName)} (id: ${String(dbId)}). Cannot import data from different migration states.`,
 			);
 		}
 

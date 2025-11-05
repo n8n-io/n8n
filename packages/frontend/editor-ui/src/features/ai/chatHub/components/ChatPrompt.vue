@@ -1,21 +1,26 @@
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
-import { N8nIconButton, N8nInput } from '@n8n/design-system';
+import { useToast } from '@/app/composables/useToast';
+import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
+import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
-import { ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 
-const { disabled } = defineProps<{
-	placeholder: string;
-	disabled: boolean;
+const { selectedModel, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
+	isNewSession: boolean;
+	selectedModel: ChatModelDto | null;
+	isMissingCredentials: boolean;
 }>();
 
 const emit = defineEmits<{
 	submit: [string];
 	stop: [];
+	selectModel: [];
+	setCredentials: [ChatHubLLMProvider];
 }>();
 
-const inputRef = useTemplateRef('inputRef');
+const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const message = ref('');
 
 const toast = useToast();
@@ -25,6 +30,16 @@ const speechInput = useSpeechRecognition({
 	interimResults: true,
 	lang: navigator.language,
 });
+
+const placeholder = computed(() =>
+	selectedModel ? `Message ${selectedModel.name ?? 'a model'}...` : 'Select a model',
+);
+
+const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
+	selectedModel?.model.provider === 'n8n' || selectedModel?.model.provider === 'custom-agent'
+		? undefined
+		: selectedModel?.model.provider,
+);
 
 function onMic() {
 	if (speechInput.isListening.value) {
@@ -91,6 +106,28 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
+			<N8nText v-if="!selectedModel" :class="$style.callout">
+				<template v-if="isNewSession">
+					Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
+					conversation
+				</template>
+				<template v-else>
+					Please <a href="" @click.prevent="emit('selectModel')">reselect a model</a> to continue
+					the conversation
+				</template>
+			</N8nText>
+			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
+				<template v-if="isNewSession">
+					Please
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					for {{ providerDisplayNames[llmProvider] }} to start a conversation
+				</template>
+				<template v-else>
+					Please
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
+				</template>
+			</N8nText>
 			<N8nInput
 				ref="inputRef"
 				v-model="message"
@@ -100,6 +137,7 @@ defineExpose({
 				autocomplete="off"
 				:autosize="{ minRows: 1, maxRows: 6 }"
 				autofocus
+				:disabled="isMissingCredentials || !selectedModel"
 				@keydown="handleKeydownTextarea"
 			/>
 
@@ -109,7 +147,7 @@ defineExpose({
 					native-type="button"
 					type="secondary"
 					title="Attach"
-					:disabled="disabled"
+					:disabled="isMissingCredentials || !selectedModel || isResponding"
 					icon="paperclip"
 					icon-size="large"
 					text
@@ -120,7 +158,7 @@ defineExpose({
 					native-type="button"
 					:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
 					type="secondary"
-					:disabled="disabled"
+					:disabled="isMissingCredentials || !selectedModel || isResponding"
 					:icon="speechInput.isListening.value ? 'square' : 'mic'"
 					:class="{ [$style.recording]: speechInput.isListening.value }"
 					icon-size="large"
@@ -129,7 +167,7 @@ defineExpose({
 				<N8nIconButton
 					v-if="!isResponding"
 					native-type="submit"
-					:disabled="disabled || !message.trim()"
+					:disabled="isMissingCredentials || !selectedModel || !message.trim()"
 					title="Send"
 					icon="arrow-up"
 					icon-size="large"
@@ -157,7 +195,26 @@ defineExpose({
 	position: relative;
 	display: flex;
 	align-items: center;
+	flex-direction: column;
 	width: 100%;
+}
+
+.callout {
+	color: var(--color--secondary);
+	background-color: hsla(247, 49%, 53%, 0.1);
+	padding: 12px 16px 24px;
+	border-top-left-radius: 16px;
+	border-top-right-radius: 16px;
+	width: 100%;
+	border: var(--border);
+	border-color: var(--color--secondary);
+	text-align: center;
+	margin-bottom: -16px;
+
+	& a {
+		text-decoration: underline;
+		color: inherit;
+	}
 }
 
 .input {
