@@ -71,12 +71,15 @@ const saveDescription = async () => {
 	uiStore.addActiveAction('workflowSaving');
 
 	try {
-		await workflowStore.saveWorkflowDescription(props.workflowId, descriptionValue.value || null);
+		await workflowStore.saveWorkflowDescription(
+			props.workflowId,
+			normalizedCurrentValue.value ?? null,
+		);
 		lastSavedDescription.value = descriptionValue.value;
 		uiStore.stateIsDirty = false;
 		telemetry.track('User set workflow description', {
 			workflow_id: props.workflowId,
-			description: descriptionValue.value,
+			description: normalizedCurrentValue.value ?? null,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflow.description.error.title'));
@@ -107,6 +110,10 @@ const handleKeyDown = async (event: KeyboardEvent) => {
 
 	// Enter (without Shift) - save and close
 	if (event.key === 'Enter' && !event.shiftKey) {
+		if (!canSave.value) {
+			return;
+		}
+
 		event.preventDefault();
 		event.stopPropagation();
 		await save();

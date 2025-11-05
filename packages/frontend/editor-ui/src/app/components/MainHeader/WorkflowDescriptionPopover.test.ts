@@ -195,7 +195,7 @@ describe('WorkflowDescriptionPopover', () => {
 			});
 		});
 
-		it('should save null when description is empty', async () => {
+		it('should save empty string when description is cleared', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					workflowId: 'test-workflow-id',
@@ -211,7 +211,11 @@ describe('WorkflowDescriptionPopover', () => {
 			const saveButton = getByTestId('workflow-description-save-button');
 			await userEvent.click(saveButton);
 
-			expect(workflowsStore.saveWorkflowDescription).toHaveBeenCalledWith('test-workflow-id', null);
+			expect(workflowsStore.saveWorkflowDescription).toHaveBeenCalledWith('test-workflow-id', '');
+			expect(telemetry.track).toHaveBeenCalledWith('User set workflow description', {
+				workflow_id: 'test-workflow-id',
+				description: '',
+			});
 		});
 
 		it('should disable save button when description has not changed', async () => {
@@ -226,6 +230,44 @@ describe('WorkflowDescriptionPopover', () => {
 
 			const saveButton = getByTestId('workflow-description-save-button');
 			expect(saveButton).toBeDisabled();
+		});
+
+		it('should disable save button when whitespace-only changes result in same trimmed value', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					workflowId: 'test-workflow-id',
+					workflowDescription: '',
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-description-button'));
+
+			const textarea = getByTestId('workflow-description-input');
+			// Type only whitespace
+			await userEvent.type(textarea, '   ');
+
+			const saveButton = getByTestId('workflow-description-save-button');
+			// Should be disabled since trimmed value is still empty
+			expect(saveButton).toBeDisabled();
+		});
+
+		it('should not save on Enter key when only whitespace is entered', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					workflowId: 'test-workflow-id',
+					workflowDescription: '',
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-description-button'));
+
+			const textarea = getByTestId('workflow-description-input');
+			// Type only whitespace
+			await userEvent.type(textarea, '   ');
+			await userEvent.keyboard('{Enter}');
+
+			// Should not save since canSave is false
+			expect(workflowsStore.saveWorkflowDescription).not.toHaveBeenCalled();
 		});
 
 		it('should enable save button when description changes', async () => {
