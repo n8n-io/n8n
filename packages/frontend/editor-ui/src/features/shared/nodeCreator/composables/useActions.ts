@@ -33,19 +33,19 @@ import {
 	STICKY_NODE_TYPE,
 	TRIGGER_NODE_CREATOR_VIEW,
 	WEBHOOK_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
-import type { Telemetry } from '@/plugins/telemetry';
+import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../nodeCreator.utils';
 import { useI18n } from '@n8n/i18n';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { useCanvasStore } from '@/app/stores/canvas.store';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 export const useActions = () => {
 	const workflowState = injectWorkflowState();

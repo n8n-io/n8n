@@ -5,13 +5,13 @@ import { dropCursor, EditorView, keymap } from '@codemirror/view';
 import { computed, onMounted, ref, watch } from 'vue';
 
 import { n8nAutocompletion, n8nLang } from '@/features/shared/editors/plugins/codemirror/n8nLang';
-import { forceParse } from '@/utils/forceParse';
+import { forceParse } from '@/app/utils/forceParse';
 import { inputTheme } from './theme';
 
 import { useExpressionEditor } from '@/features/shared/editors/composables/useExpressionEditor';
 import { infoBoxTooltips } from '@/features/shared/editors/plugins/codemirror/tooltips/InfoBoxTooltip';
-import type { Segment } from '@/types/expressions';
-import { removeExpressionPrefix } from '@/utils/expressions';
+import type { Segment } from '@/app/types/expressions';
+import { removeExpressionPrefix } from '@/app/utils/expressions';
 import { mappingDropCursor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 import { editorKeymap } from '@/features/shared/editors/plugins/codemirror/keymap';
 import { expressionCloseBrackets } from '@/features/shared/editors/plugins/codemirror/expressionCloseBrackets';

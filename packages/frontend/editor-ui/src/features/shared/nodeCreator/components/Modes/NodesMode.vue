@@ -17,7 +17,7 @@ import {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	HITL_SUBCATEGORY,
 	PRE_BUILT_AGENTS_COLLECTION,
-} from '@/constants';
+} from '@/app/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -40,13 +40,13 @@ import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue'
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@n8n/i18n';
 
-import { getNodeIconSource } from '@/utils/nodeIcon';
+import { getNodeIconSource } from '@/app/utils/nodeIcon';
 
 import { useActions } from '../../composables/useActions';
 import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 
 export interface Props {
 	rootView: 'trigger' | 'action';

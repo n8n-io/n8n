@@ -4,11 +4,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createPinia, setActivePinia } from 'pinia';
 import * as dataTableApi from '@/features/core/dataTable/dataTable.api';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 
 vi.mock('@/features/collaboration/projects/projects.store');
-vi.mock('@/stores/settings.store');
+vi.mock('@/app/stores/settings.store');
 
 function createTable(data: Partial<DataTable>) {
 	return {

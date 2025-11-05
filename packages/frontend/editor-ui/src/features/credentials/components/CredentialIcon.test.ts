@@ -7,7 +7,7 @@ import CredentialIcon from './CredentialIcon.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '../credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 describe('CredentialIcon', () => {
 	const renderComponent = createComponentRenderer(CredentialIcon, {
