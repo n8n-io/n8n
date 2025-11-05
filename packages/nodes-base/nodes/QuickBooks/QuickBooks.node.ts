@@ -6,6 +6,7 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -45,6 +46,7 @@ import {
 	populateFields,
 	processLines,
 	quickBooksApiRequest,
+	quickBooksApiRequestAllItems,
 	simplifyTransactionReport,
 } from './GenericFunctions';
 import type { QuickBooksOAuth2Credentials, TransactionFields, TransactionReport } from './types';
@@ -185,6 +187,44 @@ export class QuickBooks implements INodeType {
 
 			async getVendors(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'vendor');
+			},
+
+			async getAccounts(this: ILoadOptionsFunctions) {
+				// Only return Bank and Other Current Asset accounts for deposit purposes
+				const returnData: INodePropertyOptions[] = [];
+
+				const qs = {
+					query: `SELECT * FROM account WHERE AccountType IN ('Bank', 'Other Current Asset')`,
+				} as IDataObject;
+
+				const {
+					oauthTokenData: {
+						callbackQueryString: { realmId },
+					},
+				} = await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
+				const endpoint = `/v3/company/${realmId}/query`;
+
+				const accounts = await quickBooksApiRequestAllItems.call(
+					this,
+					'GET',
+					endpoint,
+					qs,
+					{},
+					'account',
+				);
+
+				accounts.forEach((account: { Name: string; Id: string }) => {
+					returnData.push({
+						name: account.Name || `Account ${account.Id}`,
+						value: account.Id,
+					});
+				});
+
+				return returnData;
+			},
+
+			async getPaymentMethods(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'paymentmethod');
 			},
 		},
 	};

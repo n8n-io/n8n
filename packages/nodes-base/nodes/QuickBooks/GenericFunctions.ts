@@ -406,12 +406,12 @@ export function populateFields(
 					body[key] = {
 						value,
 					};
-				} else {
+				} else if (typeof value === 'object' && value !== null && 'details' in value) {
 					// For complex refs with name and value
-					const { details } = value as { details: Ref };
+					const refValue = value as { details: Ref };
 					body[key] = {
-						name: details.name,
-						value: details.value,
+						name: refValue.details.name,
+						value: refValue.details.value,
 					};
 				}
 			} else if (key === 'TotalTax') {
