@@ -25,7 +25,6 @@ export class AwsSqsTrigger implements INodeType {
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: awsNodeCredentials,
-		polling: true,
 		properties: [
 			awsNodeAuthOptions,
 			{
@@ -129,7 +128,7 @@ export class AwsSqsTrigger implements INodeType {
 						displayName: 'Delete After Processing',
 						name: 'deleteAfterProcessing',
 						type: 'boolean',
-						default: true,
+						default: false,
 						description: 'Whether to automatically delete messages after successful processing',
 					},
 					{
@@ -173,7 +172,7 @@ export class AwsSqsTrigger implements INodeType {
 		const pollIntervalMinutes = (options.pollIntervalMinutes as number) ?? 1;
 		const pollInterval = pollIntervalMinutes * 60 * 1000; // Convert minutes to milliseconds
 		const visibilityTimeout = (options.visibilityTimeout as number) ?? 30;
-		const deleteAfterProcessing = options.deleteAfterProcessing !== false;
+		const deleteAfterProcessing = options.deleteAfterProcessing === true;
 		const emitIndividually = options.emitIndividually !== false;
 
 		const pollMessages = async () => {
@@ -257,9 +256,10 @@ export class AwsSqsTrigger implements INodeType {
 			while (!shouldStopPolling) {
 				try {
 					await pollMessages();
-					if (pollInterval > 0) {
-						await new Promise((resolve) => setTimeout(resolve, pollInterval));
-					}
+					// Always wait at least 1 second between polls to avoid API hammering
+					// For intervals > 0, use the configured interval instead
+					const delay = pollInterval > 0 ? pollInterval : 1000;
+					await new Promise((resolve) => setTimeout(resolve, delay));
 				} catch (error) {
 					this.logger.error('Unexpected error in polling loop', { error: error.message });
 					// Wait before retrying after error
@@ -282,6 +282,26 @@ export class AwsSqsTrigger implements INodeType {
 	}
 }
 
+// Type guard to check if value is a valid attribute object
+function isValidAttribute(
+	attr: unknown,
+): attr is { Name: string; Value: string | number | boolean | IDataObject } {
+	return (
+		typeof attr === 'object' &&
+		attr !== null &&
+		'Name' in attr &&
+		'Value' in attr &&
+		typeof (attr as { Name: unknown }).Name === 'string'
+	);
+}
+
+// Type guard to check if value is a valid message attribute value object
+function isValidMessageAttributeValue(
+	value: unknown,
+): value is { StringValue?: string; BinaryValue?: string } {
+	return typeof value === 'object' && value !== null;
+}
+
 function formatMessage(message: IDataObject): IDataObject {
 	const formattedMessage: IDataObject = {
 		messageId: message.MessageId,
@@ -294,9 +314,8 @@ function formatMessage(message: IDataObject): IDataObject {
 		const attributes: IDataObject = {};
 		const attrs = Array.isArray(message.Attribute) ? message.Attribute : [message.Attribute];
 		for (const attr of attrs) {
-			const attrObj = attr as IDataObject;
-			if (attrObj.Name && attrObj.Value) {
-				attributes[attrObj.Name as string] = attrObj.Value;
+			if (isValidAttribute(attr)) {
+				attributes[attr.Name] = attr.Value;
 			}
 		}
 		formattedMessage.attributes = attributes;
@@ -308,10 +327,9 @@ function formatMessage(message: IDataObject): IDataObject {
 			? message.MessageAttribute
 			: [message.MessageAttribute];
 		for (const attr of msgAttrs) {
-			const attrObj = attr as IDataObject;
-			if (attrObj.Name && attrObj.Value) {
-				const valueObj = attrObj.Value as IDataObject;
-				attrs[attrObj.Name as string] = valueObj.StringValue || valueObj.BinaryValue || valueObj;
+			if (isValidAttribute(attr) && isValidMessageAttributeValue(attr.Value)) {
+				const value = attr.Value;
+				attrs[attr.Name] = value.StringValue ?? value.BinaryValue ?? value;
 			}
 		}
 		formattedMessage.messageAttributes = attrs;
