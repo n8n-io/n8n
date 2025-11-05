@@ -452,15 +452,48 @@ export class Server extends AbstractServer {
 				}
 			};
 
-			this.app.use(
-				'/',
-				historyApiHandler,
-				express.static(staticCacheDir, {
-					...cacheOptions,
-					setHeaders: setCustomCacheHeader,
-				}),
-				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
-			);
+			// SaaS 平台化架构：后端不提供前端静态资源（前端部署在 CDN）
+			this.app.get('{/*path}', (req, res, next) => {
+				// 只拦截 HTML 请求，API 等其他请求正常处理
+				if (req.accepts('html') && !req.path.startsWith(`/${this.restEndpoint}`)) {
+					if (inDevelopment) {
+						// 开发环境：显示友好提示页面
+						res.status(404).send(`
+							<html>
+								<head><title>n8n SaaS Backend</title></head>
+								<body style="font-family: system-ui; padding: 40px; text-align: center;">
+									<h1>🚀 n8n SaaS 后端服务</h1>
+									<p>后端 API 正在运行，前端请访问独立服务：</p>
+									<div style="margin: 40px 0;">
+										<h2 style="margin: 20px 0;">
+											<a href="http://localhost:8080" target="_blank" style="color: #f06292; text-decoration: none;">
+												主应用: http://localhost:8080
+											</a>
+										</h2>
+										<h2 style="margin: 20px 0;">
+											<a href="http://localhost:5679/admin/" target="_blank" style="color: #7c4dff; text-decoration: none;">
+												管理后台: http://localhost:5679/admin/
+											</a>
+										</h2>
+									</div>
+									<p style="color: #666; font-size: 14px;">
+										API 端点: <code>http://localhost:5678/rest</code>
+									</p>
+								</body>
+							</html>
+						`);
+					} else {
+						// 生产环境：返回简洁的 JSON 提示
+						res.status(404).json({
+							error: 'Not Found',
+							message: 'This is an API-only server. Frontend is served from CDN.',
+							apiEndpoint: '/rest',
+						});
+					}
+				} else {
+					next();
+				}
+			});
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}

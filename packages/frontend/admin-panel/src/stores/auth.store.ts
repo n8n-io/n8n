@@ -46,8 +46,8 @@ export const useAuthStore = defineStore('auth', () => {
 	// Actions
 	async function checkAuth() {
 		try {
-			// 调用 n8n 的 /me API 获取当前用户信息
-			const response = await fetch('/api/me', {
+			// 调用 n8n 的 /rest/me API 获取当前用户信息
+			const response = await fetch('/rest/me', {
 				credentials: 'include',
 			});
 
@@ -69,7 +69,7 @@ export const useAuthStore = defineStore('auth', () => {
 
 	async function logout() {
 		try {
-			await fetch('/api/logout', {
+			await fetch('/rest/logout', {
 				method: 'POST',
 				credentials: 'include',
 			});

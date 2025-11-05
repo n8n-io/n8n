@@ -212,6 +212,26 @@ export default mergeConfig(
 				},
 			},
 		},
+		server: {
+			host: '0.0.0.0',
+			port: 8080,
+			proxy: {
+				'/rest': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+				},
+				'/webhook': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+					ws: true,
+				},
+				'/webhook-test': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+					ws: true,
+				},
+			},
+		},
 		build: {
 			minify: !!release,
 			sourcemap: !!release,

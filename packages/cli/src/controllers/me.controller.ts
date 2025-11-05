@@ -7,7 +7,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Body, Patch, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -37,6 +37,14 @@ export class MeController {
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
 	) {}
+
+	/**
+	 * Return the logged-in user.
+	 */
+	@Get('/')
+	async getCurrentUser(req: AuthenticatedRequest): Promise<PublicUser> {
+		return await this.userService.toPublic(req.user);
+	}
 
 	/**
 	 * Update the logged-in user's properties, except password.

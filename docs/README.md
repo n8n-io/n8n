@@ -79,8 +79,15 @@
 # 安装依赖（依赖版本已通过 overrides 精确锁定）
 pnpm install
 
-# 开发模式
-pnpm dev
+# 开发模式 - 分别启动各服务
+pnpm dev:be              # 启动后端 API (5678)
+pnpm dev:fe:main         # 启动主应用前端 (8080)
+pnpm dev:fe:admin        # 启动管理后台 (5679)
+
+# 访问地址
+# - 主应用：http://localhost:8080
+# - 管理后台：http://localhost:5679/admin/
+# - 后端 API：http://localhost:5678/rest
 
 # 生产构建
 pnpm build
@@ -88,6 +95,26 @@ pnpm build
 # 启动服务
 pnpm start
 ```
+
+### 📌 开发架构说明
+
+本项目采用**前后端分离架构**（参考 [Coze Studio](https://github.com/coze-dev/coze-studio)）：
+- **主应用前端**：独立 Vite 开发服务器 (8080)，使用 Vite proxy 代理 API 请求
+- **后端 API**：Express 服务器 (5678)，纯 API 服务
+- **管理后台前端**：独立 Vite 开发服务器 (5679)，使用 Vite proxy 代理 API 请求
+
+#### 开发架构
+开发环境下各服务完全独立运行：
+- **主应用** (8080) → Vite proxy → 后端 API (5678)
+- **管理后台** (5679) → Vite proxy → 后端 API (5678)
+- **后端** (5678) → 提供 REST API
+
+这样的好处：
+- ✅ 各服务职责清晰，完全解耦
+- ✅ 启动时立即检测后端是否可用
+- ✅ 避免 CORS 跨域问题
+- ✅ 调试更简单，日志分开
+- ✅ 与生产环境架构（前端 CDN + 后端 API）保持一致
 
 ### ⚠️ 依赖管理重要说明
 
@@ -129,10 +156,19 @@ pnpm start
 ---
 
 **当前分支**: `20251102`
-**最后更新**: 2025-11-04
+**最后更新**: 2025-11-05
 **维护者**: 开发团队
 
 ## 📝 最近更新
+
+### 2025-11-05 - 前后端分离架构完善
+- ✅ 完成开发环境架构优化：三服务独立运行，职责清晰
+- ✅ 统一 API 端点为 `/rest`（与原版 n8n 一致）
+- ✅ 主应用和管理后台都使用 Vite proxy 代理 API 请求
+- ✅ 修复 CSS 变量语法错误（design-system）
+- ✅ 修复 Express 路由语法兼容性问题（path-to-regexp@8.x）
+- ✅ 清理冗余配置和文档，统一访问地址说明
+- ✅ 构建状态：42/42 包全部通过 ✨
 
 ### 2025-11-04 晚上 - 构建系统修复
 - ✅ 对比原始 n8n 仓库 pnpm-lock.yaml，发现 8 个依赖版本不匹配

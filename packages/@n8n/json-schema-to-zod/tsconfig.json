@@ -7,7 +7,7 @@
 		"noEmit": true,
 		"skipLibCheck": true,
 		"esModuleInterop": true,
-		"types": []
+		"types": ["jest"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

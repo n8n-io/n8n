@@ -4,6 +4,72 @@
 
 ## 2025-11-05
 
+### 前后端分离架构完善 ✅
+
+完成前后端分离架构的全面调整和优化，统一 API 端点，简化开发环境配置。
+
+#### 架构调整
+
+**开发环境架构优化**:
+- ✅ 主应用前端：独立 Vite 服务 (8080) + Vite proxy 代理 API
+- ✅ 管理后台前端：独立 Vite 服务 (5679) + Vite proxy 代理 API
+- ✅ 后端：纯 REST API 服务 (5678)
+- ✅ 各服务职责清晰，完全解耦
+
+**API 端点统一**:
+- ✅ 统一使用 `/rest` 作为 API 端点（与原版 n8n 保持一致）
+- ✅ 移除 `/api` 端点引用
+- ✅ 更新所有 Vite proxy 配置
+- ✅ 更新文档和环境变量示例
+
+#### 构建问题修复
+
+**CSS 变量语法错误**:
+- 问题：`packages/frontend/@n8n/design-system/src/css/common/var.scss:46`
+- 错误：`var(-color-info)` 缺少一个 `-`
+- 修复：改为 `var(--color--info)`
+- 影响：修复 admin-panel 构建失败
+
+**Express 路由语法升级**:
+- 问题：path-to-regexp@8.3.0 不支持旧的通配符语法
+- 错误：`app.get('*', ...)` → `Missing parameter name`
+- 修复：改为 `app.get('{/*path}', ...)`
+- 影响：修复后端启动崩溃
+
+#### 配置清理
+
+**移除代理尝试**:
+- ✅ 移除后端代理管理后台的尝试性代码
+- ✅ 清理 abstract-server.ts 中的调试日志
+- ✅ 简化为独立端口访问方案
+
+**文档和配置统一**:
+- ✅ 更新 `docs/README.md` 架构说明
+- ✅ 更新 `.env.example` 环境变量说明
+- ✅ 更新后端开发提示页面链接
+- ✅ 移除 nonUIRoutes 中的 `'admin'` 配置
+
+#### 修改文件
+
+| 文件 | 修改内容 |
+|------|---------|
+| `packages/cli/src/server.ts` | Express 路由语法修复，更新提示页面 |
+| `packages/cli/src/abstract-server.ts` | 清理代理代码和调试日志 |
+| `packages/frontend/editor-ui/vite.config.mts` | 添加 server 配置，移除 /api 代理 |
+| `packages/frontend/editor-ui/package.json` | 简化 serve 脚本 |
+| `packages/frontend/@n8n/design-system/src/css/common/var.scss` | 修复 CSS 变量语法 |
+| `docs/README.md` | 更新架构说明和访问地址 |
+| `.env.example` | 更新环境变量说明 |
+
+#### 当前状态
+
+- ✅ 构建状态：完全通过（42/42 包）
+- ✅ 类型检查：完全通过
+- ✅ 开发环境：三服务独立运行，热重载正常
+- ✅ 架构清晰：职责分离，易于维护
+
+---
+
 ### 前端路由和 Telemetry 系统修复 ✅
 
 修复了用户端路由问题并完善了 Telemetry 系统功能完整性。

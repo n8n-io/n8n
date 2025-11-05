@@ -61,7 +61,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
 				...filters.value,
 			});
 
-			const response = await fetch(`/api/telemetry/events?${params}`, {
+			const response = await fetch(`/rest/telemetry/events?${params}`, {
 				method: 'GET',
 				credentials: 'include',
 			});
@@ -85,7 +85,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
 		loading.value = true;
 		try {
 			const params = new URLSearchParams({ days: String(days) });
-			const response = await fetch(`/api/telemetry/stats/overview?${params}`, {
+			const response = await fetch(`/rest/telemetry/stats/overview?${params}`, {
 				method: 'GET',
 				credentials: 'include',
 			});
@@ -110,7 +110,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
 				limit: String(limit),
 				days: String(days),
 			});
-			const response = await fetch(`/api/telemetry/stats/top-events?${params}`, {
+			const response = await fetch(`/rest/telemetry/stats/top-events?${params}`, {
 				method: 'GET',
 				credentials: 'include',
 			});
@@ -133,7 +133,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
 		loading.value = true;
 		try {
 			const params = new URLSearchParams({ days: String(days) });
-			const response = await fetch(`/api/telemetry/stats/active-users?${params}`, {
+			const response = await fetch(`/rest/telemetry/stats/active-users?${params}`, {
 				method: 'GET',
 				credentials: 'include',
 			});
@@ -159,7 +159,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
 				...filters.value,
 			});
 
-			const response = await fetch(`/api/telemetry/export?${params}`, {
+			const response = await fetch(`/rest/telemetry/export?${params}`, {
 				method: 'GET',
 				credentials: 'include',
 			});

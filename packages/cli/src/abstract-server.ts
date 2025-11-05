@@ -115,7 +115,7 @@ export abstract class AbstractServer {
 		this.app.use(rawBodyReader);
 	}
 
-	private setupDevMiddlewares() {
+	private async setupDevMiddlewares() {
 		this.app.use(corsMiddleware);
 	}
 
@@ -259,9 +259,8 @@ export abstract class AbstractServer {
 			} else next();
 		});
 
-		if (inDevelopment) {
-			this.setupDevMiddlewares();
-		}
+		// SaaS 平台化架构：始终启用 CORS（前后端完全分离）
+		await this.setupDevMiddlewares();
 
 		if (this.testWebhooksEnabled) {
 			const testWebhooks = Container.get(TestWebhooks);

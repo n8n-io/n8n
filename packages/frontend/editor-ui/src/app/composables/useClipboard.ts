@@ -1,4 +1,4 @@
-import { inject, onBeforeUnmount, onMounted, ref } from 'vue';
+import { getCurrentInstance, inject, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useClipboard as useClipboardCore, useThrottleFn } from '@vueuse/core';
 import { PopOutWindowKey } from '@/app/constants';
 
@@ -50,27 +50,31 @@ export function useClipboard({
 
 	const throttledOnPaste = useThrottleFn(onPaste, 1000);
 
-	/**
-	 * Initialize copy/paste elements and events
-	 */
-	onMounted(() => {
-		if (initialized.value) {
-			return;
-		}
+	// Only register lifecycle hooks if we're inside a component context
+	const instance = getCurrentInstance();
+	if (instance) {
+		/**
+		 * Initialize copy/paste elements and events
+		 */
+		onMounted(() => {
+			if (initialized.value) {
+				return;
+			}
 
-		document.addEventListener('paste', throttledOnPaste);
+			document.addEventListener('paste', throttledOnPaste);
 
-		initialized.value = true;
-	});
+			initialized.value = true;
+		});
 
-	/**
-	 * Remove copy/paste elements and events
-	 */
-	onBeforeUnmount(() => {
-		if (initialized.value) {
-			document.removeEventListener('paste', throttledOnPaste);
-		}
-	});
+		/**
+		 * Remove copy/paste elements and events
+		 */
+		onBeforeUnmount(() => {
+			if (initialized.value) {
+				document.removeEventListener('paste', throttledOnPaste);
+			}
+		});
+	}
 
 	return {
 		copy,
