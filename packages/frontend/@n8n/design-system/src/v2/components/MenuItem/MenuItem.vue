@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PrimitiveProps } from 'reka-ui';
 import { Primitive } from 'reka-ui';
-import { computed, useSlots } from 'vue';
+import { computed } from 'vue';
 
 import { N8nIcon, N8nText } from '@n8n/design-system/components';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -17,9 +17,6 @@ const props = withDefaults(defineProps<PrimitiveProps & Props>(), {
 	as: 'button',
 });
 
-// TODO active state
-// TODO icon hover
-
 const icon = computed<
 	{ value: IconName; type: 'icon' } | { value: string; type: 'emoji' } | undefined
 >(() => {
@@ -30,9 +27,6 @@ const icon = computed<
 	}
 	return undefined;
 });
-
-const hasToggleSlot = computed(() => !!useSlots()['toggle'] && !props.collapsed);
-const hasActionsSlot = computed(() => !!useSlots()['actions'] && !props.collapsed);
 </script>
 
 <template>
@@ -47,17 +41,20 @@ const hasActionsSlot = computed(() => !!useSlots()['actions'] && !props.collapse
 			<span v-if="item.notification" :class="$style.MenuItemNotification" />
 			<N8nText
 				v-if="icon.type === 'emoji'"
-				:class="{ [$style.MenuItemIconToHide]: hasToggleSlot }"
+				:class="{ [$style.MenuItemIconToHide]: $slots.toggle && !collapsed }"
 				>{{ icon.value }}</N8nText
 			>
 			<N8nIcon
 				v-else
-				:class="{ [$style.MenuItemIconToHide]: hasToggleSlot }"
+				:class="{ [$style.MenuItemIconToHide]: $slots.toggle && !collapsed }"
 				color="text-base"
 				size="large"
 				:icon="icon.value"
 			/>
-			<div v-if="hasToggleSlot" :class="[$style.MenuItemActions, $style.MenuItemActionChevron]">
+			<div
+				v-if="$slots.toggle && !collapsed"
+				:class="[$style.MenuItemActions, $style.MenuItemActionChevron]"
+			>
 				<slot name="toggle"></slot>
 			</div>
 		</div>
@@ -67,7 +64,10 @@ const hasActionsSlot = computed(() => !!useSlots()['actions'] && !props.collapse
 		<div v-if="!collapsed" :class="$style.MenuItemIcon">
 			<N8nIcon v-if="item.secondaryIcon" :icon="item.secondaryIcon.name" color="text-light" />
 		</div>
-		<div v-if="hasActionsSlot" :class="[$style.MenuItemActions, $style.MenuItemActionsRight]">
+		<div
+			v-if="$slots.actions && !collapsed"
+			:class="[$style.MenuItemActions, $style.MenuItemActionsRight]"
+		>
 			<slot name="actions"></slot>
 		</div>
 	</Primitive>

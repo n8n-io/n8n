@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { TreeRoot, TreeVirtualizer, useForwardPropsEmits, TreeItem } from 'reka-ui';
 
-import { N8nIconButton } from '@n8n/design-system/components';
+import type { IMenuItem } from '@n8n/design-system/types';
 
 import type { N8nTreeProps, N8nTreeEmits } from '.';
-import MenuItem from '../MenuItem/MenuItem.vue';
 
 defineOptions({ name: 'Tree' });
 
 const props = withDefaults(defineProps<N8nTreeProps>(), {
 	estimateSize: 32,
+	getKey: (item: IMenuItem) => item.id,
 });
 
 const emit = defineEmits<N8nTreeEmits>();
@@ -39,38 +39,7 @@ function getLevelIndentation(level: number) {
 					:key="level"
 					:class="$style.TreeItemIdent"
 				/>
-				<slot :item="item.value" v-bind="$attrs">
-					<MenuItem :item="item.value">
-						<template #chevron-button>
-							<N8nIconButton
-								size="mini"
-								type="highlight"
-								:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
-								icon-size="medium"
-								aria-label="Go to details"
-								@click="handleToggle"
-							/>
-						</template>
-						<template #secondary>
-							<N8nIconButton
-								size="mini"
-								type="highlight"
-								icon="ellipsis"
-								icon-size="medium"
-								aria-label="Go to details"
-							/>
-						</template>
-						<template #tertiary>
-							<N8nIconButton
-								size="mini"
-								type="highlight"
-								icon="plus"
-								icon-size="medium"
-								aria-label="Go to details"
-							/>
-						</template>
-					</MenuItem>
-				</slot>
+				<slot :item="item" :handle-toggle="handleToggle" :is-expanded="isExpanded" />
 			</TreeItem>
 		</TreeVirtualizer>
 	</TreeRoot>

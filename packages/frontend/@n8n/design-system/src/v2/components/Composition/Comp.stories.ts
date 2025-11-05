@@ -1,6 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import Comp from './COmp.vue';
+import Comp from './Comp.vue';
 
 export default {
 	title: 'V2/Comp',
