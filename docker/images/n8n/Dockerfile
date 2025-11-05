@@ -4,7 +4,7 @@ ARG LAUNCHER_VERSION=1.4.1
 ARG TARGETPLATFORM
 
 # ==============================================================================
-# STAGE 1: System Dependencies & Base Setup
+# STAGE 1: System Dependencies & Base Setup test docker
 # ==============================================================================
 FROM n8nio/base:${NODE_VERSION} AS system-deps
 
