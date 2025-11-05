@@ -28,6 +28,8 @@ import {
 	paymentOperations,
 	purchaseFields,
 	purchaseOperations,
+	salesReceiptFields,
+	salesReceiptOperations,
 	transactionFields,
 	transactionOperations,
 	vendorFields,
@@ -108,6 +110,10 @@ export class QuickBooks implements INodeType {
 						value: 'purchase',
 					},
 					{
+						name: 'Sales Receipt',
+						value: 'salesReceipt',
+					},
+					{
 						name: 'Transaction',
 						value: 'transaction',
 					},
@@ -134,6 +140,8 @@ export class QuickBooks implements INodeType {
 			...paymentFields,
 			...purchaseOperations,
 			...purchaseFields,
+			...salesReceiptOperations,
+			...salesReceiptFields,
 			...transactionOperations,
 			...transactionFields,
 			...vendorOperations,
@@ -994,6 +1002,86 @@ export class QuickBooks implements INodeType {
 
 						const endpoint = `/v3/company/${companyId}/query`;
 						responseData = await handleListing.call(this, i, endpoint, resource);
+					}
+				} else if (resource === 'salesReceipt') {
+					// *********************************************************************
+					//                            salesReceipt
+					// *********************************************************************
+
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/salesreceipt
+
+					if (operation === 'create') {
+						// ----------------------------------
+						//         salesReceipt: create
+						// ----------------------------------
+
+						const lines = this.getNodeParameter('Line', i) as IDataObject[];
+
+						if (!lines.length) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Please enter at least one line for the ${resource}.`,
+								{ itemIndex: i },
+							);
+						}
+
+						if (
+							lines.some(
+								(line) =>
+									line.DetailType === undefined ||
+									line.Amount === undefined ||
+									line.Description === undefined,
+							)
+						) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Please enter detail type, amount and description for every line.',
+								{ itemIndex: i },
+							);
+						}
+
+						lines.forEach((line) => {
+							if (line.DetailType === 'SalesItemLineDetail' && line.itemId === undefined) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Please enter an item ID for the associated line.',
+									{ itemIndex: i },
+								);
+							}
+						});
+
+						let body = {
+							CustomerRef: {
+								value: this.getNodeParameter('CustomerRef', i),
+							},
+						} as IDataObject;
+
+						body.Line = processLines.call(this, lines, resource);
+
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						body = populateFields.call(this, body, additionalFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/salesreceipt`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData.SalesReceipt;
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         salesReceipt: delete
+						// ----------------------------------
+
+						const qs = {
+							operation: 'delete',
+						} as IDataObject;
+
+						const body = {
+							Id: this.getNodeParameter('salesreceiptId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, 'salesreceipt'),
+						} as IDataObject;
+
+						const endpoint = `/v3/company/${companyId}/salesreceipt`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
+						responseData = responseData.SalesReceipt;
 					}
 				} else if (resource === 'transaction') {
 					// *********************************************************************
