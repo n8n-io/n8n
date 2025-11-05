@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Enums
-export const breakingChangeRuleSeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
+export const breakingChangeRuleSeveritySchema = z.enum(['low', 'medium', 'critical']);
 export type BreakingChangeRuleSeverity = z.infer<typeof breakingChangeRuleSeveritySchema>;
 
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
@@ -82,12 +82,14 @@ const breakingChangeLightReportSchema = z.object(breakingChangeLightReportDataSc
 
 const breakingChangeReportResultDataSchema = z.object({
 	report: breakingChangeReportSchema,
+	totalWorkflows: z.number(),
 	shouldCache: z.boolean(),
 });
 export type BreakingChangeReportResult = z.infer<typeof breakingChangeReportResultDataSchema>;
 
 const breakingChangeLightReportResultDataSchema = z.object({
 	report: breakingChangeLightReportSchema,
+	totalWorkflows: z.number(),
 	shouldCache: z.boolean(),
 });
 export type BreakingChangeLightReportResult = z.infer<

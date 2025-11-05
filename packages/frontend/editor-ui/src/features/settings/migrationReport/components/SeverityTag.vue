@@ -45,12 +45,6 @@ const tagClasses = {
 	border: 0;
 }
 
-.TagHigh {
-	/**
-	 * High severity tag styles
-	 */
-}
-
 .TagLow {
 	border: 0;
 }

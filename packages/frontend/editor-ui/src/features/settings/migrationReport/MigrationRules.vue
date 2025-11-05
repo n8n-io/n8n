@@ -19,208 +19,11 @@ import EmptyTab from './components/EmptyTab.vue';
 const $style = useCssModule();
 const rootStore = useRootStore();
 
-const mockWorkflowResults = [
-	{
-		ruleId: 'file-access-restriction-v2',
-		ruleTitle: 'Removed nodes (service retired)',
-		ruleSeverity: 'critical',
-		ruleDescription:
-			'Some workflows use nodes from third-party services that have been discontinued. These nodes will stop working after the update.',
-		nbAffectedWorkflows: 120,
-		recommendations: [],
-	},
-	{
-		ruleId: 'disabled-execute-command-local-file-trigger-nodes',
-		ruleTitle: 'Disabled ExecuteCommand and LocalFileTrigger nodes',
-		ruleSeverity: 'high',
-		ruleDescription:
-			'These nodes are now disabled by default for security reasons. Any workflows depending on them will no longer run until re-enabled.',
-		nbAffectedWorkflows: 90,
-		recommendations: [],
-	},
-	{
-		ruleId: 'updated-oauth2-authentication-flows',
-		ruleTitle: 'Blocked environment access in Code nodes',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'Direct access to process.env from Code or expression nodes is now restricted by default. Workflows reading env values this way may fail.',
-		nbAffectedWorkflows: 60,
-		recommendations: [],
-	},
-	{
-		ruleId: 'restricted-file-access-paths',
-		ruleTitle: 'Restricted file access paths',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'File-related nodes (like Read/Write File) can now only operate inside paths defined by N8N_RESTRICT_FILE_ACCESS_TO. Workflows reading files outside these paths may break.',
-		nbAffectedWorkflows: 75,
-		recommendations: [],
-	},
-];
-
-const mockInstanceResults = [
-	{
-		ruleId: 'dummy',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Dropped MySQL/MariaDB support',
-		ruleSeverity: 'critical',
-		ruleDescription:
-			'Instances using MySQL or MariaDB are no longer supported. A database migration to PostgreSQL or SQLite is required.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-1',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Removed SQLite legacy driver',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'SQLite now always uses WAL mode and extra .wal / .shm files. Certain network or read-only file systems may be incompatible.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-2',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Enforced settings file permissions',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'Stricter permission checks are applied to .n8n config files and mounted volumes. Incorrect ownership or mode can block startup.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-3',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Enabled Task Runners by default',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'Task Runners now handle executions in separate processes by default, which may change memory and latency behavior.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-4',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Removed QUEUE_WORKER_MAX_STALLED_COUNT variable',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'This environment variable has been removed; any custom value will be ignored.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-5',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Disabled in-memory binary data mode',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'Binary files are now stored on disk in ~/.n8n/binaryData/, increasing disk usage but removing file size limits.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-6',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Upgraded dotenv',
-		ruleSeverity: 'low',
-		ruleDescription:
-			'The .env file parser has changed. Values containing # or line breaks must be quoted to load correctly.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-7',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Deprecated legacy webhook authentication',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'Old-style webhook authentication tokens are no longer accepted. Migrate to the new OAuth-based system.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-8',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Improved logging system',
-		ruleSeverity: 'low',
-		ruleDescription:
-			'Logs are now formatted in JSON by default, simplifying log ingestion in external monitoring systems.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-9',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Enhanced API rate limiting',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'Rate limits for public API endpoints have been tightened to prevent abuse. Consider caching frequent requests.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-10',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Removed legacy cron format support',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'Old cron expressions using deprecated syntax will no longer be parsed. Use the standard five-field format.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-11',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'New audit trail feature',
-		ruleSeverity: 'low',
-		ruleDescription:
-			'All administrative actions are now logged with timestamps and user identifiers for compliance auditing.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-12',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Improved worker scaling logic',
-		ruleSeverity: 'medium',
-		ruleDescription:
-			'Automatic scaling now considers memory pressure as well as CPU load when spawning new workers.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-13',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Updated default Node.js runtime version',
-		ruleSeverity: 'critical',
-		ruleDescription:
-			'The platform now requires Node.js 20 or higher. Older runtimes will fail to start.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-	{
-		ruleId: 'dummy-14',
-		ruleDocumentationUrl: 'https://docs.n8n.io/reference/breaking-changes/',
-		ruleTitle: 'Deprecated manual retry on failed executions',
-		ruleSeverity: 'low',
-		ruleDescription:
-			'Manual retries of failed executions are being phased out in favor of automatic retry policies.',
-		recommendations: [],
-		instanceIssues: [],
-	},
-];
-
 const currentTab = ref('workflow-issues');
 
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
 		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext);
-
-		//mocking response until backend is ready
-		response.report.workflowResults = mockWorkflowResults.slice(0, 2);
-		// response.report.instanceResults = mockInstanceResults
-
 		// set tab based on available issues
 		if (
 			response.report.workflowResults.length === 0 &&
@@ -233,9 +36,6 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 	}
 	const response = await breakingChangesApi.getReport(rootStore.restApiContext);
 
-	//mocking response until backend is ready
-	response.report.workflowResults = mockWorkflowResults;
-	response.report.instanceResults = mockInstanceResults;
 	return response;
 }, undefined);
 
@@ -269,7 +69,6 @@ const workflowTooltips = computed(() => {
 		medium:
 			'Workflows may still run but could produce incorrect results. Review and test before updating.',
 		low: 'Behavior might change slightly in specific cases. Most workflows will keep working as expected.',
-		high: 'TBD',
 	} as const;
 });
 
@@ -280,8 +79,15 @@ const instanceTooltips = computed(() => {
 		medium:
 			'This may affect performance, compatibility, or connected services. Review and fix if relevant to your setup.',
 		low: 'Minor configuration change. Doesn’t block the update but may cause subtle changes in behavior.',
-		high: 'TBD',
 	} as const;
+});
+
+const compatibleWorkflowsCount = computed(() => {
+	if (!state.value) return 0;
+	return (
+		state.value.totalWorkflows -
+		state.value.report.workflowResults.reduce((acc, issue) => acc + issue.nbAffectedWorkflows, 0)
+	);
 });
 </script>
 
@@ -291,14 +97,21 @@ const instanceTooltips = computed(() => {
 			Compatibility report for version 2.0.0
 		</N8nText>
 		<N8nText tag="p" color="text-base" class="mb-2xl">
-			120 of your 560 workflows are already compatible with version 2.0.0. Review the details below
-			to understand and resolve any compatibility problems. Learn more about all breaking changes in
-			our documentation
+			{{ compatibleWorkflowsCount }}
+			of your {{ state?.totalWorkflows }} workflows are already compatible with version 2.0.0.
+			Review the details below to understand and resolve any compatibility problems. Learn more
+			about all breaking changes in our documentation
 		</N8nText>
 
 		<div :class="$style.ActionBar">
 			<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
-			<N8nButton label="Refresh" icon="refresh-cw" type="secondary" @click="refreshReport" />
+			<N8nButton
+				v-if="state?.shouldCache"
+				label="Refresh"
+				icon="refresh-cw"
+				type="secondary"
+				@click="refreshReport"
+			/>
 		</div>
 
 		<div v-if="isLoading" :class="$style.CardContainer">

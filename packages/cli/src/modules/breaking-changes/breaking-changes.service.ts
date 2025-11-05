@@ -56,7 +56,6 @@ export class BreakingChangeService {
 		for (const rule of instanceLevelRules) {
 			try {
 				const ruleResult = await rule.detect();
-				console.log('ruleResult', ruleResult);
 				if (ruleResult.isAffected) {
 					instanceLevelResults.push({
 						ruleId: rule.id,
@@ -78,12 +77,12 @@ export class BreakingChangeService {
 
 	private async getAllWorkflowRulesResults(
 		workflowLevelRules: IBreakingChangeWorkflowRule[],
+		totalWorkflows: number,
 	): Promise<BreakingChangeWorkflowRuleResult[]> {
-		const totalWorkflows = await this.workflowRepository.count();
 		const allAffectedWorkflowsByRule: Map<string, BreakingChangeAffectedWorkflow[]> = new Map();
 		const allResults: BreakingChangeWorkflowRuleResult[] = [];
 
-		this.logger.info('Processing workflows in batches', {
+		this.logger.debug('Processing workflows in batches', {
 			totalWorkflows,
 			batchSize: this.batchSize,
 		});
@@ -184,7 +183,7 @@ export class BreakingChangeService {
 				// Check cache first
 				const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
 				if (cachedResult) {
-					this.logger.info('Using cached breaking change detection results', {
+					this.logger.debug('Using cached breaking change detection results', {
 						targetVersion,
 					});
 					return resolve(cachedResult);
@@ -216,16 +215,18 @@ export class BreakingChangeService {
 
 	async detect(targetVersion: BreakingChangeVersion): Promise<BreakingChangeReportResult> {
 		const startTime = Date.now();
-		this.logger.info('Starting breaking change detection', { targetVersion });
+		this.logger.debug('Starting breaking change detection', { targetVersion });
 
 		const rules = this.ruleRegistry.getRules(targetVersion);
 
 		const workflowLevelRules = rules.filter((rule) => 'detectWorkflow' in rule);
 		const instanceLevelRules = rules.filter((rule) => 'detect' in rule);
 
+		const totalWorkflows = await this.workflowRepository.count();
+
 		const [instanceLevelResults, workflowLevelResults] = await Promise.all([
 			this.getAllInstanceRulesResults(instanceLevelRules),
-			this.getAllWorkflowRulesResults(workflowLevelRules),
+			this.getAllWorkflowRulesResults(workflowLevelRules, totalWorkflows),
 		]);
 
 		const report = this.createDetectionReport(
@@ -235,11 +236,15 @@ export class BreakingChangeService {
 		);
 
 		const duration = Date.now() - startTime;
-		this.logger.info('Breaking change detection completed', {
+		this.logger.debug('Breaking change detection completed', {
 			duration,
 		});
 
-		return { report, shouldCache: this.shouldCacheDetection(duration) };
+		return {
+			report,
+			totalWorkflows,
+			shouldCache: this.shouldCacheDetection(duration),
+		};
 	}
 
 	async getDetectionReportForRule(
@@ -251,7 +256,7 @@ export class BreakingChangeService {
 		}
 
 		if ('detectWorkflow' in rule) {
-			return (await this.getAllWorkflowRulesResults([rule]))[0];
+			return (await this.getAllWorkflowRulesResults([rule], 1))[0];
 		}
 		return (await this.getAllInstanceRulesResults([rule]))[0];
 	}

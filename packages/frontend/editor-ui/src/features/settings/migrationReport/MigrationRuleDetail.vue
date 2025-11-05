@@ -16,76 +16,6 @@ const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
 
-const mockWF = [
-	{
-		id: 'tf2AfD7ENoPyKLkd',
-		name: 'My workflow copy 2',
-		active: false,
-		issues: [
-			{
-				title:
-					"File access node 'n8n-nodes-base.readWriteFile' with name 'Read/Write Files from Disk' affected",
-				description: 'File access for this node is now restricted to configured directories.',
-				level: 'warning',
-				nodeId: '577deee0-e277-43ba-b78c-3d7f49fa7812',
-				nodeName: 'Read/Write Files from Disk',
-			},
-		],
-		numberOfExecutions: 10,
-		lastUpdatedAt: '2025-10-27T08:49:37.229Z',
-		lastExecutedAt: '2025-10-27T09:00:00.000Z',
-	},
-	{
-		id: 'wIX7DQVyacoSkfXd',
-		name: 'My workflow copy',
-		active: false,
-		issues: [
-			{
-				title:
-					"File access node 'n8n-nodes-base.readWriteFile' with name 'Read/Write Files from Disk' affected",
-				description: 'File access for this node is now restricted to configured directories.',
-				level: 'warning',
-				nodeId: '05d84c87-f7a3-44e1-9eab-2069316b03c0',
-				nodeName: 'Read/Write Files from Disk',
-			},
-		],
-		numberOfExecutions: 0,
-		lastUpdatedAt: '2025-10-27T08:44:26.603Z',
-		lastExecutedAt: null,
-	},
-];
-
-function generateMockWorkflows<T extends { id: string; issues: Array<{ nodeId: string }> }>(
-	workflows: T[],
-	n: number,
-): T[] {
-	const result: T[] = [];
-
-	for (let i = 0; i < n; i++) {
-		for (const wf of workflows) {
-			const cloned: T = {
-				...wf,
-				id: `${wf.id}-${i + 1}-${Math.random().toString(36).substring(2, 8)}`,
-				issues: wf.issues.map((issue) => ({
-					...issue,
-					nodeId: `${issue.nodeId}-${i + 1}-${Math.random().toString(36).substring(2, 8)}`,
-				})),
-			};
-			result.push(cloned);
-		}
-	}
-
-	return result;
-}
-
-const mock: BreakingChangeWorkflowRuleResult = {
-	ruleId: 'file-access-restriction-v2',
-	ruleTitle: 'File Access Restrictions',
-	ruleDescription: 'File access is now restricted to a default directory for security purposes',
-	ruleSeverity: 'high',
-	affectedWorkflows: generateMockWorkflows(mockWF, 200),
-};
-
 const { state, isLoading } = useAsyncState(
 	async () => {
 		const response = await breakingChangesApi.getReportForRule(
@@ -93,8 +23,7 @@ const { state, isLoading } = useAsyncState(
 			props.migrationRuleId,
 		);
 
-		//mock data for development
-		return mock;
+		return response;
 	},
 	{
 		ruleId: '',
@@ -179,7 +108,6 @@ const sortedWorkflows = computed(() =>
 				<u :class="$style.NoLineBreak"> Documentation <N8nIcon icon="external-link" /></u>
 			</N8nLink>
 		</N8nText>
-		{{ sortBy }}
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
 			:items-per-page="sortedWorkflows.length + 1"
@@ -206,11 +134,11 @@ const sortedWorkflows = computed(() =>
 				</div>
 			</template>
 			<template #[`item.lastExecutedAt`]="{ item }">
-				<TimeAgo v-if="item.lastExecutedAt" :date="item.lastExecutedAt" />
+				<TimeAgo v-if="item.lastExecutedAt" :date="item.lastExecutedAt.toString()" />
 				<span v-else>Never</span>
 			</template>
 			<template #[`item.lastUpdatedAt`]="{ item }">
-				<TimeAgo :date="item.lastUpdatedAt" />
+				<TimeAgo :date="item.lastUpdatedAt.toString()" />
 			</template>
 		</N8nDataTableServer>
 	</div>
