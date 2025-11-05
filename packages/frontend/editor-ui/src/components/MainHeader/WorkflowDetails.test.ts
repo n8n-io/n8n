@@ -110,6 +110,13 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 				template: '<div><slot name="append" /></div>',
 			},
 		},
+		directives: {
+			loading: {
+				mounted() {},
+				updated() {},
+				unmounted() {},
+			},
+		},
 	},
 });
 
@@ -126,6 +133,8 @@ const workflow = {
 	tags: ['1', '2'],
 	active: false,
 	isArchived: false,
+	scopes: [],
+	meta: {},
 };
 
 describe('WorkflowDetails', () => {
