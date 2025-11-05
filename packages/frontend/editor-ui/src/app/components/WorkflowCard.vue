@@ -513,6 +513,7 @@ const tags = computed(
 				:content="data.description"
 				:disabled="!data.description"
 				data-test-id="workflow-card-name-tooltip"
+				:popper-class="$style['description-popper']"
 			>
 				<N8nText
 					tag="h2"
@@ -653,6 +654,10 @@ const tags = computed(
 
 .cardHeadingArchived {
 	color: var(--color--text--tint-1);
+}
+
+.description-popper {
+	min-width: 300px;
 }
 
 .cardDescription {

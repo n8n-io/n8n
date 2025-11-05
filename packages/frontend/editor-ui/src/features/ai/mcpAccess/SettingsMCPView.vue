@@ -315,7 +315,7 @@ onMounted(async () => {
 							<N8nTooltip
 								:content="item.description"
 								:disabled="!item.description"
-								:popper-class="$style['description-poper']"
+								:popper-class="$style['description-popper']"
 							>
 								<div :class="$style['description-cell']">
 									<N8nText data-test-id="mcp-workflow-description">
@@ -460,7 +460,7 @@ onMounted(async () => {
 	overflow: hidden;
 }
 
-.description-poper {
+.description-popper {
 	min-width: 300px;
 }
 
