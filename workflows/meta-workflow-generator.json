@@ -1,0 +1,232 @@
+{
+  "name": "Meta: n8n Workflow Generator (Local LLM)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f1e2d3c4-b5a6-7890-cdef-123456789abc",
+      "name": "When workflow request received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "workflow-generator-webhook"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a2b3c4d5-e6f7-8901-2345-6789abcdef01",
+      "name": "Workflow Generator Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:72b",
+        "options": {
+          "baseURL": "http://localhost:11434",
+          "temperature": 0.1
+        }
+      },
+      "id": "b3c4d5e6-f7a8-9012-3456-789abcdef012",
+      "name": "Local LLM (Ollama)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [460, 480],
+      "notes": "Using Qwen 2.5 72B running on RTX 5090\nChange model name based on what you have pulled in Ollama"
+    },
+    {
+      "parameters": {
+        "name": "search_workflow_examples",
+        "description": "Search through example n8n workflows in the repository. Input: search keyword like 'webhook', 'agent', 'slack', etc.",
+        "workflowId": "={{ $execution.workflow.id }}"
+      },
+      "id": "c4d5e6f7-a8b9-0123-4567-89abcdef0123",
+      "name": "Tool: Search Examples",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "name": "validate_workflow_json",
+        "description": "Validate n8n workflow JSON structure. Input: complete workflow JSON string",
+        "workflowId": "={{ $execution.workflow.id }}"
+      },
+      "id": "d5e6f7a8-b9c0-1234-5678-9abcdef01234",
+      "name": "Tool: Validate JSON",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.1,
+      "position": [680, 380]
+    },
+    {
+      "parameters": {
+        "name": "list_available_nodes",
+        "description": "List all available n8n node types. No input required.",
+        "workflowId": "={{ $execution.workflow.id }}"
+      },
+      "id": "e6f7a8b9-c0d1-2345-6789-abcdef012345",
+      "name": "Tool: List Nodes",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.1,
+      "position": [680, 560]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $json.sessionId }}"
+      },
+      "id": "f7a8b9c0-d1e2-3456-789a-bcdef0123456",
+      "name": "Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.2,
+      "position": [460, 660]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "workflow_json",
+              "name": "workflow_json",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a8b9c0d1-e2f3-4567-89ab-cdef01234567",
+      "name": "Extract Workflow JSON",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Meta Workflow Generator\n\nThis workflow generates other n8n workflows using a local LLM.\n\n**Setup Required:**\n1. Install Ollama: https://ollama.com/\n2. Pull a model: `ollama pull qwen2.5:72b`\n3. Configure the model in the Ollama node\n4. Create sub-workflows for the tools\n\n**Usage:**\n1. Start the workflow\n2. Chat with the agent\n3. Request a workflow (e.g., \"Create a workflow that fetches GitHub issues\")\n4. Agent will generate complete workflow JSON\n\n**Tools Available:**\n- search_workflow_examples: Search existing workflows\n- validate_workflow_json: Validate generated JSON\n- list_available_nodes: List n8n node types",
+        "height": 464,
+        "width": 389,
+        "color": 4
+      },
+      "id": "b9c0d1e2-f3a4-5678-9abc-def012345678",
+      "name": "Setup Instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [20, 100]
+    }
+  ],
+  "connections": {
+    "When workflow request received": {
+      "main": [
+        [
+          {
+            "node": "Workflow Generator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Generator Agent": {
+      "main": [
+        [
+          {
+            "node": "Extract Workflow JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Local LLM (Ollama)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Workflow Generator Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Search Examples": {
+      "ai_tool": [
+        [
+          {
+            "node": "Workflow Generator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Validate JSON": {
+      "ai_tool": [
+        [
+          {
+            "node": "Workflow Generator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: List Nodes": {
+      "ai_tool": [
+        [
+          {
+            "node": "Workflow Generator Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Workflow Generator Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-11-05T00:00:00.000Z",
+      "updatedAt": "2025-11-05T00:00:00.000Z",
+      "id": "meta-workflow",
+      "name": "meta-workflow"
+    },
+    {
+      "createdAt": "2025-11-05T00:00:00.000Z",
+      "updatedAt": "2025-11-05T00:00:00.000Z",
+      "id": "ai-agent",
+      "name": "ai-agent"
+    },
+    {
+      "createdAt": "2025-11-05T00:00:00.000Z",
+      "updatedAt": "2025-11-05T00:00:00.000Z",
+      "id": "local-llm",
+      "name": "local-llm"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-05T00:00:00.000Z"
+}

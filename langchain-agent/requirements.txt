@@ -1,0 +1,16 @@
+# Core LangChain
+langchain>=0.1.0
+langchain-community>=0.0.20
+
+# Local LLM backends
+ollama  # Easiest option - recommended for RTX 5090
+vllm>=0.3.0  # Production performance, great for 32GB VRAM
+llama-cpp-python  # CPU/GPU hybrid option
+
+# Optional but recommended
+chromadb  # For vector store if adding RAG
+sentence-transformers  # For embeddings
+
+# Utilities
+python-dotenv
+pydantic>=2.0.0
