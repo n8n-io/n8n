@@ -1,7 +1,7 @@
 import type { N8nLocale, N8nLocaleTranslateFn } from '@n8n/design-system/types';
 
 import createFormatTemplate from './format';
-import defaultLang from '../locale/lang/en';
+import enLang from './lang/en';
 
 // import { ElementLocale } from 'element-plus';
 // import ElementLang from 'element-plus/lib/locale/lang/en';
@@ -9,7 +9,7 @@ import defaultLang from '../locale/lang/en';
 // ElementLocale.use(ElementLang);
 
 const format = createFormatTemplate();
-let lang = defaultLang;
+let lang: N8nLocale = enLang;
 
 let i18nHandler: N8nLocaleTranslateFn;
 
@@ -34,6 +34,12 @@ export const t = function (
 };
 
 export async function use(l: string) {
+	// Avoid dynamic import for English to prevent circular reload issues
+	if (l === 'en') {
+		lang = enLang;
+		return;
+	}
+
 	try {
 		const ndsLang = (await import(`./lang/${l}.ts`)) as { default: N8nLocale };
 

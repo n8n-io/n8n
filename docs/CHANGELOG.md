@@ -4,6 +4,83 @@
 
 ## 2025-11-05
 
+### 前端构建系统修复与优化 ✅
+
+修复了前端构建过程中的 TypeScript 错误和开发环境热重载问题，提升开发体验。
+
+#### TypeScript 错误修复
+
+**未使用导入清理**:
+- 位置：`packages/frontend/@n8n/design-system/src/components/N8nNotice/Notice.vue:2`
+- 问题：从 `xss` 包导入了 `whiteList` 但未使用
+- 错误：`TS6133: 'whiteList' is declared but its value is never read`
+- 修复：移除未使用的导入，仅保留 `import xss from 'xss'`
+- 影响：构建时 TypeScript 错误完全消除
+
+#### 开发环境热重载修复
+
+**动态导入循环问题**:
+- 位置：`packages/frontend/@n8n/design-system/src/locale/index.ts`
+- 问题：英语语言包同时被静态导入和动态导入，导致开发模式下无限循环重载
+- 表现：运行 `pnpm dev:be` 后后端无限循环，无法正常启动
+- 修复方案：
+  ```typescript
+  // 优化前：既有静态导入 defaultLang，又在 use() 中动态导入 en.ts
+  import defaultLang from '../locale/lang/en';
+  let lang = defaultLang;
+
+  // 优化后：仅静态导入，在 use('en') 时直接使用静态导入
+  import enLang from './lang/en';
+  let lang: N8nLocale = enLang;
+
+  export async function use(l: string) {
+    // 对英语直接使用静态导入，避免动态导入触发热重载
+    if (l === 'en') {
+      lang = enLang;
+      return;
+    }
+    // 其他语言使用动态导入
+    const ndsLang = (await import(`./lang/${l}.ts`)) as { default: N8nLocale };
+    lang = ndsLang.default;
+  }
+  ```
+
+#### Telemetry API 端点增强
+
+**新增统计 API**:
+- 位置：`packages/cli/src/controllers/telemetry.controller.ts`
+- 新增端点：
+  - `GET /rest/telemetry/stats/overview` - 统计概览（事件总数、用户数等）
+  - `GET /rest/telemetry/stats/top-events` - 热门事件排行
+  - `GET /rest/telemetry/stats/active-users` - 活跃用户统计
+- 支持参数：`days`（时间范围）、`limit`（返回数量）
+
+**数据库迁移**:
+- 新增：`1730804400000-CreateTelemetryEventTable.ts`（MySQL/PostgreSQL/SQLite）
+- 作用：创建 telemetry_event 表存储遥测事件数据
+
+#### 修改文件清单
+
+| 文件 | 修改内容 |
+|------|---------|
+| `packages/frontend/@n8n/design-system/src/components/N8nNotice/Notice.vue` | 移除未使用的 whiteList 导入 |
+| `packages/frontend/@n8n/design-system/src/locale/index.ts` | 修复动态/静态导入冲突，防止热重载循环 |
+| `packages/cli/src/controllers/telemetry.controller.ts` | 新增 3 个统计 API 端点 |
+| `packages/@n8n/db/src/migrations/*/index.ts` | 注册新的数据库迁移 |
+| `packages/@n8n/db/src/migrations/*/1730804400000-CreateTelemetryEventTable.ts` | 创建遥测事件表（MySQL/PostgreSQL/SQLite）|
+
+#### 当前状态
+
+- ✅ TypeScript 构建：无错误
+- ✅ 开发环境热重载：正常工作，无无限循环
+- ✅ 后端服务：正常启动
+- ✅ 前端服务：正常启动和热更新
+- ⚠️ 构建警告：动态导入提示（不影响功能，可接受）
+
+---
+
+## 2025-11-05
+
 ### 前后端分离架构完善 ✅
 
 完成前后端分离架构的全面调整和优化，统一 API 端点，简化开发环境配置。

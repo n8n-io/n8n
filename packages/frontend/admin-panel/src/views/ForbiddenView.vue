@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth.store';
 const authStore = useAuthStore();
 
 function handleBackToHome() {
-	window.location.href = '/';
+	window.location.href = '/admin/';
 }
 
 function handleContactAdmin() {

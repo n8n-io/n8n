@@ -35,10 +35,7 @@ function getBarWidth(count: number): number {
 
 <template>
 	<div :class="$style.container">
-		<div v-if="loading" :class="$style.loading">
-			<N8nIcon icon="spinner" size="xlarge" />
-			加载中...
-		</div>
+		<div v-if="loading" :class="$style.loading">加载中...</div>
 
 		<div v-else-if="displayEvents.length === 0" :class="$style.empty">
 			<N8nIcon icon="inbox" size="xlarge" />

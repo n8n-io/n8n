@@ -112,8 +112,7 @@ export class TelemetryController {
 			const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
 				headers: {
 					authorization:
-						'Basic ' +
-						btoa(`${this.globalConfig.diagnostics.frontendConfig.split(';')[0]}:`),
+						'Basic ' + btoa(`${this.globalConfig.diagnostics.frontendConfig.split(';')[0]}:`),
 				},
 			});
 
@@ -129,5 +128,56 @@ export class TelemetryController {
 			// Return a minimal config when diagnostics is disabled
 			res.json({ source: { config: {} } });
 		}
+	}
+
+	@Get('/stats/overview')
+	async getStatsOverview(req: AuthenticatedRequest<{}, {}, {}, { days?: string }>, res: Response) {
+		const days = parseInt(req.query.days ?? '30') || 30;
+		const endDate = new Date();
+		const startDate = new Date();
+		startDate.setDate(startDate.getDate() - days);
+
+		const stats = await this.telemetryManagementService.getOverview({
+			startDate,
+			endDate,
+		});
+
+		res.json(stats);
+	}
+
+	@Get('/stats/top-events')
+	async getTopEvents(
+		req: AuthenticatedRequest<{}, {}, {}, { limit?: string; days?: string }>,
+		res: Response,
+	) {
+		const limit = parseInt(req.query.limit ?? '20') || 20;
+		const days = parseInt(req.query.days ?? '30') || 30;
+
+		const endDate = new Date();
+		const startDate = new Date();
+		startDate.setDate(startDate.getDate() - days);
+
+		const topEvents = await this.telemetryManagementService.getTopEvents({
+			startDate,
+			endDate,
+			limit,
+		});
+
+		res.json(topEvents);
+	}
+
+	@Get('/stats/active-users')
+	async getActiveUsers(req: AuthenticatedRequest<{}, {}, {}, { days?: string }>, res: Response) {
+		const days = parseInt(req.query.days ?? '30') || 30;
+		const endDate = new Date();
+		const startDate = new Date();
+		startDate.setDate(startDate.getDate() - days);
+
+		const activeUsers = await this.telemetryManagementService.getActiveUserStats({
+			startDate,
+			endDate,
+		});
+
+		res.json(activeUsers);
 	}
 }

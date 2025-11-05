@@ -11,7 +11,6 @@ const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
 		component: MainLayout,
-		meta: { requiresAdmin: true },
 		children: [
 			// Telemetry 模块
 			{
@@ -90,41 +89,15 @@ const router = createRouter({
 });
 
 /**
- * 路由守卫：检查管理员权限
+ * 路由守卫：基础路由处理
+ * TODO: 后续实现独立的管理员账号系统和权限验证
  */
 router.beforeEach(async (to, _from, next) => {
-	const authStore = useAuthStore();
-
 	// 更新页面标题
 	document.title = (to.meta.title as string) || 'n8n 管理后台';
 
-	// 不需要认证的页面（错误页面）
-	if (to.name === 'Forbidden' || to.name === 'NotFound') {
-		next();
-		return;
-	}
-
-	// 检查是否需要管理员权限
-	if (to.meta.requiresAdmin) {
-		// 如果还没有初始化，先检查用户身份
-		if (!authStore.initialized) {
-			await authStore.checkAuth();
-		}
-
-		// 未登录：跳转到 n8n 登录页
-		if (!authStore.isLoggedIn) {
-			const redirectUrl = encodeURIComponent(`/admin${to.fullPath}`);
-			window.location.href = `/signin?redirect=${redirectUrl}`;
-			return;
-		}
-
-		// 非管理员：显示 403 页面
-		if (!authStore.isAdmin) {
-			next({ name: 'Forbidden' });
-			return;
-		}
-	}
-
+	// 暂时移除权限验证，允许所有人访问
+	// 等待后续实现独立的管理员账号系统
 	next();
 });
 

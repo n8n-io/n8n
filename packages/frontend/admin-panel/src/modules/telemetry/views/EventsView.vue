@@ -220,7 +220,6 @@ onMounted(() => {
 		<!-- Events Table -->
 		<N8nCard :class="$style.tableCard">
 			<div v-if="telemetryStore.loading" :class="$style.loading">
-				<N8nIcon icon="spinner" size="xlarge" />
 				<p>加载中...</p>
 			</div>
 

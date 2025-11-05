@@ -39,9 +39,7 @@ const trendClass = computed(() => {
 			</div>
 		</div>
 
-		<div v-if="loading" :class="$style.loading">
-			<N8nIcon icon="spinner" size="large" />
-		</div>
+		<div v-if="loading" :class="$style.loading">加载中...</div>
 
 		<div v-else :class="$style.content">
 			<div :class="$style.value">{{ formattedValue }}</div>

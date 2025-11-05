@@ -51,6 +51,7 @@ import { FixTestDefinitionPrimaryKey1739873751194 } from './1739873751194-FixTes
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
+import { CreateTelemetryEventTable1730804400000 } from './1730804400000-CreateTelemetryEventTable';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -180,6 +181,7 @@ export const mysqlMigrations: Migration[] = [
 	AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644,
 	UpdateProcessedDataValueColumnToText1729607673464,
 	CreateTestDefinitionTable1730386903556,
+	CreateTelemetryEventTable1730804400000,
 	AddDescriptionToTestDefinition1731404028106,
 	MigrateTestDefinitionKeyToString1731582748663,
 	CreateTestMetricTable1732271325258,

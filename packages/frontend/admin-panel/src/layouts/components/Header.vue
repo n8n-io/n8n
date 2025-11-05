@@ -34,19 +34,19 @@ function goToMainApp() {
 				返回 n8n
 			</N8nButton>
 
-			<!-- 用户信息 -->
-			<div :class="$style.user">
+			<!-- 用户信息 - 仅在登录时显示 -->
+			<div v-if="authStore.isLoggedIn" :class="$style.user">
 				<div :class="$style.userAvatar">
 					<N8nIcon icon="circle-user-round" size="large" />
 				</div>
 				<div :class="$style.userInfo">
-					<div :class="$style.userName">{{ authStore.userName }}</div>
-					<div :class="$style.userRole">管理员</div>
+					<div :class="$style.userName">{{ authStore.userName || '管理员' }}</div>
+					<div :class="$style.userRole">{{ authStore.user?.role || '管理员' }}</div>
 				</div>
 			</div>
 
-			<!-- 退出登录 -->
-			<N8nButton type="secondary" size="small" @click="handleLogout">
+			<!-- 退出登录 - 仅在登录时显示 -->
+			<N8nButton v-if="authStore.isLoggedIn" type="secondary" size="small" @click="handleLogout">
 				<N8nIcon icon="log-out" size="small" />
 				退出
 			</N8nButton>

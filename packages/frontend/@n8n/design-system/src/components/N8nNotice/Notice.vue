@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import xss, { whiteList } from 'xss';
+import xss from 'xss';
 import { computed, ref, useCssModule } from 'vue';
 
 import N8nText from '../../components/N8nText';
