@@ -161,12 +161,11 @@ export class MemoryMongoDbChat implements INodeType {
 				response: logWrapper(memory, this),
 			};
 		} catch (error) {
-			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
-		} finally { // force to close client
-			try {
+			try { // force to close client
 				await client.close();
 			} catch (error) {
 			}
+			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
 		}
 	}
 }
