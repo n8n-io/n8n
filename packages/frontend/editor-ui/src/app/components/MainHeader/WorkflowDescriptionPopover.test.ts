@@ -65,7 +65,13 @@ describe('WorkflowDescriptionPopover', () => {
 		workflowsStore.workflow = {
 			id: 'test-workflow-id',
 			name: 'Test Workflow',
+			active: false,
+			isArchived: false,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+			versionId: '1',
 			nodes: [],
+			connections: {},
 		};
 		uiStore.stateIsDirty = false;
 	});
@@ -520,7 +526,7 @@ describe('WorkflowDescriptionPopover', () => {
 		});
 
 		it('should show MCP tooltip when MCP is enabled', async () => {
-			settingsStore.settings.modules = { mcp: { enabled: true } };
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -538,10 +544,15 @@ describe('WorkflowDescriptionPopover', () => {
 		});
 
 		it('should show webhook notice when workflow has webhooks and MCP is enabled', async () => {
-			settingsStore.settings.modules = { mcp: { enabled: true } };
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
 			workflowsStore.workflow = {
 				id: 'test-workflow-id',
 				name: 'Test Workflow',
+				active: false,
+				isArchived: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				versionId: '1',
 				nodes: [
 					{
 						id: 'webhook-1',
@@ -553,6 +564,7 @@ describe('WorkflowDescriptionPopover', () => {
 						parameters: {},
 					},
 				],
+				connections: {},
 			};
 
 			const { getByTestId } = renderComponent({
@@ -571,10 +583,15 @@ describe('WorkflowDescriptionPopover', () => {
 		});
 
 		it('should not show webhook notice for disabled webhook nodes', async () => {
-			settingsStore.settings.modules = { mcp: { enabled: true } };
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
 			workflowsStore.workflow = {
 				id: 'test-workflow-id',
 				name: 'Test Workflow',
+				active: false,
+				isArchived: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				versionId: '1',
 				nodes: [
 					{
 						id: 'webhook-1',
@@ -586,6 +603,7 @@ describe('WorkflowDescriptionPopover', () => {
 						parameters: {},
 					},
 				],
+				connections: {},
 			};
 
 			const { getByTestId } = renderComponent({
