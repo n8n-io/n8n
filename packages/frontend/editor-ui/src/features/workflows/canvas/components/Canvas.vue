@@ -6,9 +6,9 @@ import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
-import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
-import type { PinDataSource } from '@/composables/usePinnedData';
-import { CanvasKey } from '@/constants';
+import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
+import type { PinDataSource } from '@/app/composables/usePinnedData';
+import { CanvasKey } from '@/app/constants';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
@@ -19,9 +19,13 @@ import type {
 	ConnectStartEvent,
 } from '../canvas.types';
 import { CanvasNodeRenderType } from '../canvas.types';
-import { isOutsideSelected } from '@/utils/htmlUtils';
-import { getMousePosition, GRID_SIZE, updateViewportToContainNodes } from '@/utils/nodeViewUtils';
-import { isPresent } from '@/utils/typesUtils';
+import { isOutsideSelected } from '@/app/utils/htmlUtils';
+import {
+	getMousePosition,
+	GRID_SIZE,
+	updateViewportToContainNodes,
+} from '@/app/utils/nodeViewUtils';
+import { isPresent } from '@/app/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
 import type { EventBus } from '@n8n/utils/event-bus';

@@ -2,16 +2,16 @@ import type { Ref } from 'vue';
 import { computed, ref } from 'vue';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { getAppNameFromNodeName } from '@/app/utils/nodeTypesUtils';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import {
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
 } from '../utils/templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
-import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
-import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
+import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
+import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
 import sortBy from 'lodash/sortBy';
 import type {
 	AppCredentials,

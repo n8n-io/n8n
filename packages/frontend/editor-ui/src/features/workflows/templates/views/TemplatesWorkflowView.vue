@@ -2,14 +2,14 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useTemplateWorkflow } from '@/features/workflows/templates/utils/templateActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import TemplateDetails from '../components/TemplateDetails.vue';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { N8nButton, N8nHeading, N8nLoading, N8nMarkdown, N8nText } from '@n8n/design-system';

@@ -1,9 +1,9 @@
-import { useTelemetry } from '@/composables/useTelemetry';
-import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/app/constants';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 /*
  * Extra template links

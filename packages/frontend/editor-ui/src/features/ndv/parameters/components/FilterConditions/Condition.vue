@@ -22,7 +22,7 @@ import {
 	operatorTypeToNodeProperty,
 	resolveCondition,
 } from './utils';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 
 import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {

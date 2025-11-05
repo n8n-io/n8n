@@ -4,7 +4,7 @@ import CanvasNodeDefault from './render-types/CanvasNodeDefault.vue';
 import CanvasNodeStickyNote from './render-types/CanvasNodeStickyNote.vue';
 import CanvasNodeAddNodes from './render-types/CanvasNodeAddNodes.vue';
 import CanvasNodeChoicePrompt from './render-types/CanvasNodeChoicePrompt.vue';
-import { CanvasNodeKey } from '@/constants';
+import { CanvasNodeKey } from '@/app/constants';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 
 const node = inject(CanvasNodeKey);

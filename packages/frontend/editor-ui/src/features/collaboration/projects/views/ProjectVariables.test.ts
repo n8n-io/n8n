@@ -1,9 +1,9 @@
 import ProjectVariables from './ProjectVariables.vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';

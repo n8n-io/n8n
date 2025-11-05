@@ -11,16 +11,16 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 
-import { useResolvedExpression } from '@/composables/useResolvedExpression';
+import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
+import { isValueExpression, parseResourceMapperFieldName } from '@/app/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
 
-import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/app/constants';
 
 import { N8nTooltip } from '@n8n/design-system';
 type Props = {

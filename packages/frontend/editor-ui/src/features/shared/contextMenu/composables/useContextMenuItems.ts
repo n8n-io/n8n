@@ -1,16 +1,16 @@
 import type { ActionDropdownItem, INodeUi } from '@/Interface';
-import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
-import { isPresent } from '@/utils/typesUtils';
-import { usePinnedData } from '@/composables/usePinnedData';
+import { isPresent } from '@/app/utils/typesUtils';
+import { usePinnedData } from '@/app/composables/usePinnedData';
 
 export type ContextMenuAction =
 	| 'open'

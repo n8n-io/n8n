@@ -9,7 +9,7 @@ import { AgGridVue } from 'ag-grid-vue3';
 import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/core/dataTable/components/dataGrid/n8nTheme';
 import { registerAgGridModulesOnce } from '@/features/core/dataTable/components/dataGrid/registerAgGridModulesOnce';
-import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
+import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import {
 	DATA_TABLE_HEADER_HEIGHT,
 	DATA_TABLE_ROW_HEIGHT,
