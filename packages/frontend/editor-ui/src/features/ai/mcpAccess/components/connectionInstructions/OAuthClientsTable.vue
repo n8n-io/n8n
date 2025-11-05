@@ -50,15 +50,6 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 		},
 	},
 	{
-		title: i18n.baseText('settings.mcp.oAuthClients.table.lastUsedAt'),
-		key: 'updatedAt',
-		width: 250,
-		disableSort: true,
-		value(client: OAuthClientResponseDto) {
-			return client.updatedAt;
-		},
-	},
-	{
 		title: '',
 		key: 'actions',
 		align: 'end',
@@ -122,11 +113,6 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 				<template #[`item.createdAt`]="{ item }">
 					<N8nText data-test-id="mcp-client-created-at">
 						<TimeAgo :date="String(item.createdAt)" />
-					</N8nText>
-				</template>
-				<template #[`item.updatedAt`]="{ item }">
-					<N8nText data-test-id="mcp-client-last-used-at">
-						<TimeAgo :date="String(item.updatedAt)" />
 					</N8nText>
 				</template>
 				<template #[`item.actions`]="{ item }">

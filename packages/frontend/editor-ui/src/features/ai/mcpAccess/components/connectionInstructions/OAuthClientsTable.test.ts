@@ -125,22 +125,6 @@ describe('OAuthClientsTable', () => {
 			expect(createdAtElement).toBeInTheDocument();
 		});
 
-		it('should display updated at date', () => {
-			const client = mockOAuthClient('1', {
-				updatedAt: '2024-01-02T12:00:00.000Z',
-			});
-			const { getByTestId } = renderComponent({
-				pinia,
-				props: {
-					clients: [client],
-					loading: false,
-				},
-			});
-
-			const updatedAtElement = getByTestId('mcp-client-last-used-at');
-			expect(updatedAtElement).toBeInTheDocument();
-		});
-
 		it('should display action toggle for each client', () => {
 			const clients = [mockOAuthClient('1'), mockOAuthClient('2')];
 			const { getAllByTestId } = renderComponent({
