@@ -9,15 +9,16 @@ import type {
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth';
-import type { Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
-import type { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
+import { OAuthClient } from './database/entities/oauth-client.entity';
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
-import type { OAuthClientRepository } from './database/repositories/oauth-client.repository';
-import type { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
-import type { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
+import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
+import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import type { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import type { McpOAuthTokenService } from './mcp-oauth-token.service';
 import type { OAuthSessionService } from './oauth-session.service';
