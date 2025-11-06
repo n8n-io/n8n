@@ -4,8 +4,11 @@ import type {
 	ITriggerFunctions,
 	ITriggerResponse,
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from './utils';
@@ -59,18 +62,74 @@ export class AwsSqsTrigger implements INodeType {
 				description: 'The URL of the Amazon SQS queue',
 			},
 			{
-				displayName: 'Queue Name',
+				displayName: 'Queue Name or ID',
 				name: 'queueName',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getQueues',
+				},
 				displayOptions: {
 					show: {
 						queueType: ['name'],
 					},
 				},
+				options: [],
 				default: '',
 				required: true,
-				placeholder: 'my-queue',
-				description: 'The name of the Amazon SQS queue',
+				description:
+					'Queue to receive messages from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Poll Interval (Minutes)',
+				name: 'pollIntervalMinutes',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				default: 1,
+				description:
+					'Delay between polls (in minutes). Note: The actual interval includes this delay plus the SQS long polling wait time (default 20 seconds). Set to 0 for continuous polling with minimal delay.',
+			},
+			{
+				displayName: 'Max Number of Messages',
+				name: 'maxNumberOfMessages',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 10,
+				},
+				default: 10,
+				description: 'Maximum number of messages to retrieve per poll (1-10)',
+			},
+			{
+				displayName: 'Wait Time Seconds',
+				name: 'waitTimeSeconds',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 20,
+				},
+				default: 20,
+				description:
+					'Long polling wait time in seconds (0-20). Use 20 for efficient long polling to reduce API calls and costs.',
+			},
+			{
+				displayName: 'Visibility Timeout',
+				name: 'visibilityTimeout',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 43200,
+				},
+				default: 30,
+				description: 'How long (in seconds) the message is hidden from other consumers',
+			},
+			{
+				displayName: 'Delete After Processing',
+				name: 'deleteAfterProcessing',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to automatically delete messages after successful processing',
 			},
 			{
 				displayName: 'Options',
@@ -79,58 +138,6 @@ export class AwsSqsTrigger implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
-					{
-						displayName: 'Poll Interval (Minutes)',
-						name: 'pollIntervalMinutes',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 1,
-						description:
-							'Delay between polls (in minutes). Note: The actual interval includes this delay plus the SQS long polling wait time (default 20 seconds). Set to 0 for continuous polling with minimal delay.',
-					},
-					{
-						displayName: 'Max Number of Messages',
-						name: 'maxNumberOfMessages',
-						type: 'number',
-						typeOptions: {
-							minValue: 1,
-							maxValue: 10,
-						},
-						default: 10,
-						description: 'Maximum number of messages to retrieve per poll (1-10)',
-					},
-					{
-						displayName: 'Wait Time Seconds',
-						name: 'waitTimeSeconds',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-							maxValue: 20,
-						},
-						default: 20,
-						description:
-							'Long polling wait time in seconds (0-20). Use 20 for efficient long polling to reduce API calls and costs.',
-					},
-					{
-						displayName: 'Visibility Timeout',
-						name: 'visibilityTimeout',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-							maxValue: 43200,
-						},
-						default: 30,
-						description: 'How long (in seconds) the message is hidden from other consumers',
-					},
-					{
-						displayName: 'Delete After Processing',
-						name: 'deleteAfterProcessing',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to automatically delete messages after successful processing',
-					},
 					{
 						displayName: 'Emit Items Individually',
 						name: 'emitIndividually',
@@ -143,6 +150,44 @@ export class AwsSqsTrigger implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Get all the available queues to display them to user so that it can be selected easily
+			async getQueues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const params = ['Version=2012-11-05', 'Action=ListQueues'];
+
+				let data;
+				try {
+					// loads first 1000 queues from SQS
+					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?${params.join('&')}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error as JsonObject);
+				}
+
+				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
+				if (!queues) {
+					return [];
+				}
+
+				if (!Array.isArray(queues)) {
+					// If user has only a single queue no array get returned so we make
+					// one manually to be able to process everything identically
+					queues = [queues];
+				}
+
+				return queues.map((queueUrl: string) => {
+					const urlParts = queueUrl.split('/');
+					const name = urlParts[urlParts.length - 1];
+
+					return {
+						name,
+						value: queueUrl,
+					};
+				});
+			},
+		},
+	};
+
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queueType = this.getNodeParameter('queueType') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
@@ -152,27 +197,16 @@ export class AwsSqsTrigger implements INodeType {
 		if (queueType === 'url') {
 			queueUrl = this.getNodeParameter('queueUrl') as string;
 		} else {
-			const queueName = this.getNodeParameter('queueName') as string;
-			const credentials = await this.getCredentials('aws');
-			const region = credentials.region as string;
-			const accountId = (credentials.accountId as string) || '';
-
-			if (!accountId) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Account ID is required when using Queue Name. Please use Queue URL instead or provide Account ID in credentials.',
-				);
-			}
-
-			queueUrl = `https://sqs.${region}.amazonaws.com/${accountId}/${queueName}`;
+			// When using Queue Name dropdown, the value is already the full queue URL
+			queueUrl = this.getNodeParameter('queueName') as string;
 		}
 
-		const maxNumberOfMessages = (options.maxNumberOfMessages as number) ?? 10;
-		const waitTimeSeconds = (options.waitTimeSeconds as number) ?? 20;
-		const pollIntervalMinutes = (options.pollIntervalMinutes as number) ?? 1;
+		const pollIntervalMinutes = this.getNodeParameter('pollIntervalMinutes', 1) as number;
 		const pollInterval = pollIntervalMinutes * 60 * 1000; // Convert minutes to milliseconds
-		const visibilityTimeout = (options.visibilityTimeout as number) ?? 30;
-		const deleteAfterProcessing = options.deleteAfterProcessing === true;
+		const maxNumberOfMessages = this.getNodeParameter('maxNumberOfMessages', 10) as number;
+		const waitTimeSeconds = this.getNodeParameter('waitTimeSeconds', 20) as number;
+		const visibilityTimeout = this.getNodeParameter('visibilityTimeout', 30) as number;
+		const deleteAfterProcessing = this.getNodeParameter('deleteAfterProcessing', true) as boolean;
 		const emitIndividually = options.emitIndividually !== false;
 
 		const pollMessages = async () => {
