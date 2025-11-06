@@ -47,7 +47,7 @@ const icon = computed<
 			<N8nIcon
 				v-else
 				:class="{ [$style.MenuItemIconToHide]: $slots.toggle && !collapsed }"
-				color="text-light"
+				color="text-base"
 				size="large"
 				:icon="icon.value"
 			/>
@@ -58,7 +58,7 @@ const icon = computed<
 				<slot name="toggle"></slot>
 			</div>
 		</div>
-		<N8nText v-if="!collapsed" color="text-base" :class="$style.MenuItemLabel">
+		<N8nText v-if="!collapsed" color="text-dark" :class="$style.MenuItemLabel">
 			{{ item.label }}
 		</N8nText>
 		<div v-if="!collapsed" :class="$style.MenuItemIcon">
@@ -94,7 +94,7 @@ const icon = computed<
 .MenuItem:hover,
 .MenuItem:focus-visible,
 .MenuItem:has(:focus-visible) {
-	background-color: var(--color--background--light-1);
+	background-color: var(--color--background);
 	cursor: pointer;
 }
 
