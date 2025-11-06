@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 		<div :class="$style['copy-button-wrapper']">
 			<slot name="customActions" />
 			<N8nTooltip
-				:disabled="!isSupported"
+				:disables="!isSupported"
 				:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
 				placement="right"
 			>
