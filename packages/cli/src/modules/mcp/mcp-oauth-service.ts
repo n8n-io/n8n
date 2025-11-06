@@ -16,9 +16,9 @@ import type { Response } from 'express';
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
-import type { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
-import type { McpOAuthTokenService } from './mcp-oauth-token.service';
-import type { OAuthSessionService } from './oauth-session.service';
+import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
+import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { OAuthSessionService } from './oauth-session.service';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 
