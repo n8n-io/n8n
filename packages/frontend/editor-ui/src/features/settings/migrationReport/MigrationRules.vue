@@ -15,9 +15,11 @@ import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
 import SeverityTag from './components/SeverityTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
+import { useI18n } from '@n8n/i18n';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
+const i18n = useI18n();
 
 const currentTab = ref('workflow-issues');
 
@@ -46,14 +48,14 @@ async function refreshReport() {
 const tabs = computed(() => {
 	return [
 		{
-			label: 'Workflow issues',
+			label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
 			value: 'workflow-issues',
 			tag: state.value?.report.workflowResults.length
 				? String(state.value.report.workflowResults.length)
 				: undefined,
 		},
 		{
-			label: 'Instance issues',
+			label: i18n.baseText('settings.migrationReport.tabs.instanceIssues'),
 			value: 'instance-issues',
 			tag: state.value?.report.instanceResults.length
 				? String(state.value.report.instanceResults.length)
@@ -64,21 +66,17 @@ const tabs = computed(() => {
 
 const workflowTooltips = computed(() => {
 	return {
-		critical:
-			'Affected workflows will break after the update. You need to update or replace impacted nodes.',
-		medium:
-			'Workflows may still run but could produce incorrect results. Review and test before updating.',
-		low: 'Behavior might change slightly in specific cases. Most workflows will keep working as expected.',
+		critical: i18n.baseText('settings.migrationReport.workflowTooltip.critical'),
+		medium: i18n.baseText('settings.migrationReport.workflowTooltip.medium'),
+		low: i18n.baseText('settings.migrationReport.workflowTooltip.low'),
 	} as const;
 });
 
 const instanceTooltips = computed(() => {
 	return {
-		critical:
-			'This issue will likely prevent the instance from starting or working correctly after the update. Must be fixed before proceeding.',
-		medium:
-			'This may affect performance, compatibility, or connected services. Review and fix if relevant to your setup.',
-		low: 'Minor configuration change. Doesn’t block the update but may cause subtle changes in behavior.',
+		critical: i18n.baseText('settings.migrationReport.instanceTooltip.critical'),
+		medium: i18n.baseText('settings.migrationReport.instanceTooltip.medium'),
+		low: i18n.baseText('settings.migrationReport.instanceTooltip.low'),
 	} as const;
 });
 
@@ -94,20 +92,24 @@ const compatibleWorkflowsCount = computed(() => {
 <template>
 	<div style="max-width: 700px; margin: 0 auto; padding-bottom: 40px">
 		<N8nText tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
-			Compatibility report for version 2.0.0
+			{{ i18n.baseText('settings.migrationReport.title') }}
 		</N8nText>
 		<N8nText tag="p" color="text-base" class="mb-2xl">
-			{{ compatibleWorkflowsCount }}
-			of your {{ state?.totalWorkflows }} workflows are already compatible with version 2.0.0.
-			Review the details below to understand and resolve any compatibility problems. Learn more
-			about all breaking changes in our documentation
+			{{
+				i18n.baseText('settings.migrationReport.description', {
+					interpolate: {
+						compatibleCount: String(compatibleWorkflowsCount),
+						totalCount: String(state?.totalWorkflows ?? 0),
+					},
+				})
+			}}
 		</N8nText>
 
 		<div :class="$style.ActionBar">
 			<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
 			<N8nButton
 				v-if="state?.shouldCache"
-				label="Refresh"
+				:label="i18n.baseText('settings.migrationReport.refreshButton')"
 				icon="refresh-cw"
 				type="secondary"
 				@click="refreshReport"
@@ -125,10 +127,12 @@ const compatibleWorkflowsCount = computed(() => {
 		<template v-else-if="currentTab === 'workflow-issues'">
 			<template v-if="state?.report.workflowResults.length === 0">
 				<EmptyTab>
-					<template #title>No workflow issues detected</template>
-					<template #description>
-						Your workflows are fully <br />compatible with version 2.0.0. You're good to go!
-					</template>
+					<template #title>{{
+						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
+					}}</template>
+					<template #description>{{
+						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.description')
+					}}</template>
 				</EmptyTab>
 			</template>
 			<div v-else :class="$style.CardContainer">
@@ -151,7 +155,10 @@ const compatibleWorkflowsCount = computed(() => {
 						<N8nText tag="p" color="text-base">
 							{{ issue.ruleDescription }}
 							<N8nLink theme="text" underline href="#">
-								<u :class="$style.NoLineBreak"> Documentation <N8nIcon icon="external-link" /></u>
+								<u :class="$style.NoLineBreak">
+									{{ i18n.baseText('settings.migrationReport.documentation') }}
+									<N8nIcon icon="external-link" />
+								</u>
 							</N8nLink>
 						</N8nText>
 					</div>
@@ -161,7 +168,11 @@ const compatibleWorkflowsCount = computed(() => {
 						:to="{ name: VIEWS.MIGRATION_RULE_REPORT, params: { migrationRuleId: issue.ruleId } }"
 					>
 						<span :class="$style.NoLineBreak">
-							{{ issue.nbAffectedWorkflows }} Workflows
+							{{
+								i18n.baseText('settings.migrationReport.workflowsCount', {
+									interpolate: { count: String(issue.nbAffectedWorkflows) },
+								})
+							}}
 							<N8nIcon icon="chevron-right" :size="24" />
 						</span>
 					</N8nLink>
@@ -171,10 +182,12 @@ const compatibleWorkflowsCount = computed(() => {
 		<template v-else-if="currentTab === 'instance-issues'">
 			<template v-if="state?.report.instanceResults.length === 0">
 				<EmptyTab>
-					<template #title>No instance issues detected</template>
-					<template #description>
-						Your instance is fully compatible <br />with version 2.0.0. You're good to go!
-					</template>
+					<template #title>{{
+						i18n.baseText('settings.migrationReport.emptyInstanceIssues.title')
+					}}</template>
+					<template #description>{{
+						i18n.baseText('settings.migrationReport.emptyInstanceIssues.description')
+					}}</template>
 				</EmptyTab>
 			</template>
 			<div v-else :class="$style.CardContainer">
@@ -197,7 +210,10 @@ const compatibleWorkflowsCount = computed(() => {
 						<N8nText tag="p" color="text-base">
 							{{ issue.ruleDescription }}
 							<N8nLink theme="text" underline href="#">
-								<u :class="$style.NoLineBreak">Documentation <N8nIcon icon="external-link" /></u>
+								<u :class="$style.NoLineBreak">
+									{{ i18n.baseText('settings.migrationReport.documentation') }}
+									<N8nIcon icon="external-link" />
+								</u>
 							</N8nLink>
 						</N8nText>
 					</div>

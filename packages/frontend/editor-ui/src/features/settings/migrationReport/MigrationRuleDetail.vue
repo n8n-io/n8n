@@ -5,12 +5,15 @@ import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { N8nDataTableServer, N8nIcon, N8nLink, N8nTag, N8nText } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import SeverityTag from './components/SeverityTag.vue';
+
+const i18n = useI18n();
 
 const props = defineProps<{ migrationRuleId: string }>();
 
@@ -39,32 +42,35 @@ type AffectedWorkflow = BreakingChangeWorkflowRuleResult['affectedWorkflows'][nu
 
 const tableHeaders = ref<Array<TableHeader<AffectedWorkflow>>>([
 	{
-		title: 'Name',
+		title: i18n.baseText('settings.migrationReport.detail.table.name'),
 		key: 'name',
 		width: 200,
 	},
 	{
-		title: 'Issue',
+		title: i18n.baseText('settings.migrationReport.detail.table.issue'),
 		key: 'active',
-		value: (row: AffectedWorkflow) => (row.active ? 'Resolved' : 'Present'),
+		value: (row: AffectedWorkflow) =>
+			row.active
+				? i18n.baseText('settings.migrationReport.detail.table.issueResolved')
+				: i18n.baseText('settings.migrationReport.detail.table.issuePresent'),
 		width: 40,
 	},
 	{
-		title: 'Node affected',
+		title: i18n.baseText('settings.migrationReport.detail.table.nodeAffected'),
 		key: 'issues',
 	},
 	{
-		title: 'Number of executions',
+		title: i18n.baseText('settings.migrationReport.detail.table.numberOfExecutions'),
 		key: 'numberOfExecutions',
 		width: 40,
 	},
 	{
-		title: 'Last executed',
+		title: i18n.baseText('settings.migrationReport.detail.table.lastExecuted'),
 		key: 'lastExecutedAt',
 		width: 40,
 	},
 	{
-		title: 'Last updated',
+		title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
 		key: 'lastUpdatedAt',
 		width: 40,
 	},
@@ -100,12 +106,22 @@ const sortedWorkflows = computed(() =>
 		>
 			{{ state.ruleTitle }}
 			<SeverityTag :severity="state.ruleSeverity" />
-			<N8nTag :text="state.affectedWorkflows.length + ' affected'" :clickable="false" />
+			<N8nTag
+				:text="
+					i18n.baseText('settings.migrationReport.detail.affectedTag', {
+						interpolate: { count: String(state.affectedWorkflows.length) },
+					})
+				"
+				:clickable="false"
+			/>
 		</N8nText>
 		<N8nText tag="p" color="text-base" class="mb-2xl">
 			{{ state.ruleDescription }}
 			<N8nLink theme="text" underline href="#">
-				<u :class="$style.NoLineBreak"> Documentation <N8nIcon icon="external-link" /></u>
+				<u :class="$style.NoLineBreak">
+					{{ i18n.baseText('settings.migrationReport.documentation') }}
+					<N8nIcon icon="external-link" />
+				</u>
 			</N8nLink>
 		</N8nText>
 		<N8nDataTableServer
@@ -135,7 +151,7 @@ const sortedWorkflows = computed(() =>
 			</template>
 			<template #[`item.lastExecutedAt`]="{ item }">
 				<TimeAgo v-if="item.lastExecutedAt" :date="item.lastExecutedAt.toString()" />
-				<span v-else>Never</span>
+				<span v-else>{{ i18n.baseText('settings.migrationReport.detail.table.never') }}</span>
 			</template>
 			<template #[`item.lastUpdatedAt`]="{ item }">
 				<TimeAgo :date="item.lastUpdatedAt.toString()" />
