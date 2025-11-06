@@ -207,16 +207,16 @@ let projectsStore: MockedStore<typeof useProjectsStore>;
 const personalProject = createProjectListItem('personal');
 const teamProjects = Array.from({ length: 2 }, () => createProjectListItem('team'));
 const projects = [personalProject, ...teamProjects];
-const date = new Date(2000, 11, 19);
+const date = new Date('2000-12-19T00:00:00.000Z');
 
 // Test helper constants
 const DEFAULT_DATE_RANGE = {
-	startDate: new Date('2000-12-13T00:00:00.000Z'),
+	startDate: new Date('2000-12-12T00:00:00.000Z'),
 	endDate: new Date('2000-12-19T00:00:00.000Z'),
 };
 
 const SINGLE_DAY_RANGE = {
-	startDate: new Date('2000-12-19T00:00:00.000Z'),
+	startDate: new Date('2000-12-18T00:00:00.000Z'),
 	endDate: new Date('2000-12-19T00:00:00.000Z'),
 };
 
@@ -243,7 +243,7 @@ const expectStoreExecutions = (params: {
 };
 
 const openDatePicker = async (getByText: (text: string, options?: object) => HTMLElement) => {
-	const trigger = getByText('13 Dec - 19 Dec, 2000', { selector: 'button' });
+	const trigger = getByText('12 Dec - 19 Dec, 2000', { selector: 'button' });
 	expect(trigger).toBeInTheDocument();
 	await userEvent.click(trigger);
 
