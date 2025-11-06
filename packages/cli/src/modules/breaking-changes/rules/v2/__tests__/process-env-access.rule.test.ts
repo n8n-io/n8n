@@ -1,5 +1,5 @@
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
+import { BreakingChangeCategory } from '../../../types';
 import { ProcessEnvAccessRule } from '../process-env-access.rule';
 
 describe('ProcessEnvAccessRule', () => {
@@ -19,7 +19,7 @@ describe('ProcessEnvAccessRule', () => {
 				title: 'Block process.env Access in Expressions and Code nodes',
 				description: 'Direct access to process.env is blocked by default for security',
 				category: BreakingChangeCategory.workflow,
-				severity: BreakingChangeSeverity.high,
+				severity: 'high',
 			});
 		});
 	});
@@ -77,8 +77,8 @@ describe('ProcessEnvAccessRule', () => {
 			expect(result.issues[0]).toMatchObject({
 				title: 'process.env access detected',
 				description:
-					"The following nodes contain process.env access: 'Code'. This will be blocked by default in v2.0.0.",
-				level: IssueLevel.error,
+					"Node with name 'Code' accesses process.env which is blocked by default for security reasons.",
+				level: 'error',
 			});
 		});
 
@@ -95,7 +95,7 @@ describe('ProcessEnvAccessRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues[0]).toMatchObject({
 				title: 'process.env access detected',
-				level: IssueLevel.error,
+				level: 'error',
 			});
 			expect(result.issues[0].description).toContain('HTTP');
 		});
@@ -116,8 +116,8 @@ describe('ProcessEnvAccessRule', () => {
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.issues[0].description).toContain('Code');
-			expect(result.issues[0].description).toContain('HTTP');
-			expect(result.issues[0].description).not.toContain('Set');
+			expect(result.issues[1].description).toContain('HTTP');
+			expect(result.issues).toHaveLength(2);
 		});
 
 		it('should not detect false positives', async () => {

@@ -1,5 +1,5 @@
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
+import { BreakingChangeCategory } from '../../../types';
 import { FileAccessRule } from '../file-access.rule';
 
 describe('FileAccessRule', () => {
@@ -19,7 +19,7 @@ describe('FileAccessRule', () => {
 				title: 'File Access Restrictions',
 				description: 'File access is now restricted to a default directory for security purposes',
 				category: BreakingChangeCategory.workflow,
-				severity: BreakingChangeSeverity.high,
+				severity: 'high',
 			});
 		});
 	});
@@ -61,7 +61,7 @@ describe('FileAccessRule', () => {
 			expect(result.issues[0]).toMatchObject({
 				title: "File access node 'n8n-nodes-base.readWriteFile' with name 'Read File' affected",
 				description: 'File access for this node is now restricted to configured directories.',
-				level: IssueLevel.warning,
+				level: 'warning',
 			});
 		});
 
@@ -75,7 +75,7 @@ describe('FileAccessRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues[0]).toMatchObject({
 				title: "File access node 'n8n-nodes-base.readBinaryFiles' with name 'Read Binary' affected",
-				level: IssueLevel.warning,
+				level: 'warning',
 			});
 		});
 
