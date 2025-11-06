@@ -20,9 +20,9 @@ export class McpOAuthClientsController {
 	) {}
 
 	/**
-	 * Get all OAuth clients
+	 * Get all OAuth clients for the current user
 	 */
-	@GlobalScope('mcp:manage')
+	@GlobalScope('mcp:oauth')
 	@Get('/')
 	async getAllClients(
 		req: AuthenticatedRequest,
