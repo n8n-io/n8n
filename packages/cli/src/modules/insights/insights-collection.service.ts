@@ -125,6 +125,8 @@ export class InsightsCollectionService {
 		// Flush any remaining events
 		this.logger.debug('Flushing remaining insights before shutdown');
 		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
+
+		this.isInitialized = false;
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
