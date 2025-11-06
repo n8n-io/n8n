@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
@@ -17,6 +18,7 @@ let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
 let tokenService: jest.Mocked<McpOAuthTokenService>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
+let userConsentRepository: jest.Mocked<UserConsentRepository>;
 
 describe('McpOAuthService', () => {
 	beforeAll(() => {
@@ -25,6 +27,7 @@ describe('McpOAuthService', () => {
 		oauthClientRepository = mockInstance(OAuthClientRepository);
 		tokenService = mockInstance(McpOAuthTokenService);
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
+		userConsentRepository = mockInstance(UserConsentRepository);
 
 		service = new McpOAuthService(
 			logger,
@@ -32,6 +35,7 @@ describe('McpOAuthService', () => {
 			oauthClientRepository,
 			tokenService,
 			authorizationCodeService,
+			userConsentRepository,
 		);
 	});
 
