@@ -14,10 +14,7 @@ import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
-import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
-import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
-import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import type { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import type { McpOAuthTokenService } from './mcp-oauth-token.service';
@@ -37,9 +34,6 @@ export class McpOAuthService implements OAuthServerProvider {
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly tokenService: McpOAuthTokenService,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
-		private readonly accessTokenRepository: AccessTokenRepository,
-		private readonly refreshTokenRepository: RefreshTokenRepository,
-		private readonly authorizationCodeRepository: AuthorizationCodeRepository,
 		private readonly userConsentRepository: UserConsentRepository,
 	) {}
 

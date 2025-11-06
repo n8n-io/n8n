@@ -5,10 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
-import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
@@ -21,9 +18,6 @@ let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
 let tokenService: jest.Mocked<McpOAuthTokenService>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
-let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
-let refreshTokenRepository: jest.Mocked<RefreshTokenRepository>;
-let authorizationCodeRepository: jest.Mocked<AuthorizationCodeRepository>;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
 
 describe('McpOAuthService', () => {
@@ -33,9 +27,6 @@ describe('McpOAuthService', () => {
 		oauthClientRepository = mockInstance(OAuthClientRepository);
 		tokenService = mockInstance(McpOAuthTokenService);
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
-		accessTokenRepository = mockInstance(AccessTokenRepository);
-		refreshTokenRepository = mockInstance(RefreshTokenRepository);
-		authorizationCodeRepository = mockInstance(AuthorizationCodeRepository);
 		userConsentRepository = mockInstance(UserConsentRepository);
 
 		service = new McpOAuthService(
@@ -44,9 +35,6 @@ describe('McpOAuthService', () => {
 			oauthClientRepository,
 			tokenService,
 			authorizationCodeService,
-			accessTokenRepository,
-			refreshTokenRepository,
-			authorizationCodeRepository,
 			userConsentRepository,
 		);
 	});
