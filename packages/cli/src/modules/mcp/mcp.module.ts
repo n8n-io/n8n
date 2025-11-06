@@ -12,6 +12,8 @@ export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller');
 		await import('./mcp.settings.controller');
+		await import('./mcp.oauth.controller');
+		await import('./mcp.auth.consent.controller');
 
 		// Initialize event relay to handle workflow deactivation
 		const { McpEventRelay } = await import('./mcp.event-relay');
@@ -27,6 +29,18 @@ export class McpModule implements ModuleInterface {
 		const { McpSettingsService } = await import('./mcp.settings.service');
 		const mcpAccessEnabled = await Container.get(McpSettingsService).getEnabled();
 		return { mcpAccessEnabled };
+	}
+
+	async entities() {
+		const { OAuthClient } = await import('./database/entities/oauth-client.entity');
+		const { AuthorizationCode } = await import(
+			'./database/entities/oauth-authorization-code.entity'
+		);
+		const { AccessToken } = await import('./database/entities/oauth-access-token.entity');
+		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity');
+		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity');
+
+		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
 	}
 
 	@OnShutdown()
