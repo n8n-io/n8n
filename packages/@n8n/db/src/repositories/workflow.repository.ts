@@ -313,7 +313,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			typeof options.filter?.parentFolderId === 'string' &&
 			options.filter.parentFolderId !== PROJECT_ROOT &&
 			typeof options.filter?.projectId === 'string' &&
-			(options.filter.query || options.filter.name)
+			options.filter.query
 		) {
 			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
 				options.filter.parentFolderId,
@@ -495,9 +495,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		// Support both 'query' (new) and 'name' (legacy) parameters
-		// 'query' takes precedence if both are provided
-		const searchValue = filter?.query ?? filter?.name;
+		const searchValue = filter?.query;
 
 		if (typeof searchValue === 'string' && searchValue !== '') {
 			const searchTerm = `%${searchValue.toLowerCase()}%`;
