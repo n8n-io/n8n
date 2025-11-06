@@ -155,9 +155,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			name: true,
 		} as const;
 
+		// Transform `query` => `name` for folder repository
+		const folderFilter = options.filter ? { ...options.filter } : undefined;
+		if (folderFilter?.query) {
+			folderFilter.name = folderFilter.query;
+		}
+
 		const folderQueryParameters: ListQuery.Options = {
 			select: commonFields,
-			filter: options.filter,
+			filter: folderFilter,
 		};
 
 		const workflowQueryParameters: ListQuery.Options = {
