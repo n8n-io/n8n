@@ -160,6 +160,26 @@ describe('isFilePathBlocked', () => {
 		);
 		expect(await isFilePathBlocked(allowedPath)).toBe(true);
 	});
+
+	it('should handle non-existent file when it is allowed', async () => {
+		const filePath = '/non/existent/file';
+		const error = new Error('ENOENT');
+		// @ts-expect-error undefined property
+		error.code = 'ENOENT';
+		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
+		expect(await isFilePathBlocked(filePath)).toBe(false);
+	});
+
+	it('should handle non-existent file when it is not allowed', async () => {
+		const filePath = '/non/existent/file';
+		const allowedPath = '/some/allowed/path';
+		process.env[RESTRICT_FILE_ACCESS_TO] = allowedPath;
+		const error = new Error('ENOENT');
+		// @ts-expect-error undefined property
+		error.code = 'ENOENT';
+		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
+		expect(await isFilePathBlocked(filePath)).toBe(true);
+	});
 });
 
 describe('getFileSystemHelperFunctions', () => {
@@ -198,6 +218,19 @@ describe('getFileSystemHelperFunctions', () => {
 		it('should throw when file access is blocked', async () => {
 			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
 			(fsAccess as jest.Mock).mockResolvedValueOnce({});
+			await expect(helperFunctions.createReadStream('/blocked/path')).rejects.toThrow(
+				'Access to the file is not allowed',
+			);
+		});
+
+		it('should not reveal if file exists if it is within restricted path', async () => {
+			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
+
+			const error = new Error('ENOENT');
+			// @ts-expect-error undefined property
+			error.code = 'ENOENT';
+			(fsAccess as jest.Mock).mockRejectedValueOnce(error);
+
 			await expect(helperFunctions.createReadStream('/blocked/path')).rejects.toThrow(
 				'Access to the file is not allowed',
 			);

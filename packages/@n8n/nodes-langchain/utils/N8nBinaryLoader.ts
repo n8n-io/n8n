@@ -25,7 +25,7 @@ const SUPPORTED_MIME_TYPES = {
 	csvLoader: ['text/csv'],
 	epubLoader: ['application/epub+zip'],
 	docxLoader: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-	textLoader: ['text/plain', 'text/mdx', 'text/md'],
+	textLoader: ['text/plain', 'text/mdx', 'text/md', 'text/markdown'],
 	jsonLoader: ['application/json'],
 };
 
@@ -91,7 +91,7 @@ export class N8nBinaryLoader {
 			const binaryBuffer = await this.context.helpers.binaryToBuffer(
 				await this.context.helpers.getBinaryStream(binaryData.id),
 			);
-			return new Blob([binaryBuffer], {
+			return new Blob([binaryBuffer as BlobPart], {
 				type: mimeType,
 			});
 		} else {

@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"target": "ES2015",
+		"module": "ESNext",
+		"moduleResolution": "node",
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"strict": false,
+		"outDir": "dist",
+		"rootDir": "src",
+		"declaration": true,
+		"declarationMap": true,
+		"downlevelIteration": true,
+		"skipLibCheck": true
+	},
+	"include": ["src/**/*"],
+	"exclude": ["dist", "node_modules", "**/*.test.ts"]
+}

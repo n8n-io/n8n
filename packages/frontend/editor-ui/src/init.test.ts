@@ -1,32 +1,34 @@
-import { useUsersStore } from '@/stores/users.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { EnterpriseEditionFeature } from '@/app/constants';
+import { initializeAuthenticatedFeatures, initializeCore, state } from '@/init';
+import { UserManagementAuthenticationMethod } from '@/Interface';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useVersionsStore } from '@/app/stores/versions.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
+import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { state, initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useVersionsStore } from '@/stores/versions.store';
 import { AxiosError } from 'axios';
 import merge from 'lodash/merge';
-import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { STORES } from '@n8n/stores';
-import { useSSOStore } from '@/stores/sso.store';
-import { UserManagementAuthenticationMethod } from '@/Interface';
-import type { IUser } from '@/Interface';
-import { EnterpriseEditionFeature } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import type { Cloud } from '@n8n/rest-api-client';
+import { setActivePinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
+import { telemetry } from '@/app/plugins/telemetry';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
 }));
 
-vi.mock('@/stores/users.store', () => ({
+vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
@@ -34,19 +36,16 @@ vi.mock('@/stores/users.store', () => ({
 	}),
 }));
 
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: vi.fn(),
-}));
-
 describe('Init', () => {
-	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let cloudPlanStore: ReturnType<typeof mockedStore<typeof useCloudPlanStore>>;
-	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
-	let usersStore: ReturnType<typeof useUsersStore>;
-	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-	let versionsStore: ReturnType<typeof useVersionsStore>;
-	let ssoStore: ReturnType<typeof useSSOStore>;
-	let uiStore: ReturnType<typeof useUIStore>;
+	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
+	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let versionsStore: ReturnType<typeof mockedStore<typeof useVersionsStore>>;
+	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
+	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
+	let bannersStore: ReturnType<typeof mockedStore<typeof useBannersStore>>;
 
 	beforeEach(() => {
 		setActivePinia(
@@ -57,15 +56,16 @@ describe('Init', () => {
 			}),
 		);
 
-		settingsStore = useSettingsStore();
+		settingsStore = mockedStore(useSettingsStore);
 		cloudPlanStore = mockedStore(useCloudPlanStore);
-		sourceControlStore = useSourceControlStore();
-		nodeTypesStore = useNodeTypesStore();
-		usersStore = useUsersStore();
-		versionsStore = useVersionsStore();
-		versionsStore = useVersionsStore();
-		ssoStore = useSSOStore();
-		uiStore = useUIStore();
+		sourceControlStore = mockedStore(useSourceControlStore);
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		usersStore = mockedStore(useUsersStore);
+		versionsStore = mockedStore(useVersionsStore);
+		versionsStore = mockedStore(useVersionsStore);
+		ssoStore = mockedStore(useSSOStore);
+		rootStore = mockedStore(useRootStore);
+		bannersStore = mockedStore(useBannersStore);
 	});
 
 	describe('initializeCore()', () => {
@@ -118,6 +118,19 @@ describe('Init', () => {
 			expect(registerLogoutHookSpy).toHaveBeenCalled();
 		});
 
+		it('should correctly identify the user for telemetry', async () => {
+			const telemetryIdentifySpy = vi.spyOn(telemetry, 'identify');
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
+			rootStore.instanceId = 'testInstanceId';
+			rootStore.versionCli = '1.102.0';
+
+			await initializeCore();
+
+			expect(telemetryIdentifySpy).toHaveBeenCalledWith('testInstanceId', 'userId', '1.102.0');
+		});
+
 		it('should initialize ssoStore with settings SSO configuration', async () => {
 			const saml = { loginEnabled: true, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };
@@ -140,14 +153,14 @@ describe('Init', () => {
 			});
 		});
 
-		it('should initialize uiStore with banners based on settings', async () => {
+		it('should initialize bannersStore with banners based on settings', async () => {
 			settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner = true;
 			settingsStore.settings.banners = { dismissed: [] };
 			settingsStore.settings.versionCli = '1.2.3';
 
 			await initializeCore();
 
-			expect(uiStore.initialize).toHaveBeenCalledWith({
+			expect(bannersStore.loadStaticBanners).toHaveBeenCalledWith({
 				banners: ['NON_PRODUCTION_LICENSE', 'V1'],
 			});
 		});
@@ -155,12 +168,10 @@ describe('Init', () => {
 
 	describe('initializeAuthenticatedFeatures()', () => {
 		beforeEach(() => {
-			vi.spyOn(settingsStore, 'isCloudDeployment', 'get').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'isTemplatesEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
-			vi.mocked(useRootStore).mockReturnValue({ defaultLocale: 'es' } as ReturnType<
-				typeof useRootStore
-			>);
+			settingsStore.isCloudDeployment = true;
+			settingsStore.isTemplatesEnabled = true;
+			sourceControlStore.isEnterpriseSourceControlEnabled = true;
+			rootStore.defaultLocale = 'es';
 		});
 
 		afterEach(() => {
@@ -172,9 +183,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = null;
 
 			await initializeAuthenticatedFeatures(false);
 			expect(cloudStoreSpy).not.toHaveBeenCalled();
@@ -188,9 +197,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -211,9 +218,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -230,9 +235,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -244,9 +247,7 @@ describe('Init', () => {
 
 		it('should handle source control initialization error', async () => {
 			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
 			vi.spyOn(sourceControlStore, 'getPreferences').mockRejectedValueOnce(
 				new AxiosError('Something went wrong', '404'),
 			);
@@ -285,7 +286,7 @@ describe('Init', () => {
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
+				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
 			});
 
 			it('should push TRIAL banner if trial is active', async () => {
@@ -301,7 +302,7 @@ describe('Init', () => {
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
+				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
 			});
 
 			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {
@@ -317,7 +318,7 @@ describe('Init', () => {
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('EMAIL_CONFIRMATION');
+				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('EMAIL_CONFIRMATION');
 			});
 
 			it('should not push EMAIL_CONFIRMATION banner if user cloud account does not exist', async () => {
@@ -333,7 +334,7 @@ describe('Init', () => {
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(uiStore.pushBannerToStack).not.toHaveBeenCalledWith('EMAIL_CONFIRMATION');
+				expect(bannersStore.pushBannerToStack).not.toHaveBeenCalledWith('EMAIL_CONFIRMATION');
 			});
 		});
 	});

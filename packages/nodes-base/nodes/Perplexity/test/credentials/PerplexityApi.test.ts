@@ -16,7 +16,7 @@ describe('Perplexity API Credentials', () => {
 				url: 'https://api.perplexity.ai/chat/completions',
 				method: 'POST',
 				body: {
-					model: 'r1-1776',
+					model: 'sonar',
 					messages: [{ role: 'user', content: 'test' }],
 				},
 				headers: {

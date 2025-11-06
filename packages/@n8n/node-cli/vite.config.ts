@@ -1,4 +1,9 @@
-import { vitestConfig } from '@n8n/vitest-config/node';
-import { defineConfig, mergeConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 
-export default defineConfig({ test: { globals: true, disableConsoleIntercept: true } });
+export default defineConfig({
+	test: {
+		globals: true,
+		disableConsoleIntercept: true,
+		setupFiles: ['src/test-utils/setup.ts'],
+	},
+});

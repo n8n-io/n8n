@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { CredentialSharingRole, ProjectRole } from '@n8n/permissions';
+import type { CredentialSharingRole } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 
@@ -14,7 +14,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {
 		return await this.find({
-			relations: { credentials: true, project: { projectRelations: { user: true } } },
+			relations: { credentials: true, project: { projectRelations: { user: true, role: true } } },
 			where: {
 				credentialsId: In(credentialIds),
 				role,
@@ -108,8 +108,8 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findCredentialsByRoles(
 		userIds: string[],
-		projectRoles: ProjectRole[],
-		credentialRoles: CredentialSharingRole[],
+		projectRoles: string[],
+		credentialRoles: string[],
 		trx?: EntityManager,
 	) {
 		trx = trx ?? this.manager;
@@ -120,7 +120,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				project: {
 					projectRelations: {
 						userId: In(userIds),
-						role: In(projectRoles),
+						role: { slug: In(projectRoles) },
 					},
 				},
 			},

@@ -1,9 +1,8 @@
 <script setup lang="ts" generic="ColumnType extends ColumnHeader">
 import { computed, ref } from 'vue';
 
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-import type { ButtonSize, IconSize } from '@n8n/design-system/types';
-
+import { useI18n } from '../../composables/useI18n';
+import type { ButtonSize, IconSize } from '../../types';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nPopoverReka from '../N8nPopoverReka/N8nPopoverReka.vue';
@@ -142,84 +141,86 @@ const handleDragEnd = () => {
 			</N8nButton>
 		</template>
 		<template #content>
-			<div
-				v-if="visibleColumns.length"
-				:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
-				data-testid="visible-columns-section"
-			>
-				<h5 :class="$style.header">
-					{{ t('tableControlsButton.shown') }}
-				</h5>
-				<div v-for="column in visibleColumns" :key="column.key" :class="$style.columnWrapper">
+			<div :class="$style.contentContainer">
+				<div
+					v-if="visibleColumns.length"
+					:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
+					data-testid="visible-columns-section"
+				>
+					<h5 :class="$style.header">
+						{{ t('tableControlsButton.shown') }}
+					</h5>
+					<div v-for="column in visibleColumns" :key="column.key" :class="$style.columnWrapper">
+						<div
+							v-if="dragOverItem === column.key"
+							:class="$style.dropIndicator"
+							data-testid="drop-indicator"
+						></div>
+						<fieldset
+							:class="[
+								$style.column,
+								$style.draggable,
+								{ [$style.dragging]: draggedItem === column.key },
+							]"
+							draggable="true"
+							data-testid="visible-column"
+							:data-column-key="column.key"
+							@dragstart="(event) => handleDragStart(event, column.key)"
+							@dragover="(event) => handleDragOver(event, column.key)"
+							@dragleave="handleDragLeave"
+							@drop="(event) => handleDrop(event, column.key)"
+							@dragend="handleDragEnd"
+						>
+							<N8nIcon icon="grip-vertical" :class="$style.grip" />
+							<label>{{ column.label }}</label>
+							<N8nIcon
+								:class="$style.visibilityToggle"
+								icon="eye"
+								data-testid="visibility-toggle-visible"
+								@click="() => emit('update:columnVisibility', column.key, false)"
+							/>
+						</fieldset>
+					</div>
+					<!-- Drop zone at the end -->
 					<div
-						v-if="dragOverItem === column.key"
-						:class="$style.dropIndicator"
-						data-testid="drop-indicator"
-					></div>
-					<fieldset
-						:class="[
-							$style.column,
-							$style.draggable,
-							{ [$style.dragging]: draggedItem === column.key },
-						]"
-						draggable="true"
-						data-testid="visible-column"
-						:data-column-key="column.key"
-						@dragstart="(event) => handleDragStart(event, column.key)"
-						@dragover="(event) => handleDragOver(event, column.key)"
+						:class="$style.endDropZone"
+						data-testid="end-drop-zone"
+						@dragover="(event) => handleDragOver(event, 'END')"
 						@dragleave="handleDragLeave"
-						@drop="(event) => handleDrop(event, column.key)"
-						@dragend="handleDragEnd"
+						@drop="(event) => handleDrop(event, 'END')"
 					>
-						<N8nIcon icon="grip-vertical" :class="$style.grip" />
+						<div
+							v-if="dragOverItem === 'END'"
+							:class="$style.dropIndicator"
+							data-testid="drop-indicator"
+						></div>
+					</div>
+				</div>
+				<div
+					v-if="hiddenColumns.length"
+					:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
+					data-testid="hidden-columns-section"
+				>
+					<h4 :class="$style.header">
+						{{ t('tableControlsButton.hidden') }}
+					</h4>
+					<fieldset
+						v-for="column in hiddenColumns"
+						:key="column.key"
+						:class="[$style.column, $style.hidden]"
+						data-testid="hidden-column"
+						:data-column-key="column.key"
+					>
+						<N8nIcon icon="grip-vertical" :class="[$style.grip, $style.hidden]" />
 						<label>{{ column.label }}</label>
 						<N8nIcon
 							:class="$style.visibilityToggle"
-							icon="eye"
-							data-testid="visibility-toggle-visible"
-							@click="() => emit('update:columnVisibility', column.key, false)"
+							icon="eye-off"
+							data-testid="visibility-toggle-hidden"
+							@click="() => emit('update:columnVisibility', column.key, true)"
 						/>
 					</fieldset>
 				</div>
-				<!-- Drop zone at the end -->
-				<div
-					:class="$style.endDropZone"
-					data-testid="end-drop-zone"
-					@dragover="(event) => handleDragOver(event, 'END')"
-					@dragleave="handleDragLeave"
-					@drop="(event) => handleDrop(event, 'END')"
-				>
-					<div
-						v-if="dragOverItem === 'END'"
-						:class="$style.dropIndicator"
-						data-testid="drop-indicator"
-					></div>
-				</div>
-			</div>
-			<div
-				v-if="hiddenColumns.length"
-				:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
-				data-testid="hidden-columns-section"
-			>
-				<h4 :class="$style.header">
-					{{ t('tableControlsButton.hidden') }}
-				</h4>
-				<fieldset
-					v-for="column in hiddenColumns"
-					:key="column.key"
-					:class="[$style.column, $style.hidden]"
-					data-testid="hidden-column"
-					:data-column-key="column.key"
-				>
-					<N8nIcon icon="grip-vertical" :class="[$style.grip, $style.hidden]" />
-					<label>{{ column.label }}</label>
-					<N8nIcon
-						:class="$style.visibilityToggle"
-						icon="eye-off"
-						data-testid="visibility-toggle-hidden"
-						@click="() => emit('update:columnVisibility', column.key, true)"
-					/>
-				</fieldset>
 			</div>
 		</template>
 	</N8nPopoverReka>
@@ -227,13 +228,13 @@ const handleDragEnd = () => {
 
 <style lang="scss" module>
 .header {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-xs);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--bold);
+	margin-bottom: var(--spacing--xs);
 }
 
 .grip {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	cursor: move;
 
 	&.hidden {
@@ -241,15 +242,19 @@ const handleDragEnd = () => {
 	}
 }
 
+.contentContainer {
+	padding: var(--spacing--sm);
+}
+
 .column {
 	display: flex;
 	gap: 12px;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: 6px 0;
 	align-items: center;
 
 	label {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size--xs);
 		flex-grow: 1;
 	}
 }
@@ -278,7 +283,7 @@ const handleDragEnd = () => {
 	left: 0;
 	right: 0;
 	height: 3px;
-	background-color: var(--prim-color-secondary);
+	background-color: var(--color--secondary);
 	border-radius: 2px;
 	z-index: 10;
 }
@@ -290,10 +295,10 @@ const handleDragEnd = () => {
 }
 
 .hidden {
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 
 	label {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 

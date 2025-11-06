@@ -31,7 +31,37 @@ export interface IUserManagementSettings {
 	authenticationMethod: AuthenticationMethod;
 }
 
+export interface IEnterpriseSettings {
+	sharing: boolean;
+	ldap: boolean;
+	saml: boolean;
+	oidc: boolean;
+	mfaEnforcement: boolean;
+	logStreaming: boolean;
+	advancedExecutionFilters: boolean;
+	variables: boolean;
+	sourceControl: boolean;
+	auditLogs: boolean;
+	externalSecrets: boolean;
+	showNonProdBanner: boolean;
+	debugInEditor: boolean;
+	binaryDataS3: boolean;
+	workflowHistory: boolean;
+	workerView: boolean;
+	advancedPermissions: boolean;
+	apiKeyScopes: boolean;
+	workflowDiffs: boolean;
+	provisioning: boolean;
+	projects: {
+		team: {
+			limit: number;
+		};
+	};
+	customRoles: boolean;
+}
+
 export interface FrontendSettings {
+	settingsMode?: 'public' | 'authenticated';
 	inE2ETests: boolean;
 	isDocker: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
@@ -59,7 +89,9 @@ export interface FrontendSettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	nodeJsVersion: string;
+	nodeEnv: string | undefined;
 	concurrency: number;
+	isNativePythonRunnerEnabled: boolean;
 	authCookie: {
 		secure: boolean;
 	};
@@ -70,6 +102,10 @@ export interface FrontendSettings {
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
+	dynamicBanners: {
+		endpoint: string;
+		enabled: boolean;
+	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
@@ -79,6 +115,10 @@ export interface FrontendSettings {
 		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
+		proxy: string;
+	};
+	dataTables: {
+		maxSize: number;
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
@@ -123,9 +163,14 @@ export interface FrontendSettings {
 	unverifiedCommunityNodesEnabled: boolean;
 	aiAssistant: {
 		enabled: boolean;
+		setup: boolean;
 	};
 	askAi: {
 		enabled: boolean;
+	};
+	aiBuilder: {
+		enabled: boolean;
+		setup: boolean;
 	};
 	deployment: {
 		type: string;
@@ -134,31 +179,7 @@ export interface FrontendSettings {
 		builtIn?: string[];
 		external?: string[];
 	};
-	enterprise: {
-		sharing: boolean;
-		ldap: boolean;
-		saml: boolean;
-		oidc: boolean;
-		mfaEnforcement: boolean;
-		logStreaming: boolean;
-		advancedExecutionFilters: boolean;
-		variables: boolean;
-		sourceControl: boolean;
-		auditLogs: boolean;
-		externalSecrets: boolean;
-		showNonProdBanner: boolean;
-		debugInEditor: boolean;
-		binaryDataS3: boolean;
-		workflowHistory: boolean;
-		workerView: boolean;
-		advancedPermissions: boolean;
-		apiKeyScopes: boolean;
-		projects: {
-			team: {
-				limit: number;
-			};
-		};
-	};
+	enterprise: IEnterpriseSettings;
 	hideUsagePage: boolean;
 	license: {
 		planName?: string;
@@ -195,9 +216,6 @@ export interface FrontendSettings {
 		blockFileAccessToN8nFiles: boolean;
 	};
 	easyAIWorkflowOnboarded: boolean;
-	partialExecution: {
-		version: 1 | 2;
-	};
 	evaluation: {
 		quota: number;
 	};
@@ -219,6 +237,14 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+	};
+
+	/**
+	 * Client settings for MCP module.
+	 */
+	mcp?: {
+		/** Whether MCP access is enabled in the instance. */
+		mcpAccessEnabled: boolean;
 	};
 };
 

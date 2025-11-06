@@ -6,6 +6,43 @@ export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
+export {
+	chatHubConversationModelSchema,
+	type ChatModelDto,
+	type ChatHubOpenAIModel,
+	type ChatHubAnthropicModel,
+	type ChatHubGoogleModel,
+	type ChatHubBaseLLMModel,
+	type ChatHubN8nModel,
+	type ChatHubCustomAgentModel,
+	type ChatHubConversationModel,
+	chatHubProviderSchema,
+	chatHubLLMProviderSchema,
+	type ChatHubProvider,
+	type ChatHubLLMProvider,
+	type ChatHubMessageType,
+	type ChatHubMessageStatus,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	chatModelsRequestSchema,
+	emptyChatModelsResponse,
+	type ChatModelsRequest,
+	type ChatModelsResponse,
+	ChatHubSendMessageRequest,
+	ChatHubRegenerateMessageRequest,
+	ChatHubEditMessageRequest,
+	ChatHubUpdateConversationRequest,
+	type ChatMessageId,
+	type ChatSessionId,
+	type ChatHubMessageDto,
+	type ChatHubSessionDto,
+	type ChatHubConversationDto,
+	type ChatHubConversationResponse,
+	type ChatHubConversationsResponse,
+	type ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
+	type EnrichedStructuredChunk,
+} from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';
@@ -36,6 +73,7 @@ export {
 	type InsightsByWorkflow,
 	type InsightsByTime,
 	type InsightsDateRange,
+	type RestrictedInsightsByTime,
 } from './schemas/insights.schema';
 
 export {
@@ -44,4 +82,46 @@ export {
 	type User,
 	type UsersList,
 	usersListSchema,
+	userBaseSchema,
+	userDetailSchema,
 } from './schemas/user.schema';
+
+export {
+	DATA_TABLE_COLUMN_REGEX,
+	DATA_TABLE_COLUMN_MAX_LENGTH,
+	DATA_TABLE_COLUMN_ERROR_MESSAGE,
+	type DataTable,
+	type DataTableColumn,
+	type DataTableCreateColumnSchema,
+	type DataTableListFilter,
+	type DataTableListOptions,
+	dateTimeSchema,
+	dataTableColumnNameSchema,
+} from './schemas/data-table.schema';
+
+export type {
+	DataTableFilter,
+	DataTableFilterConditionType,
+} from './schemas/data-table-filter.schema';
+
+export type {
+	ExternalSecretsProvider,
+	ExternalSecretsProviderSecret,
+	ExternalSecretsProviderData,
+	ExternalSecretsProviderProperty,
+	ExternalSecretsProviderState,
+} from './schemas/external-secrets.schema';
+
+export type { UsageState } from './schemas/usage.schema';
+
+export type {
+	BreakingChangeRuleSeverity,
+	BreakingChangeRecommendation,
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeInstanceIssue,
+	BreakingChangeWorkflowIssue,
+	BreakingChangeInstanceRuleResult,
+	BreakingChangeWorkflowRuleResult,
+	BreakingChangeReportResult,
+	BreakingChangeLightReportResult,
+} from './schemas/breaking-changes.schema';

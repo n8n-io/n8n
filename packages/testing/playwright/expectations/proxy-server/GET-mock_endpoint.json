@@ -1,0 +1,26 @@
+{
+	"httpRequest": {
+		"method": "GET",
+		"path": "/mock-endpoint"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"headers": {
+			"Content-Type": ["application/json"]
+		},
+		"body": {
+			"userId": 1,
+			"id": 1,
+			"title": "delectus aut autem",
+			"completed": false
+		}
+	},
+	"id": "511d9c87-9ee3-4af8-8729-ca13b0a70e89",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1
+	}
+}

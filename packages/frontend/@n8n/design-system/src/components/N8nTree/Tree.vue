@@ -91,7 +91,7 @@ const N8nTree = getCurrentInstance()?.type;
 </template>
 
 <style lang="scss" module>
-$--spacing: var(--spacing-s);
+$--spacing: var(--spacing--sm);
 
 .indent {
 	margin-left: $--spacing;

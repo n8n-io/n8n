@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import InlineTextEdit from './InlineTextEdit.vue';
 
@@ -15,7 +15,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 	template: `
 		<div class="story">
-			<N8nInlineTextEdit v-bind="args" />
+			<InlineTextEdit v-bind="args" />
 		</div>
 	`,
 });

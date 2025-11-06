@@ -15,6 +15,12 @@
                 }
             }
         },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "createdDateTime": {
             "type": "string"
         },
@@ -40,5 +46,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 6
 }

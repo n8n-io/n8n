@@ -14,6 +14,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	WAIT_NODE_TYPE,
+	WorkflowConfigurationError,
 	jsonParse,
 } from 'n8n-workflow';
 import sanitize from 'sanitize-html';
@@ -22,7 +23,7 @@ import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
 import { validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
-import type { FormTriggerData, FormTriggerInput } from '../interfaces';
+import type { FormTriggerData, FormField } from '../interfaces';
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -54,6 +55,14 @@ export function sanitizeHtml(text: string) {
 			'ol',
 			'li',
 			'p',
+			'table',
+			'thead',
+			'tbody',
+			'tfoot',
+			'td',
+			'tr',
+			'th',
+			'br',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
@@ -69,6 +78,8 @@ export function sanitizeHtml(text: string) {
 				'referrerpolicy',
 			],
 			source: ['src', 'type'],
+			td: ['colspan', 'rowspan', 'scope', 'headers'],
+			th: ['colspan', 'rowspan', 'scope', 'headers'],
 		},
 		allowedSchemes: ['https', 'http'],
 		allowedSchemesByTag: {
@@ -187,7 +198,7 @@ export function prepareFormData({
 	for (const [index, field] of formFields.entries()) {
 		const { fieldType, requiredField, multiselect, placeholder } = field;
 
-		const input: IDataObject = {
+		const input: FormField = {
 			id: `field-${index}`,
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
@@ -196,13 +207,22 @@ export function prepareFormData({
 			placeholder,
 		};
 
-		if (multiselect) {
+		if (multiselect || (fieldType && ['radio', 'checkbox'].includes(fieldType))) {
 			input.isMultiSelect = true;
 			input.multiSelectOptions =
 				field.fieldOptions?.values.map((e, i) => ({
 					id: `option${i}_${input.id}`,
 					label: e.option,
 				})) ?? [];
+
+			if (fieldType === 'radio') {
+				input.radioSelect = 'radio';
+			} else if (field.limitSelection === 'exact') {
+				input.exactSelectedOptions = field.numberOfSelections;
+			} else if (field.limitSelection === 'range') {
+				input.minSelectedOptions = field.minSelections;
+				input.maxSelectedOptions = field.maxSelections;
+			}
 		} else if (fieldType === 'file') {
 			input.isFileInput = true;
 			input.acceptFileTypes = field.acceptFileTypes;
@@ -226,7 +246,7 @@ export function prepareFormData({
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
 		}
 
-		formData.formFields.push(input as FormTriggerInput);
+		formData.formFields.push(input);
 	}
 
 	return formData;
@@ -253,9 +273,9 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 	}
 
 	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
-		throw new NodeOperationError(
+		throw new WorkflowConfigurationError(
 			context.getNode(),
-			new Error(`${context.getNode().name} node not correctly configured`),
+			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
 					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
@@ -305,8 +325,15 @@ export function addFormResponseDataToReturnItem(
 		if (field.fieldType === 'text') {
 			value = String(value).trim();
 		}
-		if (field.multiselect && typeof value === 'string') {
+		if (
+			(field.multiselect || field.fieldType === 'checkbox' || field.fieldType === 'radio') &&
+			typeof value === 'string'
+		) {
 			value = jsonParse(value);
+
+			if (field.fieldType === 'radio' && Array.isArray(value)) {
+				value = value[0];
+			}
 		}
 		if (field.fieldType === 'date' && value && field.formatDate !== '') {
 			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);

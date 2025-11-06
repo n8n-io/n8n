@@ -1,52 +1,41 @@
 // Primary Theme Color
-$color-primary: var(--color-primary);
+$color-primary: var(--color--primary);
 
 // Dialog
-$custom-dialog-text-color: var(--color-text-dark);
-$custom-dialog-background: var(--color-background-xlight);
+$custom-dialog-text-color: var(--color--text--shade-1);
+$custom-dialog-background: var(--color--background--light-3);
 
-$custom-font-black: var(--color-text-dark);
-$custom-font-dark: var(--color-text-dark);
-$custom-font-light: var(--color-text-light);
-$custom-font-very-light: var(--color-text-light);
+$custom-font-black: var(--color--text--shade-1);
+$custom-font-dark: var(--color--text--shade-1);
+$custom-font-light: var(--color--text--tint-1);
+$custom-font-very-light: var(--color--text--tint-1);
 
-$custom-expression-text: var(--color-secondary);
-$custom-expression-background: var(--color-background-light);
+$custom-expression-text: var(--color--secondary);
+$custom-expression-background: var(--color--background--light-2);
 
 // Badge
-$badge-danger-color: var(--color-danger);
-$badge-danger-background-color: var(--color-primary-tint-3);
-$badge-danger-border-color: var(--color-primary-tint-2);
-$badge-warning-background-color: hsla(
-	var(--color-warning-h),
-	var(--color-warning-s),
-	var(--color-warning-l),
-	0.3
-);
-$badge-warning-color: hsla(
-	var(--color-warning-h),
-	var(--color-warning-s),
-	var(--color-warning-l),
-	0.3
-);
-$badge-warning-color: var(--color-text-dark);
+$badge-danger-color: var(--color--danger);
+$badge-danger-background-color: var(--color--primary--tint-3);
+$badge-danger-border-color: var(--color--primary--tint-2);
+$badge-warning-background-color: var(--color--warning--tint-2);
+$badge-warning-color: var(--color--text--shade-1);
 
 // Warning tooltip
-$warning-tooltip-color: var(--color-danger);
+$warning-tooltip-color: var(--color--danger);
 
 // sass variable is used for scss files
-$header-height: calc(var(--header-height) * 1px);
+$header-height: calc(var(--header--height) * 1px);
 
 // sidebar
 $sidebar-width: 65px;
 $sidebar-expanded-width: 200px;
-$sidebar-inactive-color: var(--color-foreground-xdark);
-$sidebar-active-color: $color-primary;
+$sidebar-inactive-color: var(--color--foreground--shade-2);
+$sidebar-active-color: var(--color--primary);
 
 // gifts notification
-$gift-notification-active-color: $color-primary;
-$gift-notification-inner-color: $color-primary;
-$gift-notification-outer-color: var(--color-text-xlight);
+$gift-notification-active-color: var(--color--primary);
+$gift-notification-inner-color: var(--color--primary);
+$gift-notification-outer-color: var(--color--text--tint-3);
 
 // based on element.io breakpoints
 $breakpoint-2xs: 600px;
@@ -56,55 +45,49 @@ $breakpoint-md: 1200px;
 $breakpoint-lg: 1920px;
 
 // tags
-$tag-background-color: var(--color-foreground-base);
-$tag-text-color: var(--color-text-dark);
-$tag-close-background-color: var(--color-text-light);
-$tag-close-background-hover-color: var(--color-text-dark);
+$tag-background-color: var(--color--foreground);
+$tag-text-color: var(--color--text--shade-1);
+$tag-close-background-color: var(--color--text--tint-1);
+$tag-close-background-hover-color: var(--color--text--shade-1);
 
 // Node creator
 $node-creator-width: 385px;
-$node-creator-text-color: var(--color-text-dark);
-$node-creator-select-background-color: var(--color-background-base);
-$node-creator-background-color: var(--color-background-xlight);
-$node-creator-search-background-color: var(--color-background-xlight);
-$node-creator-border-color: var(--color-foreground-base);
-$node-creator-item-hover-border-color: var(--color-text-light);
-$node-creator-arrow-color: var(--color-text-light);
-$node-creator-no-results-background-color: var(--color-background-xlight);
-$node-creator-close-button-color: var(--color-text-xlight);
-$node-creator-search-clear-color: var(--color-text-xlight);
-$node-creator-search-clear-background-color: var(--color-text-light);
-$node-creator-search-clear-background-color-hover: var(--color-text-base);
-$node-creator-search-placeholder-color: var(--color-text-light);
-$node-creator-subcategory-panel-header-bacground-color: var(--color-background-base);
-$node-creator-description-color: var(--color-text-base);
+$node-creator-text-color: var(--color--text--shade-1);
+$node-creator-select-background-color: var(--color--background);
+$node-creator-background-color: var(--color--background--light-3);
+$node-creator-search-background-color: var(--color--background--light-3);
+$node-creator-border-color: var(--color--foreground);
+$node-creator-item-hover-border-color: var(--color--text--tint-1);
+$node-creator-arrow-color: var(--color--text--tint-1);
+$node-creator-no-results-background-color: var(--color--background--light-3);
+$node-creator-close-button-color: var(--color--text--tint-3);
+$node-creator-search-clear-color: var(--color--text--tint-3);
+$node-creator-search-clear-background-color: var(--color--text--tint-1);
+$node-creator-search-clear-background-color-hover: var(--color--text);
+$node-creator-search-placeholder-color: var(--color--text--tint-1);
+$node-creator-subcategory-panel-header-bacground-color: var(--color--background);
+$node-creator-description-color: var(--color--text);
 
 // trigger icon
-$trigger-icon-border-color: var(--color-text-lighter);
-$trigger-icon-background-color: var(--color-background-xlight);
+$trigger-icon-border-color: var(--color--text--tint-2);
+$trigger-icon-background-color: var(--color--background--light-3);
 
 // drawer
-$drawer-background-color: var(--color-background-xlight);
+$drawer-background-color: var(--color--background--light-3);
 
 // updates-panel
-$updates-panel-info-url-color: $color-primary;
-$updates-panel-border: var(--border-base);
-$updates-panel-dark-background-color: var(--color-background-light);
-$updates-panel-description-text-color: var(--color-text-base);
-$updates-panel-text-color: var(--color-text-dark);
+$updates-panel-info-url-color: var(--color--primary);
+$updates-panel-border: var(--border);
+$updates-panel-dark-background-color: var(--color--background--light-2);
+$updates-panel-description-text-color: var(--color--text);
+$updates-panel-text-color: var(--color--text--shade-1);
 
 // versions card
-$version-card-name-text-color: var(--color-text-base);
-$version-card-background-color: var(--color-background-xlight);
-$version-card-border: var(--border-base);
-$version-card-description-text-color: var(--color-text-base);
-$version-card-release-date-text-color: var(--color-foreground-xdark);
-$version-card-box-shadow-color: hsla(
-	var(--color-background-dark-h),
-	var(--color-background-dark-s),
-	var(--color-background-dark-l),
-	0.07
-);
+$version-card-name-text-color: var(--color--text);
+$version-card-background-color: var(--color--background--light-3);
+$version-card-border: var(--border);
+$version-card-description-text-color: var(--color--text);
+$version-card-release-date-text-color: var(--color--foreground--shade-2);
 
 // supplemental node types
 $supplemental-node-types: ai_chain ai_document ai_embedding ai_languageModel ai_memory

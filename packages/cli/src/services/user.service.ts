@@ -16,6 +16,8 @@ import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { PublicApiKeyService } from './public-api-key.service';
+import { RoleService } from './role.service';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class UserService {
@@ -26,6 +28,8 @@ export class UserService {
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
+		private readonly roleService: RoleService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -64,21 +68,30 @@ export class UserService {
 			mfaAuthenticated?: boolean;
 		},
 	) {
-		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } = user;
+		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, role, ...rest } =
+			user;
 
 		const providerType = authIdentities?.[0]?.providerType;
 
 		let publicUser: PublicUser = {
 			...rest,
+			role: role?.slug,
 			signInType: providerType ?? 'email',
-			isOwner: user.role === 'global:owner',
+			isOwner: user.role.slug === 'global:owner',
 		};
 
 		if (options?.withInviteUrl && !options?.inviterId) {
 			throw new UnexpectedError('Inviter ID is required to generate invite URL');
 		}
 
-		if (options?.withInviteUrl && options?.inviterId && publicUser.isPending) {
+		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
+
+		if (
+			!inviteLinksEmailOnly &&
+			options?.withInviteUrl &&
+			options?.inviterId &&
+			publicUser.isPending
+		) {
 			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
@@ -131,6 +144,8 @@ export class UserService {
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 
+		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
+
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
 				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
@@ -138,7 +153,6 @@ export class UserService {
 					user: {
 						id,
 						email,
-						inviteAcceptUrl,
 						emailSent: false,
 						role,
 					},
@@ -152,13 +166,19 @@ export class UserService {
 					});
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
-						delete invitedUser.user?.inviteAcceptUrl;
 
 						this.eventService.emit('user-transactional-email-sent', {
 							userId: id,
 							messageType: 'New user invite',
 							publicApi: false,
 						});
+					}
+
+					// Only include the invite URL in the response if
+					// the users configuration allows it
+					// and the email was not sent (to allow manual copy-paste)
+					if (!inviteLinksEmailOnly && !result.emailSent) {
+						invitedUser.user.inviteAcceptUrl = inviteAcceptUrl;
 					}
 
 					this.eventService.emit('user-invited', {
@@ -208,13 +228,24 @@ export class UserService {
 				: 'Creating 1 user shell...',
 		);
 
+		// Check that all roles in the invitations exist in the database
+		await this.roleService.checkRolesExist(
+			invitations.map(({ role }) => role),
+			'global',
+		);
+
 		try {
 			await this.getManager().transaction(
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
 							const { user: savedUser } = await this.userRepository.createUserWithProject(
-								{ email, role },
+								{
+									email,
+									role: {
+										slug: role,
+									},
+								},
 								transactionManager,
 							);
 							createdUsers.set(email, savedUser.id);
@@ -239,12 +270,15 @@ export class UserService {
 	}
 
 	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+		// Check that new role exists
+		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
+
 		return await this.userRepository.manager.transaction(async (trx) => {
-			await trx.update(User, { id: targetUser.id }, { role: newRole.newRoleName });
+			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
 
 			const adminDowngradedToMember =
-				user.role === 'global:owner' &&
-				targetUser.role === 'global:admin' &&
+				user.role.slug === 'global:owner' &&
+				targetUser.role.slug === 'global:admin' &&
 				newRole.newRoleName === 'global:member';
 
 			if (adminDowngradedToMember) {

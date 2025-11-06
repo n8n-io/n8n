@@ -21,7 +21,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	member = await createUser({ role: 'global:member' });
+	member = await createUser({ role: { slug: 'global:member' } });
 
 	await utils.initNodeTypes();
 });

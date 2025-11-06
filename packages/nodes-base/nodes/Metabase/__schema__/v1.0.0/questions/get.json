@@ -4,11 +4,20 @@
         "archived": {
             "type": "boolean"
         },
-        "cache_invalidated_at": {
-            "type": "null"
+        "archived_directly": {
+            "type": "boolean"
         },
         "cache_ttl": {
             "type": "null"
+        },
+        "can_delete": {
+            "type": "boolean"
+        },
+        "can_manage_db": {
+            "type": "boolean"
+        },
+        "can_restore": {
+            "type": "boolean"
         },
         "can_run_adhoc_query": {
             "type": "boolean"
@@ -66,9 +75,6 @@
                 "email": {
                     "type": "string"
                 },
-                "first_name": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
                 },
@@ -77,9 +83,6 @@
                 },
                 "is_superuser": {
                     "type": "boolean"
-                },
-                "last_login": {
-                    "type": "string"
                 }
             }
         },
@@ -132,14 +135,84 @@
                 "email": {
                     "type": "string"
                 },
-                "first_name": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
                 },
                 "timestamp": {
                     "type": "string"
+                }
+            }
+        },
+        "moderation_reviews": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "moderated_item_id": {
+                        "type": "integer"
+                    },
+                    "moderated_item_type": {
+                        "type": "string"
+                    },
+                    "moderator_id": {
+                        "type": "integer"
+                    },
+                    "most_recent": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    },
+                    "text": {
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "common_name": {
+                                "type": "string"
+                            },
+                            "date_joined": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "first_name": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "is_qbnewb": {
+                                "type": "boolean"
+                            },
+                            "is_superuser": {
+                                "type": "boolean"
+                            },
+                            "last_login": {
+                                "type": "string"
+                            },
+                            "last_name": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -173,5 +246,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

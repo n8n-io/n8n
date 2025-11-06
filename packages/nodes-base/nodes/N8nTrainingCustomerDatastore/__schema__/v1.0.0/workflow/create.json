@@ -10,6 +10,9 @@
         "id": {
             "type": "string"
         },
+        "isArchived": {
+            "type": "boolean"
+        },
         "meta": {
             "type": "null"
         },
@@ -27,6 +30,20 @@
                     "name": {
                         "type": "string"
                     },
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
                     "type": {
                         "type": "string"
                     }
@@ -35,6 +52,14 @@
         },
         "pinData": {
             "type": "null"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "executionOrder": {
+                    "type": "string"
+                }
+            }
         },
         "triggerCount": {
             "type": "integer"
@@ -46,5 +71,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

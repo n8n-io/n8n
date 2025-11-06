@@ -23,6 +23,22 @@ export const authentication: INodeProperties = {
 	default: 'oAuth2',
 };
 
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Manage tasks in Google Sheets using our pre-built',
+	name: 'preBuiltAgentsCalloutGoogleSheets',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Task management agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'task_management_agent_with_google_sheets',
+		},
+	},
+	default: '',
+};
+
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Sheets',
 	name: 'googleSheets',
@@ -53,6 +69,24 @@ export const versionDescription: INodeTypeDescription = {
 			whenToDisplay: 'beforeExecution',
 			location: 'outputPane',
 		},
+		{
+			type: 'info',
+			message:
+				'Note on using an expression for Sheet: It will be evaluated only once, so all items will use the <em>same</em> sheet. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
+			displayCondition:
+				'={{ $rawParameter.sheetName?.startsWith("=") && $input.all().length > 1 }}',
+			whenToDisplay: 'always',
+			location: 'outputPane',
+		},
+		{
+			type: 'info',
+			message:
+				'Note on using an expression for Document: It will be evaluated only once, so all items will use the <em>same</em> document. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
+			displayCondition:
+				'={{ $rawParameter.documentId?.startsWith("=") && $input.all().length > 1 }}',
+			whenToDisplay: 'always',
+			location: 'outputPane',
+		},
 	],
 	credentials: [
 		{
@@ -76,6 +110,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		preBuiltAgentsCallout,
 		authentication,
 		{
 			displayName: 'Resource',

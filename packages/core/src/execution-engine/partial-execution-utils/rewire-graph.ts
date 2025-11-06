@@ -16,7 +16,7 @@ export function rewireGraph(
 		return graph;
 	}
 
-	const rootNode = [...children][0];
+	const rootNode = [...children][children.size - 1];
 
 	a.ok(rootNode);
 

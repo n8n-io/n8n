@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid';
+
 import type { n8nPage } from '../pages/n8nPage';
 
 export class ProjectComposer {
@@ -10,13 +12,10 @@ export class ProjectComposer {
 	 */
 	async createProject(projectName?: string) {
 		await this.n8n.page.getByTestId('universal-add').click();
-		await Promise.all([
-			this.n8n.page.waitForResponse('**/rest/projects/*'),
-			this.n8n.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click(),
-		]);
+		await this.n8n.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
 		await this.n8n.notifications.waitForNotificationAndClose('saved successfully');
 		await this.n8n.page.waitForLoadState();
-		const projectNameUnique = projectName ?? `Project ${Date.now()}`;
+		const projectNameUnique = projectName ?? `Project ${nanoid(8)}`;
 		await this.n8n.projectSettings.fillProjectName(projectNameUnique);
 		await this.n8n.projectSettings.clickSaveButton();
 		const projectId = this.extractProjectIdFromPage('projects', 'settings');
@@ -37,11 +36,9 @@ export class ProjectComposer {
 		credentialValue: string,
 	) {
 		await this.n8n.sideBar.openNewCredentialDialogForProject(projectName);
-		await this.n8n.credentials.openNewCredentialDialogFromCredentialList(credentialType);
-		await this.n8n.credentials.fillCredentialField(credentialFieldName, credentialValue);
-		await this.n8n.credentials.saveCredential();
-		await this.n8n.notifications.waitForNotificationAndClose('Credential successfully created');
-		await this.n8n.credentials.closeCredentialDialog();
+		await this.n8n.credentials.createCredentialFromCredentialPicker(credentialType, {
+			[credentialFieldName]: credentialValue,
+		});
 	}
 
 	extractIdFromUrl(url: string, beforeWord: string, afterWord: string): string {

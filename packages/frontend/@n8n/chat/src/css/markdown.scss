@@ -122,7 +122,7 @@ body {
 	kbd,
 	samp {
 		font-family:
-			var(--font-family-monospace),
+			var(--font-family--monospace),
 			/* macOS emoji */ 'Apple Color Emoji',
 			/* Windows emoji */ 'Segoe UI Emoji',
 			/* Windows emoji */ 'Segoe UI Symbol',
@@ -147,7 +147,7 @@ body {
 	*/
 	b,
 	strong {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 
 	/*
@@ -155,6 +155,7 @@ body {
 	*/
 	small {
 		font-size: 80%;
+		opacity: 0.8; /* or some other way of differentiating it from body text */
 	}
 
 	/*
@@ -389,6 +390,8 @@ body {
 		max-width: 36rem;
 		min-height: 100%;
 		overflow-x: hidden;
+		background: var(--background-main);
+		color: var(--text-main);
 	}
 	/* ----- Typography ----- */
 
@@ -458,7 +461,7 @@ body {
 		display: block;
 		font-size: 1em;
 		font-style: italic;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 		line-height: 1.3;
 		margin-top: 0.3em;
 	}
@@ -479,13 +482,9 @@ body {
 		font-size: 0.9em;
 	}
 
-	small {
-		font-size: 1em;
-		opacity: 0.8; /* or some other way of differentiating it from body text */
-	}
-
 	mark {
 		background: pink; /* change to proper color, based on theme */
+		padding: 0.1em 0.15em;
 	}
 
 	/*
@@ -502,13 +501,13 @@ body {
 	*/
 	ins {
 		text-decoration: none;
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 
 	blockquote {
 		border-left: 0.3rem solid #7a283a;
 		border-left: 0.3rem solid var(--theme);
-		margin: 0.6rem 0 1.2rem 0;
+		margin: 0.6rem 0 1.2rem;
 		padding-left: 2rem;
 	}
 
@@ -521,13 +520,6 @@ body {
 		margin: 0;
 	}
 	/* ----- Layout ----- */
-
-	body {
-		background: #fefefe;
-		background: var(--background-main);
-		color: #1f1f1f;
-		color: var(--text-main);
-	}
 
 	a {
 		color: #7a283a;
@@ -561,11 +553,6 @@ body {
 		font-size: 1rem;
 	}
 
-	mark {
-		background: pink; /* change to proper color, based on theme */
-		padding: 0.1em 0.15em;
-	}
-
 	kbd, /* different style for kbd? */
 	code {
 		padding: 0.1em 0.25em;
@@ -577,12 +564,6 @@ body {
 	kbd > kbd {
 		padding-left: 0;
 		padding-right: 0;
-	}
-
-	pre {
-		-moz-tab-size: 4;
-		-o-tab-size: 4;
-		tab-size: 4;
 	}
 
 	pre code {

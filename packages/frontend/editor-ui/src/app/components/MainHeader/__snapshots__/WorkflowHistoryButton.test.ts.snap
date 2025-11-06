@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`WorkflowHistoryButton > should be enabled if the feature is enabled and the workflow is not new 1`] = `
+<div>
+  
+  <div
+    class="el-tooltip__trigger"
+    to="[object Object]"
+  >
+    
+    <n8n-icon-button-stub
+      active="false"
+      data-test-id="workflow-history-button"
+      disabled="false"
+      icon="history"
+      loading="false"
+      outline="false"
+      size="medium"
+      text="false"
+      type="highlight"
+    />
+    
+  </div>
+  <!--teleport start-->
+  <!--teleport end-->
+  
+</div>
+`;

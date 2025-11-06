@@ -64,78 +64,6 @@
                 "type": "string"
             }
         },
-        "properties": {
-            "type": "object",
-            "properties": {
-                "canvas": {
-                    "type": "object",
-                    "properties": {
-                        "file_id": {
-                            "type": "string"
-                        },
-                        "quip_thread_id": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "tabs": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "data": {
-                                "type": "object",
-                                "properties": {
-                                    "folder_bookmark_id": {
-                                        "type": "string"
-                                    }
-                                }
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "is_disabled": {
-                                "type": "boolean"
-                            },
-                            "label": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                },
-                "tabz": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "data": {
-                                "type": "object",
-                                "properties": {
-                                    "folder_bookmark_id": {
-                                        "type": "string"
-                                    }
-                                }
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "is_disabled": {
-                                "type": "boolean"
-                            },
-                            "label": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "purpose": {
             "type": "object",
             "properties": {
@@ -177,5 +105,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 3
 }

@@ -4,7 +4,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
@@ -155,7 +155,7 @@ describe('With license unlimited quota:users', () => {
 		test('should return a pending user', async () => {
 			const owner = await createOwnerWithApiKey();
 
-			const { id: memberId } = await createUserShell('global:member');
+			const { id: memberId } = await createUserShell(GLOBAL_MEMBER_ROLE);
 
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 			const response = await authOwnerAgent.get(`/users/${memberId}`).expect(200);

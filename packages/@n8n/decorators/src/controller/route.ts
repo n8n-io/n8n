@@ -9,10 +9,13 @@ interface RouteOptions {
 	usesTemplates?: boolean;
 	/** When this flag is set to true, auth cookie isn't validated, and req.user will not be set */
 	skipAuth?: boolean;
+	allowSkipPreviewAuth?: boolean;
 	/** When this flag is set to true, the auth cookie does not enforce MFA to be used in the token */
 	allowSkipMFA?: boolean;
 	/** When these options are set, calls to this endpoint are rate limited using the options */
 	rateLimit?: boolean | RateLimit;
+	/** When this flag is set to true, the endpoint is protected by API key */
+	apiKeyAuth?: boolean;
 }
 
 const RouteFactory =
@@ -28,7 +31,9 @@ const RouteFactory =
 		routeMetadata.middlewares = options.middlewares ?? [];
 		routeMetadata.usesTemplates = options.usesTemplates ?? false;
 		routeMetadata.skipAuth = options.skipAuth ?? false;
+		routeMetadata.allowSkipPreviewAuth = options.allowSkipPreviewAuth ?? false;
 		routeMetadata.allowSkipMFA = options.allowSkipMFA ?? false;
+		routeMetadata.apiKeyAuth = options.apiKeyAuth ?? false;
 		routeMetadata.rateLimit = options.rateLimit;
 	};
 

@@ -85,6 +85,12 @@ export class MyFeatureModule implements ModuleInterface {
 
     return Container.get(MyFeatureService).settings();
   }
+
+  async context() {
+    const { MyFeatureService } = await import('./my-feature.service');
+
+    return { myFeatureProxy: Container.get(MyFeatureService) };
+  }
 }
 ```
 
@@ -94,6 +100,7 @@ The entrypoint is responsible for providing:
 - **shutdown logic**, e.g. in insights, stop compaction timers,
 - **database entities** to register with `typeorm`, e.g. in insights, the three database entities `InsightsMetadata`, `InsightsByPeriod` and `InsightsRaw`
 - **settings** to send to the client for adjusting the UI, e.g. in insights, `{ summary: true, dashboard: false }`
+- **context** to merge an object into the workflow execution context `WorkflowExecuteAdditionalData`. This allows you to make module functionality available to `core`, namespaced under the module name. For now, you will also need to manually [update the type](https://github.com/n8n-io/n8n/blob/master/packages/core/src/execution-engine/index.ts#L7) of `WorkflowExecuteAdditionalData` to reflect the resulting context.
 
 A module entrypoint may or may not need to implement all of these methods.
 

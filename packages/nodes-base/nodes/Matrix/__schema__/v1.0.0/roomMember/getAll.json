@@ -1,0 +1,58 @@
+{
+    "type": "object",
+    "properties": {
+        "age": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "displayname": {
+                    "type": "string"
+                },
+                "membership": {
+                    "type": "string"
+                }
+            }
+        },
+        "event_id": {
+            "type": "string"
+        },
+        "origin_server_ts": {
+            "type": "integer"
+        },
+        "replaces_state": {
+            "type": "string"
+        },
+        "room_id": {
+            "type": "string"
+        },
+        "sender": {
+            "type": "string"
+        },
+        "state_key": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "unsigned": {
+            "type": "object",
+            "properties": {
+                "age": {
+                    "type": "integer"
+                },
+                "replaces_state": {
+                    "type": "string"
+                }
+            }
+        },
+        "user_id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

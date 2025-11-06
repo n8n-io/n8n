@@ -50,6 +50,7 @@ export class VectorStoreZep extends createVectorStoreNode<ZepVectorStore | ZepCl
 	meta: {
 		displayName: 'Zep Vector Store',
 		name: 'vectorStoreZep',
+		hidden: true,
 		description: 'Work with your data in Zep Vector Store',
 		credentials: [
 			{
@@ -62,6 +63,12 @@ export class VectorStoreZep extends createVectorStoreNode<ZepVectorStore | ZepCl
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorezep/',
 	},
 	sharedFields: [
+		{
+			displayName: 'This Zep integration is deprecated and will be removed in a future version.',
+			name: 'deprecationNotice',
+			type: 'notice',
+			default: '',
+		},
 		{
 			displayName: 'Collection Name',
 			name: 'collectionName',

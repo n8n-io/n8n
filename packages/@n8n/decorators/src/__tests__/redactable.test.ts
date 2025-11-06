@@ -6,21 +6,39 @@ describe('Redactable Decorator', () => {
 	class TestClass {
 		@Redactable()
 		methodWithUser(arg: {
-			user: { id: string; email?: string; firstName?: string; lastName?: string; role: string };
+			user: {
+				id: string;
+				email?: string;
+				firstName?: string;
+				lastName?: string;
+				role: { slug: string };
+			};
 		}) {
 			return arg;
 		}
 
 		@Redactable('inviter')
 		methodWithInviter(arg: {
-			inviter: { id: string; email?: string; firstName?: string; lastName?: string; role: string };
+			inviter: {
+				id: string;
+				email?: string;
+				firstName?: string;
+				lastName?: string;
+				role: { slug: string };
+			};
 		}) {
 			return arg;
 		}
 
 		@Redactable('invitee')
 		methodWithInvitee(arg: {
-			invitee: { id: string; email?: string; firstName?: string; lastName?: string; role: string };
+			invitee: {
+				id: string;
+				email?: string;
+				firstName?: string;
+				lastName?: string;
+				role: { slug: string };
+			};
 		}) {
 			return arg;
 		}
@@ -29,7 +47,13 @@ describe('Redactable Decorator', () => {
 		methodWithMultipleArgs(
 			firstArg: { something: string },
 			secondArg: {
-				user: { id: string; email?: string; firstName?: string; lastName?: string; role: string };
+				user: {
+					id: string;
+					email?: string;
+					firstName?: string;
+					lastName?: string;
+					role: { slug: string };
+				};
 			},
 		) {
 			return { firstArg, secondArg };
@@ -69,7 +93,7 @@ describe('Redactable Decorator', () => {
 					email: 'test@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'admin',
+					role: { slug: 'admin' },
 				},
 			};
 
@@ -91,7 +115,7 @@ describe('Redactable Decorator', () => {
 					email: 'test@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'admin',
+					role: { slug: 'admin' },
 				},
 			};
 
@@ -113,7 +137,7 @@ describe('Redactable Decorator', () => {
 					email: 'test@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'admin',
+					role: { slug: 'admin' },
 				},
 			};
 
@@ -132,7 +156,7 @@ describe('Redactable Decorator', () => {
 			const input = {
 				user: {
 					id: '123',
-					role: 'admin',
+					role: { slug: 'admin' },
 				},
 			};
 
@@ -153,7 +177,7 @@ describe('Redactable Decorator', () => {
 				user: {
 					id: '123',
 					email: 'test@example.com',
-					role: 'admin',
+					role: { slug: 'admin' },
 				},
 			};
 
@@ -182,7 +206,7 @@ describe('Redactable Decorator', () => {
 				user: {
 					id: '123',
 					email: 'test@example.com',
-					role: 'admin',
+					role: { slug: 'admin' },
 				},
 			};
 

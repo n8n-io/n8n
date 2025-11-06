@@ -4,6 +4,7 @@ import { frontendConfig } from '@n8n/eslint-config/frontend';
 export default defineConfig(frontendConfig, {
 	rules: {
 		// TODO: Remove these
+		'n8n-local-rules/no-internal-package-import': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 		'id-denylist': 'warn',
 		'no-case-declarations': 'warn',

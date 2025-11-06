@@ -11,7 +11,7 @@ describe('GoogleGemini transport', () => {
 
 	it('should call httpRequestWithAuthentication with correct parameters', async () => {
 		executeFunctionsMock.getCredentials.mockResolvedValue({
-			url: 'https://custom-url.com',
+			host: 'https://custom-url.com',
 		});
 
 		await apiRequest.call(executeFunctionsMock, 'GET', '/v1beta/models', {

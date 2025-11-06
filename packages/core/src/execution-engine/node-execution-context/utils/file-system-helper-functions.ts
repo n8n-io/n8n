@@ -8,6 +8,7 @@ import {
 	writeFile as fsWriteFile,
 	realpath as fsRealpath,
 } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -34,7 +35,16 @@ const getAllowedPaths = () => {
 
 export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 	const allowedPaths = getAllowedPaths();
-	const resolvedFilePath = await fsRealpath(filePath);
+	let resolvedFilePath = '';
+	try {
+		resolvedFilePath = await fsRealpath(filePath);
+	} catch (error: unknown) {
+		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+			resolvedFilePath = resolve(filePath);
+		} else {
+			throw error;
+		}
+	}
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
 	const restrictedPaths = blockFileAccessToN8nFiles ? getN8nRestrictedPaths() : [];
@@ -53,6 +63,14 @@ export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(filePath) {
+		if (await isFilePathBlocked(filePath.toString())) {
+			const allowedPaths = getAllowedPaths();
+			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
+			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
+				level: 'warning',
+			});
+		}
+
 		try {
 			await fsAccess(filePath);
 		} catch (error) {
@@ -65,13 +83,7 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 					})
 				: error;
 		}
-		if (await isFilePathBlocked(filePath as string)) {
-			const allowedPaths = getAllowedPaths();
-			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
-			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				level: 'warning',
-			});
-		}
+
 		return createReadStream(filePath);
 	},
 

@@ -7,11 +7,13 @@ on:
   pull_request:
     paths:
       - packages/cli/src/databases/**
-      - packages/@n8n/db/**
       - packages/cli/src/modules/*/database/**
+      - packages/cli/src/modules/**/*.entity.ts
+      - packages/cli/src/modules/**/*.repository.ts
       - packages/cli/test/integration/**
       - packages/cli/test/shared/db/**
       - packages/@n8n/db/**
+      - packages/cli/**/__tests__/**
       - .github/workflows/ci-postgres-mysql.yml
       - .github/docker-compose.yml
   pull_request_review:
@@ -51,15 +53,20 @@ jobs:
 
       - name: Test SQLite Pooled
         working-directory: packages/cli
-        run: pnpm jest
+        run: pnpm test:sqlite
 
   mariadb:
     name: MariaDB
     needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
+      DB_MYSQLDB_POOL_SIZE: 1
+      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
+      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
+      DB_MYSQLDB_TIMEOUT: 120000
+      NODE_OPTIONS: '--max-old-space-size=7168'
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -75,18 +82,19 @@ jobs:
 
       - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 60000
+        run: pnpm test:mariadb --testTimeout 120000
 
   mysql:
-    name: MySQL (${{ matrix.service-name }})
+    name: MySQL 8.4
     needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
-    strategy:
-      matrix:
-        service-name: ['mysql-8.0.13', 'mysql-8.4']
     env:
       DB_MYSQLDB_PASSWORD: password
+      DB_MYSQLDB_POOL_SIZE: 1
+      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
+      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
+      DB_MYSQLDB_TIMEOUT: 120000
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -97,12 +105,12 @@ jobs:
         uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
-          services: |
-            ${{ matrix.service-name }}
+          services: mysql-8.4
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 60000
+        # We sleep here due to flakiness with DB tests if we connect to the database too soon
+        run: sleep 2s && pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres
@@ -132,7 +140,7 @@ jobs:
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [mariadb, postgres, mysql]
+    needs: [sqlite-pooled, mariadb, postgres, mysql]
     steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0

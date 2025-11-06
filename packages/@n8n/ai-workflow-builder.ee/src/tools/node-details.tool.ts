@@ -2,6 +2,8 @@ import { tool } from '@langchain/core/tools';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderToolBase } from '@/utils/stream-processor';
+
 import { ValidationError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
@@ -14,6 +16,7 @@ import type { NodeDetailsOutput } from '../types/tools';
  */
 const nodeDetailsSchema = z.object({
 	nodeName: z.string().describe('The exact node type name (e.g., n8n-nodes-base.httpRequest)'),
+	nodeVersion: z.number().describe('The exact node version'),
 	withParameters: z
 		.boolean()
 		.optional()
@@ -122,18 +125,27 @@ function extractNodeDetails(nodeType: INodeTypeDescription): NodeDetails {
 	};
 }
 
+export const NODE_DETAILS_TOOL: BuilderToolBase = {
+	toolName: 'get_node_details',
+	displayTitle: 'Getting node details',
+};
+
 /**
  * Factory function to create the node details tool
  */
 export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
-	return tool(
+	const dynamicTool = tool(
 		(input: unknown, config) => {
-			const reporter = createProgressReporter(config, 'get_node_details');
+			const reporter = createProgressReporter(
+				config,
+				NODE_DETAILS_TOOL.toolName,
+				NODE_DETAILS_TOOL.displayTitle,
+			);
 
 			try {
 				// Validate input using Zod schema
 				const validatedInput = nodeDetailsSchema.parse(input);
-				const { nodeName, withParameters, withConnections } = validatedInput;
+				const { nodeName, nodeVersion, withParameters, withConnections } = validatedInput;
 
 				// Report tool start
 				reporter.start(validatedInput);
@@ -142,7 +154,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				reportProgress(reporter, `Looking up details for ${nodeName}...`);
 
 				// Find the node type
-				const nodeType = findNodeType(nodeName, nodeTypes);
+				const nodeType = findNodeType(nodeName, nodeVersion, nodeTypes);
 
 				if (!nodeType) {
 					const error = createNodeTypeNotFoundError(nodeName);
@@ -179,7 +191,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				const toolError = new ToolExecutionError(
 					error instanceof Error ? error.message : 'Unknown error occurred',
 					{
-						toolName: 'get_node_details',
+						toolName: NODE_DETAILS_TOOL.toolName,
 						cause: error instanceof Error ? error : undefined,
 					},
 				);
@@ -188,10 +200,15 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 			}
 		},
 		{
-			name: 'get_node_details',
+			name: NODE_DETAILS_TOOL.toolName,
 			description:
 				'Get detailed information about a specific n8n node type including properties and available connections. Use this before adding nodes to understand their input/output structure.',
 			schema: nodeDetailsSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		...NODE_DETAILS_TOOL,
+	};
 }

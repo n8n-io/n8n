@@ -10,9 +10,18 @@ export function getMessage(execution: IExecutionResponse) {
 	if (typeof lastNodeExecuted !== 'string') return undefined;
 
 	const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
-	const nodeExecutionData =
-		execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main?.[0];
-	return nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
+	const mainOutputs = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main;
+
+	// Check all main output branches for a message
+	if (mainOutputs && Array.isArray(mainOutputs)) {
+		for (const branch of mainOutputs) {
+			if (branch && Array.isArray(branch) && branch.length > 0 && branch[0].sendMessage) {
+				return branch[0].sendMessage;
+			}
+		}
+	}
+
+	return undefined;
 }
 
 /**

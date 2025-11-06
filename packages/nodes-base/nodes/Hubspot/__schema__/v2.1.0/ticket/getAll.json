@@ -12,7 +12,67 @@
         },
         "portalId": {
             "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "subject": {
+                    "type": "object",
+                    "properties": {
+                        "isEncrypted": {
+                            "type": "boolean"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 1
+    "version": 2
 }

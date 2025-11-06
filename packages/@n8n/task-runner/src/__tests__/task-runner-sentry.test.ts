@@ -136,6 +136,7 @@ describe('TaskRunnerSentry', () => {
 				environment: 'local',
 				serverName: 'test',
 				serverType: 'task_runner',
+				withEventLoopBlockDetection: false,
 			});
 		});
 	});
