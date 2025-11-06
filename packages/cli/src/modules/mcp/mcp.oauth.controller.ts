@@ -47,7 +47,7 @@ export class McpOAuthController {
 		},
 	];
 
-	@Options('/.well-known/oauth-authorization-server', { skipAuth: true })
+	@Options('/.well-known/oauth-authorization-server', { skipAuth: true, usesTemplates: true })
 	metadataOptions(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
 		res.status(204).end();
@@ -74,7 +74,10 @@ export class McpOAuthController {
 		res.json(metadata);
 	}
 
-	@Options('/.well-known/oauth-protected-resource/mcp-server/http', { skipAuth: true })
+	@Options('/.well-known/oauth-protected-resource/mcp-server/http', {
+		skipAuth: true,
+		usesTemplates: true,
+	})
 	protectedResourceMetadataOptions(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
 		res.status(204).end();
