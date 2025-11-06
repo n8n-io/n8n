@@ -266,7 +266,7 @@ export class AwsSqsTrigger implements INodeType {
 				}
 				// In production mode, log the error but don't crash
 				this.logger.error('Error polling SQS queue', {
-					error: error.message,
+					error: error instanceof Error ? error.message : String(error),
 					queueUrl,
 				});
 			}
@@ -295,7 +295,9 @@ export class AwsSqsTrigger implements INodeType {
 					const delay = pollInterval > 0 ? pollInterval : 1000;
 					await new Promise((resolve) => setTimeout(resolve, delay));
 				} catch (error) {
-					this.logger.error('Unexpected error in polling loop', { error: error.message });
+					this.logger.error('Unexpected error in polling loop', {
+						error: error instanceof Error ? error.message : String(error),
+					});
 					// Wait before retrying after error
 					await new Promise((resolve) => setTimeout(resolve, 5000));
 				}
