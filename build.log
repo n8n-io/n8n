@@ -1,0 +1,100 @@
+
+> n8n-monorepo@1.117.0 build /home/alch33my/Desktop/n8n
+> turbo run build
+
+ WARNING  No locally installed `turbo` found in your repository. Using globally installed version (2.5.6), which can cause unexpected behavior.
+
+Installing the version in your repository (2.5.4) before calling `turbo` will result in more predictable behavior across environments.
+turbo 2.5.6
+
+• Packages in scope: @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/chat, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/codemirror-lang-sql, @n8n/composables, @n8n/config, @n8n/constants, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/design-system, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/eslint-plugin-community-nodes, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/scan-community-package, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/task-runner, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-cypress, n8n-editor-ui, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow
+• Running build in 46 packages
+• Remote caching disabled
+n8n-editor-ui:popularity-cache-marker: cache bypass, force executing 7fe428c9f6d52417
+@n8n/extension-sdk:build: cache miss, executing 06fe14715a4bd54c
+@n8n/constants:build: cache miss, executing 442d65222303e77a
+@n8n/permissions:build: cache miss, executing 7f3d7dc6e156379d
+@n8n/json-schema-to-zod:build: cache miss, executing 5d941c83561f46f0
+@n8n/di:build: cache miss, executing e1829ae92858001b
+@n8n/errors:build: cache miss, executing e50e5217be76814d
+@n8n/client-oauth2:build: cache miss, executing 8673ab41d340827c
+@n8n/n8n-benchmark:build: cache miss, executing 972d445682064852
+@n8n/codemirror-lang:build: cache miss, executing c1ee4b7f14d5ff34
+@n8n/di:build: 
+@n8n/di:build: > @n8n/di@0.9.0 build /home/alch33my/Desktop/n8n/packages/@n8n/di
+@n8n/di:build: > tsc -p tsconfig.build.json
+@n8n/di:build: 
+@n8n/client-oauth2:build: 
+@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2
+@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
+@n8n/client-oauth2:build: 
+@n8n/di:build: sh: 1: tsc: not found
+@n8n/client-oauth2:build: sh: 1: tsc: not found
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
+@n8n/extension-sdk:build: 
+@n8n/errors:build: 
+@n8n/errors:build: > @n8n/errors@0.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/errors
+@n8n/errors:build: > tsc -p tsconfig.build.json
+@n8n/errors:build: 
+@n8n/errors:build: sh: 1: tsc: not found
+@n8n/constants:build: 
+@n8n/constants:build: > @n8n/constants@0.13.0 build /home/alch33my/Desktop/n8n/packages/@n8n/constants
+@n8n/constants:build: > tsc -p tsconfig.build.json
+@n8n/constants:build: 
+@n8n/di:build:  ELIFECYCLE  Command failed.
+@n8n/di:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/n8n-benchmark:build: 
+@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/benchmark
+@n8n/n8n-benchmark:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/n8n-benchmark:build: 
+@n8n/client-oauth2:build:  ELIFECYCLE  Command failed.
+@n8n/client-oauth2:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/constants:build: sh: 1: tsc: not found
+@n8n/n8n-benchmark:build: sh: 1: tsc: not found
+n8n-editor-ui:popularity-cache-marker: 
+n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.117.0 popularity-cache-marker /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
+n8n-editor-ui:popularity-cache-marker: 
+@n8n/errors:build:  ELIFECYCLE  Command failed.
+@n8n/permissions:build: 
+@n8n/permissions:build: > @n8n/permissions@0.40.0 build /home/alch33my/Desktop/n8n/packages/@n8n/permissions
+@n8n/permissions:build: > tsc -p tsconfig.build.json
+@n8n/permissions:build: 
+@n8n/errors:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/permissions:build: sh: 1: tsc: not found
+@n8n/n8n-benchmark:build:  ELIFECYCLE  Command failed.
+@n8n/n8n-benchmark:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/constants:build:  ELIFECYCLE  Command failed.
+@n8n/constants:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/permissions:build:  ELIFECYCLE  Command failed.
+@n8n/permissions:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
+@n8n/json-schema-to-zod:build: 
+@n8n/codemirror-lang:build: 
+@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /home/alch33my/Desktop/n8n/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang:build: 
+@n8n/codemirror-lang:build: sh: 1: tsc: not found
+@n8n/client-oauth2:build: ERROR: command finished with error: command (/home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2) /home/alch33my/.local/share/pnpm/.tools/pnpm/10.18.3/bin/pnpm run build exited (1)
+@n8n/stylelint-config:build: cache miss, executing 28ca40edc6bf537f
+@n8n/vitest-config:build: cache miss, executing 28d6f55664f6355d
+@n8n/codemirror-lang:build:  ELIFECYCLE  Command failed.
+@n8n/codemirror-lang:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/json-schema-to-zod:build:  ELIFECYCLE  Command failed.
+@n8n/json-schema-to-zod:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/extension-sdk:build:  ELIFECYCLE  Command failed.
+@n8n/extension-sdk:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
+@n8n/client-oauth2#build: command (/home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2) /home/alch33my/.local/share/pnpm/.tools/pnpm/10.18.3/bin/pnpm run build exited (1)
+
+ Tasks:    0 successful, 12 total
+Cached:    0 cached, 12 total
+  Time:    524ms 
+Failed:    @n8n/client-oauth2#build
+
+ ERROR  run failed: command  exited (1)
+ ELIFECYCLE  Command failed with exit code 1.
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?
