@@ -179,6 +179,7 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			indexingEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -380,7 +381,6 @@ describe('GlobalConfig', () => {
 			provisioning: {
 				scopesProvisionInstanceRole: false,
 				scopesProvisionProjectRoles: false,
-				scopesProvisioningFrequency: 'never',
 				scopesName: 'n8n',
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_projects',
