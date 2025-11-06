@@ -830,17 +830,18 @@ describe('GET /workflows', () => {
 
 	describe('filter', () => {
 		test('should filter workflows by field: query', async () => {
-			await createWorkflow({ name: 'First' }, owner);
-			await createWorkflow({ name: 'Second' }, owner);
+			await createWorkflow({ name: 'First', description: 'A workflow' }, owner);
+			await createWorkflow({ name: 'Second', description: 'Also a workflow' }, owner);
+			await createWorkflow({ name: 'Third', description: 'My first workflow' }, owner);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={"query":"First"}')
+				.query('filter={"query":"first"}')
 				.expect(200);
 
 			expect(response.body).toEqual({
-				count: 1,
-				data: [objectContaining({ name: 'First' })],
+				count: 2,
+				data: [objectContaining({ name: 'First' }), objectContaining({ name: 'Third' })],
 			});
 		});
 
