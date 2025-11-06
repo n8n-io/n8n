@@ -44,22 +44,11 @@ get:
       schema:
         type: string
         example: test,production
-    - name: query
-      in: query
-      required: false
-      explode: false
-      allowReserved: true
-      description: Search workflows by name or description
-      schema:
-        type: string
-        example: My Workflow
     - name: name
       in: query
       required: false
       explode: false
       allowReserved: true
-      deprecated: true
-      description: (Deprecated - use 'query' instead) Search workflows by name only
       schema:
         type: string
         example: My Workflow
