@@ -198,20 +198,17 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Get all OAuth clients (excluding sensitive data)
+	 * Get all OAuth clients for a specific user (excluding sensitive data)
 	 */
-	async getAllClients(): Promise<
-		Array<Omit<OAuthClient, 'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'>>
-	> {
-		const clients = await this.oauthClientRepository.find({
-			order: {
-				createdAt: 'DESC',
-			},
-		});
+	async getAllClients(
+		userId: string,
+	): Promise<Array<Omit<OAuthClient, 'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'>>> {
+		// Get all consents for the user with client information
+		const userConsents = await this.userConsentRepository.findByUserWithClient(userId);
 
-		// Remove sensitive data before returning
-		return clients.map((client) => {
-			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = client;
+		// Extract and sanitize the client information
+		return userConsents.map((consent) => {
+			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = consent.client;
 			return sanitizedClient;
 		});
 	}

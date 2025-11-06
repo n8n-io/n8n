@@ -25,12 +25,12 @@ export class McpOAuthClientsController {
 	@GlobalScope('mcp:manage')
 	@Get('/')
 	async getAllClients(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 	): Promise<ListOAuthClientsResponseDto> {
-		this.logger.debug('Fetching all OAuth clients');
+		this.logger.debug('Fetching all OAuth clients for user', { userId: req.user.id });
 
-		const clients = await this.mcpOAuthService.getAllClients();
+		const clients = await this.mcpOAuthService.getAllClients(req.user.id);
 
 		this.logger.debug(`Found ${clients.length} OAuth clients`);
 
