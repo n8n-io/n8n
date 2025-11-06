@@ -84,7 +84,9 @@ describe('InsightsService (Integration)', () => {
 			jest.clearAllMocks();
 		});
 
-		afterEach(() => {
+		afterEach(async () => {
+			// Shutdown the service to clear timers
+			await insightsService.shutdown();
 			// Clean up spies
 			initSpy.mockRestore();
 			shutdownSpy.mockRestore();
