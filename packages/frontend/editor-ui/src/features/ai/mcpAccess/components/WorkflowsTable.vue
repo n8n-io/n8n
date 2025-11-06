@@ -280,13 +280,12 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 }
 
 .description-cell {
-	display: flex;
-	font-style: italic;
-	display: -webkit-box;
+	display: -webkit-inline-box;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 3;
 	line-clamp: 3;
 	overflow: hidden;
+	font-style: italic;
 }
 
 .description-popper {
