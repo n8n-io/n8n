@@ -39,7 +39,7 @@ By default, it uses `IMenuItem` but can be used with custom types for different 
 
 **Slots**
 
-- `default`: `{ item: FlattenedItem<T>; handleToggle: () => void; isExpanded: boolean }` - Main content for each tree item.
+- `default`: `{ item: FlattenedItem<T>; handleToggle: () => void; isExpanded: boolean, hasChildren: boolean }` - Main content for each tree item.
 ### Template usage example
 
 #### Basic Usage (with IMenuItem - and MenuItem component)
@@ -54,9 +54,9 @@ const items = ref<IMenuItem[]>([...])
 
 <template>
   <N8nTree :items="items">
-		<template #default="{ item, handleToggle, isExpanded }">
+		<template #default="{ item, handleToggle, isExpanded, hasChildren }">
 			<MenuItem :key="item.value.id" :item="item.value">
-				<template v-if="item.value.children && item.value.children.length > 0" #toggle>
+				<template v-if="hasChildren" #toggle>
 					<N8nIconButton
 						size="mini"
 						type="highlight"
