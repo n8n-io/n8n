@@ -162,8 +162,21 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const workflowQueryParameters: ListQuery.Options = {
 			select: {
+<<<<<<< HEAD
 				...commonFields,
 				description: true,
+=======
+				// For some reason the order of updatedAt and createdAt here is load-bearing
+				// and the generated sql queries below risk switching up the order otherwise
+				// depending on whether this code is called for a project or the overview
+				// A proper fix would sort the columnNames here and in the folder and workflow queries
+				// but that risks breaking other use cases
+				// https://linear.app/n8n/issue/ADO-4376/tech-debt-investigate-and-fix-root-cause-of-incorrect-sql-column
+				updatedAt: true,
+				createdAt: true,
+				id: true,
+				name: true,
+>>>>>>> master
 			},
 			filter: options.filter,
 		};
