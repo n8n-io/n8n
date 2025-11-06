@@ -28,6 +28,7 @@ import type { ExecutionStatus } from './execution-status';
 import type { Result } from './result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
+import type { IExecutionContext } from './execution-context';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -2420,6 +2421,7 @@ export interface IRunExecutionData {
 	};
 	executionData?: {
 		contextData: IExecuteContextData;
+		runtimeData?: IExecutionContext;
 		nodeExecutionStack: IExecuteData[];
 		metadata: {
 			// node-name: metadata by runIndex
