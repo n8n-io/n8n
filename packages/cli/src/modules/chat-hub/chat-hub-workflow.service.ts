@@ -146,6 +146,22 @@ export class ChatHubWorkflowService {
 		});
 	}
 
+	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {
+		if (!existingNames.has(originalName)) {
+			return originalName;
+		}
+
+		let index = 1;
+		let uniqueName = `${originalName}${index}`;
+
+		while (existingNames.has(uniqueName)) {
+			index++;
+			uniqueName = `${originalName}${index}`;
+		}
+
+		return uniqueName;
+	}
+
 	private buildChatWorkflow({
 		userId,
 		sessionId,
@@ -179,11 +195,20 @@ export class ChatHubWorkflowService {
 			memoryNode,
 			restoreMemoryNode,
 			clearMemoryNode,
-			...tools.map((tool, i) => ({
-				...tool,
-				position: [700 + i * 100, 300] satisfies [number, number],
-			})),
 		];
+
+		const nodeNames = new Set(nodes.map((node) => node.name));
+
+		tools.forEach((tool, i) => {
+			tool.name = this.getUniqueNodeName(tool.name, nodeNames);
+			tool.position = [
+				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
+				300 + Math.floor(i / 3) * 120 - (i % 3) * 30,
+			];
+
+			nodes.push(tool);
+			nodeNames.add(tool.name);
+		});
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
