@@ -23,7 +23,12 @@ const forwarded = useForwardPropsEmits(props, emit);
 
 // Define slots with properly typed generic parameters
 defineSlots<{
-	default(props: { item: FlattenedItem<T>; handleToggle: () => void; isExpanded: boolean }): void;
+	default(props: {
+		item: FlattenedItem<T>;
+		handleToggle: () => void;
+		isExpanded: boolean;
+		hasChildren: boolean;
+	}): void;
 }>();
 
 function getLevelIndentation(level: number) {
@@ -54,6 +59,7 @@ function getLevelIndentation(level: number) {
 					:item="item as FlattenedItem<T>"
 					:handle-toggle="handleToggle"
 					:is-expanded="isExpanded"
+					:has-children="item.hasChildren"
 				/>
 			</TreeItem>
 		</TreeVirtualizer>
