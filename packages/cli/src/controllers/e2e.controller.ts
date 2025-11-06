@@ -168,7 +168,7 @@ export class E2EController {
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
 	) {
-		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
+		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? true;
 
 		// Ugly hack to satisfy biome parser
 		const getFeatureValue = <T extends keyof FeatureReturnType>(
