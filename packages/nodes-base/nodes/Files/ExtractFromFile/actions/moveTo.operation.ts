@@ -4,6 +4,7 @@ import set from 'lodash/set';
 import unset from 'lodash/unset';
 import type {
 	IDataObject,
+	IDataObjectMaybeArray,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
@@ -90,7 +91,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'],
+		operation: ['binaryToPropery', 'fromJson', 'fromJsonl', 'text', 'fromIcs', 'xml'],
 	},
 };
 
@@ -125,7 +126,7 @@ export async function execute(
 				newItem.json = deepCopy(item.json);
 			}
 
-			let convertedValue: string | IDataObject;
+			let convertedValue: string | IDataObjectMaybeArray;
 			if (operation !== 'binaryToPropery') {
 				convertedValue = iconv.decode(buffer, encoding, {
 					stripBOM: options.stripBOM as boolean,
@@ -138,7 +139,18 @@ export async function execute(
 				if (convertedValue === '') {
 					convertedValue = {};
 				} else {
-					convertedValue = jsonParse(convertedValue);
+					convertedValue = jsonParse<IDataObject>(convertedValue);
+				}
+			}
+
+			if (operation === 'fromJsonl') {
+				if (convertedValue === '') {
+					convertedValue = [];
+				} else {
+					convertedValue =
+						typeof convertedValue === 'string'
+							? convertedValue.split('\n').map((v: string) => jsonParse<IDataObject>(v))
+							: [];
 				}
 			}
 
