@@ -54,7 +54,7 @@ export class McpOAuthClientsController {
 	 * Delete an OAuth client by ID
 	 * This will cascade delete all related tokens, authorization codes, and user consents
 	 */
-	@GlobalScope('mcp:manage')
+	@GlobalScope('mcp:oauth')
 	@Delete('/:clientId')
 	async deleteClient(
 		req: AuthenticatedRequest,

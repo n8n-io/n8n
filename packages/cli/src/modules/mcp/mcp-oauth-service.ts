@@ -228,11 +228,6 @@ export class McpOAuthService implements OAuthServerProvider {
 
 		this.logger.info('Deleting OAuth client and related data', { clientId });
 
-		// Cascade delete related entities
-		await this.accessTokenRepository.delete({ clientId });
-		await this.refreshTokenRepository.delete({ clientId });
-		await this.authorizationCodeRepository.delete({ clientId });
-		await this.userConsentRepository.delete({ clientId });
 		await this.oauthClientRepository.delete({ id: clientId });
 
 		this.logger.info('OAuth client deleted successfully', {
