@@ -34,6 +34,7 @@ const ChangePasswordView = async () =>
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
+const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.vue');
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/app/components/MainHeader/MainHeader.vue');
@@ -469,6 +470,16 @@ export const routes: RouteRecordRaw[] = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/oauth/consent',
+		name: VIEWS.OAUTH_CONSENT,
+		components: {
+			default: OAuthConsentView,
+		},
+		meta: {
 			middleware: ['authenticated'],
 		},
 	},
