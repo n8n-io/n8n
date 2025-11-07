@@ -2908,7 +2908,7 @@
 	"workflowSettings.timezone": "Timezone",
 	"workflowSettings.timeSavedPerExecution": "Estimated time saved",
 	"workflowSettings.timeSavedPerExecution.hint": "Minutes per production execution",
-	"workflowSettings.timeSavedPerExecution.tooltip": "Total time savings are summarised in the Overview page.",
+	"workflowSettings.timeSavedPerExecution.tooltip": "Total time savings are summarised in the All resources page.",
 	"workflowSettings.availableInMCP": "Available in MCP",
 	"workflowSettings.availableInMCP.tooltip": "Make this workflow visible to AI Agents through n8n MCP",
 	"workflowSettings.toggleMCP.error.title": "Error updating MCP settings",
