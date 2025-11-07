@@ -63,6 +63,15 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		},
 	},
 	{
+		title: i18n.baseText('generic.description'),
+		key: 'description',
+		width: 300,
+		disableSort: true,
+		value() {
+			return;
+		},
+	},
+	{
 		title: '',
 		key: 'actions',
 		align: 'end',
@@ -165,6 +174,19 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 						<N8nIcon icon="external-link" :class="$style['link-icon']" color="text-light"></N8nIcon>
 					</N8nLink>
 				</template>
+				<template #[`item.description`]="{ item }">
+					<N8nTooltip
+						:content="item.description"
+						:disabled="!item.description"
+						:popper-class="$style['description-popper']"
+					>
+						<div :class="$style['description-cell']">
+							<N8nText data-test-id="mcp-workflow-description">
+								{{ item.description || '-' }}
+							</N8nText>
+						</div>
+					</N8nTooltip>
+				</template>
 				<template #[`item.parentFolder`]="{ item }">
 					<span v-if="item.parentFolder" :class="$style['folder-cell']">
 						<N8nLink
@@ -255,6 +277,19 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	tr:last-child {
 		border-bottom: none !important;
 	}
+}
+
+.description-cell {
+	display: -webkit-inline-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	overflow: hidden;
+	font-style: italic;
+}
+
+.description-popper {
+	min-width: 300px;
 }
 
 .table-link {
