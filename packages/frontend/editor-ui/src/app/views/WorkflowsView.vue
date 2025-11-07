@@ -348,6 +348,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				resourceType: 'workflow',
 				id: resource.id,
 				name: resource.name,
+				description: resource.description,
 				active: resource.active ?? false,
 				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
@@ -672,7 +673,7 @@ const fetchWorkflows = async () => {
 			pageSize.value,
 			currentSort.value,
 			{
-				name: filters.value.search || undefined,
+				query: filters.value.search || undefined,
 				active: activeFilter,
 				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
