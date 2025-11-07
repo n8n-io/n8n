@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/execution/logs/components/LogsViewConsumedTokenCountText.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import upperFirst from 'lodash/upperFirst';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
-import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
+import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import LogsViewNodeName from '@/features/execution/logs/components/LogsViewNodeName.vue';
 import {
 	getSubtreeTotalConsumedTokens,
@@ -16,7 +16,7 @@ import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
 
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
-import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
+import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;

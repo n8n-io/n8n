@@ -5,12 +5,12 @@ import userEvent from '@testing-library/user-event';
 const renderComponent = createComponentRenderer(VariablesUsageBadge);
 
 const showMessage = vi.fn();
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage }),
 }));
 
 const copy = vi.fn();
-vi.mock('@/composables/useClipboard', () => ({
+vi.mock('@/app/composables/useClipboard', () => ({
 	useClipboard: () => ({ copy }),
 }));
 

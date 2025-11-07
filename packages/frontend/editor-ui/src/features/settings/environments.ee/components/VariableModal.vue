@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import { VARIABLE_MODAL_KEY } from '../environments.constants';
 import { computed, reactive, ref } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import {
 	N8nFormInput,
 	N8nInputLabel,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';

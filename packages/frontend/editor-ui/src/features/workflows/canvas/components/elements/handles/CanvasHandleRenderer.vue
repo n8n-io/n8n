@@ -9,7 +9,7 @@ import CanvasHandleMainInput from './render-types/CanvasHandleMainInput.vue';
 import CanvasHandleMainOutput from './render-types/CanvasHandleMainOutput.vue';
 import CanvasHandleNonMainInput from './render-types/CanvasHandleNonMainInput.vue';
 import CanvasHandleNonMainOutput from './render-types/CanvasHandleNonMainOutput.vue';
-import { CanvasNodeHandleKey } from '@/constants';
+import { CanvasNodeHandleKey } from '@/app/constants';
 import { useCanvasNode } from '../../../composables/useCanvasNode';
 
 const props = defineProps<

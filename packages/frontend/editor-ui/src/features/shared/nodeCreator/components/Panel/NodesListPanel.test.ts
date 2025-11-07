@@ -6,7 +6,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
-import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
+import { REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
 import type { NodeFilterType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 

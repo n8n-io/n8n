@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useTagsStore } from '../../tags.store';
 import TagsManager from './TagsManager.vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';

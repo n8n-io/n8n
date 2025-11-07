@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TimeAgo from '@/components/TimeAgo.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import type { ChatModelDto } from '@n8n/api-types';

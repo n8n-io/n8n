@@ -20,7 +20,7 @@ import { useI18n } from '@n8n/i18n';
 
 import type { CredentialsMap } from '../chat.types';
 import CredentialSelectorModal from './CredentialSelectorModal.vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import {

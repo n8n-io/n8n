@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
 	N8nButton,
 	N8nIcon,
@@ -13,7 +13,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
