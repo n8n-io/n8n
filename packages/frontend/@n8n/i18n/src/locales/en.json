@@ -1762,6 +1762,8 @@
 	"oauth.consentView.error.deny": "Error denying access",
 	"oauth.consentView.error.allow": "Error allowing access",
 	"oauth.consentView.error.fetchDetails": "Error fetching client details",
+	"oauth.consentView.success.title": "Success",
+	"oauth.consentView.success.description": "You will soon be redirected back to the client.",
 	"parameterInput.expressionResult": "e.g. {result}",
 	"parameterInput.tip": "Tip",
 	"parameterInput.dragTipBeforePill": "Drag an",
