@@ -1,10 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
+import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog } from 'posthog-node';
-
-import type { PublicUser } from '@/interfaces';
 
 @Service()
 export class PostHogClient {
@@ -25,11 +24,6 @@ export class PostHogClient {
 		this.postHog = new PostHog(posthogConfig.apiKey, {
 			host: posthogConfig.apiHost,
 		});
-
-		const logLevel = this.globalConfig.logging.level;
-		if (logLevel === 'debug') {
-			this.postHog.debug(true);
-		}
 	}
 
 	async stop(): Promise<void> {

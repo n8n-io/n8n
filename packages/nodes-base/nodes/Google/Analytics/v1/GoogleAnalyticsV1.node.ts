@@ -9,7 +9,7 @@ import {
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	type IHttpRequestMethods,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
@@ -30,8 +30,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Analytics',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'googleAnalyticsOAuth2',

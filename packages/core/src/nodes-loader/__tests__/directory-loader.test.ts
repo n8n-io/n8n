@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type {
+	IconFile,
 	ICredentialType,
 	INodeType,
 	INodeTypeDescription,
@@ -13,6 +14,7 @@ jest.mock('node:fs');
 jest.mock('node:fs/promises');
 const mockFs = mock<typeof fs>();
 const mockFsPromises = mock<typeof fsPromises>();
+fs.realpathSync = mockFs.realpathSync;
 fs.readFileSync = mockFs.readFileSync;
 fsPromises.readFile = mockFsPromises.readFile;
 
@@ -22,7 +24,10 @@ jest.mock('fast-glob', () => async (pattern: string) => {
 		: ['dist/Credential1.js'];
 });
 
+import { NodeTypes } from '@test/helpers';
+
 import { CustomDirectoryLoader } from '../custom-directory-loader';
+import { DirectoryLoader } from '../directory-loader';
 import { LazyPackageDirectoryLoader } from '../lazy-package-directory-loader';
 import * as classLoader from '../load-class-in-isolation';
 import { PackageDirectoryLoader } from '../package-directory-loader';
@@ -61,6 +66,7 @@ describe('DirectoryLoader', () => {
 	let mockCredential1: ICredentialType, mockNode1: INodeType, mockNode2: INodeType;
 
 	beforeEach(() => {
+		mockFs.realpathSync.mockImplementation((path) => String(path));
 		mockCredential1 = createCredential('credential1');
 		mockNode1 = createNode('node1', 'credential1');
 		mockNode2 = createNode('node2');
@@ -128,6 +134,20 @@ describe('DirectoryLoader', () => {
 			expect(mockNode2.description.iconUrl).toBe('icons/n8n-nodes-testing/dist/Node2/node2.svg');
 		});
 
+		it('should throw error if node has icon not contained within the package directory', async () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+			mockNode2.description.icon = {
+				light: 'file:../../../../../../evil' as IconFile,
+				dark: 'file:dark.svg',
+			};
+
+			const loader = new PackageDirectoryLoader(directory);
+
+			await expect(loader.loadAll()).rejects.toThrow(
+				'Icon path "../../../../evil" is not contained within',
+			);
+		});
+
 		it('should throw error when package.json is missing', async () => {
 			mockFs.readFileSync.mockImplementationOnce(() => {
 				throw new Error('ENOENT');
@@ -187,6 +207,15 @@ describe('DirectoryLoader', () => {
 
 			expect(mockCredential1.supportedNodes).toEqual(['node1']);
 			expect(mockCredential1.iconUrl).toBe(mockNode1.description.iconUrl);
+		});
+
+		it('should not include nodes that are not in "includeNodes" even if they are from a different package', async () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+
+			const loader = new PackageDirectoryLoader(directory, [], ['n8n-nodes-other-package.node']);
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({});
 		});
 	});
 
@@ -290,6 +319,43 @@ describe('DirectoryLoader', () => {
 			expect(classLoader.loadClassInIsolation).not.toHaveBeenCalled();
 		});
 
+		it('should not include nodes that are not in "includeNodes" even if they are from a different package', async () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+
+			mockFsPromises.readFile.mockImplementation(async (path) => {
+				if (typeof path !== 'string') throw new Error('Invalid path');
+
+				if (path.endsWith('known/nodes.json')) {
+					return JSON.stringify({
+						node1: { className: 'Node1', sourcePath: 'dist/Node1/Node1.node.js' },
+						node2: { className: 'Node2', sourcePath: 'dist/Node2/Node2.node.js' },
+					});
+				}
+				if (path.endsWith('known/credentials.json')) {
+					return JSON.stringify({});
+				}
+				if (path.endsWith('types/nodes.json')) {
+					return JSON.stringify([{ name: 'node1' }, { name: 'node2' }]);
+				}
+				if (path.endsWith('types/credentials.json')) {
+					return JSON.stringify([]);
+				}
+				throw new Error('File not found');
+			});
+
+			const loader = new LazyPackageDirectoryLoader(
+				directory,
+				[],
+				['n8n-nodes-other-package.node'],
+			);
+			await loader.loadAll();
+
+			expect(loader.isLazyLoaded).toBe(true);
+			expect(loader.known.nodes).toEqual({});
+			expect(loader.types.nodes).toHaveLength(0);
+			expect(classLoader.loadClassInIsolation).not.toHaveBeenCalled();
+		});
+
 		it('should exclude specified nodes when excludeNodes is set', async () => {
 			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
 
@@ -324,6 +390,19 @@ describe('DirectoryLoader', () => {
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('node2');
 			expect(classLoader.loadClassInIsolation).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('constructor', () => {
+		it('should resolve symlinks to real paths when directory is a symlink', () => {
+			const symlinkPath = '/symlink/path';
+			const realPath = '/real/path';
+			mockFs.realpathSync.mockReturnValueOnce(realPath);
+
+			const loader = new CustomDirectoryLoader(symlinkPath);
+
+			expect(mockFs.realpathSync).toHaveBeenCalledWith(symlinkPath);
+			expect(loader.directory).toBe(realPath);
 		});
 	});
 
@@ -550,6 +629,18 @@ describe('DirectoryLoader', () => {
 
 			expect(() => loader.loadCredentialFromFile(filePath)).toThrow('Class could not be found');
 		});
+
+		it('should not push credential to types array when lazy loaded', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			loader.isLazyLoaded = true;
+
+			loader.loadCredentialFromFile('dist/Credential1.js');
+
+			expect(loader.credentialTypes).toEqual({
+				credential1: { sourcePath: 'dist/Credential1.js', type: mockCredential1 },
+			});
+			expect(loader.types.credentials).toEqual([]);
+		});
 	});
 
 	describe('getCredential', () => {
@@ -617,9 +708,20 @@ describe('DirectoryLoader', () => {
 					sourcePath: filePath,
 				},
 			});
-
 			expect(loader.types.nodes).toEqual([mockNode1.description]);
 			expect(loader.loadedNodes).toEqual([{ name: 'node1', version: 1 }]);
+		});
+
+		it('should load node with package version if provided', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Node1/Node1.node.js';
+
+			loader.loadNodeFromFile(filePath, '1.0.0');
+
+			expect(
+				(loader.nodeTypes.node1.type.description as INodeTypeDescription)
+					.communityNodePackageVersion,
+			).toBe('1.0.0');
 		});
 
 		it('should update node icon paths', () => {
@@ -641,6 +743,23 @@ describe('DirectoryLoader', () => {
 				dark: 'icons/CUSTOM/dist/Node1/dark.svg',
 			});
 			expect(nodeWithIcon.description.icon).toBeUndefined();
+		});
+
+		it('should error if icon path is not contained within the package directory', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Node1/Node1.node.js';
+
+			const nodeWithIcon = createNode('nodeWithIcon');
+			nodeWithIcon.description.icon = {
+				light: 'file:../../../evil' as IconFile,
+				dark: 'file:dark.svg',
+			};
+
+			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
+
+			expect(() => loader.loadNodeFromFile(filePath)).toThrow(
+				'Icon path "../evil" is not contained within',
+			);
 		});
 
 		it('should skip node if not in includeNodes', () => {
@@ -679,7 +798,7 @@ describe('DirectoryLoader', () => {
 
 			expect(loader.loadedNodes).toEqual([{ name: 'test', version: 2 }]);
 
-			const nodes = loader.types.nodes as INodeTypeDescription[];
+			const nodes = loader.types.nodes;
 			expect(nodes).toHaveLength(2);
 			expect(nodes[0]?.version).toBe(2);
 			expect(nodes[1]?.version).toBe(1);
@@ -753,6 +872,77 @@ describe('DirectoryLoader', () => {
 			expect(() => loader.getNode('nonexistent')).toThrow(
 				'Unrecognized node type: CUSTOM.nonexistent',
 			);
+		});
+	});
+
+	describe('applyDeclarativeNodeOptionParameters', () => {
+		test('sets up the options parameters', () => {
+			const nodeTypes = NodeTypes();
+			const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
+
+			DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
+
+			const options = nodeType.description.properties.find(
+				(property) => property.name === 'requestOptions',
+			);
+
+			expect(options?.options).toBeDefined;
+
+			const optionNames = options!.options!.map((option) => option.name);
+
+			expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
+		});
+
+		test.each([
+			[
+				'node with execute method',
+				{
+					execute: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with trigger method',
+				{
+					trigger: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with webhook method',
+				{
+					webhook: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'a polling node-type',
+				{
+					description: {
+						polling: true,
+						properties: [],
+					},
+				},
+			],
+			[
+				'a node-type with a non-main output',
+				{
+					description: {
+						outputs: ['main', 'ai_agent'],
+						properties: [],
+					},
+				},
+			],
+		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
+			const nodeType = nodeTypeName as unknown as INodeType;
+			DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
+			expect(nodeType.description.properties).toEqual([]);
 		});
 	});
 });

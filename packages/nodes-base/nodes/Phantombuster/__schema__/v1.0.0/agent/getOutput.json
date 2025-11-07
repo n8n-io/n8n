@@ -1,14 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "query": {
+        "profileUrl": {
             "type": "string"
         },
         "timestamp": {
             "type": "string"
-        },
-        "profileUrl": {
-            "type": "string"
         }
-    }
+    },
+    "version": 5
 }

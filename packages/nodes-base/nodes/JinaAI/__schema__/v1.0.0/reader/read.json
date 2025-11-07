@@ -1,0 +1,115 @@
+{
+    "type": "object",
+    "properties": {
+        "description": {
+            "type": "string"
+        },
+        "external": {
+            "type": "object",
+            "properties": {
+                "alternate": {
+                    "type": "object",
+                    "properties": {
+                        "https://techcrunch.com/feed/": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "https://techcrunch.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F09%2F26%2Fdiscover-how-developer-tools-are-shifting-fast-with-lauri-moore-and-david-cramer-at-techcrunch-disrupt-2025%2F": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "https://techcrunch.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F09%2F26%2Fdiscover-how-developer-tools-are-shifting-fast-with-lauri-moore-and-david-cramer-at-techcrunch-disrupt-2025%2F&format=xml": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "https://techcrunch.com/wp-json/wp/v2/posts/3037224": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "icon": {
+                    "type": "object",
+                    "properties": {
+                        "https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png?w=192": {
+                            "type": "object",
+                            "properties": {
+                                "sizes": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png?w=32": {
+                            "type": "object",
+                            "properties": {
+                                "sizes": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "lang": {
+                    "type": "string"
+                },
+                "og:locale": {
+                    "type": "string"
+                },
+                "og:type": {
+                    "type": "string"
+                },
+                "og:url": {
+                    "type": "string"
+                }
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "usage": {
+            "type": "object",
+            "properties": {
+                "tokens": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 4
+}

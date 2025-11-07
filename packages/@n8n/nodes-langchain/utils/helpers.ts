@@ -3,8 +3,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
+import { Toolkit } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
-import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,
 	IDataObject,
@@ -73,25 +74,27 @@ export function isToolsInstance(model: unknown): model is Tool {
 }
 
 export function getPromptInputByType(options: {
-	ctx: IExecuteFunctions;
+	ctx: IExecuteFunctions | ISupplyDataFunctions;
 	i: number;
 	promptTypeKey: string;
 	inputKey: string;
 }) {
 	const { ctx, i, promptTypeKey, inputKey } = options;
-	const prompt = ctx.getNodeParameter(promptTypeKey, i) as string;
+	const promptType = ctx.getNodeParameter(promptTypeKey, i, 'define') as string;
 
 	let input;
-	if (prompt === 'auto') {
+	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
+	} else if (promptType === 'guardrails') {
+		input = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
 	} else {
 		input = ctx.getNodeParameter(inputKey, i) as string;
 	}
 
 	if (input === undefined) {
+		const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
 		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
+			description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
 		});
 	}
 
@@ -116,6 +119,20 @@ export function getSessionId(
 			sessionId = bodyData.sessionId as string;
 		} else {
 			sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+
+			// try to get sessionId from chat trigger
+			if (!sessionId || sessionId === undefined) {
+				try {
+					const chatTrigger = ctx.getChatTrigger();
+
+					if (chatTrigger) {
+						sessionId = ctx.evaluateExpression(
+							`{{ $('${chatTrigger.name}').first().json.sessionId }}`,
+							itemIndex,
+						) as string;
+					}
+				} catch (error) {}
+			}
 		}
 
 		if (sessionId === '' || sessionId === undefined) {
@@ -184,19 +201,52 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 }
 
 export const getConnectedTools = async (
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions | ISupplyDataFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
 ) => {
-	const connectedTools =
-		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+	const toolkitConnections = (await ctx.getInputConnectionData(
+		NodeConnectionTypes.AiTool,
+		0,
+	)) as Array<Toolkit | Tool>;
+
+	// Get parent nodes to map toolkits to their source nodes
+	const parentNodes =
+		'getParentNodes' in ctx
+			? ctx.getParentNodes(ctx.getNode().name, {
+					connectionType: NodeConnectionTypes.AiTool,
+					depth: 1,
+				})
+			: [];
+
+	const connectedTools = (toolkitConnections ?? []).flatMap((toolOrToolkit, index) => {
+		if (toolOrToolkit instanceof Toolkit) {
+			const tools = toolOrToolkit.getTools() as Tool[];
+			// Add metadata to each tool from the toolkit
+			return tools.map((tool) => {
+				const sourceNode = parentNodes[index] ?? tool.name;
+
+				tool.metadata ??= {};
+				tool.metadata.isFromToolkit = true;
+				tool.metadata.sourceNodeName = sourceNode?.name;
+				return tool;
+			});
+		} else {
+			const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
+			toolOrToolkit.metadata ??= {};
+			toolOrToolkit.metadata.isFromToolkit = false;
+			toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
+		}
+
+		return toolOrToolkit;
+	});
 
 	if (!enforceUniqueNames) return connectedTools;
 
 	const seenNames = new Set<string>();
 
-	const finalTools = [];
+	const finalTools: Tool[] = [];
 
 	for (const tool of connectedTools) {
 		const { name } = tool;
@@ -221,3 +271,69 @@ export const getConnectedTools = async (
 
 	return finalTools;
 };
+
+/**
+ * Sometimes model output is wrapped in an additional object property.
+ * This function unwraps the output if it is in the format { output: { output: { ... } } }
+ */
+export function unwrapNestedOutput(output: Record<string, unknown>): Record<string, unknown> {
+	if (
+		'output' in output &&
+		Object.keys(output).length === 1 &&
+		typeof output.output === 'object' &&
+		output.output !== null &&
+		'output' in output.output &&
+		Object.keys(output.output).length === 1
+	) {
+		return output.output as Record<string, unknown>;
+	}
+
+	return output;
+}
+
+/**
+ * Detects if a text contains a character that repeats sequentially for a specified threshold.
+ * This is used to prevent performance issues with tiktoken on highly repetitive content.
+ * @param text The text to check
+ * @param threshold The minimum number of sequential repeats to detect (default: 1000)
+ * @returns true if a character repeats sequentially for at least the threshold amount
+ */
+export function hasLongSequentialRepeat(text: string, threshold = 1000): boolean {
+	try {
+		// Validate inputs
+		if (
+			text === null ||
+			typeof text !== 'string' ||
+			text.length === 0 ||
+			threshold <= 0 ||
+			text.length < threshold
+		) {
+			return false;
+		}
+		// Use string iterator to avoid creating array copy (memory efficient)
+		const iterator = text[Symbol.iterator]();
+		let prev = iterator.next();
+
+		if (prev.done) {
+			return false;
+		}
+
+		let count = 1;
+		for (const char of iterator) {
+			if (char === prev.value) {
+				count++;
+				if (count >= threshold) {
+					return true;
+				}
+			} else {
+				count = 1;
+				prev = { value: char, done: false };
+			}
+		}
+
+		return false;
+	} catch (error) {
+		// On any error, return false to allow normal processing
+		return false;
+	}
+}

@@ -1,19 +1,18 @@
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { User, WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
-import { User } from '@/databases/entities/user';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
-import { mockInstance, mockLogger } from '@test/mocking';
 import { getWorkflow } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 const logger = mockLogger();
-const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
+const workflowFinderService = mockInstance(WorkflowFinderService);
 const workflowHistoryService = new WorkflowHistoryService(
 	logger,
 	workflowHistoryRepository,
-	sharedWorkflowRepository,
+	workflowFinderService,
 );
 const testUser = Object.assign(new User(), {
 	id: '1234',

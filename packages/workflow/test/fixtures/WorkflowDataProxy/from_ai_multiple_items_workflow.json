@@ -69,7 +69,7 @@
 		},
 		{
 			"parameters": {
-				"notice_tip": "",
+				"aiAgentStarterCallout": "",
 				"agent": "toolsAgent",
 				"promptType": "define",
 				"text": "=Add this user to my Users sheet:\n{{ $json.toJsonString() }}",
@@ -85,7 +85,9 @@
 		}
 	],
 	"connections": {
-		"When clicking ‘Test workflow’": { "main": [[{ "node": "Code", "type": "main", "index": 0 }]] },
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Code", "type": "main", "index": 0 }]]
+		},
 		"Code": {
 			"main": [
 				[{ "node": "Agent single list with multiple tool calls", "type": "main", "index": 0 }]

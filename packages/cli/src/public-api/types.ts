@@ -1,8 +1,7 @@
+import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { AuthlessRequest, AuthenticatedRequest } from '@/requests';
+import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
 
 export type PaginatedRequest = AuthenticatedRequest<
@@ -35,6 +34,7 @@ export declare namespace ExecutionRequest {
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
+	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
 }
 
 export declare namespace TagRequest {

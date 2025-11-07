@@ -1,0 +1,62 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [200, 120],
+			"id": "b4205abf-7102-4e53-8aed-7bd047acfaf4",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"user": {
+					"__rl": true,
+					"value": "NewUser",
+					"mode": "list",
+					"cachedResultName": "NewUser"
+				},
+				"userName": "UserTest",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [400, 120],
+			"id": "64bbfce7-cc7d-4e69-82d3-d4ecac5ad389",
+			"name": "AWS IAM12",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "AWS IAM12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"AWS IAM12": [
+			{
+				"json": {
+					"UpdateUserResponse": {
+						"ResponseMetadata": {
+							"RequestId": "bdb4a8b5-627a-41a7-aba9-5733b7869c16"
+						}
+					}
+				}
+			}
+		]
+	}
+}

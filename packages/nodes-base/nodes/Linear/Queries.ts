@@ -218,4 +218,21 @@ export const query = {
 			}
 		}`;
 	},
+	addComment() {
+		return `mutation CommentCreate ($issueId: String!, $body: String!, $parentId: String) {
+			commentCreate(input: {issueId: $issueId, body: $body, parentId: $parentId}) {
+				success
+				comment {
+					id
+				}
+			}
+		}`;
+	},
+	addIssueLink() {
+		return `mutation AttachmentLinkURL($url: String!, $issueId: String!) {
+  		attachmentLinkURL(url: $url, issueId: $issueId) {
+    		success
+  		}
+		}`;
+	},
 };

@@ -1,32 +1,30 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "finished": {
-            "type": "boolean"
-        },
-        "mode": {
-            "type": "string"
-        },
-        "retryOf": {
-            "type": "null"
-        },
-        "retrySuccessId": {
-            "type": "null"
-        },
-        "status": {
-            "type": "string"
-        },
-        "startedAt": {
+        "createdAt": {
             "type": "string"
         },
         "deletedAt": {
             "type": "null"
         },
+        "finished": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "startedAt": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
         "workflowId": {
             "type": "string"
         }
-    }
+    },
+    "version": 2
 }

@@ -1,12 +1,10 @@
+import { IWorkflowToImport } from '@/interfaces';
 import { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
 import type { SourceControlledFile } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
 import express from 'express';
 import type { PullResult } from 'simple-git';
-
-import { Get, Post, Patch, RestController, GlobalScope, Body } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { AuthenticatedRequest } from '@/requests';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import {
@@ -15,17 +13,23 @@ import {
 } from './middleware/source-control-enabled-middleware.ee';
 import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlService } from './source-control.service.ee';
 import type { ImportResult } from './types/import-result';
 import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+
 @RestController('/source-control')
 export class SourceControlController {
 	constructor(
 		private readonly sourceControlService: SourceControlService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly sourceControlScopedService: SourceControlScopedService,
 		private readonly eventService: EventService,
 	) {}
 
@@ -92,6 +96,7 @@ export class SourceControlController {
 				connected: resultingPreferences.connected,
 				readOnlyInstance: resultingPreferences.branchReadOnly,
 				repoType: getRepoType(resultingPreferences.repositoryUrl),
+				connectionType: resultingPreferences.connectionType!,
 			});
 			// #endregion
 			return resultingPreferences;
@@ -137,6 +142,7 @@ export class SourceControlController {
 				connected: resultingPreferences.connected,
 				readOnlyInstance: resultingPreferences.branchReadOnly,
 				repoType: getRepoType(resultingPreferences.repositoryUrl),
+				connectionType: resultingPreferences.connectionType!,
 			});
 			return resultingPreferences;
 		} catch (error) {
@@ -164,18 +170,20 @@ export class SourceControlController {
 	}
 
 	@Post('/push-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
-	@GlobalScope('sourceControl:push')
 	async pushWorkfolder(
 		req: AuthenticatedRequest,
 		res: express.Response,
 		@Body payload: PushWorkFolderRequestDto,
 	): Promise<SourceControlledFile[]> {
+		await this.sourceControlScopedService.ensureIsAllowedToPush(req);
+
 		try {
 			await this.sourceControlService.setGitUserDetails(
 				`${req.user.firstName} ${req.user.lastName}`,
 				req.user.email,
 			);
-			const result = await this.sourceControlService.pushWorkfolder(payload);
+
+			const result = await this.sourceControlService.pushWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {
@@ -212,9 +220,10 @@ export class SourceControlController {
 	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
-			const result = (await this.sourceControlService.getStatus(
+			const result = await this.sourceControlService.getStatus(
+				req.user,
 				new SourceControlGetStatus(req.query),
-			)) as SourceControlledFile[];
+			);
 			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
@@ -224,7 +233,10 @@ export class SourceControlController {
 	@Get('/status', { middlewares: [sourceControlLicensedMiddleware] })
 	async status(req: SourceControlRequest.GetStatus) {
 		try {
-			return await this.sourceControlService.getStatus(new SourceControlGetStatus(req.query));
+			return await this.sourceControlService.getStatus(
+				req.user,
+				new SourceControlGetStatus(req.query),
+			);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -241,6 +253,26 @@ export class SourceControlController {
 			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
 			return { ...result, publicKey };
 		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Get('/remote-content/:type/:id', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	async getFileContent(
+		req: AuthenticatedRequest & { params: { type: SourceControlledFile['type']; id: string } },
+	): Promise<{ content: IWorkflowToImport; type: SourceControlledFile['type'] }> {
+		try {
+			const { type, id } = req.params;
+			const content = await this.sourceControlService.getRemoteFileEntity({
+				user: req.user,
+				type,
+				id,
+			});
+			return { content, type };
+		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}

@@ -7,28 +7,12 @@
         "name": {
             "type": "string"
         },
-        "resource_type": {
+        "resource_subtype": {
             "type": "string"
         },
-        "parent": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type"
-            ]
+        "resource_type": {
+            "type": "string"
         }
     },
-    "required": [
-        "gid",
-        "name",
-        "resource_type"
-    ]
+    "version": 2
 }

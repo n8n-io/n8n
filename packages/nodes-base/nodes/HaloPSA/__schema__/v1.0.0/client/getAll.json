@@ -1,0 +1,140 @@
+{
+    "type": "object",
+    "properties": {
+        "accountmanagertech": {
+            "type": "integer"
+        },
+        "actionemail": {
+            "type": "integer"
+        },
+        "clearemail": {
+            "type": "integer"
+        },
+        "client_to_invoice": {
+            "type": "integer"
+        },
+        "client_to_invoice_recurring": {
+            "type": "integer"
+        },
+        "colour": {
+            "type": "string"
+        },
+        "confirmemail": {
+            "type": "integer"
+        },
+        "contract_tax_code": {
+            "type": "integer"
+        },
+        "customer_relationship": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "customer_relationship_list": {
+            "type": "string"
+        },
+        "customertype": {
+            "type": "integer"
+        },
+        "default_currency_code": {
+            "type": "integer"
+        },
+        "default_mailbox_id": {
+            "type": "integer"
+        },
+        "excludefrominvoicesync": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "inactive": {
+            "type": "boolean"
+        },
+        "is_account": {
+            "type": "boolean"
+        },
+        "is_vip": {
+            "type": "boolean"
+        },
+        "item_tax_code": {
+            "type": "integer"
+        },
+        "jira_validated": {
+            "type": "boolean"
+        },
+        "key": {
+            "type": "integer"
+        },
+        "mailbox_override": {
+            "type": "integer"
+        },
+        "messagegroup_id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "overridepdftemplateinvoice": {
+            "type": "integer"
+        },
+        "overridepdftemplatequote": {
+            "type": "integer"
+        },
+        "percentage_to_survey": {
+            "type": "integer"
+        },
+        "prepay_tax_code": {
+            "type": "integer"
+        },
+        "pritech": {
+            "type": "integer"
+        },
+        "qbo_company_id": {
+            "type": "string"
+        },
+        "sectech": {
+            "type": "integer"
+        },
+        "service_tax_code": {
+            "type": "integer"
+        },
+        "servicenow_validated": {
+            "type": "boolean"
+        },
+        "stopped": {
+            "type": "integer"
+        },
+        "table": {
+            "type": "integer"
+        },
+        "taxable": {
+            "type": "boolean"
+        },
+        "ticket_invoices_for_each_site": {
+            "type": "boolean"
+        },
+        "toplevel_id": {
+            "type": "integer"
+        },
+        "toplevel_name": {
+            "type": "string"
+        },
+        "use": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

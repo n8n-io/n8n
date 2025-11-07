@@ -193,7 +193,9 @@ export function getAddressesUi(): INodeProperties {
 	};
 }
 
-export function adjustAddresses(addresses: [{ street: string; [key: string]: string }]): Address[] {
+export function adjustAddresses(
+	addresses: Array<{ street: string; [key: string]: string }>,
+): Address[] {
 	const _addresses: Address[] = [];
 	for (let i = 0; i < addresses.length; i++) {
 		if (addresses[i]?.region === '') {

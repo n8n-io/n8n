@@ -5,7 +5,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
-	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { createSecureContext } from 'tls';
@@ -37,7 +37,7 @@ export function buildParameterizedConnString(credentials: IMongoParametricCreden
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function buildMongoConnectionParams(
-	self: IExecuteFunctions,
+	node: INode,
 	credentials: IMongoCredentialsType,
 ): IMongoCredentials {
 	const sanitizedDbName =
@@ -52,7 +52,7 @@ export function buildMongoConnectionParams(
 			};
 		} else {
 			throw new NodeOperationError(
-				self.getNode(),
+				node,
 				'Cannot override credentials: valid MongoDB connection string not provided ',
 			);
 		}
@@ -70,23 +70,31 @@ export function buildMongoConnectionParams(
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function validateAndResolveMongoCredentials(
-	self: IExecuteFunctions,
+	node: INode,
 	credentials?: ICredentialDataDecryptedObject,
 ): IMongoCredentials {
 	if (credentials === undefined) {
-		throw new NodeOperationError(self.getNode(), 'No credentials got returned!');
+		throw new NodeOperationError(node, 'No credentials got returned!');
 	} else {
-		return buildMongoConnectionParams(self, credentials as unknown as IMongoCredentialsType);
+		return buildMongoConnectionParams(node, credentials as unknown as IMongoCredentialsType);
 	}
 }
 
-export function prepareItems(
-	items: INodeExecutionData[],
-	fields: string[],
+export function prepareItems({
+	items,
+	fields,
 	updateKey = '',
 	useDotNotation = false,
-	dateFields: string[] = [],
-) {
+	dateFields = [],
+	isUpdate = false,
+}: {
+	items: INodeExecutionData[];
+	fields: string[];
+	updateKey?: string;
+	useDotNotation?: boolean;
+	dateFields?: string[];
+	isUpdate?: boolean;
+}) {
 	let data = items;
 
 	if (updateKey) {
@@ -112,7 +120,7 @@ export function prepareItems(
 				fieldData = new Date(fieldData as string);
 			}
 
-			if (useDotNotation) {
+			if (useDotNotation && !isUpdate) {
 				set(updateItem, field, fieldData);
 			} else {
 				updateItem[field] = fieldData;
@@ -145,8 +153,16 @@ export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	return items;
 }
 
-export async function connectMongoClient(connectionString: string, credentials: IDataObject = {}) {
+export async function connectMongoClient(
+	connectionString: string,
+	nodeVersion: number,
+	credentials: IDataObject = {},
+) {
 	let client: MongoClient;
+	const driverInfo = {
+		name: 'n8n_crud',
+		version: nodeVersion > 0 ? nodeVersion.toString() : 'unknown',
+	};
 
 	if (credentials.tls) {
 		const ca = credentials.ca ? formatPrivateKey(credentials.ca as string) : undefined;
@@ -164,10 +180,10 @@ export async function connectMongoClient(connectionString: string, credentials: 
 		client = await MongoClient.connect(connectionString, {
 			tls: true,
 			secureContext,
+			driverInfo,
 		});
 	} else {
-		client = await MongoClient.connect(connectionString);
+		client = await MongoClient.connect(connectionString, { driverInfo });
 	}
-
 	return client;
 }

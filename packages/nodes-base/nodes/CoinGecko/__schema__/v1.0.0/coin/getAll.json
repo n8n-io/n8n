@@ -4,16 +4,12 @@
         "id": {
             "type": "string"
         },
-        "symbol": {
+        "name": {
             "type": "string"
         },
-        "name": {
+        "symbol": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "symbol",
-        "name"
-    ]
+    "version": 1
 }

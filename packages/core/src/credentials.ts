@@ -1,3 +1,4 @@
+import { isObjectLiteral } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
@@ -5,7 +6,6 @@ import * as a from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
-import { isObjectLiteral } from '@/utils';
 
 export class CredentialDataError extends ApplicationError {
 	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
@@ -28,6 +28,18 @@ export class Credentials<
 		a.ok(isObjectLiteral(data));
 
 		this.data = this.cipher.encrypt(data);
+	}
+
+	/**
+	 * Update parts of the credential data.
+	 * This decrypts the data, modifies it, and then re-encrypts the updated data back to a string.
+	 */
+	updateData(toUpdate: Partial<T>, toDelete: Array<keyof T> = []) {
+		const updatedData: T = { ...this.getData(), ...toUpdate };
+		for (const key of toDelete) {
+			delete updatedData[key];
+		}
+		this.setData(updatedData);
 	}
 
 	/**

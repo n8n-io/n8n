@@ -1,0 +1,130 @@
+@use '../common/var';
+@use '../mixins/mixins';
+@use '../mixins/button';
+
+@include mixins.b(picker-panel) {
+	color: var(--color--text--shade-1);
+	border: 1px solid var.$datepicker-border-color;
+	box-shadow: var.$box-shadow-light;
+	background: var.$color-white;
+	border-radius: var(--radius);
+	line-height: 30px;
+	margin: 5px 0;
+
+	@include mixins.e((body, body-wrapper)) {
+		&::after {
+			content: '';
+			display: table;
+			clear: both;
+		}
+	}
+
+	@include mixins.e(content) {
+		position: relative;
+		margin: 15px;
+	}
+
+	@include mixins.e(footer) {
+		border-top: 1px solid var.$datepicker-inner-border-color;
+		padding: 4px;
+		text-align: right;
+		background-color: var.$color-white;
+		position: relative;
+		font-size: 0;
+	}
+
+	@include mixins.e(shortcut) {
+		display: block;
+		width: 100%;
+		border: 0;
+		background-color: transparent;
+		line-height: 28px;
+		font-size: 14px;
+		color: var.$datepicker-font-color;
+		padding-left: 12px;
+		text-align: left;
+		outline: none;
+		cursor: pointer;
+
+		&:hover {
+			color: var.$datepicker-hover-font-color;
+		}
+
+		&.active {
+			background-color: #e6f1fe;
+			color: var.$datepicker-active-color;
+		}
+	}
+
+	@include mixins.e(btn) {
+		border: 1px solid #dcdcdc;
+		color: #333;
+		line-height: 24px;
+		border-radius: 2px;
+		padding: 0 20px;
+		cursor: pointer;
+		background-color: transparent;
+		outline: none;
+		font-size: 12px;
+
+		&[disabled] {
+			color: var(--color--text--tint-2);
+			cursor: not-allowed;
+		}
+	}
+
+	@include mixins.e(icon-btn) {
+		font-size: 12px;
+		color: var.$datepicker-icon-color;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+		outline: none;
+		margin-top: 8px;
+
+		&:hover {
+			color: var.$datepicker-hover-font-color;
+		}
+
+		@include mixins.when(disabled) {
+			color: var.$font-color-disabled-base;
+
+			&:hover {
+				cursor: not-allowed;
+			}
+		}
+	}
+
+	@include mixins.e(link-btn) {
+		@include button.button-outline();
+		@include button.button-small();
+		@include button.button-round();
+
+		&.is-plain {
+			@include button.button-just-primary();
+		}
+
+		& {
+			vertical-align: middle;
+			margin-left: var(--spacing--2xs);
+		}
+	}
+}
+
+.el-picker-panel *[slot='sidebar'],
+.el-picker-panel__sidebar {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 110px;
+	border-right: 1px solid var.$datepicker-inner-border-color;
+	box-sizing: border-box;
+	padding-top: 6px;
+	background-color: var.$color-white;
+	overflow: auto;
+}
+
+.el-picker-panel *[slot='sidebar'] + .el-picker-panel__body,
+.el-picker-panel__sidebar + .el-picker-panel__body {
+	margin-left: 110px;
+}

@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { calendlyApiRequest, getAuthenticationType } from './GenericFunctions';
 
@@ -22,7 +22,7 @@ export class CalendlyTrigger implements INodeType {
 			name: 'Calendly Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'calendlyApi',
@@ -68,6 +68,18 @@ export class CalendlyTrigger implements INodeType {
 					},
 				],
 				default: 'apiKey',
+			},
+			{
+				displayName:
+					'Action required: Calendly will discontinue API Key authentication on May 31, 2025. Update node to use OAuth2 authentication now to ensure your workflows continue to work.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['apiKey'],
+					},
+				},
 			},
 			{
 				displayName: 'Scope',

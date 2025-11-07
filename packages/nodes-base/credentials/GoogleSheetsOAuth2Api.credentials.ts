@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { Icon, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'https://www.googleapis.com/auth/drive.file',
@@ -12,6 +12,8 @@ export class GoogleSheetsOAuth2Api implements ICredentialType {
 	extends = ['googleOAuth2Api'];
 
 	displayName = 'Google Sheets OAuth2 API';
+
+	icon: Icon = 'node:n8n-nodes-base.googleSheets';
 
 	documentationUrl = 'google/oauth-single-service';
 

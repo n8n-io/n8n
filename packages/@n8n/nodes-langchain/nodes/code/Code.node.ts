@@ -1,10 +1,9 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Tool } from '@langchain/core/tools';
 import { makeResolverFromLegacyOptions } from '@n8n/vm2';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -24,16 +23,16 @@ const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: exte
 
 // TODO: Replace
 const connectorTypes = {
-	[NodeConnectionType.AiChain]: 'Chain',
-	[NodeConnectionType.AiDocument]: 'Document',
-	[NodeConnectionType.AiEmbedding]: 'Embedding',
-	[NodeConnectionType.AiLanguageModel]: 'Language Model',
-	[NodeConnectionType.AiMemory]: 'Memory',
-	[NodeConnectionType.AiOutputParser]: 'Output Parser',
-	[NodeConnectionType.AiTextSplitter]: 'Text Splitter',
-	[NodeConnectionType.AiTool]: 'Tool',
-	[NodeConnectionType.AiVectorStore]: 'Vector Store',
-	[NodeConnectionType.Main]: 'Main',
+	[NodeConnectionTypes.AiChain]: 'Chain',
+	[NodeConnectionTypes.AiDocument]: 'Document',
+	[NodeConnectionTypes.AiEmbedding]: 'Embedding',
+	[NodeConnectionTypes.AiLanguageModel]: 'Language Model',
+	[NodeConnectionTypes.AiMemory]: 'Memory',
+	[NodeConnectionTypes.AiOutputParser]: 'Output Parser',
+	[NodeConnectionTypes.AiTextSplitter]: 'Text Splitter',
+	[NodeConnectionTypes.AiTool]: 'Tool',
+	[NodeConnectionTypes.AiVectorStore]: 'Vector Store',
+	[NodeConnectionTypes.Main]: 'Main',
 };
 
 const defaultCodeExecute = `const { PromptTemplate } = require('@langchain/core/prompts');
@@ -304,7 +303,7 @@ export class Code implements INodeType {
 
 		const outputs = this.getNodeOutputs();
 		const mainOutputs: INodeOutputConfiguration[] = outputs.filter(
-			(output) => output.type === NodeConnectionType.Main,
+			(output) => output.type === NodeConnectionTypes.Main,
 		);
 
 		const options = { multiOutput: mainOutputs.length !== 1 };

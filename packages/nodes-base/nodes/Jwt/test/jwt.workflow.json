@@ -1,616 +1,568 @@
 {
-  "name": "JWT Test Workflow",
-  "nodes": [
-    {
-      "parameters": {},
-      "id": "66c858d2-822e-4177-a379-d5e2aef9f6da",
-      "name": "When clicking ‘Test workflow’",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        -260,
-        840
-      ]
-    },
-    {
-      "parameters": {
-        "claims": {
-          "audience": "test",
-          "issuer": "test",
-          "jwtid": "123",
-          "subject": "test"
-        },
-        "options": {}
-      },
-      "id": "675b43b8-f079-4bcf-8ea2-52c3c60a3a42",
-      "name": "Sign with claims",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        120,
-        400
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "useJson": true,
-        "options": {}
-      },
-      "id": "c24f27d7-48fc-47c3-864d-f05456abe7c2",
-      "name": "Sign with JSON Payload",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        120,
-        840
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "verify",
-        "token": "={{ $json.token }}",
-        "options": {
-          "complete": true,
-          "ignoreExpiration": true,
-          "ignoreNotBefore": true
-        }
-      },
-      "id": "ff74f160-8f43-4cd1-a089-4698713ea12d",
-      "name": "Verify1",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        380,
-        480
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "decode",
-        "token": "={{ $json.token }}",
-        "options": {}
-      },
-      "id": "9fcb58bd-f28b-4106-a3ab-ad2a64b6b0f5",
-      "name": "Decode2",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        380,
-        740
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "decode",
-        "token": "={{ $json.token }}",
-        "options": {}
-      },
-      "id": "913e5542-12a0-4a48-9646-4fba648ec95b",
-      "name": "Decode1",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        380,
-        300
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "verify",
-        "token": "={{ $json.token }}",
-        "options": {}
-      },
-      "id": "c888549a-b1fb-47e8-bf90-07cec2b32483",
-      "name": "Verify2",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        380,
-        920
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "claims": {
-          "audience": "test",
-          "issuer": "test",
-          "jwtid": "123",
-          "subject": "test"
-        },
-        "options": {
-          "kid": "custom-kid"
-        }
-      },
-      "id": "3aedaf15-026d-4874-99c1-ab5940f18c73",
-      "name": "Sign with kid",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        120,
-        1280
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "1289f607-d46f-45f5-953a-1492f3b50bbd",
-              "name": "payload.audience",
-              "value": "={{ $json.payload.audience }}",
-              "type": "string"
-            },
-            {
-              "id": "e32ae71b-62ca-45e5-8351-2fd9ab7451ef",
-              "name": "payload.jwtid",
-              "value": "={{ $json.payload.jwtid }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "9d8471ca-b918-4450-b2e3-735799399d39",
-      "name": "Decode1 Output",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.3,
-      "position": [
-        580,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "3ff845d5-9c2c-4744-bc33-a7318b4741fc",
-              "name": "payload.audience",
-              "value": "={{ $json.payload.audience }}",
-              "type": "string"
-            },
-            {
-              "id": "d1206579-634e-472a-9190-a176cf2477a1",
-              "name": "payload.jwtid",
-              "value": "={{ $json.payload.jwtid }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "dd0aa97d-a485-4cc3-a8af-55e73fb21716",
-      "name": "Verify1 Output",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.3,
-      "position": [
-        580,
-        480
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "fe90f817-1b89-409c-992c-e42070fc67bf",
-              "name": "payload.my_field_1",
-              "value": "={{ $json.payload.my_field_1 }}",
-              "type": "string"
-            },
-            {
-              "id": "1b80e8b3-3004-4959-8c6c-0d36176579ea",
-              "name": "payload.my_field_2",
-              "value": "={{ $json.payload.my_field_2 }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "f47b9996-ce95-4b72-a9ae-5e5a616ff982",
-      "name": "Decode2 Output",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.3,
-      "position": [
-        580,
-        740
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "46ed5c03-d41a-4387-988e-2ed3821f32d4",
-              "name": "payload.my_field_1",
-              "value": "={{ $json.payload.my_field_1 }}",
-              "type": "string"
-            },
-            {
-              "id": "0007786e-3f93-4146-8e10-32ab8e088b81",
-              "name": "payload.my_field_2",
-              "value": "={{ $json.payload.my_field_2 }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "5ba29142-407f-4e39-a3ed-28dff742070a",
-      "name": "Verify2 Output",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.3,
-      "position": [
-        580,
-        920
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "decode",
-        "token": "={{ $json.token }}",
-        "options": {
-          "complete": true
-        }
-      },
-      "id": "ab038c41-45eb-4679-a71d-fc3c60797983",
-      "name": "Decode3",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        380,
-        1180
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "verify",
-        "token": "={{ $json.token }}",
-        "options": {
-          "complete": true
-        }
-      },
-      "id": "3442124e-af80-4cb0-bae0-4716f5a367af",
-      "name": "Verify3",
-      "type": "n8n-nodes-base.jwt",
-      "typeVersion": 1,
-      "position": [
-        380,
-        1360
-      ],
-      "credentials": {
-        "jwtAuth": {
-          "id": "kDnfvqrCBJvtlX3o",
-          "name": "JWT Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "1289f607-d46f-45f5-953a-1492f3b50bbd",
-              "name": "payload.audience",
-              "value": "={{ $json.payload.audience }}",
-              "type": "string"
-            },
-            {
-              "id": "e32ae71b-62ca-45e5-8351-2fd9ab7451ef",
-              "name": "payload.jwtid",
-              "value": "={{ $json.payload.jwtid }}",
-              "type": "string"
-            },
-            {
-              "id": "99695f75-e483-4e12-8316-b669f73a7dfe",
-              "name": "header.kid",
-              "value": "={{ $json.header.kid }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "28786e3b-9f7b-42e1-b5d2-b5484870b51a",
-      "name": "Decode3 Output",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.3,
-      "position": [
-        580,
-        1180
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "3ff845d5-9c2c-4744-bc33-a7318b4741fc",
-              "name": "payload.audience",
-              "value": "={{ $json.payload.audience }}",
-              "type": "string"
-            },
-            {
-              "id": "d1206579-634e-472a-9190-a176cf2477a1",
-              "name": "payload.jwtid",
-              "value": "={{ $json.payload.jwtid }}",
-              "type": "string"
-            },
-            {
-              "id": "1d39fe9e-d513-4bcf-8f2e-3bce3b45e37b",
-              "name": "header.kid",
-              "value": "={{ $json.header.kid }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "3a4dbfb1-4d3c-479c-a848-a8c3e148b4ab",
-      "name": "Verify3 Output",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.3,
-      "position": [
-        580,
-        1360
-      ]
-    }
-  ],
-  "pinData": {
-    "Decode1 Output": [
-      {
-        "json": {
-          "payload": {
-            "audience": "test",
-            "jwtid": "123"
-          }
-        }
-      }
-    ],
-    "Verify1 Output": [
-      {
-        "json": {
-          "payload": {
-            "audience": "test",
-            "jwtid": "123"
-          }
-        }
-      }
-    ],
-    "Decode2 Output": [
-      {
-        "json": {
-          "payload": {
-            "my_field_1": "value 1",
-            "my_field_2": "value 2"
-          }
-        }
-      }
-    ],
-    "Verify2 Output": [
-      {
-        "json": {
-          "payload": {
-            "my_field_1": "value 1",
-            "my_field_2": "value 2"
-          }
-        }
-      }
-    ],
-    "Decode3 Output": [
-      {
-        "json": {
-          "payload": {
-            "audience": "test",
-            "jwtid": "123"
-          },
-          "header": {
-            "kid": "custom-kid"
-          }
-        }
-      }
-    ],
-    "Verify3 Output": [
-      {
-        "json": {
-          "payload": {
-            "audience": "test",
-            "jwtid": "123"
-          },
-          "header": {
-            "kid": "custom-kid"
-          }
-        }
-      }
-    ]
-  },
-  "connections": {
-    "When clicking ‘Test workflow’": {
-      "main": [
-        [
-          {
-            "node": "Sign with claims",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Sign with JSON Payload",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Sign with kid",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sign with claims": {
-      "main": [
-        [
-          {
-            "node": "Decode1",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Verify1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sign with JSON Payload": {
-      "main": [
-        [
-          {
-            "node": "Decode2",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Verify2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Verify1": {
-      "main": [
-        [
-          {
-            "node": "Verify1 Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Decode2": {
-      "main": [
-        [
-          {
-            "node": "Decode2 Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Decode1": {
-      "main": [
-        [
-          {
-            "node": "Decode1 Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Verify2": {
-      "main": [
-        [
-          {
-            "node": "Verify2 Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sign with kid": {
-      "main": [
-        [
-          {
-            "node": "Decode3",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Verify3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Decode3": {
-      "main": [
-        [
-          {
-            "node": "Decode3 Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Verify3": {
-      "main": [
-        [
-          {
-            "node": "Verify3 Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "settings": {
-    "executionOrder": "v1"
-  }
+	"name": "JWT Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "66c858d2-822e-4177-a379-d5e2aef9f6da",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-260, 840]
+		},
+		{
+			"parameters": {
+				"claims": {
+					"audience": "test",
+					"issuer": "test",
+					"jwtid": "123",
+					"subject": "test"
+				},
+				"options": {}
+			},
+			"id": "675b43b8-f079-4bcf-8ea2-52c3c60a3a42",
+			"name": "Sign with claims",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [120, 400],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"useJson": true,
+				"options": {}
+			},
+			"id": "c24f27d7-48fc-47c3-864d-f05456abe7c2",
+			"name": "Sign with JSON Payload",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [120, 840],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "verify",
+				"token": "={{ $json.token }}",
+				"options": {
+					"complete": true,
+					"ignoreExpiration": true,
+					"ignoreNotBefore": true
+				}
+			},
+			"id": "ff74f160-8f43-4cd1-a089-4698713ea12d",
+			"name": "Verify1",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [380, 480],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "decode",
+				"token": "={{ $json.token }}",
+				"options": {}
+			},
+			"id": "9fcb58bd-f28b-4106-a3ab-ad2a64b6b0f5",
+			"name": "Decode2",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [380, 740],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "decode",
+				"token": "={{ $json.token }}",
+				"options": {}
+			},
+			"id": "913e5542-12a0-4a48-9646-4fba648ec95b",
+			"name": "Decode1",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [380, 300],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "verify",
+				"token": "={{ $json.token }}",
+				"options": {}
+			},
+			"id": "c888549a-b1fb-47e8-bf90-07cec2b32483",
+			"name": "Verify2",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [380, 920],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"claims": {
+					"audience": "test",
+					"issuer": "test",
+					"jwtid": "123",
+					"subject": "test"
+				},
+				"options": {
+					"kid": "custom-kid"
+				}
+			},
+			"id": "3aedaf15-026d-4874-99c1-ab5940f18c73",
+			"name": "Sign with kid",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [120, 1280],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1289f607-d46f-45f5-953a-1492f3b50bbd",
+							"name": "payload.audience",
+							"value": "={{ $json.payload.audience }}",
+							"type": "string"
+						},
+						{
+							"id": "e32ae71b-62ca-45e5-8351-2fd9ab7451ef",
+							"name": "payload.jwtid",
+							"value": "={{ $json.payload.jwtid }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "9d8471ca-b918-4450-b2e3-735799399d39",
+			"name": "Decode1 Output",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [580, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3ff845d5-9c2c-4744-bc33-a7318b4741fc",
+							"name": "payload.audience",
+							"value": "={{ $json.payload.audience }}",
+							"type": "string"
+						},
+						{
+							"id": "d1206579-634e-472a-9190-a176cf2477a1",
+							"name": "payload.jwtid",
+							"value": "={{ $json.payload.jwtid }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "dd0aa97d-a485-4cc3-a8af-55e73fb21716",
+			"name": "Verify1 Output",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [580, 480]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "fe90f817-1b89-409c-992c-e42070fc67bf",
+							"name": "payload.my_field_1",
+							"value": "={{ $json.payload.my_field_1 }}",
+							"type": "string"
+						},
+						{
+							"id": "1b80e8b3-3004-4959-8c6c-0d36176579ea",
+							"name": "payload.my_field_2",
+							"value": "={{ $json.payload.my_field_2 }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "f47b9996-ce95-4b72-a9ae-5e5a616ff982",
+			"name": "Decode2 Output",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [580, 740]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "46ed5c03-d41a-4387-988e-2ed3821f32d4",
+							"name": "payload.my_field_1",
+							"value": "={{ $json.payload.my_field_1 }}",
+							"type": "string"
+						},
+						{
+							"id": "0007786e-3f93-4146-8e10-32ab8e088b81",
+							"name": "payload.my_field_2",
+							"value": "={{ $json.payload.my_field_2 }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "5ba29142-407f-4e39-a3ed-28dff742070a",
+			"name": "Verify2 Output",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [580, 920]
+		},
+		{
+			"parameters": {
+				"operation": "decode",
+				"token": "={{ $json.token }}",
+				"options": {
+					"complete": true
+				}
+			},
+			"id": "ab038c41-45eb-4679-a71d-fc3c60797983",
+			"name": "Decode3",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [380, 1180],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "verify",
+				"token": "={{ $json.token }}",
+				"options": {
+					"complete": true
+				}
+			},
+			"id": "3442124e-af80-4cb0-bae0-4716f5a367af",
+			"name": "Verify3",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [380, 1360],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1289f607-d46f-45f5-953a-1492f3b50bbd",
+							"name": "payload.audience",
+							"value": "={{ $json.payload.audience }}",
+							"type": "string"
+						},
+						{
+							"id": "e32ae71b-62ca-45e5-8351-2fd9ab7451ef",
+							"name": "payload.jwtid",
+							"value": "={{ $json.payload.jwtid }}",
+							"type": "string"
+						},
+						{
+							"id": "99695f75-e483-4e12-8316-b669f73a7dfe",
+							"name": "header.kid",
+							"value": "={{ $json.header.kid }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "28786e3b-9f7b-42e1-b5d2-b5484870b51a",
+			"name": "Decode3 Output",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [580, 1180]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3ff845d5-9c2c-4744-bc33-a7318b4741fc",
+							"name": "payload.audience",
+							"value": "={{ $json.payload.audience }}",
+							"type": "string"
+						},
+						{
+							"id": "d1206579-634e-472a-9190-a176cf2477a1",
+							"name": "payload.jwtid",
+							"value": "={{ $json.payload.jwtid }}",
+							"type": "string"
+						},
+						{
+							"id": "1d39fe9e-d513-4bcf-8f2e-3bce3b45e37b",
+							"name": "header.kid",
+							"value": "={{ $json.header.kid }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "3a4dbfb1-4d3c-479c-a848-a8c3e148b4ab",
+			"name": "Verify3 Output",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [580, 1360]
+		}
+	],
+	"pinData": {
+		"Decode1 Output": [
+			{
+				"json": {
+					"payload": {
+						"audience": "test",
+						"jwtid": "123"
+					}
+				}
+			}
+		],
+		"Verify1 Output": [
+			{
+				"json": {
+					"payload": {
+						"audience": "test",
+						"jwtid": "123"
+					}
+				}
+			}
+		],
+		"Decode2 Output": [
+			{
+				"json": {
+					"payload": {
+						"my_field_1": "value 1",
+						"my_field_2": "value 2"
+					}
+				}
+			}
+		],
+		"Verify2 Output": [
+			{
+				"json": {
+					"payload": {
+						"my_field_1": "value 1",
+						"my_field_2": "value 2"
+					}
+				}
+			}
+		],
+		"Decode3 Output": [
+			{
+				"json": {
+					"payload": {
+						"audience": "test",
+						"jwtid": "123"
+					},
+					"header": {
+						"kid": "custom-kid"
+					}
+				}
+			}
+		],
+		"Verify3 Output": [
+			{
+				"json": {
+					"payload": {
+						"audience": "test",
+						"jwtid": "123"
+					},
+					"header": {
+						"kid": "custom-kid"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Sign with claims",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Sign with JSON Payload",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Sign with kid",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sign with claims": {
+			"main": [
+				[
+					{
+						"node": "Decode1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Verify1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sign with JSON Payload": {
+			"main": [
+				[
+					{
+						"node": "Decode2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Verify2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Verify1": {
+			"main": [
+				[
+					{
+						"node": "Verify1 Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Decode2": {
+			"main": [
+				[
+					{
+						"node": "Decode2 Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Decode1": {
+			"main": [
+				[
+					{
+						"node": "Decode1 Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Verify2": {
+			"main": [
+				[
+					{
+						"node": "Verify2 Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sign with kid": {
+			"main": [
+				[
+					{
+						"node": "Decode3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Verify3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Decode3": {
+			"main": [
+				[
+					{
+						"node": "Decode3 Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Verify3": {
+			"main": [
+				[
+					{
+						"node": "Verify3 Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
 }

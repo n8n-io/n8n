@@ -1,0 +1,315 @@
+{
+	"createdAt": "2021-06-25T06:40:20.761Z",
+	"updatedAt": "2021-07-16T09:01:07.467Z",
+	"id": "220",
+	"name": "Autopilot:List:create getAll:Contact:upsert get getAll delete:ContactList:add exist getAll remove",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "0615b7a0-0786-4868-b269-2a2b0cb2a2fc"
+		},
+		{
+			"parameters": {
+				"email": "=Fakeemail{{Date.now()}}@gmail.com",
+				"additionalFields": {}
+			},
+			"name": "Autopilot",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [500, 300],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "1b66282f-b944-486c-ac84-e0947f8253db"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"contactId": "={{$node[\"Autopilot\"].json[\"contact_id\"]}}"
+			},
+			"name": "Autopilot1",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [650, 300],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "1575e003-c7f1-40af-831b-90fe1eaf7fba"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1
+			},
+			"name": "Autopilot2",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [800, 300],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "09f19a0d-0839-4cbe-9c73-5a90ff409606"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"contactId": "={{$node[\"Autopilot\"].json[\"contact_id\"]}}"
+			},
+			"name": "Autopilot3",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [1000, 300],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "9a3fa0ff-117b-4515-bd5f-a573ee304885"
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"name": "=List{{Date.now()}}"
+			},
+			"name": "Autopilot4",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [500, 100],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"notes": "IGNORED_PROPERTIES=list_id,name,message",
+			"id": "6b2022b3-cc2e-41a0-9420-83859ad48e64"
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"name": "Autopilot5",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [650, 100],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "ed2a8101-9083-469f-81d1-5c92a530bb2d"
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"listId": "={{$node[\"Autopilot5\"].json[\"list_id\"]}}",
+				"contactId": "={{$node[\"Autopilot\"].json[\"contact_id\"]}}"
+			},
+			"name": "Autopilot6",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [950, 450],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "018aaf92-3c41-4a82-92a6-d67c7681a9de"
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "exist",
+				"listId": "={{$node[\"Autopilot4\"].json[\"list_id\"]}}",
+				"contactId": "={{$node[\"Autopilot\"].json[\"contact_id\"]}}"
+			},
+			"name": "Autopilot7",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [1100, 450],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "9942b084-4991-4d0c-bb43-4a1417c5353c"
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "getAll",
+				"listId": "={{$node[\"Autopilot5\"].json[\"list_id\"]}}",
+				"limit": 1
+			},
+			"name": "Autopilot8",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [1250, 450],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "a130470d-1b45-4077-b7a1-3814443d93a8"
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "remove",
+				"listId": "={{$node[\"Autopilot5\"].json[\"list_id\"]}}",
+				"contactId": "={{$node[\"Autopilot\"].json[\"contact_id\"]}}"
+			},
+			"name": "Autopilot9",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [1400, 450],
+			"credentials": {
+				"autopilotApi": {
+					"id": "213",
+					"name": "Autopilot API creds"
+				}
+			},
+			"id": "76538b0d-f96e-4bbf-83dd-fafb0f1e3edf"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Autopilot4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot": {
+			"main": [
+				[
+					{
+						"node": "Autopilot1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot1": {
+			"main": [
+				[
+					{
+						"node": "Autopilot2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot2": {
+			"main": [
+				[
+					{
+						"node": "Autopilot6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot4": {
+			"main": [
+				[
+					{
+						"node": "Autopilot5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot5": {
+			"main": [
+				[
+					{
+						"node": "Autopilot",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot6": {
+			"main": [
+				[
+					{
+						"node": "Autopilot7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot7": {
+			"main": [
+				[
+					{
+						"node": "Autopilot8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot8": {
+			"main": [
+				[
+					{
+						"node": "Autopilot9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Autopilot9": {
+			"main": [
+				[
+					{
+						"node": "Autopilot3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

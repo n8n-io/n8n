@@ -1,0 +1,96 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "fabb9c53-ca91-4b11-84e3-3b172b10b83a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"containerCreate": "container1",
+				"additionalFields": {
+					"partitionKey": "{\n\t\"paths\": [\n\t\t\"/id\"\n\t],\n\t\"kind\": \"Hash\",\n\t\"version\": 2\n}",
+					"indexingPolicy": "{\n\t\"indexingMode\": \"consistent\",\n\t\"automatic\": true,\n\t\"includedPaths\": [\n\t\t{\n\t\t\t\"path\": \"/*\"\n\t\t}\n\t],\n\t\"excludedPaths\": []\n}",
+					"offerThroughput": 400
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureCosmosDb",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "134e2bbd-937a-4ee8-9ad7-7a745cf0905f",
+			"name": "Azure Cosmos DB",
+			"credentials": {
+				"microsoftAzureCosmosDbSharedKeyApi": {
+					"id": "exampleId",
+					"name": "Azure Cosmos DB account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Azure Cosmos DB",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Azure Cosmos DB": {
+			"main": [[]]
+		}
+	},
+	"pinData": {
+		"Azure Cosmos DB": [
+			{
+				"json": {
+					"id": "container1",
+					"indexingPolicy": {
+						"indexingMode": "consistent",
+						"automatic": true,
+						"includedPaths": [
+							{
+								"path": "/*"
+							}
+						],
+						"excludedPaths": [
+							{
+								"path": "/\"_etag\"/?"
+							}
+						]
+					},
+					"partitionKey": {
+						"paths": ["/id"],
+						"kind": "Hash",
+						"version": 2
+					},
+					"conflictResolutionPolicy": {
+						"mode": "LastWriterWins",
+						"conflictResolutionPath": "/_ts",
+						"conflictResolutionProcedure": ""
+					},
+					"geospatialConfig": {
+						"type": "Geography"
+					},
+					"_rid": "4PVyAOKH+8U=",
+					"_ts": 1742313299,
+					"_self": "dbs/4PVyAA==/colls/4PVyAOKH+8U=/",
+					"_etag": "\"00005702-0000-0300-0000-67d997530000\"",
+					"_docs": "docs/",
+					"_sprocs": "sprocs/",
+					"_triggers": "triggers/",
+					"_udfs": "udfs/",
+					"_conflicts": "conflicts/"
+				}
+			}
+		]
+	}
+}

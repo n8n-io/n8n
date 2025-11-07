@@ -1,5 +1,12 @@
-import { NodeConnectionType } from 'n8n-workflow';
-import type { INodeParameters, INode, ITaskData, IDataObject, IConnections } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INode,
+	ITaskData,
+	IDataObject,
+	IConnections,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 interface StubNode {
 	name: string;
@@ -26,19 +33,21 @@ type TaskData = {
 	nodeConnectionType?: NodeConnectionType;
 };
 
-export function toITaskData(taskData: TaskData[]): ITaskData {
+export function toITaskData(taskData: TaskData[], overrides?: Partial<ITaskData>): ITaskData {
 	const result: ITaskData = {
 		executionStatus: 'success',
 		executionTime: 0,
 		startTime: 0,
+		executionIndex: 0,
 		source: [],
 		data: {},
+		...(overrides ?? {}),
 	};
 
 	// NOTE: Here to make TS happy.
 	result.data = result.data ?? {};
 	for (const taskDatum of taskData) {
-		const type = taskDatum.nodeConnectionType ?? NodeConnectionType.Main;
+		const type = taskDatum.nodeConnectionType ?? NodeConnectionTypes.Main;
 		const outputIndex = taskDatum.outputIndex ?? 0;
 
 		result.data[type] = result.data[type] ?? [];
@@ -78,7 +87,7 @@ export function toIConnections(connections: Connection[]): IConnections {
 	const result: IConnections = {};
 
 	for (const connection of connections) {
-		const type = connection.type ?? NodeConnectionType.Main;
+		const type = connection.type ?? NodeConnectionTypes.Main;
 		const outputIndex = connection.outputIndex ?? 0;
 		const inputIndex = connection.inputIndex ?? 0;
 

@@ -1,10 +1,13 @@
 import { mock } from 'jest-mock-extended';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 
 import {
 	checkRange,
+	findAppendRange,
+	nextExcelColumn,
+	parseAddress,
 	prepareOutput,
 	updateByAutoMaping,
 	updateByDefinedValues,
@@ -27,8 +30,8 @@ const fakeExecute = (nodeParameters: IDataObject[]) => {
 		getNodeParameter(
 			parameterName: string,
 			itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters[itemIndex], parameter, fallbackValue);
@@ -572,5 +575,167 @@ describe('Test MicrosoftExcelV2, checkRange', () => {
 		expect(() => {
 			checkRange(node, range);
 		}).toThrow();
+	});
+});
+
+describe('Test MicrosoftExcelV2, findAppendRange', () => {
+	it('should find append range for empty table', () => {
+		const address = 'A1';
+		const cols = 2;
+		const rows = 3;
+		const result = findAppendRange(address, { cols, rows });
+		expect(result).toBe('A1:B3');
+	});
+
+	it('should find append range for filled table', () => {
+		const address = 'A1:B2';
+		const cols = 2;
+		const rows = 2;
+		const result = findAppendRange(address, { cols, rows });
+		expect(result).toBe('A3:B4');
+	});
+
+	it('should find append range with additional columns for filled table', () => {
+		const address = 'A1:B2';
+		const cols = 3;
+		const rows = 2;
+		const result = findAppendRange(address, { cols, rows });
+		expect(result).toBe('A3:C4');
+	});
+});
+
+describe('Test MicrosoftExcelV2, nextExcelColumn', () => {
+	it('should return same column with offset 0', () => {
+		const result = nextExcelColumn('A', 0);
+		expect(result).toBe('A');
+	});
+
+	it('should return next column with default offset', () => {
+		const result = nextExcelColumn('A');
+		expect(result).toBe('B');
+	});
+
+	it('should return next column with offset 2', () => {
+		const result = nextExcelColumn('A', 2);
+		expect(result).toBe('C');
+	});
+
+	it('should handle Z to AA transition', () => {
+		const result = nextExcelColumn('Z');
+		expect(result).toBe('AA');
+	});
+
+	it('should handle AZ with offset 2', () => {
+		const result = nextExcelColumn('AZ', 2);
+		expect(result).toBe('BB');
+	});
+
+	it('should handle ZZ with offset 5', () => {
+		const result = nextExcelColumn('ZZ', 5);
+		expect(result).toBe('AAE');
+	});
+
+	it('should handle single letter columns', () => {
+		expect(nextExcelColumn('B')).toBe('C');
+		expect(nextExcelColumn('Y')).toBe('Z');
+		expect(nextExcelColumn('M', 3)).toBe('P');
+	});
+
+	it('should handle double letter columns', () => {
+		expect(nextExcelColumn('AA')).toBe('AB');
+		expect(nextExcelColumn('AB')).toBe('AC');
+		expect(nextExcelColumn('BA')).toBe('BB');
+		expect(nextExcelColumn('AY')).toBe('AZ');
+	});
+
+	it('should handle triple letter columns', () => {
+		expect(nextExcelColumn('AAA')).toBe('AAB');
+		expect(nextExcelColumn('AAZ')).toBe('ABA');
+		expect(nextExcelColumn('AZZ')).toBe('BAA');
+	});
+
+	it('should handle large offsets', () => {
+		expect(nextExcelColumn('A', 25)).toBe('Z');
+		expect(nextExcelColumn('A', 26)).toBe('AA');
+		expect(nextExcelColumn('A', 27)).toBe('AB');
+		expect(nextExcelColumn('A', 51)).toBe('AZ');
+		expect(nextExcelColumn('A', 52)).toBe('BA');
+	});
+
+	it('should handle transitions at column boundaries', () => {
+		expect(nextExcelColumn('Z', 1)).toBe('AA');
+		expect(nextExcelColumn('Z', 2)).toBe('AB');
+		expect(nextExcelColumn('AZ', 1)).toBe('BA');
+		expect(nextExcelColumn('ZZ', 1)).toBe('AAA');
+	});
+
+	it('should handle very large columns', () => {
+		expect(nextExcelColumn('XFD', 1)).toBe('XFE'); // XFD is Excel's last column
+		expect(nextExcelColumn('ZZY', 1)).toBe('ZZZ');
+	});
+
+	it('should handle offset of 1 explicitly', () => {
+		expect(nextExcelColumn('A', 1)).toBe('B');
+		expect(nextExcelColumn('Z', 1)).toBe('AA');
+		expect(nextExcelColumn('AA', 1)).toBe('AB');
+	});
+
+	it('should throw error for invalid offset', () => {
+		expect(() => nextExcelColumn('A', -1)).toThrow('Invalid offset: -1');
+	});
+
+	it('should maintain column sequence continuity', () => {
+		let current = 'A';
+		const sequence = [current];
+
+		for (let i = 0; i < 30; i++) {
+			current = nextExcelColumn(current);
+			sequence.push(current);
+		}
+
+		// Verify some key transitions in the sequence
+		expect(sequence).toContain('Z');
+		expect(sequence).toContain('AA');
+		expect(sequence).toContain('AB');
+
+		// Verify Z is followed by AA
+		const zIndex = sequence.indexOf('Z');
+		expect(sequence[zIndex + 1]).toBe('AA');
+	});
+});
+
+describe('Test MicrosoftExcelV2, parseAddress', () => {
+	it('should parse normal address', () => {
+		const address = 'A1:B2';
+		const result = parseAddress(address);
+		expect(result.cellFrom.value).toBe('A1');
+		expect(result.cellFrom.column).toBe('A');
+		expect(result.cellFrom.row).toBe('1');
+		expect(result.cellTo.value).toBe('B2');
+		expect(result.cellTo.column).toBe('B');
+		expect(result.cellTo.row).toBe('2');
+	});
+
+	it('should parse address with sheet name', () => {
+		const address = 'Sheet1!A1:B2';
+		const result = parseAddress(address);
+		expect(result.cellFrom.value).toBe('A1');
+		expect(result.cellFrom.column).toBe('A');
+		expect(result.cellFrom.row).toBe('1');
+		expect(result.cellTo.value).toBe('B2');
+		expect(result.cellTo.column).toBe('B');
+		expect(result.cellTo.row).toBe('2');
+	});
+
+	it('should parse address with double letter cell', () => {
+		const address = 'A1:AA2';
+		const result = parseAddress(address);
+		expect(result.cellFrom.value).toBe('A1');
+		expect(result.cellFrom.column).toBe('A');
+		expect(result.cellFrom.row).toBe('1');
+
+		expect(result.cellTo.value).toBe('AA2');
+		expect(result.cellTo.column).toBe('AA');
+		expect(result.cellTo.row).toBe('2');
 	});
 });

@@ -1,3 +1,7 @@
+import type { MockProxy } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
+import type { IExecuteFunctions } from 'n8n-workflow';
+
 import * as update from '../../../../v2/actions/record/update.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -38,6 +42,44 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, update operation', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should skip validation if typecast option is true', async () => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockExecuteFunctions.helpers.constructExecutionMetaData = jest.fn(() => []);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'columns.mappingMode') {
+				return 'defineBelow';
+			}
+			if (key === 'columns.matchingColumns') {
+				return ['id'];
+			}
+			if (key === 'options') {
+				return {
+					typecast: true,
+				};
+			}
+			if (key === 'columns.value') {
+				return {
+					id: 'recXXX',
+					field1: 'foo 1',
+					field2: 'bar 1',
+				};
+			}
+			return undefined;
+		});
+
+		await update.execute.call(mockExecuteFunctions, [{ json: {} }], 'base', 'table');
+
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('columns.value', 0, [], {
+			skipValidation: true,
+		});
+	});
+
 	it('should update a record by id, autoMapInputData', async () => {
 		const nodeParameters = {
 			operation: 'update',

@@ -1,0 +1,387 @@
+{
+	"name": "Wordpress Tests - User",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 300],
+			"id": "15748f86-cdf3-4dad-aa75-a27442073de8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"username": "new-user",
+				"name": "nathan tester",
+				"firstName": "Nathan",
+				"lastName": "Tester",
+				"email": "nathan@domain.com",
+				"password": "fake-password",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "f5058499-b6c5-42e3-8912-53de6124f811",
+			"name": "User > Create",
+			"credentials": {
+				"wordpressApi": {
+					"id": "vNOAnwp9mSIq39cD",
+					"name": "nodeqa"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "ffcae931-d165-41a0-b49d-12afbfa73238",
+			"name": "Create Response"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": "2",
+				"options": {
+					"context": "view"
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "707abdd8-4976-45c4-a1ec-aac08cdcf530",
+			"name": "User > Get",
+			"credentials": {
+				"wordpressApi": {
+					"id": "vNOAnwp9mSIq39cD",
+					"name": "nodeqa"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 200],
+			"id": "ca7f1e89-6b2b-4c96-8a43-ef758a39cfa1",
+			"name": "Get Response"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {
+					"orderBy": "id"
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "2a2ac1a3-a163-49cc-8974-eb81b87d2aee",
+			"name": "User > Get Many",
+			"credentials": {
+				"wordpressApi": {
+					"id": "vNOAnwp9mSIq39cD",
+					"name": "nodeqa"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 400],
+			"id": "1b4ccb5b-e3e5-4741-b533-2274501971c1",
+			"name": "Get Many Response"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "update",
+				"userId": "2",
+				"updateFields": {
+					"name": "Name Change",
+					"firstName": "Name",
+					"lastName": "Change",
+					"nickname": "newuser"
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "8d000d21-c5c6-421a-b11d-193813adf35f",
+			"name": "User > Update",
+			"credentials": {
+				"wordpressApi": {
+					"id": "vNOAnwp9mSIq39cD",
+					"name": "nodeqa"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 600],
+			"id": "60e0f507-00ab-42f0-81af-47692bc508c9",
+			"name": "Update Response"
+		}
+	],
+	"pinData": {
+		"Create Response": [
+			{
+				"json": {
+					"id": 2,
+					"username": "new-user",
+					"name": "nathan tester",
+					"first_name": "Nathan",
+					"last_name": "Tester",
+					"email": "nathan@domain.com",
+					"url": "",
+					"description": "",
+					"link": "https://myblog.com/author/new-user/",
+					"locale": "en_GB",
+					"nickname": "new-user",
+					"slug": "new-user",
+					"roles": ["subscriber"],
+					"registered_date": "2025-03-27T19:49:07+00:00",
+					"capabilities": {
+						"read": true,
+						"level_0": true,
+						"subscriber": true
+					},
+					"extra_capabilities": {
+						"subscriber": true
+					},
+					"avatar_urls": {
+						"24": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=24&d=mm&r=g",
+						"48": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=48&d=mm&r=g",
+						"96": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=96&d=mm&r=g"
+					},
+					"meta": {
+						"persisted_preferences": []
+					},
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/users/2",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/users"
+							}
+						]
+					}
+				}
+			}
+		],
+		"Get Response": [
+			{
+				"json": {
+					"id": 2,
+					"name": "nathan tester",
+					"url": "",
+					"description": "",
+					"link": "https://myblog.com/author/new-user/",
+					"slug": "new-user",
+					"avatar_urls": {
+						"24": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=24&d=mm&r=g",
+						"48": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=48&d=mm&r=g",
+						"96": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=96&d=mm&r=g"
+					},
+					"meta": [],
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/users/2",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/users"
+							}
+						]
+					}
+				}
+			}
+		],
+		"Get Many Response": [
+			{
+				"json": {
+					"id": 1,
+					"name": "nodeqa",
+					"url": "https://myblog.com",
+					"description": "",
+					"link": "https://myblog.com/author/nodeqa/",
+					"slug": "nodeqa",
+					"avatar_urls": {
+						"24": "https://secure.gravatar.com/avatar/de2d127be16acfb3d435ff80b5e13687?s=24&d=mm&r=g",
+						"48": "https://secure.gravatar.com/avatar/de2d127be16acfb3d435ff80b5e13687?s=48&d=mm&r=g",
+						"96": "https://secure.gravatar.com/avatar/de2d127be16acfb3d435ff80b5e13687?s=96&d=mm&r=g"
+					},
+					"meta": [],
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/users/1",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/users"
+							}
+						]
+					}
+				}
+			}
+		],
+		"Update Response": [
+			{
+				"json": {
+					"id": 2,
+					"username": "new-user",
+					"name": "Name Change",
+					"first_name": "Name",
+					"last_name": "Change",
+					"email": "nathan@domain.com",
+					"url": "",
+					"description": "",
+					"link": "https://myblog.com/author/new-user/",
+					"locale": "en_GB",
+					"nickname": "newuser",
+					"slug": "new-user",
+					"roles": ["subscriber"],
+					"registered_date": "2025-03-27T19:49:07+00:00",
+					"capabilities": {
+						"read": true,
+						"level_0": true,
+						"subscriber": true
+					},
+					"extra_capabilities": {
+						"subscriber": true
+					},
+					"avatar_urls": {
+						"24": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=24&d=mm&r=g",
+						"48": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=48&d=mm&r=g",
+						"96": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=96&d=mm&r=g"
+					},
+					"meta": {
+						"persisted_preferences": []
+					},
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/users/2",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/users"
+							}
+						]
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "User > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User > Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"User > Create": {
+			"main": [
+				[
+					{
+						"node": "Create Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"User > Get": {
+			"main": [
+				[
+					{
+						"node": "Get Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"User > Get Many": {
+			"main": [
+				[
+					{
+						"node": "Get Many Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"User > Update": {
+			"main": [
+				[
+					{
+						"node": "Update Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "b301e130-8b6e-4802-9b86-388040843566",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+	},
+	"id": "K7sj1qC0d2JFoMGp",
+	"tags": []
+}

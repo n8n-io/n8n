@@ -1,0 +1,72 @@
+{
+	"name": "My workflow 8",
+	"nodes": [
+		{
+			"parameters": {
+				"path": "d1cba915-ca18-4425-bcfb-133205fc815a",
+				"formTitle": "test",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "test"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "9e685367-fb94-4376-a9a4-7f311d9f7e2d",
+			"name": "n8n Form Trigger",
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2,
+			"position": [620, 580],
+			"webhookId": "d1cba915-ca18-4425-bcfb-133205fc815a"
+		},
+		{
+			"parameters": {},
+			"id": "0f4dfe66-51c0-4378-9eab-680f8140a572",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 2,
+			"position": [800, 580]
+		}
+	],
+	"pinData": {
+		"n8n Form Trigger": [
+			{
+				"json": {
+					"name": "First item",
+					"code": 1
+				}
+			},
+			{
+				"json": {
+					"name": "Second item",
+					"code": 2
+				}
+			}
+		]
+	},
+	"connections": {
+		"n8n Form Trigger": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "d6c14bc8-a69f-47bb-b5ba-fe6e9db0a3a4",
+	"id": "UQSimcMQJGbTeTLG",
+	"meta": {
+		"instanceId": "a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0"
+	},
+	"tags": []
+}

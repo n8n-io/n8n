@@ -1,53 +1,34 @@
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import type { Project, Variables } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { Variables } from '@/databases/entities/variables';
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { generateNanoId } from '@/databases/utils/generators';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { CacheService } from '@/services/cache/cache.service';
+import {
+	createProjectVariable,
+	createVariable,
+	getVariableById,
+	getVariableByKey,
+} from '@test-integration/db/variables';
 
 import { createOwner, createUser } from './shared/db/users';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
+let project: Project;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['variables'] });
 const license = testServer.license;
-
-async function createVariable(key: string, value: string) {
-	const result = await Container.get(VariablesRepository).save({
-		id: generateNanoId(),
-		key,
-		value,
-	});
-	await Container.get(VariablesService).updateCache();
-	return result;
-}
-
-async function getVariableByKey(key: string) {
-	return await Container.get(VariablesRepository).findOne({
-		where: {
-			key,
-		},
-	});
-}
-
-async function getVariableById(id: string) {
-	return await Container.get(VariablesRepository).findOne({
-		where: {
-			id,
-		},
-	});
-}
 
 beforeAll(async () => {
 	const owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
+
+	project = await createTeamProject();
+	await linkUserToProject(member, project, 'project:editor');
 
 	license.setDefaults({
 		features: ['feat:variables'],
@@ -70,6 +51,7 @@ describe('GET /variables', () => {
 			createVariable('test1', 'value1'),
 			createVariable('test2', 'value2'),
 			createVariable('empty', ''),
+			createProjectVariable('testProject1', 'projectValue1', project),
 		]);
 	});
 
@@ -85,13 +67,13 @@ describe('GET /variables', () => {
 	test('should return all variables for an owner', async () => {
 		const response = await authOwnerAgent.get('/variables');
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(3);
+		expect(response.body.data.length).toBe(4);
 	});
 
 	test('should return all variables for a member', async () => {
 		const response = await authMemberAgent.get('/variables');
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(3);
+		expect(response.body.data.length).toBe(4);
 	});
 
 	describe('state:empty', () => {
@@ -177,7 +159,7 @@ describe('POST /variables', () => {
 		expect(byKey).toBeNull();
 	});
 
-	test("POST /variables should not create a new variable and return it if the instance doesn't have a license", async () => {
+	test("should not create a new variable and return it if the instance doesn't have a license", async () => {
 		license.disable('feat:variables');
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(403);
@@ -191,7 +173,7 @@ describe('POST /variables', () => {
 	test('should fail to create a new variable and if one with the same key exists', async () => {
 		await createVariable(toCreate.key, toCreate.value);
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
-		expect(response.statusCode).toBe(500);
+		expect(response.statusCode).toBe(400);
 		expect(response.body.data?.key).not.toBe(toCreate.key);
 		expect(response.body.data?.value).not.toBe(toCreate.value);
 	});
@@ -241,9 +223,8 @@ describe('POST /variables', () => {
 	test('should fail if value too long', async () => {
 		const toCreate = {
 			key: 'key',
-			// 256 'a's
-			value:
-				'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+			// 1001 'a's
+			value: Array(1001).fill('a').join(''),
 		};
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(400);
@@ -334,7 +315,7 @@ describe('PATCH /variables/:id', () => {
 			createVariable(toModify.key, toModify.value),
 		]);
 		const response = await authOwnerAgent.patch(`/variables/${var1.id}`).send(toModify);
-		expect(response.statusCode).toBe(500);
+		expect(response.statusCode).toBe(400);
 		expect(response.body.data?.key).not.toBe(toModify.key);
 		expect(response.body.data?.value).not.toBe(toModify.value);
 

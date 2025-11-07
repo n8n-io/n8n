@@ -4,6 +4,7 @@ import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
 	deepCopy,
+	setSafeObjectProperty,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
 	type INodeExecutionData,
@@ -48,7 +49,7 @@ function redact<T = unknown>(obj: T, secrets: string[]): T {
 		return obj.map((item) => redact(item, secrets)) as T;
 	} else if (isObject(obj)) {
 		for (const [key, value] of Object.entries(obj)) {
-			(obj as IDataObject)[key] = redact(value, secrets);
+			setSafeObjectProperty(obj, key, redact(value, secrets));
 		}
 	}
 
@@ -82,7 +83,6 @@ export function sanitizeUiMessage(
 		sendRequest = {
 			...sendRequest,
 			[requestProperty]: Object.keys(sendRequest[requestProperty] as object).reduce(
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
 				(acc: IDataObject, curr) => {
 					acc[curr] = authDataKeys[requestProperty].includes(curr)
 						? REDACTED
@@ -289,5 +289,21 @@ export const setAgentOptions = (
 		if (sslCertificates.passphrase)
 			agentOptions.passphrase = formatPrivateKey(sslCertificates.passphrase);
 		requestOptions.agentOptions = agentOptions;
+	}
+};
+
+export const updadeQueryParameterConfig = (version: number) => {
+	if (version < 4.3) {
+		return (qs: IDataObject, name: string, value: string) => (qs[name] = value);
+	} else {
+		return (qs: { [key: string]: any }, name: string, value: any) => {
+			if (qs[name] === undefined) {
+				qs[name] = value;
+			} else if (Array.isArray(qs[name])) {
+				qs[name].push(value);
+			} else {
+				qs[name] = [qs[name], value];
+			}
+		};
 	}
 };

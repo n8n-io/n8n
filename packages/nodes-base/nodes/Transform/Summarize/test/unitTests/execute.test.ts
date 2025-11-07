@@ -1,7 +1,7 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeExecutionOutput, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { Summarize } from '../../Summarize.node';
 import type { Aggregations } from '../../utils';
@@ -43,14 +43,11 @@ describe('Test Summarize Node, execute', () => {
 
 		const result = await summarizeNode.execute.call(mockExecuteFunctions);
 
-		expect(result).toBeInstanceOf(NodeExecutionOutput);
 		expect(result).toEqual([[{ json: { sum_nonexistentField: 0 }, pairedItem: [{ item: 0 }] }]]);
-		expect((result as NodeExecutionOutput).getHints()).toEqual([
-			{
-				location: 'outputPane',
-				message: "The field 'nonexistentField' does not exist in any items",
-			},
-		]);
+		expect(mockExecuteFunctions.addExecutionHints).toHaveBeenCalledWith({
+			location: 'outputPane',
+			message: "The field 'nonexistentField' does not exist in any items",
+		});
 	});
 
 	it('should throw error if node version is < 1.1 and fields not found', async () => {

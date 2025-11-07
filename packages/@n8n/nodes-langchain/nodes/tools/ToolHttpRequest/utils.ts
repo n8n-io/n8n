@@ -5,7 +5,6 @@ import { JSDOM } from 'jsdom';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-import * as mime from 'mime-types';
 import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 import type {
 	IDataObject,
@@ -15,7 +14,7 @@ import type {
 	NodeApiError,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type {
@@ -93,7 +92,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 
 	if (genericType === 'oAuth2Api') {
 		return async (options: IHttpRequestOptions) => {
-			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', options, {
+			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		};
@@ -145,6 +144,25 @@ const defaultOptimizer = <T>(response: T) => {
 
 	return String(response);
 };
+
+function isBinary(data: unknown) {
+	// Check if data is a Buffer
+	if (Buffer.isBuffer(data)) {
+		return true;
+	}
+
+	// If data is a string, assume it's text unless it contains null characters.
+	if (typeof data === 'string') {
+		// If the string contains a null character, it's likely binary.
+		if (data.includes('\0')) {
+			return true;
+		}
+		return false;
+	}
+
+	// For any other type, assume it's not binary.
+	return false;
+}
 
 const htmlOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
@@ -377,7 +395,6 @@ export const extractParametersFromText = (
 	const parameters = extractPlaceholders(text);
 
 	if (parameters.length) {
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		const inputParameters = prepareParameters(
 			parameters.map((name) => ({
 				name,
@@ -567,7 +584,7 @@ export const configureToolFunction = (
 	optimizeResponse: (response: string) => string,
 ) => {
 	return async (query: string | IDataObject): Promise<string> => {
-		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+		const { index } = ctx.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
 
 		// Clone options and rawRequestOptions to avoid mutating the original objects
 		const options: IHttpRequestOptions | null = structuredClone(requestOptions);
@@ -755,16 +772,11 @@ export const configureToolFunction = (
 			if (!response) {
 				try {
 					// Check if the response is binary data
-					if (fullResponse?.headers?.['content-type']) {
-						const contentType = fullResponse.headers['content-type'] as string;
-						const mimeType = contentType.split(';')[0].trim();
-
-						if (mime.charset(mimeType) !== 'UTF-8') {
-							throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
-						}
+					if (fullResponse.body && isBinary(fullResponse.body)) {
+						throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
 					}
 
-					response = optimizeResponse(fullResponse.body);
+					response = optimizeResponse(fullResponse.body ?? fullResponse);
 				} catch (error) {
 					response = `There was an error: "${error.message}"`;
 				}
@@ -779,9 +791,9 @@ export const configureToolFunction = (
 		}
 
 		if (executionError) {
-			void ctx.addOutputData(NodeConnectionType.AiTool, index, executionError as ExecutionError);
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, executionError as ExecutionError);
 		} else {
-			void ctx.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
 
 		return response;

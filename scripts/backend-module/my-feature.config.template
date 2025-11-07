@@ -1,0 +1,11 @@
+import { Config, Env } from '@n8n/config';
+
+@Config
+export class MyFeatureConfig {
+	/**
+	 * How often in minutes to run some task.
+	 * @default 30
+	 */
+	@Env('N8N_MY_FEATURE_TASK_INTERVAL')
+	taskInterval: number = 30;
+}

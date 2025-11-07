@@ -1,18 +1,17 @@
+import { randomValidPassword, uniqueId, testDb, mockInstance } from '@n8n/backend-test-utils';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
+import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
 import { TOTPService } from '@/mfa/totp.service';
-import { mockInstance } from '@test/mocking';
 
 import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users';
-import { randomValidPassword, uniqueId } from '../shared/random';
-import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils';
 
 jest.mock('@/telemetry');
@@ -23,12 +22,18 @@ const externalHooks = mockInstance(ExternalHooks);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'],
+	enabledFeatures: [LICENSE_FEATURES.MFA_ENFORCEMENT],
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 
 	owner = await createOwner();
+
+	owner = await Container.get(UserRepository).findOneOrFail({
+		where: { id: owner.id },
+		relations: ['role'],
+	});
 
 	externalHooks.run.mockReset();
 
@@ -130,7 +135,7 @@ describe('Enable MFA setup', () => {
 			await testServer.authAgentFor(owner).post('/mfa/verify').send({ mfaCode }).expect(200);
 			await testServer.authAgentFor(owner).post('/mfa/enable').send({ mfaCode }).expect(200);
 
-			const user = await Container.get(AuthUserRepository).findOneOrFail({
+			const user = await Container.get(UserRepository).findOneOrFail({
 				where: {},
 			});
 
@@ -153,7 +158,7 @@ describe('Enable MFA setup', () => {
 
 			await testServer.authAgentFor(owner).post('/mfa/enable').send({ mfaCode }).expect(400);
 
-			const user = await Container.get(AuthUserRepository).findOneOrFail({
+			const user = await Container.get(UserRepository).findOneOrFail({
 				where: {},
 			});
 
@@ -175,7 +180,7 @@ describe('Disable MFA setup', () => {
 			})
 			.expect(200);
 
-		const dbUser = await Container.get(AuthUserRepository).findOneOrFail({
+		const dbUser = await Container.get(UserRepository).findOneOrFail({
 			where: { id: user.id },
 		});
 
@@ -268,7 +273,7 @@ describe('Change password with MFA enabled', () => {
 			.authAgentFor(user)
 			.post('/login')
 			.send({
-				email: user.email,
+				emailOrLdapLoginId: user.email,
 				password: newPassword,
 				mfaCode: new TOTPService().generateTOTP(rawSecret),
 			})
@@ -306,7 +311,10 @@ describe('Login', () => {
 
 		const user = await createUser({ password });
 
-		await testServer.authlessAgent.post('/login').send({ email: user.email, password }).expect(200);
+		await testServer.authlessAgent
+			.post('/login')
+			.send({ emailOrLdapLoginId: user.email, password })
+			.expect(200);
 	});
 
 	test('GET /login should not include mfaSecret and mfaRecoveryCodes property in response', async () => {
@@ -323,7 +331,7 @@ describe('Login', () => {
 
 		await testServer.authlessAgent
 			.post('/login')
-			.send({ email: user.email, password: rawPassword })
+			.send({ emailOrLdapLoginId: user.email, password: rawPassword })
 			.expect(401);
 	});
 
@@ -333,7 +341,7 @@ describe('Login', () => {
 
 			await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaCode: 'wrongvalue' })
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword, mfaCode: 'wrongvalue' })
 				.expect(401);
 		});
 
@@ -342,7 +350,7 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword })
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword })
 				.expect(401);
 
 			expect(response.body.code).toBe(998);
@@ -355,7 +363,7 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaCode: token })
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword, mfaCode: token })
 				.expect(200);
 
 			const data = response.body.data;
@@ -370,7 +378,11 @@ describe('Login', () => {
 
 			await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: 'wrongvalue' })
+				.send({
+					emailOrLdapLoginId: user.email,
+					password: rawPassword,
+					mfaRecoveryCode: 'wrongvalue',
+				})
 				.expect(401);
 		});
 
@@ -379,19 +391,81 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] })
+				.send({
+					emailOrLdapLoginId: user.email,
+					password: rawPassword,
+					mfaRecoveryCode: rawRecoveryCodes[0],
+				})
 				.expect(200);
 
 			const data = response.body.data;
 			expect(data.mfaEnabled).toBe(true);
 
-			const dbUser = await Container.get(AuthUserRepository).findOneOrFail({
+			const dbUser = await Container.get(UserRepository).findOneOrFail({
 				where: { id: user.id },
 			});
 
 			// Make sure the recovery code used was removed
 			expect(dbUser.mfaRecoveryCodes.length).toBe(rawRecoveryCodes.length - 1);
 			expect(dbUser.mfaRecoveryCodes.includes(rawRecoveryCodes[0])).toBe(false);
+		});
+	});
+});
+
+describe('Enforce MFA', () => {
+	test('Enforce MFA for the instance', async () => {
+		const settingsRepository = Container.get(SettingsRepository);
+
+		await settingsRepository.delete({
+			key: MFA_ENFORCE_SETTING,
+		});
+
+		let enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+
+		expect(enforced).toBe(null);
+
+		owner.mfaEnabled = true;
+		await testServer
+			.authAgentFor(owner)
+			.post('/mfa/enforce-mfa')
+			.send({ enforce: true })
+			.expect(200);
+		owner.mfaEnabled = false;
+
+		enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+
+		expect(enforced?.value).toBe('true');
+
+		await settingsRepository.delete({
+			key: MFA_ENFORCE_SETTING,
+		});
+	});
+
+	test('Disable MFA for the instance', async () => {
+		const settingsRepository = Container.get(SettingsRepository);
+
+		await settingsRepository.delete({
+			key: MFA_ENFORCE_SETTING,
+		});
+
+		let enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+
+		expect(enforced).toBe(null);
+
+		owner.mfaEnabled = true;
+		await testServer
+			.authAgentFor(owner)
+			.post('/mfa/enforce-mfa')
+			.send({ enforce: false })
+			.expect(200);
+		owner.mfaEnabled = false;
+
+		enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+
+		expect(enforced?.value).toBe('false');
+
+		await settingsRepository.delete({
+			key: MFA_ENFORCE_SETTING,
 		});
 	});
 });

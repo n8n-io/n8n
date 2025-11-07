@@ -1,9 +1,9 @@
 import { mock } from 'jest-mock-extended';
 import fs from 'node:fs/promises';
+import { Readable } from 'node:stream';
 
 import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
 import type { MetadataResponseHeaders } from '@/binary-data/object-store/types';
-import { isStream } from '@/binary-data/object-store/utils';
 import { ObjectStoreManager } from '@/binary-data/object-store.manager';
 import { mockInstance, toFileId, toStream } from '@test/utils';
 
@@ -67,7 +67,7 @@ describe('getAsStream()', () => {
 
 		const stream = await objectStoreManager.getAsStream(fileId);
 
-		expect(isStream(stream)).toBe(true);
+		expect(stream).toBeInstanceOf(Readable);
 		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, { mode: 'stream' });
 	});
 });

@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -11,28 +12,35 @@ import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { WebhookServer } from '@/webhooks/webhook-server';
 import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';
-import { mockInstance } from '@test/mocking';
 
 let agent: SuperAgentTest;
 
 describe('WebhookServer', () => {
+	const liveWebhooks = mockInstance(LiveWebhooks);
+	const testWebhooks = mockInstance(TestWebhooks);
+	const waitingWebhooks = mockInstance(WaitingWebhooks);
+	mockInstance(WaitingForms);
 	mockInstance(ExternalHooks);
+	const globalConfig = Container.get(GlobalConfig);
+
+	const mockResponse = (data = {}, headers = {}, status = 200) => {
+		const response = mock<IWebhookResponseCallbackData>();
+		response.responseCode = status;
+		response.data = data;
+		response.headers = headers;
+		return response;
+	};
+
+	beforeAll(async () => {
+		const server = new WebhookServer();
+		// @ts-expect-error: testWebhooksEnabled is private
+		server.testWebhooksEnabled = true;
+		await server.start();
+		agent = testAgent(server.app);
+	});
 
 	describe('CORS', () => {
 		const corsOrigin = 'https://example.com';
-		const liveWebhooks = mockInstance(LiveWebhooks);
-		const testWebhooks = mockInstance(TestWebhooks);
-		mockInstance(WaitingWebhooks);
-		mockInstance(WaitingForms);
-
-		beforeAll(async () => {
-			const server = new WebhookServer();
-			// @ts-expect-error: testWebhooksEnabled is private
-			server.testWebhooksEnabled = true;
-			await server.start();
-			agent = testAgent(server.app);
-		});
-
 		const tests = [
 			['webhook', liveWebhooks],
 			['webhookTest', testWebhooks],
@@ -43,8 +51,9 @@ describe('WebhookServer', () => {
 
 		for (const [key, manager] of tests) {
 			describe(`for ${key}`, () => {
+				const pathPrefix = globalConfig.endpoints[key];
+
 				it('should handle preflight requests', async () => {
-					const pathPrefix = Container.get(GlobalConfig).endpoints[key];
 					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
 
 					const response = await agent
@@ -58,7 +67,6 @@ describe('WebhookServer', () => {
 				});
 
 				it('should handle regular requests', async () => {
-					const pathPrefix = Container.get(GlobalConfig).endpoints[key];
 					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
 					manager.executeWebhook.mockResolvedValueOnce(
 						mockResponse({ test: true }, { key: 'value ' }),
@@ -75,13 +83,37 @@ describe('WebhookServer', () => {
 				});
 			});
 		}
+	});
 
-		const mockResponse = (data = {}, headers = {}, status = 200) => {
-			const response = mock<IWebhookResponseCallbackData>();
-			response.responseCode = status;
-			response.data = data;
-			response.headers = headers;
-			return response;
-		};
+	describe('Routing for Waiting Webhooks', () => {
+		const pathPrefix = globalConfig.endpoints.webhookWaiting;
+
+		waitingWebhooks.executeWebhook.mockImplementation(async (req) => {
+			return {
+				noWebhookResponse: false,
+				responseCode: 200,
+				data: {
+					params: req.params,
+				},
+			};
+		});
+
+		it('should handle URLs without suffix', async () => {
+			const response = await agent.get(`/${pathPrefix}/12345`);
+
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toEqual({
+				params: { path: '12345' },
+			});
+		});
+
+		it('should handle URLs with suffix', async () => {
+			const response = await agent.get(`/${pathPrefix}/12345/suffix`);
+
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toEqual({
+				params: { path: '12345', suffix: 'suffix' },
+			});
+		});
 	});
 });

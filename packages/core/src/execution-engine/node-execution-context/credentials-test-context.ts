@@ -1,10 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ICredentialTestFunctions } from 'n8n-workflow';
 
-import { Memoized } from '@/decorators';
-import { Logger } from '@/logging';
-// eslint-disable-next-line import/no-cycle
-import { getSSHTunnelFunctions, proxyRequestToAxios } from '@/node-execute-functions';
+import { proxyRequestToAxios } from './utils/request-helper-functions';
+import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 export class CredentialTestContext implements ICredentialTestFunctions {
 	readonly helpers: ICredentialTestFunctions['helpers'];

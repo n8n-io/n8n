@@ -1,0 +1,61 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "99f866fa-f63c-477d-a0d0-48fbdb8a344a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"container": { "__rl": true, "mode": "list", "value": "mycontainer" },
+				"options": { "simplify": false },
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureStorage",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "ab1b6258-5c75-4893-90bf-ef591264420c",
+			"name": "Azure Storage",
+			"credentials": {
+				"azureStorageSharedKeyApi": {
+					"id": "VPmcFM58eDDexWQL",
+					"name": "Azure Storage Shared Key account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Azure Storage": [
+			{
+				"json": {
+					"name": "mycontainer",
+					"properties": {
+						"lastModified": "Tue, 28 Jan 2025 16:40:21 GMT",
+						"etag": "\"0x8DD3FBA74CF3620\"",
+						"leaseStatus": "unlocked",
+						"leaseState": "available",
+						"hasImmutabilityPolicy": false,
+						"hasLegalHold": false,
+						"leaseDuration": "infinite",
+						"blobPublicAccess": "blob",
+						"contentLength": 0,
+						"date": "Wed, 29 Jan 2025 08:43:08 GMT",
+						"requestId": "49edb268-b01e-0053-6e29-72d574000000",
+						"server": "Windows-Azure-Blob/1.0 Microsoft-HTTPAPI/2.0",
+						"version": "2020-10-02"
+					},
+					"metadata": { "key1": "field1" }
+				}
+			}
+		]
+	}
+}

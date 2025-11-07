@@ -1,13 +1,16 @@
+import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
+import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { ErrorReporter, Logger } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { EventService } from '@/events/event.service';
 import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
-import type { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import type { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
+import type { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 
 import { MissingAuthTokenError } from './errors/missing-auth-token.error';
@@ -27,14 +30,19 @@ export class TaskRunnerModule {
 
 	private taskRequester: LocalTaskRequester | undefined;
 
-	private taskRunnerProcess: TaskRunnerProcess | undefined;
+	private jsRunnerProcess: JsTaskRunnerProcess | undefined;
 
-	private taskRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
+	private pyRunnerProcess: PyTaskRunnerProcess | undefined;
+
+	private jsRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
+
+	private pyRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly runnerConfig: TaskRunnersConfig,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('task-runner');
 	}
@@ -49,17 +57,26 @@ export class TaskRunnerModule {
 		await this.loadTaskRequester();
 		await this.loadTaskBroker();
 
-		if (mode === 'internal') {
-			await this.startInternalTaskRunner();
-		}
+		this.eventService.on('execution-cancelled', ({ executionId }) => {
+			this.taskRequester?.cancelTasks(executionId);
+		});
+
+		if (mode === 'internal') await this.startInternalTaskRunners();
 	}
 
 	@OnShutdown()
 	async stop() {
 		const stopRunnerProcessTask = (async () => {
-			if (this.taskRunnerProcess) {
-				await this.taskRunnerProcess.stop();
-				this.taskRunnerProcess = undefined;
+			if (this.jsRunnerProcess) {
+				await this.jsRunnerProcess.stop();
+				this.jsRunnerProcess = undefined;
+			}
+		})();
+
+		const stopPythonRunnerProcessTask = (async () => {
+			if (this.pyRunnerProcess) {
+				await this.pyRunnerProcess.stop();
+				this.pyRunnerProcess = undefined;
 			}
 		})();
 
@@ -70,7 +87,7 @@ export class TaskRunnerModule {
 			}
 		})();
 
-		await Promise.all([stopRunnerProcessTask, stopRunnerServerTask]);
+		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask, stopRunnerServerTask]);
 	}
 
 	private async loadTaskRequester() {
@@ -92,20 +109,33 @@ export class TaskRunnerModule {
 		await this.taskBrokerHttpServer.start();
 	}
 
-	private async startInternalTaskRunner() {
+	private async startInternalTaskRunners() {
 		a.ok(this.taskBrokerWsServer, 'Task Runner WS Server not loaded');
 
-		const { TaskRunnerProcess } = await import('@/task-runners/task-runner-process');
-		this.taskRunnerProcess = Container.get(TaskRunnerProcess);
-		this.taskRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
-			this.taskRunnerProcess,
+		const { JsTaskRunnerProcess } = await import('@/task-runners/task-runner-process-js');
+		this.jsRunnerProcess = Container.get(JsTaskRunnerProcess);
+		this.jsRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+			this.jsRunnerProcess,
 		);
-		this.taskRunnerProcessRestartLoopDetector.on(
+		this.jsRunnerProcessRestartLoopDetector.on(
 			'restart-loop-detected',
 			this.onRunnerRestartLoopDetected,
 		);
 
-		await this.taskRunnerProcess.start();
+		await this.jsRunnerProcess.start();
+
+		if (this.runnerConfig.isNativePythonRunnerEnabled) {
+			const { PyTaskRunnerProcess } = await import('@/task-runners/task-runner-process-py');
+			this.pyRunnerProcess = Container.get(PyTaskRunnerProcess);
+			this.pyRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+				this.pyRunnerProcess,
+			);
+			this.pyRunnerProcessRestartLoopDetector.on(
+				'restart-loop-detected',
+				this.onRunnerRestartLoopDetected,
+			);
+			await this.pyRunnerProcess.start();
+		}
 
 		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
 			'@/task-runners/internal-task-runner-disconnect-analyzer'

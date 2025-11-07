@@ -10,50 +10,7 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "Status": {
-            "type": "string"
-        },
-        "Priority": {
-            "type": "string"
-        },
-        "IsHighPriority": {
-            "type": "boolean"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "IsClosed": {
-            "type": "boolean"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "IsArchived": {
-            "type": "boolean"
+            }
         },
         "CallDisposition": {
             "type": "null"
@@ -61,14 +18,44 @@
         "CallObject": {
             "type": "null"
         },
-        "ReminderDateTime": {
-            "type": "null"
+        "CreatedById": {
+            "type": "string"
         },
-        "IsReminderSet": {
+        "CreatedDate": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsArchived": {
+            "type": "boolean"
+        },
+        "IsClosed": {
+            "type": "boolean"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "IsHighPriority": {
             "type": "boolean"
         },
         "IsRecurrence": {
             "type": "boolean"
+        },
+        "IsReminderSet": {
+            "type": "boolean"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "Priority": {
+            "type": "string"
         },
         "RecurrenceDayOfMonth": {
             "type": "null"
@@ -82,58 +69,15 @@
         "RecurrenceRegeneratedType": {
             "type": "null"
         },
-        "TaskSubtype": {
+        "Status": {
             "type": "string"
         },
-        "WhoCount": {
-            "type": "integer"
+        "SystemModstamp": {
+            "type": "string"
         },
-        "WhatCount": {
-            "type": "integer"
-        },
-        "ActionCadenceStepTrackerId": {
-            "type": "null"
+        "TaskSubtype": {
+            "type": "string"
         }
     },
-    "required": [
-        "attributes",
-        "Id",
-        "WhoId",
-        "WhatId",
-        "Subject",
-        "ActivityDate",
-        "Status",
-        "Priority",
-        "IsHighPriority",
-        "OwnerId",
-        "Description",
-        "IsDeleted",
-        "AccountId",
-        "IsClosed",
-        "CreatedDate",
-        "CreatedById",
-        "LastModifiedDate",
-        "LastModifiedById",
-        "SystemModstamp",
-        "IsArchived",
-        "CallDurationInSeconds",
-        "CallType",
-        "CallDisposition",
-        "CallObject",
-        "ReminderDateTime",
-        "IsReminderSet",
-        "RecurrenceActivityId",
-        "IsRecurrence",
-        "RecurrenceStartDateOnly",
-        "RecurrenceEndDateOnly",
-        "RecurrenceTimeZoneSidKey",
-        "RecurrenceType",
-        "RecurrenceInterval",
-        "RecurrenceDayOfWeekMask",
-        "RecurrenceDayOfMonth",
-        "RecurrenceInstance",
-        "RecurrenceMonthOfYear",
-        "RecurrenceRegeneratedType",
-        "TaskSubtype"
-    ]
+    "version": 1
 }

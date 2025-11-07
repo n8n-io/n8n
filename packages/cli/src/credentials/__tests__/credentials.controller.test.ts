@@ -1,9 +1,8 @@
+import type { AuthenticatedRequest, SharedCredentialsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { createRawProjectData } from '@/__tests__/project.test-data';
-import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 
 import { createdCredentialsWithScopes, createNewCredentialsPayload } from './credentials.test-data';
 import { CredentialsController } from '../credentials.controller';
@@ -25,9 +24,11 @@ describe('CredentialsController', () => {
 		sharedCredentialsRepository,
 		mock(),
 		eventService,
+		mock(),
 	);
 
 	let req: AuthenticatedRequest;
+	const res = mock<Response>();
 	beforeAll(() => {
 		req = { user: { id: '123' } } as AuthenticatedRequest;
 	});
@@ -48,7 +49,8 @@ describe('CredentialsController', () => {
 				id: newCredentialsPayload.projectId,
 			});
 
-			credentialsService.createCredential.mockResolvedValue(createdCredentials);
+			// @ts-ignore
+			credentialsService.createUnmanagedCredential.mockResolvedValue(createdCredentials);
 
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
 				projectOwningCredentialData,
@@ -56,11 +58,15 @@ describe('CredentialsController', () => {
 
 			// Act
 
-			const newApiKey = await credentialsController.createCredentials(req);
+			const newApiKey = await credentialsController.createCredentials(
+				req,
+				res,
+				newCredentialsPayload,
+			);
 
 			// Assert
 
-			expect(credentialsService.createCredential).toHaveBeenCalledWith(
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
 				newCredentialsPayload,
 				req.user,
 			);
@@ -74,6 +80,7 @@ describe('CredentialsController', () => {
 				projectId: projectOwningCredentialData.id,
 				projectType: projectOwningCredentialData.type,
 				publicApi: false,
+				uiContext: newCredentialsPayload.uiContext,
 			});
 
 			expect(newApiKey).toEqual(createdCredentials);

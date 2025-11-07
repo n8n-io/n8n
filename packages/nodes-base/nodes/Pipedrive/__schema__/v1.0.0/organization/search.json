@@ -1,20 +1,23 @@
 {
     "type": "object",
     "properties": {
-        "result_score": {
-            "type": "number"
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "id": {
             "type": "integer"
         },
-        "type": {
-            "type": "string"
-        },
         "name": {
             "type": "string"
         },
-        "visible_to": {
-            "type": "integer"
+        "notes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "owner": {
             "type": "object",
@@ -22,16 +25,17 @@
                 "id": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "id"
-            ]
-        },
-        "notes": {
-            "type": "array",
-            "items": {
-                "type": "string"
             }
+        },
+        "result_score": {
+            "type": "number"
+        },
+        "type": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "integer"
         }
-    }
+    },
+    "version": 3
 }

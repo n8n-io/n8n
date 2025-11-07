@@ -1,22 +1,72 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "tags": {
+        "additionalPhones": {
             "type": "array",
             "items": {
-                "type": "string"
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string"
+                    },
+                    "phoneLabel": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "attributionSource": {
+            "type": "object",
+            "properties": {
+                "medium": {
+                    "type": "string"
+                },
+                "sessionSource": {
+                    "type": "string"
+                }
+            }
+        },
+        "country": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "sourceId": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                }
             }
         },
         "dateAdded": {
             "type": "string"
         },
-        "type": {
+        "dateUpdated": {
             "type": "string"
         },
-        "locationId": {
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
             "type": "string"
         },
         "firstName": {
@@ -28,97 +78,30 @@
         "fullNameLowerCase": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "lastName": {
             "type": "string"
         },
         "lastNameLowerCase": {
             "type": "string"
         },
-        "email": {
-            "type": "string"
-        },
-        "emailLowerCase": {
+        "locationId": {
             "type": "string"
         },
         "phone": {
             "type": "string"
         },
-        "country": {
-            "type": "string"
-        },
-        "attributionSource": {
-            "type": "object",
-            "properties": {
-                "sessionSource": {
-                    "type": "string"
-                },
-                "medium": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "sessionSource",
-                "medium"
-            ]
-        },
-        "createdBy": {
-            "type": "object",
-            "properties": {
-                "source": {
-                    "type": "string"
-                },
-                "channel": {
-                    "type": "string"
-                },
-                "sourceId": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "source",
-                "channel",
-                "sourceId",
-                "timestamp"
-            ]
-        },
-        "dateUpdated": {
-            "type": "string"
-        },
-        "customFields": {
+        "tags": {
             "type": "array",
             "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
+                "type": "string"
             }
         },
-        "additionalPhones": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "phone": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "phone",
-                    "phoneLabel"
-                ]
-            }
-        },
-        "state": {
+        "type": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

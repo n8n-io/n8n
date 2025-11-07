@@ -1,0 +1,32 @@
+[
+	{
+		"kind": "youtube#videoCategory",
+		"etag": "grPOPYEUUZN3ltuDUGEWlrTR90U",
+		"id": "1",
+		"snippet": {
+			"title": "Film & Animation",
+			"assignable": true,
+			"channelId": "UCFAKE1234567890TEST"
+		}
+	},
+	{
+		"kind": "youtube#videoCategory",
+		"etag": "Q0xgUf8BFM8rW3W0R9wNq809xyA",
+		"id": "2",
+		"snippet": {
+			"title": "Autos & Vehicles",
+			"assignable": true,
+			"channelId": "UCFAKE1234567890TEST"
+		}
+	},
+	{
+		"kind": "youtube#videoCategory",
+		"etag": "qnpwjh5QlWM5hrnZCvHisquztC4",
+		"id": "10",
+		"snippet": {
+			"title": "Music",
+			"assignable": true,
+			"channelId": "UCFAKE1234567890TEST"
+		}
+	}
+]

@@ -16,7 +16,7 @@ class HealthConfig {
 
 	/** IP address for worker server to listen on. */
 	@Env('N8N_WORKER_SERVER_ADDRESS')
-	address: string = '0.0.0.0';
+	address: string = '::';
 }
 
 @Config
@@ -52,17 +52,21 @@ class RedisConfig {
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
+
+	/** Whether to enable dual-stack hostname resolution for Redis connections. */
+	@Env('QUEUE_BULL_REDIS_DUALSTACK')
+	dualStack: boolean = false;
 }
 
 @Config
 class SettingsConfig {
 	/** How long (in milliseconds) is the lease period for a worker processing a job. */
 	@Env('QUEUE_WORKER_LOCK_DURATION')
-	lockDuration: number = 30_000;
+	lockDuration: number = 60_000;
 
 	/** How often (in milliseconds) a worker must renew the lease. */
 	@Env('QUEUE_WORKER_LOCK_RENEW_TIME')
-	lockRenewTime: number = 15_000;
+	lockRenewTime: number = 10_000;
 
 	/** How often (in milliseconds) Bull must check for stalled jobs. `0` to disable. */
 	@Env('QUEUE_WORKER_STALLED_INTERVAL')

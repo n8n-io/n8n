@@ -1,7 +1,6 @@
 import type { DataRequestResponse, TaskDataRequestParams } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { type INode, type INodeExecutionData } from 'n8n-workflow';
+import type { IWorkflowExecuteAdditionalData, INode, INodeExecutionData } from 'n8n-workflow';
 
 import { DataRequestResponseStripper } from '../data-request-response-stripper';
 
@@ -110,6 +109,7 @@ const taskData: DataRequestResponse = {
 					{
 						hints: [],
 						startTime: 1730313407328,
+						executionIndex: 0,
 						executionTime: 1,
 						source: [],
 						executionStatus: 'success',
@@ -122,6 +122,7 @@ const taskData: DataRequestResponse = {
 					{
 						hints: [],
 						startTime: 1730313407330,
+						executionIndex: 1,
 						executionTime: 1,
 						source: [
 							{

@@ -1,3 +1,5 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type {
@@ -14,27 +16,29 @@ import type { NodeTypes } from '@/node-types';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;
-	const instanceSettings = mock<InstanceSettings>();
+	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		activeWorkflowManager = new ActiveWorkflowManager(
-			mock(),
+			mockLogger(),
 			mock(),
 			mock(),
 			mock(),
 			mock(),
 			nodeTypes,
 			mock(),
-			mock(),
-			mock(),
+			workflowRepository,
 			mock(),
 			mock(),
 			mock(),
 			mock(),
 			mock(),
 			instanceSettings,
+			mock(),
+			mock(),
 			mock(),
 		);
 	});
@@ -94,9 +98,9 @@ describe('ActiveWorkflowManager', () => {
 				expect(result).toBe(true);
 			});
 
-			test('should return `false` for `leadershipChange`', () => {
+			test('should return `true` for `leadershipChange`', () => {
 				const result = activeWorkflowManager.shouldAddWebhooks('leadershipChange');
-				expect(result).toBe(false);
+				expect(result).toBe(true);
 			});
 
 			test('should return `true` for `update` or `activate`', () => {
@@ -120,6 +124,45 @@ describe('ActiveWorkflowManager', () => {
 					expect(result).toBe(false);
 				}
 			});
+		});
+
+		describe('add', () => {
+			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange']])(
+				'should skip inactive workflow in `%s` activation mode',
+				async (mode) => {
+					const checkSpy = jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated');
+					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
+					const addTriggersAndPollersSpy = jest.spyOn(
+						activeWorkflowManager,
+						'addTriggersAndPollers',
+					);
+					workflowRepository.findById.mockResolvedValue(mock<WorkflowEntity>({ active: false }));
+
+					const added = await activeWorkflowManager.add('some-id', mode);
+
+					expect(checkSpy).not.toHaveBeenCalled();
+					expect(addWebhooksSpy).not.toHaveBeenCalled();
+					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
+				},
+			);
+		});
+	});
+
+	describe('addActiveWorkflows', () => {
+		test('should prevent concurrent activations', async () => {
+			const getAllActiveIds = jest.spyOn(workflowRepository, 'getAllActiveIds');
+
+			workflowRepository.getAllActiveIds.mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(() => resolve(['workflow-1']), 50)),
+			);
+
+			await Promise.all([
+				activeWorkflowManager.addActiveWorkflows('init'),
+				activeWorkflowManager.addActiveWorkflows('leadershipChange'),
+			]);
+
+			expect(getAllActiveIds).toHaveBeenCalledTimes(1);
 		});
 	});
 });

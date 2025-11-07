@@ -1,0 +1,49 @@
+name: Weekly Coverage Tests
+
+on:
+  schedule:
+    - cron: '0 2 * * 1' # Every Monday at 2 AM
+  workflow_dispatch: # Allow manual triggering
+
+env:
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
+  NODE_OPTIONS: --max-old-space-size=16384
+  TESTCONTAINERS_RYUK_DISABLED: true
+  PLAYWRIGHT_WORKERS: 4
+
+jobs:
+  coverage:
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    name: Coverage Tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs-blacksmith
+        with:
+          build-command: pnpm turbo build:playwright
+
+      - name: Build with Coverage
+        run: pnpm --filter n8n-editor-ui build:coverage
+
+      - name: Run Coverage Tests
+        run: |
+          pnpm --filter n8n-playwright test:local \
+            --workers=${{ env.PLAYWRIGHT_WORKERS }}
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Generate Coverage Report
+        run: pnpm --filter n8n-playwright coverage:report
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-report
+          path: packages/testing/playwright/coverage/
+          retention-days: 14

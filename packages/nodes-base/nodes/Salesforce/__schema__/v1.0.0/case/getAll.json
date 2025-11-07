@@ -10,20 +10,17 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
         },
         "Id": {
+            "type": "string"
+        },
+        "OwnerId": {
             "type": "string"
         },
         "Status": {
             "type": "string"
         }
     },
-    "required": [
-        "attributes"
-    ]
+    "version": 4
 }

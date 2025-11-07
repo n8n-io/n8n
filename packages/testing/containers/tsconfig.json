@@ -1,0 +1,12 @@
+{
+	"extends": "../../../tsconfig.json",
+	"compilerOptions": {
+		"sourceMap": false,
+		"declaration": false,
+		"lib": ["esnext", "dom"],
+		"types": ["node"]
+	},
+	"include": ["**/*.ts"],
+	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
+	"references": [{ "path": "../../workflow/tsconfig.build.esm.json" }]
+}

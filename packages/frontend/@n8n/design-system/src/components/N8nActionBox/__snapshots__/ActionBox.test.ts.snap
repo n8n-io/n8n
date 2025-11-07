@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8NActionBox > should render correctly 1`] = `
+"<div class="n8n-action-box container" data-test-id="action-box">
+  <div class="emoji">😿</div>
+  <div class="heading">
+    <n8n-heading-stub align="center" tag="span" bold="false" size="xlarge"></n8n-heading-stub>
+  </div>
+  <div class="description">
+    <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
+  </div>
+  <n8n-button-stub block="false" element="button" label="Do something" square="false" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="primary" role="button" class="el-tooltip__trigger"></n8n-button-stub>
+  <!--teleport start-->
+  <!--teleport end-->
+  <!--v-if-->
+</div>"
+`;

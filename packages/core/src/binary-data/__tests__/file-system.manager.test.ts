@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 
 import { FileSystemManager } from '@/binary-data/file-system.manager';
-import { isStream } from '@/binary-data/object-store/utils';
 import { toFileId, toStream } from '@test/utils';
 
 jest.mock('fs');
@@ -70,7 +70,7 @@ describe('getAsStream()', () => {
 
 		const stream = await fsManager.getAsStream(fileId);
 
-		expect(isStream(stream)).toBe(true);
+		expect(stream).toBeInstanceOf(Readable);
 		expect(fs.createReadStream).toHaveBeenCalledWith(toFullFilePath(fileId), {
 			highWaterMark: undefined,
 		});
@@ -99,6 +99,7 @@ describe('getMetadata()', () => {
 describe('copyByFileId()', () => {
 	it('should copy by file ID and return the file ID', async () => {
 		fsp.copyFile = jest.fn().mockResolvedValue(undefined);
+		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
 
 		// @ts-expect-error - private method
 		jest.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
@@ -109,6 +110,9 @@ describe('copyByFileId()', () => {
 		const targetPath = toFullFilePath(targetFileId);
 
 		expect(fsp.copyFile).toHaveBeenCalledWith(sourcePath, targetPath);
+
+		// Make sure metadata file was written
+		expect(fsp.writeFile).toBeCalledTimes(1);
 	});
 });
 

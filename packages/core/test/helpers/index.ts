@@ -6,7 +6,6 @@ import type {
 	INodeType,
 	INodeTypes,
 	IRun,
-	ITaskData,
 	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
@@ -14,10 +13,11 @@ import type {
 	WorkflowTestData,
 	INodeTypeData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import path from 'path';
 
 import { UnrecognizedNodeTypeError } from '@/errors';
+import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { predefinedNodesTypes } from './constants';
 
@@ -51,23 +51,17 @@ export function NodeTypes(nodeTypes: INodeTypeData = predefinedNodesTypes): INod
 
 export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
-	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
-	const hookFunctions = {
-		nodeExecuteAfter: [
-			async (nodeName: string, _data: ITaskData): Promise<void> => {
-				nodeExecutionOrder.push(nodeName);
-			},
-		],
-		workflowExecuteAfter: [
-			async (fullRunData: IRun): Promise<void> => {
-				waitPromise.resolve(fullRunData);
-			},
-		],
-	};
-
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
+	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
 	return mock<IWorkflowExecuteAdditionalData>({
-		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', mock()),
+		hooks,
+		currentNodeExecutionIndex: 0,
+		// Not setting this to undefined would set it to a mock which would trigger
+		// conditions in the WorkflowExecute which only check if a property exists,
+		// e.g. `if (!this.additionalData.restartExecutionId)`. This would for
+		// example skip running the `workflowExecuteBefore` hook in the tests.
+		restartExecutionId: undefined,
 	});
 }
 

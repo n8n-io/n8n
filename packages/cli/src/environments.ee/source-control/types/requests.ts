@@ -1,4 +1,4 @@
-import type { AuthenticatedRequest } from '@/requests';
+import type { AuthenticatedRequest } from '@n8n/db';
 
 import type { SourceControlCommit } from './source-control-commit';
 import type { SourceControlDisconnect } from './source-control-disconnect';

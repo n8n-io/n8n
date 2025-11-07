@@ -1,32 +1,14 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "list_id": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "integer"
-        },
-        "entity_id": {
-            "type": "integer"
-        },
-        "entity_type": {
-            "type": "integer"
-        },
         "created_at": {
             "type": "string"
         },
         "entity": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
+                "crunchbase_uuid": {
+                    "type": "null"
                 },
                 "domains": {
                     "type": "array",
@@ -34,26 +16,29 @@
                         "type": "string"
                     }
                 },
-                "crunchbase_uuid": {
-                    "type": "null"
-                },
                 "global": {
                     "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
+            }
+        },
+        "entity_id": {
+            "type": "integer"
+        },
+        "entity_type": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "list_id": {
+            "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "list_id",
-        "creator_id",
-        "entity_id",
-        "entity_type",
-        "created_at",
-        "entity"
-    ]
+    "version": 2
 }

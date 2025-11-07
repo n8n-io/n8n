@@ -1,1 +1,1 @@
-export { InstanceSettings, InstanceType } from './instance-settings';
+export { InstanceSettings } from './instance-settings';

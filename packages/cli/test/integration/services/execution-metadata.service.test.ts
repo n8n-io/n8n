@@ -1,11 +1,9 @@
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { ExecutionMetadataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { createExecution } from '@test-integration/db/executions';
-import { createWorkflow } from '@test-integration/db/workflows';
-
-import * as testDb from '../shared/test-db';
 
 let executionMetadataRepository: ExecutionMetadataRepository;
 let executionMetadataService: ExecutionMetadataService;

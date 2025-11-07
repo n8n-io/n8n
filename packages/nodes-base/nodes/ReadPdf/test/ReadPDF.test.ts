@@ -1,11 +1,5 @@
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 
 describe('Test Read PDF Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({ assertBinaryData: true });
 });

@@ -1,13 +1,10 @@
+import type { User } from '@n8n/db';
+import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
-import { ApplicationError } from 'n8n-workflow';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { UnexpectedError } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 
 /**
@@ -28,50 +25,65 @@ export async function userHasScopes(
 		projectId,
 	}: { credentialId?: string; workflowId?: string; projectId?: string } /* only one */,
 ): Promise<boolean> {
-	if (user.hasGlobalScope(scopes, { mode: 'allOf' })) return true;
+	if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return true;
 
 	if (globalOnly) return false;
 
-	// Find which project roles are defined to contain the required scopes.
-	// Then find projects having this user and having those project roles.
-
-	const roleService = Container.get(RoleService);
-	const projectRoles = roleService.rolesWithScope('project', scopes);
+	// Find which projects the user has access to with the required scopes.
+	// This is done by finding the projects where the user has a role with at least the required scopes
 	const userProjectIds = (
-		await Container.get(ProjectRepository).find({
-			where: {
-				projectRelations: {
-					userId: user.id,
-					role: In(projectRoles),
-				},
-			},
-			select: ['id'],
-		})
-	).map((p) => p.id);
+		await Container.get(ProjectRepository)
+			.createQueryBuilder('project')
+			.innerJoin('project.projectRelations', 'relation')
+			.innerJoin('relation.role', 'role')
+			.innerJoin('role.scopes', 'scope')
+			.where('relation.userId = :userId', { userId: user.id })
+			.andWhere('scope.slug IN (:...scopes)', { scopes })
+			.groupBy('project.id')
+			.having('COUNT(DISTINCT scope.slug) = :scopeCount', { scopeCount: scopes.length })
+			.select(['project.id AS id'])
+			.getRawMany()
+	).map((row: { id: string }) => row.id);
 
 	// Find which resource roles are defined to contain the required scopes.
 	// Then find at least one of the above qualifying projects having one of
 	// those resource roles over the resource being checked.
+	const roleService = Container.get(RoleService);
 
 	if (credentialId) {
-		return await Container.get(SharedCredentialsRepository).existsBy({
+		const credentials = await Container.get(SharedCredentialsRepository).findBy({
 			credentialsId: credentialId,
-			projectId: In(userProjectIds),
-			role: In(roleService.rolesWithScope('credential', scopes)),
 		});
+		if (!credentials.length) {
+			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
+		}
+
+		const validRoles = await roleService.rolesWithScope('credential', scopes);
+
+		return credentials.some(
+			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
+		);
 	}
 
 	if (workflowId) {
-		return await Container.get(SharedWorkflowRepository).existsBy({
+		const workflows = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId,
-			projectId: In(userProjectIds),
-			role: In(roleService.rolesWithScope('workflow', scopes)),
 		});
+
+		if (!workflows.length) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
+		}
+
+		const validRoles = await roleService.rolesWithScope('workflow', scopes);
+
+		return workflows.some(
+			(w) => userProjectIds.includes(w.projectId) && validRoles.includes(w.role),
+		);
 	}
 
 	if (projectId) return userProjectIds.includes(projectId);
 
-	throw new ApplicationError(
+	throw new UnexpectedError(
 		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
 	);
 }

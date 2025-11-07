@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
@@ -150,6 +149,12 @@ describe('HttpRequestV3', () => {
 				authValue: { user: 'username', pass: 'password' },
 			},
 			{
+				genericCredentialType: 'httpBearerAuth',
+				credentials: { token: 'bearerToken123' },
+				authField: 'headers',
+				authValue: { Authorization: 'Bearer bearerToken123' },
+			},
+			{
 				genericCredentialType: 'httpDigestAuth',
 				credentials: { user: 'username', password: 'password' },
 				authField: 'auth',
@@ -225,5 +230,73 @@ describe('HttpRequestV3', () => {
 				}
 			},
 		);
+	});
+
+	describe('URL Parameter Validation', () => {
+		it('should throw error when URL is undefined', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return undefined;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter must be a string, got undefined',
+			);
+		});
+
+		it('should throw error when URL is null', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return null;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter must be a string, got null',
+			);
+		});
+
+		it('should throw error when URL is a number', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 42;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter must be a string, got number',
+			);
+		});
 	});
 });

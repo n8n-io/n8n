@@ -1,7 +1,7 @@
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
 import { isLdapLoginEnabled } from '@/ldap.ee/helpers.ee';
@@ -13,7 +13,7 @@ export const handleEmailLogin = async (
 ): Promise<User | undefined> => {
 	const user = await Container.get(UserRepository).findOne({
 		where: { email },
-		relations: ['authIdentities'],
+		relations: ['authIdentities', 'role'],
 	});
 
 	if (user?.password && (await Container.get(PasswordUtility).compare(password, user.password))) {
