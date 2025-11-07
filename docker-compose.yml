@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  n8n:
+    build:
+      context: .
+      dockerfile: docker/images/n8n/Dockerfile
+    container_name: n8n-ds2
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      # Database configuration (using SQLite by default)
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+      # Encryption key for credentials (CHANGE THIS!)
+      - N8N_ENCRYPTION_KEY=changeThisToASecureRandomString
+      # Timezone
+      - GENERIC_TIMEZONE=UTC
+      # Basic auth (uncomment and set credentials for security)
+      # - N8N_BASIC_AUTH_ACTIVE=true
+      # - N8N_BASIC_AUTH_USER=admin
+      # - N8N_BASIC_AUTH_PASSWORD=changeThisPassword
+    volumes:
+      # Persist n8n data
+      - n8n_data:/home/node/.n8n
+      # Persist local files
+      - ./n8n-files:/files
+    networks:
+      - n8n-network
+
+  # Optional: PostgreSQL database (uncomment to use instead of SQLite)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: n8n-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_USER=n8n
+  #     - POSTGRES_PASSWORD=n8n
+  #     - POSTGRES_DB=n8n
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - n8n-network
+  #   healthcheck:
+  #     test: ['CMD-SHELL', 'pg_isready -U n8n']
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  n8n_data:
+  # postgres_data:  # Uncomment if using PostgreSQL
+
+networks:
+  n8n-network:
+    driver: bridge

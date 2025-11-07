@@ -38,22 +38,22 @@
 	--p--color--white-a-015: hsla(var(--p--color--gray), 50%, 100%, 0.15);
 	--p--color--white-a-010: hsla(var(--p--color--gray), 50%, 100%, 0.1);
 
-	// Primary color
-	--p--color--primary--h: 7;
-	--p--color--primary--s: 100%;
-	--p--color--primary--l: 68%;
+	// Primary color - DS2 Teal Theme
+	--p--color--primary--h: 180;
+	--p--color--primary--s: 70%;
+	--p--color--primary--l: 40%;
 
-	--p--color--primary-420: hsl(7, 85%, 58%);
-	--p--color--primary-320: hsl(7, 100%, 68%); // Base
-	--p--color--primary-220: hsl(7, 100%, 78%);
-	--p--color--primary-120: hsl(7, 100%, 88%);
-	--p--color--primary-070: hsl(7, 100%, 93%);
-	--p--color--primary-050: hsl(7, 100%, 95%);
-	--p--color--primary-030: hsl(7, 100%, 98%);
+	--p--color--primary-420: hsl(180, 70%, 30%);
+	--p--color--primary-320: hsl(180, 70%, 40%); // Base
+	--p--color--primary-220: hsl(180, 70%, 50%);
+	--p--color--primary-120: hsl(180, 70%, 70%);
+	--p--color--primary-070: hsl(180, 70%, 85%);
+	--p--color--primary-050: hsl(180, 70%, 90%);
+	--p--color--primary-030: hsl(180, 70%, 97%);
 
-	--p--color--primary-320-a-010: hsla(7, 100%, 68%, 0.1);
-	--p--color--primary-320-a-035: hsla(7, 100%, 68%, 0.35);
-	--p--color--primary-320-a-050: hsla(7, 100%, 68%, 0.5);
+	--p--color--primary-320-a-010: hsla(180, 70%, 40%, 0.1);
+	--p--color--primary-320-a-035: hsla(180, 70%, 40%, 0.35);
+	--p--color--primary-320-a-050: hsla(180, 70%, 40%, 0.5);
 
 	// Secondary color
 	--p--color--secondary-720: hsl(247, 24%, 28%);
