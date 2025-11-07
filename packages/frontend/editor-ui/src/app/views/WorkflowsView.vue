@@ -1812,6 +1812,10 @@ const onNameSubmit = async (name: string) => {
 		}
 	}
 };
+
+const onListScroll = () => {
+	workflowListEventBus.emit('listScrolled');
+};
 </script>
 
 <template>
@@ -1839,6 +1843,7 @@ const onNameSubmit = async (name: string) => {
 		@update:filters="onFiltersUpdated"
 		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
+		@scroll="onListScroll"
 	>
 		<template #header>
 			<ProjectHeader

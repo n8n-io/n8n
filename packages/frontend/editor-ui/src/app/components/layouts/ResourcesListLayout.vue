@@ -116,6 +116,7 @@ const emit = defineEmits<{
 	'click:add': [event: Event];
 	'update:pagination-and-sort': [value: SortingAndPaginationUpdates];
 	'update:search': [value: string];
+	scroll: [event: Event];
 }>();
 
 const slots = defineSlots<{
@@ -575,6 +576,10 @@ const getScrollContainer = () => {
 	return listWrapperRef.value ?? null;
 };
 
+const onScroll = (event: Event) => {
+	emit('scroll', event);
+};
+
 defineExpose({
 	currentPage,
 	setCurrentPage,
@@ -722,7 +727,7 @@ defineExpose({
 						:class="$style.paginatedListWrapper"
 						data-test-id="paginated-list"
 					>
-						<div ref="listItemsRef" :class="$style.listItems">
+						<div ref="listItemsRef" :class="$style.listItems" @scroll="onScroll">
 							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
 								<slot name="item" :item="item" :index="index">
 									{{ item }}
