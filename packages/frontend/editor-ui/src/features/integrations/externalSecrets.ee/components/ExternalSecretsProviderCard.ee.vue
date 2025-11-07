@@ -120,7 +120,8 @@ async function onActionDropdownClick(id: string) {
 			<div :class="$style.cardContent">
 				<N8nText bold>{{ provider.displayName }}</N8nText>
 				<N8nText v-if="provider.connected" color="text-light" size="small">
-					<span>
+					<span v-if="provider.name === 'akeyless'"> On-demand secrets </span>
+					<span v-else>
 						{{
 							i18n.baseText('settings.externalSecrets.card.secretsCount', {
 								interpolate: {
