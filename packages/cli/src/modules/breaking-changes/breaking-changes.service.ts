@@ -253,7 +253,8 @@ export class BreakingChangeService {
 		}
 
 		if ('detectWorkflow' in rule) {
-			return (await this.getAllWorkflowRulesResults([rule], 1))[0];
+			const totalWorkflows = await this.workflowRepository.count();
+			return (await this.getAllWorkflowRulesResults([rule], totalWorkflows))[0];
 		}
 		return (await this.getAllInstanceRulesResults([rule]))[0];
 	}

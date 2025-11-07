@@ -2630,7 +2630,7 @@
 	"settings.migrationReport.emptyInstanceIssues.title": "No instance issues detected",
 	"settings.migrationReport.emptyInstanceIssues.description": "Your instance is fully compatible with version 2.0.0. You're good to go!",
 	"settings.migrationReport.documentation": "Documentation",
-	"settings.migrationReport.workflowsCount": "{count} Workflows",
+	"settings.migrationReport.workflowsCount": "{count} Workflow | {count} Workflows",
 	"settings.migrationReport.detail.affectedTag": "{count} affected",
 	"settings.migrationReport.detail.table.name": "Name",
 	"settings.migrationReport.detail.table.issue": "Issue",

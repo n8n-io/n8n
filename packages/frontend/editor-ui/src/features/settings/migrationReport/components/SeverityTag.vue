@@ -7,14 +7,13 @@ const $style = useCssModule();
 defineOptions({ name: 'N8nTag' });
 
 defineProps<{
-	severity: 'low' | 'medium' | 'high' | 'critical';
+	severity: 'low' | 'medium' | 'critical';
 }>();
 
 const tagsI18n = computed(
 	() =>
 		({
 			critical: 'Critical',
-			high: 'High',
 			medium: 'Medium',
 			low: 'Low',
 		}) as const,
@@ -22,7 +21,6 @@ const tagsI18n = computed(
 
 const tagClasses = {
 	critical: $style.TagCritical,
-	high: $style.TagHigh,
 	medium: $style.TagMedium,
 	low: $style.TagLow,
 } as const;
