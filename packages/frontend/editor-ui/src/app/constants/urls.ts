@@ -13,7 +13,6 @@ export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluati
 export const ERROR_WORKFLOW_DOCS_URL = `https://${DOCS_DOMAIN}/flow-logic/error-handling/#create-and-set-an-error-workflow`;
 export const TIME_SAVED_DOCS_URL = `https://${DOCS_DOMAIN}/insights/#setting-the-time-saved-by-a-workflow`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
-export const N8N_MAIN_GITHUB_REPO_URL = 'https://github.com/n8n-io/n8n';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';
 export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';

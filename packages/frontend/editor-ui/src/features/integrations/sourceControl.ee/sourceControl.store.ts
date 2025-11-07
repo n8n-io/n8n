@@ -9,7 +9,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 export const useSourceControlStore = defineStore('sourceControl', () => {
 	const rootStore = useRootStore();
 
-	const isEnterpriseSourceControlEnabled = computed(() => true);
+	const isEnterpriseSourceControlEnabled = computed(() => false);
 
 	const sshKeyTypes: SshKeyTypes = ['ed25519', 'rsa'];
 	const sshKeyTypesWithLabel = reactive(

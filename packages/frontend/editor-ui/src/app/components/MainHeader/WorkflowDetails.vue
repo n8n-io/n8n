@@ -25,7 +25,6 @@ import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -46,7 +45,6 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { sanitizeFilename } from '@/app/utils/fileUtils';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -93,7 +91,6 @@ const $style = useCssModule();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const sourceControlStore = useSourceControlStore();
 const tagsStore = useTagsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -201,18 +198,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 				disabled: !onWorkflowPage.value || onExecutionsTab.value,
 			},
 		);
-	}
-
-	if (hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } })) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.PUSH,
-			label: locale.baseText('menuActions.push'),
-			disabled:
-				!sourceControlStore.isEnterpriseSourceControlEnabled ||
-				!onWorkflowPage.value ||
-				onExecutionsTab.value ||
-				sourceControlStore.preferences.branchReadOnly,
-		});
 	}
 
 	actions.push({
@@ -583,34 +568,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
 			handleImportWorkflowFromFile();
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.PUSH: {
-			try {
-				await onSaveButtonClick();
-
-				// Navigate to route with sourceControl param - modal will handle data loading and loading states
-				void router.push({
-					query: {
-						...route.query,
-						sourceControl: 'push',
-					},
-				});
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				switch (error.message) {
-					case 'source_control_not_connected':
-						toast.showError(
-							{ ...error, message: '' },
-							locale.baseText('settings.sourceControl.error.not.connected.title'),
-							locale.baseText('settings.sourceControl.error.not.connected.message'),
-						);
-						break;
-					default:
-						toast.showError(error, locale.baseText('error'));
-				}
-			}
-
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.SETTINGS: {

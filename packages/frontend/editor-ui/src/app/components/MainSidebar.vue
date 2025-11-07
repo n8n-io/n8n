@@ -35,7 +35,6 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -53,7 +52,6 @@ import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/Te
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
-import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import MainSidebarUserArea from '@/app/components/MainSidebarUserArea.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
@@ -63,7 +61,6 @@ const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
-const sourceControlStore = useSourceControlStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const templatesDataQualityStore = useTemplatesDataQualityStore();
@@ -382,10 +379,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
 			>
-				<N8nTooltip
-					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
-					placement="bottom"
-				>
+				<N8nTooltip v-if="false && !isCollapsed" placement="bottom">
 					<template #content>
 						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
 							<template #link>
@@ -415,7 +409,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				<N8nIconButton icon="plus" type="secondary" outline />
 				<template #[createWorkflowsAppendSlotName]>
 					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
+						v-if="false"
 						placement="right"
 						:content="i18n.baseText('readOnlyEnv.cantAdd.workflow')"
 					>
@@ -424,7 +418,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				</template>
 				<template #[createCredentialsAppendSlotName]>
 					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
+						v-if="false"
 						placement="right"
 						:content="i18n.baseText('readOnlyEnv.cantAdd.credential')"
 					>
@@ -433,7 +427,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				</template>
 				<template #[createProjectAppendSlotName]="{ item }">
 					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
+						v-if="false"
 						placement="right"
 						:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
 					>
@@ -513,7 +507,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			</div>
 		</N8nScrollArea>
 
-		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<MainSidebarUserArea
 			v-if="showUserArea"
 			ref="user"

@@ -72,8 +72,6 @@ const SettingsUsageAndPlan = async () =>
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
-const SettingsSourceControl = async () =>
-	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>
 	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
 const SettingsProvisioningView = async () =>
@@ -628,29 +626,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'api',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'environments',
-				name: VIEWS.SOURCE_CONTROL,
-				components: {
-					settingsView: SettingsSourceControl,
-				},
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'sourceControl:manage',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'environments',
 							};
 						},
 					},

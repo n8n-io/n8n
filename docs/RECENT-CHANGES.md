@@ -4,6 +4,63 @@
 
 ## 2025-11-07
 
+### 移除 GitHub Star 按钮和 Source Control 功能 ✅
+
+进一步简化界面，移除不必要的第三方集成和企业功能。
+
+**移除内容**:
+- ✅ **GitHub Star 按钮**: 完全移除主界面顶部的 GitHub Star 按钮组件
+- ✅ **Source Control 功能**: 移除"推送到 Git"工作流集成功能
+- ✅ **相关依赖**: 移除 `vue-github-button` 包
+- ✅ **UI 元素**: 移除只读环境提示、分支显示等 UI 元素
+
+**具体修改**:
+
+1. **GitHub Star 按钮移除**:
+   - 移除 `MainHeader.vue` 中的按钮组件及样式
+   - 移除 `vue-github-button` 依赖
+   - 清理 localStorage 和 URL 常量
+
+2. **Source Control 功能禁用**:
+   - 移除工作流菜单中的"推送到 Git"选项
+   - 禁用 `sourceControl.store.ts` 中的企业功能标志
+   - 移除源代码控制设置路由（`/environments`）
+   - 移除推送/拉取模态框组件
+   - 清理所有只读分支相关的 UI 提示
+
+**影响范围**:
+- ✅ 主界面顶部：不再显示 GitHub Star 按钮
+- ✅ 工作流菜单：移除"推送到 Git"选项
+- ✅ 侧边栏：移除分支状态和锁定图标
+- ✅ 设置页面：移除"Environments"配置项
+- ✅ 所有只读环境提示全部禁用
+
+**修改统计**:
+- 📝 修改文件：9 个
+- 🗑️ 移除常量：4 个
+- 🎨 移除 UI 组件：3 个
+- 📦 移除依赖：1 个
+
+**技术细节**:
+```typescript
+// sourceControl.store.ts - 禁用功能
+const isEnterpriseSourceControlEnabled = computed(() => false);
+
+// MainHeader.vue - 移除只读限制
+const readOnly = computed(() => false);
+
+// MainSidebar.vue - 移除分支限制
+v-if="false && !isCollapsed"  // 原: sourceControlStore.preferences.branchReadOnly
+```
+
+**最终效果**:
+- ✅ 界面更简洁，无第三方服务按钮
+- ✅ 移除企业级源代码控制功能
+- ✅ 减少外部依赖和复杂度
+- ✅ TypeScript 构建通过，零错误
+
+---
+
 ### PostHog 完全移除 + 实验性功能默认启用 ✅
 
 彻底移除了 PostHog 外部分析服务，并将所有实验性功能改为默认启用，实现完全本地化运行。
@@ -216,4 +273,4 @@ const isFeatureEnabled = computed(() => {
 
 ---
 
-**最后更新**: 2025-11-05
+**最后更新**: 2025-11-07
