@@ -2058,6 +2058,7 @@ const onListScroll = () => {
 				</template>
 				<FolderCard
 					:data="data as FolderResource"
+					:workflow-list-event-bus="workflowListEventBus"
 					:actions="folderCardActions"
 					:read-only="
 						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)

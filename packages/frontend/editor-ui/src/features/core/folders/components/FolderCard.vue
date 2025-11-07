@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '../folders.constants';
 import { ProjectTypes, type Project } from '@/features/collaboration/projects/projects.types';
 import { useI18n } from '@n8n/i18n';
@@ -12,6 +12,7 @@ import { useFoldersStore } from '../folders.store';
 import { type IUser } from 'n8n-workflow';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 import {
 	N8nActionToggle,
@@ -22,18 +23,21 @@ import {
 	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
+
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;
-	actions: Array<UserAction<IUser>>;
+	actions?: Array<UserAction<IUser>>;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
+	workflowListEventBus?: EventBus;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
 	readOnly: true,
 	showOwnershipBadge: false,
+	workflowListEventBus: undefined,
 });
 
 const i18n = useI18n();
@@ -45,6 +49,8 @@ const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
 	folderOpened: [{ folder: FolderResource }];
 }>();
+
+const actionToggleRef = useTemplateRef('actionToggleRef');
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 
@@ -129,6 +135,21 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		await router.push(item.href);
 	}
 };
+
+// Close action toggle on parent scroll
+const onParentScroll = () => {
+	if (actionToggleRef.value) {
+		actionToggleRef.value.openActionToggle(false);
+	}
+};
+
+onMounted(() => {
+	props.workflowListEventBus?.on('listScrolled', onParentScroll);
+});
+
+onBeforeUnmount(() => {
+	props.workflowListEventBus?.off('listScrolled', onParentScroll);
+});
 </script>
 
 <template>
@@ -237,6 +258,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						</div>
 						<N8nActionToggle
 							v-if="actions.length"
+							ref="actionToggleRef"
 							:actions="actions"
 							theme="dark"
 							data-test-id="folder-card-actions"
