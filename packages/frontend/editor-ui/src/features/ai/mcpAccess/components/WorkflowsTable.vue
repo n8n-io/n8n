@@ -36,26 +36,17 @@ const i18n = useI18n();
 
 const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	{
-		title: i18n.baseText('generic.name'),
-		key: 'name',
-		width: 200,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
-		title: i18n.baseText('generic.folder'),
-		key: 'parentFolder',
-		width: 200,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
 		title: i18n.baseText('generic.project'),
 		key: 'homeProject',
+		width: 150,
+		disableSort: true,
+		value() {
+			return;
+		},
+	},
+	{
+		title: i18n.baseText('settings.mcp.workflowsTable.workflow'),
+		key: 'workflow',
 		width: 200,
 		disableSort: true,
 		value() {
@@ -65,7 +56,7 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	{
 		title: i18n.baseText('generic.description'),
 		key: 'description',
-		width: 300,
+		width: 350,
 		disableSort: true,
 		value() {
 			return;
@@ -158,21 +149,59 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 				:items="props.workflows"
 				:items-length="props.workflows.length"
 			>
-				<template #[`item.name`]="{ item }">
-					<N8nLink
-						:new-window="true"
-						:to="
-							router.resolve({
-								name: VIEWS.WORKFLOW,
-								params: { name: item.id },
-							}).fullPath
-						"
-						:theme="'text'"
-						:class="$style['table-link']"
-					>
-						<N8nText data-test-id="mcp-workflow-name">{{ item.name }}</N8nText>
-						<N8nIcon icon="external-link" :class="$style['link-icon']" color="text-light"></N8nIcon>
-					</N8nLink>
+				<template #[`item.workflow`]="{ item }">
+					<div :class="$style['workflow-cell']" data-test-id="mcp-workflow-cell">
+						<span
+							v-if="item.parentFolder?.parentFolderId"
+							:class="$style['parent-folder']"
+							data-test-id="mcp-workflow-grandparent-folder"
+						>
+							<span :class="$style.ellipsis">...</span>
+							<span :class="$style.separator" data-test-id="mcp-workflow-ellipsis-separator"
+								>/</span
+							>
+						</span>
+						<span v-if="item.parentFolder" :class="$style['parent-folder']">
+							<N8nLink
+								v-if="item.homeProject"
+								data-test-id="mcp-workflow-folder-link"
+								:to="`/projects/${item.homeProject.id}/folders/${item.parentFolder.id}/workflows`"
+								:theme="'text'"
+								:class="$style['table-link']"
+								:new-window="true"
+							>
+								<N8nText data-test-id="mcp-workflow-folder-name">
+									{{ item.parentFolder.name }}
+								</N8nText>
+							</N8nLink>
+							<span v-else>
+								<N8nIcon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
+								<N8nText data-test-id="mcp-workflow-folder-name">
+									{{ item.parentFolder.name }}
+								</N8nText>
+							</span>
+						</span>
+						<span
+							v-if="item.parentFolder"
+							:class="$style['separator']"
+							data-test-id="mcp-workflow-folder-separator"
+							>/</span
+						>
+						<N8nLink
+							data-test-id="mcp-workflow-name-link"
+							:new-window="true"
+							:to="
+								router.resolve({
+									name: VIEWS.WORKFLOW,
+									params: { name: item.id },
+								}).fullPath
+							"
+							:theme="'text'"
+							:class="$style['table-link']"
+						>
+							<N8nText data-test-id="mcp-workflow-name">{{ item.name }}</N8nText>
+						</N8nLink>
+					</div>
 				</template>
 				<template #[`item.description`]="{ item }">
 					<N8nTooltip
@@ -182,41 +211,13 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 					>
 						<div :class="$style['description-cell']">
 							<N8nText data-test-id="mcp-workflow-description">
-								{{ item.description || '-' }}
+								{{ item.description || '' }}
 							</N8nText>
 						</div>
 					</N8nTooltip>
 				</template>
-				<template #[`item.parentFolder`]="{ item }">
-					<span v-if="item.parentFolder" :class="$style['folder-cell']">
-						<N8nLink
-							v-if="item.homeProject"
-							data-test-id="mcp-workflow-folder-link"
-							:to="`/projects/${item.homeProject.id}/folders/${item.parentFolder.id}/workflows`"
-							:theme="'text'"
-							:class="$style['table-link']"
-							:new-window="true"
-						>
-							<N8nText data-test-id="mcp-workflow-folder-name">
-								{{ item.parentFolder.name }}
-							</N8nText>
-							<N8nIcon
-								icon="external-link"
-								:class="$style['link-icon']"
-								color="text-light"
-							></N8nIcon>
-						</N8nLink>
-						<span v-else>
-							<N8nIcon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
-							<N8nText data-test-id="mcp-workflow-folder-name">
-								{{ item.parentFolder.name }}
-							</N8nText>
-						</span>
-					</span>
-					<N8nText v-else data-test-id="mcp-workflow-no-folder">-</N8nText>
-				</template>
 				<template #[`item.homeProject`]="{ item }">
-					<span v-if="item.homeProject" :class="$style['folder-cell']">
+					<span v-if="item.homeProject">
 						<N8nLink
 							data-test-id="mcp-workflow-project-link"
 							:to="
@@ -279,6 +280,19 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	}
 }
 
+.workflow-cell,
+.parent-folder {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.separator,
+	.ellipsis {
+		padding-bottom: 1px;
+		color: var(--color--text--tint-1);
+	}
+}
+
 .description-cell {
 	display: -webkit-inline-box;
 	-webkit-box-orient: vertical;
@@ -319,11 +333,5 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 			margin-left: var(--spacing--3xs);
 		}
 	}
-}
-
-.folder-cell {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
 }
 </style>

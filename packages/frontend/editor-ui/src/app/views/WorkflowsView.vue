@@ -255,6 +255,10 @@ const teamProjectsEnabled = computed(() => {
 	return projectsStore.isTeamProjectFeatureEnabled;
 });
 
+const mcpEnabled = computed(() => {
+	return settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
+});
+
 const showFolders = computed(() => {
 	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
 });
@@ -2111,7 +2115,7 @@ const onNameSubmit = async (name: string) => {
 					:show-ownership-badge="showCardsBadge"
 					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
 					:are-tags-enabled="settingsStore.areTagsEnabled"
-					:is-mcp-enabled="settingsStore.isModuleActive('mcp')"
+					:is-mcp-enabled="mcpEnabled"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"
