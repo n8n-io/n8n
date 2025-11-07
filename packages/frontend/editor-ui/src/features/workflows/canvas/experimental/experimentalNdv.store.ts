@@ -11,21 +11,14 @@ import {
 	type ZoomTo,
 } from '@vue-flow/core';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
-import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/app/constants';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
-	const featureFlagsStore = useFeatureFlags();
 	const isZoomedViewEnabled = computed(
-		() =>
-			featureFlagsStore.getVariant(CANVAS_ZOOMED_VIEW_EXPERIMENT.name) ===
-			CANVAS_ZOOMED_VIEW_EXPERIMENT.variant,
+		() => true, // Experimental feature enabled by default
 	);
 	const isNdvInFocusPanelEnabled = computed(
-		() =>
-			featureFlagsStore.getVariant(NDV_IN_FOCUS_PANEL_EXPERIMENT.name) ===
-			NDV_IN_FOCUS_PANEL_EXPERIMENT.variant,
+		() => true, // Experimental feature enabled by default
 	);
 	const maxCanvasZoom = computed(() => (isZoomedViewEnabled.value ? 2 : 4));
 

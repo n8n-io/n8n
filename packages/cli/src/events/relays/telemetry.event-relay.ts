@@ -821,10 +821,6 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private async serverStarted() {
 		const cpus = os.cpus();
-
-		const isS3Selected = this.binaryDataConfig.mode === 's3';
-		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
-		const isS3Licensed = true;
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
 
 		const info = {
@@ -862,9 +858,6 @@ export class TelemetryEventRelay extends EventRelay {
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
-			license_plan_name: 'Enterprise',
-			license_tenant_id: { tenantId: 1 }.tenantId,
-			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
 			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
 			metrics: {
 				metrics_enabled: this.globalConfig.endpoints.metrics.enable,

@@ -29,20 +29,24 @@ export class TelemetryController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetryManagementService: TelemetryManagementService,
 	) {
-		this.proxy = createProxyMiddleware({
-			target: this.globalConfig.diagnostics.frontendConfig.split(';')[1],
-			changeOrigin: true,
-			pathRewrite: {
-				'^/proxy/': '/', // /proxy/v1/track -> /v1/track
-			},
-			on: {
-				proxyReq: (proxyReq, req) => {
-					proxyReq.removeHeader('cookie');
-					fixRequestBody(proxyReq, req);
-					return;
+		// Only create proxy if diagnostics is enabled and config is valid
+		const proxyTarget = this.globalConfig.diagnostics.frontendConfig.split(';')[1];
+		if (this.globalConfig.diagnostics.enabled && proxyTarget) {
+			this.proxy = createProxyMiddleware({
+				target: proxyTarget,
+				changeOrigin: true,
+				pathRewrite: {
+					'^/proxy/': '/', // /proxy/v1/track -> /v1/track
 				},
-			},
-		});
+				on: {
+					proxyReq: (proxyReq, req) => {
+						proxyReq.removeHeader('cookie');
+						fixRequestBody(proxyReq, req);
+						return;
+					},
+				},
+			});
+		}
 	}
 
 	@Post('/events/batch', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
@@ -76,8 +80,8 @@ export class TelemetryController {
 			});
 		}
 
-		// Also proxy to external service if enabled
-		if (this.globalConfig.diagnostics.enabled) {
+		// Also proxy to external service if enabled and proxy is configured
+		if (this.globalConfig.diagnostics.enabled && this.proxy) {
 			await this.proxy(req, res, next);
 		} else {
 			res.status(200).json({ success: true });
@@ -86,7 +90,7 @@ export class TelemetryController {
 
 	@Post('/proxy/:version/identify', { skipAuth: true, rateLimit: true })
 	async identify(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		if (this.globalConfig.diagnostics.enabled) {
+		if (this.globalConfig.diagnostics.enabled && this.proxy) {
 			await this.proxy(req, res, next);
 		} else {
 			res.status(200).json({ success: true });
@@ -95,7 +99,7 @@ export class TelemetryController {
 
 	@Post('/proxy/:version/page', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		if (this.globalConfig.diagnostics.enabled) {
+		if (this.globalConfig.diagnostics.enabled && this.proxy) {
 			await this.proxy(req, res, next);
 		} else {
 			res.status(200).json({ success: true });

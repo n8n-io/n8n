@@ -501,10 +501,13 @@ watch(
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
 		saveFiltersOnQueryString();
+		const projectIdForCount = projectPages.isOverviewSubPage
+			? undefined
+			: (route.params.projectId as string | undefined);
 		await Promise.all([
 			fetchWorkflows(),
 			foldersStore.fetchTotalWorkflowsAndFoldersCount(
-				route.params.projectId as string | undefined,
+				projectIdForCount,
 				currentFolderId.value ?? undefined,
 			),
 		]);
@@ -517,10 +520,13 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 const refreshWorkflows = async () => {
+	const projectIdForCount = projectPages.isOverviewSubPage
+		? undefined
+		: (route.params.projectId as string | undefined);
 	await Promise.all([
 		fetchWorkflows(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(
-			route.params.projectId as string | undefined,
+			projectIdForCount,
 			currentFolderId.value ?? undefined,
 		),
 	]);
@@ -538,8 +544,11 @@ const onFolderDeleted = async (payload: {
 		currentFolderId.value === payload.folderId
 			? (folderInfo?.parentFolder ?? null)
 			: currentFolderId.value;
+	const projectIdForCount = projectPages.isOverviewSubPage
+		? undefined
+		: (route.params.projectId as string | undefined);
 	await foldersStore.fetchTotalWorkflowsAndFoldersCount(
-		route.params.projectId as string | undefined,
+		projectIdForCount,
 		nextFolderId ?? undefined,
 	);
 
@@ -614,12 +623,16 @@ const initialize = async () => {
 	await setFiltersFromQueryString();
 
 	currentFolderId.value = route.params.folderId as string | null;
+	// For overview pages (/home/*), don't pass projectId to get all workflows
+	const projectIdForCount = projectPages.isOverviewSubPage
+		? undefined
+		: (route.params.projectId as string | undefined);
 	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(
-			route.params.projectId as string | undefined,
+			projectIdForCount,
 			currentFolderId.value ?? undefined,
 		),
 	]);

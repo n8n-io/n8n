@@ -14,7 +14,6 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -31,7 +30,6 @@ const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 const shutdownService = mockInstance(ShutdownService);
 const deprecationService = mockInstance(DeprecationService);
 mockInstance(MessageEventBus);
-const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
 mockInstance(CommunityPackagesService);
@@ -59,7 +57,6 @@ test('should start a task runner when task runners are enabled', async () => {
 	loadNodesAndCredentials.init.mockResolvedValue(undefined);
 	shutdownService.shutdown.mockReturnValue();
 	deprecationService.warn.mockReturnValue();
-	posthogClient.init.mockResolvedValue();
 	telemetryEventRelay.init.mockResolvedValue();
 	externalHooks.init.mockResolvedValue();
 

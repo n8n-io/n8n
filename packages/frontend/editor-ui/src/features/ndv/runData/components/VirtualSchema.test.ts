@@ -30,7 +30,6 @@ import {
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { defaultSettings } from '@/__tests__/defaults';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 

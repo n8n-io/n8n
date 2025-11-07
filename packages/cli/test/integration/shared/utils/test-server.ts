@@ -14,7 +14,6 @@ import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 
@@ -100,7 +99,6 @@ export const setupTestServer = ({ endpointGroups, modules }: SetupProps): TestSe
 
 	// Mock all telemetry and logging
 	mockLogger();
-	mockInstance(PostHogClient);
 	mockInstance(Push);
 	mockInstance(Telemetry);
 

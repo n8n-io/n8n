@@ -8,14 +8,11 @@ import {
 } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type RudderStack from '@rudderstack/rudder-sdk-node';
-import axios from 'axios';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import type { IExecutionTrackProperties } from '@/interfaces';
-import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
 import { TelemetryManagementService } from '@/modules/telemetry-management/telemetry-management.service';
@@ -47,51 +44,25 @@ interface IExecutionsBuffer {
 
 @Service()
 export class Telemetry {
-	private rudderStack?: RudderStack;
-
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly postHog: PostHogClient,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
-		private readonly errorReporter: ErrorReporter,
 		private readonly telemetryManagementService: TelemetryManagementService,
 	) {}
 
 	async init() {
-		const { enabled, backendConfig } = this.globalConfig.diagnostics;
+		const { enabled } = this.globalConfig.diagnostics;
 		if (enabled) {
-			const [key, dataPlaneUrl] = backendConfig.split(';');
-
-			if (!key || !dataPlaneUrl) {
-				this.logger.warn('Diagnostics backend config is invalid');
-				return;
-			}
-
-			const logLevel = this.globalConfig.logging.level;
-
-			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
-			const axiosInstance = axios.create();
-			axiosInstance.interceptors.request.use((cfg) => {
-				cfg.headers.setContentType('application/json', false);
-				return cfg;
-			});
-			this.rudderStack = new RudderStack(key, {
-				axiosInstance,
-				logLevel,
-				dataPlaneUrl,
-				gzip: false,
-				errorHandler: (error) => {
-					this.errorReporter.error(error);
-				},
-			});
-
+			this.logger.info('Telemetry initialized - using local storage only');
 			this.startPulse();
+		} else {
+			this.logger.info('Telemetry is disabled');
 		}
 	}
 
@@ -105,10 +76,7 @@ export class Telemetry {
 	}
 
 	private async pulse() {
-		if (!this.rudderStack) {
-			return;
-		}
-
+		// Report workflow execution counts
 		const workflowIdsToReport = Object.keys(this.executionCountsBuffer).filter((workflowId) => {
 			const data = this.executionCountsBuffer[workflowId];
 			const sum =
@@ -130,16 +98,15 @@ export class Telemetry {
 			});
 		}
 
+		// Clear buffer after reporting
 		this.executionCountsBuffer = {};
 
+		// Collect instance statistics
 		const sourceControlPreferences = Container.get(
 			SourceControlPreferencesService,
 		).getPreferences();
 
-		// License info
 		const pulsePacket = {
-			plan_name_current: 'Enterprise',
-			quota: -1,
 			usage: await this.workflowRepository.getActiveTriggerCount(),
 			role_count: await Container.get(UserRepository).countUsersByRole(),
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
@@ -153,41 +120,43 @@ export class Telemetry {
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
-		if (this.rudderStack) {
-			const execTime = new Date();
-			const workflowId = properties.workflow_id;
+		const execTime = new Date();
+		const workflowId = properties.workflow_id;
 
-			this.executionCountsBuffer[workflowId] = this.executionCountsBuffer[workflowId] ?? {
-				user_id: properties.user_id,
+		// Initialize buffer for this workflow if not exists
+		this.executionCountsBuffer[workflowId] = this.executionCountsBuffer[workflowId] ?? {
+			user_id: properties.user_id,
+		};
+
+		// Determine the execution type key
+		let key: ExecutionTrackDataKey;
+		if (properties.crashed) {
+			key = `${properties.is_manual ? 'manual' : 'prod'}_crashed`;
+		} else {
+			key = `${properties.is_manual ? 'manual' : 'prod'}_${
+				properties.success ? 'success' : 'error'
+			}`;
+		}
+
+		const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
+
+		// Update execution count
+		if (!executionTrackDataKey) {
+			this.executionCountsBuffer[workflowId][key] = {
+				count: 1,
+				first: execTime,
 			};
+		} else {
+			executionTrackDataKey.count++;
+		}
 
-			let key: ExecutionTrackDataKey;
-			if (properties.crashed) {
-				key = `${properties.is_manual ? 'manual' : 'prod'}_crashed`;
-			} else {
-				key = `${properties.is_manual ? 'manual' : 'prod'}_${
-					properties.success ? 'success' : 'error'
-				}`;
-			}
-
-			const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
-
-			if (!executionTrackDataKey) {
-				this.executionCountsBuffer[workflowId][key] = {
-					count: 1,
-					first: execTime,
-				};
-			} else {
-				executionTrackDataKey.count++;
-			}
-
-			if (
-				!properties.success &&
-				properties.is_manual &&
-				properties.error_node_type?.startsWith('n8n-nodes-base')
-			) {
-				this.track('Workflow execution errored', properties);
-			}
+		// Track errors from n8n-nodes-base in manual executions
+		if (
+			!properties.success &&
+			properties.is_manual &&
+			properties.error_node_type?.startsWith('n8n-nodes-base')
+		) {
+			this.track('Workflow execution errored', properties);
 		}
 	}
 
@@ -195,23 +164,21 @@ export class Telemetry {
 	async stopTracking(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 
-		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
+		// Flush any remaining execution counts before shutdown
+		if (Object.keys(this.executionCountsBuffer).length > 0) {
+			await this.pulse();
+		}
 	}
 
 	identify(traits?: { [key: string]: string | number | boolean | object | undefined | null }) {
-		if (!this.rudderStack) {
-			return;
-		}
-
+		// Store identification data in local telemetry
 		const { instanceId } = this.instanceSettings;
 
-		this.rudderStack.identify({
-			userId: instanceId,
-			traits: { ...traits, instanceId },
-			context: {
-				// provide a fake IP address to instruct RudderStack to not use the user's IP address
-				ip: '0.0.0.0',
-			},
+		void this.telemetryManagementService.trackEvent({
+			eventName: 'identify',
+			properties: { ...traits, instanceId },
+			instanceId,
+			source: 'backend',
 		});
 	}
 
@@ -224,7 +191,7 @@ export class Telemetry {
 			version_cli: N8N_VERSION,
 		};
 
-		// Save to local database
+		// Save to local database only
 		void this.telemetryManagementService.trackEvent({
 			eventName,
 			properties: updatedProperties,
@@ -233,26 +200,6 @@ export class Telemetry {
 			instanceId,
 			source: 'backend',
 		});
-
-		// Still track with PostHog and RudderStack if enabled
-		if (this.rudderStack) {
-			const payload = {
-				userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
-				event: eventName,
-				properties: updatedProperties,
-				context: {},
-			};
-
-			this.postHog?.track(payload);
-
-			return this.rudderStack.track({
-				...payload,
-				// provide a fake IP address to instruct RudderStack to not use the user's IP address
-				context: { ...payload.context, ip: '0.0.0.0' },
-			});
-		}
-
-		return undefined;
 	}
 
 	// test helpers

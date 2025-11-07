@@ -14,7 +14,6 @@ import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { validateEntity } from '@/generic-helpers';
-import { PostHogClient } from '@/posthog';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 
@@ -27,7 +26,6 @@ export class OwnerController {
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly postHog: PostHogClient,
 		private readonly userRepository: UserRepository,
 	) {}
 
@@ -75,6 +73,6 @@ export class OwnerController {
 
 		this.eventService.emit('instance-owner-setup', { userId: owner.id });
 
-		return await this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
+		return await this.userService.toPublic(owner, { withScopes: true });
 	}
 }

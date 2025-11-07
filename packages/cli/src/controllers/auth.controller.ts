@@ -15,7 +15,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { MfaService } from '@/mfa/mfa.service';
-import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import {
@@ -34,7 +33,6 @@ export class AuthController {
 		private readonly userService: UserService,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
-		private readonly postHog?: PostHogClient,
 	) {}
 
 	/** Log in a user */
@@ -105,7 +103,6 @@ export class AuthController {
 			});
 
 			return await this.userService.toPublic(user, {
-				posthog: this.postHog,
 				withScopes: true,
 				mfaAuthenticated: user.mfaEnabled,
 			});
@@ -124,7 +121,6 @@ export class AuthController {
 	})
 	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
 		return await this.userService.toPublic(req.user, {
-			posthog: this.postHog,
 			withScopes: true,
 			mfaAuthenticated: req.authInfo?.usedMfa,
 		});

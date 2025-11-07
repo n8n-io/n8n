@@ -130,13 +130,18 @@ pnpm start
 
 详见 **[构建修复说明](./BUILD-FIXES.md)**
 
-## 📚 详细文档
+## 📚 文档导航
 
-- **[核心变更](./CHANGES.md)** - 详细的代码变更和删除内容
+### 常用文档
+- **[最近变更](./RECENT-CHANGES.md)** - 最近几个月的重要更新
+- **[技术概述](./TECHNICAL-OVERVIEW.md)** - 核心技术概述和关键实现
 - **[企业功能](./FEATURES.md)** - 所有启用功能的详细说明
-- **[技术细节](./TECHNICAL-DETAILS.md)** - 实现策略和代码示例
 - **[构建修复](./BUILD-FIXES.md)** - 依赖管理和构建问题解决方案
-- **[更新日志](./CHANGELOG.md)** - 完整的开发历史
+
+### 详细文档（归档）
+- **[完整更新日志](./archive/FULL-CHANGELOG.md)** - 完整的开发历史
+- **[详细变更说明](./archive/DETAILED-CHANGES.md)** - 详细的代码变更和删除内容
+- **[详细技术说明](./archive/DETAILED-TECHNICAL.md)** - 深入的实现策略和代码示例
 
 ## ⚠️ 重要提醒
 

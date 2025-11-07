@@ -38,7 +38,6 @@ describe('OwnerController', () => {
 		authService,
 		userService,
 		passwordUtility,
-		mock(),
 		userRepository,
 	);
 

@@ -1,8 +1,6 @@
-import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/app/constants';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { computed } from 'vue';
 
 const ASSISTANT_FLOATING_BUTTON_SIZE = 42;
@@ -10,14 +8,10 @@ const ASSISTANT_FLOATING_BUTTON_SIZE = 42;
 export function useFloatingUiOffsets() {
 	const assistantStore = useAssistantStore();
 	const ndvStore = useNDVStore();
-	const featureFlagsStore = useFeatureFlags();
 	const logsStore = useLogsStore();
 
-	const isNDVV2 = computed(() =>
-		featureFlagsStore.isVariantEnabled(
-			NDV_UI_OVERHAUL_EXPERIMENT.name,
-			NDV_UI_OVERHAUL_EXPERIMENT.variant,
-		),
+	const isNDVV2 = computed(
+		() => true, // Experimental feature enabled by default
 	);
 	const askAiOffset = computed(() => (ndvStore.isNDVOpen && !isNDVV2.value ? 48 : 16));
 

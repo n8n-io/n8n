@@ -31,12 +31,6 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: vi.fn(() => ({
-		getVariant: vi.fn(() => 'variant'),
-	})),
-}));
-
 vi.mock('@/experiments/utils', async (importOriginal) => {
 	const actual = await importOriginal<object>();
 

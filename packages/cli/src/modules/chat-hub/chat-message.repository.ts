@@ -2,6 +2,7 @@ import type { ChatHubMessageStatus, ChatMessageId, ChatSessionId } from '@n8n/ap
 import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubSessionRepository } from './chat-session.repository';
@@ -23,8 +24,11 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 			this.manager,
 			trx,
 			async (em): Promise<ChatHubMessage> => {
-				// Use type assertion to avoid deep type instantiation issues with self-referencing relations
-				await em.insert(ChatHubMessage, message as ChatHubMessage);
+				// Use type assertion via 'unknown' to bypass deep type instantiation with self-referencing TypeORM relations
+				await em.insert(
+					ChatHubMessage,
+					message as unknown as QueryDeepPartialEntity<ChatHubMessage>,
+				);
 				const saved = await em.findOneOrFail(ChatHubMessage, {
 					where: { id: message.id as string },
 				});

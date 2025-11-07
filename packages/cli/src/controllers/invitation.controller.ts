@@ -12,7 +12,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
@@ -26,7 +25,6 @@ export class InvitationController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
-		private readonly postHog: PostHogClient,
 		private readonly eventService: EventService,
 	) {}
 
@@ -133,7 +131,6 @@ export class InvitationController {
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
 		return await this.userService.toPublic(updatedUser, {
-			posthog: this.postHog,
 			withScopes: true,
 		});
 	}

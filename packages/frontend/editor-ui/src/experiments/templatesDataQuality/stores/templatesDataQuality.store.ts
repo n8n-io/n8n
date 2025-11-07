@@ -1,9 +1,7 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { TEMPLATES_DATA_QUALITY_EXPERIMENT, VIEWS } from '@/app/constants';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
+import { VIEWS } from '@/app/constants';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { defineStore } from 'pinia';
-import batch1TemplateIds from '../data/batch1TemplateIds.json';
 import batch2TemplateIds from '../data/batch2TemplateIds.json';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
@@ -11,18 +9,11 @@ const NUMBER_OF_TEMPLATES = 6;
 
 export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', () => {
 	const telemetry = useTelemetry();
-	const featureFlagsStore = useFeatureFlags();
 	const templatesStore = useTemplatesStore();
 	const settingsStore = useSettingsStore();
 
 	const isFeatureEnabled = () => {
-		return (
-			settingsStore.isTemplatesEnabled &&
-			(featureFlagsStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-				TEMPLATES_DATA_QUALITY_EXPERIMENT.variant1 ||
-				featureFlagsStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-					TEMPLATES_DATA_QUALITY_EXPERIMENT.variant2)
-		);
+		return settingsStore.isTemplatesEnabled; // Experimental feature enabled by default
 	};
 
 	async function getTemplateData(templateId: number) {
@@ -34,11 +25,8 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 	}
 
 	function getRandomTemplateIds(): number[] {
-		const ids =
-			featureFlagsStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-			TEMPLATES_DATA_QUALITY_EXPERIMENT.variant1
-				? batch1TemplateIds
-				: batch2TemplateIds;
+		// Use batch2 as default
+		const ids = batch2TemplateIds;
 		const result: number[] = [];
 		const picked = new Set<number>();
 		const count = Math.min(NUMBER_OF_TEMPLATES, ids.length);

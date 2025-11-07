@@ -6,13 +6,6 @@ import {
 	trackTemplatesClick,
 } from './utils';
 
-const getVariant = vi.fn();
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: vi.fn(() => ({
-		getVariant,
-	})),
-}));
-
 let isTrialing = false;
 vi.mock('@/app/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: vi.fn(() => ({

@@ -23,7 +23,6 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
-import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
@@ -75,7 +74,6 @@ export class Server extends AbstractServer {
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
@@ -149,7 +147,6 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller');
-			await import('@/controllers/posthog.controller');
 		}
 
 		// ----------------------------------------
@@ -198,8 +195,6 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
 		}
-
-		await this.postHogClient.init();
 
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 

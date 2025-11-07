@@ -12,7 +12,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { AIView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 
 let posthogStore: ReturnType<typeof usePostHog>;
 

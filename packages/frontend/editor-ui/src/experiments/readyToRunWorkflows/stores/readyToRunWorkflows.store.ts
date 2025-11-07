@@ -1,7 +1,6 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { BATCH_11AUG_EXPERIMENT } from '@/app/constants';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
@@ -23,14 +22,9 @@ export const useReadyToRunWorkflowsStore = defineStore(
 		const i18n = useI18n();
 		const foldersStore = useFoldersStore();
 		const workflowsStore = useWorkflowsStore();
-		const featureFlagsStore = useFeatureFlags();
 
 		const isFeatureEnabled = computed(() => {
-			return [
-				BATCH_11AUG_EXPERIMENT.variantReadyToRun,
-				BATCH_11AUG_EXPERIMENT.variantReadyToRun2,
-				BATCH_11AUG_EXPERIMENT.variantReadyToRun3,
-			].includes(featureFlagsStore.getVariant(BATCH_11AUG_EXPERIMENT.name)?.toString() ?? '');
+			return true; // Experimental feature enabled by default
 		});
 
 		const calloutDismissedRef = useLocalStorage(LOCAL_STORAGE_SETTING_KEY, false);
@@ -64,33 +58,13 @@ export const useReadyToRunWorkflowsStore = defineStore(
 		};
 
 		function getCardText() {
-			const variant = featureFlagsStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
-
-			switch (variant) {
-				case BATCH_11AUG_EXPERIMENT.variantReadyToRun:
-					return i18n.baseText('workflows.readyToRunWorkflows.card');
-				case BATCH_11AUG_EXPERIMENT.variantReadyToRun2:
-					return i18n.baseText('workflows.readyToRunWorkflows.card2');
-				case BATCH_11AUG_EXPERIMENT.variantReadyToRun3:
-					return i18n.baseText('workflows.readyToRunWorkflows.card3');
-				default:
-					return '';
-			}
+			// Use variant 3 as default (most complete version)
+			return i18n.baseText('workflows.readyToRunWorkflows.card3');
 		}
 
 		function getCalloutText() {
-			const variant = featureFlagsStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
-
-			switch (variant) {
-				case BATCH_11AUG_EXPERIMENT.variantReadyToRun:
-					return i18n.baseText('workflows.readyToRunWorkflows.callout');
-				case BATCH_11AUG_EXPERIMENT.variantReadyToRun2:
-					return i18n.baseText('workflows.readyToRunWorkflows.callout2');
-				case BATCH_11AUG_EXPERIMENT.variantReadyToRun3:
-					return i18n.baseText('workflows.readyToRunWorkflows.callout3');
-				default:
-					return '';
-			}
+			// Use variant 3 as default (most complete version)
+			return i18n.baseText('workflows.readyToRunWorkflows.callout3');
 		}
 
 		const createWorkflows = async (projectId: string, parentFolderId?: string) => {

@@ -1,7 +1,5 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/app/constants';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 /*
@@ -9,10 +7,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
  */
 
 export const isExtraTemplateLinksExperimentEnabled = () => {
-	return (
-		useFeatureFlags().getVariant(EXTRA_TEMPLATE_LINKS_EXPERIMENT.name) ===
-			EXTRA_TEMPLATE_LINKS_EXPERIMENT.variant || useTemplatesDataQualityStore().isFeatureEnabled()
-	);
+	// Experimental feature enabled by default
+	return true || useTemplatesDataQualityStore().isFeatureEnabled();
 };
 
 export const enum TemplateClickSource {

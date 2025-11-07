@@ -126,7 +126,7 @@ import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/ut
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
+
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -198,7 +198,7 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
-const featureFlagsStore = useFeatureFlags();
+
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -294,12 +294,8 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
-const isNDVV2 = computed(() =>
-	featureFlagsStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+
+const isNDVV2 = computed(() => true); // Experimental feature enabled by default
 
 const isCanvasReadOnly = computed(() => {
 	return (

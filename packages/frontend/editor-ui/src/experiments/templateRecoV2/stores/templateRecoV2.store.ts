@@ -1,7 +1,6 @@
 import { computed } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { TEMPLATE_RECO_V2, VIEWS } from '@/app/constants';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
+import { VIEWS } from '@/app/constants';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
@@ -13,11 +12,10 @@ export const usePersonalizedTemplatesV2Store = defineStore(
 	STORES.EXPERIMENT_TEMPLATE_RECO_V2,
 	() => {
 		const telemetry = useTelemetry();
-		const featureFlagsStore = useFeatureFlags();
 		const templatesStore = useTemplatesStore();
 
 		const isFeatureEnabled = () => {
-			return featureFlagsStore.getVariant(TEMPLATE_RECO_V2.name) === TEMPLATE_RECO_V2.variant;
+			return true; // Experimental feature enabled by default
 		};
 
 		function getNodeData(nodeId: string): PredefinedNodeData {

@@ -23,9 +23,6 @@ vi.mock('vue-router', () => ({
 }));
 
 // Stores
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isVariantEnabled: vi.fn().mockReturnValue(true) }),
-}));
 const loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({ loadNodeTypesIfNotLoaded }),

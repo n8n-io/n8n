@@ -1,0 +1,453 @@
+
+> n8n-monorepo@1.118.0 typecheck /home/zhang/n8n-quanyuge
+> turbo typecheck
+
+turbo 2.5.4
+
+• Packages in scope: @n8n/admin-panel, @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/chat, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/codemirror-lang-sql, @n8n/composables, @n8n/config, @n8n/constants, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/design-system, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/eslint-plugin-community-nodes, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/scan-community-package, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/task-runner, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-editor-ui, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow
+• Running typecheck in 46 packages
+• Remote caching disabled
+n8n-editor-ui:popularity-cache-marker: cache bypass, force executing e8a687b890dd01cf
+@n8n/stylelint-config:build: cache hit, replaying logs 6f5da2f8eac803ff
+@n8n/stylelint-config:build: 
+@n8n/stylelint-config:build: > @n8n/stylelint-config@0.0.1 build /home/zhang/n8n-quanyuge/packages/@n8n/stylelint-config
+@n8n/stylelint-config:build: > tsc
+@n8n/stylelint-config:build: 
+@n8n/vitest-config:build: cache hit, replaying logs 762d89732ff6bd87
+@n8n/vitest-config:build: 
+@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /home/zhang/n8n-quanyuge/packages/@n8n/vitest-config
+@n8n/vitest-config:build: > tsc -p tsconfig.build.json
+@n8n/vitest-config:build: 
+@n8n/di:build: cache hit, replaying logs ea8413296f80881b
+@n8n/di:build: 
+@n8n/di:build: > @n8n/di@0.9.0 build /home/zhang/n8n-quanyuge/packages/@n8n/di
+@n8n/di:build: > tsc -p tsconfig.build.json
+@n8n/di:build: 
+@n8n/errors:build: cache hit, replaying logs 938f5ef17e8abcdf
+@n8n/errors:build: 
+@n8n/errors:build: > @n8n/errors@0.5.0 build /home/zhang/n8n-quanyuge/packages/@n8n/errors
+@n8n/errors:build: > tsc -p tsconfig.build.json
+@n8n/errors:build: 
+@n8n/constants:build: cache hit, replaying logs ed06327395111758
+@n8n/constants:build: 
+@n8n/constants:build: > @n8n/constants@0.13.0 build /home/zhang/n8n-quanyuge/packages/@n8n/constants
+@n8n/constants:build: > tsc -p tsconfig.build.json
+@n8n/constants:build: 
+@n8n/client-oauth2:build: cache hit, replaying logs 5dead48d444017ab
+@n8n/client-oauth2:build: 
+@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /home/zhang/n8n-quanyuge/packages/@n8n/client-oauth2
+@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
+@n8n/client-oauth2:build: 
+@n8n/permissions:build: cache hit, replaying logs 778b5d10a6e3ca39
+@n8n/permissions:build: 
+@n8n/permissions:build: > @n8n/permissions@0.40.0 build /home/zhang/n8n-quanyuge/packages/@n8n/permissions
+@n8n/permissions:build: > tsc -p tsconfig.build.json
+@n8n/permissions:build: 
+@n8n/codemirror-lang:build: cache hit, replaying logs 17fd4b6ec2a43c1f
+@n8n/codemirror-lang:build: 
+@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /home/zhang/n8n-quanyuge/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang:build: 
+@n8n/permissions:typecheck: cache miss, executing c920b5d2b212826b
+@n8n/client-oauth2:typecheck: cache miss, executing 66e0781ff7fc541e
+@n8n/codemirror-lang:typecheck: cache miss, executing c0b5d601df1eda87
+@n8n/di:typecheck: cache miss, executing a5f13584fca25aa1
+@n8n/extension-sdk:build: cache hit, replaying logs 2c128692a8833067
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /home/zhang/n8n-quanyuge/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 clean /home/zhang/n8n-quanyuge/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > rimraf dist
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: [34mℹ[39m tsdown [2mv0.15.12[22m powered by rolldown [2mv1.0.0-beta.45[22m
+@n8n/extension-sdk:build: [34mℹ[39m Using tsdown config: [4m/home/zhang/n8n-quanyuge/packages/@n8n/extension-sdk/tsdown.config.ts[24m
+@n8n/extension-sdk:build: [34mℹ[39m entry: [34msrc/index.ts, src/schema.ts[39m
+@n8n/extension-sdk:build: [34mℹ[39m entry: [34msrc/backend/define.ts, src/backend/index.ts, src/backend/types.ts[39m
+@n8n/extension-sdk:build: [34mℹ[39m entry: [34msrc/frontend/define.ts, src/frontend/index.ts, src/frontend/types.ts[39m
+@n8n/extension-sdk:build: [34mℹ[39m tsconfig: [34mtsconfig.common.json[39m
+@n8n/extension-sdk:build: [34mℹ[39m tsconfig: [34mtsconfig.backend.json[39m
+@n8n/extension-sdk:build: [34mℹ[39m tsconfig: [34mtsconfig.frontend.json[39m
+@n8n/extension-sdk:build: [34mℹ[39m Build start
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mschema.cjs[22m               [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mschema-CW-nDERU.cjs.map  [2m2.65 kB[22m [2m│ gzip: 0.87 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mschema-CW-nDERU.cjs      [2m1.90 kB[22m [2m│ gzip: 0.81 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 4 files, total: 4.82 kB
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mdefine.cjs[22m               [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mindex.cjs[22m                [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mtypes.cjs[22m                [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mdefine-CF1KLowA.cjs.map  [2m0.34 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mdefine-CF1KLowA.cjs      [2m0.30 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 5 files, total: 0.89 kB
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mdefine.cjs[22m               [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mindex.cjs[22m                [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mtypes.cjs[22m                [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22mdefine-DIbMcH8i.cjs.map  [2m0.34 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22mdefine-DIbMcH8i.cjs      [2m0.30 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 5 files, total: 0.91 kB
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.js[22m                [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mschema.js[22m               [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mschema-BSoNETEW.js.map  [2m2.60 kB[22m [2m│ gzip: 0.86 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mschema-BSoNETEW.js      [2m0.71 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.ts[22m[39m              [2m0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mschema.d.ts[22m[39m             [2m0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mschema-D0ROu72V.d.ts[39m    [2m2.37 kB[22m [2m│ gzip: 0.50 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m 7 files, total: 6.18 kB
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m            [2m0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mschema.d.cts[22m[39m           [2m0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mschema-epxNxocl.d.cts[39m  [2m2.37 kB[22m [2m│ gzip: 0.49 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 3 files, total: 2.67 kB
+@n8n/extension-sdk:build: [32m✔[39m Build complete in [32m6841ms[39m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mdefine.js[22m               [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mindex.js[22m                [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mtypes.js[22m                [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mdefine-C57e8dWq.js.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mdefine-C57e8dWq.js      [2m0.20 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mindex.d.ts[22m[39m              [2m0.29 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mtypes.d.ts[22m[39m              [2m0.20 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mdefine.d.ts[22m[39m             [2m0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32mtypes-Clck-buQ.d.ts[39m     [2m0.37 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32mdefine-D3wQ6Cbq.d.ts[39m    [2m0.28 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m 10 files, total: 2.02 kB
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mindex.d.cts[22m[39m            [2m0.29 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mtypes.d.cts[22m[39m            [2m0.20 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mdefine.d.cts[22m[39m           [2m0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32mtypes-BTuWXQec.d.cts[39m   [2m0.37 kB[22m [2m│ gzip: 0.20 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32mdefine-DC3Bc-EN.d.cts[39m  [2m0.28 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 5 files, total: 1.28 kB
+@n8n/extension-sdk:build: [32m✔[39m Build complete in [32m6851ms[39m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mdefine.js[22m               [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mindex.js[22m                [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mtypes.js[22m                [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22mdefine-D1LiKDBh.js.map  [2m0.34 kB[22m [2m│ gzip: 0.23 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22mdefine-D1LiKDBh.js      [2m0.20 kB[22m [2m│ gzip: 0.16 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mindex.d.ts[22m[39m              [2m0.30 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mtypes.d.ts[22m[39m              [2m0.20 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mdefine.d.ts[22m[39m             [2m0.13 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32mtypes-KgKQdgLX.d.ts[39m     [2m0.58 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32mdefine-Cfx1XLAY.d.ts[39m    [2m0.29 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [34m[ESM][39m 10 files, total: 2.27 kB
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mindex.d.cts[22m[39m            [2m0.30 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mtypes.d.cts[22m[39m            [2m0.21 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mdefine.d.cts[22m[39m           [2m0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32mtypes-C99xASCm.d.cts[39m   [2m0.58 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32mdefine-DPnB827L.d.cts[39m  [2m0.29 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/extension-sdk:build: [34mℹ[39m [33m[CJS][39m 5 files, total: 1.52 kB
+@n8n/extension-sdk:build: [32m✔[39m Build complete in [32m6854ms[39m
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 create-json-schema /home/zhang/n8n-quanyuge/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > tsx scripts/create-json-schema.ts
+@n8n/extension-sdk:build: 
+@n8n/json-schema-to-zod:typecheck: cache miss, executing f6630f22f365aeee
+@n8n/json-schema-to-zod:build: cache hit, replaying logs 9871f0861c60a7b4
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /home/zhang/n8n-quanyuge/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:types /home/zhang/n8n-quanyuge/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.types.json
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /home/zhang/n8n-quanyuge/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.cjs.json && node postcjs.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /home/zhang/n8n-quanyuge/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.esm.json && node postesm.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/n8n-benchmark:typecheck: cache miss, executing 8f5b82a8217c7f1b
+@n8n/vitest-config:typecheck: cache miss, executing 43fb5d5ed8da00ab
+@n8n/constants:typecheck: cache miss, executing cae71db2f76446b3
+@n8n/stylelint-config:typecheck: cache miss, executing 28acaa5234f5e452
+n8n-editor-ui:popularity-cache-marker: 
+n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.118.0 popularity-cache-marker /home/zhang/n8n-quanyuge/packages/frontend/editor-ui
+n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
+n8n-editor-ui:popularity-cache-marker: 
+@n8n/errors:typecheck: cache miss, executing 9aeb4c3463095b36
+@n8n/client-oauth2:typecheck: 
+@n8n/client-oauth2:typecheck: > @n8n/client-oauth2@0.30.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/client-oauth2
+@n8n/client-oauth2:typecheck: > tsc --noEmit
+@n8n/client-oauth2:typecheck: 
+@n8n/permissions:typecheck: 
+@n8n/permissions:typecheck: > @n8n/permissions@0.40.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/permissions
+@n8n/permissions:typecheck: > tsc --noEmit
+@n8n/permissions:typecheck: 
+@n8n/vitest-config:typecheck: 
+@n8n/vitest-config:typecheck: > @n8n/vitest-config@1.5.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/vitest-config
+@n8n/vitest-config:typecheck: > tsc --noEmit
+@n8n/vitest-config:typecheck: 
+@n8n/di:typecheck: 
+@n8n/di:typecheck: > @n8n/di@0.9.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/di
+@n8n/di:typecheck: > tsc --noEmit
+@n8n/di:typecheck: 
+@n8n/constants:typecheck: 
+@n8n/constants:typecheck: > @n8n/constants@0.13.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/constants
+@n8n/constants:typecheck: > tsc --noEmit
+@n8n/constants:typecheck: 
+@n8n/n8n-benchmark:typecheck: 
+@n8n/n8n-benchmark:typecheck: > @n8n/n8n-benchmark@1.28.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/benchmark
+@n8n/n8n-benchmark:typecheck: > tsc --noEmit
+@n8n/n8n-benchmark:typecheck: 
+@n8n/stylelint-config:typecheck: 
+@n8n/stylelint-config:typecheck: > @n8n/stylelint-config@0.0.1 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/stylelint-config
+@n8n/stylelint-config:typecheck: > tsc --noEmit
+@n8n/stylelint-config:typecheck: 
+@n8n/codemirror-lang:typecheck: 
+@n8n/codemirror-lang:typecheck: > @n8n/codemirror-lang@0.3.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:typecheck: > tsc --noEmit
+@n8n/codemirror-lang:typecheck: 
+@n8n/json-schema-to-zod:typecheck: 
+@n8n/json-schema-to-zod:typecheck: > @n8n/json-schema-to-zod@1.5.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:typecheck: > tsc --noEmit
+@n8n/json-schema-to-zod:typecheck: 
+@n8n/errors:typecheck: 
+@n8n/errors:typecheck: > @n8n/errors@0.5.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/errors
+@n8n/errors:typecheck: > tsc --noEmit
+@n8n/errors:typecheck: 
+@n8n/config:build: cache miss, executing 67ec58c22652f676
+@n8n/eslint-plugin-community-nodes:build: cache hit, replaying logs a27c3c0a6b094b4c
+@n8n/eslint-plugin-community-nodes:build: 
+@n8n/eslint-plugin-community-nodes:build: > @n8n/eslint-plugin-community-nodes@0.6.0 build /home/zhang/n8n-quanyuge/packages/@n8n/eslint-plugin-community-nodes
+@n8n/eslint-plugin-community-nodes:build: > tsc --project tsconfig.build.json
+@n8n/eslint-plugin-community-nodes:build: 
+@n8n/eslint-config:build: cache hit, replaying logs 83f12448c2d558cb
+@n8n/eslint-config:build: 
+@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /home/zhang/n8n-quanyuge/packages/@n8n/eslint-config
+@n8n/eslint-config:build: > tsc
+@n8n/eslint-config:build: 
+@n8n/imap:build: cache hit, replaying logs 8b31a66d4af0665b
+@n8n/imap:build: 
+@n8n/imap:build: > @n8n/imap@0.15.0 build /home/zhang/n8n-quanyuge/packages/@n8n/imap
+@n8n/imap:build: > tsc -p tsconfig.build.json
+@n8n/imap:build: 
+@n8n/codemirror-lang-sql:build: cache hit, replaying logs b7cf97d3a8dbf2f5
+@n8n/codemirror-lang-sql:build: 
+@n8n/codemirror-lang-sql:build: > @n8n/codemirror-lang-sql@1.2.0 build /home/zhang/n8n-quanyuge/packages/@n8n/codemirror-lang-sql
+@n8n/codemirror-lang-sql:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang-sql:build: 
+n8n-editor-ui:fetch-popularity: cache miss, executing 73ecbc346025ee4c
+@n8n/composables:build: cache hit, replaying logs 501ffed2cc0ea521
+@n8n/composables:build: 
+@n8n/composables:build: 
+@n8n/composables:build: > @n8n/composables@1.12.0 build /home/zhang/n8n-quanyuge/packages/frontend/@n8n/composables
+@n8n/composables:build: > tsdown
+@n8n/composables:build: 
+@n8n/composables:build: [34mℹ[39m tsdown [2mv0.15.12[22m powered by rolldown [2mv1.0.0-beta.45[22m
+@n8n/composables:build: [34mℹ[39m Using tsdown config: [4m/home/zhang/n8n-quanyuge/packages/frontend/@n8n/composables/tsdown.config.ts[24m
+@n8n/composables:build: [34mℹ[39m entry: [34msrc/useDeviceSupport.ts, src/useShortKeyPress.ts, src/useThrottleWithReactiveDelay.ts[39m
+@n8n/composables:build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/composables:build: [34mℹ[39m Build start
+@n8n/composables:build: [34mℹ[39m Cleaning 9 files
+@n8n/composables:build: [34mℹ[39m [2mdist/[22m[1museDeviceSupport.js[22m                  [2m1.68 kB[22m [2m│ gzip: 0.69 kB[22m
+@n8n/composables:build: [34mℹ[39m [2mdist/[22m[1museShortKeyPress.js[22m                  [2m0.57 kB[22m [2m│ gzip: 0.32 kB[22m
+@n8n/composables:build: [34mℹ[39m [2mdist/[22m[1museThrottleWithReactiveDelay.js[22m      [2m0.56 kB[22m [2m│ gzip: 0.31 kB[22m
+@n8n/composables:build: [34mℹ[39m [2mdist/[22museDeviceSupport.js.map              [2m2.62 kB[22m [2m│ gzip: 1.07 kB[22m
+@n8n/composables:build: [34mℹ[39m [2mdist/[22museShortKeyPress.js.map              [2m1.27 kB[22m [2m│ gzip: 0.64 kB[22m
+@n8n/composables:build: [34mℹ[39m [2mdist/[22museThrottleWithReactiveDelay.js.map  [2m0.89 kB[22m [2m│ gzip: 0.48 kB[22m
+@n8n/composables:build: [34mℹ[39m [2mdist/[22m[32m[1museDeviceSupport.d.ts[22m[39m                [2m0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/composables:build: [34mℹ[39m [2mdist/[22m[32m[1museShortKeyPress.d.ts[22m[39m                [2m0.41 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/composables:build: [34mℹ[39m [2mdist/[22m[32m[1museThrottleWithReactiveDelay.d.ts[22m[39m    [2m0.30 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/composables:build: [34mℹ[39m 9 files, total: 8.77 kB
+@n8n/composables:build: [32m✔[39m Build complete in [32m2831ms[39m
+@n8n/node-cli:build: cache hit, replaying logs 8dfdaa4457ed4a99
+@n8n/config:build: 
+@n8n/config:build: > @n8n/config@1.60.0 build /home/zhang/n8n-quanyuge/packages/@n8n/config
+@n8n/config:build: > tsc -p tsconfig.build.json
+@n8n/config:build: 
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.14.0 build /home/zhang/n8n-quanyuge/packages/@n8n/node-cli
+@n8n/node-cli:build: > tsc -p tsconfig.build.json && pnpm copy-templates
+@n8n/node-cli:build: 
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.14.0 copy-templates /home/zhang/n8n-quanyuge/packages/@n8n/node-cli
+@n8n/node-cli:build: > node scripts/copy-templates.mjs
+@n8n/node-cli:build: 
+@n8n/config:typecheck: cache miss, executing faac826093f4e6f3
+@n8n/utils:build: cache hit, replaying logs 039e16d5211a12c7
+@n8n/utils:build: 
+@n8n/utils:build: > @n8n/utils@1.18.0 build /home/zhang/n8n-quanyuge/packages/@n8n/utils
+@n8n/utils:build: > tsdown
+@n8n/utils:build: 
+@n8n/utils:build: [34mℹ[39m tsdown [2mv0.15.12[22m powered by rolldown [2mv1.0.0-beta.45[22m
+@n8n/utils:build: [34mℹ[39m Using tsdown config: [4m/home/zhang/n8n-quanyuge/packages/@n8n/utils/tsdown.config.ts[24m
+@n8n/utils:build: [34mℹ[39m entry: [34msrc/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts, src/string/truncate.ts, src/sort/sortByProperty.ts[39m
+@n8n/utils:build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/utils:build: [34mℹ[39m Build start
+@n8n/utils:build: [34mℹ[39m Cleaning 58 files
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msearch/sublimeSearch.cjs[22m            [2m 5.36 kB[22m [2m│ gzip: 1.75 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mretry.cjs[22m                           [2m 1.45 kB[22m [2m│ gzip: 0.66 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mstring/truncate.cjs[22m                 [2m 1.37 kB[22m [2m│ gzip: 0.62 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mevent-bus.cjs[22m                       [2m 1.03 kB[22m [2m│ gzip: 0.47 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mevent-queue.cjs[22m                     [2m 1.01 kB[22m [2m│ gzip: 0.48 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msearch/reRankSearchResults.cjs[22m      [2m 0.56 kB[22m [2m│ gzip: 0.30 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msort/sortByProperty.cjs[22m             [2m 0.39 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mnumber/smartDecimal.cjs[22m             [2m 0.34 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1massert.cjs[22m                          [2m 0.24 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msearch/sublimeSearch.cjs.map        [2m11.66 kB[22m [2m│ gzip: 3.92 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-bus.cjs.map                   [2m 2.93 kB[22m [2m│ gzip: 0.99 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mretry.cjs.map                       [2m 2.35 kB[22m [2m│ gzip: 1.05 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mstring/truncate.cjs.map             [2m 2.33 kB[22m [2m│ gzip: 1.01 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-queue.cjs.map                 [2m 1.75 kB[22m [2m│ gzip: 0.83 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msearch/reRankSearchResults.cjs.map  [2m 1.27 kB[22m [2m│ gzip: 0.63 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22msort/sortByProperty.cjs.map         [2m 0.67 kB[22m [2m│ gzip: 0.42 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22mnumber/smartDecimal.cjs.map         [2m 0.63 kB[22m [2m│ gzip: 0.37 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22massert.cjs.map                      [2m 0.46 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m 18 files, total: 35.80 kB
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msearch/sublimeSearch.js[22m            [2m 5.32 kB[22m [2m│ gzip: 1.74 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mretry.js[22m                           [2m 1.44 kB[22m [2m│ gzip: 0.66 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mstring/truncate.js[22m                 [2m 1.33 kB[22m [2m│ gzip: 0.61 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mevent-bus.js[22m                       [2m 1.01 kB[22m [2m│ gzip: 0.46 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mevent-queue.js[22m                     [2m 1.00 kB[22m [2m│ gzip: 0.47 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msearch/reRankSearchResults.js[22m      [2m 0.54 kB[22m [2m│ gzip: 0.29 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msort/sortByProperty.js[22m             [2m 0.37 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mnumber/smartDecimal.js[22m             [2m 0.32 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1massert.js[22m                          [2m 0.23 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msearch/sublimeSearch.js.map        [2m11.66 kB[22m [2m│ gzip: 3.92 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-bus.js.map                   [2m 2.93 kB[22m [2m│ gzip: 0.99 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mretry.js.map                       [2m 2.35 kB[22m [2m│ gzip: 1.05 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mstring/truncate.js.map             [2m 2.33 kB[22m [2m│ gzip: 1.00 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-queue.js.map                 [2m 1.75 kB[22m [2m│ gzip: 0.83 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msearch/reRankSearchResults.js.map  [2m 1.27 kB[22m [2m│ gzip: 0.63 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22msort/sortByProperty.js.map         [2m 0.67 kB[22m [2m│ gzip: 0.41 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22mnumber/smartDecimal.js.map         [2m 0.63 kB[22m [2m│ gzip: 0.37 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22massert.js.map                      [2m 0.46 kB[22m [2m│ gzip: 0.33 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mevent-bus.d.ts[22m[39m                     [2m 0.98 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msearch/sublimeSearch.d.ts[22m[39m          [2m 0.38 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msearch/reRankSearchResults.d.ts[22m[39m    [2m 0.36 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mretry.d.ts[22m[39m                         [2m 0.28 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mstring/truncate.d.ts[22m[39m               [2m 0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mevent-queue.d.ts[22m[39m                   [2m 0.23 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msort/sortByProperty.d.ts[22m[39m           [2m 0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mnumber/smartDecimal.d.ts[22m[39m           [2m 0.19 kB[22m [2m│ gzip: 0.14 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1massert.d.ts[22m[39m                        [2m 0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/utils:build: [34mℹ[39m [34m[ESM][39m 27 files, total: 38.70 kB
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mevent-bus.d.cts[22m[39m                   [2m0.98 kB[22m [2m│ gzip: 0.34 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msearch/sublimeSearch.d.cts[22m[39m        [2m0.38 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msearch/reRankSearchResults.d.cts[22m[39m  [2m0.36 kB[22m [2m│ gzip: 0.22 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mretry.d.cts[22m[39m                       [2m0.28 kB[22m [2m│ gzip: 0.21 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mstring/truncate.d.cts[22m[39m             [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mevent-queue.d.cts[22m[39m                 [2m0.23 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msort/sortByProperty.d.cts[22m[39m         [2m0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mnumber/smartDecimal.d.cts[22m[39m         [2m0.19 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1massert.d.cts[22m[39m                      [2m0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+@n8n/utils:build: [34mℹ[39m [33m[CJS][39m 9 files, total: 3.10 kB
+@n8n/utils:build: [32m✔[39m Build complete in [32m3112ms[39m
+@n8n/eslint-config:typecheck: cache miss, executing 5476aa759f7b14fc
+@n8n/imap:typecheck: cache miss, executing ef756b3e1a7c19b1
+@n8n/eslint-plugin-community-nodes:typecheck: cache miss, executing f056e18643f6e55a
+@n8n/n8n-extension-insights:typecheck: cache miss, executing a663572ba288e698
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: > n8n-editor-ui@1.118.0 fetch-popularity /home/zhang/n8n-quanyuge/packages/frontend/editor-ui
+n8n-editor-ui:fetch-popularity: > node scripts/fetch-node-popularity.mjs
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://internal-production.app.n8n.cloud/webhook/nodes-popularity-scores
+@n8n/config:typecheck: 
+@n8n/config:typecheck: > @n8n/config@1.60.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/config
+@n8n/config:typecheck: > tsc --noEmit
+@n8n/config:typecheck: 
+@n8n/eslint-config:typecheck: 
+@n8n/eslint-config:typecheck: > @n8n/eslint-config@0.0.1 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/eslint-config
+@n8n/eslint-config:typecheck: > tsc --noEmit
+@n8n/eslint-config:typecheck: 
+@n8n/eslint-plugin-community-nodes:typecheck: 
+@n8n/eslint-plugin-community-nodes:typecheck: > @n8n/eslint-plugin-community-nodes@0.6.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/eslint-plugin-community-nodes
+@n8n/eslint-plugin-community-nodes:typecheck: > tsc --noEmit
+@n8n/eslint-plugin-community-nodes:typecheck: 
+@n8n/imap:typecheck: 
+@n8n/imap:typecheck: > @n8n/imap@0.15.0 typecheck /home/zhang/n8n-quanyuge/packages/@n8n/imap
+@n8n/imap:typecheck: > tsc --noEmit
+@n8n/imap:typecheck: 
+@n8n/n8n-extension-insights:typecheck: 
+@n8n/n8n-extension-insights:typecheck: > @n8n/n8n-extension-insights@0.9.0 typecheck /home/zhang/n8n-quanyuge/packages/extensions/insights
+@n8n/n8n-extension-insights:typecheck: > vue-tsc --noEmit
+@n8n/n8n-extension-insights:typecheck: 
+@n8n/design-system:build: cache hit, replaying logs b6d80d7d25f16d84
+@n8n/design-system:build: 
+@n8n/design-system:build: 
+@n8n/design-system:build: > @n8n/design-system@1.105.0 build /home/zhang/n8n-quanyuge/packages/frontend/@n8n/design-system
+@n8n/design-system:build: > vite build
+@n8n/design-system:build: 
+@n8n/design-system:build: [36mrolldown-vite v7.1.20 [32mbuilding for production...[36m[39m
+@n8n/design-system:build: [2K@n8n/design-system:build: transforming (1) [2msrc/directives/index.ts[0m[2K@n8n/design-system:build: transforming (105) [2m../../../../node_modules/.pnpm/xss@1.0.15/node_modules/xss/lib/default.js[0m[2K@n8n/design-system:build: transforming (107) [2msrc/components/TableBase/TableBase.vue[0m[2K@n8n/design-system:build: transforming (108) [2m../../../../node_modules/.pnpm/xss@1.0.15/node_modules/xss/lib/parser.js[0m[2K@n8n/design-system:build: transforming (113) [2m../../../../node_modules/.pnpm/cssfilter@0.0.10/node_modules/cssfilter/lib/css.js[0m[2K@n8n/design-system:build: transforming (280) [2msrc/components/N8nSticky/constants.ts[0m[2K@n8n/design-system:build: transforming (281) [2msrc/utils/labelUtil.ts[0m[2K@n8n/design-system:build: transforming (412) [2m../../../../node_modules/.pnpm/markdown-it-emoji@2.0.2/node_modules/markdown-it-emoji/bare.js[0m[2K@n8n/design-system:build: transforming (1132) [2msrc/components/N8nIcon/custom/continue.svg[0m[2K@n8n/design-system:build: transforming (1432) [2m~icons/lucide/hourglass[0m[2K@n8n/design-system:build: transforming (1433) [2m~icons/lucide/files[0m[2K@n8n/design-system:build: transforming (1431) [2m~icons/lucide/rss[0m[2K@n8n/design-system:build: transforming (1759) [2msrc/components/AskAssistantChat/messages/BaseMessage.vue[0m[2K@n8n/design-system:build: transforming (2538) [2m../../../../node_modules/.pnpm/lodash@4.17.21/node_modules/lodash/_mapCacheDelete.js[0m[2K@n8n/design-system:build: [32m✓[39m 2650 modules transformed.
+@n8n/design-system:build: [2K@n8n/design-system:build: rendering chunks (0)...[2K@n8n/design-system:build: rendering chunks (1)...[2K@n8n/design-system:build: rendering chunks (2)...[2K@n8n/design-system:build: rendering chunks (3)...[2K@n8n/design-system:build: [2K@n8n/design-system:build: computing gzip size (0)...[2K@n8n/design-system:build: computing gzip size (5)...[2K@n8n/design-system:build: [2mdist/[0m[35mdesign-system.css        [39m[2m[1m114.15 kB[0m[0m[2m │ gzip:  18.18 kB[0m
+@n8n/design-system:build: [2mdist/[0m[36men-Dv2AfWSE.js           [39m[2m[1m0.08 kB[0m[0m[2m │ gzip:   0.08 kB[0m
+@n8n/design-system:build: [2mdist/[0m[36men-BZK1iLVe.js           [39m[2m[1m4.89 kB[0m[0m[2m │ gzip:   1.75 kB[0m
+@n8n/design-system:build: [2mdist/[0m[36mzh-On8Xuf87.js           [39m[2m[1m4.91 kB[0m[0m[2m │ gzip:   2.14 kB[0m
+@n8n/design-system:build: [2mdist/[0m[36mn8n-design-system.es.js  [39m[33m[1m1,554.31 kB[0m[39m[2m │ gzip: 374.52 kB[0m
+@n8n/design-system:build: [2K@n8n/design-system:build: transforming (258) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/index.mjs[0m[2K@n8n/design-system:build: transforming (329) [2msrc/components/DateRangePicker/DateRangePickerField.vue[0m[2K@n8n/design-system:build: transforming (330) [2m../../../../node_modules/.pnpm/lodash@4.17.21/node_modules/lodash/get.js[0m[2K@n8n/design-system:build: transforming (331) [2msrc/components/ConditionalRouterLink/CondtionalRouterLink.vue[0m[2K@n8n/design-system:build: transforming (332) [2msrc/components/N8nCommandBar/CommandBarItem.vue[0m[2K@n8n/design-system:build: transforming (1106) [2m../../../../node_modules/.pnpm/@vueuse+shared@14.0.0_vue@3.5.22_typescript@5.9.2_/node_modules/@vueuse/shared/dist/index.js[0m[2K@n8n/design-system:build: transforming (1515) [2msrc/components/N8nIcon/custom/grip-lines-vertical.svg[0m[2K@n8n/design-system:build: transforming (1520) [2msrc/components/N8nIcon/custom/status-canceled.svg[0m[2K@n8n/design-system:build: transforming (1516) [2msrc/components/N8nIcon/custom/filled-square.svg[0m[2K@n8n/design-system:build: transforming (1517) [2msrc/components/N8nIcon/custom/node-trash.svg[0m[2K@n8n/design-system:build: transforming (1518) [2msrc/components/N8nIcon/custom/pop-out.svg[0m[2K@n8n/design-system:build: transforming (1519) [2msrc/components/N8nIcon/custom/spinner.svg[0m[2K@n8n/design-system:build: transforming (2373) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_unescapeHtmlChar.js[0m[2K@n8n/design-system:build: transforming (2374) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_strictLastIndexOf.js[0m[2K@n8n/design-system:build: transforming (2375) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_baseClone.js[0m[2K@n8n/design-system:build: transforming (2376) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_arrayEvery.js[0m[2K@n8n/design-system:build: transforming (2377) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_arrayEachRight.js[0m[2K@n8n/design-system:build: transforming (2647) [2m../../../../node_modules/.pnpm/lodash@4.17.21/node_modules/lodash/_coreJsData.js[0m[2K@n8n/design-system:build: [32m✓[39m 2650 modules transformed.
+@n8n/design-system:build: [2K@n8n/design-system:build: rendering chunks (0)...[2K@n8n/design-system:build: [2K@n8n/design-system:build: computing gzip size (0)...[2K@n8n/design-system:build: computing gzip size (2)...[2K@n8n/design-system:build: [2mdist/[0m[35mdesign-system.css         [39m[2m[1m114.15 kB[0m[0m[2m │ gzip:  18.18 kB[0m
+@n8n/design-system:build: [2mdist/[0m[36mn8n-design-system.umd.js  [39m[33m[1m1,156.38 kB[0m[39m[2m │ gzip: 325.93 kB[0m
+@n8n/design-system:build: [32m✓ built in 5.48s[39m
+@n8n/chat:build: cache hit, replaying logs ed831fd7acef7147
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.63.0 build /home/zhang/n8n-quanyuge/packages/frontend/@n8n/chat
+@n8n/chat:build: > pnpm build:vite && pnpm build:bundle
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.63.0 build:vite /home/zhang/n8n-quanyuge/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env vite build
+@n8n/chat:build: 
+@n8n/chat:build: [36mrolldown-vite v7.1.20 [32mbuilding for production...[36m[39m
+@n8n/chat:build: [2K@n8n/chat:build: transforming (0) [2msrc/index.ts[0m[2K@n8n/chat:build: transforming (4) [2msrc/constants/defaults.ts[0m[2K@n8n/chat:build: transforming (5) [2msrc/constants/localStorage.ts[0m[2K@n8n/chat:build: transforming (53) [2msrc/components/MessagesList.vue[0m[2K@n8n/chat:build: transforming (64) [2msrc/components/MessageTyping.vue[0m[2K@n8n/chat:build: transforming (199) [2m../design-system/src/components/TableBase/TableBase.vue[0m[2K@n8n/chat:build: transforming (203) [2m../../../../node_modules/.pnpm/markdown-it@14.1.0/node_modules/markdown-it/lib/index.mjs[0m[2K@n8n/chat:build: transforming (444) [2m../design-system/src/components/N8nNodeIcon/IconContent.vue[0m[2K@n8n/chat:build: transforming (473) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/config-[2K@n8n/chat:build: transforming (474) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/config-[2K@n8n/chat:build: transforming (1243) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/utils/index.mjs[[2K@n8n/chat:build: transforming (1624) [2m../../../../node_modules/.pnpm/@internationalized+number@3.6.5/node_modules/@internationalized/number/dist/import.mjs[0m[2K@n8n/chat:build: transforming (1959) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/checkb[2K@n8n/chat:build: transforming (2719) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_countHolders.js[0m[2K@n8n/chat:build: transforming (2722) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/visual[2K@n8n/chat:build: transforming (2720) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_composeArgsRight.js[0m[2K@n8n/chat:build: transforming (2721) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_reorder.js[0m[2K@n8n/chat:build: [32m✓[39m 2828 modules transformed.
+@n8n/chat:build: [2K@n8n/chat:build: rendering chunks (0)...[2K[1G[33m[plugin builtin:reporter] 
+@n8n/chat:build: (!) /home/zhang/n8n-quanyuge/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/zhang/n8n-quanyuge/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/zhang/n8n-quanyuge/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: [39m
+@n8n/chat:build: [2K@n8n/chat:build: [32m
+@n8n/chat:build: [36m[vite:dts][32m Start generate declaration files...[39m
+@n8n/chat:build: [32m[36m[vite:dts][32m Declaration files built in 12443ms.
+@n8n/chat:build: [39m
+@n8n/chat:build: [2K@n8n/chat:build: computing gzip size (0)...[2K@n8n/chat:build: computing gzip size (2)...[2K@n8n/chat:build: [2mdist/[0m[35mchat.css    [39m[2m[1m63.17 kB[0m[0m[2m │ gzip:   9.78 kB[0m
+@n8n/chat:build: [2mdist/[0m[36mchat.es.js  [39m[33m[1m1,076.31 kB[0m[39m[2m │ gzip: 294.75 kB[0m
+@n8n/chat:build: [2K@n8n/chat:build: transforming (58) [2msrc/components/GetStartedFooter.vue[0m[2K@n8n/chat:build: transforming (207) [2m../../../../node_modules/.pnpm/xss@1.0.15/node_modules/xss/lib/index.js[0m[2K@n8n/chat:build: transforming (208) [2m../../../@n8n/utils/dist/event-bus.js[0m[2K@n8n/chat:build: transforming (452) [2m../../../../node_modules/.pnpm/markdown-it@14.1.0/node_modules/markdown-it/lib/renderer.mjs[0m[2K@n8n/chat:build: transforming (453) [2m../design-system/src/components/N8nSticky/constants.ts[0m[2K@n8n/chat:build: transforming (495) [2m~icons/lucide/arrow-down[0m[2K@n8n/chat:build: transforming (1210) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/affix/[2K@n8n/chat:build: transforming (1702) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/tree-s[2K@n8n/chat:build: transforming (1703) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/descri[2K@n8n/chat:build: transforming (1704) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/skelet[2K@n8n/chat:build: transforming (2028) [2m../../../../node_modules/.pnpm/lodash@4.17.21/node_modules/lodash/_Symbol.js[0m[2K@n8n/chat:build: transforming (2027) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/utils/vue/props/t[2K@n8n/chat:build: transforming (2029) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/calend[2K@n8n/chat:build: transforming (2030) [2m../../../../node_modules/.pnpm/@ctrl+tinycolor@3.6.1/node_modules/@ctrl/tinycolor/dist/module/public_api.js[0m[2K@n8n/chat:build: transforming (2655) [2m../../../../node_modules/.pnpm/@ctrl+tinycolor@3.6.1/node_modules/@ctrl/tinycolor/dist/module/util.js[0m[2K@n8n/chat:build: [32m✓[39m 2828 modules transformed.
+@n8n/chat:build: [2K@n8n/chat:build: rendering chunks (0)...[2K@n8n/chat:build: [2K@n8n/chat:build: computing gzip size (0)...[2K@n8n/chat:build: computing gzip size (2)...[2K@n8n/chat:build: [2mdist/[0m[35mchat.css     [39m[2m[1m63.17 kB[0m[0m[2m │ gzip:   9.78 kB[0m
+@n8n/chat:build: [2mdist/[0m[36mchat.umd.js  [39m[33m[1m797.55 kB[0m[39m[2m │ gzip: 260.37 kB[0m
+@n8n/chat:build: [32m✓ built in 18.19s[39m
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.63.0 build:bundle /home/zhang/n8n-quanyuge/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env INCLUDE_VUE=true vite build
+@n8n/chat:build: 
+@n8n/chat:build: [36mrolldown-vite v7.1.20 [32mbuilding for production...[36m[39m
+@n8n/chat:build: [2K@n8n/chat:build: transforming (0) [2msrc/index.ts[0m[2K@n8n/chat:build: transforming (5) [2msrc/constants/defaults.ts[0m[2K@n8n/chat:build: transforming (58) [2msrc/components/Input.vue[0m[2K@n8n/chat:build: transforming (72) [2msrc/components/Message.vue[0m[2K@n8n/chat:build: transforming (204) [2m../design-system/src/components/TableBase/TableBase.vue[0m[2K@n8n/chat:build: transforming (209) [2m../../../../node_modules/.pnpm/xss@1.0.15/node_modules/xss/lib/util.js[0m[2K@n8n/chat:build: transforming (393) [2msrc/main.scss[0m[2K@n8n/chat:build: transforming (465) [2m../design-system/src/components/N8nSticky/constants.ts[0m[2K@n8n/chat:build: transforming (567) [2m../../../../node_modules/.pnpm/markdown-it-emoji@2.0.2/node_modules/markdown-it-emoji/lib/data/shortcuts.js[0m[2K@n8n/chat:build: transforming (1530) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/utils/vue/install[2K@n8n/chat:build: transforming (1745) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/table-[2K@n8n/chat:build: transforming (1746) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/steps/[2K@n8n/chat:build: transforming (2374) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/tree-v[2K@n8n/chat:build: transforming (2376) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/components/tree-v[2K@n8n/chat:build: transforming (2799) [2m../../../../node_modules/.pnpm/lodash@4.17.21/node_modules/lodash/_getMapData.js[0m[2K@n8n/chat:build: transforming (2800) [2m../../../../node_modules/.pnpm/lodash@4.17.21/node_modules/lodash/_ListCache.js[0m[2K@n8n/chat:build: [32m✓[39m 2831 modules transformed.
+@n8n/chat:build: [2K@n8n/chat:build: rendering chunks (0)...[2K[1G[33m[plugin builtin:reporter] 
+@n8n/chat:build: (!) /home/zhang/n8n-quanyuge/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/zhang/n8n-quanyuge/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/zhang/n8n-quanyuge/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: [39m
+@n8n/chat:build: [2K@n8n/chat:build: [32m
+@n8n/chat:build: [36m[vite:dts][32m Start generate declaration files...[39m
+@n8n/chat:build: [32m[36m[vite:dts][32m Declaration files built in 11922ms.
+@n8n/chat:build: [39m
+@n8n/chat:build: [2K@n8n/chat:build: computing gzip size (0)...[2K@n8n/chat:build: computing gzip size (2)...[2K@n8n/chat:build: [2mdist/[0m[35mchat.css           [39m[2m[1m63.17 kB[0m[0m[2m │ gzip:   9.78 kB[0m
+@n8n/chat:build: [2mdist/[0m[36mchat.bundle.es.js  [39m[33m[1m1,161.97 kB[0m[39m[2m │ gzip: 322.92 kB[0m
+@n8n/chat:build: [2K@n8n/chat:build: transforming (62) [2msrc/components/MessagesList.vue[0m[2K@n8n/chat:build: transforming (220) [2m../../../../node_modules/.pnpm/markdown-it@14.1.0/node_modules/markdown-it/lib/presets/commonmark.mjs[0m[2K@n8n/chat:build: transforming (221) [2m../../../../node_modules/.pnpm/markdown-it@14.1.0/node_modules/markdown-it/lib/parser_block.mjs[0m[2K@n8n/chat:build: transforming (443) [2m../../../../node_modules/.pnpm/markdown-it@14.1.0/node_modules/markdown-it/lib/common/html_re.mjs[0m[2K@n8n/chat:build: transforming (558) [2m../../../../node_modules/.pnpm/entities@4.5.0/node_modules/entities/lib/esm/decode_codepoint.js[0m[2K@n8n/chat:build: transforming (1455) [2m../../../../node_modules/.pnpm/markdown-it-emoji@2.0.2/node_modules/markdown-it-emoji/bare.js[0m[2K@n8n/chat:build: transforming (1456) [2m../../../../node_modules/.pnpm/reka-ui@2.6.0_typescript@5.9.2_vue@3.5.22_typescript@5.9.2_/node_modules/reka-ui/dist/RadioGroup/Radio.js[0m[2K@n8n/chat:build: transforming (1457) [2m../../../../node_modules/.pnpm/reka-ui@2.6.0_typescript@5.9.2_vue@3.5.22_typescript@5.9.2_/node_modules/reka-ui/dist/Tooltip/utils.js[0m[2K@n8n/chat:build: transforming (1636) [2m../../../../node_modules/.pnpm/element-plus@2.4.3_patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff_1270d471bf20634ce246b16df157e9af/node_modules/element-plus/es/utils/strings.mjs[2K@n8n/chat:build: transforming (1733) [2m../../../../node_modules/.pnpm/@tanstack+vue-virtual@3.13.12_vue@3.5.22_typescript@5.9.2_/node_modules/@tanstack/vue-virtual/dist/esm/index.js[0m[2K@n8n/chat:build: transforming (2316) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/zipObject.js[0m[2K@n8n/chat:build: transforming (2319) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/words.js[0m[2K@n8n/chat:build: transforming (2317) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/pick.js[0m[2K@n8n/chat:build: transforming (2318) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/valueOf.js[0m[2K@n8n/chat:build: transforming (2750) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_getSymbols.js[0m[2K@n8n/chat:build: transforming (2751) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_cloneTypedArray.js[0m[2K@n8n/chat:build: transforming (2752) [2m../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/_equalArrays.js[0m[2K@n8n/chat:build: [32m✓[39m 2831 modules transformed.
+@n8n/chat:build: [2K@n8n/chat:build: rendering chunks (0)...[2K@n8n/chat:build: [2K@n8n/chat:build: computing gzip size (0)...[2K@n8n/chat:build: computing gzip size (2)...[2K@n8n/chat:build: [2mdist/[0m[35mchat.css            [39m[2m[1m63.17 kB[0m[0m[2m │ gzip:   9.78 kB[0m
+@n8n/chat:build: [2mdist/[0m[36mchat.bundle.umd.js  [39m[33m[1m801.23 kB[0m[39m[2m │ gzip: 281.50 kB[0m
+@n8n/chat:build: [32m✓ built in 17.77s[39m
+n8n-workflow:build: cache miss, executing 4c4c1ebf5d45b5dd
+@n8n/codemirror-lang:typecheck: error TS2688: Cannot find type definition file for 'psl'.
+@n8n/codemirror-lang:typecheck:   The file is in the program because:
+@n8n/codemirror-lang:typecheck:     Entry point for implicit type library 'psl'
+n8n-workflow:build: 
+n8n-workflow:build: > n8n-workflow@1.115.0 build /home/zhang/n8n-quanyuge/packages/workflow
+n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+n8n-workflow:build: 
+@n8n/codemirror-lang:typecheck:  ELIFECYCLE  Command failed with exit code 2.
+@n8n/codemirror-lang:typecheck: ERROR: command finished with error: command (/home/zhang/n8n-quanyuge/packages/@n8n/codemirror-lang) /home/zhang/nodejs/bin/pnpm run typecheck exited (2)
+n8n-editor-ui:fetch-popularity:  ELIFECYCLE  Command failed.
+n8n-workflow:build:  ELIFECYCLE  Command failed.
+@n8n/eslint-plugin-community-nodes:typecheck:  ELIFECYCLE  Command failed.
+@n8n/imap:typecheck:  ELIFECYCLE  Command failed.
+@n8n/config:typecheck:  ELIFECYCLE  Command failed.
+@n8n/eslint-config:typecheck:  ELIFECYCLE  Command failed.
+@n8n/codemirror-lang#typecheck: command (/home/zhang/n8n-quanyuge/packages/@n8n/codemirror-lang) /home/zhang/nodejs/bin/pnpm run typecheck exited (2)
+
+ Tasks:    31 successful, 38 total
+Cached:    19 cached, 38 total
+  Time:    6.79s 
+Failed:    @n8n/codemirror-lang#typecheck
+
+ ERROR  run failed: command  exited (2)
+ ELIFECYCLE  Command failed with exit code 2.

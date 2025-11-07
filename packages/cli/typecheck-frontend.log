@@ -1,0 +1,100 @@
+
+> n8n-editor-ui@1.118.0 typecheck /home/zhang/n8n-quanyuge/packages/frontend/editor-ui
+> vue-tsc --noEmit
+
+../@n8n/rest-api-client/src/utils.ts(1,1): error TS6133: 'BROWSER_ID_STORAGE_KEY' is declared but its value is never read.
+src/App.vue(43,7): error TS6133: 'settingsStore' is declared but its value is never read.
+src/App.vue(50,29): error TS2551: Property 'value' does not exist on type '"en" | "zh"'. Did you mean 'valueOf'?
+  Property 'value' does not exist on type '"en"'.
+src/Interface.ts(5,2): error TS2305: Module '"@n8n/api-types"' has no exported member 'IVersionNotificationSettings'.
+src/Interface.ts(36,30): error TS2307: Cannot find module '@n8n/rest-api-client/api/versions' or its corresponding type declarations.
+src/__tests__/defaults.ts(107,2): error TS2353: Object literal may only specify known properties, and 'versionNotifications' does not exist in type 'FrontendSettings'.
+src/app/components/MainSidebar.test.ts(10,34): error TS2307: Cannot find module '@/app/stores/versions.store' or its corresponding type declarations.
+src/app/components/MainSidebar.test.ts(12,30): error TS2307: Cannot find module '@n8n/rest-api-client/api/versions' or its corresponding type declarations.
+src/app/components/MainSidebar.vue(25,2): error TS6133: 'RELEASE_NOTES_URL' is declared but its value is never read.
+src/app/components/MainSidebar.vue(64,7): error TS6133: 'usersStore' is declared but its value is never read.
+src/app/components/Modals.vue(44,2): error TS6133: 'PERSONALIZATION_MODAL_KEY' is declared but its value is never read.
+src/app/components/NodeIcon.vue(4,34): error TS2307: Cannot find module '@n8n/rest-api-client/api/versions' or its corresponding type declarations.
+src/app/components/NodeList.vue(42,47): error TS2339: Property 'name' does not exist on type 'ITemplatesNode'.
+src/app/components/VersionCard.vue(6,43): error TS2307: Cannot find module '@n8n/rest-api-client/api/versions' or its corresponding type declarations.
+src/app/components/layouts/ResourcesListLayout.test.ts(6,13): error TS1192: Module '"/home/zhang/n8n-quanyuge/node_modules/.pnpm/vue-router@4.6.3_vue@3.5.22_typescript@5.9.2_/node_modules/vue-router/dist/vue-router"' has no default export.
+src/app/composables/useGlobalEntityCreation.test.ts(5,13): error TS1192: Module '"/home/zhang/n8n-quanyuge/node_modules/.pnpm/vue-router@4.6.3_vue@3.5.22_typescript@5.9.2_/node_modules/vue-router/dist/vue-router"' has no default export.
+src/app/composables/usePageRedirectionHelper.test.ts(9,34): error TS2307: Cannot find module '@/app/stores/versions.store' or its corresponding type declarations.
+src/app/composables/usePageRedirectionHelper.test.ts(182,32): error TS2339: Property 'goToVersions' does not exist on type '{ goToDashboard: () => Promise<void>; goToUpgrade: (source: CloudUpdateLinkSourceType, utm_campaign: UTMCampaign, mode?: "redirect" | "open") => Promise<...>; }'.
+src/app/composables/usePageRedirectionHelper.ts(8,8): error TS6133: 'usersStore' is declared but its value is never read.
+src/app/composables/useRunWorkflow.test.ts(4,13): error TS1192: Module '"/home/zhang/n8n-quanyuge/node_modules/.pnpm/vue-router@4.6.3_vue@3.5.22_typescript@5.9.2_/node_modules/vue-router/dist/vue-router"' has no default export.
+src/app/plugins/directives.ts(6,3): error TS2345: Argument of type '[]' is not assignable to parameter of type 'never'.
+src/app/plugins/telemetry/index.ts(35,10): error TS6133: 'pageEventQueue' is declared but its value is never read.
+src/app/plugins/telemetry/index.ts(36,10): error TS6133: 'previousPath' is declared but its value is never read.
+src/app/plugins/telemetry/index.ts(39,10): error TS6133: 'instanceId' is declared but its value is never read.
+src/app/plugins/telemetry/index.ts(40,10): error TS6133: 'userId' is declared but its value is never read.
+src/app/plugins/telemetry/index.ts(52,3): error TS6133: 'telemetrySettings' is declared but its value is never read.
+src/app/plugins/telemetry/index.ts(68,48): error TS6133: 'versionCli' is declared but its value is never read.
+src/app/plugins/telemetry/index.ts(68,69): error TS6133: 'projectId' is declared but its value is never read.
+src/app/plugins/telemetry/index.ts(283,10): error TS6133: 'app' is declared but its value is never read.
+src/app/stores/settings.store.ts(173,68): error TS2339: Property 'banners' does not exist on type '{ settingsMode?: "public" | "authenticated" | undefined; inE2ETests: boolean; isDocker: boolean; databaseType: "sqlite" | "mariadb" | "mysqldb" | "postgresdb"; endpointForm: string; ... 63 more ...; envFeatureFlags: N8nEnvFeatFlags; }'.
+src/app/utils/nodeIcon.ts(8,34): error TS2307: Cannot find module '@n8n/rest-api-client/api/versions' or its corresponding type declarations.
+src/app/utils/nodeTypesUtils.ts(66,72): error TS2339: Property 'name' does not exist on type 'ITemplatesNode'.
+src/app/views/NodeView.vue(129,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/experiments/personalizedTemplates/stores/personalizedTemplates.store.ts(108,8): error TS6133: 'fetchSuggestedWorkflows' is declared but its value is never read.
+src/experiments/personalizedTemplatesV3/components/TemplateCard.vue(24,74): error TS2339: Property 'name' does not exist on type 'ITemplatesNode'.
+src/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store.ts(2,1): error TS6133: 'BATCH_11AUG_EXPERIMENT' is declared but its value is never read.
+src/experiments/templateRecoV2/components/NodeRecommendationModal.vue(67,35): error TS2345: Argument of type 'string' is not assignable to parameter of type 'never'.
+src/experiments/templateRecoV2/components/NodeRecommendationModal.vue(73,35): error TS2345: Argument of type 'string' is not assignable to parameter of type 'never'.
+src/experiments/templateRecoV2/components/NodeRecommendationModal.vue(144,35): error TS2345: Argument of type 'string' is not assignable to parameter of type 'never'.
+src/experiments/templateRecoV2/components/TemplateCard.vue(28,74): error TS2339: Property 'name' does not exist on type 'ITemplatesNode'.
+src/experiments/templateRecoV2/stores/templateRecoV2.store.ts(9,7): error TS6133: 'PREDEFINED_NODES' is declared but its value is never read.
+src/experiments/templatesDataQuality/components/TemplateCard.vue(26,74): error TS2339: Property 'name' does not exist on type 'ITemplatesNode'.
+src/features/ai/assistant/assistant.store.test.ts(15,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/ai/assistant/assistant.store.test.ts(19,42): error TS2307: Cannot find module '@/app/stores/posthog.store.test' or its corresponding type declarations.
+src/features/ai/assistant/builder.store.test.ts(17,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/ai/assistant/builder.store.test.ts(21,42): error TS2307: Cannot find module '@/app/stores/posthog.store.test' or its corresponding type declarations.
+src/features/execution/insights/components/InsightsDataRangePicker.vue(135,35): error TS2345: Argument of type '"insights.selectRange"' is not assignable to parameter of type 'BaseTextKey'.
+src/features/execution/insights/components/InsightsDataRangePicker.vue(137,29): error TS2551: Property 'value' does not exist on type '"en" | "zh"'. Did you mean 'valueOf'?
+  Property 'value' does not exist on type '"en"'.
+src/features/execution/insights/components/InsightsDataRangePicker.vue(171,29): error TS2551: Property 'value' does not exist on type '"en" | "zh"'. Did you mean 'valueOf'?
+  Property 'value' does not exist on type '"en"'.
+src/features/ndv/panel/components/InputPanel.vue(37,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/ndv/panel/components/NDVFloatingNodes.vue(9,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/ndv/panel/components/OutputPanel.vue(19,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/ndv/parameters/components/ButtonParameter/ButtonParameter.test.ts(8,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/ndv/parameters/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue(269,16): error TS2345: Argument of type 'Ref<({ $: ComponentInternalInstance; $data: {}; $props: { readonly modelValue?: INodeParameterResourceLocator | undefined; ... 14 more ...; readonly onAddResourceClick?: (() => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps; ... 11 more ...; $watch<T extends string | ((...args: any) ...' is not assignable to parameter of type 'MaybeElementRef<MaybeElement>'.
+  Type 'Ref<({ $: ComponentInternalInstance; $data: {}; $props: { readonly modelValue?: INodeParameterResourceLocator | undefined; ... 14 more ...; readonly onAddResourceClick?: (() => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps; ... 11 more ...; $watch<T extends string | ((...args: any) ...' is not assignable to type 'Ref<MaybeElement, MaybeElement>'.
+    Type '({ $: ComponentInternalInstance; $data: {}; $props: { readonly modelValue?: INodeParameterResourceLocator | undefined; ... 14 more ...; readonly onAddResourceClick?: (() => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps; ... 11 more ...; $watch<T extends string | ((...args: any) => a...' is not assignable to type 'MaybeElement'.
+      Type '{ $: ComponentInternalInstance; $data: {}; $props: { readonly modelValue?: INodeParameterResourceLocator | undefined; ... 14 more ...; readonly onAddResourceClick?: (() => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps; ... 11 more ...; $watch<T extends string | ((...args: any) => an...' is not assignable to type 'MaybeElement'.
+        Type '{ $: ComponentInternalInstance; $data: {}; $props: { readonly modelValue?: INodeParameterResourceLocator | undefined; ... 14 more ...; readonly onAddResourceClick?: (() => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps; ... 11 more ...; $watch<T extends string | ((...args: any) => an...' is not assignable to type 'VueInstance'.
+          Type '{ $: ComponentInternalInstance; $data: {}; $props: { readonly modelValue?: INodeParameterResourceLocator | undefined; ... 14 more ...; readonly onAddResourceClick?: (() => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps; ... 11 more ...; $watch<T extends string | ((...args: any) => an...' is not assignable to type '{ $: ComponentInternalInstance; $data: {}; $props: {}; $attrs: Data; $refs: Data; $slots: Readonly<InternalSlots>; $root: ComponentPublicInstance<...> | null; ... 7 more ...; $watch<T extends string | ((...args: any) => any)>(source: T, cb: T extends (...args: any) => infer R ? (args_0: R, args_1: R, args_2: OnClean...'.
+            Types of property '$emit' are incompatible.
+              Type '((event: "filter", filter: string) => void) & ((event: "update:modelValue", value: string | number | null | undefined) => void) & ((event: "loadMore") => void) & ((event: "addResourceClick") => void)' is not assignable to type '(event: string, ...args: any[]) => void'.
+                Types of parameters 'event' and 'event' are incompatible.
+                  Type 'string' is not assignable to type '"filter"'.
+src/features/ndv/runData/components/RunData.vue(76,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/ndv/runData/components/RunDataParsedAiContent.vue(118,7): error TS2322: Type '{ highlight(str: string, lang: string): string | undefined; }' is not assignable to type 'Options'.
+  The types returned by 'highlight(...)' are incompatible between these types.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/features/ndv/runData/components/RunDataParsedAiContent.vue(123,7): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/features/ndv/runData/components/RunDataParsedAiContent.vue(125,7): error TS2322: Type '{ highlight(str: string, lang: string): string | undefined; }' is not assignable to type 'Options'.
+  The types returned by 'highlight(...)' are incompatible between these types.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/features/ndv/runData/components/VirtualSchema.test.ts(33,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/settings/apiKeys/views/SettingsApiView.vue(65,10): error TS6133: 'onUpgrade' is declared but its value is never read.
+src/features/settings/users/users.store.ts(14,1): error TS6133: 'PERSONALIZATION_MODAL_KEY' is declared but its value is never read.
+src/features/settings/users/users.store.ts(55,8): error TS6133: 'uiStore' is declared but its value is never read.
+src/features/settings/users/users.store.ts(358,45): error TS6133: 'results' is declared but its value is never read.
+src/features/shared/nodeCreator/composables/useActionsGeneration.test.ts(3,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/shared/nodeCreator/views/viewsData.test.ts(15,28): error TS2307: Cannot find module '@/app/stores/posthog.store' or its corresponding type declarations.
+src/features/shared/nodeCreator/views/viewsData.test.ts(64,66): error TS7006: Parameter 'experiment' implicitly has an 'any' type.
+src/features/workflows/templates/__tests__/setupTemplate.store.testData.ts(21,4): error TS2353: Object literal may only specify known properties, and 'defaults' does not exist in type 'ITemplatesNode'.
+src/features/workflows/templates/components/TemplateDetails.vue(48,45): error TS2339: Property 'displayName' does not exist on type 'ITemplatesNode'.
+src/features/workflows/templates/components/TemplateDetails.vue(63,17): error TS2339: Property 'name' does not exist on type 'ITemplatesNode'.
+src/features/workflows/templates/components/TemplatesInfoCard.test.ts(16,4): error TS2353: Object literal may only specify known properties, and 'icon' does not exist in type 'ITemplatesNode'.
+src/features/workflows/templates/components/TemplatesInfoCard.test.ts(27,4): error TS2353: Object literal may only specify known properties, and 'icon' does not exist in type 'ITemplatesNode'.
+src/features/workflows/templates/components/TemplatesInfoCard.test.ts(38,4): error TS2353: Object literal may only specify known properties, and 'icon' does not exist in type 'ITemplatesNode'.
+src/init.test.ts(9,34): error TS2307: Cannot find module '@/app/stores/versions.store' or its corresponding type declarations.
+src/init.test.ts(10,33): error TS2307: Cannot find module '@/features/shared/banners/banners.store' or its corresponding type declarations.
+src/init.test.ts(151,27): error TS2339: Property 'banners' does not exist on type '{ settingsMode?: "public" | "authenticated" | undefined; inE2ETests: boolean; isDocker: boolean; databaseType: "sqlite" | "mariadb" | "mysqldb" | "postgresdb"; endpointForm: string; ... 63 more ...; envFeatureFlags: N8nEnvFeatFlags; }'.
+src/init.ts(5,1): error TS6133: 'VIEWS' is declared but its value is never read.
+src/init.ts(93,2): error TS6133: 'routeName' is declared but its value is never read.
+ ELIFECYCLE  Command failed with exit code 2.

@@ -10,7 +10,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
-import type { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
@@ -63,7 +62,6 @@ export class UserService {
 		options?: {
 			withInviteUrl?: boolean;
 			inviterId?: string;
-			posthog?: PostHogClient;
 			withScopes?: boolean;
 			mfaAuthenticated?: boolean;
 		},
@@ -95,9 +93,8 @@ export class UserService {
 			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
-		if (options?.posthog) {
-			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
-		}
+		// Feature flags disabled - return empty object
+		publicUser.featureFlags = {};
 
 		// TODO: resolve these directly in the frontend
 		if (options?.withScopes) {
@@ -118,23 +115,6 @@ export class UserService {
 		invitee.inviteAcceptUrl = url.toString();
 
 		return invitee;
-	}
-
-	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
-		// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
-		// https://github.com/PostHog/posthog-js-lite/blob/a182de80a433fb0ffa6859c10fb28084d0f825c2/posthog-core/src/index.ts#L67
-		const timeoutPromise = new Promise<PublicUser>((resolve) => {
-			setTimeout(() => {
-				resolve(publicUser);
-			}, 1500);
-		});
-
-		const fetchPromise = new Promise<PublicUser>(async (resolve) => {
-			publicUser.featureFlags = await posthog.getFeatureFlags(publicUser);
-			resolve(publicUser);
-		});
-
-		return await Promise.race([fetchPromise, timeoutPromise]);
 	}
 
 	private async sendEmails(

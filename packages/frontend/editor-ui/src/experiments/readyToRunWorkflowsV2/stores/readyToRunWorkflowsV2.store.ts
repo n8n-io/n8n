@@ -1,9 +1,8 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { READY_TO_RUN_V2_PART2_EXPERIMENT, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
@@ -15,7 +14,6 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRouter, type RouteLocationNormalized } from 'vue-router';
 import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
-import { READY_TO_RUN_WORKFLOW_V3 } from '../workflows/ai-workflow-v3';
 import { READY_TO_RUN_WORKFLOW_V4 } from '../workflows/ai-workflow-v4';
 
 const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_V2_OPENAI_CREDENTIAL_ID';
@@ -30,15 +28,10 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const credentialsStore = useCredentialsStore();
 		const usersStore = useUsersStore();
 		const settingsStore = useSettingsStore();
-		const featureFlagsStore = useFeatureFlags();
 		const workflowsStore = useWorkflowsStore();
 
 		const isFeatureEnabled = computed(() => {
-			const variant = featureFlagsStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
-			return (
-				variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3 ||
-				variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant4
-			);
+			return true; // Experimental feature enabled by default
 		});
 
 		const claimedCredentialIdRef = useLocalStorage(LOCAL_STORAGE_CREDENTIAL_KEY, '');
@@ -65,7 +58,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		});
 
 		const getCurrentVariant = () => {
-			return featureFlagsStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
+			// Use variant4 as default (most complete version)
+			return 'variant-4';
 		};
 
 		const trackExecuteAiWorkflow = (status: string) => {
@@ -112,10 +106,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 				variant,
 			});
 
-			const workflowTemplate =
-				variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3
-					? READY_TO_RUN_WORKFLOW_V3
-					: READY_TO_RUN_WORKFLOW_V4;
+			// Use V4 as default workflow template
+			const workflowTemplate = READY_TO_RUN_WORKFLOW_V4;
 
 			try {
 				let workflowToCreate: WorkflowDataCreate = {

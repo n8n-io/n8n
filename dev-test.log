@@ -1,0 +1,245 @@
+
+> n8n-monorepo@1.118.0 dev:be /home/zhang/n8n-quanyuge
+> turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui --filter=!@n8n/admin-panel
+
+turbo 2.5.4
+
+• Packages in scope: @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/codemirror-lang-sql, @n8n/composables, @n8n/config, @n8n/constants, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/eslint-plugin-community-nodes, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/scan-community-package, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow
+• Running dev in 41 packages
+• Remote caching disabled
+n8n:dev: cache bypass, force executing 94a10addf181938f
+n8n-core:dev: cache bypass, force executing 2ec55113805c1f59
+@n8n/vitest-config:dev: cache bypass, force executing 8147d1b8b6dea39e
+@n8n/constants:dev: cache bypass, force executing 2fac177522411916
+@n8n/api-types:dev: cache bypass, force executing 32a301ca6a8b52c2
+@n8n/db:dev: cache bypass, force executing 3b6e2e8bc2a36f4b
+@n8n/client-oauth2:dev: cache bypass, force executing a108748e640cb906
+@n8n/i18n:dev: cache bypass, force executing ce6e5449aecf0ab7
+@n8n/n8n-extension-insights:dev: cache bypass, force executing f626003bf83b5a93
+@n8n/stores:dev: cache bypass, force executing 8a64dd78b856139e
+@n8n/db:dev: 
+@n8n/db:dev: > @n8n/db@0.29.0 dev /home/zhang/n8n-quanyuge/packages/@n8n/db
+@n8n/db:dev: > pnpm watch
+@n8n/db:dev: 
+@n8n/api-types:dev: 
+@n8n/api-types:dev: > @n8n/api-types@0.52.0 dev /home/zhang/n8n-quanyuge/packages/@n8n/api-types
+@n8n/api-types:dev: > pnpm watch
+@n8n/api-types:dev: 
+@n8n/n8n-extension-insights:dev: 
+@n8n/n8n-extension-insights:dev: > @n8n/n8n-extension-insights@0.9.0 dev /home/zhang/n8n-quanyuge/packages/extensions/insights
+@n8n/n8n-extension-insights:dev: > tsdown --watch
+@n8n/n8n-extension-insights:dev: 
+@n8n/vitest-config:dev: 
+@n8n/vitest-config:dev: > @n8n/vitest-config@1.5.0 dev /home/zhang/n8n-quanyuge/packages/@n8n/vitest-config
+@n8n/vitest-config:dev: > pnpm watch
+@n8n/vitest-config:dev: 
+@n8n/constants:dev: 
+@n8n/constants:dev: > @n8n/constants@0.13.0 dev /home/zhang/n8n-quanyuge/packages/@n8n/constants
+@n8n/constants:dev: > pnpm watch
+@n8n/constants:dev: 
+@n8n/i18n:dev: 
+@n8n/i18n:dev: > @n8n/i18n@1.22.0 dev /home/zhang/n8n-quanyuge/packages/frontend/@n8n/i18n
+@n8n/i18n:dev: > tsdown --watch
+@n8n/i18n:dev: 
+@n8n/n8n-extension-insights:dev: [34mℹ[39m tsdown [2mv0.15.12[22m powered by rolldown [2mv1.0.0-beta.45[22m
+n8n-core:dev: 
+n8n-core:dev: > n8n-core@1.117.0 dev /home/zhang/n8n-quanyuge/packages/core
+n8n-core:dev: > pnpm watch
+n8n-core:dev: 
+n8n:dev: 
+n8n:dev: > n8n@1.118.0 dev /home/zhang/n8n-quanyuge/packages/cli
+n8n:dev: > concurrently -k -n "TypeScript,Node" -c "yellow.bold,cyan.bold" "npm run watch" "nodemon --delay 1"
+n8n:dev: 
+@n8n/stores:dev: 
+@n8n/stores:dev: > @n8n/stores@1.25.0 dev /home/zhang/n8n-quanyuge/packages/frontend/@n8n/stores
+@n8n/stores:dev: > tsdown --watch
+@n8n/stores:dev: 
+@n8n/client-oauth2:dev: 
+@n8n/client-oauth2:dev: > @n8n/client-oauth2@0.30.0 dev /home/zhang/n8n-quanyuge/packages/@n8n/client-oauth2
+@n8n/client-oauth2:dev: > pnpm watch
+@n8n/client-oauth2:dev: 
+@n8n/i18n:dev: [34mℹ[39m tsdown [2mv0.15.12[22m powered by rolldown [2mv1.0.0-beta.45[22m
+@n8n/i18n:dev: [34mℹ[39m Using tsdown config: [4m/home/zhang/n8n-quanyuge/packages/frontend/@n8n/i18n/tsdown.config.ts[24m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m Using tsdown config: [4m/home/zhang/n8n-quanyuge/packages/extensions/insights/tsdown.config.ts[24m
+@n8n/i18n:dev: [34mℹ[39m entry: [34msrc/index.ts, src/types.ts, src/utils.ts[39m
+@n8n/i18n:dev: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/i18n:dev: [34mℹ[39m Build start
+@n8n/n8n-extension-insights:dev: [34mℹ[39m entry: [34msrc/backend/index.ts[39m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m tsconfig: [34mtsconfig.backend.json[39m
+@n8n/i18n:dev: [34mℹ[39m Cleaning 20 files
+@n8n/n8n-extension-insights:dev: [34mℹ[39m Build start
+@n8n/n8n-extension-insights:dev: [34mℹ[39m Cleaning 6 files
+@n8n/stores:dev: [34mℹ[39m tsdown [2mv0.15.12[22m powered by rolldown [2mv1.0.0-beta.45[22m
+@n8n/stores:dev: [34mℹ[39m Using tsdown config: [4m/home/zhang/n8n-quanyuge/packages/frontend/@n8n/stores/tsdown.config.ts[24m
+@n8n/stores:dev: [34mℹ[39m entry: [34msrc/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts[39m
+@n8n/stores:dev: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+@n8n/stores:dev: [34mℹ[39m Build start
+@n8n/stores:dev: [34mℹ[39m Cleaning 35 files
+@n8n/constants:dev: 
+@n8n/constants:dev: > @n8n/constants@0.13.0 watch /home/zhang/n8n-quanyuge/packages/@n8n/constants
+@n8n/constants:dev: > tsc -p tsconfig.build.json --watch
+@n8n/constants:dev: 
+@n8n/vitest-config:dev: 
+@n8n/vitest-config:dev: > @n8n/vitest-config@1.5.0 watch /home/zhang/n8n-quanyuge/packages/@n8n/vitest-config
+@n8n/vitest-config:dev: > tsc -p tsconfig.build.json --watch
+@n8n/vitest-config:dev: 
+@n8n/db:dev: 
+@n8n/db:dev: > @n8n/db@0.29.0 watch /home/zhang/n8n-quanyuge/packages/@n8n/db
+@n8n/db:dev: > tsc -p tsconfig.build.json --watch
+@n8n/db:dev: 
+@n8n/api-types:dev: 
+@n8n/api-types:dev: > @n8n/api-types@0.52.0 watch /home/zhang/n8n-quanyuge/packages/@n8n/api-types
+@n8n/api-types:dev: > tsc -p tsconfig.build.json --watch
+@n8n/api-types:dev: 
+n8n-core:dev: 
+n8n-core:dev: > n8n-core@1.117.0 watch /home/zhang/n8n-quanyuge/packages/core
+n8n-core:dev: > tsc-watch -p tsconfig.build.json --onCompilationComplete "tsc-alias -p tsconfig.build.json"
+n8n-core:dev: 
+@n8n/vitest-config:dev: [2J[3J[H12:20:28 - Starting compilation in watch mode...
+@n8n/vitest-config:dev: 
+@n8n/db:dev: [2J[3J[H12:20:28 - Starting compilation in watch mode...
+@n8n/db:dev: 
+@n8n/constants:dev: [2J[3J[H12:20:28 - Starting compilation in watch mode...
+@n8n/constants:dev: 
+@n8n/api-types:dev: [2J[3J[H12:20:28 - Starting compilation in watch mode...
+@n8n/api-types:dev: 
+n8n:dev: [Node] [33m[nodemon] 3.1.10[39m
+n8n:dev: [TypeScript] 
+n8n:dev: [TypeScript] > n8n@1.118.0 watch
+n8n:dev: [TypeScript] > tsc-watch -p tsconfig.build.json --onCompilationComplete "tsc-alias -p tsconfig.build.json"
+n8n:dev: [TypeScript] 
+n8n:dev: [Node] [33m[nodemon] to restart at any time, enter `rs`[39m
+n8n:dev: [Node] [33m[nodemon] watching path(s): dist/**/*[39m
+n8n:dev: [Node] [33m[nodemon] watching extensions: js[39m
+n8n:dev: [Node] [32m[nodemon] starting `npm start`[39m
+n8n-core:dev: [2J[3J[H12:20:28 - Starting compilation in watch mode...
+n8n-core:dev: 
+@n8n/client-oauth2:dev: 
+@n8n/client-oauth2:dev: > @n8n/client-oauth2@0.30.0 watch /home/zhang/n8n-quanyuge/packages/@n8n/client-oauth2
+@n8n/client-oauth2:dev: > tsc -p tsconfig.build.json --watch
+@n8n/client-oauth2:dev: 
+n8n:dev: [TypeScript] [2J[3J[H12:20:29 - Starting compilation in watch mode...
+n8n:dev: [TypeScript] 
+n8n:dev: [Node] 
+n8n:dev: [Node] > n8n@1.118.0 start
+n8n:dev: [Node] > run-script-os
+n8n:dev: [Node] 
+@n8n/client-oauth2:dev: [2J[3J[H12:20:29 - Starting compilation in watch mode...
+@n8n/client-oauth2:dev: 
+n8n:dev: [Node] 
+n8n:dev: [Node] > n8n@1.118.0 start:default
+n8n:dev: [Node] > cd bin && ./n8n
+n8n:dev: [Node] 
+@n8n/client-oauth2:dev: 
+@n8n/client-oauth2:dev: 12:20:32 - Found 0 errors. Watching for file changes.
+@n8n/constants:dev: 
+@n8n/constants:dev: 12:20:32 - Found 0 errors. Watching for file changes.
+@n8n/vitest-config:dev: 
+@n8n/vitest-config:dev: 12:20:32 - Found 0 errors. Watching for file changes.
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museRootStore.cjs[22m                [2m 6.02 kB[22m [2m│ gzip: 1.40 kB[22m
+@n8n/stores:dev: [33m[EMPTY_IMPORT_META] Warning:[0m `import.meta` is not available with the `cjs` output format and will be empty.
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museAgentRequestStore.cjs[22m        [2m 2.05 kB[22m [2m│ gzip: 0.62 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mmetaTagConfig.cjs[22m               [2m 0.24 kB[22m [2m│ gzip: 0.12 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mconstants.cjs[22m                   [2m 0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/stores:dev:    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/useRootStore.ts:8:34 [38;5;246m][0m
+@n8n/stores:dev:    [38;5;246m│[0m
+@n8n/stores:dev:  [38;5;246m8 │[0m [38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0m[38;5;249mV[0m[38;5;249mU[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mA[0m[38;5;249mP[0m[38;5;249mP[0m[38;5;249m_[0m[38;5;249mU[0m[38;5;249mR[0m[38;5;249mL[0m[38;5;249m_[0m[38;5;249mB[0m[38;5;249mA[0m[38;5;249mS[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mA[0m[38;5;249mP[0m[38;5;249mI[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0mimport.meta[38;5;249m.[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249m;[0m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                       [2m 0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+@n8n/stores:dev:  [38;5;240m  │[0m                                  ─────┬─────  
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22museRootStore.cjs.map            [2m10.24 kB[22m [2m│ gzip: 2.31 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22museAgentRequestStore.cjs.map    [2m 3.72 kB[22m [2m│ gzip: 1.15 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22mconstants-CX69cpIe.cjs.map      [2m 2.03 kB[22m [2m│ gzip: 0.96 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22mmetaTagConfig-DEzM-BAY.cjs.map  [2m 1.86 kB[22m [2m│ gzip: 0.77 kB[22m
+@n8n/stores:dev:  [38;5;240m  │[0m                                       ╰─────── You need to set the output format to `esm` for `import.meta` to work correctly.
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22mconstants-CX69cpIe.cjs          [2m 1.51 kB[22m [2m│ gzip: 0.81 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22mmetaTagConfig-DEzM-BAY.cjs      [2m 1.35 kB[22m [2m│ gzip: 0.52 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22mchunk-CUT6urMc.cjs              [2m 1.09 kB[22m [2m│ gzip: 0.54 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m 12 files, total: 30.32 kB
+@n8n/stores:dev: [38;5;246m───╯[0m
+@n8n/stores:dev: 
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museRootStore.js[22m                [2m 5.58 kB[22m [2m│ gzip: 1.33 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museAgentRequestStore.js[22m        [2m 1.86 kB[22m [2m│ gzip: 0.55 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mmetaTagConfig.js[22m               [2m 0.17 kB[22m [2m│ gzip: 0.11 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mconstants.js[22m                   [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.js[22m                       [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22museRootStore.js.map            [2m10.31 kB[22m [2m│ gzip: 2.29 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22museAgentRequestStore.js.map    [2m 3.73 kB[22m [2m│ gzip: 1.16 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22mconstants-9i3DzQUx.js.map      [2m 2.03 kB[22m [2m│ gzip: 0.96 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22mmetaTagConfig-DwSO4X1O.js.map  [2m 1.86 kB[22m [2m│ gzip: 0.77 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22mconstants-9i3DzQUx.js          [2m 1.42 kB[22m [2m│ gzip: 0.74 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22mmetaTagConfig-DwSO4X1O.js      [2m 1.13 kB[22m [2m│ gzip: 0.47 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museRootStore.d.ts[22m[39m              [2m 7.43 kB[22m [2m│ gzip: 0.92 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museAgentRequestStore.d.ts[22m[39m      [2m 2.51 kB[22m [2m│ gzip: 0.49 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mmetaTagConfig.d.ts[22m[39m             [2m 0.31 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mconstants.d.ts[22m[39m                 [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.ts[22m[39m                     [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mconstants-DHhp4V-3.d.ts[39m        [2m 1.86 kB[22m [2m│ gzip: 0.77 kB[22m
+@n8n/stores:dev: [34mℹ[39m [34m[ESM][39m 17 files, total: 40.49 kB
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museRootStore.d.cts[22m[39m          [2m7.43 kB[22m [2m│ gzip: 0.92 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museAgentRequestStore.d.cts[22m[39m  [2m2.51 kB[22m [2m│ gzip: 0.50 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mmetaTagConfig.d.cts[22m[39m         [2m0.31 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mconstants.d.cts[22m[39m             [2m0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                 [2m0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mconstants-CwptonZO.d.cts[39m    [2m1.86 kB[22m [2m│ gzip: 0.77 kB[22m
+@n8n/stores:dev: [34mℹ[39m [33m[CJS][39m 6 files, total: 12.26 kB
+@n8n/stores:dev: [32m✔[39m Build complete in [32m4902ms[39m
+@n8n/stores:dev: [34mℹ[39m Watching for changes in /home/zhang/n8n-quanyuge/packages/frontend/@n8n/stores
+n8n:dev: [Node] Permissions 0664 for n8n settings file /home/zhang/.n8n/config are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.
+n8n:dev: [Node] Initializing n8n process
+@n8n/api-types:dev: 
+@n8n/api-types:dev: 12:20:33 - Found 0 errors. Watching for file changes.
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mindex.cjs[22m      [2m1.35 kB[22m [2m│ gzip: 0.65 kB[22m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mindex.cjs.map  [2m0.37 kB[22m [2m│ gzip: 0.25 kB[22m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [33m[CJS][39m 2 files, total: 1.72 kB
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mindex.d.cts[22m[39m  [2m0.23 kB[22m [2m│ gzip: 0.17 kB[22m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [33m[CJS][39m 1 files, total: 0.23 kB
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mindex.js[22m      [2m0.27 kB[22m [2m│ gzip: 0.19 kB[22m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mindex.js.map  [2m0.35 kB[22m [2m│ gzip: 0.26 kB[22m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mindex.d.ts[22m[39m    [2m0.26 kB[22m [2m│ gzip: 0.18 kB[22m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m [34m[ESM][39m 3 files, total: 0.88 kB
+@n8n/n8n-extension-insights:dev: [32m✔[39m Build complete in [32m5689ms[39m
+@n8n/n8n-extension-insights:dev: [34mℹ[39m Watching for changes in /home/zhang/n8n-quanyuge/packages/extensions/insights
+n8n:dev: [Node] n8n ready on ::, port 5678
+n8n:dev: [Node] 
+n8n:dev: [Node] There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
+n8n:dev: [Node]  - DB_SQLITE_POOL_SIZE -> Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite
+n8n:dev: [Node]  - N8N_RUNNERS_ENABLED -> Running n8n without task runners is deprecated. Task runners will be turned on by default in a future version. Please set `N8N_RUNNERS_ENABLED=true` to enable task runners now and avoid potential issues in the future. Learn more: https://docs.n8n.io/hosting/configuration/task-runners/
+n8n:dev: [Node]  - N8N_BLOCK_ENV_ACCESS_IN_NODE -> The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n:dev: [Node]  - N8N_GIT_NODE_DISABLE_BARE_REPOS -> Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n:dev: [Node] 
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m               [2m607.83 kB[22m [2m│ gzip: 145.48 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mutils.cjs[22m               [2m  0.30 kB[22m [2m│ gzip:   0.16 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mtypes.cjs[22m               [2m  0.00 kB[22m [2m│ gzip:   0.02 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22mindex.cjs.map           [2m764.80 kB[22m [2m│ gzip: 161.77 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22mutils-CmS9ahSc.cjs.map  [2m  3.43 kB[22m [2m│ gzip:   1.36 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22mutils-CmS9ahSc.cjs      [2m  2.70 kB[22m [2m│ gzip:   1.03 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m 6 files, total: 1379.06 kB
+n8n-core:dev: 
+n8n-core:dev: 12:20:34 -[32m Found 0 errors. Watching for file changes.[39m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.js[22m               [2m606.40 kB[22m [2m│ gzip: 144.97 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mutils.js[22m               [2m  0.23 kB[22m [2m│ gzip:   0.16 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mtypes.js[22m               [2m  0.01 kB[22m [2m│ gzip:   0.03 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22mindex.js.map           [2m764.68 kB[22m [2m│ gzip: 161.70 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22mutils-h8Z6_NUG.js.map  [2m  3.43 kB[22m [2m│ gzip:   1.36 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22mutils-h8Z6_NUG.js      [2m  2.27 kB[22m [2m│ gzip:   0.97 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.ts[22m[39m             [2m398.18 kB[22m [2m│ gzip:  53.46 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mutils.d.ts[22m[39m             [2m  0.46 kB[22m [2m│ gzip:   0.25 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mtypes.d.ts[22m[39m             [2m  0.21 kB[22m [2m│ gzip:   0.15 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtypes-D7GRPn_T.d.ts[39m    [2m190.05 kB[22m [2m│ gzip:  26.37 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [34m[ESM][39m 10 files, total: 1965.91 kB
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m           [2m398.18 kB[22m [2m│ gzip: 53.47 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mutils.d.cts[22m[39m           [2m  0.46 kB[22m [2m│ gzip:  0.25 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mtypes.d.cts[22m[39m           [2m  0.21 kB[22m [2m│ gzip:  0.15 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtypes-9gbXmI5V.d.cts[39m  [2m190.05 kB[22m [2m│ gzip: 26.37 kB[22m
+@n8n/i18n:dev: [34mℹ[39m [33m[CJS][39m 4 files, total: 588.90 kB
+@n8n/i18n:dev: [32m✔[39m Build complete in [32m6940ms[39m
+@n8n/i18n:dev: [34mℹ[39m Watching for changes in /home/zhang/n8n-quanyuge/packages/frontend/@n8n/i18n
+@n8n/db:dev: 
+@n8n/db:dev: 12:20:35 - Found 0 errors. Watching for file changes.
+n8n:dev: [Node] Version: 1.118.0
+n8n:dev: [Node] Locale: zh
+n8n:dev: [Node] 
+n8n:dev: [Node] Editor is now accessible via:
+n8n:dev: [Node] http://localhost:5678
+n8n:dev: [TypeScript] 
+n8n:dev: [TypeScript] 12:20:36 -[32m Found 0 errors. Watching for file changes.[39m

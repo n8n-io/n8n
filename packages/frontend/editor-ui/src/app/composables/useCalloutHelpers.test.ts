@@ -34,12 +34,6 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mocks.track }),
 }));
 
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({
-		isVariantEnabled: mocks.isVariantEnabled,
-	}),
-}));
-
 vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: () => ({
 		isCalloutDismissed: mocks.isCalloutDismissed,

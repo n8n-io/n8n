@@ -24,7 +24,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
@@ -147,7 +146,6 @@ export abstract class BaseCommand<F = never> {
 		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
 		Container.get(MessageEventBus);
 
-		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
 	}
 

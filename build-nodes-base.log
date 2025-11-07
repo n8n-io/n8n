@@ -1,0 +1,10 @@
+
+> n8n-nodes-base@1.116.0 build /home/zhang/n8n-quanyuge/packages/nodes-base
+> tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
+
+
+> n8n-nodes-base@1.116.0 copy-nodes-json /home/zhang/n8n-quanyuge/packages/nodes-base
+> node scripts/copy-nodes-json.js .
+
+Default locale set to: [35men[0m
+No translation required - Skipping translations build...

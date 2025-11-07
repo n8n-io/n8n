@@ -16,7 +16,7 @@ import { waitingNodeTooltip } from '@/features/execution/executions/executions.u
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/features/workflows/canvas/canvas.types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/app/constants';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
+
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
@@ -78,7 +78,7 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
-const featureFlagsStore = useFeatureFlags();
+
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
@@ -227,12 +227,7 @@ const allToolsWereUnusedNotice = computed(() => {
 	}
 });
 
-const isNDVV2 = computed(() =>
-	featureFlagsStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = computed(() => true); // Experimental feature enabled by default
 
 // Methods
 

@@ -5,7 +5,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -13,7 +12,6 @@ import { useViewStacks } from '@/features/shared/nodeCreator/composables/useView
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import {
 	NODE_CREATOR_OPEN_SOURCES,
-	PRE_BUILT_AGENTS_EXPERIMENT,
 	PRE_BUILT_AGENTS_MODAL_KEY,
 	REGULAR_NODE_CREATOR_VIEW,
 	VIEWS,
@@ -35,7 +33,6 @@ export function useCalloutHelpers() {
 	const route = useRoute();
 	const router = useRouter();
 	const telemetry = useTelemetry();
-	const featureFlagsStore = useFeatureFlags();
 	const i18n = useI18n();
 
 	const rootStore = useRootStore();
@@ -213,10 +210,7 @@ export function useCalloutHelpers() {
 	};
 
 	const isPreBuiltAgentsExperimentEnabled = computed(() => {
-		return featureFlagsStore.isVariantEnabled(
-			PRE_BUILT_AGENTS_EXPERIMENT.name,
-			PRE_BUILT_AGENTS_EXPERIMENT.variant,
-		);
+		return true; // Experimental feature enabled by default
 	});
 
 	const isPreBuiltAgentsCalloutVisible = computed(() => {

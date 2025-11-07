@@ -6,7 +6,6 @@ import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/app/constants';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
 
 import { N8nTooltip } from '@n8n/design-system';
 interface Props {
@@ -20,7 +19,7 @@ const enum FloatingNodePosition {
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
-const featureFlagsStore = useFeatureFlags();
+
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
 }>();
@@ -30,12 +29,7 @@ interface NodeConfig {
 	nodeType: INodeTypeDescription;
 }
 
-const isNDVV2 = computed(() =>
-	featureFlagsStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = computed(() => true); // Experimental feature enabled by default
 
 function moveNodeDirection(direction: FloatingNodePosition) {
 	const matchedDirectionNode = connectedNodes.value[direction][0];

@@ -1,11 +1,6 @@
 import { useStorage } from '@/app/composables/useStorage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import {
-	LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS,
-	TEMPLATE_ONBOARDING_EXPERIMENT,
-	VIEWS,
-} from '@/app/constants';
-import { useFeatureFlags } from '@/app/stores/featureFlags.store';
+import { LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS, VIEWS } from '@/app/constants';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
@@ -64,7 +59,6 @@ function keepTop3Templates(templates: ITemplatesWorkflowFull[]) {
 
 export const usePersonalizedTemplatesStore = defineStore(STORES.PERSONALIZED_TEMPLATES, () => {
 	const telemetry = useTelemetry();
-	const featureFlagsStore = useFeatureFlags();
 	const templatesStore = useTemplatesStore();
 
 	const allSuggestedWorkflows = ref<ITemplatesWorkflowFull[]>([]);
@@ -87,10 +81,7 @@ export const usePersonalizedTemplatesStore = defineStore(STORES.PERSONALIZED_TEM
 	};
 
 	const isFeatureEnabled = () => {
-		return (
-			featureFlagsStore.getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
-			TEMPLATE_ONBOARDING_EXPERIMENT.variantSuggestedTemplates
-		);
+		return true; // Experimental feature enabled by default
 	};
 
 	const trackUserWasRecommendedTemplates = (templateIds: number[]) => {
