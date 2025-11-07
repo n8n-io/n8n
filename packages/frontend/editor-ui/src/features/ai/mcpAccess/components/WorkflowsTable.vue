@@ -217,7 +217,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 					</N8nTooltip>
 				</template>
 				<template #[`item.homeProject`]="{ item }">
-					<span v-if="item.homeProject" :class="$style['folder-cell']">
+					<span v-if="item.homeProject">
 						<N8nLink
 							data-test-id="mcp-workflow-project-link"
 							:to="

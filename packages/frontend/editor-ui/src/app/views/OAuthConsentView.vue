@@ -18,7 +18,7 @@ const documentTitle = useDocumentTitle();
 const toast = useToast();
 
 // Success state:
-const waitingForRedirect = ref(true);
+const waitingForRedirect = ref(false);
 
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
