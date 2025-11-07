@@ -11,7 +11,12 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import {
+	EnterpriseEditionFeature,
+	VIEWS,
+	EDITABLE_CANVAS_VIEWS,
+	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
+} from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
@@ -22,12 +27,14 @@ import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { usePostHog } from './app/stores/posthog.store';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
+const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.vue');
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/app/components/MainHeader/MainHeader.vue');
@@ -72,6 +79,8 @@ const SettingsUsageAndPlan = async () =>
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
+const SettingsSourceControl = async () =>
+	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>
 	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
 const SettingsProvisioningView = async () =>
@@ -251,7 +260,12 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			nodeView: true,
 			keepWorkflowAlive: true,
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.DebugInEditor],
+				},
+			},
 		},
 	},
 	{
@@ -329,7 +343,12 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.WorkflowHistory],
+				},
+			},
 		},
 	},
 	{
@@ -451,6 +470,16 @@ export const routes: RouteRecordRaw[] = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/oauth/consent',
+		name: VIEWS.OAUTH_CONSENT,
+		components: {
+			default: OAuthConsentView,
+		},
+		meta: {
 			middleware: ['authenticated'],
 		},
 	},
@@ -632,6 +661,29 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'environments',
+				name: VIEWS.SOURCE_CONTROL,
+				components: {
+					settingsView: SettingsSourceControl,
+				},
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'sourceControl:manage',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'environments',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'external-secrets',
 				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
 				components: {
@@ -749,10 +801,20 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsProvisioningView,
 				},
 				meta: {
-					middleware: ['authenticated', 'rbac'],
+					middleware: ['authenticated', 'rbac', 'custom' /* 'enterprise' */],
 					middlewareOptions: {
+						/*
+						TODO: comment this back in once the custom check using experiment is no longer used
+						enterprise: {
+							feature: EnterpriseEditionFeature.Provisioning,
+						},
+						*/
 						rbac: {
 							scope: 'provisioning:manage',
+						},
+						custom: () => {
+							const posthogStore = usePostHog();
+							return posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name);
 						},
 					},
 					telemetry: {

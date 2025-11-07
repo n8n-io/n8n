@@ -13,22 +13,18 @@ import type { SamlUserAttributes } from '../../types';
 import { SamlController } from '../saml.controller.ee';
 
 // Mock the saml-helpers module
-jest.mock('../../saml-helpers', () => ({}));
+jest.mock('../../saml-helpers', () => ({
+	isConnectionTestRequest: jest.fn(),
+	isSamlLicensedAndEnabled: jest.fn(),
+}));
 
-import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../../saml-helpers';
 
 const authService = mock<AuthService>();
 const samlService = mock<SamlService>();
 const urlService = mock<UrlService>();
 const eventService = mock<EventService>();
-const provisioningService = mock<ProvisioningService>();
-const controller = new SamlController(
-	authService,
-	samlService,
-	urlService,
-	eventService,
-	provisioningService,
-);
+const controller = new SamlController(authService, samlService, urlService, eventService);
 
 const user = mock<User>({
 	id: '123',
@@ -42,7 +38,6 @@ const attributes: SamlUserAttributes = {
 	firstName: 'Test',
 	lastName: 'User',
 	userPrincipalName: 'upn:test@example.com',
-	n8nInstanceRole: 'n8n_instance_role',
 };
 
 describe('Test views', () => {
@@ -50,6 +45,7 @@ describe('Test views', () => {
 
 	beforeEach(() => {
 		// Mock the helper functions for test connection flow
+		(isConnectionTestRequest as jest.Mock).mockReturnValue(true);
 	});
 
 	test('Should render success with template', async () => {
@@ -107,6 +103,8 @@ describe('SAML Login Flow', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		// Mock the helper functions for actual login flow (not test connections)
+		(isConnectionTestRequest as jest.Mock).mockReturnValue(false);
+		(isSamlLicensedAndEnabled as jest.Mock).mockReturnValue(true);
 
 		// Mock URL service
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');

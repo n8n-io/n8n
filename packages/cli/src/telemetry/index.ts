@@ -201,6 +201,7 @@ export class Telemetry {
 			source: 'backend',
 		});
 	}
+	}
 
 	// test helpers
 	getCountsBuffer(): IExecutionsBuffer {

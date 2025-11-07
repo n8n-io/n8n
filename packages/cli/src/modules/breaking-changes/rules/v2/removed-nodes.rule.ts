@@ -1,14 +1,14 @@
+import { BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { INode } from 'n8n-workflow';
 
 import type {
-	BreakingChangeMetadata,
-	WorkflowDetectionResult,
-	Recommendation,
+	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
+	WorkflowDetectionReport,
 } from '../../types';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
@@ -20,22 +20,21 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 
 	id: string = 'removed-nodes-v2';
 
-	getMetadata(): BreakingChangeMetadata {
+	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
 			title: 'Removed Deprecated Nodes',
 			description: 'Several deprecated nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.workflow,
-			severity: BreakingChangeSeverity.critical,
+			severity: 'critical',
 		};
 	}
 
-	async getRecommendations(): Promise<Recommendation[]> {
+	async getRecommendations(): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
 				action: 'Update affected workflows',
 				description: 'Replace removed nodes with their updated versions or alternatives',
-				documentationUrl: this.getMetadata().documentationUrl,
 			},
 		];
 	}
@@ -43,7 +42,7 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 	async detectWorkflow(
 		_workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
-	): Promise<WorkflowDetectionResult> {
+	): Promise<WorkflowDetectionReport> {
 		const removedNodes = this.REMOVED_NODES.flatMap((type) => nodesGroupedByType.get(type) ?? []);
 		if (removedNodes.length === 0) return { isAffected: false, issues: [] };
 
@@ -52,7 +51,9 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 			issues: removedNodes.map((node) => ({
 				title: `Node '${node.type}' with name '${node.name}' has been removed`,
 				description: `The node type '${node.type}' is no longer available. Please replace it with an alternative.`,
-				level: IssueLevel.error,
+				level: 'error',
+				nodeId: node.id,
+				nodeName: node.name,
 			})),
 		};
 	}

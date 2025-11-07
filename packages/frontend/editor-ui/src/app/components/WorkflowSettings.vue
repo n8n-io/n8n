@@ -81,6 +81,9 @@ const defaultValues = ref({
 });
 
 const isMCPEnabled = computed(() => settingsStore.isModuleActive('mcp'));
+const isInstanceMcpAccessEnabled = computed(
+	() => settingsStore.moduleSettings.mcp?.mcpAccessEnabled ?? false,
+);
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
@@ -92,6 +95,24 @@ const workflowOwnerName = computed(() => {
 	return workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, fallback);
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+
+const mcpToggleDisabled = computed(() => {
+	return (
+		readOnlyEnv.value ||
+		!workflowPermissions.value.update ||
+		!isEligibleForMcp.value ||
+		!isInstanceMcpAccessEnabled.value
+	);
+});
+
+const mcpToggleTooltip = computed(() => {
+	if (!isInstanceMcpAccessEnabled.value) {
+		return i18n.baseText('mcp.instanceLevelAccessDisabled.description');
+	} else if (!isEligibleForMcp.value) {
+		return i18n.baseText('mcp.workflowNotEligable.description');
+	}
+	return i18n.baseText('workflowSettings.availableInMCP.tooltip');
+});
 
 const isEligibleForMcp = computed(() => {
 	if (!workflow?.value) return false;
@@ -273,7 +294,7 @@ const loadTimezones = async () => {
 
 const loadWorkflows = async (searchTerm?: string) => {
 	const workflowsData = (await workflowsStore.searchWorkflows({
-		name: searchTerm,
+		query: searchTerm,
 	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
@@ -851,11 +872,7 @@ onBeforeUnmount(() => {
 							{{ i18n.baseText('workflowSettings.availableInMCP') }}
 							<N8nTooltip placement="top">
 								<template #content>
-									{{
-										isEligibleForMcp
-											? i18n.baseText('workflowSettings.availableInMCP.tooltip')
-											: i18n.baseText('mcp.workflowNotEligable.description')
-									}}
+									{{ mcpToggleTooltip }}
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
@@ -863,13 +880,13 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<N8nTooltip placement="top" :disabled="isEligibleForMcp">
+							<N8nTooltip placement="top" :disabled="!mcpToggleDisabled">
 								<template #content>
-									{{ i18n.baseText('mcp.workflowNotEligable.description') }}
+									{{ mcpToggleTooltip }}
 								</template>
 								<ElSwitch
 									ref="inputField"
-									:disabled="readOnlyEnv || !workflowPermissions.update || !isEligibleForMcp"
+									:disabled="mcpToggleDisabled"
 									:model-value="workflowSettings.availableInMCP ?? false"
 									data-test-id="workflow-settings-available-in-mcp"
 									@update:model-value="toggleAvailableInMCP"

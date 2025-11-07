@@ -84,6 +84,7 @@ export class AuthService {
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/mcp-oauth/authorize/',
 		];
 	}
 

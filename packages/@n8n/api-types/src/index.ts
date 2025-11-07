@@ -125,3 +125,15 @@ export type {
 } from './telemetry';
 
 export { TelemetryEventsQuerySchema, TelemetryStatsQuerySchema, TelemetryTopEventsQuerySchema } from './telemetry';
+
+export type {
+	BreakingChangeRuleSeverity,
+	BreakingChangeRecommendation,
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeInstanceIssue,
+	BreakingChangeWorkflowIssue,
+	BreakingChangeInstanceRuleResult,
+	BreakingChangeWorkflowRuleResult,
+	BreakingChangeReportResult,
+	BreakingChangeLightReportResult,
+} from './schemas/breaking-changes.schema';

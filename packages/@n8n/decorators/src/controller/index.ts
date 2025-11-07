@@ -5,4 +5,4 @@ export { Get, Post, Put, Patch, Delete } from './route';
 export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
 export { GlobalScope, ProjectScope } from './scoped';
-export type { AccessScope, Controller, RateLimit } from './types';
+export type { AccessScope, Controller, RateLimit, StaticRouterMetadata } from './types';

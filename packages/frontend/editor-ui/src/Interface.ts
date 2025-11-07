@@ -198,6 +198,7 @@ export interface INewWorkflowData {
 export interface IWorkflowDb {
 	id: string;
 	name: string;
+	description?: string | null;
 	active: boolean;
 	isArchived: boolean;
 	createdAt: number | string;
@@ -234,6 +235,7 @@ export type FolderResource = BaseFolderItem & {
 
 export type WorkflowResource = BaseResource & {
 	resourceType: 'workflow';
+	description?: string;
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
@@ -297,6 +299,7 @@ export type WorkflowListItem = Omit<
 	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
+	description?: string;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;

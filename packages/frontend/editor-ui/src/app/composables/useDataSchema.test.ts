@@ -365,6 +365,185 @@ describe('useDataSchema', () => {
 			);
 			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z')]);
 		});
+
+		describe('with collapseArrays=true', () => {
+			it('should collapse simple arrays to first item only', () => {
+				const input = ['John', 'Jane', 'Joe'];
+				const schema = getSchema(input, '', false, true);
+				expect(schema).toEqual({
+					type: 'array',
+					value: [{ type: 'string', value: 'John', key: '0', path: '[0]' }],
+					path: '',
+				});
+			});
+
+			it('should collapse nested arrays recursively', () => {
+				const input = [
+					{ name: 'John', age: 22, hobbies: ['surfing', 'traveling', 'reading'] },
+					{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming', 'coding'] },
+					{ name: 'Jane', age: 28, hobbies: ['cooking', 'photography'] },
+				];
+				const schema = getSchema(input, '', false, true);
+				expect(schema).toEqual({
+					type: 'array',
+					value: [
+						{
+							type: 'object',
+							key: '0',
+							value: [
+								{ type: 'string', key: 'name', value: 'Jane', path: '[0].name' },
+								{ type: 'number', key: 'age', value: '28', path: '[0].age' },
+								{
+									type: 'array',
+									key: 'hobbies',
+									value: [{ type: 'string', key: '0', value: 'cooking', path: '[0].hobbies[0]' }],
+									path: '[0].hobbies',
+								},
+							],
+							path: '[0]',
+						},
+					],
+					path: '',
+				});
+			});
+
+			it('should collapse nested arrays of objects with different keys recursively', () => {
+				const input = [
+					{
+						name: 'John',
+						age: 22,
+						createdAt: 193939,
+					},
+					{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming', 'coding'], test: true },
+					{ name: 'Jane', age: 28, hobbies: ['cooking', 'photography'], updatedAt: 199994 },
+				];
+				const schema = getSchema(input, '', false, true);
+				expect(schema).toEqual({
+					type: 'array',
+					value: [
+						{
+							type: 'object',
+							key: '0',
+							value: [
+								{ type: 'string', key: 'name', value: 'Jane', path: '[0].name' },
+								{ type: 'number', key: 'age', value: '28', path: '[0].age' },
+								{ type: 'number', key: 'createdAt', value: '193939', path: '[0].createdAt' },
+								{
+									type: 'array',
+									key: 'hobbies',
+									value: [{ type: 'string', key: '0', value: 'cooking', path: '[0].hobbies[0]' }],
+									path: '[0].hobbies',
+								},
+								{ type: 'boolean', key: 'test', value: 'true', path: '[0].test' },
+								{ type: 'number', key: 'updatedAt', value: '199994', path: '[0].updatedAt' },
+							],
+							path: '[0]',
+						},
+					],
+					path: '',
+				});
+			});
+
+			it('should handle empty arrays', () => {
+				const input: unknown[] = [];
+				const schema = getSchema(input, '', false, true);
+				expect(schema).toEqual({
+					type: 'array',
+					value: [],
+					path: '',
+				});
+			});
+
+			it('should collapse deeply nested arrays', () => {
+				const input = [
+					{
+						dates: [
+							[new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z')],
+							[new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')],
+						],
+					},
+					{
+						dates: [[new Date('2023-01-01T00:00:00.000Z'), new Date('2023-01-02T00:00:00.000Z')]],
+					},
+				];
+				const schema = getSchema(input, '', false, true);
+				expect(schema).toEqual({
+					type: 'array',
+					value: [
+						{
+							type: 'object',
+							key: '0',
+							value: [
+								{
+									type: 'array',
+									key: 'dates',
+									value: [
+										{
+											type: 'array',
+											key: '0',
+											value: [
+												{
+													type: 'string',
+													key: '0',
+													value: '2023-01-01T00:00:00.000Z',
+													path: '[0].dates[0][0]',
+												},
+											],
+											path: '[0].dates[0]',
+										},
+									],
+									path: '[0].dates',
+								},
+							],
+							path: '[0]',
+						},
+					],
+					path: '',
+				});
+			});
+
+			it('should not affect objects, only arrays', () => {
+				const input = {
+					person1: { name: 'John', age: 22 },
+					person2: { name: 'Jane', age: 28 },
+					person3: { name: 'Joe', age: 33 },
+				};
+				const schema = getSchema(input, '', false, true);
+				expect(schema).toEqual({
+					type: 'object',
+					value: [
+						{
+							type: 'object',
+							key: 'person1',
+							value: [
+								{ type: 'string', key: 'name', value: 'John', path: '.person1.name' },
+								{ type: 'number', key: 'age', value: '22', path: '.person1.age' },
+							],
+							path: '.person1',
+						},
+						{
+							type: 'object',
+							key: 'person2',
+							value: [
+								{ type: 'string', key: 'name', value: 'Jane', path: '.person2.name' },
+								{ type: 'number', key: 'age', value: '28', path: '.person2.age' },
+							],
+							path: '.person2',
+						},
+						{
+							type: 'object',
+							key: 'person3',
+							value: [
+								{ type: 'string', key: 'name', value: 'Joe', path: '.person3.name' },
+								{ type: 'number', key: 'age', value: '33', path: '.person3.age' },
+							],
+							path: '.person3',
+						},
+					],
+					path: '',
+				});
+			});
+		});
 	});
 
 	describe('filterSchema', () => {

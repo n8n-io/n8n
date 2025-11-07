@@ -33,6 +33,7 @@ export class ModuleRegistry {
 		'data-table',
 		'provisioning',
 		'breaking-changes',
+		'mcp',
 	];
 
 	private readonly activeModules: string[] = [];

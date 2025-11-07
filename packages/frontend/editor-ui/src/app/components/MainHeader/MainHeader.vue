@@ -257,6 +257,7 @@ async function onWorkflowDeactivated() {
 					:read-only="readOnly"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"
+					:description="workflow.description"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>
 			</div>

@@ -131,8 +131,6 @@ const plugins: UserConfig['plugins'] = [
 	}),
 	legacy({
 		modernTargets: browsers,
-		modernPolyfills: true,
-		renderLegacyChunks: false,
 	}),
 	{
 		name: 'Insert config script',
