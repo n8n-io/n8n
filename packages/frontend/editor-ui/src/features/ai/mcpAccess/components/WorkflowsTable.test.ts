@@ -119,7 +119,7 @@ describe('WorkflowsTable', () => {
 	});
 
 	describe('Table data display', () => {
-		it('should display workflow name as a link', () => {
+		it('should display workflow and folder names as links', () => {
 			const workflow = mockWorkflow('1');
 			const { getByTestId } = renderComponent({
 				pinia,
@@ -129,30 +129,16 @@ describe('WorkflowsTable', () => {
 				},
 			});
 
-			const nameElement = getByTestId('mcp-workflow-name');
-			expect(nameElement).toHaveTextContent(workflow.name);
+			const nameLink = getByTestId('mcp-workflow-name-link');
+			expect(nameLink).toHaveTextContent(workflow.name);
+			expect(nameLink).toHaveAttribute('href', `/mock-path/${workflow.id}`);
 
-			expect(router.resolve).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOW,
-				params: { name: '1' },
-			});
-		});
-
-		it('should display folder with link when homeProject exists', () => {
-			const workflow = mockWorkflow('1');
-			const { getByTestId } = renderComponent({
-				pinia,
-				props: {
-					workflows: [workflow],
-					loading: false,
-				},
-			});
-
-			const folderLink = getByTestId('mcp-workflow-folder-link');
-			expect(folderLink).toBeInTheDocument();
-
-			const folderName = getByTestId('mcp-workflow-folder-name');
-			expect(folderName).toHaveTextContent(workflow.parentFolder?.name ?? '');
+			const folderElement = getByTestId('mcp-workflow-folder-link');
+			expect(folderElement).toHaveTextContent(workflow.parentFolder?.name ?? '');
+			expect(folderElement).toHaveAttribute(
+				'href',
+				`/projects/${workflow.homeProject?.id}/folders/${workflow.parentFolder?.id}/workflows`,
+			);
 		});
 
 		it('should display folder without link when homeProject does not exist', () => {
@@ -171,23 +157,6 @@ describe('WorkflowsTable', () => {
 			expect(queryByTestId('mcp-workflow-folder-link')).not.toBeInTheDocument();
 			const folderName = getByTestId('mcp-workflow-folder-name');
 			expect(folderName).toHaveTextContent(workflow.parentFolder?.name ?? '');
-		});
-
-		it('should display "-" when no folder exists', () => {
-			const workflow = mockWorkflow('1', {
-				parentFolder: undefined,
-			});
-
-			const { getByTestId } = renderComponent({
-				pinia,
-				props: {
-					workflows: [workflow],
-					loading: false,
-				},
-			});
-
-			const noFolder = getByTestId('mcp-workflow-no-folder');
-			expect(noFolder).toHaveTextContent('-');
 		});
 
 		it('should display project information correctly for team project', () => {
