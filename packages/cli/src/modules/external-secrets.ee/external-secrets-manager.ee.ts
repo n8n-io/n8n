@@ -109,13 +109,16 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			return null;
 		}
 
-		const decryptedData = this.cipher.decrypt(encryptedSettings);
 		try {
+			const decryptedData = this.cipher.decrypt(encryptedSettings);
 			return jsonParse<ExternalSecretsSettings>(decryptedData);
 		} catch (e) {
-			throw new UnexpectedError(
-				'External Secrets Settings could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
+			// HOTFIX: Return null if decryption fails instead of crashing
+			// This allows n8n to start even if external secrets settings are corrupted
+			this.logger.warn(
+				'Failed to decrypt external secrets settings. Skipping external secrets initialization.',
 			);
+			return null;
 		}
 	}
 

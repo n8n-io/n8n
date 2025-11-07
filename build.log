@@ -1,100 +1,971 @@
 
-> n8n-monorepo@1.117.0 build /home/alch33my/Desktop/n8n
+> n8n-monorepo@1.117.0 build /home/alch3my/Desktop/n8n
 > turbo run build
 
- WARNING  No locally installed `turbo` found in your repository. Using globally installed version (2.5.6), which can cause unexpected behavior.
 
-Installing the version in your repository (2.5.4) before calling `turbo` will result in more predictable behavior across environments.
-turbo 2.5.6
+Attention:
+Turborepo now collects completely anonymous telemetry regarding usage.
+This information is used to shape the Turborepo roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://turborepo.com/docs/telemetry
+
+turbo 2.5.4
 
 • Packages in scope: @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/chat, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/codemirror-lang-sql, @n8n/composables, @n8n/config, @n8n/constants, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/design-system, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/eslint-plugin-community-nodes, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/scan-community-package, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/task-runner, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-cypress, n8n-editor-ui, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow
 • Running build in 46 packages
 • Remote caching disabled
 n8n-editor-ui:popularity-cache-marker: cache bypass, force executing 7fe428c9f6d52417
-@n8n/extension-sdk:build: cache miss, executing 06fe14715a4bd54c
-@n8n/constants:build: cache miss, executing 442d65222303e77a
-@n8n/permissions:build: cache miss, executing 7f3d7dc6e156379d
-@n8n/json-schema-to-zod:build: cache miss, executing 5d941c83561f46f0
-@n8n/di:build: cache miss, executing e1829ae92858001b
-@n8n/errors:build: cache miss, executing e50e5217be76814d
-@n8n/client-oauth2:build: cache miss, executing 8673ab41d340827c
 @n8n/n8n-benchmark:build: cache miss, executing 972d445682064852
+@n8n/client-oauth2:build: cache miss, executing 8673ab41d340827c
+@n8n/errors:build: cache miss, executing e50e5217be76814d
 @n8n/codemirror-lang:build: cache miss, executing c1ee4b7f14d5ff34
-@n8n/di:build: 
-@n8n/di:build: > @n8n/di@0.9.0 build /home/alch33my/Desktop/n8n/packages/@n8n/di
-@n8n/di:build: > tsc -p tsconfig.build.json
-@n8n/di:build: 
+@n8n/di:build: cache miss, executing e1829ae92858001b
+@n8n/json-schema-to-zod:build: cache miss, executing 5d941c83561f46f0
+@n8n/constants:build: cache miss, executing 442d65222303e77a
+@n8n/extension-sdk:build: cache miss, executing 06fe14715a4bd54c
+@n8n/stylelint-config:build: cache miss, executing 28ca40edc6bf537f
 @n8n/client-oauth2:build: 
-@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2
+@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /home/alch3my/Desktop/n8n/packages/@n8n/client-oauth2
 @n8n/client-oauth2:build: > tsc -p tsconfig.build.json
 @n8n/client-oauth2:build: 
-@n8n/di:build: sh: 1: tsc: not found
-@n8n/client-oauth2:build: sh: 1: tsc: not found
-@n8n/extension-sdk:build: 
-@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
-@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
-@n8n/extension-sdk:build: 
-@n8n/errors:build: 
-@n8n/errors:build: > @n8n/errors@0.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/errors
-@n8n/errors:build: > tsc -p tsconfig.build.json
-@n8n/errors:build: 
-@n8n/errors:build: sh: 1: tsc: not found
-@n8n/constants:build: 
-@n8n/constants:build: > @n8n/constants@0.13.0 build /home/alch33my/Desktop/n8n/packages/@n8n/constants
-@n8n/constants:build: > tsc -p tsconfig.build.json
-@n8n/constants:build: 
-@n8n/di:build:  ELIFECYCLE  Command failed.
-@n8n/di:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
 @n8n/n8n-benchmark:build: 
-@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/benchmark
+@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.27.0 build /home/alch3my/Desktop/n8n/packages/@n8n/benchmark
 @n8n/n8n-benchmark:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
 @n8n/n8n-benchmark:build: 
-@n8n/client-oauth2:build:  ELIFECYCLE  Command failed.
-@n8n/client-oauth2:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
-@n8n/constants:build: sh: 1: tsc: not found
-@n8n/n8n-benchmark:build: sh: 1: tsc: not found
-n8n-editor-ui:popularity-cache-marker: 
-n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.117.0 popularity-cache-marker /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
-n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
-n8n-editor-ui:popularity-cache-marker: 
-@n8n/errors:build:  ELIFECYCLE  Command failed.
-@n8n/permissions:build: 
-@n8n/permissions:build: > @n8n/permissions@0.40.0 build /home/alch33my/Desktop/n8n/packages/@n8n/permissions
-@n8n/permissions:build: > tsc -p tsconfig.build.json
-@n8n/permissions:build: 
-@n8n/errors:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
-@n8n/permissions:build: sh: 1: tsc: not found
-@n8n/n8n-benchmark:build:  ELIFECYCLE  Command failed.
-@n8n/n8n-benchmark:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
-@n8n/constants:build:  ELIFECYCLE  Command failed.
-@n8n/constants:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
-@n8n/permissions:build:  ELIFECYCLE  Command failed.
-@n8n/permissions:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
 @n8n/json-schema-to-zod:build: 
-@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /home/alch3my/Desktop/n8n/packages/@n8n/json-schema-to-zod
 @n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
 @n8n/json-schema-to-zod:build: 
 @n8n/codemirror-lang:build: 
-@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /home/alch33my/Desktop/n8n/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /home/alch3my/Desktop/n8n/packages/@n8n/codemirror-lang
 @n8n/codemirror-lang:build: > tsc -p tsconfig.build.json
 @n8n/codemirror-lang:build: 
-@n8n/codemirror-lang:build: sh: 1: tsc: not found
-@n8n/client-oauth2:build: ERROR: command finished with error: command (/home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2) /home/alch33my/.local/share/pnpm/.tools/pnpm/10.18.3/bin/pnpm run build exited (1)
-@n8n/stylelint-config:build: cache miss, executing 28ca40edc6bf537f
+@n8n/stylelint-config:build: 
+@n8n/stylelint-config:build: > @n8n/stylelint-config@0.0.1 build /home/alch3my/Desktop/n8n/packages/@n8n/stylelint-config
+@n8n/stylelint-config:build: > tsc
+@n8n/stylelint-config:build: 
+n8n-editor-ui:popularity-cache-marker: 
+n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.117.0 popularity-cache-marker /home/alch3my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
+n8n-editor-ui:popularity-cache-marker: 
+@n8n/di:build: 
+@n8n/di:build: > @n8n/di@0.9.0 build /home/alch3my/Desktop/n8n/packages/@n8n/di
+@n8n/di:build: > tsc -p tsconfig.build.json
+@n8n/di:build: 
+@n8n/constants:build: 
+@n8n/constants:build: > @n8n/constants@0.13.0 build /home/alch3my/Desktop/n8n/packages/@n8n/constants
+@n8n/constants:build: > tsc -p tsconfig.build.json
+@n8n/constants:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /home/alch3my/Desktop/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
+@n8n/extension-sdk:build: 
+@n8n/errors:build: 
+@n8n/errors:build: > @n8n/errors@0.5.0 build /home/alch3my/Desktop/n8n/packages/@n8n/errors
+@n8n/errors:build: > tsc -p tsconfig.build.json
+@n8n/errors:build: 
+@n8n/permissions:build: cache miss, executing 7f3d7dc6e156379d
+@n8n/permissions:build: 
+@n8n/permissions:build: > @n8n/permissions@0.40.0 build /home/alch3my/Desktop/n8n/packages/@n8n/permissions
+@n8n/permissions:build: > tsc -p tsconfig.build.json
+@n8n/permissions:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:types /home/alch3my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.types.json
+@n8n/json-schema-to-zod:build: 
 @n8n/vitest-config:build: cache miss, executing 28d6f55664f6355d
-@n8n/codemirror-lang:build:  ELIFECYCLE  Command failed.
-@n8n/codemirror-lang:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
-@n8n/json-schema-to-zod:build:  ELIFECYCLE  Command failed.
-@n8n/json-schema-to-zod:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
-@n8n/extension-sdk:build:  ELIFECYCLE  Command failed.
-@n8n/extension-sdk:build:  WARN   Local package.json exists, but node_modules missing, did you mean to install?
-@n8n/client-oauth2#build: command (/home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2) /home/alch33my/.local/share/pnpm/.tools/pnpm/10.18.3/bin/pnpm run build exited (1)
-
- Tasks:    0 successful, 12 total
-Cached:    0 cached, 12 total
-  Time:    524ms 
-Failed:    @n8n/client-oauth2#build
-
- ERROR  run failed: command  exited (1)
- ELIFECYCLE  Command failed with exit code 1.
- WARN   Local package.json exists, but node_modules missing, did you mean to install?
+n8n-editor-ui:fetch-popularity: cache miss, executing 976ebfd0c41f642e
+@n8n/codemirror-lang-sql:build: cache miss, executing 53886a63e482f1b5
+@n8n/config:build: cache miss, executing 6e436bcbca992ff4
+@n8n/vitest-config:build: 
+@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /home/alch3my/Desktop/n8n/packages/@n8n/vitest-config
+@n8n/vitest-config:build: > tsc -p tsconfig.build.json
+@n8n/vitest-config:build: 
+@n8n/codemirror-lang-sql:build: 
+@n8n/codemirror-lang-sql:build: > @n8n/codemirror-lang-sql@1.2.0 build /home/alch3my/Desktop/n8n/packages/@n8n/codemirror-lang-sql
+@n8n/codemirror-lang-sql:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang-sql:build: 
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: > n8n-editor-ui@1.117.0 fetch-popularity /home/alch3my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:fetch-popularity: > node scripts/fetch-node-popularity.mjs
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://internal.users.n8n.cloud/webhook/nodes-popularity-scores
+@n8n/config:build: 
+@n8n/config:build: > @n8n/config@1.59.0 build /home/alch3my/Desktop/n8n/packages/@n8n/config
+@n8n/config:build: > tsc -p tsconfig.build.json
+@n8n/config:build: 
+@n8n/imap:build: cache miss, executing 8e453a4a5d7cecf1
+@n8n/eslint-plugin-community-nodes:build: cache miss, executing e7cc9047aa0936bd
+@n8n/eslint-config:build: cache miss, executing 3f4c0728992ea264
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 clean /home/alch3my/Desktop/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > rimraf dist
+@n8n/extension-sdk:build: 
+n8n-editor-ui:fetch-popularity: Successfully fetched popularity data for 1000 nodes
+n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch3my/Desktop/n8n/packages/frontend/editor-ui/.build/node-popularity.json with 1000 nodes
+@n8n/eslint-plugin-community-nodes:build: 
+@n8n/eslint-plugin-community-nodes:build: > @n8n/eslint-plugin-community-nodes@0.6.0 build /home/alch3my/Desktop/n8n/packages/@n8n/eslint-plugin-community-nodes
+@n8n/eslint-plugin-community-nodes:build: > tsc --project tsconfig.build.json
+@n8n/eslint-plugin-community-nodes:build: 
+@n8n/imap:build: 
+@n8n/imap:build: > @n8n/imap@0.15.0 build /home/alch3my/Desktop/n8n/packages/@n8n/imap
+@n8n/imap:build: > tsc -p tsconfig.build.json
+@n8n/imap:build: 
+@n8n/eslint-config:build: 
+@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /home/alch3my/Desktop/n8n/packages/@n8n/eslint-config
+@n8n/eslint-config:build: > tsc
+@n8n/eslint-config:build: 
+@n8n/extension-sdk:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+n8n-workflow:build: cache miss, executing 58327c7b7e6d4748
+@n8n/extension-sdk:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/@n8n/extension-sdk/tsdown.config.ts
+@n8n/extension-sdk:build: ℹ entry: src/backend/define.ts, src/backend/index.ts, src/backend/types.ts
+@n8n/extension-sdk:build: ℹ entry: src/index.ts, src/schema.ts
+@n8n/extension-sdk:build: ℹ entry: src/frontend/define.ts, src/frontend/index.ts, src/frontend/types.ts
+@n8n/extension-sdk:build: ℹ tsconfig: tsconfig.backend.json
+@n8n/extension-sdk:build: ℹ tsconfig: tsconfig.common.json
+@n8n/extension-sdk:build: ℹ tsconfig: tsconfig.frontend.json
+@n8n/extension-sdk:build: ℹ Build start
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+n8n-workflow:build: 
+n8n-workflow:build: > n8n-workflow@1.114.0 build /home/alch3my/Desktop/n8n/packages/workflow
+n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+n8n-workflow:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /home/alch3my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.cjs.json && node postcjs.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/node-cli:build: cache miss, executing ac66daa1fdcf3d7b
+@n8n/composables:build: cache miss, executing 4afbcdc54a806c4d
+@n8n/utils:build: cache miss, executing 92a4a6a19595bcc5
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.13.0 build /home/alch3my/Desktop/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > tsc -p tsconfig.build.json && pnpm copy-templates
+@n8n/node-cli:build: 
+@n8n/composables:build: 
+@n8n/composables:build: > @n8n/composables@1.12.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/composables
+@n8n/composables:build: > tsdown
+@n8n/composables:build: 
+@n8n/utils:build: 
+@n8n/utils:build: > @n8n/utils@1.18.0 build /home/alch3my/Desktop/n8n/packages/@n8n/utils
+@n8n/utils:build: > tsdown
+@n8n/utils:build: 
+@n8n/composables:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/utils:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/composables:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/frontend/@n8n/composables/tsdown.config.ts
+@n8n/composables:build: ℹ entry: src/useDeviceSupport.ts, src/useShortKeyPress.ts, src/useThrottleWithReactiveDelay.ts
+@n8n/composables:build: ℹ tsconfig: tsconfig.json
+@n8n/composables:build: ℹ Build start
+@n8n/utils:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/@n8n/utils/tsdown.config.ts
+@n8n/utils:build: ℹ entry: src/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/sort/sortByProperty.ts, src/string/truncate.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts
+@n8n/utils:build: ℹ tsconfig: tsconfig.json
+@n8n/utils:build: ℹ Build start
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /home/alch3my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.esm.json && node postesm.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.cjs             5.36 kB │ gzip: 1.75 kB
+@n8n/utils:build: ℹ [CJS] dist/retry.cjs                            1.45 kB │ gzip: 0.66 kB
+@n8n/utils:build: ℹ [CJS] dist/string/truncate.cjs                  1.37 kB │ gzip: 0.62 kB
+@n8n/utils:build: ℹ [CJS] dist/event-bus.cjs                        1.03 kB │ gzip: 0.47 kB
+@n8n/utils:build: ℹ [CJS] dist/event-queue.cjs                      1.01 kB │ gzip: 0.48 kB
+@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.cjs       0.56 kB │ gzip: 0.30 kB
+@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.cjs              0.39 kB │ gzip: 0.25 kB
+@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.cjs              0.34 kB │ gzip: 0.22 kB
+@n8n/utils:build: ℹ [CJS] dist/assert.cjs                           0.24 kB │ gzip: 0.19 kB
+@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.cjs.map        11.66 kB │ gzip: 3.92 kB
+@n8n/utils:build: ℹ [CJS] dist/event-bus.cjs.map                    2.93 kB │ gzip: 0.99 kB
+@n8n/utils:build: ℹ [CJS] dist/retry.cjs.map                        2.35 kB │ gzip: 1.05 kB
+@n8n/utils:build: ℹ [CJS] dist/string/truncate.cjs.map              2.33 kB │ gzip: 1.01 kB
+@n8n/utils:build: ℹ [CJS] dist/event-queue.cjs.map                  1.75 kB │ gzip: 0.83 kB
+@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.cjs.map   1.27 kB │ gzip: 0.63 kB
+@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.cjs.map          0.67 kB │ gzip: 0.42 kB
+@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.cjs.map          0.63 kB │ gzip: 0.37 kB
+@n8n/utils:build: ℹ [CJS] dist/assert.cjs.map                       0.46 kB │ gzip: 0.33 kB
+@n8n/utils:build: ℹ [CJS] 18 files, total: 35.80 kB
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.js             5.32 kB │ gzip: 1.74 kB
+@n8n/utils:build: ℹ [ESM] dist/retry.js                            1.44 kB │ gzip: 0.66 kB
+@n8n/utils:build: ℹ [ESM] dist/string/truncate.js                  1.33 kB │ gzip: 0.61 kB
+@n8n/utils:build: ℹ [ESM] dist/event-bus.js                        1.01 kB │ gzip: 0.46 kB
+@n8n/utils:build: ℹ [ESM] dist/event-queue.js                      1.00 kB │ gzip: 0.47 kB
+@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.js       0.54 kB │ gzip: 0.29 kB
+@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.js              0.37 kB │ gzip: 0.25 kB
+@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.js              0.32 kB │ gzip: 0.22 kB
+@n8n/utils:build: ℹ [ESM] dist/assert.js                           0.23 kB │ gzip: 0.18 kB
+@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.js.map        11.66 kB │ gzip: 3.92 kB
+@n8n/utils:build: ℹ [ESM] dist/event-bus.js.map                    2.93 kB │ gzip: 0.99 kB
+@n8n/utils:build: ℹ [ESM] dist/retry.js.map                        2.35 kB │ gzip: 1.05 kB
+@n8n/utils:build: ℹ [ESM] dist/string/truncate.js.map              2.33 kB │ gzip: 1.00 kB
+@n8n/utils:build: ℹ [ESM] dist/event-queue.js.map                  1.75 kB │ gzip: 0.83 kB
+@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.js.map   1.27 kB │ gzip: 0.63 kB
+@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.js.map          0.67 kB │ gzip: 0.41 kB
+@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.js.map          0.63 kB │ gzip: 0.37 kB
+@n8n/utils:build: ℹ [ESM] dist/assert.js.map                       0.46 kB │ gzip: 0.33 kB
+@n8n/utils:build: ℹ [ESM] dist/event-bus.d.ts                      0.98 kB │ gzip: 0.34 kB
+@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.d.ts           0.38 kB │ gzip: 0.25 kB
+@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.d.ts     0.36 kB │ gzip: 0.21 kB
+@n8n/utils:build: ℹ [ESM] dist/retry.d.ts                          0.28 kB │ gzip: 0.21 kB
+@n8n/utils:build: ℹ [ESM] dist/string/truncate.d.ts                0.27 kB │ gzip: 0.18 kB
+@n8n/utils:build: ℹ [ESM] dist/event-queue.d.ts                    0.23 kB │ gzip: 0.17 kB
+@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.d.ts            0.22 kB │ gzip: 0.17 kB
+@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.d.ts            0.19 kB │ gzip: 0.14 kB
+@n8n/utils:build: ℹ [ESM] dist/assert.d.ts                         0.18 kB │ gzip: 0.15 kB
+@n8n/utils:build: ℹ [ESM] 27 files, total: 38.70 kB
+@n8n/utils:build: ℹ [CJS] dist/event-bus.d.cts                   0.98 kB │ gzip: 0.34 kB
+@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.d.cts        0.38 kB │ gzip: 0.25 kB
+@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.d.cts  0.36 kB │ gzip: 0.22 kB
+@n8n/utils:build: ℹ [CJS] dist/retry.d.cts                       0.28 kB │ gzip: 0.21 kB
+@n8n/utils:build: ℹ [CJS] dist/string/truncate.d.cts             0.27 kB │ gzip: 0.18 kB
+@n8n/utils:build: ℹ [CJS] dist/event-queue.d.cts                 0.23 kB │ gzip: 0.17 kB
+@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.d.cts         0.22 kB │ gzip: 0.17 kB
+@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.d.cts         0.19 kB │ gzip: 0.15 kB
+@n8n/utils:build: ℹ [CJS] dist/assert.d.cts                      0.18 kB │ gzip: 0.15 kB
+@n8n/utils:build: ℹ [CJS] 9 files, total: 3.10 kB
+@n8n/utils:build: ✔ Build complete in 4100ms
+@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.cjs                  1.85 kB │ gzip: 0.75 kB
+@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.cjs                  0.79 kB │ gzip: 0.38 kB
+@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.cjs      0.75 kB │ gzip: 0.38 kB
+@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.cjs.map              2.58 kB │ gzip: 1.07 kB
+@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.cjs.map              1.27 kB │ gzip: 0.64 kB
+@n8n/composables:build: ℹ [CJS] dist/chunk-CUT6urMc.cjs                    1.09 kB │ gzip: 0.54 kB
+@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.cjs.map  0.88 kB │ gzip: 0.49 kB
+@n8n/composables:build: ℹ [CJS] 7 files, total: 9.21 kB
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.js                  1.68 kB │ gzip: 0.69 kB
+@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.js                  0.57 kB │ gzip: 0.32 kB
+@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.js      0.56 kB │ gzip: 0.31 kB
+@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.js.map              2.62 kB │ gzip: 1.07 kB
+@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.js.map              1.27 kB │ gzip: 0.64 kB
+@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.js.map  0.89 kB │ gzip: 0.48 kB
+@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.d.ts                0.47 kB │ gzip: 0.29 kB
+@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.d.ts                0.41 kB │ gzip: 0.25 kB
+@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.d.ts    0.30 kB │ gzip: 0.19 kB
+@n8n/composables:build: ℹ [ESM] 9 files, total: 8.77 kB
+@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.d.cts              0.47 kB │ gzip: 0.29 kB
+@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.d.cts              0.41 kB │ gzip: 0.25 kB
+@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.d.cts  0.30 kB │ gzip: 0.19 kB
+@n8n/composables:build: ℹ [CJS] 3 files, total: 1.18 kB
+@n8n/composables:build: ✔ Build complete in 4983ms
+@n8n/extension-sdk:build: ℹ [CJS] dist/index.cjs                0.13 kB │ gzip: 0.10 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/schema.cjs               0.13 kB │ gzip: 0.10 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/schema-CW-nDERU.cjs.map  2.65 kB │ gzip: 0.87 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/schema-CW-nDERU.cjs      1.90 kB │ gzip: 0.81 kB
+@n8n/extension-sdk:build: ℹ [CJS] 4 files, total: 4.82 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define.cjs               0.13 kB │ gzip: 0.10 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/index.cjs                0.13 kB │ gzip: 0.10 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/types.cjs                0.00 kB │ gzip: 0.02 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define-DIbMcH8i.cjs.map  0.34 kB │ gzip: 0.23 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define-DIbMcH8i.cjs      0.30 kB │ gzip: 0.21 kB
+@n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 0.91 kB
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/define.cjs               0.13 kB │ gzip: 0.10 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/index.cjs                0.13 kB │ gzip: 0.10 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/types.cjs                0.00 kB │ gzip: 0.02 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/define-CF1KLowA.cjs.map  0.34 kB │ gzip: 0.23 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/define-CF1KLowA.cjs      0.30 kB │ gzip: 0.21 kB
+@n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 0.89 kB
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/design-system:build: cache miss, executing b004854771daf6c3
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.13.0 copy-templates /home/alch3my/Desktop/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > node scripts/copy-templates.mjs
+@n8n/node-cli:build: 
+@n8n/extension-sdk:build: ℹ [ESM] dist/index.js                0.10 kB │ gzip: 0.09 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/schema.js               0.10 kB │ gzip: 0.09 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/schema-BSoNETEW.js.map  2.60 kB │ gzip: 0.86 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/schema-BSoNETEW.js      0.71 kB │ gzip: 0.33 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/index.d.ts              0.15 kB │ gzip: 0.11 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/schema.d.ts             0.15 kB │ gzip: 0.11 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/schema-D0ROu72V.d.ts    2.37 kB │ gzip: 0.50 kB
+@n8n/extension-sdk:build: ℹ [ESM] 7 files, total: 6.18 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/define.js               0.10 kB │ gzip: 0.09 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/index.js                0.10 kB │ gzip: 0.09 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/types.js                0.01 kB │ gzip: 0.03 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/define-C57e8dWq.js.map  0.33 kB │ gzip: 0.23 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/define-C57e8dWq.js      0.20 kB │ gzip: 0.16 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/index.d.ts              0.29 kB │ gzip: 0.15 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/types.d.ts              0.20 kB │ gzip: 0.12 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/define.d.ts             0.13 kB │ gzip: 0.11 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/types-Clck-buQ.d.ts     0.37 kB │ gzip: 0.20 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/backend/define-D3wQ6Cbq.d.ts    0.28 kB │ gzip: 0.19 kB
+@n8n/extension-sdk:build: ℹ [ESM] 10 files, total: 2.02 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/define.js               0.10 kB │ gzip: 0.09 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/index.js                0.10 kB │ gzip: 0.09 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/types.js                0.01 kB │ gzip: 0.03 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/define-D1LiKDBh.js.map  0.34 kB │ gzip: 0.23 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/define-D1LiKDBh.js      0.20 kB │ gzip: 0.16 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/index.d.ts              0.30 kB │ gzip: 0.15 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/types.d.ts              0.20 kB │ gzip: 0.12 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/define.d.ts             0.13 kB │ gzip: 0.11 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/types-KgKQdgLX.d.ts     0.58 kB │ gzip: 0.29 kB
+@n8n/extension-sdk:build: ℹ [ESM] dist/frontend/define-Cfx1XLAY.d.ts    0.29 kB │ gzip: 0.19 kB
+@n8n/extension-sdk:build: ℹ [ESM] 10 files, total: 2.27 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/index.d.cts            0.15 kB │ gzip: 0.11 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/schema.d.cts           0.15 kB │ gzip: 0.11 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/schema-epxNxocl.d.cts  2.37 kB │ gzip: 0.49 kB
+@n8n/extension-sdk:build: ℹ [CJS] 3 files, total: 2.67 kB
+@n8n/extension-sdk:build: ✔ Build complete in 9077ms
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/index.d.cts            0.29 kB │ gzip: 0.15 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/types.d.cts            0.20 kB │ gzip: 0.12 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/define.d.cts           0.13 kB │ gzip: 0.11 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/types-BTuWXQec.d.cts   0.37 kB │ gzip: 0.20 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/backend/define-DC3Bc-EN.d.cts  0.28 kB │ gzip: 0.19 kB
+@n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 1.28 kB
+@n8n/extension-sdk:build: ✔ Build complete in 9083ms
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/index.d.cts            0.30 kB │ gzip: 0.15 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/types.d.cts            0.21 kB │ gzip: 0.12 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define.d.cts           0.14 kB │ gzip: 0.11 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/types-C99xASCm.d.cts   0.58 kB │ gzip: 0.29 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define-DPnB827L.d.cts  0.29 kB │ gzip: 0.19 kB
+@n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 1.52 kB
+@n8n/extension-sdk:build: ✔ Build complete in 9132ms
+@n8n/design-system:build: 
+@n8n/design-system:build: > @n8n/design-system@1.104.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system
+@n8n/design-system:build: > vite build
+@n8n/design-system:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 create-json-schema /home/alch3my/Desktop/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > tsx scripts/create-json-schema.ts
+@n8n/extension-sdk:build: 
+@n8n/design-system:build: rolldown-vite v7.1.16 building for production...
+@n8n/n8n-extension-insights:build: cache miss, executing d4578fc78299a567
+@n8n/api-types:build: cache miss, executing e36c4e651e8e0cd8
+@n8n/decorators:build: cache miss, executing b320debbeae95284
+@n8n/stores:build: cache miss, executing a5db038921269ff9
+@n8n/i18n:build: cache miss, executing 641d0c9470a647ba
+@n8n/stores:build: 
+@n8n/stores:build: > @n8n/stores@1.24.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/stores
+@n8n/stores:build: > tsdown
+@n8n/stores:build: 
+@n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 build /home/alch3my/Desktop/n8n/packages/extensions/insights
+@n8n/n8n-extension-insights:build: > pnpm cleanup && pnpm run "/^build:.*/"
+@n8n/n8n-extension-insights:build: 
+@n8n/i18n:build: 
+@n8n/i18n:build: > @n8n/i18n@1.21.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/i18n
+@n8n/i18n:build: > tsdown
+@n8n/i18n:build: 
+@n8n/stores:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/i18n:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/stores:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/frontend/@n8n/stores/tsdown.config.ts
+@n8n/decorators:build: 
+@n8n/decorators:build: > @n8n/decorators@0.27.0 build /home/alch3my/Desktop/n8n/packages/@n8n/decorators
+@n8n/decorators:build: > tsc -p tsconfig.build.json
+@n8n/decorators:build: 
+@n8n/stores:build: ℹ entry: src/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts
+@n8n/api-types:build: 
+@n8n/api-types:build: > @n8n/api-types@0.51.0 build /home/alch3my/Desktop/n8n/packages/@n8n/api-types
+@n8n/api-types:build: > tsc -p tsconfig.build.json
+@n8n/api-types:build: 
+@n8n/stores:build: ℹ tsconfig: tsconfig.json
+@n8n/stores:build: ℹ Build start
+@n8n/i18n:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/frontend/@n8n/i18n/tsdown.config.ts
+@n8n/i18n:build: ℹ entry: src/index.ts, src/types.ts, src/utils.ts
+@n8n/i18n:build: ℹ tsconfig: tsconfig.json
+@n8n/i18n:build: ℹ Build start
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 cleanup /home/alch3my/Desktop/n8n/packages/extensions/insights
+@n8n/n8n-extension-insights:build: > rimraf dist
+@n8n/n8n-extension-insights:build: 
+@n8n/backend-common:build: cache miss, executing 40af3c52aabac65b
+@n8n/backend-common:build: 
+@n8n/backend-common:build: > @n8n/backend-common@0.27.0 build /home/alch3my/Desktop/n8n/packages/@n8n/backend-common
+@n8n/backend-common:build: > tsc -p tsconfig.build.json
+@n8n/backend-common:build: 
+@n8n/design-system:build: Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+@n8n/design-system:build:   npx update-browserslist-db@latest
+@n8n/design-system:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+@n8n/stores:build: ℹ [CJS] dist/useRootStore.cjs                5.88 kB │ gzip: 1.34 kB
+@n8n/stores:build: ℹ [CJS] dist/useAgentRequestStore.cjs        2.05 kB │ gzip: 0.62 kB
+@n8n/stores:build: ℹ [CJS] dist/metaTagConfig.cjs               0.24 kB │ gzip: 0.12 kB
+@n8n/stores:build: ℹ [CJS] dist/constants.cjs                   0.11 kB │ gzip: 0.09 kB
+@n8n/stores:build: ℹ [CJS] dist/index.cjs                       0.11 kB │ gzip: 0.09 kB
+@n8n/stores:build: ℹ [CJS] dist/useRootStore.cjs.map            9.93 kB │ gzip: 2.19 kB
+@n8n/stores:build: ℹ [CJS] dist/useAgentRequestStore.cjs.map    3.72 kB │ gzip: 1.15 kB
+@n8n/stores:build: ℹ [CJS] dist/constants-BbnUagQU.cjs.map      1.93 kB │ gzip: 0.92 kB
+@n8n/stores:build: ℹ [CJS] dist/metaTagConfig-DEzM-BAY.cjs.map  1.86 kB │ gzip: 0.77 kB
+@n8n/stores:build: ℹ [CJS] dist/constants-BbnUagQU.cjs          1.44 kB │ gzip: 0.78 kB
+@n8n/stores:build: ℹ [CJS] dist/metaTagConfig-DEzM-BAY.cjs      1.35 kB │ gzip: 0.52 kB
+@n8n/stores:build: ℹ [CJS] dist/chunk-CUT6urMc.cjs              1.09 kB │ gzip: 0.54 kB
+@n8n/stores:build: ℹ [CJS] 12 files, total: 29.70 kB
+@n8n/stores:build: [33m[EMPTY_IMPORT_META] Warning:[0m `import.meta` is not available with the `cjs` output format and will be empty.
+@n8n/stores:build:    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/useRootStore.ts:8:34 [38;5;246m][0m
+@n8n/stores:build:    [38;5;246m│[0m
+@n8n/stores:build:  [38;5;246m8 │[0m [38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0m[38;5;249mV[0m[38;5;249mU[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mA[0m[38;5;249mP[0m[38;5;249mP[0m[38;5;249m_[0m[38;5;249mU[0m[38;5;249mR[0m[38;5;249mL[0m[38;5;249m_[0m[38;5;249mB[0m[38;5;249mA[0m[38;5;249mS[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mA[0m[38;5;249mP[0m[38;5;249mI[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0mimport.meta[38;5;249m.[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249m;[0m
+@n8n/stores:build:  [38;5;240m  │[0m                                  ─────┬─────  
+@n8n/stores:build:  [38;5;240m  │[0m                                       ╰─────── You need to set the output format to `esm` for `import.meta` to work correctly.
+@n8n/stores:build: [38;5;246m───╯[0m
+@n8n/stores:build: 
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/stores:build: ℹ [ESM] dist/useRootStore.js                 5.44 kB │ gzip: 1.27 kB
+@n8n/stores:build: ℹ [ESM] dist/useAgentRequestStore.js         1.86 kB │ gzip: 0.55 kB
+@n8n/stores:build: ℹ [ESM] dist/metaTagConfig.js                0.17 kB │ gzip: 0.11 kB
+@n8n/stores:build: ℹ [ESM] dist/constants.js                    0.07 kB │ gzip: 0.08 kB
+@n8n/stores:build: ℹ [ESM] dist/index.js                        0.07 kB │ gzip: 0.08 kB
+@n8n/stores:build: ℹ [ESM] dist/useRootStore.js.map            10.00 kB │ gzip: 2.16 kB
+@n8n/stores:build: ℹ [ESM] dist/useAgentRequestStore.js.map     3.73 kB │ gzip: 1.16 kB
+@n8n/stores:build: ℹ [ESM] dist/constants-DuYkHX7y.js.map       1.93 kB │ gzip: 0.92 kB
+@n8n/stores:build: ℹ [ESM] dist/metaTagConfig-DwSO4X1O.js.map   1.86 kB │ gzip: 0.77 kB
+@n8n/stores:build: ℹ [ESM] dist/constants-DuYkHX7y.js           1.35 kB │ gzip: 0.71 kB
+@n8n/stores:build: ℹ [ESM] dist/metaTagConfig-DwSO4X1O.js       1.13 kB │ gzip: 0.47 kB
+@n8n/stores:build: ℹ [ESM] dist/useRootStore.d.ts               7.43 kB │ gzip: 0.92 kB
+@n8n/stores:build: ℹ [ESM] dist/useAgentRequestStore.d.ts       2.51 kB │ gzip: 0.49 kB
+@n8n/stores:build: ℹ [ESM] dist/metaTagConfig.d.ts              0.31 kB │ gzip: 0.17 kB
+@n8n/stores:build: ℹ [ESM] dist/constants.d.ts                  0.07 kB │ gzip: 0.08 kB
+@n8n/stores:build: ℹ [ESM] dist/index.d.ts                      0.07 kB │ gzip: 0.08 kB
+@n8n/stores:build: ℹ [ESM] dist/constants-C9J2fW5t.d.ts         1.77 kB │ gzip: 0.74 kB
+@n8n/stores:build: ℹ [ESM] 17 files, total: 39.78 kB
+@n8n/stores:build: ℹ [CJS] dist/useRootStore.d.cts          7.43 kB │ gzip: 0.92 kB
+@n8n/stores:build: ℹ [CJS] dist/useAgentRequestStore.d.cts  2.51 kB │ gzip: 0.50 kB
+@n8n/stores:build: ℹ [CJS] dist/metaTagConfig.d.cts         0.31 kB │ gzip: 0.17 kB
+@n8n/stores:build: ℹ [CJS] dist/constants.d.cts             0.07 kB │ gzip: 0.08 kB
+@n8n/stores:build: ℹ [CJS] dist/index.d.cts                 0.07 kB │ gzip: 0.08 kB
+@n8n/stores:build: ℹ [CJS] dist/constants-DwkrkpBX.d.cts    1.77 kB │ gzip: 0.74 kB
+@n8n/stores:build: ℹ [CJS] 6 files, total: 12.17 kB
+@n8n/stores:build: ✔ Build complete in 7848ms
+@n8n/i18n:build: ℹ [CJS] dist/index.cjs               310.75 kB │ gzip: 71.28 kB
+@n8n/i18n:build: ℹ [CJS] dist/utils.cjs                 0.30 kB │ gzip:  0.16 kB
+@n8n/i18n:build: ℹ [CJS] dist/types.cjs                 0.00 kB │ gzip:  0.02 kB
+@n8n/i18n:build: ℹ [CJS] dist/index.cjs.map           392.71 kB │ gzip: 80.68 kB
+@n8n/i18n:build: ℹ [CJS] dist/utils-CmS9ahSc.cjs.map    3.43 kB │ gzip:  1.36 kB
+@n8n/i18n:build: ℹ [CJS] dist/utils-CmS9ahSc.cjs        2.70 kB │ gzip:  1.03 kB
+@n8n/i18n:build: ℹ [CJS] 6 files, total: 709.89 kB
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/i18n:build: ℹ [ESM] dist/index.js               309.33 kB │ gzip: 70.79 kB
+@n8n/i18n:build: ℹ [ESM] dist/utils.js                 0.23 kB │ gzip:  0.16 kB
+@n8n/i18n:build: ℹ [ESM] dist/types.js                 0.01 kB │ gzip:  0.03 kB
+@n8n/i18n:build: ℹ [ESM] dist/index.js.map           392.59 kB │ gzip: 80.62 kB
+@n8n/i18n:build: ℹ [ESM] dist/utils-h8Z6_NUG.js.map    3.43 kB │ gzip:  1.36 kB
+@n8n/i18n:build: ℹ [ESM] dist/utils-h8Z6_NUG.js        2.27 kB │ gzip:  0.97 kB
+@n8n/i18n:build: ℹ [ESM] dist/index.d.ts             197.70 kB │ gzip: 26.96 kB
+@n8n/i18n:build: ℹ [ESM] dist/utils.d.ts               0.46 kB │ gzip:  0.25 kB
+@n8n/i18n:build: ℹ [ESM] dist/types.d.ts               0.21 kB │ gzip:  0.15 kB
+@n8n/i18n:build: ℹ [ESM] dist/types-j8rdQ8e5.d.ts    186.90 kB │ gzip: 25.94 kB
+@n8n/i18n:build: ℹ [ESM] 10 files, total: 1093.12 kB
+@n8n/i18n:build: ℹ [CJS] dist/index.d.cts           197.70 kB │ gzip: 26.96 kB
+@n8n/i18n:build: ℹ [CJS] dist/utils.d.cts             0.46 kB │ gzip:  0.25 kB
+@n8n/i18n:build: ℹ [CJS] dist/types.d.cts             0.21 kB │ gzip:  0.15 kB
+@n8n/i18n:build: ℹ [CJS] dist/types-wNLLPlzG.d.cts  186.90 kB │ gzip: 25.94 kB
+@n8n/i18n:build: ℹ [CJS] 4 files, total: 385.28 kB
+@n8n/i18n:build: ✔ Build complete in 9274ms
+@n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
+@n8n/rest-api-client:build: cache miss, executing f05f439c36ad80c6
+n8n-core:build: cache miss, executing cc4626690562d3e8
+@n8n/ai-workflow-builder:build: cache miss, executing 7f9e69807dec9d82
+@n8n/design-system:build: rendering chunks...
+@n8n/rest-api-client:build: 
+@n8n/rest-api-client:build: > @n8n/rest-api-client@1.20.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/rest-api-client
+@n8n/rest-api-client:build: > tsdown
+@n8n/rest-api-client:build: 
+@n8n/ai-workflow-builder:build: 
+@n8n/ai-workflow-builder:build: > @n8n/ai-workflow-builder@0.27.0 build /home/alch3my/Desktop/n8n/packages/@n8n/ai-workflow-builder.ee
+@n8n/ai-workflow-builder:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/ai-workflow-builder:build: 
+@n8n/rest-api-client:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+n8n-core:build: 
+n8n-core:build: > n8n-core@1.116.0 build /home/alch3my/Desktop/n8n/packages/core
+n8n-core:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+n8n-core:build: 
+@n8n/design-system:build: computing gzip size...
+@n8n/rest-api-client:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/frontend/@n8n/rest-api-client/tsdown.config.ts
+@n8n/rest-api-client:build: ℹ entry: src/index.ts, src/types.ts, src/utils.ts, src/api/api-keys.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/ctas.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/externalSecrets.ee.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/prompts.ts, src/api/provisioning.ts, src/api/roles.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/third-party-licenses.ts, src/api/ui.ts, src/api/usage.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts
+@n8n/rest-api-client:build: ℹ tsconfig: tsconfig.json
+@n8n/rest-api-client:build: ℹ Build start
+@n8n/design-system:build: [2mdist/[22m[35mdesign-system.css        [39m[1m[2m  114.08 kB[22m[22m[2m │ gzip:  18.17 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36men-BIzD-hdW.js           [39m[1m[2m    0.08 kB[22m[22m[2m │ gzip:   0.08 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36men-DaqoBz3R.js           [39m[1m[2m    4.79 kB[22m[22m[2m │ gzip:   1.71 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.es.js  [39m[1m[33m1,776.09 kB[39m[22m[2m │ gzip: 442.57 kB[22m
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
+@n8n/design-system:build: rendering chunks...
+@n8n/design-system:build: computing gzip size...
+@n8n/design-system:build: [2mdist/[22m[35mdesign-system.css         [39m[1m[2m  114.08 kB[22m[22m[2m │ gzip:  18.17 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.umd.js  [39m[1m[33m1,325.43 kB[39m[22m[2m │ gzip: 387.79 kB[22m
+@n8n/design-system:build: ✓ built in 17.19s
+@n8n/chat:build: cache miss, executing 341aa5f9db4f30d8
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.62.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > pnpm build:vite && pnpm build:bundle
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.62.0 build:vite /home/alch3my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env vite build
+@n8n/chat:build: 
+@n8n/rest-api-client:build: ℹ [CJS] dist/index.cjs                               9.43 kB │ gzip: 2.04 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/index.cjs                           8.87 kB │ gzip: 1.90 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/users.cjs                           1.21 kB │ gzip: 0.34 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/nodeTypes.cjs                       0.88 kB │ gzip: 0.27 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/externalSecrets.ee.cjs              0.70 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/utils.cjs                               0.62 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/eventbus.ee.cjs                     0.57 kB │ gzip: 0.21 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/sso.cjs                             0.55 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/templates.cjs                       0.53 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/communityNodes.cjs                  0.50 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/cloudPlans.cjs                      0.44 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/usage.cjs                           0.39 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/ldap.cjs                            0.38 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/mfa.cjs                             0.37 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/roles.cjs                           0.37 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/api-keys.cjs                        0.37 kB │ gzip: 0.17 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/provisioning.cjs                    0.26 kB │ gzip: 0.13 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/workflowHistory.cjs                 0.26 kB │ gzip: 0.13 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/versions.cjs                        0.22 kB │ gzip: 0.14 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/prompts.cjs                         0.21 kB │ gzip: 0.14 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/third-party-licenses.cjs            0.20 kB │ gzip: 0.14 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/module-settings.cjs                 0.18 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/orchestration.cjs                   0.18 kB │ gzip: 0.13 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/npsSurvey.cjs                       0.17 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/ui.cjs                              0.16 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/ctas.cjs                            0.15 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/events.cjs                          0.15 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/settings.cjs                        0.15 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/webhooks.cjs                        0.15 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/execution.cjs                       0.00 kB │ gzip: 0.02 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/tags.cjs                            0.00 kB │ gzip: 0.02 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/workflows.cjs                       0.00 kB │ gzip: 0.02 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/types.cjs                               0.00 kB │ gzip: 0.02 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/utils-ZXKTtQnj.cjs.map                 12.13 kB │ gzip: 4.02 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/users-DmE1VJFB.cjs.map                  8.65 kB │ gzip: 1.84 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/utils-ZXKTtQnj.cjs                      8.63 kB │ gzip: 2.77 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/templates-bqybPo-G.cjs.map              6.31 kB │ gzip: 1.71 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/users-DmE1VJFB.cjs                      5.41 kB │ gzip: 0.88 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/nodeTypes-DCk86LDz.cjs.map              4.68 kB │ gzip: 1.32 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/nodeTypes-DCk86LDz.cjs                  3.84 kB │ gzip: 0.87 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/sso-C7aUBmBN.cjs.map                    2.85 kB │ gzip: 0.78 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/externalSecrets.ee-DyhPxamB.cjs.map     2.65 kB │ gzip: 0.71 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ldap-B4lzIQvN.cjs.map                   2.61 kB │ gzip: 0.89 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/sso-C7aUBmBN.cjs                        2.53 kB │ gzip: 0.51 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/templates-bqybPo-G.cjs                  2.52 kB │ gzip: 0.61 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/eventbus.ee-Dy8OID76.cjs.map            2.34 kB │ gzip: 0.81 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/externalSecrets.ee-DyhPxamB.cjs         2.33 kB │ gzip: 0.47 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/cloudPlans-B8uHyQ_1.cjs.map             2.33 kB │ gzip: 0.87 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/communityNodes-Dd7hz8vM.cjs.map         2.12 kB │ gzip: 0.83 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/versions--_Wey_a_.cjs.map               2.06 kB │ gzip: 0.79 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/eventbus.ee-Dy8OID76.cjs                1.96 kB │ gzip: 0.52 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/mfa-BteEfKoH.cjs.map                    1.88 kB │ gzip: 0.62 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/communityNodes-Dd7hz8vM.cjs             1.83 kB │ gzip: 0.60 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/usage-DLyBkpx1.cjs.map                  1.77 kB │ gzip: 0.63 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/roles-ui0tjENB.cjs.map                  1.76 kB │ gzip: 0.61 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api-keys-DWJqK3fC.cjs.map               1.76 kB │ gzip: 0.59 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/mfa-BteEfKoH.cjs                        1.65 kB │ gzip: 0.43 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/workflowHistory-EYU0KTz2.cjs.map        1.63 kB │ gzip: 0.63 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/usage-DLyBkpx1.cjs                      1.53 kB │ gzip: 0.44 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/roles-ui0tjENB.cjs                      1.50 kB │ gzip: 0.44 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ldap-B4lzIQvN.cjs                       1.48 kB │ gzip: 0.42 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/cloudPlans-B8uHyQ_1.cjs                 1.44 kB │ gzip: 0.42 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api-keys-DWJqK3fC.cjs                   1.42 kB │ gzip: 0.40 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/prompts-pb6raObn.cjs.map                1.17 kB │ gzip: 0.54 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/provisioning-BXzy-1C2.cjs.map           1.13 kB │ gzip: 0.48 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/versions--_Wey_a_.cjs                   0.95 kB │ gzip: 0.40 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/prompts-pb6raObn.cjs                    0.93 kB │ gzip: 0.40 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/workflowHistory-EYU0KTz2.cjs            0.85 kB │ gzip: 0.36 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/provisioning-BXzy-1C2.cjs               0.75 kB │ gzip: 0.34 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/webhooks-C7CDtoXI.cjs.map               0.74 kB │ gzip: 0.42 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ui-C3gT7sPj.cjs.map                     0.67 kB │ gzip: 0.41 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/module-settings-BulEETdJ.cjs.map        0.57 kB │ gzip: 0.33 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/orchestration-BWq2DLiL.cjs.map          0.56 kB │ gzip: 0.36 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/third-party-licenses-CrcvU83z.cjs.map   0.56 kB │ gzip: 0.36 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/npsSurvey-C1x1TDrG.cjs.map              0.56 kB │ gzip: 0.34 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/settings-M7GRxXmC.cjs.map               0.53 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/third-party-licenses-CrcvU83z.cjs       0.48 kB │ gzip: 0.31 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/orchestration-BWq2DLiL.cjs              0.48 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/events-C9_PZbal.cjs.map                 0.47 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ctas-CkfR15kk.cjs.map                   0.46 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ui-C3gT7sPj.cjs                         0.46 kB │ gzip: 0.31 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/npsSurvey-C1x1TDrG.cjs                  0.44 kB │ gzip: 0.30 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/module-settings-BulEETdJ.cjs            0.42 kB │ gzip: 0.28 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/webhooks-C7CDtoXI.cjs                   0.41 kB │ gzip: 0.29 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/events-C9_PZbal.cjs                     0.40 kB │ gzip: 0.28 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ctas-CkfR15kk.cjs                       0.40 kB │ gzip: 0.28 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/settings-M7GRxXmC.cjs                   0.38 kB │ gzip: 0.28 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api-B5ImKaJs.cjs                        0.00 kB │ gzip: 0.02 kB
+@n8n/rest-api-client:build: ℹ [CJS] 88 files, total: 139.01 kB
+@n8n/rest-api-client:build: [33m[EMPTY_IMPORT_META] Warning:[0m `import.meta` is not available with the `cjs` output format and will be empty.
+@n8n/rest-api-client:build:      [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/utils.ts:100:3 [38;5;246m][0m
+@n8n/rest-api-client:build:      [38;5;246m│[0m
+@n8n/rest-api-client:build:  [38;5;246m100 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0mimport.meta[38;5;249m.[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249m.[0m[38;5;249mN[0m[38;5;249mO[0m[38;5;249mD[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mE[0m[38;5;249mN[0m[38;5;249mV[0m[38;5;249m [0m[38;5;249m![0m[38;5;249m=[0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mp[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249mu[0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m'[0m[38;5;249m [0m[38;5;249m&[0m[38;5;249m&[0m
+@n8n/rest-api-client:build:  [38;5;240m    │[0m        ─────┬─────  
+@n8n/rest-api-client:build:  [38;5;240m    │[0m             ╰─────── You need to set the output format to `esm` for `import.meta` to work correctly.
+@n8n/rest-api-client:build: [38;5;246m─────╯[0m
+@n8n/rest-api-client:build: 
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/rest-api-client:build: ℹ [ESM] dist/index.js                               6.35 kB │ gzip: 1.94 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/index.js                           6.00 kB │ gzip: 1.80 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/users.js                           0.86 kB │ gzip: 0.35 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/nodeTypes.js                       0.64 kB │ gzip: 0.26 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/externalSecrets.ee.js              0.46 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/utils.js                               0.42 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/eventbus.ee.js                     0.41 kB │ gzip: 0.21 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/sso.js                             0.40 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/templates.js                       0.36 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/communityNodes.js                  0.34 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/cloudPlans.js                      0.31 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/usage.js                           0.29 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/ldap.js                            0.29 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/roles.js                           0.27 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/mfa.js                             0.27 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/api-keys.js                        0.25 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/provisioning.js                    0.19 kB │ gzip: 0.13 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/workflowHistory.js                 0.18 kB │ gzip: 0.13 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/versions.js                        0.17 kB │ gzip: 0.13 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/prompts.js                         0.16 kB │ gzip: 0.13 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/third-party-licenses.js            0.15 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/orchestration.js                   0.14 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/ui.js                              0.14 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/module-settings.js                 0.13 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/npsSurvey.js                       0.13 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/ctas.js                            0.13 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/events.js                          0.12 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/settings.js                        0.12 kB │ gzip: 0.10 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/webhooks.js                        0.12 kB │ gzip: 0.10 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/execution.js                       0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/tags.js                            0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/workflows.js                       0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/types.js                               0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/utils-YFZuXq7S.js.map                 12.06 kB │ gzip: 4.00 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/users-C2JDorqN.js.map                  8.61 kB │ gzip: 1.84 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/templates-aSkhGM9C.js.map              6.29 kB │ gzip: 1.71 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/utils-YFZuXq7S.js                      6.16 kB │ gzip: 2.24 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/nodeTypes-5LNxsQY6.js.map              4.65 kB │ gzip: 1.32 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/users-C2JDorqN.js                      3.11 kB │ gzip: 0.76 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/sso-DdLyNGN8.js.map                    2.81 kB │ gzip: 0.77 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/externalSecrets.ee-zAb9mWtZ.js.map     2.62 kB │ gzip: 0.70 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ldap-wyz03bvR.js.map                   2.58 kB │ gzip: 0.88 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/nodeTypes-5LNxsQY6.js                  2.45 kB │ gzip: 0.75 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/eventbus.ee-BI1YfCWy.js.map            2.32 kB │ gzip: 0.80 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/cloudPlans-BPVCVGiw.js.map             2.30 kB │ gzip: 0.86 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/communityNodes-DW28WDvz.js.map         2.04 kB │ gzip: 0.81 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/versions-CB15OAzF.js.map               2.00 kB │ gzip: 0.77 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/mfa-WNpmV50W.js.map                    1.86 kB │ gzip: 0.62 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/usage-Cls9J-mi.js.map                  1.75 kB │ gzip: 0.63 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/roles-DP9_NFP3.js.map                  1.74 kB │ gzip: 0.61 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api-keys-CiCLTfFj.js.map               1.74 kB │ gzip: 0.59 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/templates-aSkhGM9C.js                  1.67 kB │ gzip: 0.53 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/workflowHistory-CWlpPlYE.js.map        1.62 kB │ gzip: 0.62 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/sso-DdLyNGN8.js                        1.48 kB │ gzip: 0.41 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/externalSecrets.ee-zAb9mWtZ.js         1.46 kB │ gzip: 0.39 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/eventbus.ee-BI1YfCWy.js                1.22 kB │ gzip: 0.44 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/communityNodes-DW28WDvz.js             1.18 kB │ gzip: 0.51 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/prompts-DriYCXBM.js.map                1.14 kB │ gzip: 0.52 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/provisioning-BCZEC6K_.js.map           1.10 kB │ gzip: 0.48 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/mfa-WNpmV50W.js                        0.96 kB │ gzip: 0.35 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/usage-Cls9J-mi.js                      0.94 kB │ gzip: 0.35 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/roles-DP9_NFP3.js                      0.92 kB │ gzip: 0.36 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ldap-wyz03bvR.js                       0.89 kB │ gzip: 0.34 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api-keys-CiCLTfFj.js                   0.85 kB │ gzip: 0.33 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/cloudPlans-BPVCVGiw.js                 0.84 kB │ gzip: 0.35 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/webhooks-BO1vtCkS.js.map               0.72 kB │ gzip: 0.42 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ui-Biyjef0Q.js.map                     0.65 kB │ gzip: 0.41 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/versions-CB15OAzF.js                   0.63 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/prompts-DriYCXBM.js                    0.61 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/workflowHistory-CWlpPlYE.js            0.60 kB │ gzip: 0.29 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/third-party-licenses-CVhfpAI_.js.map   0.55 kB │ gzip: 0.35 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/module-settings-GdAM-8kw.js.map        0.55 kB │ gzip: 0.33 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/orchestration-C3GSuGhK.js.map          0.54 kB │ gzip: 0.35 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/npsSurvey-DwL-sGR9.js.map              0.54 kB │ gzip: 0.34 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/provisioning-BCZEC6K_.js               0.51 kB │ gzip: 0.27 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/settings-CCGDGJdQ.js.map               0.51 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ctas-CAkx0BpQ.js.map                   0.45 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/events-BXoIh-_I.js.map                 0.45 kB │ gzip: 0.31 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/orchestration-C3GSuGhK.js              0.38 kB │ gzip: 0.26 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/third-party-licenses-CVhfpAI_.js       0.36 kB │ gzip: 0.26 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ui-Biyjef0Q.js                         0.35 kB │ gzip: 0.25 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/npsSurvey-DwL-sGR9.js                  0.33 kB │ gzip: 0.24 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/module-settings-GdAM-8kw.js            0.32 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/webhooks-BO1vtCkS.js                   0.31 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/events-BXoIh-_I.js                     0.30 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/settings-CCGDGJdQ.js                   0.28 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ctas-CAkx0BpQ.js                       0.27 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api-Dy4wevtj.js                        0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/index.d.ts                             8.74 kB │ gzip: 2.46 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/index.d.ts                         8.32 kB │ gzip: 2.31 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/users.d.ts                         1.36 kB │ gzip: 0.45 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/templates.d.ts                     1.15 kB │ gzip: 0.36 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/nodeTypes.d.ts                     0.64 kB │ gzip: 0.26 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/eventbus.ee.d.ts                   0.49 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/sso.d.ts                           0.46 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/externalSecrets.ee.d.ts            0.46 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/utils.d.ts                             0.45 kB │ gzip: 0.25 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/workflowHistory.d.ts               0.43 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/ldap.d.ts                          0.38 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/cloudPlans.d.ts                    0.36 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/communityNodes.d.ts                0.34 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/mfa.d.ts                           0.31 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/usage.d.ts                         0.29 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/roles.d.ts                         0.27 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/versions.d.ts                      0.27 kB │ gzip: 0.15 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/api-keys.d.ts                      0.25 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/workflows.d.ts                     0.25 kB │ gzip: 0.14 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/provisioning.d.ts                  0.24 kB │ gzip: 0.14 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/prompts.d.ts                       0.20 kB │ gzip: 0.14 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/third-party-licenses.d.ts          0.15 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/orchestration.d.ts                 0.14 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/ui.d.ts                            0.13 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/module-settings.d.ts               0.13 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/npsSurvey.d.ts                     0.13 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/ctas.d.ts                          0.13 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/events.d.ts                        0.12 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/settings.d.ts                      0.11 kB │ gzip: 0.10 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/webhooks.d.ts                      0.11 kB │ gzip: 0.10 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/types.d.ts                             0.09 kB │ gzip: 0.09 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/tags.d.ts                          0.07 kB │ gzip: 0.08 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api/execution.d.ts                     0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/users-BXkGWlSM.d.ts                    5.51 kB │ gzip: 1.27 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/templates-BlTMa-1a.d.ts                4.28 kB │ gzip: 1.11 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/utils-ysk6cXaw.d.ts                    2.15 kB │ gzip: 0.78 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/nodeTypes-DQQWL3ni.d.ts                2.07 kB │ gzip: 0.59 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ldap-PeKCw9q2.d.ts                     1.73 kB │ gzip: 0.62 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/cloudPlans-D1vqD1lj.d.ts               1.62 kB │ gzip: 0.66 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/sso-DGSjezQs.d.ts                      1.40 kB │ gzip: 0.46 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/versions-BI2OKCDk.d.ts                 1.32 kB │ gzip: 0.52 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/eventbus.ee-DlB_5QOl.d.ts              1.31 kB │ gzip: 0.44 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/externalSecrets.ee-f6TEVJOU.d.ts       1.31 kB │ gzip: 0.40 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/workflowHistory-Bgg8XFJa.d.ts          1.13 kB │ gzip: 0.46 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/workflows-CN0rYhVE.d.ts                1.11 kB │ gzip: 0.44 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/mfa-C-iG9CUy.d.ts                      0.96 kB │ gzip: 0.39 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/api-keys-ihALGlBn.d.ts                 0.93 kB │ gzip: 0.37 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/communityNodes-DNOqfwFG.d.ts           0.93 kB │ gzip: 0.37 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/usage-BLD4BoO3.d.ts                    0.90 kB │ gzip: 0.36 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/roles-Ce3tV5AK.d.ts                    0.88 kB │ gzip: 0.35 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/provisioning-ByojTb_d.d.ts             0.74 kB │ gzip: 0.32 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/prompts-DlKTf8Ud.d.ts                  0.54 kB │ gzip: 0.28 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/webhooks-DO_E63kG.d.ts                 0.48 kB │ gzip: 0.30 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ui-DPM4J6uc.d.ts                       0.38 kB │ gzip: 0.26 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/module-settings-BRgXML8v.d.ts          0.35 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/npsSurvey-BR1WRUA0.d.ts                0.34 kB │ gzip: 0.24 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/settings-CxGhpIpJ.d.ts                 0.32 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/third-party-licenses-C0dVxBG9.d.ts     0.30 kB │ gzip: 0.21 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/orchestration-BnNY6QVR.d.ts            0.28 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/ctas-CgnktNGp.d.ts                     0.26 kB │ gzip: 0.21 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/events-DzMD1Ik_.d.ts                   0.26 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/tags-DImFtTsI.d.ts                     0.22 kB │ gzip: 0.17 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/types-Dt2RtapD.d.ts                    0.18 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [ESM] dist/index-ij9f8GAA.d.ts                    0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [ESM] 152 files, total: 174.63 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/index.d.cts                          8.78 kB │ gzip: 2.46 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/index.d.cts                      8.35 kB │ gzip: 2.31 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/users.d.cts                      1.37 kB │ gzip: 0.46 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/templates.d.cts                  1.15 kB │ gzip: 0.36 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/nodeTypes.d.cts                  0.64 kB │ gzip: 0.26 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/eventbus.ee.d.cts                0.49 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/sso.d.cts                        0.46 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/externalSecrets.ee.d.cts         0.46 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/utils.d.cts                          0.45 kB │ gzip: 0.25 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/workflowHistory.d.cts            0.43 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/ldap.d.cts                       0.39 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/cloudPlans.d.cts                 0.36 kB │ gzip: 0.21 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/communityNodes.d.cts             0.35 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/mfa.d.cts                        0.31 kB │ gzip: 0.19 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/usage.d.cts                      0.29 kB │ gzip: 0.18 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/roles.d.cts                      0.27 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/versions.d.cts                   0.27 kB │ gzip: 0.15 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/api-keys.d.cts                   0.25 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/workflows.d.cts                  0.25 kB │ gzip: 0.15 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/provisioning.d.cts               0.24 kB │ gzip: 0.14 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/prompts.d.cts                    0.20 kB │ gzip: 0.14 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/third-party-licenses.d.cts       0.15 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/orchestration.d.cts              0.14 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/ui.d.cts                         0.14 kB │ gzip: 0.12 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/module-settings.d.cts            0.14 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/npsSurvey.d.cts                  0.14 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/ctas.d.cts                       0.13 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/events.d.cts                     0.12 kB │ gzip: 0.11 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/settings.d.cts                   0.12 kB │ gzip: 0.10 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/webhooks.d.cts                   0.12 kB │ gzip: 0.10 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/types.d.cts                          0.09 kB │ gzip: 0.09 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/tags.d.cts                       0.07 kB │ gzip: 0.08 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api/execution.d.cts                  0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/users-DCeunKNM.d.cts                 5.52 kB │ gzip: 1.27 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/templates-so-M9Jds.d.cts             4.29 kB │ gzip: 1.11 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/utils-Ba-EBsDw.d.cts                 2.15 kB │ gzip: 0.79 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/nodeTypes-C3LsOISU.d.cts             2.07 kB │ gzip: 0.60 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ldap-BnhukADr.d.cts                  1.73 kB │ gzip: 0.62 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/cloudPlans-DUWx1DpH.d.cts            1.62 kB │ gzip: 0.67 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/sso-DGSgVitt.d.cts                   1.40 kB │ gzip: 0.47 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/versions-B8DipZNP.d.cts              1.32 kB │ gzip: 0.52 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/eventbus.ee-DB64GFKt.d.cts           1.31 kB │ gzip: 0.44 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/externalSecrets.ee-BZ0NnbwB.d.cts    1.31 kB │ gzip: 0.40 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/workflowHistory-BFGbTrKc.d.cts       1.13 kB │ gzip: 0.46 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/workflows-5lCBvUuu.d.cts             1.12 kB │ gzip: 0.44 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/mfa-vSjORDKD.d.cts                   0.96 kB │ gzip: 0.39 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/api-keys-CcOJV4lj.d.cts              0.94 kB │ gzip: 0.38 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/communityNodes-ClSIDQeF.d.cts        0.93 kB │ gzip: 0.38 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/usage-BaUgyKjF.d.cts                 0.91 kB │ gzip: 0.37 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/roles-xpGypjf1.d.cts                 0.88 kB │ gzip: 0.35 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/provisioning-BL5qbskM.d.cts          0.74 kB │ gzip: 0.33 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/prompts-B6D_Easv.d.cts               0.54 kB │ gzip: 0.28 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/webhooks-0ZmUq77a.d.cts              0.48 kB │ gzip: 0.30 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ui-k_dROGE0.d.cts                    0.38 kB │ gzip: 0.27 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/module-settings-Cnnn2sT6.d.cts       0.36 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/npsSurvey-DRfhVtGn.d.cts             0.34 kB │ gzip: 0.24 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/settings-BmQ92kwv.d.cts              0.32 kB │ gzip: 0.23 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/third-party-licenses-Dkvwk3hk.d.cts  0.30 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/orchestration-CoNK39i5.d.cts         0.28 kB │ gzip: 0.22 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/ctas-DPVc4r7T.d.cts                  0.27 kB │ gzip: 0.21 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/events-CLOtyzVL.d.cts                0.26 kB │ gzip: 0.20 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/tags-Bg_qtAV_.d.cts                  0.22 kB │ gzip: 0.17 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/types-pb6j0BjZ.d.cts                 0.18 kB │ gzip: 0.16 kB
+@n8n/rest-api-client:build: ℹ [CJS] dist/index-CPiw-gXy.d.cts                 0.01 kB │ gzip: 0.03 kB
+@n8n/rest-api-client:build: ℹ [CJS] 64 files, total: 61.37 kB
+@n8n/rest-api-client:build: ✔ Build complete in 7401ms
+@n8n/chat:build: rolldown-vite v7.1.16 building for production...
+@n8n/db:build: cache miss, executing f26481842baf4a49
+n8n-node-dev:build: cache miss, executing 83d0c4f0db96ee01
+n8n-nodes-base:build: cache miss, executing b07b6389996ece3d
+@n8n/task-runner:build: cache miss, executing ceea05d6762d8e96
+n8n-node-dev:build: 
+n8n-node-dev:build: > n8n-node-dev@1.115.0 build /home/alch3my/Desktop/n8n/packages/node-dev
+n8n-node-dev:build: > tsc --noEmit
+n8n-node-dev:build: 
+@n8n/db:build: 
+@n8n/db:build: > @n8n/db@0.28.0 build /home/alch3my/Desktop/n8n/packages/@n8n/db
+@n8n/db:build: > tsc -p tsconfig.build.json
+@n8n/db:build: 
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.115.0 build /home/alch3my/Desktop/n8n/packages/nodes-base
+n8n-nodes-base:build: > tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
+n8n-nodes-base:build: 
+@n8n/task-runner:build: 
+@n8n/task-runner:build: > @n8n/task-runner@1.53.0 build /home/alch3my/Desktop/n8n/packages/@n8n/task-runner
+@n8n/task-runner:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/task-runner:build: 
+@n8n/backend-test-utils:build: cache miss, executing be25bb35b1c486ce
+@n8n/backend-test-utils:build: 
+@n8n/backend-test-utils:build: > @n8n/backend-test-utils@0.20.0 build /home/alch3my/Desktop/n8n/packages/@n8n/backend-test-utils
+@n8n/backend-test-utils:build: > tsc -p tsconfig.build.json
+@n8n/backend-test-utils:build: 
+@n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+@n8n/chat:build: 
+@n8n/chat:build: [7m36[0m const slots = useSlots();
+@n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
+@n8n/chat:build: 
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: [plugin builtin:reporter] 
+@n8n/chat:build: (!) /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: [vite:dts] Declaration files built in 24763ms.
+@n8n/chat:build: 
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css    [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.es.js  [39m[1m[33m945.25 kB[39m[22m[2m │ gzip: 245.32 kB[22m
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css     [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.umd.js  [39m[1m[33m690.95 kB[39m[22m[2m │ gzip: 214.84 kB[22m
+@n8n/chat:build: ✓ built in 38.77s
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.62.0 build:bundle /home/alch3my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env INCLUDE_VUE=true vite build
+@n8n/chat:build: 
+@n8n/chat:build: rolldown-vite v7.1.16 building for production...
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.115.0 copy-nodes-json /home/alch3my/Desktop/n8n/packages/nodes-base
+n8n-nodes-base:build: > node scripts/copy-nodes-json.js .
+n8n-nodes-base:build: 
+n8n-nodes-base:build: Default locale set to: [35men[0m
+n8n-nodes-base:build: No translation required - Skipping translations build...
+@n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+@n8n/chat:build: 
+@n8n/chat:build: [7m36[0m const slots = useSlots();
+@n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
+@n8n/chat:build: 
+@n8n/n8n-nodes-langchain:build: cache miss, executing 60e539658c525109
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 build /home/alch3my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-nodes-json /home/alch3my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node ../../nodes-base/scripts/copy-nodes-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-tokenizer-json /home/alch3my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node scripts/copy-tokenizer-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: [plugin builtin:reporter] 
+@n8n/chat:build: (!) /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: [vite:dts] Declaration files built in 17729ms.
+@n8n/chat:build: 
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css           [39m[1m[2m   63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.bundle.es.js  [39m[1m[33m1,030.03 kB[39m[22m[2m │ gzip: 272.95 kB[22m
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css            [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.bundle.umd.js  [39m[1m[33m696.25 kB[39m[22m[2m │ gzip: 235.25 kB[22m
+@n8n/chat:build: ✓ built in 30.98s
+n8n-editor-ui:build: cache miss, executing d82fc56d28fd55fc
+n8n-editor-ui:build: 
+n8n-editor-ui:build: > n8n-editor-ui@1.117.0 build /home/alch3my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:build: > cross-env VUE_APP_PUBLIC_PATH="/{{BASE_PATH}}/" NODE_OPTIONS="--max-old-space-size=8192" vite build
+n8n-editor-ui:build: 
+n8n-editor-ui:build: Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+n8n-editor-ui:build:   npx update-browserslist-db@latest
+n8n-editor-ui:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+n8n-editor-ui:build: You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rollupOptions` instead.
+n8n-editor-ui:build: rolldown-vite v7.1.16 building for production...
+n8n-editor-ui:build: <script src="/{{BASE_PATH}}/static/base-path.js"> in "/index.html" can't be bundled without type="module" attribute
+n8n-editor-ui:build: <script src="/{{BASE_PATH}}/static/posthog.init.js"> in "/index.html" can't be bundled without type="module" attribute
+n8n-editor-ui:build: 
+n8n-editor-ui:build: /{{BASE_PATH}}/static/prefers-color-scheme.css doesn't exist at build time, it will remain unchanged to be resolved at runtime
+n8n-editor-ui:build: Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+n8n-editor-ui:build:   npx update-browserslist-db@latest
+n8n-editor-ui:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+n8n-editor-ui:build: [plugin builtin:import-glob] Invalid glob pattern: `@n8n/i18n/locales/*.json` in file 'src/dev/i18nHmr.ts'. Glob patterns must start with:
+n8n-editor-ui:build:   • '/' for absolute paths from project root
+n8n-editor-ui:build:   • './' or '../' for relative paths
+n8n-editor-ui:build:   • '**/' for recursive matching from project root
+n8n-editor-ui:build:   • '#' for subpath imports (with '*' wildcard)
+n8n-editor-ui:build: [plugin rolldown:vite-resolve] Module "os" has been externalized for browser compatibility, imported by "/home/alch3my/Desktop/n8n/node_modules/.pnpm/recast@0.22.0/node_modules/recast/lib/util.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+n8n-editor-ui:build: [2Kn8n-editor-ui:build: transforming...[32m✓[39m 6420 modules transformed.
