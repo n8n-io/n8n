@@ -6,6 +6,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useProvisioningStore } from '../provisioning.store';
 import { N8nHeading, N8nText, N8nSpinner, N8nInput, N8nButton } from '@n8n/design-system';
 import { type ProvisioningConfig } from '@n8n/rest-api-client';
+import EnableJitProvisioningDialog from '../components/EnableJitProvisioningDialog.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -29,6 +30,7 @@ onMounted(async () => {
 
 const loading = ref(false);
 const saving = ref(false);
+const confirmationDialogVisible = ref(false);
 
 // Form data (reactive object)
 const form = reactive({
@@ -64,7 +66,7 @@ const loadFormData = () => {
 	form.provisioningEnabled = cfg.scopesProvisionInstanceRole;
 };
 
-const onSave = async () => {
+const saveFormValues = async () => {
 	saving.value = true;
 	try {
 		const { provisioningEnabled, ...dataToSave } = form;
@@ -88,6 +90,20 @@ const onSave = async () => {
 	} finally {
 		saving.value = false;
 	}
+};
+
+const onSave = async () => {
+	if (form.provisioningEnabled) {
+		confirmationDialogVisible.value = true;
+		return;
+	}
+	await saveFormValues();
+};
+
+const onConfirmProvisioning = async () => {
+	saving.value = true;
+	await saveFormValues();
+	confirmationDialogVisible.value = false;
 };
 </script>
 
@@ -168,6 +184,11 @@ const onSave = async () => {
 					{{ i18n.baseText('settings.provisioning.save') }}
 				</N8nButton>
 			</div>
+			<EnableJitProvisioningDialog
+				v-model="confirmationDialogVisible"
+				@confirm-provisioning="onConfirmProvisioning"
+				@cancel="confirmationDialogVisible = false"
+			/>
 		</div>
 	</div>
 </template>
