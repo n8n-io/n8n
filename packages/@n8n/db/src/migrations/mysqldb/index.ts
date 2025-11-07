@@ -107,6 +107,7 @@ import { CreateChatHubTables1760019379982 } from '../common/1760019379982-Create
 import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-CreateChatHubAgentTable';
 import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
+import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
@@ -222,5 +223,6 @@ export const mysqlMigrations: Migration[] = [
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
 	ChangeDependencyInfoToJson1761655473000,
+	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
 ];

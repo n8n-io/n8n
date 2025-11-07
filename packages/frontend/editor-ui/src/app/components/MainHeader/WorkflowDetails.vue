@@ -74,6 +74,8 @@ import {
 	N8nInlineTextEdit,
 	N8nTooltip,
 } from '@n8n/design-system';
+import WorkflowDescriptionPopover from './WorkflowDescriptionPopover.vue';
+
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -92,6 +94,7 @@ const props = defineProps<{
 	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
+	description?: IWorkflowDb['description'];
 }>();
 
 const emit = defineEmits<{
@@ -843,7 +846,7 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 				/>
 			</template>
 
-			<span class="archived">
+			<span :class="$style['header-controls']">
 				<N8nBadge
 					v-if="isArchived"
 					class="ml-3xs"
@@ -853,6 +856,11 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
+				<WorkflowDescriptionPopover
+					v-else-if="!props.readOnly && workflowPermissions.update"
+					:workflow-id="props.id"
+					:workflow-description="props.description"
+				/>
 			</span>
 		</span>
 
@@ -1004,14 +1012,6 @@ $--header-spacing: 20px;
 	max-width: 460px;
 }
 
-.archived {
-	display: flex;
-	align-items: center;
-	width: 100%;
-	flex: 1;
-	margin-right: $--header-spacing;
-}
-
 .actions {
 	display: flex;
 	align-items: center;
@@ -1086,5 +1086,14 @@ $--header-spacing: 20px;
 	right: var(--spacing--xs);
 	top: var(--spacing--xs);
 	cursor: pointer;
+}
+
+.header-controls {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--md);
+	width: 100%;
+	flex: 1;
+	margin: 0 var(--spacing--md);
 }
 </style>

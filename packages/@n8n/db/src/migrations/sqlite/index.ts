@@ -106,6 +106,7 @@ import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-Create
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
 import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
+import { AddWorkflowDescriptionColumn1762177736257 } from './../common/1762177736257-AddWorkflowDescriptionColumn';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -214,6 +215,7 @@ const sqliteMigrations: Migration[] = [
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
 	ChangeDependencyInfoToJson1761655473000,
+	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
 ];
 
