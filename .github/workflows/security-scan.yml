@@ -36,8 +36,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run pnpm audit
-        run: pnpm audit --audit-level moderate
+        run: pnpm audit --audit-level high
         continue-on-error: true
+        id: audit
+
+      - name: Fail on high severity vulnerabilities
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo "::error::High severity vulnerabilities found. Please review and fix."
+          exit 1
 
       - name: Run dependency check
         uses: dependency-check/Dependency-Check_Action@main

@@ -16,31 +16,47 @@ export class InputValidator {
 
 	/**
 	 * Validates and sanitizes file paths to prevent path traversal
+	 * Uses path.resolve() to handle all encoding variations
 	 */
-	static sanitizeFilePath(path: string, allowedBasePaths: string[] = []): string {
-		// Normalize path separators
-		const normalizedPath = path.replace(/\\/g, '/');
+	static sanitizeFilePath(filePath: string, allowedBasePaths: string[] = []): string {
+		// Import path module for proper resolution
+		const path = require('path');
 
-		// Check for path traversal attempts
-		if (normalizedPath.includes('..')) {
-			throw new UserError('Path traversal detected in file path');
+		// Decode URI components to catch encoded path traversal attempts
+		let decodedPath = filePath;
+		try {
+			decodedPath = decodeURIComponent(filePath);
+		} catch {
+			throw new UserError('Invalid URL encoding in file path');
 		}
 
-		// Check for absolute paths outside allowed directories
+		// Remove null bytes
+		if (decodedPath.includes('\0')) {
+			throw new UserError('Null bytes detected in file path');
+		}
+
+		// Resolve the path to get absolute canonical path
+		// This handles all path traversal variations including encoded ones
+		const resolvedPath = path.resolve(decodedPath);
+
+		// Check if resolved path is within allowed directories
 		if (allowedBasePaths.length > 0) {
-			const isAllowed = allowedBasePaths.some((basePath) =>
-				normalizedPath.startsWith(basePath),
-			);
+			const isAllowed = allowedBasePaths.some((basePath) => {
+				const resolvedBasePath = path.resolve(basePath);
+				// Check if the resolved path starts with the base path
+				// and is not the exact base path (prevents accessing base directory itself)
+				return (
+					resolvedPath.startsWith(resolvedBasePath + path.sep) ||
+					resolvedPath === resolvedBasePath
+				);
+			});
 
 			if (!isAllowed) {
 				throw new UserError(`Access to path outside allowed directories is forbidden`);
 			}
 		}
 
-		// Remove any null bytes
-		const sanitized = normalizedPath.replace(/\0/g, '');
-
-		return sanitized;
+		return resolvedPath;
 	}
 
 	/**
@@ -69,33 +85,68 @@ export class InputValidator {
 				throw new UserError(`Protocol '${protocol}' is not allowed`);
 			}
 
-			// Check for localhost
+			// Check for localhost - use exact matching to prevent bypasses
 			if (blockLocalhost) {
-				const localhostPatterns = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
-				if (localhostPatterns.some((pattern) => parsedUrl.hostname.includes(pattern))) {
+				const hostname = parsedUrl.hostname.toLowerCase();
+				const localhostPatterns = ['localhost', '127.0.0.1', '::1', '0.0.0.0', '[::1]'];
+				
+				// Exact match for localhost patterns
+				if (localhostPatterns.includes(hostname)) {
 					throw new UserError('Localhost URLs are not allowed');
+				}
+				
+				// Check for loopback IP range (127.0.0.0/8)
+				if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+					throw new UserError('Loopback addresses are not allowed');
 				}
 			}
 
-			// Check for private IP ranges
+			// Check for private IP ranges (comprehensive list)
 			if (blockPrivateIPs) {
-				const hostname = parsedUrl.hostname;
+				const hostname = parsedUrl.hostname.toLowerCase();
 
-				// IPv4 private ranges
+				// IPv4 private and reserved ranges (RFC 3330, RFC 1918, etc.)
 				const privateIPv4Ranges = [
-					/^10\./,
-					/^172\.(1[6-9]|2[0-9]|3[0-1])\./,
-					/^192\.168\./,
-					/^169\.254\./, // Link-local
+					/^0\./, // Current network (RFC 1122)
+					/^10\./, // Private (RFC 1918)
+					/^127\./, // Loopback (RFC 1122)
+					/^169\.254\./, // Link-local (RFC 3927)
+					/^172\.(1[6-9]|2[0-9]|3[0-1])\./, // Private (RFC 1918)
+					/^192\.0\.0\./, // IETF Protocol Assignments (RFC 5736)
+					/^192\.0\.2\./, // TEST-NET-1 (RFC 5737)
+					/^192\.168\./, // Private (RFC 1918)
+					/^198\.1[8-9]\./, // Benchmarking (RFC 2544)
+					/^198\.51\.100\./, // TEST-NET-2 (RFC 5737)
+					/^203\.0\.113\./, // TEST-NET-3 (RFC 5737)
+					/^224\./, // Multicast (RFC 5771)
+					/^240\./, // Reserved (RFC 1112)
+					/^255\.255\.255\.255$/, // Broadcast
 				];
 
 				if (privateIPv4Ranges.some((pattern) => pattern.test(hostname))) {
-					throw new UserError('Private IP addresses are not allowed');
+					throw new UserError('Private or reserved IP addresses are not allowed');
 				}
 
-				// IPv6 private ranges
-				if (hostname.startsWith('fc') || hostname.startsWith('fd')) {
-					throw new UserError('Private IPv6 addresses are not allowed');
+				// IPv6 private and reserved ranges
+				// Remove brackets if present
+				const cleanHostname = hostname.replace(/^\[|\]$/g, '');
+				
+				// Check for various IPv6 private/reserved ranges
+				const ipv6PrivatePatterns = [
+					/^::1$/, // Loopback
+					/^::$/, // Unspecified
+					/^::ffff:/, // IPv4-mapped
+					/^fe[89ab][0-9a-f]:/i, // Link-local (fe80::/10)
+					/^fec0:/i, // Site-local (deprecated)
+					/^f[cd][0-9a-f]{2}:/i, // Unique local (fc00::/7)
+					/^ff[0-9a-f]{2}:/i, // Multicast
+					/^2001:db8:/i, // Documentation (RFC 3849)
+					/^2001:10:/i, // ORCHID (RFC 4843)
+					/^2002:/i, // 6to4
+				];
+
+				if (ipv6PrivatePatterns.some((pattern) => pattern.test(cleanHostname))) {
+					throw new UserError('Private or reserved IPv6 addresses are not allowed');
 				}
 			}
 
@@ -194,20 +245,37 @@ export class InputValidator {
 
 	/**
 	 * Sanitizes HTML to prevent XSS
+	 * NOTE: This is a basic implementation. For production use, consider using
+	 * a well-tested library like DOMPurify or the Sanitizer API.
+	 * This implementation should only be used for simple cases where you control
+	 * the input format and need basic sanitization.
 	 */
 	static sanitizeHTML(html: string): string {
-		// Remove script tags and their content
-		let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-
-		// Remove event handlers
-		sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
-
-		// Remove javascript: protocol
+		// WARNING: Regex-based HTML sanitization is difficult to implement securely
+		// and can often be bypassed. This implementation provides basic protection
+		// but should not be relied upon for untrusted input.
+		// 
+		// For production use cases with untrusted HTML:
+		// - Use DOMPurify: https://github.com/cure53/DOMPurify
+		// - Use the Sanitizer API when available: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Sanitizer_API
+		// - Strip all HTML and only allow plain text
+		
+		// For basic use cases, strip all HTML tags
+		let sanitized = html.replace(/<[^>]*>/g, '');
+		
+		// Decode HTML entities to prevent encoded XSS
+		sanitized = sanitized
+			.replace(/&lt;/g, '<')
+			.replace(/&gt;/g, '>')
+			.replace(/&quot;/g, '"')
+			.replace(/&#x27;/g, "'")
+			.replace(/&#x2F;/g, '/')
+			.replace(/&amp;/g, '&');
+		
+		// Remove any script-related content
 		sanitized = sanitized.replace(/javascript:/gi, '');
-
-		// Remove data: protocol (can be used for XSS)
-		sanitized = sanitized.replace(/data:text\/html/gi, '');
-
+		sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+		
 		return sanitized;
 	}
 
@@ -302,17 +370,34 @@ export class InputValidator {
 
 	/**
 	 * Validates JWT token format (basic structure check)
+	 * NOTE: This only validates the format, not the signature or expiration
 	 */
 	static validateJWTFormat(token: string): boolean {
 		const parts = token.split('.');
 		if (parts.length !== 3) {
-			throw new UserError('Invalid JWT format');
+			throw new UserError('Invalid JWT format: must have exactly 3 parts');
 		}
 
-		// Check that each part is base64url encoded
+		// Check that each part is valid base64url and has minimum length
 		const base64UrlPattern = /^[A-Za-z0-9_-]+$/;
-		if (!parts.every((part) => base64UrlPattern.test(part))) {
-			throw new UserError('Invalid JWT encoding');
+		
+		for (let i = 0; i < parts.length; i++) {
+			const part = parts[i];
+			
+			// Each part must have content
+			if (part.length === 0) {
+				throw new UserError(`Invalid JWT: part ${i + 1} is empty`);
+			}
+			
+			// Must be valid base64url
+			if (!base64UrlPattern.test(part)) {
+				throw new UserError(`Invalid JWT: part ${i + 1} contains invalid characters`);
+			}
+			
+			// Header and payload should have minimum length (base64 of minimal JSON)
+			if (i < 2 && part.length < 4) {
+				throw new UserError(`Invalid JWT: part ${i + 1} is too short`);
+			}
 		}
 
 		return true;

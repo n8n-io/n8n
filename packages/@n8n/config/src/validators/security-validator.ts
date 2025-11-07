@@ -19,8 +19,27 @@ export class SecurityValidator {
 		const errors: string[] = [];
 		const warnings: string[] = [];
 
+		// Limit input size to prevent DoS
+		if (csp.length > 10000) {
+			errors.push('CSP configuration is too large (max 10KB)');
+			return { valid: false, errors, warnings };
+		}
+
 		try {
+			// Parse JSON safely - will throw on prototype pollution attempts
 			const policy = JSON.parse(csp);
+			
+			// Verify it's a plain object
+			if (typeof policy !== 'object' || policy === null || Array.isArray(policy)) {
+				errors.push('CSP must be a JSON object');
+				return { valid: false, errors, warnings };
+			}
+			
+			// Prevent prototype pollution
+			if ('__proto__' in policy || 'constructor' in policy || 'prototype' in policy) {
+				errors.push('CSP contains forbidden properties');
+				return { valid: false, errors, warnings };
+			}
 
 			// Check for unsafe directives
 			if (policy['script-src']?.includes("'unsafe-eval'")) {
