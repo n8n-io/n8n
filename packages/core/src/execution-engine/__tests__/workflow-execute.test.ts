@@ -2568,5 +2568,73 @@ describe('WorkflowExecute', () => {
 			);
 			expect(runHook.mock.lastCall[1][0].status).toEqual('canceled');
 		});
+
+		test('should set status to canceled when execution timeout is reached', async () => {
+			// Arrange - create a workflow with multiple nodes
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({
+					name: 'test-workflow',
+					nodeTypes,
+					active: false,
+				});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			// Create initial execution data with nodes queued to execute
+			const runExecutionData: IRunExecutionData = {
+				startData: {},
+				resultData: {
+					runData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: node1,
+							data: {
+								main: [[{ json: { value: 1 } }]],
+							},
+							source: null,
+						},
+						{
+							node: node2,
+							data: {
+								main: [[{ json: { value: 2 } }]],
+							},
+							source: null,
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			// Set execution timeout to a time in the past to trigger immediate timeout on first loop iteration
+			additionalData.executionTimeoutTimestamp = Date.now() - 1000;
+
+			// Act - run the workflow
+			const promise = workflowExecute.processRunExecutionData(workflow);
+			const result = await promise;
+
+			// Assert - verify status was set to canceled and timedOut flag was set
+			// @ts-expect-error private data
+			expect(workflowExecute.status).toBe('canceled');
+			expect(workflowExecute.timedOut).toBe(true);
+			expect(result.status).toBe('canceled');
+			expect(result.data.resultData.error?.name).toBe('TimeoutExecutionCancelledError');
+		});
 	});
 });

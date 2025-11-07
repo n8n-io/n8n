@@ -25,9 +25,6 @@
         "file_path": {
             "type": "string"
         },
-        "last_commit_id": {
-            "type": "string"
-        },
         "ref": {
             "type": "string"
         },
@@ -35,5 +32,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }

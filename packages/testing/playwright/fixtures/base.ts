@@ -1,3 +1,5 @@
+import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
+import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
@@ -24,6 +26,7 @@ type WorkerFixtures = {
 	chaos: ContainerTestHelpers;
 	n8nContainer: N8NStack;
 	containerConfig: ContainerConfig;
+	addContainerCapability: ContainerConfig;
 };
 
 interface ContainerConfig {
@@ -35,6 +38,12 @@ interface ContainerConfig {
 	env?: Record<string, string>;
 	proxyServerEnabled?: boolean;
 	taskRunner?: boolean;
+	sourceControl?: boolean;
+	email?: boolean;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 /**
@@ -42,21 +51,42 @@ interface ContainerConfig {
  * Supports both external n8n instances (via N8N_BASE_URL) and containerized testing.
  * Provides tag-driven authentication and database management.
  */
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<
+	TestFixtures & CurrentsFixtures,
+	WorkerFixtures & CurrentsWorkerFixtures
+>({
+	...currentsFixtures.baseFixtures,
+	...currentsFixtures.coverageFixtures,
+	...currentsFixtures.actionFixtures,
+
+	// Add a container capability to the test e.g proxy server, task runner, etc
+	addContainerCapability: [
+		async ({}, use) => {
+			await use({});
+		},
+		{ scope: 'worker', box: true },
+	],
+
 	// Container configuration from the project use options
 	containerConfig: [
-		async ({}, use, workerInfo) => {
-			const config =
-				(workerInfo.project.use as unknown as { containerConfig?: ContainerConfig })
-					?.containerConfig ?? {};
-			config.env = {
-				...config.env,
-				E2E_TESTS: 'true',
+		async ({ addContainerCapability }, use, workerInfo) => {
+			const projectConfig = workerInfo.project.use as { containerConfig?: ContainerConfig };
+			const baseConfig = projectConfig?.containerConfig ?? {};
+
+			// Build merged configuration
+			const merged: ContainerConfig = {
+				...baseConfig,
+				...addContainerCapability,
+				env: {
+					...baseConfig.env,
+					...addContainerCapability.env,
+					E2E_TESTS: 'true',
+				},
 			};
 
-			await use(config);
+			await use(merged);
 		},
-		{ scope: 'worker' },
+		{ scope: 'worker', box: true },
 	],
 
 	// Create a new n8n container if N8N_BASE_URL is not set, otherwise use the existing n8n instance
@@ -77,7 +107,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			await use(container);
 			await container.stop();
 		},
-		{ scope: 'worker' },
+		{ scope: 'worker', box: true },
 	],
 
 	// Set the n8n URL for based on the N8N_BASE_URL environment variable or the n8n container
@@ -123,18 +153,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		await use(n8nUrl);
 	},
 
-	// Browser, baseURL, and dbSetup are required here to ensure they run first.
-	// This is how Playwright does dependency graphs
-	context: async ({ context, browser, baseURL, dbSetup }, use) => {
-		// Dependencies: browser, baseURL, dbSetup (ensure they run first)
-		void browser;
-		void baseURL;
-		void dbSetup;
-		await setupDefaultInterceptors(context);
-		await use(context);
-	},
-
 	n8n: async ({ context }, use, testInfo) => {
+		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 		const n8nInstance = new n8nPage(page);
 		await n8nInstance.api.setupFromTags(testInfo.tags);

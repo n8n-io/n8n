@@ -36,7 +36,7 @@
 	position: relative;
 	margin: 0 auto 50px;
 	background: var.$dialog-background-color;
-	border-radius: var(--border-radius-small);
+	border-radius: var(--radius--sm);
 	box-shadow: var.$dialog-box-shadow;
 	box-sizing: border-box;
 	width: var(#{utils.getCssVarName('dialog-width')}, 50%);
@@ -75,28 +75,28 @@
 		font-size: var.$message-close-size;
 
 		.el-dialog__close {
-			color: var(--color-info);
+			color: var(--color--info);
 		}
 
 		&:focus,
 		&:hover {
 			.el-dialog__close {
-				color: var(--color-primary);
+				color: var(--color--primary);
 			}
 		}
 	}
 
 	@include mixins.e(title) {
-		line-height: var(--font-line-height-compact);
-		font-size: var(--font-size-xl);
-		color: var(--color-text-dark);
-		font-weight: var(--font-weight-regular);
+		line-height: var(--line-height--sm);
+		font-size: var(--font-size--xl);
+		color: var(--color--text--shade-1);
+		font-weight: var(--font-weight--regular);
 	}
 
 	@include mixins.e(body) {
 		padding: var.$dialog-padding-primary;
 		padding-top: 0;
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 
 	@include mixins.e(footer) {
@@ -106,7 +106,7 @@
 		box-sizing: border-box;
 
 		.button + .button {
-			margin-left: var(--spacing-2xs);
+			margin-left: var(--spacing--2xs);
 		}
 	}
 }

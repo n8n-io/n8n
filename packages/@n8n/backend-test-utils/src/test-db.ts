@@ -80,7 +80,14 @@ type EntityName =
 	| 'InsightsByPeriod'
 	| 'InsightsMetadata'
 	| 'DataTable'
-	| 'DataTableColumn';
+	| 'DataTableColumn'
+	| 'ChatHubSession'
+	| 'ChatHubMessage'
+	| 'OAuthClient'
+	| 'AuthorizationCode'
+	| 'AccessToken'
+	| 'RefreshToken'
+	| 'UserConsent';
 
 /**
  * Truncate specific DB tables in a test DB.

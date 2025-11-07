@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { useUIStore } from '@/stores/ui.store';
-import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { computed, onMounted } from 'vue';
 import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplatesV3.store';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	nodeName: string;
@@ -55,7 +57,7 @@ onMounted(async () => {
 }
 
 .nodeIcon {
-	font-size: var(--font-size-2xl);
+	font-size: var(--font-size--2xl);
 }
 
 .emptyStateCardContent {

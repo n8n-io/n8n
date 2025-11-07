@@ -152,6 +152,38 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to template onboarding flow
+	 * URL: /workflows/onboarding/{templateId}
+	 */
+	async toOnboardingTemplate(templateId: string): Promise<void> {
+		await this.page.goto(`/workflows/onboarding/${templateId}`);
+	}
+
+	/**
+	 * Navigate to template import flow
+	 * URL: /workflows/templates/{templateId}
+	 */
+	async toTemplateImport(templateId: string): Promise<void> {
+		await this.page.goto(`/workflows/templates/${templateId}`);
+	}
+
+	/**
+	 * Navigate to a template collection page
+	 * URL: /collections/{collectionId}
+	 */
+	async toTemplateCollection(collectionId: number): Promise<void> {
+		await this.page.goto(`/collections/${collectionId}`);
+	}
+
+	/**
+	 * Navigate to template credential setup page
+	 * URL: /templates/{templateId}/setup
+	 */
+	async toTemplateCredentialSetup(templateId: number): Promise<void> {
+		await this.page.goto(`/templates/${templateId}/setup`);
+	}
+
+	/**
 	 * Navigate to community nodes
 	 * URL: /settings/community-nodes
 	 */
@@ -208,11 +240,11 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to source control settings
-	 * URL: /settings/source-control
+	 * Navigate to environments settings
+	 * URL: /settings/environments
 	 */
-	async toSourceControl(): Promise<void> {
-		await this.page.goto('/settings/source-control');
+	async toEnvironments(): Promise<void> {
+		await this.page.goto('/settings/environments');
 	}
 
 	/**

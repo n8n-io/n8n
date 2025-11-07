@@ -4,7 +4,7 @@ test.describe('External Webhook Triggering', () => {
 	test('should create workflow via API, activate it, trigger webhook externally, and verify execution', async ({
 		api,
 	}) => {
-		const { webhookPath, workflowId } = await api.workflows.importWorkflow(
+		const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(
 			'simple-webhook-test.json',
 		);
 
@@ -24,7 +24,7 @@ test.describe('External Webhook Triggering', () => {
 	});
 
 	test('should surface workflow configuration errors to the caller', async ({ api }) => {
-		const { webhookPath } = await api.workflows.importWorkflow(
+		const { webhookPath } = await api.workflows.importWorkflowFromFile(
 			'webhook-misconfiguration-test.json',
 		);
 

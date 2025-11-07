@@ -41,11 +41,13 @@ export const defaultSettings: FrontendSettings = {
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		provisioning: true,
 		projects: {
 			team: {
 				limit: 1,
 			},
 		},
+		customRoles: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -66,6 +68,7 @@ export const defaultSettings: FrontendSettings = {
 		debug: false,
 		disableSessionRecording: false,
 		enabled: false,
+		proxy: '',
 	},
 	publicApi: {
 		enabled: false,
@@ -134,6 +137,10 @@ export const defaultSettings: FrontendSettings = {
 	askAi: {
 		enabled: false,
 	},
+	aiBuilder: {
+		enabled: false,
+		setup: false,
+	},
 	workflowHistory: {
 		pruneTime: 0,
 		licensePruneTime: 0,
@@ -158,4 +165,8 @@ export const defaultSettings: FrontendSettings = {
 	},
 	activeModules: [],
 	envFeatureFlags: {},
+	dynamicBanners: {
+		endpoint: 'https://api.n8n.io/api/banners',
+		enabled: true,
+	},
 };

@@ -96,6 +96,7 @@ export class SourceControlController {
 				connected: resultingPreferences.connected,
 				readOnlyInstance: resultingPreferences.branchReadOnly,
 				repoType: getRepoType(resultingPreferences.repositoryUrl),
+				connectionType: resultingPreferences.connectionType!,
 			});
 			// #endregion
 			return resultingPreferences;
@@ -141,6 +142,7 @@ export class SourceControlController {
 				connected: resultingPreferences.connected,
 				readOnlyInstance: resultingPreferences.branchReadOnly,
 				repoType: getRepoType(resultingPreferences.repositoryUrl),
+				connectionType: resultingPreferences.connectionType!,
 			});
 			return resultingPreferences;
 		} catch (error) {

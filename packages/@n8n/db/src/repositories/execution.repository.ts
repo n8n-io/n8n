@@ -30,7 +30,7 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
+import { ManualExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -448,7 +448,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 
 			if (Object.keys(executionData).length > 0) {
-				// @ts-expect-error Fix typing
 				await this.executionDataRepository.update({ executionId }, executionData);
 			}
 
@@ -463,7 +462,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 
 			if (Object.keys(executionData).length > 0) {
-				// @ts-expect-error Fix typing
 				await tx.update(ExecutionData, { executionId }, executionData);
 			}
 		});
@@ -732,7 +730,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				where,
 				order: { id: 'DESC' },
 				take: params.limit,
-				relations: ['executionData'],
 			},
 			{
 				includeData: params.includeData,
@@ -796,7 +793,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new ExecutionCancelledError(execution.id);
+		const error = new ManualExecutionCancelledError(execution.id);
 
 		execution.data ??= { resultData: { runData: {} } };
 		execution.data.resultData.error = {

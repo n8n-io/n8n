@@ -3,7 +3,7 @@
 @use './tokens.dark.scss' as dark;
 @use './reset.scss';
 @use './base.scss';
-@use './fonts/fonts.scss';
+@use './fonts.scss';
 @use './pagination.scss';
 @use './dialog.scss';
 @use './dropdown.scss';
@@ -17,6 +17,7 @@
 @use './skeleton.scss';
 @use './table.scss';
 @use './table-column.scss';
+@use './date-picker.scss';
 @use './popover.scss';
 @use './tooltip.scss';
 @use './message-box.scss';

@@ -29,8 +29,8 @@ const INFINITE_CREDITS = -1;
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
-	maxLength: 1000,
-	maxLinesBeforeScroll: 6,
+	maxLength: 5000,
+	maxLinesBeforeScroll: 10,
 	minLines: 1,
 	streaming: false,
 	disabled: false,
@@ -53,6 +53,7 @@ const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
 const containerRef = ref<HTMLDivElement>();
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
 const singleLineHeight = 24;
@@ -136,9 +137,8 @@ const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => 
 		return {};
 	}
 
-	const height = Math.min(textareaHeight.value, textAreaMaxHeight.value);
 	return {
-		height: `${height}px`,
+		height: `${textareaHeight.value}px`,
 		overflowY: 'hidden',
 	};
 });
@@ -168,26 +168,49 @@ function adjustHeight() {
 		return;
 	}
 
-	// Measure the natural height
 	if (!textareaRef.value) return;
-	textareaRef.value.style.height = '0';
+
+	// Save scroll position BEFORE any measurements or height changes
+	// Only save if we're in multiline mode and have a scroll area
+	let viewportEl: HTMLElement | null = null;
+	let savedScrollTop = 0;
+
+	if (wasMultiline && scrollAreaRef.value) {
+		const scrollAreaElement = scrollAreaRef.value.$el as HTMLElement | undefined;
+		viewportEl = scrollAreaElement?.querySelector(
+			'[data-reka-scroll-area-viewport]',
+		) as HTMLElement | null;
+		if (viewportEl) {
+			savedScrollTop = viewportEl.scrollTop;
+		}
+	}
+
+	// Measure required height using 'auto' instead of '0' to minimize visual disruption
+	const currentHeight = textareaRef.value.style.height;
+	textareaRef.value.style.height = 'auto';
 	const scrollHeight = textareaRef.value.scrollHeight;
+	textareaRef.value.style.height = currentHeight; // Restore immediately to minimize flash
 
 	// Check if we need multiline mode
-	// Switch to multiline when text would wrap, when there's actual line breaks, or when minLines > 1
 	const shouldBeMultiline =
 		props.minLines > 1 || scrollHeight > singleLineHeight || textValue.value.includes('\n');
 
-	// Update height tracking - use at least the minimum height
-	textareaHeight.value = Math.max(scrollHeight, minHeight);
+	// Update height tracking
+	const newHeight = Math.max(scrollHeight, minHeight);
+	textareaHeight.value = newHeight;
 	isMultiline.value = shouldBeMultiline;
 
 	// Apply the appropriate height
 	if (!isMultiline.value) {
 		textareaRef.value.style.height = `${singleLineHeight}px`;
 	} else {
-		// For multiline, set at least minHeight
-		textareaRef.value.style.height = `${Math.max(scrollHeight, minHeight)}px`;
+		textareaRef.value.style.height = `${newHeight}px`;
+
+		// Restore scroll position immediately after setting height
+		// This needs to happen before browser recalculates layout
+		if (viewportEl && wasMultiline && savedScrollTop > 0) {
+			viewportEl.scrollTop = savedScrollTop;
+		}
 	}
 
 	// Restore focus if mode changed or if scrollbar appeared/disappeared
@@ -200,9 +223,12 @@ function adjustHeight() {
 
 watch(
 	() => props.modelValue,
-	(newValue) => {
+	async (newValue) => {
 		textValue.value = newValue || '';
-		void nextTick(() => adjustHeight());
+		await nextTick();
+		// Wait for an additional animation frame to ensure DOM has fully updated
+		await new Promise(requestAnimationFrame);
+		adjustHeight();
 	},
 );
 
@@ -239,7 +265,8 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
 	const atMaxLength = characterCount.value >= props.maxLength;
-	const isPlainEnter = event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey;
+	const isSubmitKey = event.key === 'Enter' && !event.shiftKey;
+	const isNewlineKey = event.key === 'Enter' && event.shiftKey;
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
 	if (atMaxLength && isPrintableChar && !isDeletionKey) {
@@ -247,11 +274,25 @@ async function handleKeyDown(event: KeyboardEvent) {
 		return;
 	}
 
-	// Submit on plain Enter (no Shift/Ctrl/Meta). If send disabled, don't submit.
-	if (isPlainEnter) {
+	// Submit on plain Enter - if send disabled, don't submit
+	if (isSubmitKey) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
 			await handleSubmit();
+		}
+	}
+
+	// Insert newline on Shift+Enter
+	if (isNewlineKey) {
+		event.preventDefault();
+		const textarea = event.target as HTMLTextAreaElement;
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		textValue.value = textValue.value.substring(0, start) + '\n' + textValue.value.substring(end);
+		// Set cursor position after the newline
+		await nextTick();
+		if (textareaRef.value) {
+			textareaRef.value.selectionStart = textareaRef.value.selectionEnd = start + 1;
 		}
 	}
 }
@@ -340,6 +381,7 @@ defineExpose({
 			<template v-else>
 				<!-- Use ScrollArea when content exceeds max height -->
 				<N8nScrollArea
+					ref="scrollAreaRef"
 					:class="$style.scrollAreaWrapper"
 					:max-height="`${textAreaMaxHeight}px`"
 					type="auto"
@@ -401,32 +443,32 @@ defineExpose({
 
 <style lang="scss" module>
 .wrapper {
-	background: var(--color-background-light);
-	border: 1px solid var(--color-foreground-base);
-	border-radius: var(--border-radius-large);
+	background: var(--color--background--light-2);
+	border: 1px solid var(--color--foreground);
+	border-radius: var(--radius--lg);
 }
 
 .container {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	background: var(--color-background-xlight);
+	background: var(--color--background--light-3);
 	border: none;
 	border-bottom: 1px transparent solid;
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 	transition:
 		border-color 0.2s ease,
 		box-shadow 0.2s ease;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 	box-sizing: border-box;
 
 	// if credit bar is showing
 	&.withBottomBorder {
-		border-bottom: var(--border-base);
+		border-bottom: var(--border);
 	}
 
 	&.focused {
-		box-shadow: 0 0 0 1px var(--color-secondary);
+		box-shadow: 0 0 0 1px var(--color--secondary);
 		border-bottom: 1px transparent solid;
 	}
 
@@ -435,25 +477,25 @@ defineExpose({
 	}
 
 	&.disabled {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 		cursor: not-allowed;
 
 		textarea {
 			cursor: not-allowed;
-			color: var(--color-text-light);
+			color: var(--color--text--tint-1);
 		}
 	}
 }
 
 .warningCallout {
-	margin: 0 var(--spacing-3xs) var(--spacing-2xs) var(--spacing-3xs);
+	margin: 0 var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs);
 }
 
 // Single line mode
 .singleLineWrapper {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	width: 100%;
 }
 
@@ -464,24 +506,24 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	line-height: 24px;
-	color: var(--color-text-dark);
-	padding: 0 var(--spacing-2xs);
+	color: var(--color--text--shade-1);
+	padding: 0 var(--spacing--2xs);
 	height: 24px;
 	overflow: hidden;
 	box-sizing: border-box;
 	display: block;
 
 	&::placeholder {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .inlineActions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 // Multiline mode
@@ -497,17 +539,17 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	line-height: 18px;
-	color: var(--color-text-dark);
-	padding: var(--spacing-3xs);
+	color: var(--color--text--shade-1);
+	padding: var(--spacing--3xs);
 	margin-bottom: 0;
 	box-sizing: border-box;
 	display: block;
 	overflow-y: hidden;
 
 	&::placeholder {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 
@@ -515,8 +557,8 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	gap: var(--spacing-3xs);
-	padding: var(--spacing-2xs) 0 var(--spacing-2xs) var(--spacing-2xs);
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xs) 0 var(--spacing--2xs) var(--spacing--2xs);
 	margin-top: auto;
 }
 
@@ -525,19 +567,19 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	border: none;
 }
 
 .creditsInfoWrapper {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
-	color: var(--color-text-base);
-	font-size: var(--font-size-2xs);
+	gap: var(--spacing--3xs);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
 
 	b {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
@@ -546,23 +588,23 @@ defineExpose({
 	line-height: 18px;
 
 	b {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 	}
 }
 
 .noCredits {
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 // Common styles
 .characterCount {
-	font-size: var(--font-size-3xs);
-	color: var(--color-text-light);
-	padding: 0 var(--spacing-3xs);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	padding: 0 var(--spacing--3xs);
 
 	.overLimit {
-		color: var(--color-danger);
-		font-weight: var(--font-weight-bold);
+		color: var(--color--danger);
+		font-weight: var(--font-weight--bold);
 	}
 }
 </style>

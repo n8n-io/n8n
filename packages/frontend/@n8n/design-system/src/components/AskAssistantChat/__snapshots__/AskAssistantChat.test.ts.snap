@@ -14,14 +14,23 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -80,7 +89,7 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
         data-test-id="chat-input"
         disabled="false"
         maxlength="100"
-        maxlinesbeforescroll="6"
+        maxlinesbeforescroll="10"
         minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
@@ -107,14 +116,23 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -136,127 +154,165 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
       <div
         class="messages"
       >
-        <div>
+        <div
+          class="scrollAreaRoot"
+          dir="ltr"
+          style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;"
+        >
           
-          <data
-            data-test-id="chat-message-assistant"
+          
+          <div
+            class="viewport"
+            data-reka-scroll-area-viewport=""
+            style="overflow-x: hidden; overflow-y: hidden;"
+            tabindex="0"
           >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="true"
-              is-last-message="false"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"1","type":"text","role":"assistant","content":"Hi Max! Here is my top solution to fix the error in your **Transform data** node👇","read":false}
-            </div>
-            <!--v-if-->
-          </data>
-          <data
-            data-test-id="chat-message-assistant"
-          >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="false"
-              is-last-message="false"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"1","type":"code-diff","role":"assistant","description":"Short solution description here that can spill over to two lines","codeDiff":"@@ -1,7 +1,6 @@\\n-The Way that can be told of is not the eternal Way;\\n-The name that can be named is not the eternal name.\\nThe Nameless is the origin of Heaven and Earth;\\n-The Named is the mother of all things.\\n+The named is the mother of all things.\\n+\\nTherefore let there always be non-being,\\nso we may see their subtlety,\\nAnd let there always be being,\\n@@ -9,3 +8,6 @@\\n The two are the same,\\n But after they are produced,\\n they have different names.\\n+They both may be called deep and profound.\\n+Deeper and more profound,\\n+The door of all subtleties!","suggestionId":"test","quickReplies":[{"type":"new-suggestion","text":"Give me another solution"},{"type":"resolved","text":"All good"}],"read":false}
-            </div>
-            <!--v-if-->
-          </data>
-          <data
-            data-test-id="chat-message-user"
-          >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="true"
-              is-last-message="false"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"2","type":"text","role":"user","content":"Give it to me **ignore this markdown**","read":false}
-            </div>
-            <!--v-if-->
-          </data>
-          <data
-            data-test-id="chat-message-assistant"
-          >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="true"
-              is-last-message="false"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"2","type":"block","role":"assistant","title":"Credential doesn’t have correct permissions to send a message","content":"Solution steps:\\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\\n2. Copy this into somewhere\\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \\n Testing more code \\n - Unordered item 1 \\n - Unordered item 2","read":false}
-            </div>
-            <!--v-if-->
-          </data>
-          <data
-            data-test-id="chat-message-assistant"
-          >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="false"
-              is-last-message="true"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"2","type":"code-diff","role":"assistant","description":"Short solution with min height","codeDiff":"@@ -1,7 +1,6 @@\\n-The Way that can be told of is not the eternal Way;\\n-The name that can be named is not the eternal name.\\n+The door of all subtleties!","quickReplies":[{"type":"new-suggestion","text":"Give me another solution"},{"type":"resolved","text":"All good"}],"suggestionId":"test","read":false}
-            </div>
-            <div
-              class="quickReplies"
-            >
-              <div
-                class="quickRepliesTitle"
-              >
-                assistantChat.quickRepliesTitle
-              </div>
+            <div>
+              
               
               <div
-                data-test-id="quick-replies"
+                class="messagesContent"
               >
-                <n8n-button-stub
-                  active="false"
-                  block="false"
-                  disabled="false"
-                  element="button"
-                  label=""
-                  loading="false"
-                  outline="false"
-                  size="mini"
-                  square="false"
-                  text="false"
-                  type="secondary"
-                />
-              </div>
-              <div
-                data-test-id="quick-replies"
-              >
-                <n8n-button-stub
-                  active="false"
-                  block="false"
-                  disabled="false"
-                  element="button"
-                  label=""
-                  loading="false"
-                  outline="false"
-                  size="mini"
-                  square="false"
-                  text="false"
-                  type="secondary"
-                />
+                <div>
+                  
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="true"
+                      is-last-message="false"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"1","type":"text","role":"assistant","content":"Hi Max! Here is my top solution to fix the error in your **Transform data** node👇","read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="false"
+                      is-last-message="false"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"1","type":"code-diff","role":"assistant","description":"Short solution description here that can spill over to two lines","codeDiff":"@@ -1,7 +1,6 @@\\n-The Way that can be told of is not the eternal Way;\\n-The name that can be named is not the eternal name.\\nThe Nameless is the origin of Heaven and Earth;\\n-The Named is the mother of all things.\\n+The named is the mother of all things.\\n+\\nTherefore let there always be non-being,\\nso we may see their subtlety,\\nAnd let there always be being,\\n@@ -9,3 +8,6 @@\\n The two are the same,\\n But after they are produced,\\n they have different names.\\n+They both may be called deep and profound.\\n+Deeper and more profound,\\n+The door of all subtleties!","suggestionId":"test","quickReplies":[{"type":"new-suggestion","text":"Give me another solution"},{"type":"resolved","text":"All good"}],"read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  <data
+                    data-test-id="chat-message-user"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="true"
+                      is-last-message="false"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"2","type":"text","role":"user","content":"Give it to me **ignore this markdown**","read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="true"
+                      is-last-message="false"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"2","type":"block","role":"assistant","title":"Credential doesn’t have correct permissions to send a message","content":"Solution steps:\\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\\n2. Copy this into somewhere\\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \\n Testing more code \\n - Unordered item 1 \\n - Unordered item 2","read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="false"
+                      is-last-message="true"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"2","type":"code-diff","role":"assistant","description":"Short solution with min height","codeDiff":"@@ -1,7 +1,6 @@\\n-The Way that can be told of is not the eternal Way;\\n-The name that can be named is not the eternal name.\\n+The door of all subtleties!","quickReplies":[{"type":"new-suggestion","text":"Give me another solution"},{"type":"resolved","text":"All good"}],"suggestionId":"test","read":false}
+                    </div>
+                    <div
+                      class="quickReplies"
+                    >
+                      <div
+                        class="quickRepliesTitle"
+                      >
+                        assistantChat.quickRepliesTitle
+                      </div>
+                      
+                      <div
+                        data-test-id="quick-replies"
+                      >
+                        <n8n-button-stub
+                          active="false"
+                          block="false"
+                          disabled="false"
+                          element="button"
+                          label=""
+                          loading="false"
+                          outline="false"
+                          size="mini"
+                          square="false"
+                          text="false"
+                          type="secondary"
+                        />
+                      </div>
+                      <div
+                        data-test-id="quick-replies"
+                      >
+                        <n8n-button-stub
+                          active="false"
+                          block="false"
+                          disabled="false"
+                          element="button"
+                          label=""
+                          loading="false"
+                          outline="false"
+                          size="mini"
+                          square="false"
+                          text="false"
+                          type="secondary"
+                        />
+                      </div>
+                      
+                    </div>
+                  </data>
+                  
+                  
+                  
+                </div>
+                <!--v-if-->
               </div>
               
+              
             </div>
-          </data>
+          </div>
+          <style>
+             /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
+          </style>
           
-          
+          <!---->
+          <!--v-if-->
+          <!--v-if-->
           
         </div>
-        <!--v-if-->
       </div>
     </div>
     <div
@@ -266,8 +322,8 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
       <n8n-prompt-input-stub
         data-test-id="chat-input"
         disabled="false"
-        maxlength="1000"
-        maxlinesbeforescroll="6"
+        maxlength="5000"
+        maxlinesbeforescroll="10"
         minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
@@ -294,14 +350,23 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -359,8 +424,8 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
       <n8n-prompt-input-stub
         data-test-id="chat-input"
         disabled="false"
-        maxlength="1000"
-        maxlinesbeforescroll="6"
+        maxlength="5000"
+        maxlinesbeforescroll="10"
         minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
@@ -387,14 +452,23 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -416,41 +490,76 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
       <div
         class="messages"
       >
-        <div>
+        <div
+          class="scrollAreaRoot"
+          dir="ltr"
+          style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;"
+        >
           
-          <data
-            data-test-id="chat-message-assistant"
+          
+          <div
+            class="viewport"
+            data-reka-scroll-area-viewport=""
+            style="overflow-x: hidden; overflow-y: hidden;"
+            tabindex="0"
           >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="true"
-              is-last-message="false"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"1","type":"text","role":"assistant","content":"Hi Max! Here is my top solution to fix the error in your **Transform data** node👇","read":false}
+            <div>
+              
+              
+              <div
+                class="messagesContent"
+              >
+                <div>
+                  
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="true"
+                      is-last-message="false"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"1","type":"text","role":"assistant","content":"Hi Max! Here is my top solution to fix the error in your **Transform data** node👇","read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="false"
+                      is-last-message="true"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"123","role":"assistant","type":"event","eventName":"end-session","read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  
+                  
+                  
+                </div>
+                <!--v-if-->
+              </div>
+              
+              
             </div>
-            <!--v-if-->
-          </data>
-          <data
-            data-test-id="chat-message-assistant"
-          >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="false"
-              is-last-message="true"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"123","role":"assistant","type":"event","eventName":"end-session","read":false}
-            </div>
-            <!--v-if-->
-          </data>
+          </div>
+          <style>
+             /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
+          </style>
           
-          
+          <!---->
+          <!--v-if-->
+          <!--v-if-->
           
         </div>
-        <!--v-if-->
       </div>
     </div>
     <div
@@ -460,8 +569,8 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
       <n8n-prompt-input-stub
         data-test-id="chat-input"
         disabled="true"
-        maxlength="1000"
-        maxlinesbeforescroll="6"
+        maxlength="5000"
+        maxlinesbeforescroll="10"
         minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
@@ -488,14 +597,23 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -517,27 +635,61 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
       <div
         class="messages"
       >
-        <div>
+        <div
+          class="scrollAreaRoot"
+          dir="ltr"
+          style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;"
+        >
           
-          <data
-            data-test-id="chat-message-assistant"
+          
+          <div
+            class="viewport"
+            data-reka-scroll-area-viewport=""
+            style="overflow-x: hidden; overflow-y: hidden;"
+            tabindex="0"
           >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="true"
-              is-last-message="true"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"1","role":"assistant","type":"error","content":"This is an error message.","read":false}
+            <div>
+              
+              
+              <div
+                class="messagesContent"
+              >
+                <div>
+                  
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="true"
+                      is-last-message="true"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"1","role":"assistant","type":"error","content":"This is an error message.","read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  
+                  
+                  
+                </div>
+                <!--v-if-->
+              </div>
+              
+              
             </div>
-            <!--v-if-->
-          </data>
+          </div>
+          <style>
+             /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
+          </style>
           
-          
+          <!---->
+          <!--v-if-->
+          <!--v-if-->
           
         </div>
-        <!--v-if-->
       </div>
     </div>
     <div
@@ -547,8 +699,8 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
       <n8n-prompt-input-stub
         data-test-id="chat-input"
         disabled="false"
-        maxlength="1000"
-        maxlinesbeforescroll="6"
+        maxlength="5000"
+        maxlinesbeforescroll="10"
         minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
@@ -575,14 +727,23 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -604,27 +765,61 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
       <div
         class="messages"
       >
-        <div>
+        <div
+          class="scrollAreaRoot"
+          dir="ltr"
+          style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;"
+        >
           
-          <data
-            data-test-id="chat-message-assistant"
+          
+          <div
+            class="viewport"
+            data-reka-scroll-area-viewport=""
+            style="overflow-x: hidden; overflow-y: hidden;"
+            tabindex="0"
           >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="true"
-              is-last-message="true"
-              streaming="false"
-              user="[object Object]"
-            >
-              {"id":"1","type":"text","role":"assistant","content":"Hi Max! Here is my top solution to fix the error in your **Transform data** node👇","codeSnippet":"node.on('input', function(msg) {\\n  if (msg.seed) { dummyjson.seed = msg.seed; }\\n  try {\\n      var value = dummyjson.parse(node.template, {mockdata: msg});\\n      if (node.syntax === 'json') {\\n          try { value = JSON.parse(value); }\\n          catch(e) { node.error(RED._('datagen.errors.json-error')); }\\n      }\\n      if (node.fieldType === 'msg') {\\n          RED.util.setMessageProperty(msg,node.field,value);\\n      }\\n      else if (node.fieldType === 'flow') {\\n          node.context().flow.set(node.field,value);\\n      }\\n      else if (node.fieldType === 'global') {\\n          node.context().global.set(node.field,value);\\n      }\\n      node.send(msg);\\n  }\\n  catch(e) {","read":false}
+            <div>
+              
+              
+              <div
+                class="messagesContent"
+              >
+                <div>
+                  
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="true"
+                      is-last-message="true"
+                      streaming="false"
+                      user="[object Object]"
+                    >
+                      {"id":"1","type":"text","role":"assistant","content":"Hi Max! Here is my top solution to fix the error in your **Transform data** node👇","codeSnippet":"node.on('input', function(msg) {\\n  if (msg.seed) { dummyjson.seed = msg.seed; }\\n  try {\\n      var value = dummyjson.parse(node.template, {mockdata: msg});\\n      if (node.syntax === 'json') {\\n          try { value = JSON.parse(value); }\\n          catch(e) { node.error(RED._('datagen.errors.json-error')); }\\n      }\\n      if (node.fieldType === 'msg') {\\n          RED.util.setMessageProperty(msg,node.field,value);\\n      }\\n      else if (node.fieldType === 'flow') {\\n          node.context().flow.set(node.field,value);\\n      }\\n      else if (node.fieldType === 'global') {\\n          node.context().global.set(node.field,value);\\n      }\\n      node.send(msg);\\n  }\\n  catch(e) {","read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  
+                  
+                  
+                </div>
+                <!--v-if-->
+              </div>
+              
+              
             </div>
-            <!--v-if-->
-          </data>
+          </div>
+          <style>
+             /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
+          </style>
           
-          
+          <!---->
+          <!--v-if-->
+          <!--v-if-->
           
         </div>
-        <!--v-if-->
       </div>
     </div>
     <div
@@ -634,8 +829,8 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
       <n8n-prompt-input-stub
         data-test-id="chat-input"
         disabled="false"
-        maxlength="1000"
-        maxlinesbeforescroll="6"
+        maxlength="5000"
+        maxlinesbeforescroll="10"
         minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
@@ -662,14 +857,23 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         <div
           class="headerText"
         >
-          <assistant-icon-stub
-            size="large"
-            theme="default"
-          />
-          <assistant-text-stub
-            size="large"
-            text="assistantChat.aiAssistantLabel"
-          />
+          <div
+            class="assistantTitle"
+          >
+            <assistant-icon-stub
+              size="large"
+              theme="default"
+            />
+            <assistant-text-stub
+              size="large"
+              text="assistantChat.aiAssistantLabel"
+            />
+          </div>
+          <span
+            class="betaTag"
+          >
+            assistantChat.aiAssistantBetaLabel
+          </span>
         </div>
         
         
@@ -691,27 +895,61 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
       <div
         class="messages"
       >
-        <div>
+        <div
+          class="scrollAreaRoot"
+          dir="ltr"
+          style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;"
+        >
           
-          <data
-            data-test-id="chat-message-assistant"
+          
+          <div
+            class="viewport"
+            data-reka-scroll-area-viewport=""
+            style="overflow-x: hidden; overflow-y: hidden;"
+            tabindex="0"
           >
-            <div
-              data-test-id="message-wrapper-stub"
-              is-first-of-role="true"
-              is-last-message="true"
-              streaming="true"
-              user="[object Object]"
-            >
-              {"id":"1","type":"text","role":"assistant","content":"Hi Max! Here is my top solution to fix the error in your **Transform data** node👇","read":false}
+            <div>
+              
+              
+              <div
+                class="messagesContent"
+              >
+                <div>
+                  
+                  <data
+                    data-test-id="chat-message-assistant"
+                  >
+                    <div
+                      class=""
+                      data-test-id="message-wrapper-stub"
+                      is-first-of-role="true"
+                      is-last-message="true"
+                      streaming="true"
+                      user="[object Object]"
+                    >
+                      {"id":"1","type":"text","role":"assistant","content":"Hi Max! Here is my top solution to fix the error in your **Transform data** node👇","read":false}
+                    </div>
+                    <!--v-if-->
+                  </data>
+                  
+                  
+                  
+                </div>
+                <!--v-if-->
+              </div>
+              
+              
             </div>
-            <!--v-if-->
-          </data>
+          </div>
+          <style>
+             /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
+          </style>
           
-          
+          <!---->
+          <!--v-if-->
+          <!--v-if-->
           
         </div>
-        <!--v-if-->
       </div>
     </div>
     <div
@@ -721,8 +959,8 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
       <n8n-prompt-input-stub
         data-test-id="chat-input"
         disabled="false"
-        maxlength="1000"
-        maxlinesbeforescroll="6"
+        maxlength="5000"
+        maxlinesbeforescroll="10"
         minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"

@@ -11,7 +11,7 @@
 			}
 		]
 	},
-	"alias": ["data", "table", "knowledge", "data store", "store", "sheet"],
+	"alias": ["data", "table", "knowledge", "data table", "table", "sheet"],
 	"subcategories": {
 		"Core Nodes": ["Helpers"]
 	}

@@ -140,7 +140,7 @@ export function modifyNode(originalNode: INodeType): NodeModifier {
 
 						// Handle function responses (for Response parameter injection)
 						if (typeof predefinedResponse === 'function') {
-							return predefinedResponse(response);
+							return predefinedResponse.call(this, response);
 						}
 
 						return predefinedResponse;

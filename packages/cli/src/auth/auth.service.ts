@@ -9,7 +9,6 @@ import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
-import { ErrorReporter } from 'n8n-core';
 
 import config from '@/config';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -49,9 +48,11 @@ interface CreateAuthMiddlewareOptions {
 	 */
 	allowSkipPreviewAuth?: boolean;
 	/**
-	 * If true, the middleware will check for an API key in the Authorization header
+	 * If true, the middleware will not throw an error if authentication fails
+	 * and will instead call next() regardless of authentication status.
+	 * Use this for endpoints that should return different data for authenticated vs unauthenticated users.
 	 */
-	apiKeyAuth?: boolean;
+	allowUnauthenticated?: boolean;
 }
 
 @Service()
@@ -68,7 +69,6 @@ export class AuthService {
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 		private readonly mfaService: MfaService,
-		private readonly errorReporter: ErrorReporter,
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
@@ -86,34 +86,36 @@ export class AuthService {
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/mcp-oauth/authorize/',
 		];
 	}
 
 	createAuthMiddleware({
 		allowSkipMFA,
 		allowSkipPreviewAuth,
-		apiKeyAuth,
+		allowUnauthenticated,
 	}: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-			// If route requests API key authentication, we need to check it first and skip the rest of the auth checks
-			if (apiKeyAuth) {
-				await this.checkAPIKey(req, res, next);
-				return;
-			}
-
 			const token = req.cookies[AUTH_COOKIE_NAME];
+
 			if (token) {
 				try {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 					if (isInvalid) throw new AuthError('Unauthorized');
+
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
+
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
 						if (user.mfaEnabled) {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
 						} else {
+							if (allowUnauthenticated) {
+								return next();
+							}
+
 							// In this case we don't want to clear the cookie, to allow for MFA setup
 							res.status(401).json({ status: 'error', message: 'Unauthorized', mfaRequired: true });
 							return;
@@ -134,72 +136,12 @@ export class AuthService {
 			}
 
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
-			const shouldSkipAuth = allowSkipPreviewAuth && isPreviewMode;
+			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
 
 			if (req.user) next();
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
-	}
-
-	extractAPIKeyFromHeader(headerValue: string) {
-		if (!headerValue.startsWith('Bearer')) {
-			throw new AuthError('Invalid authorization header format');
-		}
-		const apiKeyMatch = headerValue.match(/^Bearer\s+(.+)$/i);
-		if (apiKeyMatch) {
-			return apiKeyMatch[1];
-		}
-		throw new AuthError('Invalid authorization header format');
-	}
-
-	async checkAPIKey(req: AuthenticatedRequest, response: Response, next: NextFunction) {
-		const headerValue = req.headers['authorization'];
-		if (!headerValue || typeof headerValue !== 'string') {
-			response.status(401).json({ status: 'error', message: 'API key is required' });
-			return;
-		}
-		try {
-			const apiKey = this.extractAPIKeyFromHeader(headerValue);
-
-			const keyOwner = await this.userRepository.findByApiKey(apiKey);
-
-			if (!keyOwner) {
-				response.status(401).json({ status: 'error', message: 'Invalid API key' });
-				return;
-			}
-
-			if (keyOwner.disabled) {
-				response.status(403).json({ status: 'error', message: 'User is disabled' });
-				return;
-			}
-			req.user = keyOwner;
-
-			// If API key looks like a JWT, verify it to ensure it's not expired
-			// Legacy API keys (e.g. starting with "n8n_api_") are not JWTs and skip verification
-			const decoded = this.jwtService.decode(apiKey);
-			if (decoded) {
-				try {
-					this.jwtService.verify(apiKey);
-				} catch (e) {
-					if (e instanceof TokenExpiredError || e instanceof JsonWebTokenError) {
-						response.status(401).json({ status: 'error', message: 'Invalid API key' });
-						return;
-					}
-					this.errorReporter.error(e);
-					throw e;
-				}
-			}
-
-			next();
-		} catch (error) {
-			if (error instanceof AuthError) {
-				response.status(401).json({ status: 'error', message: 'Invalid API key' });
-			} else {
-				this.errorReporter.error(error);
-				response.status(500).json({ status: 'error', message: 'Internal server error' });
-			}
-		}
 	}
 
 	clearCookie(res: Response) {

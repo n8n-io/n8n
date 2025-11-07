@@ -17,6 +17,7 @@ interface Props {
 	};
 	streaming?: boolean;
 	isLastMessage?: boolean;
+	color?: string;
 }
 
 defineProps<Props>();
@@ -52,16 +53,17 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<span
 				v-if="message.role === 'user'"
 				v-n8n-html="renderMarkdown(message.content)"
-				:class="$style['rendered-content']"
+				:class="$style.renderedContent"
 			></span>
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
-				:class="[$style.assistantText, $style['rendered-content']]"
+				:class="[$style.assistantText, $style.renderedContent]"
+				:style="color ? { color } : undefined"
 			></div>
 			<div
 				v-if="message?.codeSnippet"
-				:class="$style['code-snippet']"
+				:class="$style.codeSnippet"
 				data-test-id="assistant-code-snippet"
 			>
 				<header v-if="isClipboardSupported">
@@ -78,7 +80,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				<div
 					v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
 					data-test-id="assistant-code-snippet-content"
-					:class="[$style['snippet-content'], $style['rendered-content']]"
+					:class="[$style.snippetContent, $style.renderedContent]"
 				></div>
 			</div>
 			<BlinkingCursor v-if="streaming && isLastMessage && message.role === 'assistant'" />
@@ -90,28 +92,28 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .textMessage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-xs);
-	font-size: var(--font-size-2xs);
+	gap: var(--spacing--xs);
+	font-size: var(--font-size--2xs);
 	line-height: 1.6;
 	word-break: break-word;
 }
 
-.code-snippet {
+.codeSnippet {
 	position: relative;
-	border: var(--border-base);
-	background-color: var(--color-foreground-xlight);
-	border-radius: var(--border-radius-base);
-	font-family: var(--font-family-monospace);
-	font-size: var(--font-size-3xs);
+	border: var(--border);
+	background-color: var(--color--foreground--tint-2);
+	border-radius: var(--radius);
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--3xs);
 	max-height: 218px; // 12 lines
 	overflow: auto;
-	margin: var(--spacing-4s) 0;
+	margin: var(--spacing--4xs) 0;
 
 	header {
 		display: flex;
 		justify-content: flex-end;
-		padding: var(--spacing-4xs);
-		border-bottom: var(--border-base);
+		padding: var(--spacing--4xs);
+		border-bottom: var(--border);
 
 		button:active,
 		button:focus {
@@ -119,8 +121,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		}
 	}
 
-	.snippet-content {
-		padding: var(--spacing-2xs);
+	.snippetContent {
+		padding: var(--spacing--2xs);
 	}
 
 	pre {
@@ -129,7 +131,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 
 	code {
 		background-color: transparent;
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size--3xs);
 	}
 }
 
@@ -138,39 +140,39 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	flex-direction: column;
 }
 
-.rendered-content {
+.renderedContent {
 	p {
 		margin: 0;
-		margin: var(--spacing-4xs) 0;
+		margin: var(--spacing--4xs) 0;
 	}
 
 	h1,
 	h2,
 	h3 {
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-xs);
-		margin: var(--spacing-xs) 0 var(--spacing-4xs);
+		font-weight: var(--font-weight--bold);
+		font-size: var(--font-size--xs);
+		margin: var(--spacing--xs) 0 var(--spacing--4xs);
 	}
 
 	h4,
 	h5,
 	h6 {
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight--bold);
+		font-size: var(--font-size--2xs);
 	}
 
 	ul,
 	ol {
-		margin: var(--spacing-4xs) 0 var(--spacing-4xs) var(--spacing-l);
+		margin: var(--spacing--4xs) 0 var(--spacing--4xs) var(--spacing--lg);
 
 		li {
-			margin-bottom: var(--spacing-5xs);
+			margin-bottom: var(--spacing--5xs);
 		}
 
 		ul,
 		ol {
-			margin-left: var(--spacing-xs);
-			margin-top: var(--spacing-4xs);
+			margin-left: var(--spacing--xs);
+			margin-top: var(--spacing--4xs);
 		}
 	}
 
@@ -179,7 +181,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	}
 
 	table {
-		margin: var(--spacing-4xs) 0;
+		margin: var(--spacing--4xs) 0;
 
 		th {
 			white-space: nowrap;
@@ -189,8 +191,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 
 		th,
 		td {
-			border: var(--border-base);
-			padding: var(--spacing-4xs);
+			border: var(--border);
+			padding: var(--spacing--4xs);
 		}
 	}
 }

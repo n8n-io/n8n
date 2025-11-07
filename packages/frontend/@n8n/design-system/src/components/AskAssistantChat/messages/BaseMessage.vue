@@ -58,25 +58,25 @@ function onRate(rating: RatingFeedback) {
 
 <style lang="scss" module>
 .message {
-	margin-bottom: var(--spacing-xs);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-xloose);
+	margin-bottom: var(--spacing--sm);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--xl);
 }
 
 .roleName {
 	display: flex;
 	align-items: center;
-	margin-bottom: var(--spacing-3xs);
-	height: var(--spacing-xl);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
+	margin-bottom: var(--spacing--3xs);
+	height: var(--spacing--xl);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--2xs);
 
 	> * {
-		margin-right: var(--spacing-3xs);
+		margin-right: var(--spacing--3xs);
 	}
 }
 
 .userSection {
-	margin-top: var(--spacing-m);
+	margin-top: var(--spacing--md);
 }
 </style>

@@ -107,8 +107,7 @@ test.describe('Resource Locator', () => {
 	});
 
 	// unlike RMC and remote options, RLC does not support loadOptionDependsOn
-	// NODE-3720
-	test.skip('should retrieve list options when other params throw errors', async ({ n8n }) => {
+	test('should retrieve list options when other params throw errors', async ({ n8n }) => {
 		await n8n.canvas.addNode(E2E_TEST_NODE_NAME, { closeNDV: false, action: 'Resource Locator' });
 
 		await n8n.ndv.getResourceLocatorInput('rlc').click();
@@ -121,6 +120,9 @@ test.describe('Resource Locator', () => {
 		await n8n.ndv.setInvalidExpression({ fieldName: 'fieldId' });
 
 		await n8n.ndv.getInputPanel().click(); // remove focus from input, hide expression preview
+
+		// wait for the expression to be evaluated and show the error
+		await expect(n8n.ndv.getParameterInputHint()).toContainText('ERROR');
 
 		await n8n.ndv.getResourceLocatorInput('rlc').click();
 

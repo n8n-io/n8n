@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nCard, N8nHeading, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@/stores/users.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useProjectPages } from '@/composables/useProjectPages';
-import { useToast } from '@/composables/useToast';
+import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import { useToast } from '@/app/composables/useToast';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
 import type { IUser } from 'n8n-workflow';
 
@@ -20,6 +20,8 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const projectPages = useProjectPages();
 const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+
+const isLoadingReadyToRun = ref(false);
 
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const personalProject = computed(() => projectsStore.personalProject);
@@ -42,14 +44,20 @@ const emptyListDescription = computed(() => {
 });
 
 const showReadyToRunV2Card = computed(() => {
-	return readyToRunWorkflowsV2Store.getCardVisibility(
-		projectPermissions.value.workflow.create,
-		readOnlyEnv.value,
-		false, // loading is false in simplified layout
+	return (
+		isLoadingReadyToRun.value ||
+		readyToRunWorkflowsV2Store.getCardVisibility(
+			projectPermissions.value.workflow.create,
+			readOnlyEnv.value,
+			false, // loading is false in simplified layout
+		)
 	);
 });
 
 const handleReadyToRunV2Click = async () => {
+	if (isLoadingReadyToRun.value) return;
+
+	isLoadingReadyToRun.value = true;
 	const projectId = projectPages.isOverviewSubPage
 		? personalProject.value?.id
 		: (route.params.projectId as string);
@@ -61,6 +69,7 @@ const handleReadyToRunV2Click = async () => {
 			projectId,
 		);
 	} catch (error) {
+		isLoadingReadyToRun.value = false;
 		toast.showError(error, i18n.baseText('generic.error'));
 	}
 };
@@ -98,17 +107,18 @@ const emit = defineEmits<{
 			>
 				<N8nCard
 					v-if="showReadyToRunV2Card"
-					:class="$style.actionCard"
-					hoverable
+					:class="[$style.actionCard, { [$style.loading]: isLoadingReadyToRun }]"
+					:hoverable="!isLoadingReadyToRun"
 					data-test-id="ready-to-run-v2-card"
 					@click="handleReadyToRunV2Click"
 				>
 					<div :class="$style.cardContent">
 						<N8nIcon
 							:class="$style.cardIcon"
-							icon="sparkles"
+							:icon="isLoadingReadyToRun ? 'spinner' : 'sparkles'"
 							color="foreground-dark"
 							:stroke-width="1.5"
+							:spin="isLoadingReadyToRun"
 						/>
 						<N8nText size="large" class="mt-xs">
 							{{ i18n.baseText('workflows.empty.readyToRunV2') }}
@@ -150,8 +160,8 @@ const emit = defineEmits<{
 
 .header {
 	position: fixed;
-	top: var(--spacing-l);
-	left: var(--spacing-l);
+	top: var(--spacing--lg);
+	left: var(--spacing--lg);
 	opacity: 0.6;
 }
 
@@ -164,11 +174,11 @@ const emit = defineEmits<{
 }
 
 .welcome {
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing--2xl);
 }
 
 .welcomeTitle {
-	margin-bottom: var(--spacing-m);
+	margin-bottom: var(--spacing--md);
 }
 
 .welcomeDescription {
@@ -177,7 +187,7 @@ const emit = defineEmits<{
 
 .actionsContainer {
 	display: flex;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	justify-content: center;
 	flex-wrap: wrap;
 }
@@ -198,8 +208,13 @@ const emit = defineEmits<{
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 
 		.cardIcon svg {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
+	}
+
+	&.loading {
+		pointer-events: none;
+		opacity: 0.7;
 	}
 }
 
@@ -208,12 +223,12 @@ const emit = defineEmits<{
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-m);
+	padding: var(--spacing--md);
 }
 
 .cardIcon {
 	font-size: 48px;
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing--xs);
 
 	svg {
 		transition: color 0.3s ease;

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.9.0",
+  "version": "0.14.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
@@ -45,12 +45,12 @@
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@oclif/core": "^4.5.2",
     "change-case": "^5.4.4",
     "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import-x": "^4.15.2",
     "eslint-plugin-n8n-nodes-base": "1.16.3",
-    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "fast-glob": "catalog:",
     "handlebars": "4.7.8",
     "picocolors": "catalog:",
@@ -67,6 +67,7 @@
     "@oclif/test": "^4.1.13",
     "eslint": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
   "peerDependencies": {

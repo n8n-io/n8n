@@ -1,10 +1,17 @@
 import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
+import { AIBuilderPage } from './AIBuilderPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
+import { BaseModal } from './components/BaseModal';
+import { Breadcrumbs } from './components/Breadcrumbs';
+import { ProjectTabsComponent } from './components/ProjectTabsComponent';
+import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { CredentialsPage } from './CredentialsPage';
+import { DataTableDetails } from './DataTableDetails';
+import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { IframePage } from './IframePage';
@@ -15,30 +22,36 @@ import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
+import { SettingsUsersPage } from './SettingsUsersPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
+import { TemplateCredentialSetupPage } from './TemplateCredentialSetupPage';
+import { TemplatesPage } from './TemplatesPage';
 import { VariablesPage } from './VariablesPage';
 import { VersionsPage } from './VersionsPage';
 import { WorkerViewPage } from './WorkerViewPage';
 import { WorkflowActivationModal } from './WorkflowActivationModal';
+import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
+import { DataTableComposer } from '../composables/DataTablesComposer';
+import { ExecutionsComposer } from '../composables/ExecutionsComposer';
 import { MfaComposer } from '../composables/MfaComposer';
 import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
+import { TemplatesComposer } from '../composables/TemplatesComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
+import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NavigationHelper } from '../helpers/NavigationHelper';
 import { ApiHelpers } from '../services/api-helper';
-import { BaseModal } from './components/BaseModal';
-import { Breadcrumbs } from './components/Breadcrumbs';
-import { SettingsUsersPage } from './SettingsUsersPage';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -47,6 +60,7 @@ export class n8nPage {
 
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
+	readonly aiBuilder: AIBuilderPage;
 	readonly becomeCreatorCTA: BecomeCreatorCTAPage;
 	readonly canvas: CanvasPage;
 	readonly communityNodes: CommunityNodesPage;
@@ -59,6 +73,8 @@ export class n8nPage {
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
+	readonly templateCredentialSetup: TemplateCredentialSetupPage;
+	readonly templates: TemplatesPage;
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
 	readonly workerView: WorkerViewPage;
@@ -67,28 +83,42 @@ export class n8nPage {
 	readonly credentials: CredentialsPage;
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
+	readonly dataTable: DataTableView;
+	readonly dataTableDetails: DataTableDetails;
+
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
+
+	// Components
+	readonly projectTabs: ProjectTabsComponent;
+
+	readonly settingsEnvironment: SettingsEnvironmentPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
+	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
 	readonly modal: BaseModal;
+	readonly resourceMoveModal: ResourceMoveModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
 	readonly credentialsComposer: CredentialsComposer;
+	readonly executionsComposer: ExecutionsComposer;
 	readonly mfaComposer: MfaComposer;
 	readonly partialExecutionComposer: PartialExecutionComposer;
 	readonly ndvComposer: NodeDetailsViewComposer;
+	readonly templatesComposer: TemplatesComposer;
 	readonly start: TestEntryComposer;
+	readonly dataTableComposer: DataTableComposer;
 
 	// Helpers
 	readonly navigate: NavigationHelper;
 	readonly breadcrumbs: Breadcrumbs;
+	readonly clipboard: ClipboardHelper;
 
 	constructor(page: Page) {
 		this.page = page;
@@ -96,6 +126,7 @@ export class n8nPage {
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
+		this.aiBuilder = new AIBuilderPage(page);
 		this.becomeCreatorCTA = new BecomeCreatorCTAPage(page);
 		this.canvas = new CanvasPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
@@ -108,6 +139,8 @@ export class n8nPage {
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
+		this.templateCredentialSetup = new TemplateCredentialSetupPage(page);
+		this.templates = new TemplatesPage(page);
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
 		this.workerView = new WorkerViewPage(page);
@@ -118,26 +151,40 @@ export class n8nPage {
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
+		this.dataTable = new DataTableView(page);
+		this.dataTableDetails = new DataTableDetails(page);
+		this.settingsEnvironment = new SettingsEnvironmentPage(page);
+
 		this.settingsUsers = new SettingsUsersPage(page);
+
+		// Components
+		this.projectTabs = new ProjectTabsComponent(page);
+
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
+		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
+		this.resourceMoveModal = new ResourceMoveModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
 		this.credentialsComposer = new CredentialsComposer(this);
+		this.executionsComposer = new ExecutionsComposer(this);
 		this.mfaComposer = new MfaComposer(this);
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
 		this.ndvComposer = new NodeDetailsViewComposer(this);
+		this.templatesComposer = new TemplatesComposer(this);
 		this.start = new TestEntryComposer(this);
+		this.dataTableComposer = new DataTableComposer(this);
 
 		// Helpers
 		this.navigate = new NavigationHelper(page);
 		this.breadcrumbs = new Breadcrumbs(page);
+		this.clipboard = new ClipboardHelper(page);
 	}
 
 	async goHome() {

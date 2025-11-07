@@ -9,9 +9,10 @@ export class DataTableConfig {
 	/**
 	 * The percentage threshold at which a warning is triggered for data tables.
 	 * When the usage of a data table reaches or exceeds this value, a warning is issued.
+	 * Defaults to 80% of maxSize if not explicitly set via environment variable.
 	 */
 	@Env('N8N_DATA_TABLES_WARNING_THRESHOLD_BYTES')
-	warningThreshold: number = 45 * 1024 * 1024;
+	warningThreshold?: number;
 
 	/**
 	 * The duration in milliseconds for which the data table size is cached.

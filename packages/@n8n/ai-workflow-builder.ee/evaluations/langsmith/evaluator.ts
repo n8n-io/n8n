@@ -1,9 +1,11 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 import { evaluateWorkflow } from '../chains/workflow-evaluator.js';
+import { programmaticEvaluation } from '../programmatic/programmatic-evaluation';
 import type { EvaluationInput, CategoryScore } from '../types/evaluation.js';
 import {
 	isSimpleWorkflow,
@@ -62,7 +64,7 @@ function extractUsageMetadata(usage: unknown): Partial<UsageMetadata> {
 	const usageFieldMap: Record<string, keyof UsageMetadata> = {
 		input_tokens: 'input_tokens',
 		output_tokens: 'output_tokens',
-		cache_create_input_tokens: 'cache_creation_input_tokens',
+		cache_creation_input_tokens: 'cache_creation_input_tokens',
 		cache_read_input_tokens: 'cache_read_input_tokens',
 	};
 
@@ -86,13 +88,16 @@ function categoryToResult(key: string, category: CategoryScore): LangsmithEvalua
 }
 
 /**
- * Creates a Langsmith evaluator function that uses the LLM-based workflow evaluator
+ * Creates a Langsmith evaluator function that uses the LLM-based workflow evaluator and programmatic evaluation.
  * @param llm - Language model to use for evaluation
+ * @param parsedNodeTypes - Node types for programmatic evaluation
  * @returns Evaluator function compatible with Langsmith
  */
 export function createLangsmithEvaluator(
 	llm: BaseChatModel,
+	parsedNodeTypes: INodeTypeDescription[],
 ): (rootRun: Run, example?: Example) => Promise<LangsmithEvaluationResult[]> {
+	// eslint-disable-next-line complexity
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		// Validate and extract outputs
 		const validation = validateRunOutputs(rootRun.outputs);
@@ -113,7 +118,12 @@ export function createLangsmithEvaluator(
 		};
 
 		try {
+			// Run LLM-based evaluation
 			const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
+
+			// Run programmatic evaluation
+			const programmaticResult = programmaticEvaluation(evaluationInput, parsedNodeTypes);
+
 			const results: LangsmithEvaluationResult[] = [];
 
 			// Add core category scores
@@ -174,6 +184,37 @@ export function createLangsmithEvaluator(
 				}
 			}
 
+			// Add total prompt tokens for clarity (sum of all input token types)
+			const totalPromptTokens =
+				(validation.usage?.input_tokens ?? 0) +
+				(validation.usage?.cache_creation_input_tokens ?? 0) +
+				(validation.usage?.cache_read_input_tokens ?? 0);
+
+			if (totalPromptTokens > 0) {
+				results.push({
+					key: 'totalPromptTokens',
+					score: totalPromptTokens / 1000,
+					comment: 'Total prompt size (fresh + cached + cache creation)',
+				});
+			}
+
+			// Calculate and add cache hit rate if cache data is available
+			if (validation.usage?.cache_read_input_tokens !== undefined) {
+				const inputTokens = validation.usage.input_tokens ?? 0;
+				const cacheCreationTokens = validation.usage.cache_creation_input_tokens ?? 0;
+				const cacheReadTokens = validation.usage.cache_read_input_tokens ?? 0;
+
+				const totalInputTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+				const cacheHitRate = totalInputTokens > 0 ? cacheReadTokens / totalInputTokens : 0;
+
+				// Store as percentage (0-1 scale)
+				results.push({
+					key: 'cacheHitRate',
+					score: cacheHitRate,
+					comment: `${(cacheHitRate * 100).toFixed(1)}% of input tokens served from cache`,
+				});
+			}
+
 			// Add structural similarity if applicable
 			if (validation.referenceWorkflow && evaluationResult.structuralSimilarity.applicable) {
 				results.push(
@@ -187,6 +228,17 @@ export function createLangsmithEvaluator(
 				score: evaluationResult.overallScore,
 				comment: evaluationResult.summary,
 			});
+
+			// Add programmatic evaluation scores
+			results.push({
+				key: 'programmatic.overall',
+				score: programmaticResult.overallScore,
+			});
+			results.push(categoryToResult('programmatic.connections', programmaticResult.connections));
+			results.push(categoryToResult('programmatic.trigger', programmaticResult.trigger));
+			results.push(categoryToResult('programmatic.agentPrompt', programmaticResult.agentPrompt));
+			results.push(categoryToResult('programmatic.tools', programmaticResult.tools));
+			results.push(categoryToResult('programmatic.fromAi', programmaticResult.fromAi));
 
 			return results;
 		} catch (error) {

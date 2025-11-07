@@ -1,4 +1,6 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
+import type { ReportSuggestionArray } from '@typescript-eslint/utils/ts-eslint';
+import { dirname } from 'node:path';
+
 import {
 	isCredentialTypeClass,
 	findClassProperty,
@@ -7,20 +9,23 @@ import {
 	getStringLiteralValue,
 	findPackageJson,
 	areAllCredentialUsagesTestedByNodes,
+	createRule,
 } from '../utils/index.js';
-import { dirname } from 'node:path';
 
-export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
+export const CredentialTestRequiredRule = createRule({
+	name: 'credential-test-required',
 	meta: {
 		type: 'problem',
 		docs: {
 			description: 'Ensure credentials have a credential test',
 		},
 		messages: {
+			addTemplate: 'Add basic credential test template',
 			missingCredentialTest:
 				'Credential class "{{ className }}" must have a test property or be tested by a node via testedBy',
 		},
 		schema: [],
+		hasSuggestions: true,
 	},
 	defaultOptions: [],
 	create(context) {
@@ -73,27 +78,68 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 
 				const pkgDir = getPackageDir();
 				if (!pkgDir) {
+					const suggestions: ReportSuggestionArray<'addTemplate' | 'missingCredentialTest'> = [];
+
+					const testProperty = createCredentialTestTemplate();
+					suggestions.push({
+						messageId: 'addTemplate',
+						fix(fixer) {
+							const classBody = node.body.body;
+							const lastProperty = classBody[classBody.length - 1];
+							if (lastProperty) {
+								return fixer.insertTextAfter(lastProperty, `\n\n${testProperty}`);
+							}
+							return null;
+						},
+					});
+
 					context.report({
 						node,
 						messageId: 'missingCredentialTest',
 						data: {
-							className: node.id?.name || 'Unknown',
+							className: node.id?.name ?? 'Unknown',
 						},
+						suggest: suggestions,
 					});
 					return;
 				}
 
 				const allUsagesTestedByNodes = areAllCredentialUsagesTestedByNodes(credentialName, pkgDir);
 				if (!allUsagesTestedByNodes) {
+					const suggestions: ReportSuggestionArray<'addTemplate' | 'missingCredentialTest'> = [];
+
+					const testProperty = createCredentialTestTemplate();
+					suggestions.push({
+						messageId: 'addTemplate',
+						fix(fixer) {
+							const classBody = node.body.body;
+							const lastProperty = classBody[classBody.length - 1];
+							if (lastProperty) {
+								return fixer.insertTextAfter(lastProperty, `\n\n${testProperty}`);
+							}
+							return null;
+						},
+					});
+
 					context.report({
 						node,
 						messageId: 'missingCredentialTest',
 						data: {
-							className: node.id?.name || 'Unknown',
+							className: node.id?.name ?? 'Unknown',
 						},
+						suggest: suggestions,
 					});
 				}
 			},
 		};
 	},
 });
+
+function createCredentialTestTemplate(): string {
+	return `\ttest: ICredentialTestRequest = {
+\t\trequest: {
+\t\t\tmethod: 'GET',
+\t\t\turl: '={{$credentials.server}}/test', // Replace with actual endpoint
+\t\t},
+\t};`;
+}

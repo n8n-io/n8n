@@ -3,10 +3,14 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { createRemoveConnectionTool, REMOVE_CONNECTION_TOOL } from '@/tools/remove-connection.tool';
+
 import { createNodeType, nodeTypes } from '../../../test/test-utils';
 import { createAddNodeTool, getAddNodeToolBase } from '../add-node.tool';
 import { getBuilderTools, getBuilderToolsForDisplay } from '../builder-tools';
+import { createCategorizePromptTool, CATEGORIZE_PROMPT_TOOL } from '../categorize-prompt.tool';
 import { CONNECT_NODES_TOOL, createConnectNodesTool } from '../connect-nodes.tool';
+import { GET_BEST_PRACTICES_TOOL, createGetBestPracticesTool } from '../get-best-practices.tool';
 import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from '../get-node-parameter.tool';
 import { createNodeDetailsTool, NODE_DETAILS_TOOL } from '../node-details.tool';
 import { createNodeSearchTool, NODE_SEARCH_TOOL } from '../node-search.tool';
@@ -15,6 +19,29 @@ import {
 	createUpdateNodeParametersTool,
 	UPDATING_NODE_PARAMETER_TOOL,
 } from '../update-node-parameters.tool';
+import { createValidateWorkflowTool, VALIDATE_WORKFLOW_TOOL } from '../validate-workflow.tool';
+
+jest.mock('../categorize-prompt.tool', () => ({
+	CATEGORIZE_PROMPT_TOOL: {
+		name: 'categorizePrompt',
+		description: 'Categorize prompt',
+	},
+	createCategorizePromptTool: jest.fn().mockReturnValue({
+		name: 'categorizePromptTool',
+		tool: { name: 'categorizePromptTool' },
+	}),
+}));
+
+jest.mock('../get-best-practices.tool', () => ({
+	GET_BEST_PRACTICES_TOOL: {
+		name: 'getBestPracticesTool',
+		description: 'Get best practices',
+	},
+	createGetBestPracticesTool: jest.fn().mockReturnValue({
+		name: 'getBestPracticesTool',
+		tool: { name: 'getBestPracticesTool' },
+	}),
+}));
 
 jest.mock('../add-node.tool', () => ({
 	createAddNodeTool: jest.fn().mockReturnValue({
@@ -93,6 +120,28 @@ jest.mock('../update-node-parameters.tool', () => ({
 	}),
 }));
 
+jest.mock('../remove-connection.tool', () => ({
+	REMOVE_CONNECTION_TOOL: {
+		toolName: 'removeConnectionTool',
+		displayTitle: 'Remove a connection between two nodes',
+	},
+	createRemoveConnectionTool: jest.fn().mockReturnValue({
+		name: 'removeConnectionTool',
+		tool: { name: 'removeConnectionTool' },
+	}),
+}));
+
+jest.mock('../validate-workflow.tool', () => ({
+	VALIDATE_WORKFLOW_TOOL: {
+		toolName: 'validateWorkflowTool',
+		displayTitle: 'Validate workflow',
+	},
+	createValidateWorkflowTool: jest.fn().mockReturnValue({
+		name: 'validateWorkflowTool',
+		tool: { name: 'validateWorkflowTool' },
+	}),
+}));
+
 describe('builder-tools', () => {
 	let mockLogger: Logger;
 	let mockLlmComplexTask: BaseChatModel;
@@ -114,10 +163,13 @@ describe('builder-tools', () => {
 				instanceUrl: 'https://test.n8n.io',
 			});
 
-			expect(tools).toHaveLength(7);
+			expect(tools).toHaveLength(11);
+			expect(createCategorizePromptTool).toHaveBeenCalledWith(mockLlmComplexTask, mockLogger);
+			expect(createGetBestPracticesTool).toHaveBeenCalled();
 			expect(createNodeSearchTool).toHaveBeenCalledWith(parsedNodeTypes);
 			expect(createNodeDetailsTool).toHaveBeenCalledWith(parsedNodeTypes);
 			expect(createAddNodeTool).toHaveBeenCalledWith(parsedNodeTypes);
+			expect(createRemoveConnectionTool).toHaveBeenCalled();
 			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, mockLogger);
 			expect(createRemoveNodeTool).toHaveBeenCalledWith(mockLogger);
 			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
@@ -127,6 +179,7 @@ describe('builder-tools', () => {
 				'https://test.n8n.io',
 			);
 			expect(createGetNodeParameterTool).toHaveBeenCalled();
+			expect(createValidateWorkflowTool).toHaveBeenCalledWith(parsedNodeTypes, mockLogger);
 		});
 
 		it('should work without optional parameters', () => {
@@ -135,7 +188,7 @@ describe('builder-tools', () => {
 				llmComplexTask: mockLlmComplexTask,
 			});
 
-			expect(tools).toHaveLength(7);
+			expect(tools).toHaveLength(11);
 			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, undefined);
 			expect(createRemoveNodeTool).toHaveBeenCalledWith(undefined);
 			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
@@ -144,6 +197,7 @@ describe('builder-tools', () => {
 				undefined,
 				undefined,
 			);
+			expect(createValidateWorkflowTool).toHaveBeenCalledWith(parsedNodeTypes, undefined);
 		});
 
 		it('should pass through different node types', () => {
@@ -170,13 +224,17 @@ describe('builder-tools', () => {
 				nodeTypes: parsedNodeTypes,
 			});
 
-			expect(tools).toHaveLength(7);
-			expect(tools[0]).toBe(NODE_SEARCH_TOOL);
-			expect(tools[1]).toBe(NODE_DETAILS_TOOL);
-			expect(tools[3]).toBe(CONNECT_NODES_TOOL);
-			expect(tools[4]).toBe(REMOVE_NODE_TOOL);
-			expect(tools[5]).toBe(UPDATING_NODE_PARAMETER_TOOL);
-			expect(tools[6]).toBe(GET_NODE_PARAMETER_TOOL);
+			expect(tools).toHaveLength(11);
+			expect(tools[0]).toBe(CATEGORIZE_PROMPT_TOOL);
+			expect(tools[1]).toBe(GET_BEST_PRACTICES_TOOL);
+			expect(tools[2]).toBe(NODE_SEARCH_TOOL);
+			expect(tools[3]).toBe(NODE_DETAILS_TOOL);
+			expect(tools[5]).toBe(CONNECT_NODES_TOOL);
+			expect(tools[6]).toBe(REMOVE_CONNECTION_TOOL);
+			expect(tools[7]).toBe(REMOVE_NODE_TOOL);
+			expect(tools[8]).toBe(UPDATING_NODE_PARAMETER_TOOL);
+			expect(tools[9]).toBe(GET_NODE_PARAMETER_TOOL);
+			expect(tools[10]).toBe(VALIDATE_WORKFLOW_TOOL);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
 		});
 
@@ -185,7 +243,7 @@ describe('builder-tools', () => {
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(7);
+			expect(tools).toHaveLength(11);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 

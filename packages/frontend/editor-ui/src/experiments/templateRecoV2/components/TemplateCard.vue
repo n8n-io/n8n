@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { type ITemplatesWorkflow } from '@n8n/rest-api-client';
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
 import { useRouter } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
-import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/app/constants';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nButton, N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	template: ITemplatesWorkflow;
@@ -80,14 +82,14 @@ const handleUseTemplate = async () => {
 }
 
 .nodeIcon {
-	padding: var(--spacing-2xs);
-	background-color: var(--color-dialog-background);
-	border-radius: var(--border-radius-large);
+	padding: var(--spacing--2xs);
+	background-color: var(--dialog--color--background);
+	border-radius: var(--radius--lg);
 	z-index: 1;
 	display: flex;
 	flex-direction: column;
 	align-items: end;
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 }
 
 .suggestion {
@@ -113,6 +115,6 @@ const handleUseTemplate = async () => {
 	width: 24px;
 	height: 24px;
 	border-radius: 100%;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
 }
 </style>

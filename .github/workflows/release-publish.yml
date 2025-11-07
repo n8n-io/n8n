@@ -20,6 +20,8 @@ jobs:
 
       - name: Setup and Build ARM64
         uses: ./.github/actions/setup-nodejs-blacksmith
+        env:
+          N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
 
   publish-to-npm:
     name: Publish to NPM
@@ -40,6 +42,8 @@ jobs:
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs-github
+        env:
+          N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
 
       - name: Dry-run publishing
         run: |

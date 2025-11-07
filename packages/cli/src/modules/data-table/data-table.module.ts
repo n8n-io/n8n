@@ -3,25 +3,25 @@ import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 @BackendModule({ name: 'data-table' })
-export class DataStoreModule implements ModuleInterface {
+export class DataTableModule implements ModuleInterface {
 	async init() {
-		await import('./data-store.controller');
-		await import('./data-store-aggregate.controller');
+		await import('./data-table.controller');
+		await import('./data-table-aggregate.controller');
 
-		const { DataStoreService } = await import('./data-store.service');
-		await Container.get(DataStoreService).start();
+		const { DataTableService } = await import('./data-table.service');
+		await Container.get(DataTableService).start();
 
-		const { DataStoreAggregateService } = await import('./data-store-aggregate.service');
-		await Container.get(DataStoreAggregateService).start();
+		const { DataTableAggregateService } = await import('./data-table-aggregate.service');
+		await Container.get(DataTableAggregateService).start();
 	}
 
 	@OnShutdown()
 	async shutdown() {
-		const { DataStoreService } = await import('./data-store.service');
-		await Container.get(DataStoreService).shutdown();
+		const { DataTableService } = await import('./data-table.service');
+		await Container.get(DataTableService).shutdown();
 
-		const { DataStoreAggregateService } = await import('./data-store-aggregate.service');
-		await Container.get(DataStoreAggregateService).start();
+		const { DataTableAggregateService } = await import('./data-table-aggregate.service');
+		await Container.get(DataTableAggregateService).shutdown();
 	}
 
 	async entities() {
@@ -32,8 +32,8 @@ export class DataStoreModule implements ModuleInterface {
 	}
 
 	async context() {
-		const { DataStoreProxyService } = await import('./data-store-proxy.service');
+		const { DataTableProxyService } = await import('./data-table-proxy.service');
 
-		return { dataStoreProxyProvider: Container.get(DataStoreProxyService) };
+		return { dataTableProxyProvider: Container.get(DataTableProxyService) };
 	}
 }

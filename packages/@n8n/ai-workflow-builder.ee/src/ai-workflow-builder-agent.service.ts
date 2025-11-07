@@ -5,11 +5,10 @@ import { Service } from '@n8n/di';
 import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
-import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet4 } from '@/llm-config';
+import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
@@ -17,18 +16,17 @@ type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: n
 
 @Service()
 export class AiWorkflowBuilderService {
-	private parsedNodeTypes: INodeTypeDescription[] = [];
-
+	private readonly parsedNodeTypes: INodeTypeDescription[];
 	private sessionManager: SessionManagerService;
 
 	constructor(
-		private readonly nodeTypes: INodeTypes,
+		parsedNodeTypes: INodeTypeDescription[],
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
 		private readonly instanceUrl?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 	) {
-		this.parsedNodeTypes = this.getNodeTypes();
+		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
 	}
 
@@ -41,7 +39,7 @@ export class AiWorkflowBuilderService {
 		authHeaders?: Record<string, string>;
 		apiKey?: string;
 	} = {}): Promise<ChatAnthropic> {
-		return await anthropicClaudeSonnet4({
+		return await anthropicClaudeSonnet45({
 			baseUrl,
 			apiKey,
 			headers: {
@@ -51,28 +49,18 @@ export class AiWorkflowBuilderService {
 		});
 	}
 
-	private async getApiProxyAuthHeaders(user: IUser, useDeprecatedCredentials = false) {
+	private async getApiProxyAuthHeaders(user: IUser) {
 		assert(this.client);
 
-		let authHeaders: { Authorization: string };
-
-		if (useDeprecatedCredentials) {
-			const authResponse = await this.client.generateApiProxyCredentials(user);
-			authHeaders = { Authorization: authResponse.apiKey };
-		} else {
-			const authResponse = await this.client.getBuilderApiProxyToken(user);
-			authHeaders = {
-				Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
-			};
-		}
+		const authResponse = await this.client.getBuilderApiProxyToken(user);
+		const authHeaders = {
+			Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
+		};
 
 		return authHeaders;
 	}
 
-	private async setupModels(
-		user: IUser,
-		useDeprecatedCredentials = false,
-	): Promise<{
+	private async setupModels(user: IUser): Promise<{
 		anthropicClaude: ChatAnthropic;
 		tracingClient?: TracingClient;
 		authHeaders?: { Authorization: string };
@@ -80,7 +68,7 @@ export class AiWorkflowBuilderService {
 		try {
 			// If client is provided, use it for API proxy
 			if (this.client) {
-				const authHeaders = await this.getApiProxyAuthHeaders(user, useDeprecatedCredentials);
+				const authHeaders = await this.getApiProxyAuthHeaders(user);
 
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
@@ -124,55 +112,40 @@ export class AiWorkflowBuilderService {
 		}
 	}
 
-	private getNodeTypes(): INodeTypeDescription[] {
+	private filterNodeTypes(nodeTypes: INodeTypeDescription[]): INodeTypeDescription[] {
 		// These types are ignored because they tend to cause issues when generating workflows
-		const ignoredTypes = [
+		const ignoredTypes = new Set([
 			'@n8n/n8n-nodes-langchain.toolVectorStore',
 			'@n8n/n8n-nodes-langchain.documentGithubLoader',
 			'@n8n/n8n-nodes-langchain.code',
-		];
-		const nodeTypesKeys = Object.keys(this.nodeTypes.getKnownTypes());
+		]);
 
-		const nodeTypes = nodeTypesKeys
-			.filter((nodeType) => !ignoredTypes.includes(nodeType))
-			.map((nodeName) => {
-				try {
-					return { ...this.nodeTypes.getByNameAndVersion(nodeName).description, name: nodeName };
-				} catch (error) {
-					this.logger?.error('Error getting node type', {
-						nodeName,
-						error: error instanceof Error ? error.message : 'Unknown error',
-					});
-					return undefined;
-				}
-			})
-			.filter(
-				(nodeType): nodeType is INodeTypeDescription =>
-					nodeType !== undefined && nodeType.hidden !== true,
-			)
-			.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
-				// If the node type is a tool, we need to find the corresponding non-tool node type
-				// and merge the two node types to get the full node type description.
-				const isTool = nodeType.name.endsWith('Tool');
-				if (!isTool) return nodeType;
+		const visibleNodeTypes = nodeTypes.filter(
+			(nodeType) =>
+				// We filter out hidden nodes, except for the Data Table node which has custom hiding logic
+				// See more details in DataTable.node.ts#L29
+				!ignoredTypes.has(nodeType.name) &&
+				(nodeType.hidden !== true || nodeType.name === 'n8n-nodes-base.dataTable'),
+		);
 
-				const nonToolNode = nodeTypes.find((nt) => nt.name === nodeType.name.replace('Tool', ''));
-				if (!nonToolNode) return nodeType;
+		return visibleNodeTypes.map((nodeType) => {
+			// If the node type is a tool, we need to find the corresponding non-tool node type
+			// and merge the two node types to get the full node type description.
+			const isTool = nodeType.name.endsWith('Tool');
+			if (!isTool) return nodeType;
 
-				return {
-					...nonToolNode,
-					...nodeType,
-				};
-			});
+			const nonToolNode = nodeTypes.find((nt) => nt.name === nodeType.name.replace('Tool', ''));
+			if (!nonToolNode) return nodeType;
 
-		return nodeTypes;
+			return {
+				...nonToolNode,
+				...nodeType,
+			};
+		});
 	}
 
-	private async getAgent(user: IUser, useDeprecatedCredentials = false) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
-			user,
-			useDeprecatedCredentials,
-		);
+	private async getAgent(user: IUser) {
+		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(user);
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
@@ -186,9 +159,7 @@ export class AiWorkflowBuilderService {
 				: undefined,
 			instanceUrl: this.instanceUrl,
 			onGenerationSuccess: async () => {
-				if (!useDeprecatedCredentials) {
-					await this.onGenerationSuccess(user, authHeaders);
-				}
+				await this.onGenerationSuccess(user, authHeaders);
 			},
 		});
 
@@ -218,7 +189,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user, payload.useDeprecatedCredentials);
+		const agent = await this.getAgent(user);
 
 		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
 			yield output;

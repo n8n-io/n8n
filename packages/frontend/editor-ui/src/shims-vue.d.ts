@@ -1,10 +1,10 @@
 import 'vue-router';
 import type { I18nClass } from '@n8n/i18n';
 import type { Route, Router, RouteLocation } from 'vue-router';
-import type { Telemetry } from '@/plugins/telemetry';
-import type { VIEWS } from '@/constants';
+import type { Telemetry } from '@/app/plugins/telemetry';
+import type { VIEWS } from '@/app/constants';
 import type { IPermissions } from '@/Interface';
-import type { MiddlewareOptions, RouterMiddlewareType } from '@/types/router';
+import type { MiddlewareOptions, RouterMiddlewareType } from '@/app/types/router';
 
 export {};
 

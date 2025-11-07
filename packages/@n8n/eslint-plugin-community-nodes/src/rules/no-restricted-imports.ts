@@ -1,5 +1,9 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
-import { getModulePath, isDirectRequireCall, isRequireMemberCall } from '../utils/index.js';
+import {
+	getModulePath,
+	isDirectRequireCall,
+	isRequireMemberCall,
+	createRule,
+} from '../utils/index.js';
 
 const allowedModules = [
 	'n8n-workflow',
@@ -22,7 +26,8 @@ const isModuleAllowed = (modulePath: string): boolean => {
 	return allowedModules.includes(moduleName);
 };
 
-export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
+export const NoRestrictedImportsRule = createRule({
+	name: 'no-restricted-imports',
 	meta: {
 		type: 'problem',
 		docs: {

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/extension-sdk",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "files": [
     "dist",
@@ -31,11 +31,11 @@
   },
   "scripts": {
     "clean": "rimraf dist",
-    "dev": "tsup --watch",
+    "dev": "tsdown --watch",
     "lint": "eslint . --quiet",
     "typecheck:frontend": "vue-tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
-    "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsup && pnpm create-json-schema",
+    "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsdown && pnpm create-json-schema",
     "create-json-schema": "tsx scripts/create-json-schema.ts",
     "preview": "vite preview"
   },
@@ -47,6 +47,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
+    "tsdown": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vue": "catalog:frontend",

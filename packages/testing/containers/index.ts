@@ -10,3 +10,13 @@ export type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 export * from './performance-plans';
 
 export { ContainerTestHelpers } from './n8n-test-container-helpers';
+export {
+	setupMailpit,
+	getMailpitEnvironment,
+	mailpitClear,
+	mailpitList,
+	mailpitGet,
+	mailpitWaitForMessage,
+	type MailpitMessage,
+	type MailpitQuery,
+} from './n8n-test-container-mailpit';

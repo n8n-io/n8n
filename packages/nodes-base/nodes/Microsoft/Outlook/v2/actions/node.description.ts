@@ -10,6 +10,7 @@ import * as folderMessage from './folderMessage';
 import * as message from './message';
 import * as messageAttachment from './messageAttachment';
 import { sendAndWaitWebhooksDescription } from '../../../../../utils/sendAndWait/descriptions';
+import { SEND_AND_WAIT_WAITING_TOOLTIP } from '../../../../../utils/sendAndWait/utils';
 
 export const description: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',
@@ -31,6 +32,7 @@ export const description: INodeTypeDescription = {
 			required: true,
 		},
 	],
+	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{

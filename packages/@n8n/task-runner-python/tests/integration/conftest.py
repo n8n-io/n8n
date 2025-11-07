@@ -12,14 +12,6 @@ NODE_MODE_TO_BROKER_STYLE = {v: k for k, v in NODE_MODE_MAP.items()}
 
 
 @pytest_asyncio.fixture
-async def manager():
-    manager = TaskRunnerManager()
-    await manager.start()
-    yield manager
-    await manager.stop()
-
-
-@pytest_asyncio.fixture
 async def broker():
     broker = LocalTaskBroker()
     await broker.start()
@@ -27,19 +19,66 @@ async def broker():
     await broker.stop()
 
 
+@pytest_asyncio.fixture
+async def manager(broker):
+    manager = TaskRunnerManager(task_broker_url=broker.get_url())
+    await manager.start()
+    yield manager
+    await manager.stop()
+
+
+@pytest_asyncio.fixture
+async def manager_with_stdlib_wildcard(broker):
+    manager = TaskRunnerManager(
+        task_broker_url=broker.get_url(),
+        custom_env={
+            "N8N_RUNNERS_STDLIB_ALLOW": "*",
+        },
+    )
+    await manager.start()
+    yield manager
+    await manager.stop()
+
+
+@pytest_asyncio.fixture
+async def manager_with_env_access_blocked(broker):
+    manager = TaskRunnerManager(
+        task_broker_url=broker.get_url(),
+        custom_env={
+            "N8N_RUNNERS_STDLIB_ALLOW": "os",
+            "N8N_BLOCK_RUNNER_ENV_ACCESS": "true",
+        },
+    )
+    await manager.start()
+    yield manager
+    await manager.stop()
+
+
+@pytest_asyncio.fixture
+async def manager_with_env_access_allowed(broker):
+    manager = TaskRunnerManager(
+        task_broker_url=broker.get_url(),
+        custom_env={
+            "N8N_RUNNERS_STDLIB_ALLOW": "os",
+            "N8N_BLOCK_RUNNER_ENV_ACCESS": "false",
+        },
+    )
+    await manager.start()
+    yield manager
+    await manager.stop()
+
+
 def create_task_settings(
     code: str,
     node_mode: str,
     items: Items | None = None,
     continue_on_fail: bool = False,
-    can_log: bool = False,
 ):
     return {
         "code": code,
         "nodeMode": NODE_MODE_TO_BROKER_STYLE[node_mode],
         "items": items if items is not None else [],
         "continueOnFail": continue_on_fail,
-        "canLog": can_log,
     }
 
 

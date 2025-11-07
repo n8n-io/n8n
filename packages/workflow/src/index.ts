@@ -7,7 +7,7 @@ export * from './errors';
 export * from './constants';
 export * from './common';
 export * from './cron';
-export * from './data-store.types';
+export * from './data-table.types';
 export * from './deferred-promise';
 export * from './global-state';
 export * from './interfaces';
@@ -45,6 +45,7 @@ export {
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	isDomainAllowed,
+	isCommunityPackageName,
 } from './utils';
 export {
 	isINodeProperties,
@@ -73,6 +74,7 @@ export * from './node-parameters/filter-parameter';
 export * from './node-parameters/parameter-type-validation';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
+export * from './workflow-diff';
 
 export type {
 	DocMetadata,

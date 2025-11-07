@@ -16,6 +16,7 @@ import assert from 'node:assert';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Network, Wait } from 'testcontainers';
 
+import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { N8nImagePullPolicy } from './n8n-image-pull-policy';
 import {
@@ -26,6 +27,8 @@ import {
 	setupProxyServer,
 	setupTaskRunner,
 } from './n8n-test-container-dependencies';
+import { setupGitea } from './n8n-test-container-gitea';
+import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
 import { createSilentLogConsumer } from './n8n-test-container-utils';
 
 // --- Constants ---
@@ -35,9 +38,10 @@ const REDIS_IMAGE = 'redis:7-alpine';
 const CADDY_IMAGE = 'caddy:2-alpine';
 const N8N_E2E_IMAGE = 'n8nio/n8n:local';
 const MOCKSERVER_IMAGE = 'mockserver/mockserver:5.15.0';
+const GITEA_IMAGE = 'gitea/gitea:1.24.6';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
-const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE ?? N8N_E2E_IMAGE;
+const N8N_IMAGE = getDockerImageFromEnv(N8N_E2E_IMAGE);
 
 // Base environment for all n8n instances
 const BASE_ENV: Record<string, string> = {
@@ -82,7 +86,9 @@ export interface N8NConfig {
 		cpu?: number; // in cores
 	};
 	proxyServerEnabled?: boolean;
+	sourceControl?: boolean;
 	taskRunner?: boolean;
+	email?: boolean;
 }
 
 export interface N8NStack {
@@ -122,9 +128,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		projectName,
 		resourceQuota,
 		taskRunner = false,
+		sourceControl = false,
+		email = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const taskRunnerEnabled = !!taskRunner;
+	const sourceControlEnabled = !!sourceControl;
+	const emailEnabled = !!email;
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
@@ -132,7 +142,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const mainCount = queueConfig?.mains ?? 1;
 	const needsLoadBalancer = mainCount > 1;
 	const needsNetwork =
-		usePostgres || !!queueConfig || needsLoadBalancer || proxyServerEnabled || taskRunnerEnabled;
+		usePostgres ||
+		!!queueConfig ||
+		needsLoadBalancer ||
+		proxyServerEnabled ||
+		taskRunnerEnabled ||
+		sourceControlEnabled ||
+		emailEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -232,6 +248,27 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
+	// Set up Mailpit BEFORE creating n8n instances so they have the correct environment
+	if (emailEnabled && network) {
+		const hostname = 'mailpit';
+		const smtpPort = 1025;
+		const httpPort = 8025;
+
+		const mailpitContainer = await setupMailpit({
+			projectName: uniqueProjectName,
+			network,
+			hostname,
+			smtpPort,
+			httpPort,
+		});
+		containers.push(mailpitContainer);
+
+		environment = {
+			...environment,
+			...getMailpitEnvironment(hostname, smtpPort),
+		};
+	}
+
 	let baseUrl: string;
 
 	if (needsLoadBalancer) {
@@ -297,6 +334,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			taskBrokerUri,
 		});
 		containers.push(taskRunnerContainer);
+	}
+
+	if (sourceControlEnabled && network) {
+		const giteaContainer = await setupGitea({
+			giteaImage: GITEA_IMAGE,
+			projectName: uniqueProjectName,
+			network,
+		});
+		containers.push(giteaContainer);
 	}
 
 	return {
