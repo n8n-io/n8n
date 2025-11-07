@@ -2,6 +2,7 @@ import {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeReportResult,
+	BreakingChangeVersion,
 	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -11,16 +12,12 @@ import { Container, Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { INode } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
-
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { allRules, RuleInstances } from './rules';
-import type {
-	BreakingChangeVersion,
-	IBreakingChangeWorkflowRule,
-	IBreakingChangeInstanceRule,
-} from './types';
+import type { IBreakingChangeWorkflowRule, IBreakingChangeInstanceRule } from './types';
 import { N8N_VERSION } from '../../constants';
+
+import { CacheService } from '@/services/cache/cache.service';
 
 @Service()
 export class BreakingChangeService {

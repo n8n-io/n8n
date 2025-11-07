@@ -6,6 +6,9 @@ export type BreakingChangeRuleSeverity = z.infer<typeof breakingChangeRuleSeveri
 
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
 
+const breakingChangeVersionSchema = z.enum(['v2']);
+export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
+
 // Common schemas
 const recommendationSchema = z.object({
 	action: z.string(),
