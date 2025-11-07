@@ -95,8 +95,11 @@ async function getAgentStatus(
 	invocationId: string,
 ): Promise<AgentResultResponse> {
 	const resultUrl = `https://api.airtop.ai/api/hooks/agents/${agentId}/invocations/${invocationId}/result`;
-	const response = (await apiRequest.call(this, 'GET', resultUrl)) as AgentResultResponse;
-
+	const response = await apiRequest.call<
+		IExecuteFunctions,
+		['GET', string],
+		Promise<AgentResultResponse>
+	>(this, 'GET', resultUrl);
 	return response;
 }
 
@@ -108,22 +111,22 @@ async function pollAgentStatus(
 	agentId: string,
 	invocationId: string,
 	timeoutSeconds: number,
-): Promise<AgentResultResponse> {
+): Promise<AgentResultResponse | undefined> {
 	const airtopNode = this.getNode();
 	const startTime = Date.now();
 	const timeoutMs = timeoutSeconds * 1000;
-	let response: Partial<AgentResultResponse> = {};
+	let response: AgentResultResponse | undefined;
 
 	this.logger.info(`[${airtopNode.name}] Polling agent status for invocationId: ${invocationId}`);
 
-	while (!response?.output) {
+	while (!response?.output && !response?.error) {
 		const elapsed = Date.now() - startTime;
 		throwOperationErrorIf(elapsed >= timeoutMs, ERROR_MESSAGES.TIMEOUT_REACHED, airtopNode);
 
 		response = await getAgentStatus.call(this, agentId, invocationId);
 
-		if (response?.output) {
-			return response as AgentResultResponse;
+		if (response?.output || response?.error) {
+			return response;
 		}
 
 		// Wait one second before next poll
@@ -159,12 +162,11 @@ export async function execute(
 		airtopNode,
 	);
 
-	const invocationResponse = (await apiRequest.call(
-		this,
-		'POST',
-		webhookUrl,
-		jsonParse<IDataObject>(agentParametersJson),
-	)) as AgentInvocationResponse;
+	const invocationResponse = await apiRequest.call<
+		IExecuteFunctions,
+		['POST', string, IDataObject],
+		Promise<AgentInvocationResponse>
+	>(this, 'POST', webhookUrl, jsonParse<IDataObject>(agentParametersJson));
 
 	const invocationId = invocationResponse.invocationId;
 	throwOperationErrorIf(
