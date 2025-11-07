@@ -84,9 +84,8 @@ const defaultValues = ref({
 	availableInMCP: false,
 });
 
-const isMCPEnabled = computed(() => settingsStore.isModuleActive('mcp'));
-const isInstanceMcpAccessEnabled = computed(
-	() => settingsStore.moduleSettings.mcp?.mcpAccessEnabled ?? false,
+const isMCPEnabled = computed(
+	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const workflowName = computed(() => workflowsStore.workflowName);
@@ -103,18 +102,11 @@ const workflowOwnerName = computed(() => {
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
 const mcpToggleDisabled = computed(() => {
-	return (
-		readOnlyEnv.value ||
-		!workflowPermissions.value.update ||
-		!isEligibleForMcp.value ||
-		!isInstanceMcpAccessEnabled.value
-	);
+	return readOnlyEnv.value || !workflowPermissions.value.update || !isEligibleForMcp.value;
 });
 
 const mcpToggleTooltip = computed(() => {
-	if (!isInstanceMcpAccessEnabled.value) {
-		return i18n.baseText('mcp.instanceLevelAccessDisabled.description');
-	} else if (!isEligibleForMcp.value) {
+	if (!isEligibleForMcp.value) {
 		return i18n.baseText('mcp.workflowNotEligable.description');
 	}
 	return i18n.baseText('workflowSettings.availableInMCP.tooltip');
