@@ -1,8 +1,6 @@
-import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController } from '@n8n/decorators';
-import { NextFunction, Response } from 'express';
-import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
+import { Response } from 'express';
 import { TelemetryManagementService } from '@/modules/telemetry-management/telemetry-management.service';
 
 interface TrackPayload {
@@ -23,31 +21,7 @@ interface BatchPayload {
 
 @RestController('/telemetry')
 export class TelemetryController {
-	proxy;
-
-	constructor(
-		private readonly globalConfig: GlobalConfig,
-		private readonly telemetryManagementService: TelemetryManagementService,
-	) {
-		// Only create proxy if diagnostics is enabled and config is valid
-		const proxyTarget = this.globalConfig.diagnostics.frontendConfig.split(';')[1];
-		if (this.globalConfig.diagnostics.enabled && proxyTarget) {
-			this.proxy = createProxyMiddleware({
-				target: proxyTarget,
-				changeOrigin: true,
-				pathRewrite: {
-					'^/proxy/': '/', // /proxy/v1/track -> /v1/track
-				},
-				on: {
-					proxyReq: (proxyReq, req) => {
-						proxyReq.removeHeader('cookie');
-						fixRequestBody(proxyReq, req);
-						return;
-					},
-				},
-			});
-		}
-	}
+	constructor(private readonly telemetryManagementService: TelemetryManagementService) {}
 
 	@Post('/events/batch', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
 	async trackBatch(req: AuthenticatedRequest, res: Response) {
@@ -68,8 +42,8 @@ export class TelemetryController {
 	}
 
 	@Post('/proxy/:version/track', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
-	async track(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		// Track to local database
+	async track(req: AuthenticatedRequest, res: Response) {
+		// Track to local database only
 		const body = req.body as TrackPayload;
 		if (body.event) {
 			void this.telemetryManagementService.trackEvent({
@@ -80,30 +54,19 @@ export class TelemetryController {
 			});
 		}
 
-		// Also proxy to external service if enabled and proxy is configured
-		if (this.globalConfig.diagnostics.enabled && this.proxy) {
-			await this.proxy(req, res, next);
-		} else {
-			res.status(200).json({ success: true });
-		}
+		res.status(200).json({ success: true });
 	}
 
 	@Post('/proxy/:version/identify', { skipAuth: true, rateLimit: true })
-	async identify(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		if (this.globalConfig.diagnostics.enabled && this.proxy) {
-			await this.proxy(req, res, next);
-		} else {
-			res.status(200).json({ success: true });
-		}
+	async identify(_req: AuthenticatedRequest, res: Response) {
+		// No-op: identification is handled by the main telemetry service
+		res.status(200).json({ success: true });
 	}
 
 	@Post('/proxy/:version/page', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
-	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		if (this.globalConfig.diagnostics.enabled && this.proxy) {
-			await this.proxy(req, res, next);
-		} else {
-			res.status(200).json({ success: true });
-		}
+	async page(_req: AuthenticatedRequest, res: Response) {
+		// No-op: page tracking is handled through regular track events
+		res.status(200).json({ success: true });
 	}
 
 	@Get('/rudderstack/sourceConfig', {
@@ -112,26 +75,8 @@ export class TelemetryController {
 		usesTemplates: true,
 	})
 	async sourceConfig(_: Request, res: Response) {
-		if (this.globalConfig.diagnostics.enabled) {
-			const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
-				headers: {
-					authorization:
-						'Basic ' + btoa(`${this.globalConfig.diagnostics.frontendConfig.split(';')[0]}:`),
-				},
-			});
-
-			if (!response.ok) {
-				throw new Error(`Failed to fetch source config: ${response.statusText}`);
-			}
-
-			const config: unknown = await response.json();
-
-			// write directly to response to avoid wrapping the config in `data` key which is not expected by RudderStack sdk
-			res.json(config);
-		} else {
-			// Return a minimal config when diagnostics is disabled
-			res.json({ source: { config: {} } });
-		}
+		// Always return minimal config - no external service integration
+		res.json({ source: { config: {} } });
 	}
 
 	@Get('/stats/overview')

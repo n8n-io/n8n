@@ -66,43 +66,6 @@ export * from '@n8n/design-system/types';
 
 declare global {
 	interface Window {
-		posthog?: {
-			init(
-				key: string,
-				options?: {
-					api_host?: string;
-					autocapture?: boolean;
-					disable_session_recording?: boolean;
-					debug?: boolean;
-					bootstrap?: {
-						distinctId?: string;
-						isIdentifiedID?: boolean;
-						featureFlags: FeatureFlags;
-					};
-					session_recording?: {
-						maskAllInputs?: boolean;
-						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
-					};
-				},
-			): void;
-			isFeatureEnabled?(flagName: string): boolean;
-			getFeatureFlag?(flagName: string): boolean | string;
-			identify?(
-				id: string,
-				userProperties?: Record<string, string | number>,
-				userPropertiesOnce?: Record<string, string>,
-			): void;
-			reset?(resetDeviceId?: boolean): void;
-			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
-			reloadFeatureFlags?(): void;
-			capture?(event: string, properties: IDataObject): void;
-			register?(metadata: IDataObject): void;
-			people?: {
-				set?(metadata: IDataObject): void;
-			};
-			debug?(): void;
-			get_session_id?(): string | null;
-		};
 		analytics?: {
 			identify(userId: string): void;
 			track(event: string, properties?: ITelemetryTrackProperties): void;

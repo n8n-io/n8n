@@ -108,18 +108,12 @@ export class FrontendService {
 			enabled: this.globalConfig.diagnostics.enabled,
 		};
 
+		// Local telemetry only - no external service configuration needed
 		if (telemetrySettings.enabled) {
-			const conf = this.globalConfig.diagnostics.frontendConfig;
-			const [key, url] = conf.split(';');
 			const proxy = `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`;
 			const sourceConfig = `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`;
 
-			if (!key || !url) {
-				this.logger.warn('Diagnostics frontend config is invalid');
-				telemetrySettings.enabled = false;
-			}
-
-			telemetrySettings.config = { key, url, proxy, sourceConfig };
+			telemetrySettings.config = { key: '', url: '', proxy, sourceConfig };
 		}
 
 		this.settings = {

@@ -58,15 +58,6 @@ export const defaultSettings: FrontendSettings = {
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
 	personalizationSurveyEnabled: false,
 	releaseChannel: 'stable',
-	posthog: {
-		apiHost: '',
-		apiKey: '',
-		autocapture: false,
-		debug: false,
-		disableSessionRecording: false,
-		enabled: false,
-		proxy: '',
-	},
 	publicApi: {
 		enabled: false,
 		latestVersion: 0,
