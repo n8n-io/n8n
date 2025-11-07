@@ -77,6 +77,7 @@ function handleSelectMenuItem(selected: string) {
 		/>
 		<KeyboardShortcutTooltip
 			v-if="showToggleButton"
+			:key="`tooltip-${isOpen}`"
 			:label="locales.baseText('generic.shortcutHint')"
 			:shortcut="{ keys: ['l'] }"
 			:z-index="tooltipZIndex"
