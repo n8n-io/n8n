@@ -27,7 +27,7 @@ export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 		method,
 		body,
 		qs: query,
-		url: `${BASE_URL}${endpoint}`,
+		url: endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`,
 		json: true,
 	};
 
@@ -40,11 +40,4 @@ export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 		[string, IHttpRequestOptions],
 		Promise<T>
 	>(this, 'airtopApi', options);
-}
-
-export async function webhookApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	options: IHttpRequestOptions,
-): Promise<IDataObject> {
-	return await this.helpers.httpRequestWithAuthentication.call(this, 'airtopApi', options);
 }
