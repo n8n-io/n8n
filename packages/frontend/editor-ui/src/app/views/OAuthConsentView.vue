@@ -46,7 +46,6 @@ const handleAllow = async () => {
 	}
 };
 
-// TODO: Fix this
 const handleDeny = async () => {
 	try {
 		const response = await consentStore.approveConsent(false);
