@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { getMappedExpression } from '@/utils/mappingUtils';
-import { getPairedItemId } from '@/utils/pairedItemUtils';
-import { shorten } from '@/utils/typesUtils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getMappedExpression } from '@/app/utils/mappingUtils';
+import { getPairedItemId } from '@/app/utils/pairedItemUtils';
+import { shorten } from '@/app/utils/typesUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { useTemplateRef, computed, onMounted, ref, watch } from 'vue';
-import Draggable from '@/components/Draggable.vue';
+import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
-import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 
 import { N8nIcon, N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 const MAX_COLUMNS_LIMIT = 40;

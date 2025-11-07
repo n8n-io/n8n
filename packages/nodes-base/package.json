@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.116.0",
+  "version": "1.117.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -42,6 +42,7 @@
       "dist/credentials/AutomizyApi.credentials.js",
       "dist/credentials/AutopilotApi.credentials.js",
       "dist/credentials/Aws.credentials.js",
+      "dist/credentials/AwsAssumeRole.credentials.js",
       "dist/credentials/AzureStorageOAuth2Api.credentials.js",
       "dist/credentials/AzureStorageSharedKeyApi.credentials.js",
       "dist/credentials/BambooHrApi.credentials.js",

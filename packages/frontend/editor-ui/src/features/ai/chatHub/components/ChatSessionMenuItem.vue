@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
+import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
 import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
@@ -27,7 +27,7 @@ const editedLabel = ref('');
 
 type SessionAction = 'rename' | 'delete';
 
-const model = computed(() => restoreConversationModelFromMessageOrSession(session));
+const model = computed(() => unflattenModel(session));
 const agent = useAgent(model);
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [

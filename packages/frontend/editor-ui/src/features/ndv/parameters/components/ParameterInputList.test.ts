@@ -3,7 +3,7 @@ import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 
 import {
 	TEST_NODE_NO_ISSUES,
@@ -17,7 +17,7 @@ import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeProperties, Workflow } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');

@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
 	MFA_SETUP_MODAL_KEY,
 	VIEWS,
-} from '@/constants';
+} from '@/app/constants';
 import { ref, onMounted } from 'vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { mfaEventBus } from '../auth.eventBus';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import router from '@/router';
 import { I18nT } from 'vue-i18n';
 
