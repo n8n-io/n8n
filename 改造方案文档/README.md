@@ -231,6 +231,37 @@ CREATE TABLE platform_service (
   - 工作空间房间隔离（`socket.join(`workspace:${workspaceId}`)）
   - 推送事件只发送到对应工作空间
 
+### 第七阶段：企业版功能管理（Week 7-9）
+
+- [ ] **创建数据库表**（见 01 文档第 12 节）
+  - 创建 `platform_feature_config` 表（平台级功能开关）
+  - 扩展 `project` 表添加 `feature_config` 字段（工作空间级配置）
+  - 扩展 `user` 表添加 `feature_preferences` 字段（用户偏好）
+- [ ] **创建 AdminPlatformFeaturesController**
+  - `GET /rest/admin/platform-features` - 获取所有功能配置
+  - `PATCH /rest/admin/platform-features/:key` - 更新功能配置
+  - `GET /rest/admin/platform-features/:key/usage` - 功能使用统计
+- [ ] **扩展 WorkspacesController**
+  - `GET /rest/workspaces/:id/features` - 获取工作空间功能配置
+  - `PATCH /rest/workspaces/:id/features` - 更新工作空间功能配置
+  - `GET /rest/workspaces/:id/variables` - 获取环境变量
+  - `POST /rest/workspaces/:id/variables` - 创建环境变量
+  - `GET /rest/workspaces/:id/audit-logs` - 获取审计日志
+- [ ] **扩展 UsersController**
+  - `GET /rest/users/me/preferences` - 获取用户偏好设置
+  - `PATCH /rest/users/me/preferences` - 更新用户偏好设置
+  - `POST /rest/users/me/mfa/enable` - 启用 MFA
+  - `POST /rest/users/me/mfa/verify` - 验证并激活 MFA
+  - `POST /rest/users/me/mfa/disable` - 禁用 MFA
+- [ ] **功能开关实施**
+  - 代码级禁用 LDAP/SAML/OIDC 功能
+  - 代码级禁用外部密钥管理功能
+  - 代码级禁用日志流功能（保留平台内部使用）
+  - Worker View 限制为仅管理员可见
+  - Public API 限流中间件实现
+  - 环境变量工作空间隔离验证
+  - 审计日志工作空间隔离验证
+
 ---
 
 ## 🎨 前端改造清单
@@ -317,6 +348,28 @@ CREATE TABLE platform_service (
   - WorkspacesManagementPage.vue - 工作空间管理
   - 独立部署到 `admin.example.com`
 
+### 第七阶段：企业版功能管理前端（Week 7-9）
+
+- [ ] **后台管理系统页面**（见 01 文档第 12.3.1 节）
+  - `PlatformFeatures/FeaturesList.vue` - 平台功能管理页面
+  - 功能开关控制（启用/禁用）
+  - 功能配置对话框（API限流、版本历史保留策略等）
+  - 功能使用统计展示
+- [ ] **用户前端：工作空间设置页面**（见 01 文档第 12.3.2 节）
+  - `WorkspaceSettings.vue` - 工作空间设置主页面
+  - 环境变量管理标签页（创建/编辑/删除变量）
+  - 审计日志标签页（查看操作记录）
+  - 自定义角色标签页（创建和管理角色）
+  - 配额显示（已使用/总配额）
+- [ ] **用户前端：个人设置页面**（见 01 文档第 12.3.3 节）
+  - `PersonalSettings.vue` - 个人设置主页面
+  - 语言切换（中文/英文）
+  - MFA 启用/禁用流程
+  - MFA 设置对话框（二维码扫描、验证码输入）
+  - 恢复代码展示和复制
+  - AI 助手开关
+  - 调试模式开关
+
 ---
 
 ## 🧪 测试验收清单
@@ -351,6 +404,22 @@ CREATE TABLE platform_service (
   - 工作空间搜索
   - 管理员充值
   - 统计数据查看
+- [ ] **企业版功能管理**
+  - 平台管理员可查看所有功能配置
+  - 平台管理员可启用/禁用功能（LDAP/SAML等禁止启用）
+  - 平台管理员可配置API限流参数
+  - 平台管理员可配置工作流版本历史保留策略
+  - 工作空间管理员可管理环境变量
+  - 工作空间管理员可查看审计日志
+  - 工作空间管理员可创建自定义角色
+  - 环境变量数量配额限制验证
+  - 用户可启用/禁用MFA
+  - MFA 登录流程验证
+  - 用户可切换语言（中文/英文）
+  - 用户可开启/关闭AI助手
+  - 被禁用的功能（LDAP/SAML）无法在UI中访问
+  - Public API 限流验证（超过1000次/小时被拒绝）
+  - 工作空间隔离验证（环境变量、审计日志）
 
 ### 性能测试
 

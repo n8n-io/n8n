@@ -56,7 +56,6 @@ export type StaticRouterMetadata = {
 		| 'allowSkipMFA'
 		| 'middlewares'
 		| 'rateLimit'
-		| 'licenseFeature'
 		| 'accessScope'
 	>
 >;

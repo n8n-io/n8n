@@ -12,7 +12,6 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import {
-	EnterpriseEditionFeature,
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
 	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
@@ -27,7 +26,6 @@ import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { usePostHog } from './app/stores/posthog.store';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -260,12 +258,8 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			nodeView: true,
 			keepWorkflowAlive: true,
-			middleware: ['authenticated', 'enterprise'],
-			middlewareOptions: {
-				enterprise: {
-					feature: [EnterpriseEditionFeature.DebugInEditor],
-				},
-			},
+			middleware: ['authenticated'],
+			// enterprise middleware removed - license system disabled
 		},
 	},
 	{
@@ -343,12 +337,8 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated', 'enterprise'],
-			middlewareOptions: {
-				enterprise: {
-					feature: [EnterpriseEditionFeature.WorkflowHistory],
-				},
-			},
+			middleware: ['authenticated'],
+			// enterprise middleware removed - license system disabled
 		},
 	},
 	{
@@ -813,8 +803,8 @@ export const routes: RouteRecordRaw[] = [
 							scope: 'provisioning:manage',
 						},
 						custom: () => {
-							const posthogStore = usePostHog();
-							return posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name);
+							// 实验性功能已默认启用
+							return true;
 						},
 					},
 					telemetry: {
